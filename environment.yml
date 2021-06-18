@@ -1,0 +1,26 @@
+# YML file for setting up a virtual environment including packages used for processing point clouds, GIS and raster to produce raster using spyder.
+
+name: spyder
+channels:
+  - conda-forge
+  - defaults
+dependencies:
+  - pyproj=3.0.1 # note library version has caused issues
+  - geopandas
+  - ipykernel
+  - ipython
+  - ipython_genutils
+  - jupyter_client
+  - jupyter_core
+  - pip
+  - rioxarray
+  - scipy
+  - wheel
+  - pdal
+  - python-pdal
+  - matplotlib
+  - laspy
+  - spyder
+  - spyder-kernels
+
+prefix: C:\ProgramData\Anaconda3\envs\spyder
