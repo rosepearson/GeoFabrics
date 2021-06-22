@@ -17,7 +17,8 @@
 	  "filter_holes_in_lidar": {
 	    "area_to_drop": 10000000
 	  },
-	  "land_name_filter": "North Island or Te Ika-a-Maui"
+	  "land_name_filter": "North Island or Te Ika-a-Maui",
+	  "tmp_raster_path": "C:\\Users\\pearsonra\\Documents\\data\\Wakanae\\Small_test_site\\initial_data\\temp_dense_dem.tif",
     }
   }
 }
