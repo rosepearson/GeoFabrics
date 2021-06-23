@@ -6,13 +6,14 @@ Created on Fri Jun 18 10:52:49 2021
 """
 import geopandas
 import rioxarray
+import rioxarray.merge
 import pdal
 import shapely
 import scipy.interpolate
 import numpy
 import json
 
-class HydrologicalDemGenerator:
+class GeoFabricsGenerator:
     def __init__(self, json_instructions):
         self.instructions = json_instructions
         
@@ -144,8 +145,8 @@ class HydrologicalDemGenerator:
         dense_dem_offshore_edge = dense_dem.rio.clip(offshore_edge_dense_dem.geometry) # the bit to use for interpolation
         
         ### Load in and cut bathy
-        bathy_countours = geopandas.read_file(self.instructions['instructions']['data_paths']['bathymetry_contours'])
-        bathy_points = geopandas.read_file(self.instructions['instructions']['data_paths']['bathymetry_points'])
+        bathy_countours = geopandas.read_file(self.instructions['instructions']['data_paths']['bathymetry_contours'][0])
+        bathy_points = geopandas.read_file(self.instructions['instructions']['data_paths']['bathymetry_points'][0])
         bathy_countours = bathy_countours.to_crs(crs)
         bathy_points = bathy_points.to_crs(crs)
         
@@ -203,6 +204,4 @@ class HydrologicalDemGenerator:
         combined_dem_filled = combined_dem.rio.interpolate_na()
         
         ### save results
-        '''offshore_dem.to_netcdf(str(dem_file_name_stub) + "_offshore_linear_rbf_dem.nc")
-        combined_dem.to_netcdf(str(dem_file_name_stub) + "_combined_linear_rbf_dem.nc")
-        combined_dem_filled.to_netcdf(str(dem_file_name_stub) + "_combined_linear_rbf_dem_filled.nc")'''
+        combined_dem_filled.to_netcdf(self.instructions['instructions']['data_paths']['final_raster_path'])
