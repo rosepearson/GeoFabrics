@@ -12,45 +12,33 @@ import shapely
 import scipy.interpolate
 import numpy
 import json
+from . import geometry
 
 class GeoFabricsGenerator:
     def __init__(self, json_instructions):
         self.instructions = json_instructions
         
     def run(self):
-        print(self.instructions)
-        
-        ## key values in instructions
-        crs = self.instructions['instructions']['projection']
-        resolution = self.instructions['instructions']['grid_params']['resolution']
-        
-        window_size = 0
-        idw_power = 2
-        radius =  resolution * numpy.sqrt(2)
-        foreshore_buffer = 2
+        #print(self.instructions)
         
         ## load in boundary data
-        catchment = geopandas.read_file(self.instructions['instructions']['data_paths']['catchment_boundary']) # should check thir is only one boundary polygon
-        land = geopandas.read_file(self.instructions['instructions']['data_paths']['shoreline'])
-        land = land.to_crs(crs)
+        catchment_geometry = geometry.CatchmentGeometry(self.instructions['instructions']['data_paths']['catchment_boundary'],
+                                                        self.instructions['instructions']['data_paths']['shoreline'], 
+                                                        self.instructions['instructions']['projection'],
+                                                        self.instructions['instructions']['grid_params']['resolution'], foreshore_buffer = 2)
         
-        # define raster dimensions - if not specified in the instruction file  
-        raster_origin = [catchment.loc[0].geometry.bounds[0], catchment.loc[0].geometry.bounds[1]]
-        raster_size = [int((catchment.loc[0].geometry.bounds[2] - catchment.loc[0].geometry.bounds[0]) / resolution), int((catchment.loc[0].geometry.bounds[3] - catchment.loc[0].geometry.bounds[1]) / resolution)]
+        ## key values in instructions
+        window_size = 0
+        idw_power = 2
+        radius =  catchment_geometry.resolution * numpy.sqrt(2)
         
-        # define land, foreshore and offshore
-        land = geopandas.clip(catchment, land)
-        land_and_foreshore = geopandas.GeoDataFrame(index=[0], geometry=land.buffer(resolution * foreshore_buffer), crs=crs)
-        land_and_foreshore = geopandas.clip(catchment, land_and_foreshore)
-        foreshore = geopandas.overlay(land_and_foreshore, land, how='difference')
-        foreshore_and_offshore = geopandas.overlay(catchment, land, how='difference')
-        offshore = geopandas.overlay(catchment, land_and_foreshore, how='difference')
+        
         
         ### Load in LiDAR using PDAL
         pdal_pipeline_instructions = [
             {"type":  "readers.las", "filename": self.instructions['instructions']['data_paths']['lidars'][0]},
-            {"type":"filters.reprojection","out_srs":"EPSG:" + str(crs)}, # reproject to NZTM
-            {"type":"filters.crop", "polygon":str(catchment.loc[0].geometry)}, # filter within boundary
+            {"type":"filters.reprojection","out_srs":"EPSG:" + str(catchment_geometry.crs)}, # reproject to NZTM
+            {"type":"filters.crop", "polygon":str(catchment_geometry.catchment.loc[0].geometry)}, # filter within boundary
             {"type" : "filters.hexbin"} # create a polygon boundary of the LiDAR
         ]
         
@@ -62,33 +50,19 @@ class GeoFabricsGenerator:
         lidar_array = pdal_pipeline.arrays[0]
         
         # define LiDAR extents
-        lidar_extents=shapely.wkt.loads(metadata['metadata']['filters.hexbin']['boundary'])
-        
-        # filter out holes in the middle of the LiDAR
-        if self.instructions['instructions']['instructions'].get('filter_holes_in_lidar') != None:
-            # drop interio holes under a certain area
-            area_to_drop = self.instructions['instructions']['instructions']['filter_holes_in_lidar']['area_to_drop']
-        else:
-            # or, drop all interior holes
-            area_to_drop = shapely.geometry.Polygon(lidar_extents.exterior).area 
-        lidar_extents = shapely.geometry.Polygon(lidar_extents.exterior.coords,
-            [interior for interior in lidar_extents.interiors if shapely.geometry.Polygon(interior).area > area_to_drop])
-        lidar_extents = geopandas.GeoDataFrame(index=[0], geometry=geopandas.GeoSeries([lidar_extents], crs=crs), crs=crs)
-        
-        ### Update geometries to include filtering by lidar
-        foreshore_with_lidar = geopandas.clip(lidar_extents, foreshore)
-        foreshore_without_lidar = geopandas.overlay(foreshore, foreshore_with_lidar, how="difference")
+        catchment_geometry.load_lidar_extents(metadata['metadata']['filters.hexbin']['boundary'])
         
         
         ### Load in background DEM
         reference_dem = rioxarray.rioxarray.open_rasterio(self.instructions['instructions']['data_paths']['reference_dems'][0], masked=True)
-        reference_dem.rio.set_crs(crs);
+        reference_dem.rio.set_crs(catchment_geometry.crs);
         
         # filter spatially
-        reference_dem = reference_dem.rio.clip(catchment.geometry)
-        reference_dem = reference_dem.rio.clip([lidar_extents.loc[0].geometry], invert=True) # should clip with the biggest or maybe each in turn?
-        reference_dem_land = reference_dem.rio.clip(catchment.geometry)
-        reference_dem_foreshore = reference_dem.rio.clip(foreshore_without_lidar.geometry)
+        reference_dem = reference_dem.rio.clip(catchment_geometry.catchment.geometry)
+        reference_dem = reference_dem.rio.clip([catchment_geometry.lidar_extents.loc[0].geometry], invert=True) # should clip with the biggest or maybe each in turn?
+        reference_dem_land = reference_dem.rio.clip(catchment_geometry.catchment.geometry)
+        reference_dem_foreshore = reference_dem.rio.clip(catchment_geometry.foreshore_without_lidar.geometry)
+        
         
         # set values to zero on foreshore
         reference_dem_foreshore.data[0][reference_dem_foreshore.data[0]>0] = 0
@@ -119,46 +93,39 @@ class GeoFabricsGenerator:
        
         ### Create raster
         pdal_pipeline_instructions = [
-            {"type":  "writers.gdal", "resolution": resolution, "gdalopts": "a_srs=EPSG:" + str(crs), "output_type":["idw"], 
+            {"type":  "writers.gdal", "resolution": catchment_geometry.resolution, "gdalopts": "a_srs=EPSG:" + str(catchment_geometry.crs), "output_type":["idw"], 
              "filename": self.instructions['instructions']['data_paths']['tmp_raster_path'], 
              "window_size": window_size, "power": idw_power, "radius": radius, 
-             "origin_x": raster_origin[0], "origin_y": raster_origin[1], "width": raster_size[0], "height": raster_size[1]}
+             "origin_x": catchment_geometry.raster_origin[0], "origin_y": catchment_geometry.raster_origin[1], 
+             "width": catchment_geometry.raster_size[0], "height": catchment_geometry.raster_size[1]}
         ]
         
         pdal_pipeline = pdal.Pipeline(json.dumps(pdal_pipeline_instructions), [combined_dense_points_array])
         pdal_pipeline.execute();
         
         
-        ### Define geometries where the dense dem
-        dense_dem_extents = geopandas.GeoDataFrame(index=[0], geometry=geopandas.GeoSeries(shapely.ops.cascaded_union([land_and_foreshore.loc[0].geometry, lidar_extents.loc[0].geometry])), crs=crs)
-        offshore_dense_dem = geopandas.overlay(catchment, dense_dem_extents, how='difference')
-        deflated_dense_dem = geopandas.GeoDataFrame(index=[0], geometry=dense_dem_extents.buffer(resolution * -1 * foreshore_buffer), crs=crs)
-        offshore_edge_dense_dem = geopandas.overlay(dense_dem_extents, deflated_dense_dem, how='difference')
-        offshore_edge_dense_dem = geopandas.clip(offshore_edge_dense_dem, foreshore_and_offshore)
-        
-        
         ### load in dense DEM 
         metadata=json.loads(pdal_pipeline.get_metadata())
         dense_dem = rioxarray.rioxarray.open_rasterio(metadata['metadata']['writers.gdal']['filename'][0], masked=True)
-        dense_dem.rio.set_crs(crs);
+        dense_dem.rio.set_crs(catchment_geometry.crs);
         # trim
-        dense_dem_offshore_edge = dense_dem.rio.clip(offshore_edge_dense_dem.geometry) # the bit to use for interpolation
+        dense_dem_offshore_edge = dense_dem.rio.clip(catchment_geometry.offshore_edge_dense_data.geometry) # the bit to use for interpolation
         
         ### Load in and cut bathy
         bathy_countours = geopandas.read_file(self.instructions['instructions']['data_paths']['bathymetry_contours'][0])
         bathy_points = geopandas.read_file(self.instructions['instructions']['data_paths']['bathymetry_points'][0])
-        bathy_countours = bathy_countours.to_crs(crs)
-        bathy_points = bathy_points.to_crs(crs)
+        bathy_countours = bathy_countours.to_crs(catchment_geometry.crs)
+        bathy_points = bathy_points.to_crs(catchment_geometry.crs)
         
         # trim
-        bathy_points = geopandas.clip(bathy_points, offshore_dense_dem)
+        bathy_points = geopandas.clip(bathy_points, catchment_geometry.offshore_dense_data)
         bathy_points = bathy_points.reset_index(drop=True)
         
-        bathy_countours = geopandas.clip(bathy_countours, offshore_dense_dem)
+        bathy_countours = geopandas.clip(bathy_countours, catchment_geometry.offshore_dense_data)
         bathy_countours = bathy_countours.reset_index(drop=True)
         
         # sub sample the contours 
-        bathy_countours['points']=bathy_countours.geometry.apply(lambda row : shapely.geometry.MultiPoint([ row.interpolate(i * resolution) for i in range(int(numpy.ceil(row.length/resolution)))]))
+        bathy_countours['points']=bathy_countours.geometry.apply(lambda row : shapely.geometry.MultiPoint([ row.interpolate(i * catchment_geometry.resolution) for i in range(int(numpy.ceil(row.length/catchment_geometry.resolution)))]))
         
         
         ### combine bathy and offshore edge of the dense raster
@@ -187,7 +154,7 @@ class GeoFabricsGenerator:
         offshore_dem=dense_dem.copy()
         offshore_dem.rio.set_crs(dense_dem.rio.crs)
         offshore_dem.data[0]=0
-        offshore_dem = offshore_dem.rio.clip(offshore_dense_dem.geometry);
+        offshore_dem = offshore_dem.rio.clip(catchment_geometry.offshore_dense_data.geometry);
         # interpolate
         offshore_rbf = scipy.interpolate.Rbf(offshore_x, offshore_y, offshore_z, function='linear')
         
