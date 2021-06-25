@@ -6,6 +6,7 @@ Created on Fri Jun 18 10:52:49 2021
 """
 import geopandas
 import shapely
+import numpy
 
 class CatchmentGeometry:
     """ A class defining all relevant regions in a catchment
@@ -185,5 +186,119 @@ class CatchmentGeometry:
         return self._offshore_edge_dense_data 
 
 
-     
+class BathymetryContours:
+    """ A class working with bathymetry contours.
     
+    Assumes contours to be sampled to the catchment_geometry resolution
+    """
+    
+    def __init__(self, contour_file, catchment_geometry, z_label = None):
+        self._contour = geopandas.read_file(contour_file)
+        self.catchment_geometry = catchment_geometry
+        self.z_label = z_label
+        self._points_label = 'points'
+        
+        
+        self.__set_up()
+        
+        self._x = None
+        self._y = None
+        self._z = None
+        
+        
+    def __set_up(self):
+        """ Set crs and clip to catchment """
+        
+        self._contour = self._contour.to_crs(self.catchment_geometry.crs) 
+        
+        self._contour = geopandas.clip(self._contour, self.catchment_geometry.offshore_dense_data)
+        self._contour = self._contour.reset_index(drop=True)
+    
+    @property
+    def points(self):
+        """ Return the offshore edge of where there is 'dense data' """
+        
+        resolution = self.catchment_geometry.resolution
+        
+        if 'points' not in self._contour.columns:
+            self._contour[self._points_label]=self._contour.geometry.apply(lambda row : shapely.geometry.MultiPoint([ row.interpolate(i * resolution) for i in range(int(numpy.ceil(row.length/resolution)))]))
+        return self._contour[self._points_label] 
+    
+    @property
+    def x(self):
+    
+        if self._x is None:
+            self._x = numpy.concatenate(self.points.apply(lambda row : [row[i].x for i in range(len(row))]).to_list())
+            
+        return self._x
+            
+    @property
+    def y(self):
+    
+        if self._y is None:
+            self._y = numpy.concatenate(self.points.apply(lambda row : [row[i].y for i in range(len(row))]).to_list())
+            
+        return self._y
+    
+    @property
+    def z(self):
+    
+        if self._z is None:
+            # map depth to elevatation
+            if self.z_label is None:
+                self._z = numpy.concatenate(self.points.apply(lambda row : [row[i].z for i in range(len(row))]).to_list()) * -1
+            else:
+                self._z = numpy.concatenate(self._contour.apply(lambda row : (row[self.z_label] * numpy.ones(len(row[self._points_label]))), axis=1).to_list()) * -1
+        
+        return self._z
+    
+    
+class BathymetryPoints:
+    """ A class working with bathymetry points """
+    
+    def __init__(self, points_file, catchment_geometry):
+        self._points = geopandas.read_file(points_file)
+        self.catchment_geometry = catchment_geometry
+        
+        
+        self.__set_up()
+        
+        
+    def __set_up(self):
+        """ Set crs and clip to catchment """
+        
+        self._points = self._points.to_crs(self.catchment_geometry.crs) 
+        
+        self._points = geopandas.clip(self._points, self.catchment_geometry.offshore_dense_data)
+        self._points = self._points.reset_index(drop=True)
+    
+    @property
+    def points(self):
+        """ Return the points """
+        
+        return self._points
+    
+    @property
+    def x(self):
+    
+        if self._x is None:
+            self._x = self._points.points.apply(lambda row : row['geometry'][0].x,axis=1).to_numpy()
+            
+        return self._x
+            
+    @property
+    def y(self):
+    
+        if self._y is None:
+            self._y = self._points.points.apply(lambda row : row['geometry'][0].y,axis=1).to_numpy()
+            
+        return self._y
+    
+    @property
+    def z(self):
+    
+        if self._z is None:
+            # map depth to elevatation
+            self._z = self._points.points.apply(lambda row : row['geometry'][0].z,axis=1).to_numpy() * -1 
+        
+        return self._z
