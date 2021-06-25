@@ -6,6 +6,7 @@ Created on Fri Jun 18 10:52:49 2021
 """
 import rioxarray
 import numpy
+import scipy.interpolate 
 
 class ReferenceDem:
     """ A class to manage the reference DEM in a catchment context
@@ -85,6 +86,7 @@ class DenseDem:
         self.__set_up()
         
         self._offshore_edge = None
+        self._offshore = None
         
     def __set_up(self):
         """ Set dem crs and trim the dem to size """
@@ -92,7 +94,7 @@ class DenseDem:
         
         # trim to only include cells where there is dense data
         self._dem = self._dem.rio.clip(self.catchment_geometry.dense_data_extents.geometry)
-     
+        
     @property
     def dem(self):
         """ Return the dem """
@@ -115,3 +117,30 @@ class DenseDem:
                                    'z': offshore_flat_z[offshore_mask_z]}
             
         return self._offshore_edge
+    
+    def interpolate_offshore(self, bathy_contours):
+        x = numpy.concatenate([self.offshore_edge['x'], bathy_contours.x])
+        y = numpy.concatenate([self.offshore_edge['y'], bathy_contours.y])
+        z = numpy.concatenate([self.offshore_edge['z'], bathy_contours.z])
+        
+        ### interpolate offshore
+        rbf_function = scipy.interpolate.Rbf(x, y, z, function='linear')
+        
+        # initalise offshore dem
+        self._offshore = self.dem.rio.clip(self.catchment_geometry.offshore.geometry);
+        self._offshore.data[0] = 0 # set all to zero then clip out dense region where we don't need to interpolate
+        self._offshore = self._offshore.rio.clip(self.catchment_geometry.offshore_dense_data.geometry);
+        
+        grid_x, grid_y = numpy.meshgrid(self._offshore.x, self._offshore.y)
+        flat_z = self._offshore.data[0].flatten()
+        mask_z = ~numpy.isnan(flat_z)
+        flat_z[mask_z] = rbf_function(grid_x.flatten()[mask_z], grid_y.flatten()[mask_z])
+        self._offshore.data[0] = flat_z.reshape(self._offshore.data[0].shape)
+    
+    @property
+    def offshore(self):
+        """ Return the offshore dem """
+        
+        assert self._offshore is not None, "The offshore has to be interpolated explicitly"
+    
+        return self._offshore
