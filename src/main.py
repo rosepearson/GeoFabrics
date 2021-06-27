@@ -4,7 +4,7 @@ Created on Fri Jun 18 10:52:49 2021
 
 @author: pearsonra
 """
-from HydrologicDEMs import processor
+from GeoFabrics import processor
 import json
 import argparse
 
