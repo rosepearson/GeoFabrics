@@ -7,7 +7,6 @@ Created on Fri Jun 18 10:52:49 2021
 import rioxarray
 import rioxarray.merge
 import pdal
-import scipy.interpolate
 import numpy
 import json
 from . import geometry
@@ -20,23 +19,31 @@ class GeoFabricsGenerator:
         
     def run(self):
         
-        ## load in boundary data
+        ### instruction values and other set values
+        area_to_drop = self.instructions['instructions']['instructions']['filter_lidar_holes_area'] if  \
+            'filter_lidar_holes_area' in self.instructions['instructions']['instructions'] else None
+        
+        ### load in boundary data
         catchment_geometry = geometry.CatchmentGeometry(self.instructions['instructions']['data_paths']['catchment_boundary'],
                                                         self.instructions['instructions']['data_paths']['shoreline'], 
                                                         self.instructions['instructions']['projection'],
-                                                        self.instructions['instructions']['grid_params']['resolution'], foreshore_buffer = 2)
+                                                        self.instructions['instructions']['grid_params']['resolution'], 
+                                                        foreshore_buffer = 2, area_to_drop = area_to_drop)
         
         ### Other set values
+        radius =  catchment_geometry.resolution * numpy.sqrt(2)
         window_size = 0
         idw_power = 2
-        radius =  catchment_geometry.resolution * numpy.sqrt(2)
-        set_dem_foreshore = True # det any dem values used along the foreshore to zero
         
         ### Load in LiDAR using PDAL
         catchment_lidar = lidar.CatchmentLidar(self.instructions['instructions']['data_paths']['lidars'][0], catchment_geometry)
         
         ### Load in reference DEM if any land/foreshore not covered by lidar
-        if True: # replace with conditional - catchment_geometry.foreshore_without_lidar.geometry.area > 0 or 
+        if (catchment_geometry.foreshore_without_lidar.geometry.area.max() > 0) or (catchment_geometry.land_without_lidar.geometry.area.max() > 0):
+            
+            # if True set any dem values used along the foreshore to zero
+            set_dem_foreshore = self.instructions['instructions']['instructions']['set_dem_shoreline'] if  \
+                'set_dem_shoreline' in self.instructions['instructions']['instructions'] else True
         
             # Load in background DEM
             reference_dem = dem.ReferenceDem(self.instructions['instructions']['data_paths']['reference_dems'][0], catchment_geometry, set_dem_foreshore)
@@ -49,12 +56,11 @@ class GeoFabricsGenerator:
             
             combined_dense_points_array = numpy.concatenate([catchment_lidar.lidar_array, dem_points])
             
-            del catchment_lidar.lidar_array
-            
         else:
            combined_dense_points_array = catchment_lidar.lidar_array     
-       
-        ### Create dense raster
+        del catchment_lidar.lidar_array
+        
+        ### Create dense raster - note currently involves writing out a temp file
         pdal_pipeline_instructions = [
             {"type":  "writers.gdal", "resolution": catchment_geometry.resolution, "gdalopts": "a_srs=EPSG:" + str(catchment_geometry.crs), "output_type":["idw"], 
              "filename": self.instructions['instructions']['data_paths']['tmp_raster_path'], 

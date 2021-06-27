@@ -38,6 +38,7 @@ class CatchmentGeometry:
         
         # values that require load_lidar_extents to be called first
         self._lidar_extents = None
+        self._land_without_lidar = None
         self._foreshore_with_lidar = None
         self._foreshore_without_lidar = None
         self._dense_data_extents = None
@@ -136,11 +137,22 @@ class CatchmentGeometry:
         
         if self.area_to_drop is None:
             area_to_drop = shapely.geometry.Polygon(self._lidar_extents.exterior).area
+        else:
+            area_to_drop = self.area_to_drop
         
         self._lidar_extents = shapely.geometry.Polygon(self._lidar_extents.exterior.coords,
             [interior for interior in self._lidar_extents.interiors if shapely.geometry.Polygon(interior).area > area_to_drop])
         self._lidar_extents = geopandas.GeoDataFrame(index=[0], geometry=geopandas.GeoSeries([self._lidar_extents], crs=self.crs), crs=self.crs)
         self._lidar_extents = geopandas.clip(self._catchment, self._lidar_extents)
+        
+    @property
+    def land_without_lidar(self):
+        """ Return the catchment land without lidar """
+        
+        if self._land_without_lidar is None:
+            land_with_lidar = geopandas.clip(self.lidar_extents, self.land)
+            self._land_without_lidar = geopandas.overlay(self.land, land_with_lidar, how="difference")
+        return self._land_without_lidar 
         
         
     @property
@@ -153,7 +165,7 @@ class CatchmentGeometry:
     
     @property
     def foreshore_without_lidar(self):
-        """ Return the catchment foreshore without lidar region """
+        """ Return the catchment foreshore without lidar """
         
         if self._foreshore_without_lidar is None:
             self._foreshore_without_lidar = geopandas.overlay(self.foreshore, self.foreshore_with_lidar, how="difference")
