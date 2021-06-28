@@ -6,7 +6,7 @@
     },
     "data_paths": {
       "catchment_boundary": "..\\..\\tests\\test1\\data\\catchment_boundary.zip!\\catchment_boundary.shp",
-	  "shoreline": "..\\..\\tests\\test1\\data\\shoreline.zip!shoreline.shp",
+	  "land": "..\\..\\tests\\test1\\data\\land.zip!land.shp",
 	  "lidars": ["..\\..\\tests\\test1\\data\\lidar.laz"],
 	  "reference_dems": ["..\\..\\tests\\test1\\data\\reference_dem.tif"],
 	  "bathymetry_contours": ["..\\..\\tests\\test1\\data\\contours.zip!contours.shp"],
