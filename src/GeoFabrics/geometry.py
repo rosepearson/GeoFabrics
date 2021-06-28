@@ -17,7 +17,7 @@ class CatchmentGeometry:
     and defines the origin and extents of any generated raster.
     """
     
-    def __init__(self, catchment_file, land_file, crs, resolution, foreshore_buffer = 2, area_to_drop = None):
+    def __init__(self, catchment_file: str, land_file: str, crs, resolution, foreshore_buffer = 2, area_to_drop = None):
         self._catchment = geopandas.read_file(catchment_file)
         self._land = geopandas.read_file(land_file)
         self.crs = crs
@@ -97,7 +97,7 @@ class CatchmentGeometry:
     
     @property    
     def land_and_foreshore(self):
-        """ Return the catchment and and foreshore region """
+        """ Return the catchment land and foreshore region """
         
         if self._land_and_foreshore is None:
             self._land_and_foreshore = geopandas.GeoDataFrame(index=[0], geometry=self.land.buffer(self.resolution * self.foreshore_buffer), crs=self.crs)
@@ -130,7 +130,7 @@ class CatchmentGeometry:
             
         return self._lidar_extents
     
-    def load_lidar_extents(self, lidar_extents_string): # expect to be filepath
+    def load_lidar_extents(self, lidar_extents_string: str):
         """ Load the lidar extents and clip within the catchment region """
         
         self._lidar_extents=shapely.wkt.loads(lidar_extents_string)
@@ -204,7 +204,7 @@ class BathymetryContours:
     Assumes contours to be sampled to the catchment_geometry resolution
     """
     
-    def __init__(self, contour_file, catchment_geometry, z_label = None):
+    def __init__(self, contour_file: str, catchment_geometry: CatchmentGeometry, z_label = None):
         self._contour = geopandas.read_file(contour_file)
         self.catchment_geometry = catchment_geometry
         self.z_label = z_label
@@ -268,7 +268,7 @@ class BathymetryContours:
 class BathymetryPoints:
     """ A class working with bathymetry points """
     
-    def __init__(self, points_file, catchment_geometry):
+    def __init__(self, points_file: str, catchment_geometry: CatchmentGeometry):
         self._points = geopandas.read_file(points_file)
         self.catchment_geometry = catchment_geometry
         
