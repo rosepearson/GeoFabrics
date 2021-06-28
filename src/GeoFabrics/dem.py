@@ -22,13 +22,13 @@ class ReferenceDem:
         self.set_foreshore = set_foreshore
         self._dem = rioxarray.rioxarray.open_rasterio(dem_file, masked=True)
         
-        self.__set_up()
+        self._set_up()
         
         self._land = None
         self._foreshore = None
         
         
-    def __set_up(self):
+    def _set_up(self):
         """ Set dem crs and trim the dem to size """
         self._dem.rio.set_crs(self.catchment_geometry.crs);
         self._dem = self._dem.rio.clip(self.catchment_geometry.catchment.geometry)
@@ -83,12 +83,12 @@ class DenseDem:
         self.catchment_geometry = catchment_geometry
         self._dem = rioxarray.rioxarray.open_rasterio(dem_file, masked=True)
         
-        self.__set_up()
+        self._set_up()
         
         self._offshore_edge = None
         self._offshore = None
         
-    def __set_up(self):
+    def _set_up(self):
         """ Set dem crs and trim the dem to size """
         self._dem.rio.set_crs(self.catchment_geometry.crs);
         

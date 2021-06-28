@@ -26,7 +26,7 @@ class CatchmentGeometry:
         self.area_to_drop = area_to_drop
         
         
-        self.__set_up()
+        self._set_up()
         
         # values set only when called for the first time
         self._raster_origin = None 
@@ -45,7 +45,7 @@ class CatchmentGeometry:
         self._offshore_dense_data = None
         self._offshore_edge_dense_data = None
         
-    def __set_up(self):
+    def _set_up(self):
         """ Called in init to ensure correct setup of the input values """
         
         self._catchment = self._catchment.to_crs(self.crs)
@@ -211,14 +211,14 @@ class BathymetryContours:
         self._points_label = 'points'
         
         
-        self.__set_up()
+        self._set_up()
         
         self._x = None
         self._y = None
         self._z = None
         
         
-    def __set_up(self):
+    def _set_up(self):
         """ Set crs and clip to catchment """
         
         self._contour = self._contour.to_crs(self.catchment_geometry.crs) 
@@ -273,10 +273,10 @@ class BathymetryPoints:
         self.catchment_geometry = catchment_geometry
         
         
-        self.__set_up()
+        self._set_up()
         
         
-    def __set_up(self):
+    def _set_up(self):
         """ Set crs and clip to catchment """
         
         self._points = self._points.to_crs(self.catchment_geometry.crs) 

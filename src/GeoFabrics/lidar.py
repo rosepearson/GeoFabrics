@@ -22,9 +22,9 @@ class CatchmentLidar:
         self._pdal_pipeline = None
         self._lidar_array = None
         
-        self.__load_lidar(lidar_file)
+        self._load_lidar(lidar_file)
         
-    def __load_lidar(self, lidar_file):
+    def _load_lidar(self, lidar_file):
         """ Function loading in the lidar
         
         In future we may want to have the option of filtering by foreshore / 
