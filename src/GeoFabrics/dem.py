@@ -7,6 +7,7 @@ Created on Fri Jun 18 10:52:49 2021
 import rioxarray
 import numpy
 import scipy.interpolate 
+from . import geometry
 
 class ReferenceDem:
     """ A class to manage the reference DEM in a catchment context
@@ -15,7 +16,7 @@ class ReferenceDem:
     set_foreshore is True set all positive DEM values in the foreshore to zero
     """
     
-    def __init__(self, dem_file, catchment_geometry, set_foreshore = True):
+    def __init__(self, dem_file, catchment_geometry: geometry.CatchmentGeometry, set_foreshore: bool = True):
         """ Load in dem """
         
         self.catchment_geometry = catchment_geometry
@@ -77,7 +78,7 @@ class DenseDem:
     Specifically, clip within the region there is dense data and provide the
     offshore edge of this dense region """
     
-    def __init__(self, dem_file, catchment_geometry):
+    def __init__(self, dem_file: str, catchment_geometry: geometry.CatchmentGeometry):
         """ Load in dem """
         
         self.catchment_geometry = catchment_geometry
@@ -119,6 +120,8 @@ class DenseDem:
         return self._offshore_edge
     
     def interpolate_offshore(self, bathy_contours):
+        """ Performs interpolation offshore using the scipy Rbf function. """
+        
         x = numpy.concatenate([self.offshore_edge['x'], bathy_contours.x])
         y = numpy.concatenate([self.offshore_edge['y'], bathy_contours.y])
         z = numpy.concatenate([self.offshore_edge['z'], bathy_contours.z])
@@ -139,7 +142,8 @@ class DenseDem:
     
     @property
     def offshore(self):
-        """ Return the offshore dem """
+        """ Return the offshore dem - must be called after 
+        'intepolate_offshore() """
         
         assert self._offshore is not None, "The offshore has to be interpolated explicitly"
     

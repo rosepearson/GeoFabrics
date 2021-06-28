@@ -6,7 +6,7 @@ Created on Thu Jun 24 16:36:41 2021
 """
 import pdal
 import json
-
+from . import geometry
 
 
 class CatchmentLidar:
@@ -15,7 +15,7 @@ class CatchmentLidar:
     Specifically, this supports the import, and manipulation if LiDAR data.
     """
     
-    def __init__(self, lidar_file, catchment_geometry):
+    def __init__(self, lidar_file: str, catchment_geometry: geometry.CatchmentGeometry):
         """ Load in lidar with relevant processing chain """
         
         self.catchment_geometry = catchment_geometry
