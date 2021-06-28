@@ -25,7 +25,7 @@ class GeoFabricsGenerator:
         
         ### load in boundary data
         catchment_geometry = geometry.CatchmentGeometry(self.instructions['instructions']['data_paths']['catchment_boundary'],
-                                                        self.instructions['instructions']['data_paths']['shoreline'], 
+                                                        self.instructions['instructions']['data_paths']['land'], 
                                                         self.instructions['instructions']['projection'],
                                                         self.instructions['instructions']['grid_params']['resolution'], 
                                                         foreshore_buffer = 2, area_to_drop = area_to_drop)
