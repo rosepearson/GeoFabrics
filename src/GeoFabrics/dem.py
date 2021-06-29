@@ -56,6 +56,7 @@ class ReferenceDem:
         """ Return the dem cells outside any LiDAR on the foreshore """
         
         if self._foreshore is None:
+            
             foreshore_dem = self._dem.rio.clip(self.catchment_geometry.foreshore_without_lidar.geometry)
             
             if self.set_foreshore:

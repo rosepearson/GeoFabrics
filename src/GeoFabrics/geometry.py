@@ -130,7 +130,7 @@ class CatchmentGeometry:
             
         return self._lidar_extents
     
-    def load_lidar_extents(self, lidar_extents_string: str):
+    def load_lidar_extents(self, lidar_extents_string: str): 
         """ Load the lidar extents and clip within the catchment region """
         
         self._lidar_extents=shapely.wkt.loads(lidar_extents_string)
