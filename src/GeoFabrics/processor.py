@@ -30,6 +30,7 @@ class GeoFabricsGenerator:
                                                         self.instructions['instructions']['grid_params']['resolution'], 
                                                         foreshore_buffer = 2, area_to_drop = area_to_drop)
         
+        
         ### Other set values
         radius =  catchment_geometry.resolution * numpy.sqrt(2)
         window_size = 0
@@ -77,7 +78,9 @@ class GeoFabricsGenerator:
         dense_dem = dem.DenseDem(metadata['metadata']['writers.gdal']['filename'][0], catchment_geometry)
         
         ### Load in bathy
-        bathy_contours = geometry.BathymetryContours(self.instructions['instructions']['data_paths']['bathymetry_contours'][0], catchment_geometry, z_label = 'valdco')
+        z_label = self.instructions['instructions']['instructions']['bathymetry_contours_z_label'] if  \
+            'bathymetry_contours_z_label' in self.instructions['instructions']['instructions'] else None
+        bathy_contours = geometry.BathymetryContours(self.instructions['instructions']['data_paths']['bathymetry_contours'][0], catchment_geometry, z_label = z_label)
         #bathy_points = geometry.BathymetryPoints(self.instructions['instructions']['data_paths']['bathymetry_points'][0], catchment_geometry)
         
         ### sparse/offshore interpolant
