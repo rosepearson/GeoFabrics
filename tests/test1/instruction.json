@@ -5,14 +5,14 @@
       "resolution": 10
     },
     "data_paths": {
-      "catchment_boundary": "..\\..\\tests\\test1\\data\\catchment_boundary.zip!\\catchment_boundary.shp",
-	  "land": "..\\..\\tests\\test1\\data\\land.zip!land.shp",
-	  "lidars": ["..\\..\\tests\\test1\\data\\lidar.laz"],
-	  "reference_dems": ["..\\..\\tests\\test1\\data\\reference_dem.tif"],
-	  "bathymetry_contours": ["..\\..\\tests\\test1\\data\\contours.zip!contours.shp"],
-	  "tmp_raster_path": "..\\..\\tests\\test1\\data\\temp_dense_dem.tif",
-	  "final_raster_path": "..\\..\\tests\\test1\\data\\created_dem.tif",
-	  "final_raster_path_comp": "..\\..\\tests\\test1\\data\\comparison_dem.tif"
+      "catchment_boundary": "data\\catchment_boundary.zip!\\catchment_boundary.shp",
+	  "land": "data\\land.zip!land.shp",
+	  "lidars": ["data\\lidar.laz"],
+	  "reference_dems": ["data\\reference_dem.tif"],
+	  "bathymetry_contours": ["data\\bathymetry.zip!bathymetry.shp"],
+	  "tmp_raster_path": "data\\temp_dense_dem.tif",
+	  "final_raster_path": "data\\created_dem.tif",
+	  "final_raster_path_comp": "data\\comparison_dem.tif"
     },
     "instructions": {
       "set_dem_shoreline": "True"
