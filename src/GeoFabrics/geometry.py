@@ -61,6 +61,14 @@ class CatchmentGeometry:
             self._raster_origin = [self.catchment.loc[0].geometry.bounds[0], 
                                    self.catchment.loc[0].geometry.bounds[1]]
         return self._raster_origin
+    
+    @raster_origin.setter
+    def raster_origin(self, raster_origin):
+        """ Overwrite the raster origin - this is supported to ensure the 
+        origin matches the generated dense_dem - as this seems to round in the 
+        pdal writers.gdal case. """
+        
+        self._raster_origin = raster_origin
 
     @property
     def raster_size(self):

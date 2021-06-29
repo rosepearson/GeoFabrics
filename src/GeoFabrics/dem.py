@@ -5,6 +5,7 @@ Created on Fri Jun 18 10:52:49 2021
 @author: pearsonra
 """
 import rioxarray
+import xarray
 import numpy
 import scipy.interpolate 
 from . import geometry
@@ -85,17 +86,32 @@ class DenseDem:
         self.catchment_geometry = catchment_geometry
         self._dem = rioxarray.rioxarray.open_rasterio(dem_file, masked=True)
         
-        self._set_up()
-        
         self._offshore_edge = None
         self._offshore = None
+        self._offshore_interpolated = False
+        
+        self._set_up()
         
     def _set_up(self):
         """ Set dem crs and trim the dem to size """
         self._dem.rio.set_crs(self.catchment_geometry.crs);
         
+        # trim out the offshore extents - and setup for interpolation
+        self._offshore = self.dem.rio.clip(self.catchment_geometry.offshore.geometry);
+        self._offshore.data[0] = 0 # set all to zero then clip out dense region where we don't need to interpolate
+        self._offshore = self._offshore.rio.clip(self.catchment_geometry.offshore_dense_data.geometry);
+        
+        # ensure the dense dem and raster orgin values match - set if different and print a warning
+        if self.catchment_geometry.raster_origin[0] != self._dem.x.data.min() or self.catchment_geometry.raster_origin[1] != self._dem.y.data.min():
+            raster_origin = [self._dem.x.data.min(), self._dem.y.data.min()]
+            print('Warning: The generated dense DEM has an origin differing from ' + 
+                  'the one specified. Updating the catchment geometry raster origin from ' 
+                  + str(self.catchment_geometry.raster_origin) + ' to ' + str(raster_origin))
+            self.catchment_geometry.raster_origin = raster_origin
+        
         # trim to only include cells where there is dense data
         self._dem = self._dem.rio.clip(self.catchment_geometry.dense_data_extents.geometry)
+        
         
     @property
     def dem(self):
@@ -130,22 +146,35 @@ class DenseDem:
         ### interpolate offshore
         rbf_function = scipy.interpolate.Rbf(x, y, z, function='linear')
         
-        # initalise offshore dem
-        self._offshore = self.dem.rio.clip(self.catchment_geometry.offshore.geometry);
-        self._offshore.data[0] = 0 # set all to zero then clip out dense region where we don't need to interpolate
-        self._offshore = self._offshore.rio.clip(self.catchment_geometry.offshore_dense_data.geometry);
+        # Alternative approach - where the offshore raster is created from scratch - the code is retained in the case that we move to use this approach instead in the future.
+        '''x_coords = numpy.arange(self.catchment_geometry.raster_origin[0], 
+                                self.catchment_geometry.raster_origin[0] + self.catchment_geometry.resolution * self.catchment_geometry.raster_size[0], 
+                                self.catchment_geometry.resolution)
+        y_coords = numpy.arange(self.catchment_geometry.raster_origin[1] + self.catchment_geometry.resolution * self.catchment_geometry.raster_size[1],
+                                self.catchment_geometry.raster_origin[1], 
+                                -self.catchment_geometry.resolution) # following convention of GDAL where y starts at the largest
+        z_array = numpy.zeros((1, len(y_coords), len(x_coords))) # 1 is the band dimension
         
+        self._offshore = xarray.DataArray(z_array, coords = {'band': [1], 'x': x_coords, 'y': y_coords}, dims = ['band', 'y','x'], 
+                                                                attrs={'scale_factor': 1.0, 'add_offset': 0.0})
+        self._offshore.rio.set_crs(self.catchment_geometry.crs)
+        self._offshore = self._offshore.rio.clip(self.catchment_geometry.offshore_dense_data.geometry);'''
+        
+        # Interpolate over offshore region
         grid_x, grid_y = numpy.meshgrid(self._offshore.x, self._offshore.y)
         flat_z = self._offshore.data[0].flatten()
         mask_z = ~numpy.isnan(flat_z)
         flat_z[mask_z] = rbf_function(grid_x.flatten()[mask_z], grid_y.flatten()[mask_z])
         self._offshore.data[0] = flat_z.reshape(self._offshore.data[0].shape)
+        
+        self._offshore_interpolated = True
+    
     
     @property
     def offshore(self):
         """ Return the offshore dem - must be called after 
         'intepolate_offshore() """
         
-        assert self._offshore is not None, "The offshore has to be interpolated explicitly"
+        assert self._offshore_interpolated is True, "The offshore has to be interpolated explicitly"
     
         return self._offshore
