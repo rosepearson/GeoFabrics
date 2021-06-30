@@ -5,7 +5,6 @@ Created on Fri Jun 18 10:52:49 2021
 @author: pearsonra
 """
 import rioxarray
-import xarray
 import numpy
 import scipy.interpolate 
 from . import geometry
@@ -145,20 +144,6 @@ class DenseDem:
         
         ### interpolate offshore
         rbf_function = scipy.interpolate.Rbf(x, y, z, function='linear')
-        
-        # Alternative approach - where the offshore raster is created from scratch - the code is retained in the case that we move to use this approach instead in the future.
-        '''x_coords = numpy.arange(self.catchment_geometry.raster_origin[0], 
-                                self.catchment_geometry.raster_origin[0] + self.catchment_geometry.resolution * self.catchment_geometry.raster_size[0], 
-                                self.catchment_geometry.resolution)
-        y_coords = numpy.arange(self.catchment_geometry.raster_origin[1] + self.catchment_geometry.resolution * self.catchment_geometry.raster_size[1],
-                                self.catchment_geometry.raster_origin[1], 
-                                -self.catchment_geometry.resolution) # following convention of GDAL where y starts at the largest
-        z_array = numpy.zeros((1, len(y_coords), len(x_coords))) # 1 is the band dimension
-        
-        self._offshore = xarray.DataArray(z_array, coords = {'band': [1], 'x': x_coords, 'y': y_coords}, dims = ['band', 'y','x'], 
-                                                                attrs={'scale_factor': 1.0, 'add_offset': 0.0})
-        self._offshore.rio.set_crs(self.catchment_geometry.crs)
-        self._offshore = self._offshore.rio.clip(self.catchment_geometry.offshore_dense_data.geometry);'''
         
         # Interpolate over offshore region
         grid_x, grid_y = numpy.meshgrid(self._offshore.x, self._offshore.y)
