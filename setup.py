@@ -17,12 +17,12 @@ setuptools.setup(
     keywords='GeoFabrics, DEM, Roughness, Hydrologically conditioned',
     long_description=long_description,
     long_description_content_type='text/markdown',
-    url='https://github.com/rosepearson/GeoFrabrics',
+    url='https://github.com/rosepearson/GeoFabrics',
     project_urls={
-        'Documentation': 'https://github.com/rosepearson/GeoFrabrics',
+        'Documentation': 'https://github.com/rosepearson/GeoFabrics',
         'Bug Reports':
-        'https://github.com/rosepearson/GeoFrabrics/issues',
-        'Source Code': 'https://github.com/rosepearson/GeoFrabrics',
+        'https://github.com/rosepearson/GeoFabrics/issues',
+        'Source Code': 'https://github.com/rosepearson/GeoFabrics',
         # 'Funding': '',
         # 'Say Thanks!': '',
     },
