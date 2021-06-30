@@ -29,10 +29,29 @@ In the conda environment defined in the root\environment.yml, run the following 
 2. to run all tests
 `python -m unittest`
 
-### Instructions for use in spyder
-The GeoFabricsGenerator class is the main entry point. This can either be accessed by importing the package then using the class directly, or through the main.py script in the root src directory. Pass in the argument 'instructions' with a file path to your JSON instructions file (see instructions.json for an exampled in the root directory of the repository). I do this in Spyder by setting up the run configuration for main.py. 
+## Instructions for use in spyder
+If you are using spider you can make the following changes to run main and test1.py using Run (F5)
+
+### Running main
+
+Go to 'Run>Configuration per file...' and check the **Command line options** under **General settings**. Enter the following:
+
+`--instructions full\path\to\your\instruction.json`
+
+See image below: 
 
 ![image](https://user-images.githubusercontent.com/22883860/123566757-97a43a00-d814-11eb-9e3e-1d2468145e3d.png)
+
+### Running test1
+
+Go to 'Run>Configuration per file...' and check the **The following directory** under **Working directory settings** and specify the root of the repository with no quotes.
+
+`full\path\to\the\repository\root`
+
+See image below: 
+
+![image](https://user-images.githubusercontent.com/22883860/123900473-3ff50280-d9bd-11eb-8123-e8b6e28d46b2.png)
+
 
 ## Related material
 Scripts are included in separate repos. See https://github.com/rosepearson/Hydrologic-DEMs-scripts for an example.
