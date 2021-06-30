@@ -7,12 +7,12 @@ The GeoFabricsGenerator class is the main entry point. This can either be access
 
 ### importing GeoFabrics
 Basic code stub looks like:
-```
+```python
 import GeoFabrics
 import json
-with open(r'path\to\file\', 'r') as file_pointer:
+with open(r'path\to\file\\', 'r') as file_pointer:
             instructions = json.load(file_pointer)
-runner = processor.GeoFabricsGenerator(instructions)
+runner = GeoFabrics.processor.GeoFabricsGenerator(instructions)
 runner.run()
 ```
 ### main.py script
