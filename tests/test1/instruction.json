@@ -10,9 +10,9 @@
 	  "lidars": ["tests\\test1\\data\\lidar.laz"],
 	  "reference_dems": ["tests\\test1\\data\\reference_dem.nc"],
 	  "bathymetry_contours": ["tests\\test1\\data\\bathymetry.zip!bathymetry.shp"],
-	  "tmp_raster_path": "tests\\test1\\data\\temp_dense_dem.tif",
-	  "final_raster_path": "tests\\test1\\data\\test_dem.nc",
-	  "final_raster_path_comp": "tests\\test1\\data\\benchmark_dem.nc"
+	  "tmp_raster": "tests\\test1\\data\\temp_dense_dem.tif",
+	  "result_dem": "tests\\test1\\data\\test_dem.nc",
+	  "benchmark_dem": "tests\\test1\\data\\benchmark_dem.nc"
     },
     "instructions": {
       "set_dem_shoreline": "True"

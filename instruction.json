@@ -11,9 +11,9 @@
 	  "reference_dems": ["C:\\Users\\pearsonra\\Documents\\data\\DEMs\\BackgroundDEM\\NZDEM_SoS_15m\\NZDEM_SoS_v1-0_16_Wellington_gf.tif"],
 	  "bathymetry_contours": ["C:\\Users\\pearsonra\\Documents\\data\\Bathymetry\\Waikanae\\lds-depth-contour-polyline-hydro-190k-1350k-SHP.zip!depth-contour-polyline-hydro-190k-1350k.shp"],
 	  "bathymetry_points": ["C:\\Users\\pearsonra\\Documents\\data\\Wakanae\\Small_test_site\\initial_data\\background_bathymetry\\sounding-points-hydro-122k-190k.shp"],
-	  "tmp_raster_path": "C:\\Users\\pearsonra\\Documents\\data\\Wakanae\\Small_test_site\\initial_data\\temp_dense_dem.tif",
-	  "final_raster_path": "C:\\Users\\pearsonra\\Documents\\data\\Wakanae\\Small_test_site\\final_data\\complete_dem.nc",
-	  "final_raster_path_comp": "C:\\Users\\pearsonra\\Documents\\data\\Wakanae\\Small_test_site\\final_data\\complete_dem_benchmark.nc"
+	  "tmp_raster": "C:\\Users\\pearsonra\\Documents\\data\\Wakanae\\Small_test_site\\initial_data\\temp_dense_dem.tif",
+	  "result_dem": "C:\\Users\\pearsonra\\Documents\\data\\Wakanae\\Small_test_site\\final_data\\complete_dem.nc",
+	  "benchmark_dem": "C:\\Users\\pearsonra\\Documents\\data\\Wakanae\\Small_test_site\\final_data\\complete_dem_benchmark.nc"
     },
     "instructions": {
       "set_dem_shoreline": "True",
