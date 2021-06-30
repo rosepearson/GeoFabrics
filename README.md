@@ -4,6 +4,7 @@ The GeoFrabrics and associated sub-packages include routines and classes for com
 
 ## import into a conda environment
 You can use this package by using pip to install the package and dependencies using the comment
+
 `pip install git+https://github.com/rosepearson/GeoFabrics`
 
 ## Basic instructions for use
