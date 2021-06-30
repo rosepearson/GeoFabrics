@@ -14,6 +14,13 @@ from . import lidar
 from . import dem
 
 class GeoFabricsGenerator:
+    """ A class execuiting a pipeline for creating geo-fabric derivatives. 
+    
+    The pipeline is controlled by the contents of the json_instructions file. 
+    See the README.md for usage examples or GeoFabrics/tests/test1 for an 
+    example of usage and an instruction file. 
+    """
+    
     def __init__(self, json_instructions):
         self.instructions = json_instructions
         
@@ -21,8 +28,11 @@ class GeoFabricsGenerator:
         self.dense_dem = None
         self.reference_dem = None
         self.bathy_contours = None
+        self.result_dem = None
         
     def run(self):
+        """ This method executes the geofabrics generation pipeline to produce
+        geofabric derivatives. """
         
         ### instruction values and other set values
         area_to_drop = self.instructions['instructions']['instructions']['filter_lidar_holes_area'] if  \
@@ -69,7 +79,7 @@ class GeoFabricsGenerator:
         ### Create dense raster - note currently involves writing out a temp file
         pdal_pipeline_instructions = [
             {"type":  "writers.gdal", "resolution": self.catchment_geometry.resolution, "gdalopts": "a_srs=EPSG:" + str(self.catchment_geometry.crs), "output_type":["idw"], 
-             "filename": self.instructions['instructions']['data_paths']['tmp_raster_path'], 
+             "filename": self.instructions['instructions']['data_paths']['tmp_raster'], 
              "window_size": window_size, "power": idw_power, "radius": radius, 
              "origin_x": self.catchment_geometry.raster_origin[0], "origin_y": self.catchment_geometry.raster_origin[1], 
              "width": self.catchment_geometry.raster_size[0], "height": self.catchment_geometry.raster_size[1]}
@@ -95,12 +105,7 @@ class GeoFabricsGenerator:
         
         ### combine rasters
         combined_dem = rioxarray.merge.merge_arrays([self.dense_dem.dem, self.dense_dem.offshore], method= "last") # important for this to be last as otherwise values that
-        combined_dem_filled = combined_dem.rio.interpolate_na()    
-        
+        self.result_dem = combined_dem.rio.interpolate_na()    
         
         ### save results
-        combined_dem_filled.to_netcdf(self.instructions['instructions']['data_paths']['final_raster_path'])
-        comp_dem = rioxarray.rioxarray.open_rasterio(self.instructions['instructions']['data_paths']['final_raster_path_comp'], masked=True)
-        
-        print(numpy.max(numpy.abs(combined_dem_filled.data[0] 
-                                  - comp_dem.data[0])))
+        self.result_dem.to_netcdf(self.instructions['instructions']['data_paths']['result_dem'])
