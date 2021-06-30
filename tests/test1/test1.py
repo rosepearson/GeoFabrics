@@ -11,7 +11,7 @@ import pathlib
 import rioxarray
 import numpy
 
-from src.geofabrics import processor
+from src.GeoFabrics import processor
 
 class Test1(unittest.TestCase):
     """ A class to test the basic dem generation pipeline for a simple example
