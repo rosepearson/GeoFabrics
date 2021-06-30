@@ -43,12 +43,6 @@ setuptools.setup(
     # install_requires=['GeoFabrics'],
     extras_require={
         'dev': ['check-manifest'],
-        # 'test': ['coverage'],
     },
-    # entry_points={
-    #     'console_scripts': [  # This can provide executable scripts
-    #         'run=examplepy:main',
-    # You can execute `run` in bash to run `main()` in src/examplepy/__init__.py
-    #     ],
-    # },
+
 )
