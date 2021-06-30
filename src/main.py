@@ -4,7 +4,7 @@ Created on Fri Jun 18 10:52:49 2021
 
 @author: pearsonra
 """
-from GeoFabrics import processor
+from geofabrics import processor
 import json
 import argparse
 import rioxarray
