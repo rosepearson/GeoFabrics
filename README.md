@@ -3,12 +3,7 @@
 The GeoFabrics and associated sub-packages include routines and classes for combining point (i.e. LiDAR), vector (i.e. catchment of interest, infrastructure) and raster (i.e. reference DEM) to generate a hydrologically conditioned raster.
 
 ## import into a conda environment
-You can use this package by using pip to install the package and dependencies using the comment
-
-`pip install git+https://github.com/rosepearson/GeoFabrics`
-
-## Including package in conda environment
-This package can be including using pip install. Specifically:
+You can use this package by using pip to install the package and dependencies using the following command (say in a conda terminal to add it to that environment):
 
 `pip install git+https://github.com/rosepearson/GeoFabrics`
 
