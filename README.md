@@ -1,6 +1,11 @@
-# GeoFrabrics
+# GeoFabrics
 
-The GeoFrabrics and associated sub-packages include routines and classes for combining point (i.e. LiDAR), vector (i.e. catchment of interest, infrastructure) and raster (i.e. reference DEM) to generate a hydrologically conditioned raster.
+The GeoFabrics and associated sub-packages include routines and classes for combining point (i.e. LiDAR), vector (i.e. catchment of interest, infrastructure) and raster (i.e. reference DEM) to generate a hydrologically conditioned raster.
+
+## import into a conda environment
+You can use this package by using pip to install the package and dependencies using the comment
+
+`pip install git+https://github.com/rosepearson/GeoFabrics`
 
 ## Including package in conda environment
 This package can be including using pip install. Specifically:
@@ -12,10 +17,10 @@ The GeoFabricsGenerator class is the main entry point. This can either be access
 
 ### importing GeoFabrics
 Basic code stub looks like:
-```
-import GeoFabrics
+```python
+from geofabrics import processor
 import json
-with open(r'path\to\file\', 'r') as file_pointer:
+with open(r'path\to\file\\', 'r') as file_pointer:
             instructions = json.load(file_pointer)
 runner = processor.GeoFabricsGenerator(instructions)
 runner.run()
@@ -35,7 +40,7 @@ In the conda environment defined in the root\environment.yml, run the following 
 `python -m unittest`
 
 ## Instructions for use in spyder
-If you are using spider you can make the following changes to run main and test1.py using Run (F5)
+If you are using spyder you can make the following changes to run main and test1.py using Run (F5)
 
 ### Running main
 
