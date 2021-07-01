@@ -7,6 +7,11 @@ You can use this package by using pip to install the package and dependencies us
 
 `pip install git+https://github.com/rosepearson/GeoFabrics`
 
+## Including package in conda environment
+This package can be including using pip install. Specifically:
+
+`pip install git+https://github.com/rosepearson/GeoFabrics`
+
 ## Basic instructions for use
 The GeoFabricsGenerator class is the main entry point. This can either be accessed by importing the package then using the class directly, or through the main.py script in the root src directory. 
 
