@@ -30,7 +30,7 @@ def launch_processor(args):
 
     # ru the pipeline
     runner = processor.GeoFabricsGenerator(instructions)
-    runner.run()
+    '''runner.run()
     
     # load in bencmark dem and compare - if specified in the insturctions
     if 'benchmark_dem' in instructions['instructions']['data_paths']:
@@ -38,6 +38,8 @@ def launch_processor(args):
         
         # compare the generated and benchmark dems
         numpy.testing.assert_array_equal(runner.result_dem.data, benchmark_dem.data, "The generated result_dem has different data from the benchmark_dem")
+    '''
+    runner.run_remote_pull()
 
 def main():
     args = parse_args()

@@ -11,6 +11,7 @@ import numpy
 import json
 from . import geometry
 from . import lidar
+from . import lidar_fetch
 from . import dem
 
 class GeoFabricsGenerator:
@@ -108,3 +109,22 @@ class GeoFabricsGenerator:
         
         ### save results
         self.result_dem.to_netcdf(self.instructions['instructions']['data_paths']['result_dem'])
+
+    def run_remote_pull(self):
+        """ Temporary run method for identifying and pulling lidar that exists
+        remotely on Open Topography """
+        
+        ### instruction values and other set values
+        area_to_drop = self.instructions['instructions']['instructions']['filter_lidar_holes_area'] if  \
+            'filter_lidar_holes_area' in self.instructions['instructions']['instructions'] else None
+        
+        
+        self.catchment_geometry = geometry.CatchmentGeometry(self.instructions['instructions']['data_paths']['catchment_boundary'],
+                                                            self.instructions['instructions']['data_paths']['land'], 
+                                                            self.instructions['instructions']['projection'],
+                                                            self.instructions['instructions']['grid_params']['resolution'], 
+                                                            foreshore_buffer = 2, area_to_drop = area_to_drop)
+        
+        # code to get information from OpenTopography about values in this catchment to go here
+        self.lidar_fetcher = lidar_fetch.OpenTopography(self.catchment_geometry)
+        self.lidar_fetcher.lookup()
