@@ -41,7 +41,7 @@ setuptools.setup(
     ],
     python_requires='>=3.6',
     install_requires=['numpy>=1.21',
-                      'rioxarray>=1.2',
+                      'rioxarray>=1.1',
                       'pdal>=2.2',
                       'geopandas>=0.9',
                       'shapely>=1.7',
