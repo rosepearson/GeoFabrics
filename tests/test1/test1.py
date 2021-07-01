@@ -34,7 +34,8 @@ class Test1(unittest.TestCase):
         benchmark_dem = rioxarray.rioxarray.open_rasterio(instructions['instructions']['data_paths']['benchmark_dem'], masked=True)
         
         # compare the generated and benchmark dems
-        numpy.testing.assert_array_equal(runner.result_dem.data, benchmark_dem.data, "The generated result_dem has different data from the benchmark_dem")
+        numpy.testing.assert_array_almost_equal(runner.result_dem.data, benchmark_dem.data, 
+                                                err_msg="The generated result_dem has different data from the benchmark_dem")
 
 
 if __name__ == '__main__':
