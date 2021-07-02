@@ -126,5 +126,6 @@ class GeoFabricsGenerator:
                                                             foreshore_buffer = 2, area_to_drop = area_to_drop)
         
         # code to get information from OpenTopography about values in this catchment to go here
-        self.lidar_fetcher = lidar_fetch.OpenTopography(self.catchment_geometry)
-        self.lidar_fetcher.lookup()
+        self.lidar_fetcher = lidar_fetch.OpenTopography(self.catchment_geometry, self.instructions['instructions']['data_paths']['local_cache'])
+        self.lidar_fetcher.send_query()
+        self.lidar_fetcher.get_tile_info()
