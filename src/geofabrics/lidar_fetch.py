@@ -31,7 +31,7 @@ class OpenTopography:
     
     
     
-    def __init__(self, catchment_geometry: geometry.CatchmentGeometry, cache_path: typing.Union[str, pathlib.Path]):
+    def __init__(self, catchment_geometry: geometry.CatchmentGeometry, cache_path: typing.Union[str, pathlib.Path], redownload_files = False, download_limit = 100):
         """ Load in lidar with relevant processing chain.
         
         Note in case of multiple datasets could select by name, 
@@ -39,6 +39,8 @@ class OpenTopography:
         
         self.catchment_geometry = catchment_geometry
         self.cache_path = pathlib.Path(cache_path)
+        self.redownload_files = redownload_files
+        self.download_limit = download_limit
         
         self.api_query = None
         self.tile_info = None
@@ -77,27 +79,52 @@ class OpenTopography:
         response.raise_for_status()
         self._json_response = response.json()
         
-    def download_tile_info(self, client, response, short_name):
+    def _get_tile_info(self, client, short_name):
         """ Download the tile shapefile to determine which data tiles to download """ 
-        TileIndexExists = False
         
-        for obj in response['Contents']:
-            if 'TileIndex' in obj['Key']:
-                
-                assert TileIndexExists == False, "Support for multiple tile index files not yet added. Multiple tile index files in the OpenTopography Bucket: " + short_name
-                    
-                # download tile information
-                local_path = self.cache_path / obj['Key']
-                local_path.parent.mkdir(parents=True, exist_ok=True) 
-                client.download_file(self.OT_BUCKET, obj['Key'], str(local_path))
-                TileIndexExists = True
-                    
-        assert TileIndexExists, "No tile index file exists in the OpenTopography Bucket: " + short_name
-        
+        # first try the expect path/name fo the tile
+        expected_key = short_name + "/" + short_name + "_TileIndex.zip"
+        local_path = self.cache_path / expected_key
+        if self.redownload_files or not local_path.exists():
+            response = client.head_object(Bucket=self.OT_BUCKET, Key=expected_key)
+            assert response['ResponseMetadata']['HTTPStatusCode'] == 200, "No tile index file exists with key: " + expected_key
+            self.response = response
+            
+            # ensure folder exists before download
+            local_path.parent.mkdir(parents=True, exist_ok=True)
+            
+            client.download_file(self.OT_BUCKET, expected_key, str(local_path))
+            
+            # if that doesn't work we could try search more generally using 
+            '''paginator = client.get_paginator('list_objects_v2')
+            pages = paginator.paginate(Bucket=self.OT_BUCKET, Prefix=short_name)
+            for page in pages:
+                for obj in page['Contents']:
+                    if 'TileIndex' in obj['Key']:
+                        local_path.parent.mkdir(parents=True, exist_ok=True) 
+                        client.download_file(self.OT_BUCKET, obj['Key'], str(local_path))'''
+            
         # load in tile information
         tile_info = geometry.TileInfo(local_path, self.catchment_geometry)
         
         return tile_info
+    
+    def _calculate_lidar_data_size(self, client, short_name):
+        """ Sum up the size of the LiDAR data in catchment """
+        lidar_size = 0
+        tile_names = self.tile_info.tile_names
+        
+        for tile_name in tile_names:
+            expected_key = short_name + "/" + tile_name
+            local_path = self.cache_path / expected_key
+            if self.redownload_files or not local_path.exists():
+                response = client.head_object(Bucket=self.OT_BUCKET, Key=expected_key)
+                assert response['ResponseMetadata']['HTTPStatusCode'] == 200, "No tile file exists with key: " + expected_key
+                lidar_size += response['ContentLength']
+                print("checking size: " + expected_key + ": " + str(response['ContentLength']) + ", total: " + str(lidar_size))
+                
+        return lidar_size
+        
         
     def download_lidar_in_catchment(self):
         """ Download the lidar data within the catchment """ 
@@ -108,19 +135,20 @@ class OpenTopography:
         ot_endpoint_url = urllib.parse.urlunparse((self.SCHEME, self.NETLOC_DATA, "", "", "", ""))
         client = boto3.client('s3', endpoint_url=ot_endpoint_url, 
                               config=botocore.config.Config(signature_version=botocore.UNSIGNED))
+        self.client = client
         
+        self.tile_info = self._get_tile_info(client, short_name)
         
-        response = client.list_objects_v2(Bucket=self.OT_BUCKET, Prefix=short_name)
+        lidar_size = self._calculate_lidar_data_size(client, short_name)
         
-        assert response['ResponseMetadata']['HTTPStatusCode'] == 200, "List objects for " + short_name + " wasn't successful"
+        if lidar_size/1000/1000/1000 < self.download_limit:
+    
+            tile_names = self.tile_info.tile_names
         
-        self.tile_info = self.download_tile_info(client, response, short_name)
-        
-        
-        for tile_name in self.tile_info.tile_names: #self.tile_info['Filename']:
-            
-            # download tile information
-            local_path = self.cache_path / short_name / tile_name
-            print(short_name + "/" + tile_name)
-            #client.download_file(self.OT_BUCKET, short_name / tile_name, str(local_path))
+            for tile_name in tile_names:
+                expected_key = short_name + "/" + tile_name
+                local_path = self.cache_path / expected_key
+                if self.redownload_files or not local_path.exists():
+                    print('Downloading file: ' + expected_key)
+                    client.download_file(self.OT_BUCKET, expected_key, str(local_path))
         
