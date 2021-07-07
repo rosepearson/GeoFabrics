@@ -126,7 +126,7 @@ class GeoFabricsGenerator:
                                                             foreshore_buffer = 2, area_to_drop = area_to_drop)
         
         # code to get information from OpenTopography about values in this catchment to go here
-        self.lidar_fetcher = lidar_fetch.OpenTopography(self.catchment_geometry, self.instructions['instructions']['data_paths']['local_cache'])
+        self.lidar_fetcher = lidar_fetch.OpenTopography(self.catchment_geometry, self.instructions['instructions']['data_paths']['local_cache'], verbose = True)
         self.lidar_fetcher.query_inside_catchment()
         self.lidar_fetcher.download_lidar_in_catchment()
         

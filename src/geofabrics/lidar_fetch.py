@@ -25,22 +25,23 @@ class OpenTopography:
     NETLOC_DATA = "opentopography.s3.sdsc.edu"
     OT_BUCKET = 'pc-bulk'
     
-    
     PATH_DATA = "/minio/pc-bulk/"
     USER_AGENT = 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36'
     
     
     
-    def __init__(self, catchment_geometry: geometry.CatchmentGeometry, cache_path: typing.Union[str, pathlib.Path], redownload_files = False, download_limit = 100):
+    def __init__(self, catchment_geometry: geometry.CatchmentGeometry, cache_path: typing.Union[str, pathlib.Path], 
+                 redownload_files: bool = False, download_limit: typing.Union[int, float] = 100, verbose: bool = False):
         """ Load in lidar with relevant processing chain.
         
         Note in case of multiple datasets could select by name, 
-        spatial extent, or most recent"""
+        spatial extent, or most recent. download_size is in GB. """
         
         self.catchment_geometry = catchment_geometry
         self.cache_path = pathlib.Path(cache_path)
         self.redownload_files = redownload_files
         self.download_limit = download_limit
+        self.verbose = verbose
         
         self.api_query = None
         self.tile_info = None
@@ -64,12 +65,6 @@ class OpenTopography:
             "outputFormat": "json",
             "inlcude_federated": True
             }
-        
-    def _ensure_dir(self, directory: pathlib.Path):
-        """ Checks if a repository exists and creates it if it doesn't. Note 
-        could use exist_ok to move this to a oneline operation. """
-        if not directory.exists():
-           directory.mkdir(parents=True, exist_ok=True) 
         
     def query_inside_catchment(self):
         """ Function to check for data in search region """
@@ -95,22 +90,14 @@ class OpenTopography:
             
             client.download_file(self.OT_BUCKET, expected_key, str(local_path))
             
-            # if that doesn't work we could try search more generally using 
-            '''paginator = client.get_paginator('list_objects_v2')
-            pages = paginator.paginate(Bucket=self.OT_BUCKET, Prefix=short_name)
-            for page in pages:
-                for obj in page['Contents']:
-                    if 'TileIndex' in obj['Key']:
-                        local_path.parent.mkdir(parents=True, exist_ok=True) 
-                        client.download_file(self.OT_BUCKET, obj['Key'], str(local_path))'''
-            
         # load in tile information
         tile_info = geometry.TileInfo(local_path, self.catchment_geometry)
         
         return tile_info
     
-    def _calculate_lidar_data_size(self, client, short_name):
+    def _calculate_lidar_download_size(self, client, short_name):
         """ Sum up the size of the LiDAR data in catchment """
+        
         lidar_size = 0
         tile_names = self.tile_info.tile_names
         
@@ -121,14 +108,14 @@ class OpenTopography:
                 response = client.head_object(Bucket=self.OT_BUCKET, Key=expected_key)
                 assert response['ResponseMetadata']['HTTPStatusCode'] == 200, "No tile file exists with key: " + expected_key
                 lidar_size += response['ContentLength']
-                print("checking size: " + expected_key + ": " + str(response['ContentLength']) + ", total: " + str(lidar_size))
+                if(self.verbose):
+                    print("checking size: " + expected_key + ": " + str(response['ContentLength']) + ", total: " + str(lidar_size))
                 
         return lidar_size
         
         
     def download_lidar_in_catchment(self):
         """ Download the lidar data within the catchment """ 
-        
         
         short_name = self._json_response['Datasets'][0]['Dataset']['alternateName']
         
@@ -139,16 +126,19 @@ class OpenTopography:
         
         self.tile_info = self._get_tile_info(client, short_name)
         
-        lidar_size = self._calculate_lidar_data_size(client, short_name)
+        lidar_size = self._calculate_lidar_download_size(client, short_name)
         
-        if lidar_size/1000/1000/1000 < self.download_limit:
+        assert lidar_size/1000/1000/1000 < self.download_limit, "The size of the LiDAR to be " \
+            + "downloaded is greater than the specified download limit of " + str(self.download_limit)
     
-            tile_names = self.tile_info.tile_names
-        
-            for tile_name in tile_names:
-                expected_key = short_name + "/" + tile_name
-                local_path = self.cache_path / expected_key
-                if self.redownload_files or not local_path.exists():
+        tile_names = self.tile_info.tile_names
+    
+        for tile_name in tile_names:
+            expected_key = short_name + "/" + tile_name
+            local_path = self.cache_path / expected_key
+            if self.redownload_files or not local_path.exists():
+                if(self.verbose):
                     print('Downloading file: ' + expected_key)
-                    client.download_file(self.OT_BUCKET, expected_key, str(local_path))
+                client.download_file(self.OT_BUCKET, expected_key, str(local_path))
+                    
         
