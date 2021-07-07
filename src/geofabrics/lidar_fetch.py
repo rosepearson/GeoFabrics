@@ -20,7 +20,7 @@ class OpenTopography:
     SCHEME = "https"
     NETLOC_API = "portal.opentopography.org"
     PATH_API = "/API/otCatalog"
-    CRS = "EPSG:4326"
+    OT_CRS = "EPSG:4326"
     NETLOC_DATA = "opentopography.s3.sdsc.edu"
     OT_BUCKET = 'pc-bulk'
     
@@ -69,18 +69,17 @@ class OpenTopography:
             
             # check for tiles and download as needed
             self._download_tiles_in_catchment(client, dataset_prefix, tile_info)
-            
-        
+                   
     def query_for_datasets_inside_catchment(self):
         """ Function to check for data in search region using hte otCatalogue API
         https://portal.opentopography.org/apidocs/#/Public/getOtCatalog """
         
         api_queary = {
             "productFormat": "PointCloud",
-            "minx": self.catchment_geometry.catchment.geometry.to_crs(self.CRS).bounds['minx'].min(),
-            "miny": self.catchment_geometry.catchment.geometry.to_crs(self.CRS).bounds['miny'].min(),
-            "maxx": self.catchment_geometry.catchment.geometry.to_crs(self.CRS).bounds['maxx'].max(),
-            "maxy": self.catchment_geometry.catchment.geometry.to_crs(self.CRS).bounds['maxy'].max(),
+            "minx": self.catchment_geometry.catchment.geometry.to_crs(self.OT_CRS).bounds['minx'].min(),
+            "miny": self.catchment_geometry.catchment.geometry.to_crs(self.OT_CRS).bounds['miny'].min(),
+            "maxx": self.catchment_geometry.catchment.geometry.to_crs(self.OT_CRS).bounds['maxx'].max(),
+            "maxy": self.catchment_geometry.catchment.geometry.to_crs(self.OT_CRS).bounds['maxy'].max(),
             "detail": False,
             "outputFormat": "json",
             "inlcude_federated": True
