@@ -43,19 +43,35 @@ class OpenTopography:
         self.download_limit = download_limit
         self.verbose = verbose
         
-        self.api_query = None
-        self.tile_info = None
+    def run(self):
+        """ Querey for  LiDAR data within a catchment and download any that hasn't already been downloaded """
         
-        self._set_up()
+        json_response = self.query_for_datasets_inside_catchment()
         
-        self._json_response = None
-        self._lidar_array = None
+        ot_endpoint_url = urllib.parse.urlunparse((self.SCHEME, self.NETLOC_DATA, "", "", "", ""))
+        client = boto3.client('s3', endpoint_url=ot_endpoint_url, 
+                              config=botocore.config.Config(signature_version=botocore.UNSIGNED))
         
-    
-    def _set_up(self):
-        """ create the API query and url """
+        # cycle through each dataset within a region
+        for i in range(len(json_response['Datasets'])):
+            dataset_prefix = json_response['Datasets'][i]['Dataset']['alternateName']
+            
+            tile_info = self._get_tile_info(client, dataset_prefix)
+            
+            lidar_size = self._calculate_lidar_download_size(client, dataset_prefix, tile_info)
+            
+            assert lidar_size/1000/1000/1000 < self.download_limit, "The size of the LiDAR to be " \
+                + "downloaded is greater than the specified download limit of " + str(self.download_limit)
+            
+            # check for tiles and download as needed
+            self.download_lidar_in_catchment(client, dataset_prefix, tile_info)
+            
         
-        self.api_queary = {
+    def query_for_datasets_inside_catchment(self):
+        """ Function to check for data in search region using hte otCatalogue API
+        https://portal.opentopography.org/apidocs/#/Public/getOtCatalog """
+        
+        api_queary = {
             "productFormat": "PointCloud",
             "minx": self.catchment_geometry.catchment.geometry.to_crs(self.CRS).bounds['minx'].min(),
             "miny": self.catchment_geometry.catchment.geometry.to_crs(self.CRS).bounds['miny'].min(),
@@ -64,81 +80,66 @@ class OpenTopography:
             "detail": False,
             "outputFormat": "json",
             "inlcude_federated": True
-            }
+        }
         
-    def query_inside_catchment(self):
-        """ Function to check for data in search region """
         data_url = urllib.parse.urlunparse((self.SCHEME, self.NETLOC_API, self.PATH_API, "", "", ""))
         
-        response = requests.get(data_url, params=self.api_queary, stream=True)
+        response = requests.get(data_url, params=api_queary, stream=True)
         response.raise_for_status()
-        self._json_response = response.json()
+        return response.json()
         
-    def _get_tile_info(self, client, short_name):
-        """ Download the tile shapefile to determine which data tiles to download """ 
+    def _get_tile_info(self, client, dataset_prefix):
+        """ Check for the tile index shapefile and download as needed, then load in 
+        and trim to the catchment to determine which data tiles to download. """ 
         
-        # first try the expect path/name fo the tile
-        expected_key = short_name + "/" + short_name + "_TileIndex.zip"
-        local_path = self.cache_path / expected_key
-        if self.redownload_files or not local_path.exists():
-            response = client.head_object(Bucket=self.OT_BUCKET, Key=expected_key)
-            assert response['ResponseMetadata']['HTTPStatusCode'] == 200, "No tile index file exists with key: " + expected_key
+        
+        file_prefex = dataset_prefix + "/" + dataset_prefix + "_TileIndex.zip"
+        local_file_path = self.cache_path / file_prefex
+        
+        # Download the file if needed
+        if self.redownload_files or not local_file_path.exists():
+            response = client.head_object(Bucket=self.OT_BUCKET, Key=file_prefex)
+            assert response['ResponseMetadata']['HTTPStatusCode'] == 200, "No tile index file exists with key: " + file_prefex
             self.response = response
             
             # ensure folder exists before download
-            local_path.parent.mkdir(parents=True, exist_ok=True)
+            local_file_path.parent.mkdir(parents=True, exist_ok=True)
             
-            client.download_file(self.OT_BUCKET, expected_key, str(local_path))
+            client.download_file(self.OT_BUCKET, file_prefex, str(local_file_path))
             
         # load in tile information
-        tile_info = geometry.TileInfo(local_path, self.catchment_geometry)
+        tile_info = geometry.TileInfo(local_file_path, self.catchment_geometry)
         
         return tile_info
     
-    def _calculate_lidar_download_size(self, client, short_name):
+    def _calculate_lidar_download_size(self, client, short_name, tile_info):
         """ Sum up the size of the LiDAR data in catchment """
         
         lidar_size = 0
-        tile_names = self.tile_info.tile_names
         
-        for tile_name in tile_names:
-            expected_key = short_name + "/" + tile_name
-            local_path = self.cache_path / expected_key
+        for tile_name in tile_info.tile_names:
+            file_prefex = short_name + "/" + tile_name
+            local_path = self.cache_path / file_prefex
             if self.redownload_files or not local_path.exists():
-                response = client.head_object(Bucket=self.OT_BUCKET, Key=expected_key)
-                assert response['ResponseMetadata']['HTTPStatusCode'] == 200, "No tile file exists with key: " + expected_key
+                response = client.head_object(Bucket=self.OT_BUCKET, Key=file_prefex)
+                assert response['ResponseMetadata']['HTTPStatusCode'] == 200, "No tile file exists with key: " + file_prefex
                 lidar_size += response['ContentLength']
                 if(self.verbose):
-                    print("checking size: " + expected_key + ": " + str(response['ContentLength']) + ", total: " + str(lidar_size))
+                    print("checking size: " + file_prefex + ": " + str(response['ContentLength']) + ", total: " + str(lidar_size))
                 
         return lidar_size
         
         
-    def download_lidar_in_catchment(self):
-        """ Download the lidar data within the catchment """ 
-        
-        short_name = self._json_response['Datasets'][0]['Dataset']['alternateName']
-        
-        ot_endpoint_url = urllib.parse.urlunparse((self.SCHEME, self.NETLOC_DATA, "", "", "", ""))
-        client = boto3.client('s3', endpoint_url=ot_endpoint_url, 
-                              config=botocore.config.Config(signature_version=botocore.UNSIGNED))
-        self.client = client
-        
-        self.tile_info = self._get_tile_info(client, short_name)
-        
-        lidar_size = self._calculate_lidar_download_size(client, short_name)
-        
-        assert lidar_size/1000/1000/1000 < self.download_limit, "The size of the LiDAR to be " \
-            + "downloaded is greater than the specified download limit of " + str(self.download_limit)
+    def download_lidar_in_catchment(self, client, dataset_prefix, tile_info):
+        """ Download the lidar data within the catchment """
     
-        tile_names = self.tile_info.tile_names
-    
-        for tile_name in tile_names:
-            expected_key = short_name + "/" + tile_name
-            local_path = self.cache_path / expected_key
+        for tile_name in tile_info.tile_names:
+            file_prefex = dataset_prefix + "/" + tile_name
+            local_path = self.cache_path / file_prefex
+            print('Check file: ' + file_prefex)
             if self.redownload_files or not local_path.exists():
                 if(self.verbose):
-                    print('Downloading file: ' + expected_key)
-                client.download_file(self.OT_BUCKET, expected_key, str(local_path))
+                    print('Downloading file: ' + file_prefex)
+                client.download_file(self.OT_BUCKET, file_prefex, str(local_path))
                     
         
