@@ -10,7 +10,6 @@ import pathlib
 import requests
 import boto3
 import botocore
-import geopandas
 import typing
 from . import geometry
 
@@ -141,7 +140,7 @@ class OpenTopography:
         for tile_name in tile_info.tile_names:
             file_prefix = dataset_prefix + "/" + tile_name
             local_path = self.cache_path / file_prefix
-            print('Check file: ' + file_prefix)
+            
             if self.redownload_files or not local_path.exists():
                 if(self.verbose):
                     print('Downloading file: ' + file_prefix)
