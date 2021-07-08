@@ -97,7 +97,7 @@ class OpenTopography:
         and trim to the catchment to determine which data tiles to download. """ 
         
         
-        file_prefix = dataset_prefix + "/" + dataset_prefix + "_TileIndex.zip"
+        file_prefix = f"{dataset_prefix}/{dataset_prefix}_TileIndex.zip"
         local_file_path = self.cache_path / file_prefix
         
         # Download the file if needed
