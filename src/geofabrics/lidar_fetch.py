@@ -71,7 +71,7 @@ class OpenTopography:
             self._download_tiles_in_catchment(client, dataset_prefix, tile_info)
                    
     def query_for_datasets_inside_catchment(self):
-        """ Function to check for data in search region using hte otCatalogue API
+        """ Function to check for data in search region using the otCatalogue API
         https://portal.opentopography.org/apidocs/#/Public/getOtCatalog """
         
         api_queary = {
