@@ -16,9 +16,9 @@ import numpy
 from src.geofabrics import lidar_fetch
 from src.geofabrics import geometry
 
-class Test2(unittest.TestCase):
-    """ A class to test the basic lidar_fetch functionality by downloading files from OpenTopography 
-    within a small region. All files are deleted after checking their names and size."""
+class OpenTopographyTest(unittest.TestCase):
+    """ A class to test the basic lidar_fetch class OptenTopography functionality by downloading files from 
+    OpenTopography within a small region. All files are deleted after checking their names and size."""
     
     DATASET = "Wellington_2013"
     FILES = ["ot_CL1_WLG_2013_1km_085033.laz", "ot_CL1_WLG_2013_1km_086033.laz", 
@@ -31,7 +31,7 @@ class Test2(unittest.TestCase):
         """ Create a cache directory and CatchmentGeometry object for use in the test. """
         
         # load in the test instructions
-        file_path = pathlib.Path().cwd() / pathlib.Path("tests/test2/instruction.json")
+        file_path = pathlib.Path().cwd() / pathlib.Path("tests/lidar_fetch_test/instruction.json")
         with open(file_path, 'r') as file_pointer:
             instructions = json.load(file_pointer)
             
@@ -56,9 +56,13 @@ class Test2(unittest.TestCase):
         
         # create a catchment_geometry
         catchment_dir = pathlib.Path(str(catchment_dir) + ".zip")
-        cls.catchment_geometry = geometry.CatchmentGeometry(catchment_dir, catchment_dir,  # all land
+        catchment_geometry = geometry.CatchmentGeometry(catchment_dir, catchment_dir,  # all land
                                                             instructions['instructions']['projection'],
                                                             instructions['instructions']['grid_params']['resolution'])
+        
+        # Run pipeline - download files
+        runner = lidar_fetch.OpenTopography(catchment_geometry, cls.cache_dir, verbose = True)
+        runner.run()
         
     @classmethod
     def tearDownClass(cls):
@@ -66,28 +70,36 @@ class Test2(unittest.TestCase):
         
         if cls.cache_dir.exists():
             shutil.rmtree(cls.cache_dir)
-
-    def test_download_all(self):
-        """ A test to see if all expected files are downloaded - check files and size """
+            
+    def test_correct_dataset(self):
+        """ A test to see if the correct dataset is downloaded """
         
-        # Run pipeline
-        runner = lidar_fetch.OpenTopography(self.catchment_geometry, self.cache_dir, verbose = True)
-        runner.run()
+        dataset_dir = self.cache_dir / self.DATASET
         
         # check the right dataset is downloaded - self.DATASET
         self.assertEqual(len(list(self.cache_dir.glob('*/**'))), 1, "There should only be one dataset named " + self.DATASET + " instead there are " + \
             str(len(list(self.cache_dir.glob('*/**')))) + " list " + str(list(self.cache_dir.glob('*/**'))))
         
-        dataset_dir = self.cache_dir / self.DATASET
         self.assertEqual(len([file for file in self.cache_dir.iterdir() if file.is_dir() and file==dataset_dir]), 1, "Only the " + self.DATASET + \
             " directory should have been downloaded. Insead we have: " + str([file for file in self.cache_dir.iterdir() if file.is_dir()]))
+
+    def test_correct_files_downloaded(self):
+        """ A test to see if all expected dataset files are downloaded """
+        
+        dataset_dir = self.cache_dir / self.DATASET
+        downloaded_files = [dataset_dir / file for file in self.FILES]
         
         # check files are correct
-        downloaded_files = [dataset_dir / file for file in self.FILES]
         self.assertEqual(len(list(dataset_dir.glob('*'))), len(downloaded_files), "There should have been " + str(len(downloaded_files)) + " files downloaded into the " \
             + self.DATASET + " directory, instead there are " + str(len(list(dataset_dir.glob('*')))) + " files/dirs in the directory")
         self.assertTrue(numpy.all([file in downloaded_files for file in dataset_dir.glob('*')]), "The downloaded files " + str(list(dataset_dir.glob('*'))) + \
             " do not match the expected files " + str(downloaded_files))
+            
+    def test_correct_file_size(self):
+        """ A test to see if all expected dataset files are of the right size """
+        
+        dataset_dir = self.cache_dir / self.DATASET
+        downloaded_files = [dataset_dir / file for file in self.FILES]
         
         # check sizes are correct
         self.assertTrue(numpy.all([downloaded_file.stat().st_size == self.SIZES[i] for i, downloaded_file in enumerate(downloaded_files)]), "There is a missmatch between the size of the downloaded files " \
