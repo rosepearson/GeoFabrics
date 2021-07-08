@@ -45,7 +45,7 @@ class OpenTopography:
         self._dataset_prefixes = None
         
     def run(self):
-        """ Querey for  LiDAR data within a catchment and download any that hasn't already been downloaded """
+        """ Query for  LiDAR data within a catchment and download any that hasn't already been downloaded """
         self._dataset_prefixes = []
         
         json_response = self.query_for_datasets_inside_catchment()

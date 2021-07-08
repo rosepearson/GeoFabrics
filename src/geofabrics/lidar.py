@@ -6,6 +6,8 @@ Created on Thu Jun 24 16:36:41 2021
 """
 import pdal
 import json
+import typing
+import pathlib
 from . import geometry
 
 
@@ -15,7 +17,7 @@ class CatchmentLidar:
     Specifically, this supports the import, and manipulation if LiDAR data.
     """
     
-    def __init__(self, lidar_file: str, catchment_geometry: geometry.CatchmentGeometry):
+    def __init__(self, lidar_file: typing.Union[str, pathlib.Path], catchment_geometry: geometry.CatchmentGeometry):
         """ Load in lidar with relevant processing chain """
         
         self.catchment_geometry = catchment_geometry
