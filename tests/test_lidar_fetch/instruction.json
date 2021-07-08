@@ -1,0 +1,11 @@
+{"instructions": 
+  {
+    "projection": 2193,
+	"grid_params": {
+      "resolution": 10
+    },
+    "data_paths": {
+      "local_cache": "tests\\test_lidar_fetch\\data"
+    }
+  }
+}

@@ -1,6 +1,6 @@
 # YML file for setting up a virtual environment including packages used for processing point clouds, GIS and raster to produce raster using spyder.
 
-name: spyder
+name: geofabrics
 channels:
   - conda-forge
   - defaults
@@ -13,6 +13,8 @@ dependencies:
   - jupyter_client
   - jupyter_core
   - pip
+  - requests
+  - boto3
   - rioxarray
   - scipy
   - wheel
@@ -23,4 +25,4 @@ dependencies:
   - spyder
   - spyder-kernels
 
-prefix: C:\ProgramData\Anaconda3\envs\spyder
+prefix: C:\ProgramData\Anaconda3\envs\geofabrics

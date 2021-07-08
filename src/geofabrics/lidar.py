@@ -6,6 +6,8 @@ Created on Thu Jun 24 16:36:41 2021
 """
 import pdal
 import json
+import typing
+import pathlib
 from . import geometry
 
 
@@ -15,7 +17,7 @@ class CatchmentLidar:
     Specifically, this supports the import, and manipulation if LiDAR data.
     """
     
-    def __init__(self, lidar_file: str, catchment_geometry: geometry.CatchmentGeometry):
+    def __init__(self, lidar_file: typing.Union[str, pathlib.Path], catchment_geometry: geometry.CatchmentGeometry):
         """ Load in lidar with relevant processing chain """
         
         self.catchment_geometry = catchment_geometry
@@ -31,14 +33,14 @@ class CatchmentLidar:
         land """
         
         pdal_pipeline_instructions = [
-            {"type":  "readers.las", "filename": lidar_file},
+            {"type":  "readers.las", "filename": str(lidar_file)},
             {"type":"filters.reprojection","out_srs":"EPSG:" + str(self.catchment_geometry.crs)}, # reproject to NZTM
             {"type":"filters.crop", "polygon":str(self.catchment_geometry.catchment.loc[0].geometry)}, # filter within boundary
             {"type" : "filters.hexbin"} # create a polygon boundary of the LiDAR
         ]
         
         self._pdal_pipeline = pdal.Pipeline(json.dumps(pdal_pipeline_instructions))
-        self._pdal_pipeline.execute();
+        self._pdal_pipeline.execute()
         
         # update the catchment geometry with the LiDAR extents
         metadata=json.loads(self._pdal_pipeline.get_metadata())
