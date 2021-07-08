@@ -40,7 +40,7 @@ class CatchmentLidar:
         ]
         
         self._pdal_pipeline = pdal.Pipeline(json.dumps(pdal_pipeline_instructions))
-        self._pdal_pipeline.execute();
+        self._pdal_pipeline.execute()
         
         # update the catchment geometry with the LiDAR extents
         metadata=json.loads(self._pdal_pipeline.get_metadata())
