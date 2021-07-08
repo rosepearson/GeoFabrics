@@ -116,7 +116,7 @@ class GeoFabricsGenerator:
         self.dense_dem.interpolate_offshore(self.bathy_contours)
         
         ### combine rasters
-        self.result_dem = rioxarray.merge.merge_arrays([self.dense_dem.dem, self.dense_dem.offshore], method= "last") # important for this to be last as otherwise values that
+        self.result_dem = rioxarray.merge.merge_arrays([self.dense_dem.dem, self.dense_dem.offshore]) # can be overlayed in either order (method='first' or 'last') as both clipped that the foreshore is the only overlap and that should be guarenteed to be the same. 
         self.result_dem = self.result_dem.rio.interpolate_na()  
         self.result_dem = self.result_dem.rio.clip(self.catchment_geometry.catchment.geometry)
         
