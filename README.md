@@ -1,6 +1,8 @@
 # GeoFabrics
 
-The GeoFabrics and associated sub-packages include routines and classes for combining point (i.e. LiDAR), vector (i.e. catchment of interest, infrastructure) and raster (i.e. reference DEM) to generate a hydrologically conditioned raster.
+The GeoFabrics and associated sub-packages include routines and classes for combining point (i.e. LiDAR), vector (i.e. catchment of interest, infrastructure) and raster (i.e. reference DEM) to generate a hydrologically conditioned raster. 
+
+GeoFabrics also contains support for downloading all LiDAR tiles within a spectified polygon (catchment region) from OpenTopography. This functionality is contained in the lidar_fetch module, and an example of its usage can be found in tests/test_lidar_fetch.
 
 ## import into a conda environment
 You can use this package by using pip to install the package and dependencies using the following command (say in a conda terminal to add it to that environment):
@@ -28,8 +30,8 @@ In the conda environment defined in the root\environment.yml, run the following:
 ## Running tests
 In the conda environment defined in the root\environment.yml, run the following in the repository root folder:
 
-1. to run only test1
-`python -m tests.test1.test1`
+1. to run individual tests
+`python -m tests.test1.test1` or `python -m tests.test_lidar_fetch.test_lidar_fetch`
 
 2. to run all tests
 `python -m unittest`
