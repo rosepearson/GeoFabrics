@@ -17,9 +17,8 @@ from src.geofabrics import lidar_fetch
 from src.geofabrics import geometry
 
 class Test2(unittest.TestCase):
-    """ A class to test the basic dem generation pipeline for a simple example
-    with land, offshore, a reference DEM and lidar using the data specified in 
-    the test1/instruction.json """
+    """ A class to test the basic lidar_fetch functionality by downloading files from OpenTopography 
+    within a small region. All files are deleted after checking their names and size."""
     
     DATASET = "Wellington_2013"
     FILES = ["ot_CL1_WLG_2013_1km_085033.laz", "ot_CL1_WLG_2013_1km_086033.laz", 
@@ -29,6 +28,7 @@ class Test2(unittest.TestCase):
 
     @classmethod
     def setUpClass(cls):
+        """ Create a cache directory and CatchmentGeometry object for use in the test. """
         
         # load in the test instructions
         file_path = pathlib.Path().cwd() / pathlib.Path("tests/test2/instruction.json")
@@ -62,6 +62,8 @@ class Test2(unittest.TestCase):
         
     @classmethod
     def tearDownClass(cls):
+        """ Remove created cache directory and included created and downloaded files at the end of the test. """
+        
         if cls.cache_dir.exists():
             shutil.rmtree(cls.cache_dir)
 
@@ -83,7 +85,7 @@ class Test2(unittest.TestCase):
         # check files are correct
         downloaded_files = [dataset_dir / self.FILES[0], dataset_dir / self.FILES[1], dataset_dir / self.FILES[2], dataset_dir / self.FILES[3], dataset_dir / self.FILES[4]]
         assert len(list(dataset_dir.glob('*'))) == len(downloaded_files), "There should have been " + str(len(downloaded_files)) + " files downloaded into the " \
-            + self.DATASET + " driectory, instead there are " + str(len(list(dataset_dir.glob('*')))) + " files/dirs in the directory"
+            + self.DATASET + " directory, instead there are " + str(len(list(dataset_dir.glob('*')))) + " files/dirs in the directory"
         assert numpy.all([file in downloaded_files for file in dataset_dir.glob('*')]), "The downloaded files " + str(list(dataset_dir.glob('*'))) + \
             " do not match the expected files " + str(downloaded_files)
         
