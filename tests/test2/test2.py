@@ -83,7 +83,7 @@ class Test2(unittest.TestCase):
             " directory should have been downloaded. Insead we have: " + str([file for file in self.cache_dir.iterdir() if file.is_dir()])
         
         # check files are correct
-        downloaded_files = [dataset_dir / self.FILES[0], dataset_dir / self.FILES[1], dataset_dir / self.FILES[2], dataset_dir / self.FILES[3], dataset_dir / self.FILES[4]]
+        downloaded_files = [dataset_dir / file for file in self.FILES]
         assert len(list(dataset_dir.glob('*'))) == len(downloaded_files), "There should have been " + str(len(downloaded_files)) + " files downloaded into the " \
             + self.DATASET + " directory, instead there are " + str(len(list(dataset_dir.glob('*')))) + " files/dirs in the directory"
         assert numpy.all([file in downloaded_files for file in dataset_dir.glob('*')]), "The downloaded files " + str(list(dataset_dir.glob('*'))) + \
