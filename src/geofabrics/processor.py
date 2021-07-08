@@ -9,8 +9,10 @@ import rioxarray.merge
 import pdal
 import numpy
 import json
+import pathlib
 from . import geometry
 from . import lidar
+from . import lidar_fetch
 from . import dem
 
 class GeoFabricsGenerator:
@@ -34,6 +36,10 @@ class GeoFabricsGenerator:
         """ This method executes the geofabrics generation pipeline to produce
         geofabric derivatives. """
         
+        ### Note corrently only consider one LiDAR dataset and only the first tile from that dataset. Later use all tiles and eventually combine datasets based on preference by data or extent.
+        lidar_dataset_index = 0
+        lidar_tile_index = 0
+        
         ### instruction values and other set values
         area_to_drop = self.instructions['instructions']['instructions']['filter_lidar_holes_area'] if  \
             'filter_lidar_holes_area' in self.instructions['instructions']['instructions'] else None
@@ -51,8 +57,18 @@ class GeoFabricsGenerator:
         window_size = 0
         idw_power = 2
         
-        ### Load in LiDAR using PDAL
-        catchment_lidar = lidar.CatchmentLidar(self.instructions['instructions']['data_paths']['lidars'][0], self.catchment_geometry)
+        ### Ensure LiDAR data is downloaded within the catchment region from OpenTopography
+        if 'local_cache' in self.instructions['instructions']['data_paths']:  # download from OpenTopography - then get the local file path
+            self.lidar_fetcher = lidar_fetch.OpenTopography(self.catchment_geometry, self.instructions['instructions']['data_paths']['local_cache'], verbose = True)
+            self.lidar_fetcher.run()
+            
+            # take the first 
+            lidar_file_paths = list(pathlib.Path(self.lidar_fetcher.cache_path / self.lidar_fetcher.dataset_prefixes[lidar_dataset_index]).glob('*.laz'))
+        else:  # already downloaded - get the specified file path
+            lidar_file_paths = self.instructions['instructions']['data_paths']['lidars']
+            
+        ### Load in LiDAR files using PDAL - for now just take one to test basic pipeline
+        catchment_lidar = lidar.CatchmentLidar(lidar_file_paths[lidar_tile_index], self.catchment_geometry)
         
         ### Load in reference DEM if any land/foreshore not covered by lidar
         if (self.catchment_geometry.foreshore_without_lidar.geometry.area.max() > 0) or (self.catchment_geometry.land_without_lidar.geometry.area.max() > 0):
@@ -70,8 +86,7 @@ class GeoFabricsGenerator:
             dem_points['Y'] = numpy.concatenate([self.reference_dem.land['y'], self.reference_dem.foreshore['y']])
             dem_points['Z'] = numpy.concatenate([self.reference_dem.land['z'], self.reference_dem.foreshore['z']])
             
-            combined_dense_points_array = numpy.concatenate([catchment_lidar.lidar_array, dem_points])
-            
+            combined_dense_points_array = numpy.concatenate([catchment_lidar.lidar_array, dem_points])  
         else:
            combined_dense_points_array = catchment_lidar.lidar_array     
         del catchment_lidar.lidar_array
@@ -97,14 +112,13 @@ class GeoFabricsGenerator:
             'bathymetry_contours_z_label' in self.instructions['instructions']['instructions'] else None
         self.bathy_contours = geometry.BathymetryContours(self.instructions['instructions']['data_paths']['bathymetry_contours'][0], self.catchment_geometry, z_label = z_label)
         
-        
         ### sparse/offshore interpolant
         self.dense_dem.interpolate_offshore(self.bathy_contours)
         
-        
         ### combine rasters
-        combined_dem = rioxarray.merge.merge_arrays([self.dense_dem.dem, self.dense_dem.offshore], method= "last") # important for this to be last as otherwise values that
-        self.result_dem = combined_dem.rio.interpolate_na()    
+        self.result_dem = rioxarray.merge.merge_arrays([self.dense_dem.dem, self.dense_dem.offshore]) # can be overlayed in either order (method='first' or 'last') as both clipped that the foreshore is the only overlap and that should be guarenteed to be the same. 
+        self.result_dem = self.result_dem.rio.interpolate_na()  
+        self.result_dem = self.result_dem.rio.clip(self.catchment_geometry.catchment.geometry)
         
         ### save results
         self.result_dem.to_netcdf(self.instructions['instructions']['data_paths']['result_dem'])

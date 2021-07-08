@@ -322,3 +322,28 @@ class BathymetryPoints:
             self._z = self._points.points.apply(lambda row : row['geometry'][0].z,axis=1).to_numpy() * -1 
         
         return self._z
+
+
+class TileInfo:
+    """ A class for working with tiling information
+    """
+    
+    def __init__(self, tile_file: str, catchment_geometry: CatchmentGeometry):
+        self._tile_info = geopandas.read_file(tile_file)
+        self.catchment_geometry = catchment_geometry       
+        
+        self._set_up()
+        
+        
+    def _set_up(self):
+        """ Set crs and select all tiles partially within the catchment """
+        
+        self._tile_info = self._tile_info.to_crs(self.catchment_geometry.crs)
+        self._tile_info = geopandas.sjoin(self._tile_info, self.catchment_geometry.catchment)
+        self._tile_info = self._tile_info.reset_index(drop=True)
+        
+    @property
+    def tile_names(self):
+        """ Return the names of all tiles within the catchment"""
+        
+        return self._tile_info['Filename']
