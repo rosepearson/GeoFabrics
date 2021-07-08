@@ -28,7 +28,8 @@ class OpenTopographyTest(unittest.TestCase):
 
     @classmethod
     def setUpClass(cls):
-        """ Create a cache directory and CatchmentGeometry object for use in the test. """
+        """ Create a cache directory and CatchmentGeometry object for use in the tests and also 
+        download the files used in the tests. """
         
         # load in the test instructions
         file_path = pathlib.Path().cwd() / pathlib.Path("tests/lidar_fetch_test/instruction.json")
@@ -77,11 +78,11 @@ class OpenTopographyTest(unittest.TestCase):
         dataset_dir = self.cache_dir / self.DATASET
         
         # check the right dataset is downloaded - self.DATASET
-        self.assertEqual(len(list(self.cache_dir.glob('*/**'))), 1, "There should only be one dataset named " + self.DATASET + " instead there are " + \
-            str(len(list(self.cache_dir.glob('*/**')))) + " list " + str(list(self.cache_dir.glob('*/**'))))
+        self.assertEqual(len(list(self.cache_dir.glob('*/**'))), 1, f"There should only be one dataset named {self.DATASET} instead there are " + \
+            f"{len(list(self.cache_dir.glob('*/**')))} list {list(self.cache_dir.glob('*/**'))}")
         
-        self.assertEqual(len([file for file in self.cache_dir.iterdir() if file.is_dir() and file==dataset_dir]), 1, "Only the " + self.DATASET + \
-            " directory should have been downloaded. Insead we have: " + str([file for file in self.cache_dir.iterdir() if file.is_dir()]))
+        self.assertEqual(len([file for file in self.cache_dir.iterdir() if file.is_dir() and file==dataset_dir]), 1, f"Only the {self.DATASET}" + \
+            f" directory should have been downloaded. Insead we have: {[file for file in self.cache_dir.iterdir() if file.is_dir()]}")
 
     def test_correct_files_downloaded(self):
         """ A test to see if all expected dataset files are downloaded """
@@ -90,10 +91,11 @@ class OpenTopographyTest(unittest.TestCase):
         downloaded_files = [dataset_dir / file for file in self.FILES]
         
         # check files are correct
-        self.assertEqual(len(list(dataset_dir.glob('*'))), len(downloaded_files), "There should have been " + str(len(downloaded_files)) + " files downloaded into the " \
-            + self.DATASET + " directory, instead there are " + str(len(list(dataset_dir.glob('*')))) + " files/dirs in the directory")
-        self.assertTrue(numpy.all([file in downloaded_files for file in dataset_dir.glob('*')]), "The downloaded files " + str(list(dataset_dir.glob('*'))) + \
-            " do not match the expected files " + str(downloaded_files))
+        self.assertEqual(len(list(dataset_dir.glob('*'))), len(downloaded_files), f"There should have been {len(downloaded_files)} files downloaded into the " \
+            + f"{self.DATASET} directory, instead there are {len(list(dataset_dir.glob('*')))} files/dirs in the directory")
+            
+        self.assertTrue(numpy.all([file in downloaded_files for file in dataset_dir.glob('*')]), f"The downloaded files {list(dataset_dir.glob('*'))}" + \
+            f" do not match the expected files {downloaded_files}")
             
     def test_correct_file_size(self):
         """ A test to see if all expected dataset files are of the right size """
@@ -103,7 +105,7 @@ class OpenTopographyTest(unittest.TestCase):
         
         # check sizes are correct
         self.assertTrue(numpy.all([downloaded_file.stat().st_size == self.SIZES[i] for i, downloaded_file in enumerate(downloaded_files)]), "There is a missmatch between the size of the downloaded files " \
-            + str([downloaded_file.stat().st_size for downloaded_file in downloaded_files]) + " and the expected sizes of " + str(self.SIZES))
+            + f"{[downloaded_file.stat().st_size for downloaded_file in downloaded_files]} and the expected sizes of {self.SIZES}")
 
 if __name__ == '__main__':
     unittest.main()
