@@ -38,7 +38,7 @@ class OpenTopography:
         
         self.catchment_geometry = catchment_geometry
         self.cache_path = pathlib.Path(cache_path)
-        self.redownload_files = redownload_files
+        self.redownload_files_bool = redownload_files
         self.download_limit_gbytes = download_limit_gbytes
         self.verbose = verbose
         
@@ -101,7 +101,7 @@ class OpenTopography:
         local_file_path = self.cache_path / file_prefix
         
         # Download the file if needed
-        if self.redownload_files or not local_file_path.exists():
+        if self.redownload_files_bool or not local_file_path.exists():
             response = client.head_object(Bucket=self.OT_BUCKET, Key=file_prefix)
             assert response['ResponseMetadata']['HTTPStatusCode'] == 200, "No tile index file exists with key: " + file_prefix
             self.response = response
@@ -124,7 +124,7 @@ class OpenTopography:
         for tile_name in tile_info.tile_names:
             file_prefix = dataset_prefix + "/" + tile_name
             local_path = self.cache_path / file_prefix
-            if self.redownload_files or not local_path.exists():
+            if self.redownload_files_bool or not local_path.exists():
                 response = client.head_object(Bucket=self.OT_BUCKET, Key=file_prefix)
                 assert response['ResponseMetadata']['HTTPStatusCode'] == 200, "No tile file exists with key: " + file_prefix
                 lidar_size_bytes += response['ContentLength']
@@ -141,7 +141,7 @@ class OpenTopography:
             file_prefix = dataset_prefix + "/" + tile_name
             local_path = self.cache_path / file_prefix
             
-            if self.redownload_files or not local_path.exists():
+            if self.redownload_files_bool or not local_path.exists():
                 if(self.verbose):
                     print('Downloading file: ' + file_prefix)
                 client.download_file(self.OT_BUCKET, file_prefix, str(local_path))
