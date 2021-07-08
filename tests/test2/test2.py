@@ -75,23 +75,23 @@ class Test2(unittest.TestCase):
         runner.run()
         
         # check the right dataset is downloaded - self.DATASET
-        assert len(list(self.cache_dir.glob('*/**'))) == 1, "There should only be one dataset named " + self.DATASET + " instead there are " + \
-            len(list(self.cache_dir.glob('*/**'))) + " list " + str(list(self.cache_dir.glob('*/**')))
+        self.assertEquals(len(list(self.cache_dir.glob('*/**'))), 1, "There should only be one dataset named " + self.DATASET + " instead there are " + \
+            str(len(list(self.cache_dir.glob('*/**')))) + " list " + str(list(self.cache_dir.glob('*/**'))))
         
         dataset_dir = self.cache_dir / self.DATASET
-        assert len([file for file in self.cache_dir.iterdir() if file.is_dir() and file==dataset_dir]) == 1, "Only the " + self.DATASET + \
-            " directory should have been downloaded. Insead we have: " + str([file for file in self.cache_dir.iterdir() if file.is_dir()])
+        self.assertEquals(len([file for file in self.cache_dir.iterdir() if file.is_dir() and file==dataset_dir]), 1, "Only the " + self.DATASET + \
+            " directory should have been downloaded. Insead we have: " + str([file for file in self.cache_dir.iterdir() if file.is_dir()]))
         
         # check files are correct
         downloaded_files = [dataset_dir / file for file in self.FILES]
-        assert len(list(dataset_dir.glob('*'))) == len(downloaded_files), "There should have been " + str(len(downloaded_files)) + " files downloaded into the " \
-            + self.DATASET + " directory, instead there are " + str(len(list(dataset_dir.glob('*')))) + " files/dirs in the directory"
-        assert numpy.all([file in downloaded_files for file in dataset_dir.glob('*')]), "The downloaded files " + str(list(dataset_dir.glob('*'))) + \
-            " do not match the expected files " + str(downloaded_files)
+        self.assertEquals(len(list(dataset_dir.glob('*'))), len(downloaded_files), "There should have been " + str(len(downloaded_files)) + " files downloaded into the " \
+            + self.DATASET + " directory, instead there are " + str(len(list(dataset_dir.glob('*')))) + " files/dirs in the directory")
+        self.assertTrue(numpy.all([file in downloaded_files for file in dataset_dir.glob('*')]), "The downloaded files " + str(list(dataset_dir.glob('*'))) + \
+            " do not match the expected files " + str(downloaded_files))
         
         # check sizes are correct
-        assert numpy.all([downloaded_file.stat().st_size == self.SIZES[i] for i, downloaded_file in enumerate(downloaded_files)]), "There is a missmatch between the size of the downloaded files " \
-            + str([downloaded_file.stat().st_size for downloaded_file in downloaded_files]) + " and the expected sizes of " + str(self.SIZES)
+        self.assertTrue(numpy.all([downloaded_file.stat().st_size == self.SIZES[i] for i, downloaded_file in enumerate(downloaded_files)]), "There is a missmatch between the size of the downloaded files " \
+            + str([downloaded_file.stat().st_size for downloaded_file in downloaded_files]) + " and the expected sizes of " + str(self.SIZES))
 
 if __name__ == '__main__':
     unittest.main()
