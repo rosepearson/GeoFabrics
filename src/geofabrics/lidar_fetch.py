@@ -55,8 +55,8 @@ class OpenTopography:
                               config=botocore.config.Config(signature_version=botocore.UNSIGNED))
         
         # cycle through each dataset within a region
-        for i in range(len(json_response['Datasets'])):
-            dataset_prefix = json_response['Datasets'][i]['Dataset']['alternateName']
+        for dataset_node in json_response['Datasets'])):
+            dataset_prefix = dataset_node['Dataset']['alternateName']
             self._dataset_prefixes.append(dataset_prefix)
             
             tile_info = self._get_dataset_tile_info(client, dataset_prefix)
