@@ -44,6 +44,11 @@ class OpenTopography:
         
         self._dataset_prefixes = None
         
+    def _to_gbytes(self, bytes_number):
+        """ convert bytes into gigabytes"""
+        
+        return bytes_number/1000/1000/1000
+        
     def run(self):
         """ Query for  LiDAR data within a catchment and download any that hasn't already been downloaded """
         self._dataset_prefixes = []
@@ -64,8 +69,8 @@ class OpenTopography:
             # check download size limit is not exceeded
             lidar_size_bytes = self._calculate_dataset_download_size(client, dataset_prefix, tile_info)
             
-            assert lidar_size_bytes/1000/1000/1000 < self.download_limit_gbytes, "The size of the LiDAR to be " \
-                + "downloaded is greater than the specified download limit of " + str(self.download_limit_gbytes)
+            assert self._to_gbytes(lidar_size_bytes) < self.download_limit_gbytes, "The size of the LiDAR to be " \
+                + f"downloaded is greater than the specified download limit of {self.download_limit_gbytes}"
             
             # check for tiles and download as needed
             self._download_tiles_in_catchment(client, dataset_prefix, tile_info)
@@ -103,7 +108,7 @@ class OpenTopography:
         # Download the file if needed
         if self.redownload_files_bool or not local_file_path.exists():
             response = client.head_object(Bucket=self.OT_BUCKET, Key=file_prefix)
-            assert response['ResponseMetadata']['HTTPStatusCode'] == 200, "No tile index file exists with key: " + file_prefix
+            assert response['ResponseMetadata']['HTTPStatusCode'] == 200, f"No tile index file exists with key: {file_prefix}"
             self.response = response
             
             # ensure folder exists before download
@@ -126,11 +131,10 @@ class OpenTopography:
             local_path = self.cache_path / file_prefix
             if self.redownload_files_bool or not local_path.exists():
                 response = client.head_object(Bucket=self.OT_BUCKET, Key=file_prefix)
-                assert response['ResponseMetadata']['HTTPStatusCode'] == 200, "No tile file exists with key: " + file_prefix
+                assert response['ResponseMetadata']['HTTPStatusCode'] == 200, f"No tile file exists with key: {file_prefix}"
                 lidar_size_bytes += response['ContentLength']
                 if(self.verbose):
-                    print("checking size: " + file_prefix + ": " + str(response['ContentLength']) + 
-                          ", total (GB): " + str(lidar_size_bytes/1000/1000/1000))
+                    print(f"checking size: {file_prefix}: {response['ContentLength']}, total (GB): {self._to_gbytes(lidar_size_bytes)}")
                 
         return lidar_size_bytes
         
@@ -138,18 +142,18 @@ class OpenTopography:
         """ Download the lidar data within the catchment """
     
         for tile_name in tile_info.tile_names:
-            file_prefix = dataset_prefix + "/" + tile_name
+            file_prefix = f"{dataset_prefix}/{tile_name}"
             local_path = self.cache_path / file_prefix
             
             if self.redownload_files_bool or not local_path.exists():
                 if(self.verbose):
-                    print('Downloading file: ' + file_prefix)
+                    print(f"Downloading file: {file_prefix}")
                 client.download_file(self.OT_BUCKET, file_prefix, str(local_path))
                     
     @property
     def dataset_prefixes(self):
         
-        assert self._dataset_prefixes is not None, "The run command needs to be called before dataset_prefixes can be called."
+        assert self._dataset_prefixes is not None, "The run command needs to be called before 'dataset_prefixes' can be called."
         
         return self._dataset_prefixes
         
