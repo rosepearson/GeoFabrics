@@ -55,8 +55,8 @@ class OpenTopography:
                               config=botocore.config.Config(signature_version=botocore.UNSIGNED))
         
         # cycle through each dataset within a region
-        for dataset_node in json_response['Datasets'])):
-            dataset_prefix = dataset_node['Dataset']['alternateName']
+        for json_dataset in json_response['Datasets']:
+            dataset_prefix = json_dataset['Dataset']['alternateName']
             self._dataset_prefixes.append(dataset_prefix)
             
             tile_info = self._get_dataset_tile_info(client, dataset_prefix)
@@ -74,12 +74,13 @@ class OpenTopography:
         """ Function to check for data in search region using the otCatalogue API
         https://portal.opentopography.org/apidocs/#/Public/getOtCatalog """
         
+        catchment_bounds = self.catchment_geometry.catchment.geometry.to_crs(self.OT_CRS).bounds
         api_queary = {
             "productFormat": "PointCloud",
-            "minx": self.catchment_geometry.catchment.geometry.to_crs(self.OT_CRS).bounds['minx'].min(),
-            "miny": self.catchment_geometry.catchment.geometry.to_crs(self.OT_CRS).bounds['miny'].min(),
-            "maxx": self.catchment_geometry.catchment.geometry.to_crs(self.OT_CRS).bounds['maxx'].max(),
-            "maxy": self.catchment_geometry.catchment.geometry.to_crs(self.OT_CRS).bounds['maxy'].max(),
+            "minx": catchment_bounds['minx'].min(),
+            "miny": catchment_bounds['miny'].min(),
+            "maxx": catchment_bounds['maxx'].max(),
+            "maxy": catchment_bounds['maxy'].max(),
             "detail": False,
             "outputFormat": "json",
             "inlcude_federated": True
