@@ -36,6 +36,10 @@ class GeoFabricsGenerator:
         """ This method executes the geofabrics generation pipeline to produce
         geofabric derivatives. """
         
+        ### Note corrently only consider one LiDAR dataset and only the first tile from that dataset. Later use all tiles and eventually combine datasets based on preference by data or extent.
+        lidar_dataset_index = 0
+        lidar_tile_index = 0
+        
         ### instruction values and other set values
         area_to_drop = self.instructions['instructions']['instructions']['filter_lidar_holes_area'] if  \
             'filter_lidar_holes_area' in self.instructions['instructions']['instructions'] else None
@@ -58,12 +62,13 @@ class GeoFabricsGenerator:
             self.lidar_fetcher = lidar_fetch.OpenTopography(self.catchment_geometry, self.instructions['instructions']['data_paths']['local_cache'], verbose = True)
             self.lidar_fetcher.run()
             
-            lidar_file_paths = list(pathlib.Path(self.lidar_fetcher.cache_path / self.lidar_fetcher.dataset_prefixes[0]).glob('*.laz'))
+            # take the first 
+            lidar_file_paths = list(pathlib.Path(self.lidar_fetcher.cache_path / self.lidar_fetcher.dataset_prefixes[lidar_dataset_index]).glob('*.laz'))
         else:  # already downloaded - get the specified file path
             lidar_file_paths = self.instructions['instructions']['data_paths']['lidars']
             
         ### Load in LiDAR files using PDAL - for now just take one to test basic pipeline
-        catchment_lidar = lidar.CatchmentLidar(lidar_file_paths[0], self.catchment_geometry)
+        catchment_lidar = lidar.CatchmentLidar(lidar_file_paths[lidar_tile_index], self.catchment_geometry)
         
         ### Load in reference DEM if any land/foreshore not covered by lidar
         if (self.catchment_geometry.foreshore_without_lidar.geometry.area.max() > 0) or (self.catchment_geometry.land_without_lidar.geometry.area.max() > 0):
