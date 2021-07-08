@@ -32,7 +32,7 @@ class OpenTopographyTest(unittest.TestCase):
         download the files used in the tests. """
         
         # load in the test instructions
-        file_path = pathlib.Path().cwd() / pathlib.Path("tests/lidar_fetch/instruction.json")
+        file_path = pathlib.Path().cwd() / pathlib.Path("tests/test_lidar_fetch/instruction.json")
         with open(file_path, 'r') as file_pointer:
             instructions = json.load(file_pointer)
             
