@@ -116,7 +116,8 @@ class Test1(unittest.TestCase):
         runner.run()
         
         # load in bencmark dem
-        benchmark_dem = rioxarray.rioxarray.open_rasterio(self.instructions['instructions']['data_paths']['benchmark_dem'], masked=True)
+        with rioxarray.rioxarray.open_rasterio(self.instructions['instructions']['data_paths']['benchmark_dem'], masked=True) as benchmark_dem:
+            benchmark_dem.load() 
         
         # compare the generated and benchmark dems
         numpy.testing.assert_array_almost_equal(runner.result_dem.data, benchmark_dem.data, 

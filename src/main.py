@@ -34,7 +34,8 @@ def launch_processor(args):
     
     # load in bencmark dem and compare - if specified in the insturctions
     if 'benchmark_dem' in instructions['instructions']['data_paths']:
-        benchmark_dem = rioxarray.rioxarray.open_rasterio(instructions['instructions']['data_paths']['benchmark_dem'], masked=True)
+        with rioxarray.rioxarray.open_rasterio(instructions['instructions']['data_paths']['benchmark_dem'], masked=True) as benchmark_dem:
+            benchmark_dem.load()
         print('Comparing the generated DEM saved at ' + instructions['instructions']['data_paths']['result_dem'] + 
               ' against the benchmark DEM stored ' + instructions['instructions']['data_paths']['benchmark_dem'] + '\n Any difference will be reported.')
         # compare the generated and benchmark dems

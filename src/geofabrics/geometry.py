@@ -28,9 +28,7 @@ class CatchmentGeometry:
         
         self._set_up()
         
-        # values set only when called for the first time
-        self._raster_origin = None 
-        self._raster_size = None
+        # values set only when called for the first time 
         self._foreshore = None
         self._land_and_foreshore = None
         self._foreshore_and_offshore = None
@@ -52,35 +50,6 @@ class CatchmentGeometry:
         self._land = self._land.to_crs(self.crs)
         
         self._land = geopandas.clip(self._catchment, self._land)
-        
-    @property
-    def raster_origin(self):
-        """ Return the origin (LLHS) of the catchment bbox """
-        
-        if self._raster_origin is None:
-            self._raster_origin = [self.catchment.loc[0].geometry.bounds[0], 
-                                   self.catchment.loc[0].geometry.bounds[1]]
-        return self._raster_origin
-    
-    @raster_origin.setter
-    def raster_origin(self, raster_origin):
-        """ Overwrite the raster origin - this is supported to ensure the 
-        origin matches the generated dense_dem - as this seems to round in the 
-        pdal writers.gdal case. """
-        
-        self._raster_origin = raster_origin
-
-    @property
-    def raster_size(self):
-        """ Return the size of the catchment bbox in raster cells given the 
-        resolution """
-        
-        if self._raster_size is None:
-            self._raster_size = [int((self.catchment.loc[0].geometry.bounds[2] - 
-                                     self.catchment.loc[0].geometry.bounds[0]) / self.resolution), 
-                                int((self.catchment.loc[0].geometry.bounds[3] - 
-                                     self.catchment.loc[0].geometry.bounds[1]) / self.resolution)]
-        return self._raster_size
     
     @property
     def catchment(self):
