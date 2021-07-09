@@ -93,7 +93,7 @@ class DenseDem:
         
     def _set_up(self):
         """ Set dem crs and trim the dem to size """
-        self._dem.rio.set_crs(self.catchment_geometry.crs);
+        self._dem.rio.set_crs(self.catchment_geometry.crs)
         
         # trim out the offshore extents - and setup for interpolation
         self._offshore = self.dem.rio.clip(self.catchment_geometry.offshore.geometry);

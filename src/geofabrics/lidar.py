@@ -34,9 +34,9 @@ class CatchmentLidar:
         
         pdal_pipeline_instructions = [
             {"type":  "readers.las", "filename": str(lidar_file)},
-            {"type":"filters.reprojection","out_srs":"EPSG:" + str(self.catchment_geometry.crs)}, # reproject to NZTM
-            {"type":"filters.crop", "polygon":str(self.catchment_geometry.catchment.loc[0].geometry)}, # filter within boundary
-            {"type" : "filters.hexbin"} # create a polygon boundary of the LiDAR
+            {"type": "filters.reprojection","out_srs":"EPSG:" + str(self.catchment_geometry.crs)}, # reproject to NZTM
+            {"type": "filters.crop", "polygon":str(self.catchment_geometry.catchment.loc[0].geometry)}, # filter within boundary
+            {"type": "filters.hexbin"} # create a polygon boundary of the LiDAR
         ]
         
         self._pdal_pipeline = pdal.Pipeline(json.dumps(pdal_pipeline_instructions))
