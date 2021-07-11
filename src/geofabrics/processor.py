@@ -70,28 +70,7 @@ class GeoFabricsGenerator:
         ### Load in LiDAR files using PDAL - for now just take one to test basic pipeline
         catchment_lidar = lidar.CatchmentLidar(lidar_file_paths[lidar_tile_index], self.catchment_geometry)
         
-        self.dense_dem = dem.DenseDem(self.catchment_geometry)
-        
-        '''### create a dummy DEM for updated origin and size
-        empty_points = numpy.zeros_like(catchment_lidar.lidar_array[0], shape=[1])
-        pdal_pipeline_instructions = [
-            {"type":  "writers.gdal", "resolution": self.catchment_geometry.resolution, "gdalopts": "a_srs=EPSG:" + str(self.catchment_geometry.crs), "output_type":["idw"], 
-             "filename": self.instructions['instructions']['data_paths']['tmp_raster'], 
-             "window_size": window_size, "power": idw_power, "radius": radius, 
-             "origin_x": self.dense_dem.raster_origin[0], "origin_y": self.dense_dem.raster_origin[1], 
-             "width": self.dense_dem.raster_size[0], "height": self.dense_dem.raster_size[1]}
-                ]
-        pdal_pipeline = pdal.Pipeline(json.dumps(pdal_pipeline_instructions), [empty_points])
-        pdal_pipeline.execute();
-        metadata=json.loads(pdal_pipeline.get_metadata())
-        with rioxarray.rioxarray.open_rasterio(metadata['metadata']['writers.gdal']['filename'][0], masked=True) as dem_temp:
-            dem_temp.load()
-        if self.dense_dem.raster_origin[0] != dem_temp.x.data.min() or self.dense_dem.raster_origin[1] != dem_temp.y.data.min():
-            raster_origin = [dem_temp.x.data.min(), dem_temp.y.data.min()]
-            print('In process: The generated dense DEM has an origin differing from ' + 
-                  'the one specified. Updating the catchment geometry raster origin from ' 
-                  + str(self.dense_dem.raster_origin) + ' to ' + str(raster_origin))
-            self.dense_dem.raster_origin = raster_origin'''
+        self.dense_dem = dem.DenseDem(self.catchment_geometry, self.instructions['instructions']['data_paths']['tmp_raster'])
         
         ### Load in reference DEM if any land/foreshore not covered by lidar
         if (self.catchment_geometry.foreshore_without_lidar.geometry.area.max() > 0) or (self.catchment_geometry.land_without_lidar.geometry.area.max() > 0):

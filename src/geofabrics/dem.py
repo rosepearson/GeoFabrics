@@ -6,6 +6,10 @@ Created on Fri Jun 18 10:52:49 2021
 """
 import rioxarray
 import numpy
+import pdal
+import json
+import typing
+import pathlib
 import scipy.interpolate 
 from . import geometry
 
@@ -80,7 +84,7 @@ class DenseDem:
     Specifically, clip within the region there is dense data and provide the
     offshore edge of this dense region """
     
-    def __init__(self, catchment_geometry: geometry.CatchmentGeometry):
+    def __init__(self, catchment_geometry: geometry.CatchmentGeometry, temp_raster_path: typing.Union[str, pathlib.Path]):
         """ Load in dem """
         
         self.catchment_geometry = catchment_geometry
@@ -93,17 +97,40 @@ class DenseDem:
         self._offshore = None
         self._offshore_interpolated = False
         
-        self._set_up()
+        self._set_up(temp_raster_path)
         
-    def _set_up(self):
+    def _set_up(self, temp_raster_path: typing.Union[str, pathlib.Path]):
         """ Create the dense DEM to file and define the raster size and origin """
-        self.raster_origin = [self.catchment_geometry.catchment.loc[0].geometry.bounds[0], 
-                              self.catchment_geometry.catchment.loc[0].geometry.bounds[1]]
         
-        self.raster_size = [int((self.catchment_geometry.catchment.loc[0].geometry.bounds[2] - 
-                                 self.catchment_geometry.catchment.loc[0].geometry.bounds[0]) / self.catchment_geometry.resolution), 
-                            int((self.catchment_geometry.catchment.loc[0].geometry.bounds[3] - 
-                                 self.catchment_geometry.catchment.loc[0].geometry.bounds[1]) / self.catchment_geometry.resolution)]
+        catchment_bounds = self.catchment_geometry.catchment.loc[0].geometry.bounds
+        self.raster_origin = [catchment_bounds[0], 
+                              catchment_bounds[1]]
+        
+        self.raster_size = [int((catchment_bounds[2] - 
+                                 catchment_bounds[0]) / self.catchment_geometry.resolution), 
+                            int((catchment_bounds[3] - 
+                                 catchment_bounds[1]) / self.catchment_geometry.resolution)]
+        
+        ### create a dummy DEM for updated origin and size
+        empty_points = numpy.zeros([1], dtype=[('X', numpy.float64), ('Y', numpy.float64), ('Z', numpy.float64)])
+        pdal_pipeline_instructions = [
+            {"type":  "writers.gdal", "resolution": self.catchment_geometry.resolution, "gdalopts": "a_srs=EPSG:" + str(self.catchment_geometry.crs), 
+             "output_type":["idw"], "filename": str(temp_raster_path), 
+             "origin_x": self.raster_origin[0], "origin_y": self.raster_origin[1], 
+             "width": self.raster_size[0], "height": self.raster_size[1]}
+                ]
+        pdal_pipeline = pdal.Pipeline(json.dumps(pdal_pipeline_instructions), [empty_points])
+        pdal_pipeline.execute();
+        metadata=json.loads(pdal_pipeline.get_metadata())
+        with rioxarray.rioxarray.open_rasterio(metadata['metadata']['writers.gdal']['filename'][0], masked=True) as dem_temp:
+            dem_temp.load()
+        if self.raster_origin[0] != dem_temp.x.data.min() or self.raster_origin[1] != dem_temp.y.data.min():
+            raster_origin = [dem_temp.x.data.min() - self.catchment_geometry.resolution/2, 
+                             dem_temp.y.data.min() - self.catchment_geometry.resolution/2]
+            print('In process: The generated dense DEM has an origin differing from ' + 
+                  'the one specified. Updating the catchment geometry raster origin from ' 
+                  + str(self.raster_origin) + ' to ' + str(raster_origin))
+            self.raster_origin = raster_origin
         
     def add_tile(self, dem_file: str):
         """ Set dem crs and trim the dem to size """
@@ -116,13 +143,11 @@ class DenseDem:
         self._offshore.data[0] = 0 # set all to zero then clip out dense region where we don't need to interpolate
         self._offshore = self._offshore.rio.clip(self.catchment_geometry.offshore_dense_data.geometry);
         
-        # ensure the dense dem and raster orgin values match - set if different and print a warning
-        if self.raster_origin[0] != self._dem.x.data.min() or self.raster_origin[1] != self._dem.y.data.min():
-            raster_origin = [self._dem.x.data.min(), self._dem.y.data.min()]
-            print('Warning: The generated dense DEM has an origin differing from ' + 
-                  'the one specified. Updating the catchment geometry raster origin from ' 
-                  + str(self.raster_origin) + ' to ' + str(raster_origin))
-            self.raster_origin = raster_origin
+        # ensure the tile is lined up with the whole dense dem - i.e. that that raster orgin values match 
+        raster_origin = [self._dem.x.data.min() - self.catchment_geometry.resolution/2, 
+                         self._dem.y.data.min() - self.catchment_geometry.resolution/2]
+        assert self.raster_origin[0] == raster_origin[0] and self.raster_origin[1] == raster_origin[1], "The generated tile is not " \
+            + f"aligned with the overall dense dem. The DEM raster origin is {raster_origin} instead of {self.raster_origin}"
         
         # trim to only include cells where there is dense data
         self._dem = self._dem.rio.clip(self.catchment_geometry.dense_data_extents.geometry)
