@@ -124,6 +124,7 @@ class DenseDem:
         metadata=json.loads(pdal_pipeline.get_metadata())
         with rioxarray.rioxarray.open_rasterio(metadata['metadata']['writers.gdal']['filename'][0], masked=True) as dem_temp:
             dem_temp.load()
+            dem_temp.rio.set_crs(self.catchment_geometry.crs)
         if self.raster_origin[0] != dem_temp.x.data.min() or self.raster_origin[1] != dem_temp.y.data.min():
             raster_origin = [dem_temp.x.data.min() - self.catchment_geometry.resolution/2, 
                              dem_temp.y.data.min() - self.catchment_geometry.resolution/2]
@@ -131,26 +132,31 @@ class DenseDem:
                   'the one specified. Updating the catchment geometry raster origin from ' 
                   + str(self.raster_origin) + ' to ' + str(raster_origin))
             self.raster_origin = raster_origin
+            
+        # set empty dem - all nan - to add tiles too
+        dem_temp.data[0] = numpy.nan 
+        self._dem = dem_temp.rio.clip(self.catchment_geometry.catchment.geometry)
         
-    def add_tile(self, dem_file: str):
-        """ Set dem crs and trim the dem to size """
-        with rioxarray.rioxarray.open_rasterio(dem_file, masked=True) as self._dem:
-            self._dem.load()
-        self._dem.rio.set_crs(self.catchment_geometry.crs)
-        
-        # trim out the offshore extents - and setup for interpolation
+        # setup the empty offshore area ready for interpolation later
         self._offshore = self.dem.rio.clip(self.catchment_geometry.offshore.geometry);
         self._offshore.data[0] = 0 # set all to zero then clip out dense region where we don't need to interpolate
         self._offshore = self._offshore.rio.clip(self.catchment_geometry.offshore_dense_data.geometry);
         
+    def add_tile(self, dem_file: str):
+        """ Set dem crs and trim the dem to size """
+        with rioxarray.rioxarray.open_rasterio(dem_file, masked=True) as tile:
+            tile.load()
+        tile.rio.set_crs(self.catchment_geometry.crs)
+        
         # ensure the tile is lined up with the whole dense dem - i.e. that that raster orgin values match 
-        raster_origin = [self._dem.x.data.min() - self.catchment_geometry.resolution/2, 
-                         self._dem.y.data.min() - self.catchment_geometry.resolution/2]
+        raster_origin = [tile.x.data.min() - self.catchment_geometry.resolution/2, 
+                         tile.y.data.min() - self.catchment_geometry.resolution/2]
         assert self.raster_origin[0] == raster_origin[0] and self.raster_origin[1] == raster_origin[1], "The generated tile is not " \
             + f"aligned with the overall dense dem. The DEM raster origin is {raster_origin} instead of {self.raster_origin}"
         
-        # trim to only include cells where there is dense data
-        self._dem = self._dem.rio.clip(self.catchment_geometry.dense_data_extents.geometry)
+        # trim to only include cells where there is dense data then merge onto base dem
+        tile = tile.rio.clip(self.catchment_geometry.dense_data_extents.geometry)
+        self._dem = rioxarray.merge.merge_arrays([self._dem, tile], method='last')
         
         
     @property
