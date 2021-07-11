@@ -137,11 +137,6 @@ class DenseDem:
         dem_temp.data[0] = numpy.nan 
         self._dem = dem_temp.rio.clip(self.catchment_geometry.catchment.geometry)
         
-        # setup the empty offshore area ready for interpolation later
-        self._offshore = self.dem.rio.clip(self.catchment_geometry.offshore.geometry);
-        self._offshore.data[0] = 0 # set all to zero then clip out dense region where we don't need to interpolate
-        self._offshore = self._offshore.rio.clip(self.catchment_geometry.offshore_dense_data.geometry);
-        
     def add_tile(self, dem_file: str):
         """ Set dem crs and trim the dem to size """
         with rioxarray.rioxarray.open_rasterio(dem_file, masked=True) as tile:
@@ -191,6 +186,11 @@ class DenseDem:
         
         ### interpolate offshore
         rbf_function = scipy.interpolate.Rbf(x, y, z, function='linear')
+        
+        # setup the empty offshore area ready for interpolation
+        self._offshore = self.dem.rio.clip(self.catchment_geometry.offshore.geometry);
+        self._offshore.data[0] = 0 # set all to zero then clip out dense region where we don't need to interpolate
+        self._offshore = self._offshore.rio.clip(self.catchment_geometry.offshore_dense_data.geometry);
         
         # Interpolate over offshore region
         grid_x, grid_y = numpy.meshgrid(self._offshore.x, self._offshore.y)

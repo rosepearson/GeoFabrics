@@ -44,7 +44,8 @@ class CatchmentLidar:
         
         # update the catchment geometry with the LiDAR extents
         metadata=json.loads(self._pdal_pipeline.get_metadata())
-        self.catchment_geometry.load_lidar_extents(metadata['metadata']['filters.hexbin']['boundary'])
+        #self.catchment_geometry.load_lidar_extents(metadata['metadata']['filters.hexbin']['boundary'])
+        self.catchment_geometry.add_lidar_tile(metadata['metadata']['filters.hexbin']['boundary'])
         
     @property
     def lidar_array(self):

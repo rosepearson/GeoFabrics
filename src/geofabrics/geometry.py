@@ -35,6 +35,7 @@ class CatchmentGeometry:
         self._offshore = None
         
         # values that require load_lidar_extents to be called first
+        self._total_lidar_extents = None
         self._lidar_extents = None
         self._land_without_lidar = None
         self._foreshore_with_lidar = None
@@ -107,20 +108,28 @@ class CatchmentGeometry:
             
         return self._lidar_extents
     
-    def load_lidar_extents(self, lidar_extents_string: str): 
+    def add_lidar_tile(self, lidar_extents_string: str):
+        """ Add another lidar tile to the total lidar extents """
+        tile_extents=shapely.wkt.loads(lidar_extents_string)
+        
+        if self._lidar_extents is None:
+            self._lidar_extents = geopandas.GeoDataFrame(index=[0], geometry=geopandas.GeoSeries([tile_extents], crs=self.crs), crs=self.crs)
+        else:
+            
+            self._lidar_extents = geopandas.GeoDataFrame(index=[0], geometry=geopandas.GeoSeries(shapely.ops.cascaded_union([self._lidar_extents.loc[0].geometry, tile_extents]), crs=self.crs), crs=self.crs)
+        
+        self._lidar_extents = geopandas.clip(self._catchment, self._lidar_extents)
+        
+    
+    def filter_lidar_extents_for_holes(self): 
         """ Load the lidar extents and clip within the catchment region """
         
-        self._lidar_extents=shapely.wkt.loads(lidar_extents_string)
-        
-        if self.area_to_drop is None:
-            area_to_drop = shapely.geometry.Polygon(self._lidar_extents.exterior).area
-        else:
-            area_to_drop = self.area_to_drop
-        
-        self._lidar_extents = shapely.geometry.Polygon(self._lidar_extents.exterior.coords,
-            [interior for interior in self._lidar_extents.interiors if shapely.geometry.Polygon(interior).area > area_to_drop])
-        self._lidar_extents = geopandas.GeoDataFrame(index=[0], geometry=geopandas.GeoSeries([self._lidar_extents], crs=self.crs), crs=self.crs)
-        self._lidar_extents = geopandas.clip(self._catchment, self._lidar_extents)
+        if self.area_to_drop is not None:
+            polygon = self._lidar_extents.loc[0].geometry
+            polygon = shapely.geometry.Polygon(polygon.exterior.coords, [interior for interior in polygon.interiors 
+                                                                         if shapely.geometry.Polygon(interior).area > self.area_to_drop])
+            self._lidar_extents = geopandas.GeoDataFrame(index=[0], geometry=geopandas.GeoSeries([polygon], crs=self.crs), crs=self.crs)
+            self._lidar_extents = geopandas.clip(self._catchment, self._lidar_extents)
         
     @property
     def land_without_lidar(self):
