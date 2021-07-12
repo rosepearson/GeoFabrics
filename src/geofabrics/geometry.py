@@ -35,7 +35,6 @@ class CatchmentGeometry:
         self._offshore = None
         
         # values that require load_lidar_extents to be called first
-        self._total_lidar_extents = None
         self._lidar_extents = None
         self._land_without_lidar = None
         self._foreshore_with_lidar = None

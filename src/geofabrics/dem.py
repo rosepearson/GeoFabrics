@@ -97,6 +97,8 @@ class DenseDem:
         self._offshore = None
         self._offshore_interpolated = False
         
+        self._points = None
+        
         self._set_up(temp_raster_path)
         
     def _set_up(self, temp_raster_path: typing.Union[str, pathlib.Path]):
@@ -137,7 +139,7 @@ class DenseDem:
         dem_temp.data[0] = numpy.nan 
         self._dem = dem_temp.rio.clip(self.catchment_geometry.catchment.geometry)
         
-    def add_tile(self, dem_file: str):
+    def add_tile(self, dem_file: str, method: str = 'first'):
         """ Set dem crs and trim the dem to size """
         with rioxarray.rioxarray.open_rasterio(dem_file, masked=True) as tile:
             tile.load()
@@ -151,7 +153,9 @@ class DenseDem:
         
         # trim to only include cells where there is dense data then merge onto base dem
         tile = tile.rio.clip(self.catchment_geometry.dense_data_extents.geometry)
-        self._dem = rioxarray.merge.merge_arrays([self._dem, tile], method='last')
+        self._dem = rioxarray.merge.merge_arrays([self._dem, tile], method=method)
+        
+        self._points = None # ensure the poins list will be recalculated as another tile has been added
         
         
     @property
@@ -159,6 +163,21 @@ class DenseDem:
         """ Return the dem """
         
         return self._dem
+    
+    @property
+    def points(self):
+        """ Return the dense dem values as as a point list """
+        
+        if self._points is None:
+            grid_x, grid_y = numpy.meshgrid(self.dem.x, self.dem.y)
+            flat_z = self.dem.data[0].flatten()
+            mask_z = ~numpy.isnan(flat_z)
+            
+            self._points = {'x': grid_x.flatten()[mask_z],
+                            'y': grid_y.flatten()[mask_z], 
+                            'z': flat_z[mask_z]}
+        
+        return self._points
         
     @property
     def offshore_edge(self):

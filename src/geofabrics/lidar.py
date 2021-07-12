@@ -29,6 +29,8 @@ class CatchmentLidar:
     def _load_lidar(self, lidar_file):
         """ Function loading in the lidar
         
+        This updates the lidar extents in the catchment_geometry
+        
         In future we may want to have the option of filtering by foreshore / 
         land """
         
@@ -44,7 +46,6 @@ class CatchmentLidar:
         
         # update the catchment geometry with the LiDAR extents
         metadata=json.loads(self._pdal_pipeline.get_metadata())
-        #self.catchment_geometry.load_lidar_extents(metadata['metadata']['filters.hexbin']['boundary'])
         self.catchment_geometry.add_lidar_tile(metadata['metadata']['filters.hexbin']['boundary'])
         
     @property

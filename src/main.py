@@ -9,6 +9,7 @@ import json
 import argparse
 import rioxarray
 import numpy
+import matplotlib
 
 def parse_args():
     """ Expect a command line argument of the form '--instructions path/to/json/instruction/file' """
@@ -38,7 +39,27 @@ def launch_processor(args):
             benchmark_dem.load()
         print('Comparing the generated DEM saved at ' + instructions['instructions']['data_paths']['result_dem'] + 
               ' against the benchmark DEM stored ' + instructions['instructions']['data_paths']['benchmark_dem'] + '\n Any difference will be reported.')
-        # compare the generated and benchmark dems
+        # compare the generated and benchmark dems - plot
+        diff = benchmark_dem.copy()
+        diff.data = runner.result_dem.data - benchmark_dem.data
+        
+        f = matplotlib.pyplot.figure(figsize=(15, 5))
+        gs = f.add_gridspec(1, 3)
+        
+        ax1 = f.add_subplot(gs[0, 0]) 
+        benchmark_dem.plot(cmap="viridis", ax=ax1) 
+        
+        ax2 = f.add_subplot(gs[0,1])
+        runner.result_dem.plot(cmap="viridis", ax=ax2)
+        
+        ax3 = f.add_subplot(gs[0,2])
+        diff.plot(cmap="viridis", ax=ax3)
+        
+        ax1.set_title("Benchmark")
+        ax2.set_title("Generated")
+        ax3.set_title("Difference")
+        
+        # assert different
         numpy.testing.assert_array_equal(runner.result_dem.data, benchmark_dem.data, "The generated result_dem has different data from the benchmark_dem")
         
 def main():
