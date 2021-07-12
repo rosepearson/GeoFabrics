@@ -6,9 +6,7 @@ Created on Fri Jun 18 10:52:49 2021
 """
 import rioxarray
 import rioxarray.merge
-import pdal
 import numpy
-import json
 import pathlib
 from . import geometry
 from . import lidar
@@ -58,7 +56,7 @@ class GeoFabricsGenerator:
         window_size = 0
         idw_power = 2
         
-        ### Ensure LiDAR data is downloaded within the catchment region from OpenTopography
+        # Get LiDAR data - either download within the catchment region from OpenTopography and cache, or from a specified local file
         if 'local_cache' in self.instructions['instructions']['data_paths']:  # download from OpenTopography - then get the local file path
             self.lidar_fetcher = lidar_fetch.OpenTopography(self.catchment_geometry, self.instructions['instructions']['data_paths']['local_cache'], verbose = verbose)
             self.lidar_fetcher.run()
@@ -71,32 +69,17 @@ class GeoFabricsGenerator:
             # setup dense dem object
         self.dense_dem = dem.DenseDem(self.catchment_geometry, self.instructions['instructions']['data_paths']['tmp_raster'])
             
-        ### Load in LiDAR files using PDAL - in turn - and add to the dense_dem
+        ### Load in LiDAR files - in turn - and add to the dense_dem
         for index, lidar_file_path in enumerate(lidar_file_paths):
             if verbose:
-                print(f"Looking at LiDAR tile {index} of {len(lidar_file_paths)}: {lidar_file_path}")
+                print(f"Looking at LiDAR tile {index + 1} of {len(lidar_file_paths)}: {lidar_file_path}")
             
+            # load in lidar tile
             catchment_lidar = lidar.CatchmentLidar(lidar_file_path, self.catchment_geometry)
             
-            ### Create dense raster - note currently involves writing out a temp file
-            temp_dem_file = pathlib.Path(self.instructions['instructions']['data_paths']['tmp_raster'])
-            if temp_dem_file.exists():
-                temp_dem_file.unlink()
-            pdal_pipeline_instructions = [
-                {"type":  "writers.gdal", "resolution": self.catchment_geometry.resolution, "gdalopts": "a_srs=EPSG:" + str(self.catchment_geometry.crs), "output_type":["idw"], 
-                 "filename": str(temp_dem_file), 
-                 "window_size": window_size, "power": idw_power, "radius": radius, 
-                 "origin_x": self.dense_dem.raster_origin[0], "origin_y": self.dense_dem.raster_origin[1], 
-                 "width": self.dense_dem.raster_size[0], "height": self.dense_dem.raster_size[1]}
-            ]
-            
-            pdal_pipeline = pdal.Pipeline(json.dumps(pdal_pipeline_instructions), [catchment_lidar.lidar_array])
-            pdal_pipeline.execute();
+            # create dem tile from lidar and add to dem
+            self.dense_dem.add_tile(catchment_lidar.lidar_array, window_size, idw_power, radius)
             del catchment_lidar.lidar_array
-            
-            ### load in dense DEM 
-            metadata=json.loads(pdal_pipeline.get_metadata())
-            self.dense_dem.add_tile(metadata['metadata']['writers.gdal']['filename'][0])
             
         
         ### Load in reference DEM if any land/foreshore not covered by lidar
@@ -109,8 +92,9 @@ class GeoFabricsGenerator:
         
             # Load in background DEM
             self.reference_dem = dem.ReferenceDem(self.instructions['instructions']['data_paths']['reference_dems'][0], self.catchment_geometry, set_dem_foreshore)
+            
+            # Get all DEM values - do we include tilered lidar around the edge of the lidar tile extents - erode lidar extents to get
             '''
-            # Get all DEM values
             combined_dense_points_array = numpy.empty([len(self.dense_dem.points['x']) + len(self.reference_dem.land['x']) 
                                                        + len(self.reference_dem.foreshore['x'])],
                                                        dtype=[('X', numpy.float64), ('Y', numpy.float64), ('Z', numpy.float64)])
@@ -118,31 +102,14 @@ class GeoFabricsGenerator:
             combined_dense_points_array['Y'] = numpy.concatenate([self.dense_dem.points['y'], self.reference_dem.land['y'], self.reference_dem.foreshore['y']])
             combined_dense_points_array['Z'] = numpy.concatenate([self.dense_dem.points['z'], self.reference_dem.land['z'], self.reference_dem.foreshore['z']])
             '''
-            # Get all DEM values
             combined_dense_points_array = numpy.empty([len(self.reference_dem.land['x']) + len(self.reference_dem.foreshore['x'])],
                                                        dtype=[('X', numpy.float64), ('Y', numpy.float64), ('Z', numpy.float64)])
             combined_dense_points_array['X'] = numpy.concatenate([self.reference_dem.land['x'], self.reference_dem.foreshore['x']])
             combined_dense_points_array['Y'] = numpy.concatenate([self.reference_dem.land['y'], self.reference_dem.foreshore['y']])
             combined_dense_points_array['Z'] = numpy.concatenate([self.reference_dem.land['z'], self.reference_dem.foreshore['z']])
             
-            ### Create dense raster - note currently involves writing out a temp file
-            temp_dem_file = pathlib.Path(self.instructions['instructions']['data_paths']['tmp_raster'])
-            if temp_dem_file.exists():
-                temp_dem_file.unlink()
-            pdal_pipeline_instructions = [
-                {"type":  "writers.gdal", "resolution": self.catchment_geometry.resolution, "gdalopts": "a_srs=EPSG:" + str(self.catchment_geometry.crs), "output_type":["idw"], 
-                 "filename": str(temp_dem_file), 
-                 "window_size": window_size, "power": idw_power, "radius": radius, 
-                 "origin_x": self.dense_dem.raster_origin[0], "origin_y": self.dense_dem.raster_origin[1], 
-                 "width": self.dense_dem.raster_size[0], "height": self.dense_dem.raster_size[1]}
-            ]
-            
-            pdal_pipeline = pdal.Pipeline(json.dumps(pdal_pipeline_instructions), [combined_dense_points_array])
-            pdal_pipeline.execute();
-            
-            ### load in dense DEM - currently add the same as lidar. In future may want to treat differently - add with a separate routetine to add tile
-            metadata=json.loads(pdal_pipeline.get_metadata())
-            self.dense_dem.add_tile(metadata['metadata']['writers.gdal']['filename'][0])
+            # Create dem at required resolution from reference dem and add to overall dem - except where tile data exists. 
+            self.dense_dem.add_tile(combined_dense_points_array, window_size, idw_power, radius)
         
         ### Load in bathy
         z_label = self.instructions['instructions']['instructions']['bathymetry_contours_z_label'] if  \

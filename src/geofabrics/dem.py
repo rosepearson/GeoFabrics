@@ -90,6 +90,8 @@ class DenseDem:
         self.catchment_geometry = catchment_geometry
         self._dem = None
         
+        self._temp_dem_file = pathlib.Path(temp_raster_path)
+        
         self.raster_origin = None
         self.raster_size = None
         
@@ -99,9 +101,9 @@ class DenseDem:
         
         self._points = None
         
-        self._set_up(temp_raster_path)
+        self._set_up()
         
-    def _set_up(self, temp_raster_path: typing.Union[str, pathlib.Path]):
+    def _set_up(self):
         """ Create the dense DEM to file and define the raster size and origin """
         
         catchment_bounds = self.catchment_geometry.catchment.loc[0].geometry.bounds
@@ -117,7 +119,7 @@ class DenseDem:
         empty_points = numpy.zeros([1], dtype=[('X', numpy.float64), ('Y', numpy.float64), ('Z', numpy.float64)])
         pdal_pipeline_instructions = [
             {"type":  "writers.gdal", "resolution": self.catchment_geometry.resolution, "gdalopts": "a_srs=EPSG:" + str(self.catchment_geometry.crs), 
-             "output_type":["idw"], "filename": str(temp_raster_path), 
+             "output_type":["idw"], "filename": str(self._temp_dem_file), 
              "origin_x": self.raster_origin[0], "origin_y": self.raster_origin[1], 
              "width": self.raster_size[0], "height": self.raster_size[1]}
                 ]
@@ -139,9 +141,38 @@ class DenseDem:
         dem_temp.data[0] = numpy.nan 
         self._dem = dem_temp.rio.clip(self.catchment_geometry.catchment.geometry)
         
-    def add_tile(self, dem_file: str, method: str = 'first'):
-        """ Set dem crs and trim the dem to size """
-        with rioxarray.rioxarray.open_rasterio(dem_file, masked=True) as tile:
+    def _create_dem_tile_with_pdal(self, tile_points: numpy.ndarray, window_size: int, idw_power: int, radius: float):
+        """ Create a DEM tile from a LiDAR tile over a specified region.
+        Currently PDAL writers.gdal is used and a temporary file is written out.
+        In future another approach may be used. """
+        
+        if self._temp_dem_file.exists():
+            self._temp_dem_file.unlink()
+        pdal_pipeline_instructions = [
+            {"type":  "writers.gdal", "resolution": self.catchment_geometry.resolution, "gdalopts": "a_srs=EPSG:" + str(self.catchment_geometry.crs), "output_type":["idw"], 
+             "filename": str(self._temp_dem_file), 
+             "window_size": window_size, "power": idw_power, "radius": radius, 
+             "origin_x": self.raster_origin[0], "origin_y": self.raster_origin[1], 
+             "width": self.raster_size[0], "height": self.raster_size[1]}
+        ]
+        
+        pdal_pipeline = pdal.Pipeline(json.dumps(pdal_pipeline_instructions), [tile_points])
+        pdal_pipeline.execute();
+        
+        # assert the temp file name is used
+        metadata=json.loads(pdal_pipeline.get_metadata())
+        assert str(self._temp_dem_file) == metadata['metadata']['writers.gdal']['filename'][0], "The DEM tile has been written out in an unexpected " \
+            + f"location. It has been witten out to {metadata['metadata']['writers.gdal']['filename'][0]} instead of {self._temp_dem_file}"
+        
+    def add_tile(self, tile_points: numpy.ndarray, window_size: int, idw_power: int, radius: float, method: str = 'first'):
+        """ Create the DEM tile and then update the overall DEM with the tile.
+        
+        Ensure the tile dem crs is set and also trim the tile dem prior to adding"""
+        
+        self._create_dem_tile_with_pdal(tile_points, window_size, idw_power, radius)
+        
+        # load generated tile
+        with rioxarray.rioxarray.open_rasterio(self._temp_dem_file, masked=True) as tile:
             tile.load()
         tile.rio.set_crs(self.catchment_geometry.crs)
         
@@ -166,7 +197,7 @@ class DenseDem:
     
     @property
     def points(self):
-        """ Return the dense dem values as as a point list """
+        """ Return the dense dem values as as a point list"""
         
         if self._points is None:
             grid_x, grid_y = numpy.meshgrid(self.dem.x, self.dem.y)
