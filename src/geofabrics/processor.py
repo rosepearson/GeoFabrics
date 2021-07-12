@@ -40,6 +40,8 @@ class GeoFabricsGenerator:
         lidar_dataset_index = 0
         
         ### instruction values and other set values
+        verbose = self.instructions['instructions']['instructions']['verbose'] if 'verbose' in \
+            self.instructions['instructions']['instructions'] else True
         area_to_drop = self.instructions['instructions']['instructions']['filter_lidar_holes_area'] if  \
             'filter_lidar_holes_area' in self.instructions['instructions']['instructions'] else None
         
@@ -58,7 +60,7 @@ class GeoFabricsGenerator:
         
         ### Ensure LiDAR data is downloaded within the catchment region from OpenTopography
         if 'local_cache' in self.instructions['instructions']['data_paths']:  # download from OpenTopography - then get the local file path
-            self.lidar_fetcher = lidar_fetch.OpenTopography(self.catchment_geometry, self.instructions['instructions']['data_paths']['local_cache'], verbose = True)
+            self.lidar_fetcher = lidar_fetch.OpenTopography(self.catchment_geometry, self.instructions['instructions']['data_paths']['local_cache'], verbose = verbose)
             self.lidar_fetcher.run()
             
             # take the first 
@@ -70,7 +72,9 @@ class GeoFabricsGenerator:
         self.dense_dem = dem.DenseDem(self.catchment_geometry, self.instructions['instructions']['data_paths']['tmp_raster'])
             
         ### Load in LiDAR files using PDAL - in turn - and add to the dense_dem
-        for lidar_file_path in lidar_file_paths:
+        for index, lidar_file_path in enumerate(lidar_file_paths):
+            if verbose:
+                print(f"Looking at LiDAR tile {index} of {len(lidar_file_paths)}: {lidar_file_path}")
             
             catchment_lidar = lidar.CatchmentLidar(lidar_file_path, self.catchment_geometry)
             
@@ -94,7 +98,6 @@ class GeoFabricsGenerator:
             metadata=json.loads(pdal_pipeline.get_metadata())
             self.dense_dem.add_tile(metadata['metadata']['writers.gdal']['filename'][0])
             
-            break
         
         ### Load in reference DEM if any land/foreshore not covered by lidar
         self.catchment_geometry.filter_lidar_extents_for_holes() 
