@@ -115,6 +115,7 @@ class GeoFabricsGenerator:
 
             # combine rasters
             self.result_dem = rioxarray.merge.merge_arrays([self.dense_dem.dem, self.dense_dem.offshore]) # should be the same for either (method='first' or 'last')
+        else:
             self.result_dem = self.dense_dem.dem
 
         self.result_dem = self.result_dem.rio.interpolate_na()  
