@@ -14,14 +14,14 @@ from . import geometry
 
 
 class CatchmentLidar:
-    """ A class to manage lidar data in a catchment context
+    """ A class to manage LiDAR data in a catchment context
 
     Specifically, this supports the addition of LiDAR data tile by tile.
     """
 
     def __init__(self, catchment_geometry: geometry.CatchmentGeometry, area_to_drop: float = None,
                  verbose: bool = True):
-        """ Load in lidar with relevant processing chain """
+        """ Load in LiDAR with relevant processing chain """
 
         self.catchment_geometry = catchment_geometry
         self.area_to_drop = area_to_drop
@@ -32,9 +32,9 @@ class CatchmentLidar:
         self._extents = None
 
     def load_tile(self, lidar_file: typing.Union[str, pathlib.Path]):
-        """ Function loading in the lidar
+        """ Function loading in the LiDAR
 
-        This updates the lidar extents in the catchment_geometry
+        This updates the LiDAR extents in the catchment_geometry
 
         In future we may want to have the option of filtering by foreshore / land """
 
@@ -58,7 +58,7 @@ class CatchmentLidar:
         self._tile_array = self._pdal_pipeline.arrays[0]
 
     def _update_extents(self, tile_extents_string: str):
-        """ Update the extents of all lidar tiles updated """
+        """ Update the extents of all LiDAR tiles updated """
 
         tile_extents = shapely.wkt.loads(tile_extents_string)
 
@@ -78,13 +78,13 @@ class CatchmentLidar:
 
     @property
     def tile_array(self):
-        """ function returing the lidar point values. """
+        """ function returning the LiDAR point values. """
 
         return self._tile_array
 
     @tile_array.deleter
     def tile_array(self):
-        """ Delete the lidar array and pdal_pipeline """
+        """ Delete the LiDAR array and pdal_pipeline """
 
         # Set to None and let automatic garbage collection free memory
         self._tile_array = None
@@ -92,7 +92,7 @@ class CatchmentLidar:
 
     @property
     def extents(self):
-        """ The combined extents for all added lidar tiles """
+        """ The combined extents for all added LiDAR tiles """
 
         assert self._extents is not None, "No tiles have been added yet"
         return self._extents

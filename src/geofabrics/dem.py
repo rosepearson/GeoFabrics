@@ -18,15 +18,14 @@ from . import geometry
 class ReferenceDem:
     """ A class to manage the reference DEM in a catchment context
 
-    Specifically, clip within the catchment land and foreshore. There is the
-    option to clip outside any LiDAR using the optional 'exclusion_extent' input.
+    Specifically, clip within the catchment land and foreshore. There is the option to clip outside any LiDAR using the
+    optional 'exclusion_extent' input.
 
-    If set_foreshore is True all positive DEM values in the foreshore are set
-    to zero. """
+    If set_foreshore is True all positive DEM values in the foreshore are set to zero. """
 
     def __init__(self, dem_file, catchment_geometry: geometry.CatchmentGeometry, set_foreshore: bool = True,
                  exclusion_extent=None):
-        """ Load in the reference dem, clip and extract points """
+        """ Load in the reference DEM, clip and extract points """
 
         self.catchment_geometry = catchment_geometry
         self.set_foreshore = set_foreshore
@@ -39,7 +38,7 @@ class ReferenceDem:
         self._set_up(exclusion_extent)
 
     def _set_up(self, exclusion_extent):
-        """ Set dem crs and trim the dem to size """
+        """ Set DEM CRS and trim the DEM to size """
 
         self._dem.rio.set_crs(self.catchment_geometry.crs)
 
@@ -54,7 +53,7 @@ class ReferenceDem:
         self._extract_points()
 
     def _extract_points(self):
-        """ Create a points list from the dem """
+        """ Create a points list from the DEM """
 
         land_dem = self._dem.rio.clip(self.catchment_geometry.land.geometry)
         foreshore_dem = self._dem.rio.clip(self.catchment_geometry.foreshore.geometry)
@@ -109,11 +108,9 @@ class ReferenceDem:
 class DenseDem:
     """ A class to manage the dense DEM in a catchment context.
 
-    The dense DEM is made up of tiles created from dense point data
-     - Either LiDAR point clouds, or a reference DEM
+    The dense DEM is made up of tiles created from dense point data - Either LiDAR point clouds, or a reference DEM
 
-    And also interpolated values from bathymentry contours offshore and
-    outside all lidar tiles. """
+    And also interpolated values from bathymentry contours offshore and outside all LiDAR tiles. """
 
     def __init__(self, catchment_geometry: geometry.CatchmentGeometry,
                  temp_raster_path: typing.Union[str, pathlib.Path], verbose: bool = True):
@@ -135,7 +132,7 @@ class DenseDem:
         self._set_up()
 
     def _set_up(self):
-        """ Create the dense DEM to filefill and define the raster size and origin """
+        """ Create the dense DEM to fill and define the raster size and origin """
 
         catchment_bounds = self.catchment_geometry.catchment.loc[0].geometry.bounds
         self.raster_origin = [catchment_bounds[0],
@@ -168,19 +165,18 @@ class DenseDem:
         if self.raster_origin[0] != dem_temp.x.data.min() or self.raster_origin[1] != dem_temp.y.data.min():
             raster_origin = [dem_temp.x.data.min() - self.catchment_geometry.resolution/2,
                              dem_temp.y.data.min() - self.catchment_geometry.resolution/2]
-            print('In process: The generated dense DEM has an origin differing from ' +
-                  'the one specified. Updating the catchment geometry raster origin from '
-                  + str(self.raster_origin) + ' to ' + str(raster_origin))
+            print("In process: The generated dense DEM has an origin differing from the one specified. Updating the " +
+                  f"catchment geometry raster origin from {self.raster_origin} to {raster_origin}")
             self.raster_origin = raster_origin
 
-        # set empty dem - all nan - to add tiles too
+        # set empty DEM - all NaN - to add tiles too
         dem_temp.data[0] = numpy.nan
         self._dem = dem_temp.rio.clip(self.catchment_geometry.catchment.geometry)
 
     def _create_dem_tile_with_pdal(self, tile_points: numpy.ndarray, window_size: int, idw_power: int, radius: float):
         """ Create a DEM tile from a LiDAR tile over a specified region.
-        Currently PDAL writers.gdal is used and a temporary file is written out.
-        In future another approach may be used. """
+        Currently PDAL writers.gdal is used and a temporary file is written out. In future another approach may be used.
+        """
 
         if self._temp_dem_file.exists():
             self._temp_dem_file.unlink()
@@ -206,7 +202,7 @@ class DenseDem:
                  method: str = 'first'):
         """ Create the DEM tile and then update the overall DEM with the tile.
 
-        Ensure the tile dem crs is set and also trim the tile dem prior to adding. """
+        Ensure the tile DEM CRS is set and also trim the tile DEM prior to adding. """
 
         if len(tile_points) == 0:
             if self.verbose:
@@ -220,28 +216,27 @@ class DenseDem:
             tile.load()
         tile.rio.set_crs(self.catchment_geometry.crs)
 
-        # ensure the tile is lined up with the whole dense dem - i.e. that that raster orgin values match
+        # ensure the tile is lined up with the whole dense DEM - i.e. that that raster origin values match
         raster_origin = [tile.x.data.min() - self.catchment_geometry.resolution/2,
                          tile.y.data.min() - self.catchment_geometry.resolution/2]
         assert self.raster_origin[0] == raster_origin[0] and self.raster_origin[1] == raster_origin[1], "The " + \
-            f"generated tile is not aligned with the overall dense dem. The DEM raster origin is {raster_origin} " + \
+            f"generated tile is not aligned with the overall dense DEM. The DEM raster origin is {raster_origin} " + \
             f"instead of {self.raster_origin}"
 
         # trim to only include cells within catchment
         tile = tile.rio.clip(self.catchment_geometry.catchment.geometry)
         self._dem = rioxarray.merge.merge_arrays([self._dem, tile], method=method)
 
-        self._points = None  # ensure the poins list will be recalculated as another tile has been added
+        self._points = None  # ensure the points list will be recalculated as another tile has been added
 
     @property
     def dem(self):
-        """ Return the dem """
+        """ Return the DEM """
 
         return self._dem
 
     def _offshore_edge(self, lidar_extents):
-        """ Return the offshore edge cells to be used for offshore
-        interpolation """
+        """ Return the offshore edge cells to be used for offshore interpolation """
 
         offshore_dense_data_edge = self.catchment_geometry.offshore_dense_data_edge(lidar_extents)
 
@@ -257,7 +252,7 @@ class DenseDem:
         return offshore_edge
 
     def interpolate_offshore(self, bathy_contours, lidar_extents):
-        """ Performs interpolation offshore outside lidar extents using the scipy Rbf function. """
+        """ Performs interpolation offshore outside LiDAR extents using the SciPy RBF function. """
 
         offshore_edge = self._offshore_edge(lidar_extents)
         x = numpy.concatenate([offshore_edge['x'], bathy_contours.x])
@@ -273,7 +268,7 @@ class DenseDem:
         self._offshore.data[0] = 0  # set all to zero then clip out dense region where we don't need to interpolate
         self._offshore = self._offshore.rio.clip(offshore_no_dense_data.geometry)
 
-        # Interpolate over offshore region outside lidar extents
+        # Interpolate over offshore region outside LiDAR extents
         grid_x, grid_y = numpy.meshgrid(self._offshore.x, self._offshore.y)
         flat_z = self._offshore.data[0].flatten()
         mask_z = ~numpy.isnan(flat_z)
@@ -284,7 +279,7 @@ class DenseDem:
 
     @property
     def offshore(self):
-        """ Return the offshore dem - must be called after 'intepolate_offshore()' """
+        """ Return the offshore DEM - must be called after 'intepolate_offshore()' """
 
         assert self._offshore_interpolated is True, "The offshore has to be interpolated explicitly"
 

@@ -20,15 +20,15 @@ from src.geofabrics import processor
 
 
 class Test1(unittest.TestCase):
-    """ A class to test the basic dem generation pipeline for a simple example with land, offshore, a reference DEM and
-    lidar using the data specified in the test1/instruction.json """
+    """ A class to test the basic DEM generation pipeline for a simple example with land, offshore, a reference DEM and
+    LiDAR using the data specified in the test1/instruction.json """
 
     @classmethod
     def setUpClass(cls):
         """ Create a cache directory and CatchmentGeometry object for use in the tests and also download the files used
         in the tests. """
 
-        # load in insruction file
+        # load in instruction file
         # load in the test instructions
         file_path = pathlib.Path().cwd() / pathlib.Path("tests/test1/instruction.json")
         with open(file_path, 'r') as file_pointer:
@@ -123,18 +123,18 @@ class Test1(unittest.TestCase):
         pdal_pipeline.execute()
 
     def test_result_dem(self):
-        """ A basic comparison between the generated and benchmark dem """
+        """ A basic comparison between the generated and benchmark DEM """
 
         # Run pipeline
         runner = processor.GeoFabricsGenerator(self.instructions)
         runner.run()
 
-        # load in bencmark dem
+        # load in benchmark DEM
         with rioxarray.rioxarray.open_rasterio(self.instructions['instructions']['data_paths']['benchmark_dem'],
                                                masked=True) as benchmark_dem:
             benchmark_dem.load()
 
-        # compare the generated and benchmark dems
+        # compare the generated and benchmark DEMs
         numpy.testing.assert_array_almost_equal(runner.result_dem.data, benchmark_dem.data,
                                                 err_msg="The generated result_dem has different data from the " +
                                                 "benchmark_dem")

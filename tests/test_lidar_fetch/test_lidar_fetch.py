@@ -40,7 +40,7 @@ class OpenTopographyTest(unittest.TestCase):
         # define cache location - and catchment dirs
         cls.cache_dir = pathlib.Path(instructions['instructions']['data_paths']['local_cache'])
 
-        # ensure the cache directory doesn't exist - i.e. clean up from last test occured correctly
+        # ensure the cache directory doesn't exist - i.e. clean up from last test occurred correctly
         if cls.cache_dir.exists():
             shutil.rmtree(cls.cache_dir)
         cls.cache_dir.mkdir()
@@ -87,7 +87,7 @@ class OpenTopographyTest(unittest.TestCase):
                          f"{len(list(self.cache_dir.glob('*/**')))} list {list(self.cache_dir.glob('*/**'))}")
 
         self.assertEqual(len([file for file in self.cache_dir.iterdir() if file.is_dir() and file == dataset_dir]), 1,
-                         f"Only the {self.DATASET} directory should have been downloaded. Insead we have: " +
+                         f"Only the {self.DATASET} directory should have been downloaded. Instead we have: " +
                          f"{[file for file in self.cache_dir.iterdir() if file.is_dir()]}")
 
     def test_correct_files_downloaded(self):
@@ -112,7 +112,7 @@ class OpenTopographyTest(unittest.TestCase):
 
         # check sizes are correct
         self.assertTrue(numpy.all([downloaded_file.stat().st_size == self.SIZES[i] for i, downloaded_file in
-                                   enumerate(downloaded_files)]), "There is a missmatch between the size of the " +
+                                   enumerate(downloaded_files)]), "There is a miss-match between the size of the " +
                         f"downloaded files {[downloaded_file.stat().st_size for downloaded_file in downloaded_files]}" +
                         f" and the expected sizes of {self.SIZES}")
 

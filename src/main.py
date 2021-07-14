@@ -24,17 +24,17 @@ def parse_args():
 
 
 def launch_processor(args):
-    """ Run the pipeline over ht especified instructions and compare the result to the benchmark """
+    """ Run the pipeline over the specified instructions and compare the result to the benchmark """
 
     # load the instructions
     with open(args.instructions, 'r') as file_pointer:
         instructions = json.load(file_pointer)
 
-    # ru the pipeline
+    # run the pipeline
     runner = processor.GeoFabricsGenerator(instructions)
     runner.run()
 
-    # load in bencmark dem and compare - if specified in the insturctions
+    # load in benchmark DEM and compare - if specified in the instructions
     if 'benchmark_dem' in instructions['instructions']['data_paths']:
         with rioxarray.rioxarray.open_rasterio(instructions['instructions']['data_paths']['benchmark_dem'],
                                                masked=True) as benchmark_dem:
@@ -42,7 +42,7 @@ def launch_processor(args):
         print(f"Comparing the generated DEM saved at {instructions['instructions']['data_paths']['result_dem']} " +
               f"against the benchmark DEM stored {instructions['instructions']['data_paths']['benchmark_dem']}\n Any " +
               "difference will be reported.")
-        # compare the generated and benchmark dems - plot
+        # compare the generated and benchmark DEMs - plot
         diff = benchmark_dem.copy()
         diff.data = runner.result_dem.data - benchmark_dem.data
 

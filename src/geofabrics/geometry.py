@@ -12,11 +12,10 @@ import numpy
 class CatchmentGeometry:
     """ A class defining all relevant regions in a catchment
 
-    Specifically, this defines regions like 'land', 'foreshore', 'offshore',
-    and ensures all regions are defined in the same crs.
+    Specifically, this defines regions like 'land', 'foreshore', 'offshore', and ensures all regions are defined in the
+    same CRS.
 
-    It also supports functions for determining how much of a aregion is
-    outside an exclusion zone. """
+    It also supports functions for determining how much of a a region is outside an exclusion zone. """
 
     def __init__(self, catchment_file: str, land_file: str, crs, resolution, foreshore_buffer=2):
         self._catchment = geopandas.read_file(catchment_file)
@@ -34,7 +33,7 @@ class CatchmentGeometry:
         self._set_up()
 
     def _set_up(self):
-        """ Defone the main catchment regions and set crs """
+        """ Define the main catchment regions and set CRS """
 
         self._catchment = self._catchment.to_crs(self.crs)
         self._land = self._land.to_crs(self.crs)
@@ -91,7 +90,7 @@ class CatchmentGeometry:
         return self._offshore
 
     def land_and_foreshore_without_lidar(self, lidar_extents):
-        """ Return the land and foreshore region without lidar """
+        """ Return the land and foreshore region without LiDAR """
 
         land_and_foreshore_with_lidar = geopandas.clip(lidar_extents, self.land_and_foreshore)
         land_and_foreshore_without_lidar = geopandas.overlay(
@@ -100,7 +99,7 @@ class CatchmentGeometry:
         return land_and_foreshore_without_lidar
 
     def offshore_without_lidar(self, lidar_extents):
-        """ Return the offshore region without lidar """
+        """ Return the offshore region without LiDAR """
 
         offshore_with_lidar = geopandas.clip(lidar_extents, self.offshore)
         offshore_without_lidar = geopandas.overlay(self.offshore, offshore_with_lidar, how="difference")
@@ -108,8 +107,7 @@ class CatchmentGeometry:
         return offshore_without_lidar
 
     def offshore_dense_data_edge(self, lidar_extents):
-        """ Return the offshore edge of where there is 'dense data' i.e. LiDAR
-        or reference DEM"""
+        """ Return the offshore edge of where there is 'dense data' i.e. LiDAR or reference DEM """
 
         assert len(lidar_extents) == 1, "LiDAR extents has a length greater than 1"
 
@@ -131,7 +129,7 @@ class CatchmentGeometry:
         return offshore_dense_data_edge
 
     def offshore_no_dense_data(self, lidar_extents):
-        """ Return the offshore area where there is no 'dense data' i.e. LiDAR"""
+        """ Return the offshore area where there is no 'dense data' i.e. LiDAR """
 
         assert len(lidar_extents) == 1, "LiDAR extents has a length greater than 1"
 
@@ -147,8 +145,7 @@ class CatchmentGeometry:
 class BathymetryContours:
     """ A class working with bathymetry contours.
 
-    Assumes contours to be sampled to the catchment_geometry resolution
-    """
+    Assumes contours to be sampled to the catchment_geometry resolution """
 
     def __init__(self, contour_file: str, catchment_geometry: CatchmentGeometry, z_label=None, exclusion_extent=None):
         self._contour = geopandas.read_file(contour_file)
@@ -165,7 +162,7 @@ class BathymetryContours:
         self._set_up(exclusion_extent)
 
     def _set_up(self, exclusion_extent):
-        """ Set crs and clip to catchment """
+        """ Set CRS and clip to catchment """
 
         self._contour = self._contour.to_crs(self.catchment_geometry.crs)
 
@@ -186,7 +183,7 @@ class BathymetryContours:
 
     @property
     def points(self):
-        """ Return the sampled points colume with points along each contour """
+        """ Return the sampled points column with points along each contour """
 
         return self._contour[self._points_label]
 
@@ -233,7 +230,7 @@ class BathymetryPoints:
         self._set_up(exclusion_extent)
 
     def _set_up(self, exclusion_extent):
-        """ Set crs and clip to catchment """
+        """ Set CRS and clip to catchment """
 
         self._points = self._points.to_crs(self.catchment_geometry.crs)
 
@@ -291,7 +288,7 @@ class TileInfo:
         self._set_up()
 
     def _set_up(self):
-        """ Set crs and select all tiles partially within the catchment """
+        """ Set CRS and select all tiles partially within the catchment """
 
         self._tile_info = self._tile_info.to_crs(self.catchment_geometry.crs)
         self._tile_info = geopandas.sjoin(self._tile_info, self.catchment_geometry.catchment)
@@ -299,6 +296,6 @@ class TileInfo:
 
     @property
     def tile_names(self):
-        """ Return the names of all tiles within the catchment"""
+        """ Return the names of all tiles within the catchment """
 
         return self._tile_info['Filename']

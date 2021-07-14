@@ -32,7 +32,7 @@ class OpenTopography:
     def __init__(self, catchment_geometry: geometry.CatchmentGeometry, cache_path: typing.Union[str, pathlib.Path],
                  redownload_files: bool = False, download_limit_gbytes: typing.Union[int, float] = 100,
                  verbose: bool = False):
-        """ Load in lidar with relevant processing chain.
+        """ Load in LiDAR with relevant processing chain.
 
         Note in case of multiple datasets could select by name, spatial extent, or most recent. download_size is in GB.
         """
@@ -142,7 +142,7 @@ class OpenTopography:
         return lidar_size_bytes
 
     def _download_tiles_in_catchment(self, client, dataset_prefix, tile_info):
-        """ Download the lidar data within the catchment """
+        """ Download the LiDAR data within the catchment """
 
         for tile_name in tile_info.tile_names:
             file_prefix = f"{dataset_prefix}/{tile_name}"
