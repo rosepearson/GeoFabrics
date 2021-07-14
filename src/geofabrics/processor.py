@@ -4,8 +4,6 @@ Created on Fri Jun 18 10:52:49 2021
 
 @author: pearsonra
 """
-import rioxarray
-import rioxarray.merge
 import numpy
 import json
 import pathlib
@@ -59,15 +57,16 @@ class GeoFabricsGenerator:
         idw_power = 2
 
         # Get LiDAR data file-list
-        # download from OpenTopography - then get the local file path
         if 'local_cache' in self.instructions['instructions']['data_paths']:
+            # download from OpenTopography - then get the local file path
             self.lidar_fetcher = lidar_fetch.OpenTopography(
                 self.catchment_geometry, self.instructions['instructions']['data_paths']['local_cache'],
                 verbose=verbose)
             self.lidar_fetcher.run()
             lidar_file_paths = list(pathlib.Path(self.lidar_fetcher.cache_path /
                                     self.lidar_fetcher.dataset_prefixes[lidar_dataset_index]).glob('*.laz'))
-        else:  # get the specified file paths from the instructions
+        else:
+            # get the specified file paths from the instructions
             lidar_file_paths = self.instructions['instructions']['data_paths']['lidars']
 
         # setup dense DEM and catchment LiDAR objects
@@ -120,11 +119,8 @@ class GeoFabricsGenerator:
             # interpolate
             self.dense_dem.interpolate_offshore(self.bathy_contours, self.catchment_lidar.extents)
 
-            # combine rasters - should give the same for either (method='first' or 'last')
-            self.result_dem = rioxarray.merge.merge_arrays([self.dense_dem.dem, self.dense_dem.offshore])
-        else:
-            self.result_dem = self.dense_dem.dem
-
+        # fill combined dem
+        self.result_dem = self.dense_dem.dem
         self.result_dem = self.result_dem.rio.interpolate_na()
         self.result_dem = self.result_dem.rio.clip(self.catchment_geometry.catchment.geometry)
 

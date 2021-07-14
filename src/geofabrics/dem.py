@@ -5,6 +5,7 @@ Created on Fri Jun 18 10:52:49 2021
 @author: pearsonra
 """
 import rioxarray
+import rioxarray.merge
 import numpy
 import pdal
 import json
@@ -117,7 +118,7 @@ class DenseDem:
         """ Setup base DEM to add future tiles too """
 
         self.catchment_geometry = catchment_geometry
-        self._dem = None
+        self._tiles = None
 
         self._temp_dem_file = pathlib.Path(temp_raster_path)
 
@@ -127,7 +128,8 @@ class DenseDem:
         self.raster_size = None
 
         self._offshore = None
-        self._offshore_interpolated = False
+
+        self._dem = None
 
         self._set_up()
 
@@ -171,7 +173,7 @@ class DenseDem:
 
         # set empty DEM - all NaN - to add tiles too
         dem_temp.data[0] = numpy.nan
-        self._dem = dem_temp.rio.clip(self.catchment_geometry.catchment.geometry)
+        self._tiles = dem_temp.rio.clip(self.catchment_geometry.catchment.geometry)
 
     def _create_dem_tile_with_pdal(self, tile_points: numpy.ndarray, window_size: int, idw_power: int, radius: float):
         """ Create a DEM tile from a LiDAR tile over a specified region.
@@ -225,14 +227,21 @@ class DenseDem:
 
         # trim to only include cells within catchment
         tile = tile.rio.clip(self.catchment_geometry.catchment.geometry)
-        self._dem = rioxarray.merge.merge_arrays([self._dem, tile], method=method)
+        self._tiles = rioxarray.merge.merge_arrays([self._tiles, tile], method=method)
 
-        self._points = None  # ensure the points list will be recalculated as another tile has been added
+        # ensure the dem will be recalculated as another tile has been added
+        self._dem = None
 
     @property
     def dem(self):
-        """ Return the DEM """
+        """ Return the combined DEM from tiles and any interpolated offshore values """
 
+        if self._dem is None:
+            if self._offshore is None:
+                self._dem = self._tiles
+            else:
+                # should give the same for either (method='first' or 'last') as values in overlap should be the same
+                self._dem = rioxarray.merge.merge_arrays([self._tiles, self._offshore])
         return self._dem
 
     def _offshore_edge(self, lidar_extents):
@@ -240,7 +249,7 @@ class DenseDem:
 
         offshore_dense_data_edge = self.catchment_geometry.offshore_dense_data_edge(lidar_extents)
 
-        offshore_edge_dem = self._dem.rio.clip(offshore_dense_data_edge.geometry)
+        offshore_edge_dem = self._tiles.rio.clip(offshore_dense_data_edge.geometry)
         offshore_grid_x, offshore_grid_y = numpy.meshgrid(offshore_edge_dem.x, offshore_edge_dem.y)
         offshore_flat_z = offshore_edge_dem.data[0].flatten()
         offshore_mask_z = ~numpy.isnan(offshore_flat_z)
@@ -264,7 +273,7 @@ class DenseDem:
 
         # setup the empty offshore area ready for interpolation
         offshore_no_dense_data = self.catchment_geometry.offshore_no_dense_data(lidar_extents)
-        self._offshore = self.dem.rio.clip(self.catchment_geometry.offshore.geometry)
+        self._offshore = self._tiles.rio.clip(self.catchment_geometry.offshore.geometry)
         self._offshore.data[0] = 0  # set all to zero then clip out dense region where we don't need to interpolate
         self._offshore = self._offshore.rio.clip(offshore_no_dense_data.geometry)
 
@@ -275,12 +284,5 @@ class DenseDem:
         flat_z[mask_z] = rbf_function(grid_x.flatten()[mask_z], grid_y.flatten()[mask_z])
         self._offshore.data[0] = flat_z.reshape(self._offshore.data[0].shape)
 
-        self._offshore_interpolated = True
-
-    @property
-    def offshore(self):
-        """ Return the offshore DEM - must be called after 'intepolate_offshore()' """
-
-        assert self._offshore_interpolated is True, "The offshore has to be interpolated explicitly"
-
-        return self._offshore
+        # ensure the dem will be recalculated as the offshore has been interpolated
+        self._dem = None
