@@ -78,7 +78,7 @@ class CatchmentLidar:
 
     @property
     def tile_array(self):
-        """ function returning the LiDAR point values. """
+        """ Function returning the LiDAR point values. """
 
         return self._tile_array
 
