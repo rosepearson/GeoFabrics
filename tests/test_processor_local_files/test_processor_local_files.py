@@ -19,7 +19,7 @@ import pdal
 from src.geofabrics import processor
 
 
-class Test1(unittest.TestCase):
+class ProcessorLocalFilesTest(unittest.TestCase):
     """ A class to test the basic DEM generation pipeline for a simple example with land, offshore, a reference DEM and
     LiDAR using the data specified in the test1/instruction.json """
 
@@ -28,14 +28,15 @@ class Test1(unittest.TestCase):
         """ Create a cache directory and CatchmentGeometry object for use in the tests and also download the files used
         in the tests. """
 
-        # load in instruction file
+        test_path = pathlib.Path().cwd() / pathlib.Path("tests/test_processor_local_files")
+
         # load in the test instructions
-        file_path = pathlib.Path().cwd() / pathlib.Path("tests/test1/instruction.json")
-        with open(file_path, 'r') as file_pointer:
+        instruction_file_path = test_path / "instruction.json"
+        with open(instruction_file_path, 'r') as file_pointer:
             cls.instructions = json.load(file_pointer)
 
         # remove any files from last test in the cache directory
-        cls.cache_dir = pathlib.Path().cwd() / pathlib.Path("tests/test1/data")
+        cls.cache_dir = test_path / "data"
         assert cls.cache_dir.exists(), "The data directory that should include the comparison benchmark dem file " + \
             "doesn't exist"
         benchmark_file = cls.cache_dir / "benchmark_dem.nc"
