@@ -12,7 +12,7 @@
 	  "result_dem": "tests\\test_processor_remote_tiles\\data\\test_dem.nc",
 	  "benchmark_dem": "tests\\test_processor_remote_tiles\\data\\benchmark_dem.nc"
     },
-    "instructions": {
+    "general": {
       "set_dem_shoreline": "True"
     }
   }

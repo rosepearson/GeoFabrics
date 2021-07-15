@@ -29,26 +29,72 @@ class GeoFabricsGenerator:
         self.bathy_contours = None
         self.result_dem = None
 
+    def get_instruction_path(self, key: str) -> str:
+        """ Return the file path from the instruction file. Raise an erro if not in the instructions. """
+
+        assert key in self.instructions['instructions']['data_paths'], "Key missing from data paths"
+        return self.instructions['instructions']['data_paths'][key]
+
+    def get_resolution(self) -> float:
+        """ Return the resolution from the instruction file. Raise an erro if not in the instructions. """
+
+        assert 'resolution' in self.instructions['instructions']['grid_params'], \
+            "'resolution' is not a key-word in the instructions"
+        return self.instructions['instructions']['grid_params']['resolution']
+
+    def get_projection(self) -> float:
+        """ Return the CRS projection from the instruction file. Raise an error if not in the instructions. """
+
+        assert 'projection' in self.instructions['instructions'], \
+            "'projection' is not a key-word in the instructions"
+        return self.instructions['instructions']['projection']
+
+    def get_instruction_general(self, key: str):
+        """ Return the general instruction from the instruction file or return the default value if not specified in
+        the instruction file. """
+
+        defaults = {'filter_lidar_holes_area': None, 'verbose': True, 'set_dem_shoreline': True,
+                    'bathymetry_contours_z_label': None, 'bathymetry_contours_z_label': None}
+
+        assert key in defaults or key in self.instructions['instructions']['general'], f"The key: {key} is missing " \
+            + "from the general instructions, and does not have a default value"
+        if key in self.instructions['instructions']['general']:
+            return self.instructions['instructions']['general'][key]
+        else:
+            return defaults[key]
+
+    def get_lidar_file_list(self, verbose) -> list:
+        """ Load or construct a list of lidar tiles to construct a DEM from. """
+
+        lidar_dataset_index = 0  # currently only support one LiDAR dataset
+
+        if 'local_cache' in self.instructions['instructions']['data_paths']:
+            # download from OpenTopography - then get the local file path
+            self.lidar_fetcher = lidar_fetch.OpenTopography(
+                self.catchment_geometry, self.get_instruction_path('local_cache'), verbose=verbose)
+            self.lidar_fetcher.run()
+            lidar_file_paths = list(pathlib.Path(self.lidar_fetcher.cache_path /
+                                    self.lidar_fetcher.dataset_prefixes[lidar_dataset_index]).glob('*.laz'))
+        else:
+            # get the specified file paths from the instructions
+            lidar_file_paths = self.get_instruction_path('lidars')
+
+        return lidar_file_paths
+
     def run(self):
         """ This method executes the geofabrics generation pipeline to produce geofabric derivatives. """
 
         # Note correctly only consider one LiDAR dataset.
-        lidar_dataset_index = 0
         area_threshold = 10.0/100  # 10%
 
         # load in instruction values or set to defaults
-        verbose = self.instructions['instructions']['instructions']['verbose'] if 'verbose' in \
-            self.instructions['instructions']['instructions'] else True
-        area_to_drop = self.instructions['instructions']['instructions']['filter_lidar_holes_area'] if  \
-            'filter_lidar_holes_area' in self.instructions['instructions']['instructions'] else None
+        verbose = self.get_instruction_general('verbose')
 
         # create the catchment geometry object
-        resolution = self.instructions['instructions']['grid_params']['resolution']
-        catchmet_file_path = self.instructions['instructions']['data_paths']['catchment_boundary']
-        self.catchment_geometry = geometry.CatchmentGeometry(catchmet_file_path,
-                                                             self.instructions['instructions']['data_paths']['land'],
-                                                             self.instructions['instructions']['projection'],
-                                                             resolution,
+        self.catchment_geometry = geometry.CatchmentGeometry(self.get_instruction_path('catchment_boundary'),
+                                                             self.get_instruction_path('land'),
+                                                             self.get_projection(),
+                                                             self.get_resolution(),
                                                              foreshore_buffer=2)
 
         # Define PDAL/GDAL griding parameter values
@@ -56,23 +102,14 @@ class GeoFabricsGenerator:
         window_size = 0
         idw_power = 2
 
-        # Get LiDAR data file-list
-        if 'local_cache' in self.instructions['instructions']['data_paths']:
-            # download from OpenTopography - then get the local file path
-            self.lidar_fetcher = lidar_fetch.OpenTopography(
-                self.catchment_geometry, self.instructions['instructions']['data_paths']['local_cache'],
-                verbose=verbose)
-            self.lidar_fetcher.run()
-            lidar_file_paths = list(pathlib.Path(self.lidar_fetcher.cache_path /
-                                    self.lidar_fetcher.dataset_prefixes[lidar_dataset_index]).glob('*.laz'))
-        else:
-            # get the specified file paths from the instructions
-            lidar_file_paths = self.instructions['instructions']['data_paths']['lidars']
+        # Get LiDAR data file-list - this may involve downloading lidar files
+        lidar_file_paths = self.get_lidar_file_list(verbose)
 
         # setup dense DEM and catchment LiDAR objects
-        self.dense_dem = dem.DenseDem(self.catchment_geometry,
-                                      self.instructions['instructions']['data_paths']['tmp_raster'], verbose=verbose)
-        self.catchment_lidar = lidar.CatchmentLidar(self.catchment_geometry, area_to_drop=area_to_drop, verbose=verbose)
+        self.dense_dem = dem.DenseDem(self.catchment_geometry, self.get_instruction_path('tmp_raster'), verbose=verbose)
+        self.catchment_lidar = lidar.CatchmentLidar(
+            self.catchment_geometry, area_to_drop=self.get_instruction_general('filter_lidar_holes_area'),
+            verbose=verbose)
 
         # Load in LiDAR tiles
         for index, lidar_file_path in enumerate(lidar_file_paths):
@@ -93,13 +130,10 @@ class GeoFabricsGenerator:
         if (self.catchment_geometry.land_and_foreshore_without_lidar(self.catchment_lidar.extents).geometry.area.sum()
                 > self.catchment_geometry.land_and_foreshore.area.sum() * area_threshold):
 
-            # if True set any DEM values used along the foreshore to zero
-            set_dem_foreshore = self.instructions['instructions']['instructions']['set_dem_shoreline'] if  \
-                'set_dem_shoreline' in self.instructions['instructions']['instructions'] else True
-
             # Load in background DEM - cut away within the LiDAR extents
-            self.reference_dem = dem.ReferenceDem(self.instructions['instructions']['data_paths']['reference_dems'][0],
-                                                  self.catchment_geometry, set_dem_foreshore,
+            self.reference_dem = dem.ReferenceDem(self.get_instruction_path('reference_dems')[0],
+                                                  self.catchment_geometry,
+                                                  self.get_instruction_general('set_dem_shoreline'),
                                                   exclusion_extent=self.catchment_lidar.extents)
 
             # update the dense DEM with a patch created from the reference DEM where there isn't LiDAR
@@ -110,11 +144,10 @@ class GeoFabricsGenerator:
                 self.catchment_geometry.offshore.area.sum() * area_threshold):
 
             # Load in bathymetry
-            z_label = self.instructions['instructions']['instructions']['bathymetry_contours_z_label'] if  \
-                'bathymetry_contours_z_label' in self.instructions['instructions']['instructions'] else None
             self.bathy_contours = geometry.BathymetryContours(
-                self.instructions['instructions']['data_paths']['bathymetry_contours'][0],
-                self.catchment_geometry, z_label=z_label, exclusion_extent=self.catchment_lidar.extents)
+                self.get_instruction_path('bathymetry_contours')[0], self.catchment_geometry,
+                z_label=self.get_instruction_general('bathymetry_contours_z_label'),
+                exclusion_extent=self.catchment_lidar.extents)
 
             # interpolate
             self.dense_dem.interpolate_offshore(self.bathy_contours, self.catchment_lidar.extents)
@@ -125,4 +158,4 @@ class GeoFabricsGenerator:
         self.result_dem = self.result_dem.rio.clip(self.catchment_geometry.catchment.geometry)
 
         # save results
-        self.result_dem.to_netcdf(self.instructions['instructions']['data_paths']['result_dem'])
+        self.result_dem.to_netcdf(self.get_instruction_path('result_dem'))
