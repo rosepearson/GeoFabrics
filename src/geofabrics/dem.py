@@ -159,7 +159,7 @@ class DenseDem:
         metadata = json.loads(pdal_pipeline.get_metadata())
         assert metadata['metadata']['writers.gdal']['filename'][0] == str(self._temp_dem_file), "The specified  file" \
             + f"file location: {self._temp_dem_file} and written file location: " + \
-            f"{metadata['metadata']['writers.gdal']['filename'][0]} for not match."
+            f"{metadata['metadata']['writers.gdal']['filename'][0]} do not match."
 
         with rioxarray.rioxarray.open_rasterio(str(self._temp_dem_file), masked=True) as dem_temp:
             dem_temp.load()
