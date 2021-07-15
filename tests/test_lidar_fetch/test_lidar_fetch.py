@@ -18,7 +18,7 @@ from src.geofabrics import geometry
 
 
 class OpenTopographyTest(unittest.TestCase):
-    """ A class to test the basic lidar_fetch class OptenTopography functionality by downloading files from
+    """ A class to test the basic lidar_fetch class OpenTopography functionality by downloading files from
     OpenTopography within a small region. All files are deleted after checking their names and size."""
 
     DATASET = "Wellington_2013"
