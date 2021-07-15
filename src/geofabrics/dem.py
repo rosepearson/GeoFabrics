@@ -171,7 +171,7 @@ class DenseDem:
                   f"catchment geometry raster origin from {self.raster_origin} to {raster_origin}")
             self.raster_origin = raster_origin
 
-        # set empty DEM - all NaN - to add tiles too
+        # set empty DEM - all NaN - to add tiles to
         dem_temp.data[0] = numpy.nan
         self._tiles = dem_temp.rio.clip(self.catchment_geometry.catchment.geometry)
 
