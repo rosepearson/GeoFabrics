@@ -30,13 +30,13 @@ class GeoFabricsGenerator:
         self.result_dem = None
 
     def get_instruction_path(self, key: str) -> str:
-        """ Return the file path from the instruction file. Raise an erro if not in the instructions. """
+        """ Return the file path from the instruction file. Raise an error if the key is not in the instructions. """
 
         assert key in self.instructions['instructions']['data_paths'], "Key missing from data paths"
         return self.instructions['instructions']['data_paths'][key]
 
     def get_resolution(self) -> float:
-        """ Return the resolution from the instruction file. Raise an erro if not in the instructions. """
+        """ Return the resolution from the instruction file. Raise an error if not in the instructions. """
 
         assert 'resolution' in self.instructions['instructions']['grid_params'], \
             "'resolution' is not a key-word in the instructions"
@@ -51,7 +51,7 @@ class GeoFabricsGenerator:
 
     def get_instruction_general(self, key: str):
         """ Return the general instruction from the instruction file or return the default value if not specified in
-        the instruction file. """
+        the instruction file. Raise an error if the key is not in the instructions and there is no default value. """
 
         defaults = {'filter_lidar_holes_area': None, 'verbose': True, 'set_dem_shoreline': True,
                     'bathymetry_contours_z_label': None, 'bathymetry_contours_z_label': None}
