@@ -207,7 +207,7 @@ class BathymetryContours:
     def z(self):
         """ The sampled contour z values """
         if self._z is None:
-            # map depth to elevatation
+            # map depth to elevation
             if self.z_label is None:
                 self._z = numpy.concatenate(self.points.apply(
                     lambda row: [row[i].z for i in range(len(row))]).to_list()) * -1
@@ -272,7 +272,7 @@ class BathymetryPoints:
         """ The z values """
 
         if self._z is None:
-            # map depth to elevatation
+            # map depth to elevation
             self._z = self._points.points.apply(lambda row: row['geometry'][0].z, axis=1).to_numpy() * -1
 
         return self._z
