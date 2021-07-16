@@ -12,14 +12,14 @@ import shapely
 import geopandas
 import shutil
 import numpy
+import rioxarray
 
-from src.geofabrics import lidar_fetch
-from src.geofabrics import geometry
+from src.geofabrics import processor
 
 
-class OpenTopographyTest(unittest.TestCase):
-    """ A class to test the basic lidar_fetch class OpenTopography functionality by downloading files from
-    OpenTopography within a small region. All files are deleted after checking their names and size."""
+class ProcessorRemoteTilesTest(unittest.TestCase):
+    """ A class to test the basic processor class Processor functionality for remote tiles by downloading files from
+    OpenTopography within a small region and then generating a DEM. All files are deleted after checking the DEM."""
 
     DATASET = "Wellington_2013"
     FILES = ["ot_CL1_WLG_2013_1km_085033.laz", "ot_CL1_WLG_2013_1km_086033.laz",
@@ -32,49 +32,57 @@ class OpenTopographyTest(unittest.TestCase):
         """ Create a cache directory and CatchmentGeometry object for use in the tests and also download the files used
         in the tests. """
 
+        test_path = pathlib.Path().cwd() / pathlib.Path("tests/test_processor_remote_tiles")
+
         # load in the test instructions
-        file_path = pathlib.Path().cwd() / pathlib.Path("tests/test_lidar_fetch/instruction.json")
-        with open(file_path, 'r') as file_pointer:
-            instructions = json.load(file_pointer)
+        instruction_file_path = test_path / "instruction.json"
+        with open(instruction_file_path, 'r') as file_pointer:
+            cls.instructions = json.load(file_pointer)
 
         # define cache location - and catchment dirs
-        cls.cache_dir = pathlib.Path(instructions['instructions']['data_paths']['local_cache'])
+        cls.cache_dir = pathlib.Path(cls.instructions['instructions']['data_paths']['local_cache'])
 
         # ensure the cache directory doesn't exist - i.e. clean up from last test occurred correctly
-        if cls.cache_dir.exists():
-            shutil.rmtree(cls.cache_dir)
-        cls.cache_dir.mkdir()
+        cls.clean_data_folder()
+
         # create fake catchment boundary
-        x0 = 1764410
+        x0 = 1764864
         y0 = 5470382
         x1 = 1765656
-        y1 = 5471702
+        y1 = 5471304
         catchment = shapely.geometry.Polygon([(x0, y0), (x1, y0), (x1, y1), (x0, y1)])
         catchment = geopandas.GeoSeries([catchment])
-        catchment = catchment.set_crs(instructions['instructions']['projection'])
+        catchment = catchment.set_crs(cls.instructions['instructions']['projection'])
 
-        # save faked catchment boundary
+        # save faked catchment boundary - used as land boundary as well
         catchment_dir = cls.cache_dir / "catchment"
         catchment.to_file(catchment_dir)
         shutil.make_archive(base_name=catchment_dir, format='zip', root_dir=catchment_dir)
         shutil.rmtree(catchment_dir)
 
-        # create a catchment_geometry
-        catchment_dir = pathlib.Path(str(catchment_dir) + ".zip")
-        catchment_geometry = geometry.CatchmentGeometry(catchment_dir, catchment_dir,  # all land
-                                                        instructions['instructions']['projection'],
-                                                        instructions['instructions']['grid_params']['resolution'])
-
-        # Run pipeline - download files
-        runner = lidar_fetch.OpenTopography(catchment_geometry, cls.cache_dir, verbose=True)
+        # Run pipeline - download files and generated DEM
+        runner = processor.GeoFabricsGenerator(cls.instructions)
         runner.run()
 
     @classmethod
     def tearDownClass(cls):
         """ Remove created cache directory and included created and downloaded files at the end of the test. """
 
-        if cls.cache_dir.exists():
-            shutil.rmtree(cls.cache_dir)
+        cls.clean_data_folder()
+
+    @classmethod
+    def clean_data_folder(cls):
+        """ Remove all generated or downloaded files from the data directory """
+
+        assert cls.cache_dir.exists(), "The data directory that should include the comparison benchmark dem file " + \
+            "doesn't exist"
+
+        benchmark_file = cls.cache_dir / "benchmark_dem.nc"
+        for file in cls.cache_dir.glob('*'):  # only files
+            if file != benchmark_file and file.is_file():
+                file.unlink()
+            elif file != benchmark_file and file.is_dir():
+                shutil.rmtree(file)
 
     def test_correct_dataset(self):
         """ A test to see if the correct dataset is downloaded """
@@ -115,6 +123,24 @@ class OpenTopographyTest(unittest.TestCase):
                                    enumerate(downloaded_files)]), "There is a miss-match between the size of the " +
                         f"downloaded files {[downloaded_file.stat().st_size for downloaded_file in downloaded_files]}" +
                         f" and the expected sizes of {self.SIZES}")
+
+    def test_result_dem(self):
+        """ A basic comparison between the generated and benchmark DEM """
+
+        # load in benchmark DEM
+        with rioxarray.rioxarray.open_rasterio(self.instructions['instructions']['data_paths']['benchmark_dem'],
+                                               masked=True) as benchmark_dem:
+            benchmark_dem.load()
+
+        # load in test DEM
+        with rioxarray.rioxarray.open_rasterio(self.instructions['instructions']['data_paths']['result_dem'],
+                                               masked=True) as test_dem:
+            test_dem.load()
+
+        # compare the generated and benchmark DEMs
+        numpy.testing.assert_array_almost_equal(test_dem.data, benchmark_dem.data,
+                                                err_msg="The generated result_dem has different data from the " +
+                                                "benchmark_dem")
 
 
 if __name__ == '__main__':
