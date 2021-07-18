@@ -54,7 +54,7 @@ class GeoFabricsGenerator:
         the instruction file. Raise an error if the key is not in the instructions and there is no default value. """
 
         defaults = {'filter_lidar_holes_area': None, 'verbose': True, 'set_dem_shoreline': True,
-                    'bathymetry_contours_z_label': None, 'bathymetry_contours_z_label': None}
+                    'bathymetry_contours_z_label': None}
 
         assert key in defaults or key in self.instructions['instructions']['general'], f"The key: {key} is missing " \
             + "from the general instructions, and does not have a default value"
