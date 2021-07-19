@@ -4,6 +4,8 @@
 name: Python package
 
 on:
+  workflow_dispatch:
+    branches: [ $default-branch ]
   push:
     branches: [ $default-branch ]
   pull_request:
