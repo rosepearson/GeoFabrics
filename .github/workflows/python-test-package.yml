@@ -1,17 +1,16 @@
 # This workflow will install Python dependencies, run tests and lint with a variety of Python versions
 # For more information see: https://help.github.com/actions/language-and-framework-guides/using-python-with-github-actions
 
-name: Python test package
+name: Python package using marketplace setup-miniconda
 
 on:
-  workflow_dispatch:
-    branches: [ $default-branch ]
   push:
+    branches: [ $default-branch ]
+  workflow_dispatch:
     branches: [ $default-branch ]
 
 jobs:
   build:
-
     runs-on: ubuntu-latest
     defaults:
       run:
@@ -27,7 +26,7 @@ jobs:
       uses: actions/cache@v2
       env:
         # Increase this value to reset cache if environment.yml has not changed
-        CACHE_NUMBER: 0
+        CACHE_NUMBER: 1
       with:
         path: ~/conda_pkgs_dir
         key:
