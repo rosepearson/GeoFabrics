@@ -18,7 +18,7 @@ dependencies:
   - rioxarray
   - scipy
   - wheel
-  - pdal
+  - pdal=2.3
   - python-pdal
   - matplotlib
   - laspy

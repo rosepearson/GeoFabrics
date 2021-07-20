@@ -6,8 +6,6 @@ name: Python package using marketplace setup-miniconda
 on:
   push:
     branches: [ $default-branch ]
-  workflow_dispatch:
-    branches: [ $default-branch ]
 
 jobs:
   build:
