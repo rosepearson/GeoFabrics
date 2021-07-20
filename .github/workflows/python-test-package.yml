@@ -3,7 +3,9 @@
 
 name: Python test package
 
-on: [workflow_dispatch]
+on:
+  workflow_dispatch:
+    branches: [ $default-branch ]
   push:
     branches: [ $default-branch ]
 
