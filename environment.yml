@@ -5,6 +5,7 @@ channels:
   - conda-forge
   - defaults
 dependencies:
+  - numpy=1.20
   - geopandas
   - ipykernel
   - ipython
