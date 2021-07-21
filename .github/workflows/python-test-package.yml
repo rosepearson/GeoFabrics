@@ -38,7 +38,6 @@ jobs:
         use-only-tar-bz2: true # IMPORTANT: This needs to be set for caching to work properly!
         python-version: ${{ matrix.python-version }}
         mamba-version: "*"
-        # condarc-file: etc/example-condarc.yml
     - run: |
         conda info
         conda list
@@ -55,4 +54,4 @@ jobs:
         flake8 . --count --exit-zero --max-complexity=10 --max-line-length=127 --statistics
     - name: Test with pytest
       run: |
-        pytest tests/test_lidar_fetch/test_processor_local_files.py
+        pytest tests/test_processor_local_files/test_processor_local_files.py
