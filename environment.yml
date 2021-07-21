@@ -12,7 +12,7 @@ dependencies:
   - boto3
   - rioxarray
   - pdal=2.2
-  - python-pdal=2.4=py39h1a9c180_1 # pin version so compatible with PDAL 2.2 that py3.9 for Linux
+  - python-pdal=2.4=py38h1fd1430_1 # pin version so compatible with PDAL 2.2 but for Linux
   - matplotlib
   - ipykernel
   - ipython
