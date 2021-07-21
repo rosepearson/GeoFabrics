@@ -113,6 +113,8 @@ class DenseDem:
 
     And also interpolated values from bathymentry contours offshore and outside all LiDAR tiles. """
 
+    DENSE_BINNING = "idw"
+
     def __init__(self, catchment_geometry: geometry.CatchmentGeometry,
                  temp_raster_path: typing.Union[str, pathlib.Path], verbose: bool = True):
         """ Setup base DEM to add future tiles too """
@@ -184,7 +186,7 @@ class DenseDem:
             self._temp_dem_file.unlink()
         pdal_pipeline_instructions = [
             {"type":  "writers.gdal", "resolution": self.catchment_geometry.resolution,
-             "gdalopts": "a_srs=EPSG:" + str(self.catchment_geometry.crs), "output_type": ["idw"],
+             "gdalopts": "a_srs=EPSG:" + str(self.catchment_geometry.crs), "output_type": [self.DENSE_BINNING],
              "filename": str(self._temp_dem_file),
              "window_size": window_size, "power": idw_power, "radius": radius,
              "origin_x": self.raster_origin[0], "origin_y": self.raster_origin[1],
@@ -242,7 +244,24 @@ class DenseDem:
             else:
                 # should give the same for either (method='first' or 'last') as values in overlap should be the same
                 self._dem = rioxarray.merge.merge_arrays([self._tiles, self._offshore])
+        # Ensure valid name and increasing dimension indexing for the dem
+        self._dem = self._dem.rename(self.DENSE_BINNING)
+        self._dem = self._dem.rio.interpolate_na()
+        self._dem = self._dem.rio.clip(self.catchment_geometry.catchment.geometry)
+        #self._dem = self._ensure_positive_indexing(self._dem)  # wait to update the benchmark
         return self._dem
+
+    def _ensure_positive_indexing(self, dem: rioxarray) -> rioxarray:
+        """ A routine to check an xarray has positive dimension indexing and to reindex if needed. """
+
+        x = dem.x
+        y = dem.y
+        if x[0] > x[-1]:
+            x = x[::-1]
+        if y[0] > y[-1]:
+            y = y[::-1]
+        dem = dem.reindex(x=x, y=y)
+        return dem
 
     def _offshore_edge(self, lidar_extents):
         """ Return the offshore edge cells to be used for offshore interpolation """
