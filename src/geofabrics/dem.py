@@ -80,7 +80,7 @@ class ReferenceDem:
         foreshore_y = foreshore_grid_y.flatten()[foreshore_mask_z]
         foreshore_z = foreshore_flat_z[foreshore_mask_z]
 
-        assert len(land_x) + len(foreshore_x) > 0, "The reference dem has no values on the land or foreshore"
+        assert len(land_x) + len(foreshore_x) > 0, "The reference DEM has no values on the land or foreshore"
 
         # combine in an single array
         self._points = numpy.empty([len(land_x) + len(foreshore_x)],
@@ -112,7 +112,7 @@ class DenseDem:
 
     The dense DEM is made up of tiles created from dense point data - Either LiDAR point clouds, or a reference DEM
 
-    And also interpolated values from bathymentry contours offshore and outside all LiDAR tiles. """
+    And also interpolated values from bathymetry contours offshore and outside all LiDAR tiles. """
 
     DENSE_BINNING = "idw"
     CACHE_SIZE = 10000
@@ -252,7 +252,7 @@ class DenseDem:
         self._dem = self._dem.rename(self.DENSE_BINNING)
         self._dem = self._dem.rio.interpolate_na()
         self._dem = self._dem.rio.clip(self.catchment_geometry.catchment.geometry)
-        self._dem = self._ensure_positive_indexing(self._dem)  # Some programs require psotively increasing indices
+        self._dem = self._ensure_positive_indexing(self._dem)  # Some programs require positively increasing indices
         return self._dem
 
     def _ensure_positive_indexing(self, dem: rioxarray) -> rioxarray:
@@ -320,5 +320,5 @@ class DenseDem:
         flat_z[mask_z] = flat_z_masked
         self._offshore.data[0] = flat_z.reshape(self._offshore.data[0].shape)
 
-        # ensure the dem will be recalculated as the offshore has been interpolated
+        # ensure the DEM will be recalculated as the offshore has been interpolated
         self._dem = None
