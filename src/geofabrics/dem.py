@@ -248,7 +248,7 @@ class DenseDem:
         self._dem = self._dem.rename(self.DENSE_BINNING)
         self._dem = self._dem.rio.interpolate_na()
         self._dem = self._dem.rio.clip(self.catchment_geometry.catchment.geometry)
-        #self._dem = self._ensure_positive_indexing(self._dem)  # wait to update the benchmark
+        self._dem = self._ensure_positive_indexing(self._dem)  # Some programs require psotively increasing indices
         return self._dem
 
     def _ensure_positive_indexing(self, dem: rioxarray) -> rioxarray:
