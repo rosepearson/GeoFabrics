@@ -6,6 +6,7 @@ channels:
   - defaults
 dependencies:
   - pip
+  - gdal=3.2.2 # pin to ensure consistent grid alignment PDAL writers.gdal
   - geopandas
   - requests
   - boto3
