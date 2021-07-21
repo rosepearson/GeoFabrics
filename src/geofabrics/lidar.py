@@ -115,5 +115,5 @@ class CatchmentLidar:
             self._extents = geopandas.clip(self.catchment_geometry.catchment, self._extents)
         else:
             if self.verbose:
-                print("Warning filtering holes in CatchmentLidar using filter_lidar_extents_for_holes is not yet supported " \
-                    + f"for {polygon.geometryType()}")
+                print("Warning filtering holes in CatchmentLidar using filter_lidar_extents_for_holes is not yet "
+                      + f"supported for {polygon.geometryType()}")
