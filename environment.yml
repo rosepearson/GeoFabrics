@@ -5,7 +5,7 @@ channels:
   - conda-forge
   - defaults
 dependencies:
-  - numpy=1.20
+  - numpy=1.20 # pinned to remove depreciation warning in geopandas that comes in with numpy 1.21
   - geopandas
   - ipykernel
   - ipython
