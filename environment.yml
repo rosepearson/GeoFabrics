@@ -6,6 +6,7 @@ channels:
   - defaults
 dependencies:
   - numpy=1.20 # pinned to remove depreciation warning in geopandas that comes in with numpy 1.21
+  - gdal=3.2.2 # try ensure consistent gridding when using PDAL writers.gdal 
   - geopandas
   - ipykernel
   - ipython
