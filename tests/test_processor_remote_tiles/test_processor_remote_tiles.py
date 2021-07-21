@@ -77,12 +77,12 @@ class ProcessorRemoteTilesTest(unittest.TestCase):
         assert cls.cache_dir.exists(), "The data directory that should include the comparison benchmark dem file " + \
             "doesn't exist"
 
-        benchmark_file = cls.cache_dir / "benchmark_dem.nc"
+        '''benchmark_file = cls.cache_dir / "benchmark_dem.nc"
         for file in cls.cache_dir.glob('*'):  # only files
             if file != benchmark_file and file.is_file():
                 file.unlink()
             elif file != benchmark_file and file.is_dir():
-                shutil.rmtree(file)
+                shutil.rmtree(file)'''
 
     def test_correct_dataset(self):
         """ A test to see if the correct dataset is downloaded """
