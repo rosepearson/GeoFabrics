@@ -17,7 +17,7 @@ jobs:
         python-version: [3.8]
 
     steps:
-    - name: Checkout github repo (+ download lfs dependencies)
+    - name: Checkout github repo including lfs files
       uses: actions/checkout@v2
       with:
         lfs: true
@@ -31,10 +31,11 @@ jobs:
         key:
           ${{ runner.os }}-conda-${{ env.CACHE_NUMBER }}-${{
           hashFiles('environment.yml') }}
-    - uses: conda-incubator/setup-miniconda@v2
+    - name: Install package dependencies with setup-miniconda@v2
+      uses: conda-incubator/setup-miniconda@v2
       with:
         activate-environment: geofabrics
-        environment-file: environment.yml
+        environment-file: environment_linux.yml
         auto-activate-base: false
         channels: conda-forge
         channel-priority: strict
@@ -49,17 +50,12 @@ jobs:
     - name: Install test dependencies
       run: |
         mamba install flake8 pytest
-    - name: Lint with flake8
+    - name: Run lint with flake8
       run: |
         # stop the build if there are Python syntax errors or undefined names
         flake8 . --count --select=E9,F63,F7,F82 --show-source --statistics
         # exit-zero treats all errors as warnings. The GitHub editor is 127 chars wide
         flake8 . --count --exit-zero --max-complexity=10 --max-line-length=127 --statistics
-    - name: Test with pytest
+    - name: Run tests with pytest
       run: |
         pytest
-    - name: Archive test DEM for comparison against benchmark
-      uses: actions/upload-artifact@v2
-      with:
-        name: test-dem
-        path: tests/test_processor_local_files/data/test_dem.nc

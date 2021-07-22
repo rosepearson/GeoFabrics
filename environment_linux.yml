@@ -6,13 +6,13 @@ channels:
   - defaults
 dependencies:
   - pip
-  - gdal
+  - gdal=3.2.2 # pin to ensure consistent grid alignment PDAL writers.gdal
   - geopandas
   - requests
   - boto3
   - rioxarray
-  - pdal
-  - python-pdal
+  - pdal=2.2
+  - python-pdal=2.4=py38h1fd1430_1 # pin version so compatible with PDAL 2.2 but for Linux
   - matplotlib
   - ipykernel
   - ipython
