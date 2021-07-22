@@ -14,7 +14,7 @@ GeoFabrics also contains support for downloading all LiDAR tiles within a specti
 You can use this package by using pip to install the package and dependencies using the following commands (say in a conda terminal to add it to that environment), where the environment.yml is from the root of this repository.
 
 ```python
-conda env create -f environment.yml
+conda env create -f environment_[windows|linux].yml
 conda activate geofabrics
 pip install git+https://github.com/rosepearson/GeoFabrics
 ```
