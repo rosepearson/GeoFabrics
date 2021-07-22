@@ -190,7 +190,7 @@ class DenseDem:
             self._temp_dem_file.unlink()
         pdal_pipeline_instructions = [
             {"type":  "writers.gdal", "resolution": self.catchment_geometry.resolution,
-             "gdalopts": "a_srs=EPSG:" + str(self.catchment_geometry.crs), "output_type": [self.DENSE_BINNING],
+             "gdalopts": f"a_srs=EPSG:{self.catchment_geometry.crs}", "output_type": [self.DENSE_BINNING],
              "filename": str(self._temp_dem_file),
              "window_size": window_size, "power": idw_power, "radius": radius,
              "origin_x": self.raster_origin[0], "origin_y": self.raster_origin[1],
