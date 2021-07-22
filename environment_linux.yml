@@ -19,6 +19,7 @@ dependencies:
   - ipython_genutils
   - jupyter_client
   - jupyter_core
+  - pytest
   - spyder
   - spyder-kernels
 

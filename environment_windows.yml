@@ -22,5 +22,6 @@ dependencies:
   - jupyter_core
   - spyder
   - spyder-kernels
+  - pytest
 
 prefix: C:\ProgramData\Anaconda3\envs\geofabrics
