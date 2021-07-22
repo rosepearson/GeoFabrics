@@ -135,8 +135,15 @@ class ProcessorLocalFilesTest(unittest.TestCase):
                                                masked=True) as benchmark_dem:
             benchmark_dem.load()
 
+        # load in rsult DEM
+        with rioxarray.rioxarray.open_rasterio(self.instructions['instructions']['data_paths']['result_dem'],
+                                               masked=True) as saved_dem:
+            saved_dem.load()
+
         # compare the generated and benchmark DEMs
-        numpy.testing.assert_array_almost_equal(runner.result_dem.data, benchmark_dem.data,
+        diff_array = saved_dem.data-benchmark_dem.data
+        print(f"DEM array diff is: {diff_array[diff_array != 0]}")
+        numpy.testing.assert_array_almost_equal(saved_dem.data, benchmark_dem.data,
                                                 err_msg="The generated result_dem has different data from the " +
                                                 "benchmark_dem")
 
@@ -145,9 +152,9 @@ class ProcessorLocalFilesTest(unittest.TestCase):
         """ Remove created files in the cache directory as part of the testing process at the end of the test. """
 
         benchmark_file = cls.cache_dir / "benchmark_dem.nc"
-        for file in cls.cache_dir.glob('*'):
+        '''for file in cls.cache_dir.glob('*'):
             if file != benchmark_file:
-                file.unlink()
+                file.unlink()'''
 
 
 if __name__ == '__main__':
