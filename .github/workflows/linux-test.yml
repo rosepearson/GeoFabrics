@@ -1,0 +1,64 @@
+# This workflow will install Python dependencies, run tests and lint with a variety of Python versions
+# For more information see: https://help.github.com/actions/language-and-framework-guides/using-python-with-github-actions
+
+name: Linux test
+
+on: push
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        shell: bash -l {0}
+    strategy:
+      fail-fast: false
+      matrix:
+        python-version: [3.8]
+
+    steps:
+
+    - name: Checkout github repo including lfs files
+      uses: actions/checkout@v2
+      with:
+        lfs: true
+
+    - name: Cache conda
+      uses: actions/cache@v2
+      env:
+        cache-name: cache-conda-env
+      with:
+        path: ~/conda_pkgs_dir
+        key: ${{ runner.os }}-conda-${{ env.cache-name }}-${{ hashFiles('linux_environment.yml') }}
+
+    - name: Install package dependencies with setup-miniconda@v2
+      uses: conda-incubator/setup-miniconda@v2
+      with:
+        activate-environment: geofabrics
+        environment-file: environment_linux.yml
+        auto-activate-base: false
+        channels: conda-forge
+        channel-priority: strict
+        use-only-tar-bz2: true # IMPORTANT: This needs to be set for caching to work properly!
+        python-version: ${{ matrix.python-version }}
+        mamba-version: "*"
+    - run: |
+        conda info
+        conda list
+        conda config --show-sources
+        conda config --show
+
+    - name: Install test dependencies
+      run: |
+        mamba install flake8 pytest
+
+    - name: Run lint with flake8
+      run: |
+        # stop the build if there are Python syntax errors or undefined names
+        flake8 . --count --select=E9,F63,F7,F82 --show-source --statistics
+        # exit-zero treats all errors as warnings. The GitHub editor is 127 chars wide
+        flake8 . --count --exit-zero --max-complexity=10 --max-line-length=127 --statistics
+
+    - name: Run tests with pytest
+      run: |
+        pytest

@@ -1,0 +1,27 @@
+# YML file for setting up a virtual environment including packages used for processing point clouds, GIS and raster to produce raster using spyder.
+
+name: geofabrics
+channels:
+  - conda-forge
+  - defaults
+dependencies:
+  - pyproj=3.0.1 # note library version has caused issues
+  - pip
+  - gdal
+  - geopandas
+  - requests
+  - boto3
+  - rioxarray
+  - pdal
+  - python-pdal
+  - matplotlib
+  - ipykernel
+  - ipython
+  - ipython_genutils
+  - jupyter_client
+  - jupyter_core
+  - spyder
+  - spyder-kernels
+  - pytest
+
+prefix: C:\ProgramData\Anaconda3\envs\geofabrics

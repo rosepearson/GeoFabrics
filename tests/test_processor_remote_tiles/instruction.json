@@ -5,12 +5,12 @@
       "resolution": 10
     },
     "data_paths": {
-      "local_cache": "tests\\test_processor_remote_tiles\\data",
-	  "catchment_boundary": "tests\\test_processor_remote_tiles\\data\\catchment.zip",
-	  "land": "tests\\test_processor_remote_tiles\\data\\catchment.zip",
-	  "tmp_raster": "tests\\test_processor_remote_tiles\\data\\temp_dense_dem.tif",
-	  "result_dem": "tests\\test_processor_remote_tiles\\data\\test_dem.nc",
-	  "benchmark_dem": "tests\\test_processor_remote_tiles\\data\\benchmark_dem.nc"
+      "local_cache": "tests/test_processor_remote_tiles/data",
+	  "catchment_boundary": "tests/test_processor_remote_tiles/data/catchment.zip",
+	  "land": "tests/test_processor_remote_tiles/data/catchment.zip",
+	  "tmp_raster": "tests/test_processor_remote_tiles/data/temp_dense_dem.tif",
+	  "result_dem": "tests/test_processor_remote_tiles/data/test_dem.nc",
+	  "benchmark_dem": "tests/test_processor_remote_tiles/data/benchmark_dem.nc"
     },
     "general": {
       "set_dem_shoreline": "True"

@@ -135,11 +135,14 @@ class ProcessorLocalFilesTest(unittest.TestCase):
                                                masked=True) as benchmark_dem:
             benchmark_dem.load()
 
+        # load in result DEM
         with rioxarray.rioxarray.open_rasterio(self.instructions['instructions']['data_paths']['result_dem'],
                                                masked=True) as saved_dem:
             saved_dem.load()
 
         # compare DEMs - load from file as rioxarray.rioxarray.open_rasterio ignores index order
+        diff_array = saved_dem.data-benchmark_dem.data
+        print(f"DEM array diff is: {diff_array[diff_array != 0]}")
         numpy.testing.assert_array_almost_equal(saved_dem.data, benchmark_dem.data,
                                                 err_msg="The generated result_dem has different data from the " +
                                                 "benchmark_dem")
