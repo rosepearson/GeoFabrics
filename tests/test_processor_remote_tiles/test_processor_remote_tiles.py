@@ -13,6 +13,8 @@ import geopandas
 import shutil
 import numpy
 import rioxarray
+import pytest
+import sys
 
 from src.geofabrics import processor
 
@@ -77,12 +79,12 @@ class ProcessorRemoteTilesTest(unittest.TestCase):
         assert cls.cache_dir.exists(), "The data directory that should include the comparison benchmark dem file " + \
             "doesn't exist"
 
-        '''benchmark_file = cls.cache_dir / "benchmark_dem.nc"
+        benchmark_file = cls.cache_dir / "benchmark_dem.nc"
         for file in cls.cache_dir.glob('*'):  # only files
             if file != benchmark_file and file.is_file():
                 file.unlink()
             elif file != benchmark_file and file.is_dir():
-                shutil.rmtree(file)'''
+                shutil.rmtree(file)
 
     def test_correct_dataset(self):
         """ A test to see if the correct dataset is downloaded """
@@ -124,6 +126,7 @@ class ProcessorRemoteTilesTest(unittest.TestCase):
                         f"downloaded files {[downloaded_file.stat().st_size for downloaded_file in downloaded_files]}" +
                         f" and the expected sizes of {self.SIZES}")
 
+    @pytest.mark.skipif(sys.platform != 'win32', reason="Windows test - small changes exist on Linux machine")
     def test_result_dem(self):
         """ A basic comparison between the generated and benchmark DEM """
 
@@ -140,9 +143,9 @@ class ProcessorRemoteTilesTest(unittest.TestCase):
         diff_array = test_dem.data-benchmark_dem.data
         print(f"DEM array diff is: {diff_array[diff_array != 0]}")
         # compare the generated and benchmark DEMs
-        '''numpy.testing.assert_array_almost_equal(test_dem.data, benchmark_dem.data,
+        numpy.testing.assert_array_almost_equal(test_dem.data, benchmark_dem.data,
                                                 err_msg="The generated result_dem has different data from the " +
-                                                "benchmark_dem")'''
+                                                "benchmark_dem")
 
 
 if __name__ == '__main__':

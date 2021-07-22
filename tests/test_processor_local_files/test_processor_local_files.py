@@ -152,9 +152,9 @@ class ProcessorLocalFilesTest(unittest.TestCase):
         """ Remove created files in the cache directory as part of the testing process at the end of the test. """
 
         benchmark_file = cls.cache_dir / "benchmark_dem.nc"
-        '''for file in cls.cache_dir.glob('*'):
+        for file in cls.cache_dir.glob('*'):
             if file != benchmark_file:
-                file.unlink()'''
+                file.unlink()
 
 
 if __name__ == '__main__':
