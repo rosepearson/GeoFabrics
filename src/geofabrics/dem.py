@@ -7,6 +7,7 @@ Created on Fri Jun 18 10:52:49 2021
 import rioxarray
 import rioxarray.merge
 import numpy
+import math
 import pdal
 import json
 import typing
@@ -79,7 +80,7 @@ class ReferenceDem:
         foreshore_y = foreshore_grid_y.flatten()[foreshore_mask_z]
         foreshore_z = foreshore_flat_z[foreshore_mask_z]
 
-        assert len(land_x) + len(foreshore_x) > 0, "The reference dem has no values on the land or foreshore"
+        assert len(land_x) + len(foreshore_x) > 0, "The reference DEM has no values on the land or foreshore"
 
         # combine in an single array
         self._points = numpy.empty([len(land_x) + len(foreshore_x)],
@@ -111,7 +112,10 @@ class DenseDem:
 
     The dense DEM is made up of tiles created from dense point data - Either LiDAR point clouds, or a reference DEM
 
-    And also interpolated values from bathymentry contours offshore and outside all LiDAR tiles. """
+    And also interpolated values from bathymetry contours offshore and outside all LiDAR tiles. """
+
+    DENSE_BINNING = "idw"
+    CACHE_SIZE = 10000
 
     def __init__(self, catchment_geometry: geometry.CatchmentGeometry,
                  temp_raster_path: typing.Union[str, pathlib.Path], verbose: bool = True):
@@ -164,9 +168,11 @@ class DenseDem:
         with rioxarray.rioxarray.open_rasterio(str(self._temp_dem_file), masked=True) as dem_temp:
             dem_temp.load()
             dem_temp.rio.set_crs(self.catchment_geometry.crs)
-        if self.raster_origin[0] != dem_temp.x.data.min() or self.raster_origin[1] != dem_temp.y.data.min():
-            raster_origin = [dem_temp.x.data.min() - self.catchment_geometry.resolution/2,
-                             dem_temp.y.data.min() - self.catchment_geometry.resolution/2]
+
+        # check if the raster origin has been moved by PDAL writers.gdal
+        raster_origin = [dem_temp.x.data.min() - self.catchment_geometry.resolution/2,
+                         dem_temp.y.data.min() - self.catchment_geometry.resolution/2]
+        if self.raster_origin != raster_origin:
             print("In process: The generated dense DEM has an origin differing from the one specified. Updating the " +
                   f"catchment geometry raster origin from {self.raster_origin} to {raster_origin}")
             self.raster_origin = raster_origin
@@ -184,7 +190,7 @@ class DenseDem:
             self._temp_dem_file.unlink()
         pdal_pipeline_instructions = [
             {"type":  "writers.gdal", "resolution": self.catchment_geometry.resolution,
-             "gdalopts": "a_srs=EPSG:" + str(self.catchment_geometry.crs), "output_type": ["idw"],
+             "gdalopts": f"a_srs=EPSG:{self.catchment_geometry.crs}", "output_type": [self.DENSE_BINNING],
              "filename": str(self._temp_dem_file),
              "window_size": window_size, "power": idw_power, "radius": radius,
              "origin_x": self.raster_origin[0], "origin_y": self.raster_origin[1],
@@ -242,7 +248,25 @@ class DenseDem:
             else:
                 # should give the same for either (method='first' or 'last') as values in overlap should be the same
                 self._dem = rioxarray.merge.merge_arrays([self._tiles, self._offshore])
+        # Ensure valid name and increasing dimension indexing for the dem
+        self._dem = self._dem.rename(self.DENSE_BINNING)
+        self._dem = self._dem.rio.interpolate_na()
+        self._dem = self._dem.rio.clip(self.catchment_geometry.catchment.geometry)
+        self._dem = self._ensure_positive_indexing(self._dem)  # Some programs require positively increasing indices
         return self._dem
+
+    @staticmethod
+    def _ensure_positive_indexing(dem: rioxarray) -> rioxarray:
+        """ A routine to check an xarray has positive dimension indexing and to reindex if needed. """
+
+        x = dem.x
+        y = dem.y
+        if x[0] > x[-1]:
+            x = x[::-1]
+        if y[0] > y[-1]:
+            y = y[::-1]
+        dem = dem.reindex(x=x, y=y)
+        return dem
 
     def _offshore_edge(self, lidar_extents):
         """ Return the offshore edge cells to be used for offshore interpolation """
@@ -281,8 +305,21 @@ class DenseDem:
         grid_x, grid_y = numpy.meshgrid(self._offshore.x, self._offshore.y)
         flat_z = self._offshore.data[0].flatten()
         mask_z = ~numpy.isnan(flat_z)
-        flat_z[mask_z] = rbf_function(grid_x.flatten()[mask_z], grid_y.flatten()[mask_z])
+
+        # tile offshore area - this limits the maximum memory required at any one time
+        flat_x_masked = grid_x.flatten()[mask_z]
+        flat_y_masked = grid_y.flatten()[mask_z]
+        flat_z_masked = flat_z[mask_z]
+
+        number_offshore_tiles = math.ceil(len(flat_x_masked)/self.CACHE_SIZE)
+        for i in range(number_offshore_tiles):
+            start_index = int(i*self.CACHE_SIZE)
+            end_index = int((i+1)*self.CACHE_SIZE) if i + 1 != number_offshore_tiles else len(flat_x_masked)
+
+            flat_z_masked[start_index:end_index] = rbf_function(flat_x_masked[start_index:end_index],
+                                                                flat_y_masked[start_index:end_index])
+        flat_z[mask_z] = flat_z_masked
         self._offshore.data[0] = flat_z.reshape(self._offshore.data[0].shape)
 
-        # ensure the dem will be recalculated as the offshore has been interpolated
+        # ensure the DEM will be recalculated as the offshore has been interpolated
         self._dem = None
