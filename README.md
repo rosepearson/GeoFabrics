@@ -89,4 +89,4 @@ There is no current expectations of contributions to this project. We accept inp
 Maintainer: Rose Pearson @rosepearson rose.pearson@niwa.co.nz
 
 ## License
-[GNU](https://github.com/rosepearson/GeoFabrics/LICENSE)
+[GNU GPL](https://github.com/rosepearson/GeoFabrics/LICENSE)
