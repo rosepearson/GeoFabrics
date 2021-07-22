@@ -2,7 +2,7 @@
 
 ## Build Status
 
-![Linux](https://github.com/rosepearson/GeoFabrics/actions/workflows/python-test-package.yml/badge.svg)
+
 
 ## Introduction
 
