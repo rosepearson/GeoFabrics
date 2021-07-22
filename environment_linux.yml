@@ -5,23 +5,21 @@ channels:
   - conda-forge
   - defaults
 dependencies:
-  - pyproj=3.0.1 # note library version has caused issues
+  - pip
+  - gdal=3.2.2 # pin to ensure consistent grid alignment PDAL writers.gdal
   - geopandas
+  - requests
+  - boto3
+  - rioxarray
+  - pdal=2.2
+  - python-pdal=2.4=py38h1fd1430_1 # pin version so compatible with PDAL 2.2 but for Linux
+  - matplotlib
   - ipykernel
   - ipython
   - ipython_genutils
   - jupyter_client
   - jupyter_core
-  - pip
-  - requests
-  - boto3
-  - rioxarray
-  - scipy
-  - wheel
-  - pdal
-  - python-pdal
-  - matplotlib
-  - laspy
+  - pytest
   - spyder
   - spyder-kernels
 

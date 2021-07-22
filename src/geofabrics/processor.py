@@ -78,8 +78,8 @@ class GeoFabricsGenerator:
             self.lidar_fetcher = lidar_fetch.OpenTopography(
                 self.catchment_geometry, self.get_instruction_path('local_cache'), verbose=verbose)
             self.lidar_fetcher.run()
-            lidar_file_paths = list(pathlib.Path(self.lidar_fetcher.cache_path /
-                                    self.lidar_fetcher.dataset_prefixes[lidar_dataset_index]).glob('*.laz'))
+            lidar_file_paths = sorted(pathlib.Path(self.lidar_fetcher.cache_path /
+                                      self.lidar_fetcher.dataset_prefixes[lidar_dataset_index]).glob('*.laz'))
         else:
             # get the specified file paths from the instructions
             lidar_file_paths = self.get_instruction_path('lidars')
