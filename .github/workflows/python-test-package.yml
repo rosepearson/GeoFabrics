@@ -57,7 +57,7 @@ jobs:
         flake8 . --count --exit-zero --max-complexity=10 --max-line-length=127 --statistics
     - name: Test with pytest
       run: |
-        pytest tests/test_lidar_fetch/test_lidar_fetch.py tests/test_processor_remote_tiles/test_processor_remote_tiles.py #tests/test_processor_local_files/test_processor_local_files.py
+        pytest --show-capture=stdout tests/test_lidar_fetch/test_lidar_fetch.py tests/test_processor_remote_tiles/test_processor_remote_tiles.py #tests/test_processor_local_files/test_processor_local_files.py
     - name: Archive test DEM for comparison against benchmark
       uses: actions/upload-artifact@v2
       with:
