@@ -69,7 +69,7 @@ See image below:
 
 ### Running a test
 
-Go to 'Run>Configuration per file...' and check the **The following directory** under **Working directory settings** and specify the root of the repository with no quotes. Doe this for each Python test file (usually one per test folder)
+Go to 'Run>Configuration per file...' and check the **The following directory** under **Working directory settings** and specify the root of the repository with no quotes. Do this for each Python test file (usually one per test folder)
 
 `full\path\to\the\repository\root`
 
