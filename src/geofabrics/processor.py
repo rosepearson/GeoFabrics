@@ -132,9 +132,10 @@ class GeoFabricsGenerator:
         self.catchment_lidar.filter_lidar_extents_for_holes()
 
         # Load in reference DEM if any significant land/foreshore not covered by LiDAR
-        if (self.catchment_geometry.land_and_foreshore_without_lidar(self.catchment_lidar.extents).geometry.area.sum()
-                > self.catchment_geometry.land_and_foreshore.area.sum() * area_threshold and
-                self.check_instruction_path('reference_dems')):
+        area_without_lidar = \
+            self.catchment_geometry.land_and_foreshore_without_lidar(self.catchment_lidar.extents).geometry.area.sum()
+        if (self.check_instruction_path('reference_dems') and
+                area_without_lidar > self.catchment_geometry.land_and_foreshore.area.sum() * area_threshold):
 
             # Load in background DEM - cut away within the LiDAR extents
             self.reference_dem = dem.ReferenceDem(self.get_instruction_path('reference_dems')[0],
@@ -146,9 +147,10 @@ class GeoFabricsGenerator:
             self.dense_dem.add_tile(self.reference_dem.points, window_size, idw_power, radius)
 
         # Load in bathymetry and interpolate offshore if significant offshore is not covered by LiDAR
-        if (self.catchment_geometry.offshore_without_lidar(self.catchment_lidar.extents).geometry.area.max() >
-                self.catchment_geometry.offshore.area.sum() * area_threshold and
-                self.check_instruction_path('bathymetry_contours')):
+        area_without_lidar = \
+            self.catchment_geometry.offshore_without_lidar(self.catchment_lidar.extents).geometry.area.sum()
+        if (self.check_instruction_path('bathymetry_contours') and
+                area_without_lidar > self.catchment_geometry.offshore.area.sum() * area_threshold):
 
             # Load in bathymetry
             self.bathy_contours = geometry.BathymetryContours(
