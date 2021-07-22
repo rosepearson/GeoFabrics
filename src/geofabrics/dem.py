@@ -172,7 +172,7 @@ class DenseDem:
         # check if the raster origin has been moved by PDAL writers.gdal
         raster_origin = [dem_temp.x.data.min() - self.catchment_geometry.resolution/2,
                          dem_temp.y.data.min() - self.catchment_geometry.resolution/2]
-        if self.raster_origin[0] != raster_origin[0] or self.raster_origin[1] != raster_origin[1]:
+        if self.raster_origin != raster_origin:
             print("In process: The generated dense DEM has an origin differing from the one specified. Updating the " +
                   f"catchment geometry raster origin from {self.raster_origin} to {raster_origin}")
             self.raster_origin = raster_origin
@@ -255,7 +255,8 @@ class DenseDem:
         self._dem = self._ensure_positive_indexing(self._dem)  # Some programs require positively increasing indices
         return self._dem
 
-    def _ensure_positive_indexing(self, dem: rioxarray) -> rioxarray:
+    @staticmethod
+    def _ensure_positive_indexing(dem: rioxarray) -> rioxarray:
         """ A routine to check an xarray has positive dimension indexing and to reindex if needed. """
 
         x = dem.x
