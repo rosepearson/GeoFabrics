@@ -138,7 +138,7 @@ class ProcessorRemoteTilesTest(unittest.TestCase):
             test_dem.load()
 
         diff_array = test_dem.data-benchmark_dem.data
-        print(diff_array[diff_array != 0])
+        print(f"DEM array diff is: {diff_array[diff_array != 0]}")
         # compare the generated and benchmark DEMs
         '''numpy.testing.assert_array_almost_equal(test_dem.data, benchmark_dem.data,
                                                 err_msg="The generated result_dem has different data from the " +
