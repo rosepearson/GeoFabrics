@@ -1,12 +1,14 @@
 # GeoFabrics
 
-The GeoFabrics and associated sub-packages include routines and classes for combining point (i.e. LiDAR), vector (i.e. catchment of interest, infrastructure) and raster (i.e. reference DEM) to generate a hydrologically conditioned raster. 
-
-GeoFabrics also contains support for downloading all LiDAR tiles within a spectified polygon (catchment region) from OpenTopography. This functionality is contained in the lidar_fetch module, and can be used independently of the other geofabrics modules. An example of its usage can be found in tests/test_lidar_fetch.
-
 ## Build Status
 
 ![Linux](https://github.com/rosepearson/GeoFabrics/actions/workflows/python-test-package.yml/badge.svg)
+
+## Introduction
+
+The GeoFabrics and associated sub-packages include routines and classes for combining point (i.e. LiDAR), vector (i.e. catchment of interest, infrastructure) and raster (i.e. reference DEM) to generate a hydrologically conditioned raster. 
+
+GeoFabrics also contains support for downloading all LiDAR tiles within a spectified polygon (catchment region) from OpenTopography. This functionality is contained in the lidar_fetch module, and can be used independently of the other geofabrics modules. An example of its usage can be found in tests/test_lidar_fetch.
 
 ## import into a conda environment
 You can use this package by using pip to install the package and dependencies using the following commands (say in a conda terminal to add it to that environment), where the environment.yml is from the root of this repository.
@@ -65,9 +67,9 @@ See image below:
 
 ![image](https://user-images.githubusercontent.com/22883860/123566757-97a43a00-d814-11eb-9e3e-1d2468145e3d.png)
 
-### Running test1
+### Running a test
 
-Go to 'Run>Configuration per file...' and check the **The following directory** under **Working directory settings** and specify the root of the repository with no quotes.
+Go to 'Run>Configuration per file...' and check the **The following directory** under **Working directory settings** and specify the root of the repository with no quotes. Doe this for each Python test file (usually one per test folder)
 
 `full\path\to\the\repository\root`
 
