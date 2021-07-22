@@ -42,7 +42,7 @@ setuptools.setup(
     python_requires='>=3.6',
     install_requires=['numpy>=1.21',
                       'rioxarray>=0.4',
-                      'pdal>=2.2'
+                      'pdal>=2.2',
                       'geopandas>=0.9',
                       'shapely>=1.7',
                       'scipy>=1.6',
