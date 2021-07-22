@@ -2,7 +2,7 @@
 
 The GeoFabrics and associated sub-packages include routines and classes for combining point (i.e. LiDAR), vector (i.e. catchment of interest, infrastructure) and raster (i.e. reference DEM) to generate a hydrologically conditioned raster. 
 
-GeoFabrics also contains support for downloading all LiDAR tiles within a spectified polygon (catchment region) from OpenTopography. This functionality is contained in the lidar_fetch module, and an example of its usage can be found in tests/test_lidar_fetch.
+GeoFabrics also contains support for downloading all LiDAR tiles within a spectified polygon (catchment region) from OpenTopography. This functionality is contained in the lidar_fetch module, and can be used independently of the other geofabrics modules. An example of its usage can be found in tests/test_lidar_fetch.
 
 ## import into a conda environment
 You can use this package by using pip to install the package and dependencies using the following commands (say in a conda terminal to add it to that environment), where the environment.yml is from the root of this repository.
@@ -31,8 +31,16 @@ In the conda environment defined in the root\environment.yml, run the following:
 
 `python src\main.py --instructions full\path\to\instruction.json`
 
-## Running tests
-In the conda environment defined in the root\environment.yml, run the following in the repository root folder:
+## Tests
+Tests exist for stand alone functionality (i.e. fetch lidar), and complete processing chain (i.e. creating a DEM from LiDAR files within a shapefile). A 'benchmark_dem.nc' is uploaded for each test when a DEM is generated. This is stored using git LTS as these file are not human readable. 
+
+### Automated testing
+[Github Actions](https://docs.github.com/en/actions) are used to run tests after each push to remote (i.e. github). [Miniconda](https://github.com/marketplace/actions/setup-miniconda) from the GitHub Actions marketplace is used to install the package dependencies. Linting with [Flake8](https://github.com/py-actions/flake8) and testing with [PyTest](https://docs.pytest.org/en/6.2.x/contents.html) is then performed. 
+
+Check the actions tab after you push to check if your tests run successfully.
+
+### Running tests locally
+In the conda environment defined in the root\environment_[windows|linux].yml, run the following in the repository root folder:
 
 1. to run individual tests
 `python -m tests.test1.test1` or `python -m tests.test_lidar_fetch.test_lidar_fetch`
@@ -43,7 +51,7 @@ In the conda environment defined in the root\environment.yml, run the following 
 ## Instructions for use in spyder
 If you are using spyder you can make the following changes to run main and test1.py using Run (F5)
 
-### Running main
+#### Running main
 
 Go to 'Run>Configuration per file...' and check the **Command line options** under **General settings**. Enter the following:
 
