@@ -1,5 +1,7 @@
 # GeoFabrics
 
+![Linux](https://github.com/rosepearson/GeoFabrics/actions/workflows/python-test-package.yml/badge.svg)
+
 The GeoFabrics and associated sub-packages include routines and classes for combining point (i.e. LiDAR), vector (i.e. catchment of interest, infrastructure) and raster (i.e. reference DEM) to generate a hydrologically conditioned raster. 
 
 GeoFabrics also contains support for downloading all LiDAR tiles within a spectified polygon (catchment region) from OpenTopography. This functionality is contained in the lidar_fetch module, and can be used independently of the other geofabrics modules. An example of its usage can be found in tests/test_lidar_fetch.
