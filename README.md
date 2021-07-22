@@ -11,7 +11,7 @@ The GeoFabrics and associated sub-packages include routines and classes for comb
 GeoFabrics also contains support for downloading all LiDAR tiles within a spectified polygon (catchment region) from OpenTopography. This functionality is contained in the lidar_fetch module, and can be used independently of the other geofabrics modules. An example of its usage can be found in tests/test_lidar_fetch.
 
 ## Import into a conda environment
-You can use this package by using pip to install the package and dependencies using the following commands in a conda terminal to add it to that environment, where you must either specify environment_windows.yml or environment_linux.yml depending on your operating system. Each file is located in the root repository folder. Sorry there is no macOS support at this stage.
+You can use this package by using pip to install the package and dependencies using the following commands in a conda terminal to add it to that environment, where you must either specify `environment_windows.yml` or `environment_linux.yml` depending on your operating system. Each file is located in the root repository folder. Sorry there is no macOS support at this stage.
 
 ```bash
 conda env create -f environment_[windows|linux].yml
