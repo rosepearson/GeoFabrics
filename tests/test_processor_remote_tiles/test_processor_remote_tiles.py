@@ -162,7 +162,7 @@ class ProcessorRemoteTilesTest(unittest.TestCase):
             test_dem.load()
 
         # compare the generated and benchmark DEMs
-        diff_array = test_dem.data-benchmark_dem.data
+        diff_array = (test_dem.data-benchmark_dem.data).flatten()
         print(f"DEM array diff is: {diff_array[diff_array != 0]}")
 
         threshold = 10e-6
