@@ -46,7 +46,8 @@ setuptools.setup(
                       'geopandas>=0.9',
                       'shapely>=1.7',
                       'scipy>=1.6',
-                      'pathlib>=1.0'],
+                      'requests>=2.25',
+                      'boto3>=1.17'],
     extras_require={
         'dev': ['check-manifest'],
     },
