@@ -49,7 +49,7 @@ Check the actions tab after you push to check if your tests run successfully.
 In the conda environment defined in the root\environment_[windows|linux].yml, run the following in the repository root folder:
 
 1. to run individual tests
-`python -m tests.test1.test1` or `python -m tests.test_lidar_fetch.test_lidar_fetch`
+`python -m tests.test_processor_local_files.test_processor_local_files` or `python -m tests.test_lidar_fetch.test_lidar_fetch` etc.
 
 2. to run all tests
 `python -m unittest`
@@ -77,6 +77,16 @@ See image below:
 
 ![image](https://user-images.githubusercontent.com/22883860/123900473-3ff50280-d9bd-11eb-8123-e8b6e28d46b2.png)
 
-
 ## Related material
 Scripts are included in separate repos. See https://github.com/rosepearson/Hydrologic-DEMs-scripts for an example.
+
+## Contributions
+Please see our [Issue Tracker](https://github.com/rosepearson/GeoFabrics/issues) for details on coming features and additions to the software.
+
+There is no current expectations of contributions to this project. We accept input in code reviews now. If you would like to be involved in the project, please contact the maintainer.
+
+## Contacts
+Maintainer: Rose Pearson @rosepearson rose.pearson@niwa.co.nz
+
+## License
+[GNU](https://github.com/rosepearson/GeoFabrics/LICENSE)
