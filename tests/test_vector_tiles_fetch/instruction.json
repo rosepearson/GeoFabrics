@@ -1,0 +1,17 @@
+{"instructions": 
+  {
+    "projection": 2193,
+	"grid_params": {
+      "resolution": 10
+    },
+    "data_paths": {
+      "local_cache": "tests/test_lidar_fetch/data"
+    },
+	"linz_api": {
+	    "key": "b74b510da6cb4e23ad8e779f9bd1b366",
+	    "layers": {
+			"lidar_tile": 105448
+		}
+	}
+  }
+}

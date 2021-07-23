@@ -16,6 +16,11 @@ from . import geometry
 
 class OpenTopography:
     """ A class to manage fetching LiDAR data from Open Topography
+
+    API details for querying datasets within a search rectangle at:
+        https://portal.opentopography.org/apidocs/#/Public/getOtCatalog
+    Information for making a `bulk download` of a dataset using the AWS S3 protocol can be found by clicking on bulk
+    download under any dataset.
     """
 
     SCHEME = "https"
@@ -51,7 +56,7 @@ class OpenTopography:
         return bytes_number/1000/1000/1000
 
     def run(self):
-        """ Query for  LiDAR data within a catchment and download any that hasn't already been downloaded """
+        """ Query for LiDAR data within a catchment and download any that hasn't already been downloaded """
         self._dataset_prefixes = []
 
         json_response = self.query_for_datasets_inside_catchment()
@@ -74,6 +79,7 @@ class OpenTopography:
                 + f"downloaded is greater than the specified download limit of {self.download_limit_gbytes}"
 
             # check for tiles and download as needed
+            print("run: self._download_tiles_in_catchment")
             self._download_tiles_in_catchment(client, dataset_prefix, tile_info)
 
     def query_for_datasets_inside_catchment(self):
