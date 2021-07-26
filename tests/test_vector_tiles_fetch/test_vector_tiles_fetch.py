@@ -20,8 +20,8 @@ class LinzTilesTest(unittest.TestCase):
     """ A class to test the basic lidar_fetch class OpenTopography functionality by downloading files from
     OpenTopography within a small region. All files are deleted after checking their names and size."""
 
-    TILES = ["ot_CL1_WLG_2013_1km_085033.laz", "ot_CL1_WLG_2013_1km_086033.laz",
-             "ot_CL1_WLG_2013_1km_085032.laz", "ot_CL1_WLG_2013_1km_086032.laz"]
+    TILE_NAMES = ['BR20_1000_4014', 'BR20_1000_4015', 'BR20_1000_4114', 'BR20_1000_4115', 'BR20_1000_4013',
+                  'BR20_1000_4113', 'BR20_1000_4016', 'BR20_1000_4116']
 
     @classmethod
     def setUpClass(cls):
@@ -77,10 +77,11 @@ class LinzTilesTest(unittest.TestCase):
         """ A test to see if all expected tiles name are located """
 
         self.runner.run()
-        assert self.runner.tiles is None, "Tiles not yet defined"
+        print(f"The returned tile names are: {self.runner.tile_names}")
 
         # check files are correct
-        #self.assertEqual(self.runner.tiles, self.TILES, "The tiles are different")
+        self.assertEqual(self.runner.tile_names, self.TILE_NAMES, f"The returned tile names `{self.runner.tile_names}` "
+                         + f"differ from those expected `{self.TILE_NAMES}`")
 
 
 if __name__ == '__main__':

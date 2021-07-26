@@ -13,6 +13,8 @@ import geopandas
 import typing
 import math
 from . import geometry
+import matplotlib
+import matplotlib.pyplot
 
 
 class LinzTiles:
@@ -43,11 +45,11 @@ class LinzTiles:
         self.verbose = verbose
 
         self.json_string = None
-        self.tiles = None
+        self.tile_names = None
 
     def run(self):
         """ Query for tiles within a catchment construct a list of tiles names within the catchment """
-        self.get_tiles_inside_catchment()
+        self.tile_names = self.get_tiles_inside_catchment()
 
     def query_vector_inside_radius(self, x: float, y: float, radius: float):
         """ Function to check for tiles in search region using the Koordinates vector query API
@@ -100,6 +102,12 @@ class LinzTiles:
         assert feature_collection['crs']['properties']['name'] == f"{self.LINZ_CRS}", "Feature collection has an " \
             f"unexpected CRS of {feature_collection['crs']['properties']['name']}, when {self.LINZ_CRS} was expected."
 
+        f = matplotlib.pyplot.figure(figsize=(10, 10))
+        gs = f.add_gridspec(1, 1)
+
+        ax1 = f.add_subplot(gs[0, 0])
+        catchment_linz_crs.plot(ax=ax1)
+        
         # Cycle through each tile getting name and coordinates
         tile_names = []
         for json_tile in feature_collection['features']:
@@ -117,3 +125,8 @@ class LinzTiles:
             # check intersection of tile and catchment in LINZ CRS
             if catchment_linz_crs.intersects(tile).any():
                 tile_names.append(json_tile['properties']['tilename'])
+                matplotlib.pyplot.plot(*tile.exterior.xy, color="red")
+            else:
+                matplotlib.pyplot.plot(*tile.exterior.xy, color="blue")
+
+        return tile_names
