@@ -20,8 +20,8 @@ class LinzTilesTest(unittest.TestCase):
     """ A class to test the basic lidar_fetch class OpenTopography functionality by downloading files from
     OpenTopography within a small region. All files are deleted after checking their names and size."""
 
-    TILE_NAMES = ['BR20_1000_4013', 'BR20_1000_4014', 'BR20_1000_4015', 'BR20_1000_4016',
-                  'BR20_1000_4113', 'BR20_1000_4114', 'BR20_1000_4115', 'BR20_1000_4116']
+    TILE_NAMES = ['BR20_1000_4012', 'BR20_1000_4013', 'BR20_1000_4014', 'BR20_1000_4112',
+                  'BR20_1000_4212', 'BR20_1000_4213', 'BR20_1000_4214']
 
     @classmethod
     def setUpClass(cls):
@@ -41,11 +41,15 @@ class LinzTilesTest(unittest.TestCase):
             shutil.rmtree(cls.cache_dir)
         cls.cache_dir.mkdir()
         # create fake catchment boundary
-        x0 = 1473821
-        y0 = 5376526
-        x1 = 1475457
-        y1 = 5378203
-        catchment = shapely.geometry.Polygon([(x0, y0), (x1, y0), (x1, y1), (x0, y1)])
+        x0 = 1473354
+        x1 = 1473704
+        x2 = 1474598
+        y0 = 5377655
+        y1 = 5377335
+        y2 = 5376291
+        y3 = 5375824
+        catchment = shapely.geometry.Polygon([(x0, y0), (x0, y3), (x2, y3), (x2, y2),
+                                              (x1, y2), (x1, y1), (x2, y1), (x2, y0)])
         catchment = geopandas.GeoSeries([catchment])
         catchment = catchment.set_crs(instructions['instructions']['projection'])
 
