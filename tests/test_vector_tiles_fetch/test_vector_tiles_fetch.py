@@ -20,8 +20,8 @@ class LinzTilesTest(unittest.TestCase):
     """ A class to test the basic lidar_fetch class OpenTopography functionality by downloading files from
     OpenTopography within a small region. All files are deleted after checking their names and size."""
 
-    TILE_NAMES = ['BR20_1000_4014', 'BR20_1000_4015', 'BR20_1000_4114', 'BR20_1000_4115', 'BR20_1000_4013',
-                  'BR20_1000_4113', 'BR20_1000_4016', 'BR20_1000_4116']
+    TILE_NAMES = ['BR20_1000_4013', 'BR20_1000_4014', 'BR20_1000_4015', 'BR20_1000_4016',
+                  'BR20_1000_4113', 'BR20_1000_4114', 'BR20_1000_4115', 'BR20_1000_4116']
 
     @classmethod
     def setUpClass(cls):
