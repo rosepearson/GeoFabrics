@@ -89,11 +89,12 @@ class LinzTiles:
         catchment_bounds = self.catchment_geometry.catchment.geometry.bounds
         feature_collection = self.query_vector_wfs(catchment_bounds)
 
-        f = matplotlib.pyplot.figure(figsize=(10, 10))
-        gs = f.add_gridspec(1, 1)
+        if self.verbose:  # Plot catchment
+            figure = matplotlib.pyplot.figure(figsize=(10, 10))
+            gs = figure.add_gridspec(1, 1)
 
-        ax1 = f.add_subplot(gs[0, 0])
-        self.catchment_geometry.catchment.plot(ax=ax1)
+            ax1 = figure.add_subplot(gs[0, 0])
+            self.catchment_geometry.catchment.plot(ax=ax1)
 
         # Cycle through each tile getting name and coordinates
         tile_names = []
@@ -112,8 +113,10 @@ class LinzTiles:
             # check intersection of tile and catchment in LINZ CRS
             if self.catchment_geometry.catchment.intersects(tile).any():
                 tile_names.append(json_tile['properties']['tilename'])
-                matplotlib.pyplot.plot(*tile.exterior.xy, color="red")
-            else:
+
+                if self.verbose:  # Plot overlapping catchment in red
+                    matplotlib.pyplot.plot(*tile.exterior.xy, color="red")
+            elif self.verbose:  # Plot outside catchment in red
                 matplotlib.pyplot.plot(*tile.exterior.xy, color="blue")
 
         return sorted(tile_names)
