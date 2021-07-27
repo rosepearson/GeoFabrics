@@ -34,7 +34,7 @@ class ProcessorRemoteTilesTest(unittest.TestCase):
         """ Create a cache directory and CatchmentGeometry object for use in the tests and also download the files used
         in the tests. """
 
-        test_path = pathlib.Path().cwd() / pathlib.Path("tests/test_processor_remote_linz_tiles")
+        test_path = pathlib.Path().cwd() / pathlib.Path("tests/test_processor_remote_tiles_westport")
 
         # load in the test instructions
         instruction_file_path = test_path / "instruction.json"

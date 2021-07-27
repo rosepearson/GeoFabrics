@@ -37,7 +37,7 @@ class OpenTopography:
 
     def __init__(self, catchment_geometry: geometry.CatchmentGeometry, cache_path: typing.Union[str, pathlib.Path],
                  redownload_files: bool = False, download_limit_gbytes: typing.Union[int, float] = 100,
-                 tile_names: list = None, verbose: bool = False):
+                 verbose: bool = False):
         """ Load in LiDAR with relevant processing chain.
 
         Note in case of multiple datasets could select by name, spatial extent, or most recent. download_size is in GB.
@@ -48,7 +48,6 @@ class OpenTopography:
         self.redownload_files_bool = redownload_files
         self.download_limit_gbytes = download_limit_gbytes
         self.verbose = verbose
-        self.tile_names = tile_names
 
         self._dataset_prefixes = None
 
@@ -63,36 +62,6 @@ class OpenTopography:
         ot_endpoint_url = urllib.parse.urlunparse((self.SCHEME, self.NETLOC_DATA, "", "", "", ""))
         client = boto3.client('s3', endpoint_url=ot_endpoint_url,
                               config=botocore.config.Config(signature_version=botocore.UNSIGNED))
-
-        if self.tile_names is None:
-            self._run_download_tiles(ot_endpoint_url, client)
-        else:
-            self._run_tiles_provided(ot_endpoint_url, client)
-
-    def _run_tiles_provided(self, ot_endpoint_url: str, client: botocore.client):
-        """ Use the provided tile names to download the specified datasets and tiles from OpenTopography """
-
-        self._dataset_prefixes = []
-
-        # cycle through each dataset within a region
-        for dataset_prefix in self.tile_names.keys():
-
-            self._dataset_prefixes.append(dataset_prefix)
-
-            tile_names = self.tile_names[dataset_prefix]
-
-            # check download size limit is not exceeded
-            lidar_size_bytes = self._calculate_dataset_download_size(client, dataset_prefix, tile_names)
-
-            assert self._to_gbytes(lidar_size_bytes) < self.download_limit_gbytes, "The size of the LiDAR to be " \
-                + f"downloaded is greater than the specified download limit of {self.download_limit_gbytes}"
-
-            # check for tiles and download as needed
-            print("run: self._download_tiles_in_catchment")
-            self._download_tiles_in_catchment(client, dataset_prefix, tile_names)
-
-    def _run_download_tiles(self, ot_endpoint_url: str, client: botocore.client):
-        """ Use the tile files located in the OpenTopography AWS bucket to determine tiles to download """
 
         self._dataset_prefixes = []
 

@@ -91,25 +91,10 @@ class GeoFabricsGenerator:
 
         if self.check_instruction_path('local_cache'):
 
-            # check if a LINZ tile file is specified - use if specified
-            if self.check_instruction_linz("lidar_tiles"):
-                layers = self.get_instruction_linz('lidar_tiles')['layers']
-                names = self.get_instruction_linz('lidar_tiles')['names']
-                prefixes = self.get_instruction_linz('lidar_tiles')['prefixes']
-
-                self.tile_fetcher = vector_fetch.LinzTiles(self.get_instruction_linz('key'),
-                                                           self.catchment_geometry, verbose=True)
-                tile_names = {}
-                for layer, name, prefix in zip(layers, names, prefixes):
-                    layer_names = self.tile_fetcher.run(layer, prefix)
-                    tile_names[name] = layer_names
-            else:
-                tile_names = None
-
             # download from OpenTopography - then get the local file path
             self.lidar_fetcher = lidar_fetch.OpenTopography(self.catchment_geometry,
                                                             self.get_instruction_path('local_cache'),
-                                                            tile_names=tile_names, verbose=verbose)
+                                                            verbose=verbose)
             self.lidar_fetcher.run()
             lidar_file_paths = sorted(pathlib.Path(self.lidar_fetcher.cache_path /
                                       self.lidar_fetcher.dataset_prefixes[lidar_dataset_index]).glob('*.laz'))
