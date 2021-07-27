@@ -10,6 +10,7 @@ import pathlib
 from . import geometry
 from . import lidar
 from . import lidar_fetch
+from . import vector_fetch
 from . import dem
 
 
@@ -68,15 +69,47 @@ class GeoFabricsGenerator:
         else:
             return defaults[key]
 
+    def check_instruction_linz(self, key: str) -> bool:
+        """ Check if the specified LINZ layer is specified """
+
+        if "linz_api" in self.instructions['instructions']:
+            return key in self.instructions['instructions']['linz_api']
+        else:
+            return False
+
+    def get_instruction_linz(self, key: str) -> str:
+        """ Return the linz API info from the instruction file.
+        Raise an error if the key is not in the instructions. """
+
+        assert key in self.instructions['instructions']['linz_api'], "Key missing from data paths"
+        return self.instructions['instructions']['linz_api'][key]
+
     def get_lidar_file_list(self, verbose) -> list:
         """ Load or construct a list of lidar tiles to construct a DEM from. """
 
         lidar_dataset_index = 0  # currently only support one LiDAR dataset
 
-        if 'local_cache' in self.instructions['instructions']['data_paths']:
+        if self.check_instruction_path('local_cache'):
+
+            # check if a LINZ tile file is specified - use if specified
+            if self.check_instruction_linz("lidar_tiles"):
+                layers = self.get_instruction_linz('lidar_tiles')['layers']
+                names = self.get_instruction_linz('lidar_tiles')['names']
+                prefixes = self.get_instruction_linz('lidar_tiles')['prefixes']
+
+                self.tile_fetcher = vector_fetch.LinzTiles(self.get_instruction_linz('key'),
+                                                           self.catchment_geometry, verbose=True)
+                tile_names = {}
+                for layer, name, prefix in zip(layers, names, prefixes):
+                    layer_names = self.tile_fetcher.run(layer, prefix)
+                    tile_names[name] = layer_names
+            else:
+                tile_names = None
+
             # download from OpenTopography - then get the local file path
-            self.lidar_fetcher = lidar_fetch.OpenTopography(
-                self.catchment_geometry, self.get_instruction_path('local_cache'), verbose=verbose)
+            self.lidar_fetcher = lidar_fetch.OpenTopography(self.catchment_geometry,
+                                                            self.get_instruction_path('local_cache'),
+                                                            tile_names=tile_names, verbose=verbose)
             self.lidar_fetcher.run()
             lidar_file_paths = sorted(pathlib.Path(self.lidar_fetcher.cache_path /
                                       self.lidar_fetcher.dataset_prefixes[lidar_dataset_index]).glob('*.laz'))

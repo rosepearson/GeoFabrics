@@ -33,27 +33,28 @@ class LinzTiles:
     MAX_RESULTS = 100
     MAX_RADIUS = 100000
 
-    def __init__(self, key: str, layer: int, catchment_geometry: geometry.CatchmentGeometry,
-                 cache_path: typing.Union[str, pathlib.Path], verbose: bool = False):
+    def __init__(self, key: str, catchment_geometry: geometry.CatchmentGeometry, verbose: bool = False):
         """ Load in Vector dataset processing chain.
 
         Zip results
         """
 
         self.key = key
-        self.layer = layer
         self.catchment_geometry = catchment_geometry
-        self.cache_path = pathlib.Path(cache_path)
         self.verbose = verbose
 
         self.json_string = None
         self.tile_names = None
 
-    def run(self):
-        """ Query for tiles within a catchment construct a list of tiles names within the catchment """
-        self.tile_names = self.get_tiles_inside_catchment()
+    def run(self, layer: int, prefix: str):
+        """ Query for tiles within a catchment for a specified layer and return a list of the tile names within
+        the catchment """
 
-    def query_vector_wfs(self, bounds):
+        tile_names = self.get_tiles_inside_catchment(layer, prefix)
+
+        return tile_names
+
+    def query_vector_wfs(self, bounds, layer: int):
         """ Function to check for tiles in search rectangle using the LINZ WFS vector query API
         https://www.linz.govt.nz/data/linz-data-service/guides-and-documentation/wfs-spatial-filtering
 
@@ -70,7 +71,7 @@ class LinzTiles:
             "service": "WFS",
             "version": 2.0,
             "request": "GetFeature",
-            "typeNames": f"layer-{self.layer}",
+            "typeNames": f"layer-{layer}",
             "outputFormat": "json",
             "SRSName": f"EPSG:{self.catchment_geometry.crs}",
             "cql_filter": f"bbox(GEOMETRY, {bounds['maxy'].max()}, {bounds['maxx'].max()}, " +
@@ -82,12 +83,12 @@ class LinzTiles:
         response.raise_for_status()
         return response.json()
 
-    def get_tiles_inside_catchment(self):
+    def get_tiles_inside_catchment(self, layer: int, prefix: str):
         """ Get a list of tiles within the catchment boundary """
 
         # radius in metres
         catchment_bounds = self.catchment_geometry.catchment.geometry.bounds
-        feature_collection = self.query_vector_wfs(catchment_bounds)
+        feature_collection = self.query_vector_wfs(catchment_bounds, layer)
 
         if self.verbose:  # Plot catchment
             figure = matplotlib.pyplot.figure(figsize=(10, 10))
@@ -112,7 +113,7 @@ class LinzTiles:
 
             # check intersection of tile and catchment in LINZ CRS
             if self.catchment_geometry.catchment.intersects(tile).any():
-                tile_names.append(json_tile['properties']['tilename'])
+                tile_names.append(f"{prefix}{json_tile['properties']['tilename']}.laz")
 
                 if self.verbose:  # Plot overlapping catchment in red
                     matplotlib.pyplot.plot(*tile.exterior.xy, color="red")

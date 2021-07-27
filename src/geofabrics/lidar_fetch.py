@@ -10,6 +10,7 @@ import pathlib
 import requests
 import boto3
 import botocore
+import botocore.client
 import typing
 from . import geometry
 
@@ -36,7 +37,7 @@ class OpenTopography:
 
     def __init__(self, catchment_geometry: geometry.CatchmentGeometry, cache_path: typing.Union[str, pathlib.Path],
                  redownload_files: bool = False, download_limit_gbytes: typing.Union[int, float] = 100,
-                 verbose: bool = False):
+                 tile_names: list = None, verbose: bool = False):
         """ Load in LiDAR with relevant processing chain.
 
         Note in case of multiple datasets could select by name, spatial extent, or most recent. download_size is in GB.
@@ -47,6 +48,7 @@ class OpenTopography:
         self.redownload_files_bool = redownload_files
         self.download_limit_gbytes = download_limit_gbytes
         self.verbose = verbose
+        self.tile_names = tile_names
 
         self._dataset_prefixes = None
 
@@ -57,30 +59,61 @@ class OpenTopography:
 
     def run(self):
         """ Query for LiDAR data within a catchment and download any that hasn't already been downloaded """
-        self._dataset_prefixes = []
-
-        json_response = self.query_for_datasets_inside_catchment()
 
         ot_endpoint_url = urllib.parse.urlunparse((self.SCHEME, self.NETLOC_DATA, "", "", "", ""))
         client = boto3.client('s3', endpoint_url=ot_endpoint_url,
                               config=botocore.config.Config(signature_version=botocore.UNSIGNED))
 
+        if self.tile_names is None:
+            self._run_download_tiles(ot_endpoint_url, client)
+        else:
+            self._run_tiles_provided(ot_endpoint_url, client)
+
+    def _run_tiles_provided(self, ot_endpoint_url: str, client: botocore.client):
+        """ Use the provided tile names to download the specified datasets and tiles from OpenTopography """
+
+        self._dataset_prefixes = []
+
         # cycle through each dataset within a region
-        for json_dataset in json_response['Datasets']:
-            dataset_prefix = json_dataset['Dataset']['alternateName']
+        for dataset_prefix in self.tile_names.keys():
+
             self._dataset_prefixes.append(dataset_prefix)
 
-            tile_info = self._get_dataset_tile_info(client, dataset_prefix)
+            tile_names = self.tile_names[dataset_prefix]
 
             # check download size limit is not exceeded
-            lidar_size_bytes = self._calculate_dataset_download_size(client, dataset_prefix, tile_info)
+            lidar_size_bytes = self._calculate_dataset_download_size(client, dataset_prefix, tile_names)
 
             assert self._to_gbytes(lidar_size_bytes) < self.download_limit_gbytes, "The size of the LiDAR to be " \
                 + f"downloaded is greater than the specified download limit of {self.download_limit_gbytes}"
 
             # check for tiles and download as needed
             print("run: self._download_tiles_in_catchment")
-            self._download_tiles_in_catchment(client, dataset_prefix, tile_info)
+            self._download_tiles_in_catchment(client, dataset_prefix, tile_names)
+
+    def _run_download_tiles(self, ot_endpoint_url: str, client: botocore.client):
+        """ Use the tile files located in the OpenTopography AWS bucket to determine tiles to download """
+
+        self._dataset_prefixes = []
+
+        json_response = self.query_for_datasets_inside_catchment()
+
+        # cycle through each dataset within a region
+        for json_dataset in json_response['Datasets']:
+            dataset_prefix = json_dataset['Dataset']['alternateName']
+            self._dataset_prefixes.append(dataset_prefix)
+
+            tile_names = self._get_dataset_tile_names(client, dataset_prefix)
+
+            # check download size limit is not exceeded
+            lidar_size_bytes = self._calculate_dataset_download_size(client, dataset_prefix, tile_names)
+
+            assert self._to_gbytes(lidar_size_bytes) < self.download_limit_gbytes, "The size of the LiDAR to be " \
+                + f"downloaded is greater than the specified download limit of {self.download_limit_gbytes}"
+
+            # check for tiles and download as needed
+            print("run: self._download_tiles_in_catchment")
+            self._download_tiles_in_catchment(client, dataset_prefix, tile_names)
 
     def query_for_datasets_inside_catchment(self):
         """ Function to check for data in search region using the otCatalogue API
@@ -104,7 +137,7 @@ class OpenTopography:
         response.raise_for_status()
         return response.json()
 
-    def _get_dataset_tile_info(self, client, dataset_prefix):
+    def _get_dataset_tile_names(self, client, dataset_prefix):
         """ Check for the tile index shapefile and download as needed, then load in and trim to the catchment to
         determine which data tiles to download. """
 
@@ -126,17 +159,18 @@ class OpenTopography:
         # load in tile information
         tile_info = geometry.TileInfo(local_file_path, self.catchment_geometry)
 
-        return tile_info
+        return tile_info.tile_names
 
-    def _calculate_dataset_download_size(self, client, dataset_prefix, tile_info):
+    def _calculate_dataset_download_size(self, client, dataset_prefix, tile_names):
         """ Sum up the size of the LiDAR data in catchment """
 
         lidar_size_bytes = 0
 
-        for tile_name in tile_info.tile_names:
+        for tile_name in tile_names:
             file_prefix = dataset_prefix + "/" + tile_name
             local_path = self.cache_path / file_prefix
             if self.redownload_files_bool or not local_path.exists():
+                print(file_prefix)
                 response = client.head_object(Bucket=self.OT_BUCKET, Key=file_prefix)
                 assert response['ResponseMetadata'][
                     'HTTPStatusCode'] == 200, f"No tile file exists with key: {file_prefix}"
@@ -147,10 +181,10 @@ class OpenTopography:
 
         return lidar_size_bytes
 
-    def _download_tiles_in_catchment(self, client, dataset_prefix, tile_info):
+    def _download_tiles_in_catchment(self, client, dataset_prefix, tile_names):
         """ Download the LiDAR data within the catchment """
 
-        for tile_name in tile_info.tile_names:
+        for tile_name in tile_names:
             file_prefix = f"{dataset_prefix}/{tile_name}"
             local_path = self.cache_path / file_prefix
 

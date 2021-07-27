@@ -285,6 +285,8 @@ class TileInfo:
         self._tile_info = geopandas.read_file(tile_file)
         self.catchment_geometry = catchment_geometry
 
+        self.file_name = None
+
         self._set_up()
 
     def _set_up(self):
@@ -294,8 +296,26 @@ class TileInfo:
         self._tile_info = geopandas.sjoin(self._tile_info, self.catchment_geometry.catchment)
         self._tile_info = self._tile_info.reset_index(drop=True)
 
+        column_names = self._tile_info.columns
+        if "Filename" in column_names:
+            self.file_name = "Filename"
+        elif "filename" in column_names:
+            self.file_name = "filename"
+        elif "FILENAME" in column_names:
+            self.file_name = "FILENAME"
+        elif "file_name" in column_names:
+            self.file_name = "file_name"
+        elif "File_name" in column_names:
+            self.file_name = "File_name"
+        elif "File_Name" in column_names:
+            self.file_name = "File_Name"
+        elif "FILE_NAME" in column_names:
+            self.file_name = "FILE_NAME"
+        else:
+            assert False, f"No file name column detected in the tile file with columns: {column_names}"
+
     @property
     def tile_names(self):
         """ Return the names of all tiles within the catchment """
 
-        return self._tile_info['Filename']
+        return self._tile_info[self.file_name]

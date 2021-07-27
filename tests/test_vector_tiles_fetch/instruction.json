@@ -9,8 +9,8 @@
     },
 	"linz_api": {
 	    "key": "b74b510da6cb4e23ad8e779f9bd1b366",
-	    "layers": {
-			"lidar_tile": 105448
+	    "lidar_tiles": {
+			"layers": [105448]
 		}
 	}
   }
