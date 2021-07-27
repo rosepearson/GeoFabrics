@@ -35,15 +35,15 @@ class LinzVectors:
         self.catchment_geometry = catchment_geometry
         self.verbose = verbose
 
-    def run(self, layer: int):
+    def run(self, layer: int, geometry_type: str):
         """ Query for tiles within a catchment for a specified layer and return a list of the tile names within
         the catchment """
 
-        features = self.get_features_inside_catchment(layer)
+        features = self.get_features_inside_catchment(layer, geometry_type)
 
         return features
 
-    def query_vector_wfs(self, bounds, layer: int):
+    def query_vector_wfs(self, bounds, layer: int, geometry_type: str):
         """ Function to check for tiles in search rectangle using the LINZ WFS vector query API
         https://www.linz.govt.nz/data/linz-data-service/guides-and-documentation/wfs-spatial-filtering
 
@@ -63,7 +63,7 @@ class LinzVectors:
             "typeNames": f"layer-{layer}",
             "outputFormat": "json",
             "SRSName": f"EPSG:{self.catchment_geometry.crs}",
-            "cql_filter": f"bbox(GEOMETRY, {bounds['maxy'].max()}, {bounds['maxx'].max()}, " +
+            "cql_filter": f"bbox({geometry_type}, {bounds['maxy'].max()}, {bounds['maxx'].max()}, " +
                           f"{bounds['miny'].min()}, {bounds['minx'].min()}, " +
                           f"'urn:ogc:def:crs:EPSG:{self.catchment_geometry.crs}')"
         }
@@ -73,12 +73,12 @@ class LinzVectors:
         response.raise_for_status()
         return response.json()
 
-    def get_features_inside_catchment(self, layer: int):
+    def get_features_inside_catchment(self, layer: int, geometry_type: str):
         """ Get a list of tiles within the catchment boundary """
 
         # radius in metres
         catchment_bounds = self.catchment_geometry.catchment.geometry.bounds
-        feature_collection = self.query_vector_wfs(catchment_bounds, layer)
+        feature_collection = self.query_vector_wfs(catchment_bounds, layer, geometry_type)
 
         # Cycle through each feature getting name and coordinates
         features = []
@@ -95,8 +95,10 @@ class LinzVectors:
 
                 features.append(shapely_geometry)
 
+        # Convert to a geopandas dataframe
         if len(features) > 0:
-            features = geopandas.GeoDataFrame(index=[0], geometry=features, crs=self.catchment_geometry.crs)
+            features = geopandas.GeoDataFrame(index=list(range(len(features))), geometry=features,
+                                              crs=self.catchment_geometry.crs)
         else:
             features = None
 

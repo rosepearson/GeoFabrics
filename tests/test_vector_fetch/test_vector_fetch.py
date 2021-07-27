@@ -87,30 +87,44 @@ class LinzTilesTest(unittest.TestCase):
                 file.unlink()
 
     def test_land(self):
-        """ A test to see if all expected tiles name are located """
+        """ A test to check expected island is loaded """
 
-        land = self.runner.run(self.instructions['instructions']['linz_api']['layers']['land'])
+        land = self.runner.run(self.instructions['instructions']['linz_api']['land']['layer'],
+                               self.instructions['instructions']['linz_api']['land']['type'])
 
         f = matplotlib.pyplot.figure(figsize=(10, 10))
         gs = f.add_gridspec(1, 1)
         ax1 = f.add_subplot(gs[0, 0])
         land.plot(ax=ax1)
         self.catchment_geometry.catchment.plot(ax=ax1, color="none", edgecolor="red")
-        '''land_dir = self.cache_dir / "land"
-        land.to_file(land_dir)
-        shutil.make_archive(base_name=land_dir, format='zip', root_dir=land_dir)
-        shutil.rmtree(land_dir)'''
 
         land_dir = self.cache_dir / "land.zip"
         benchmark = geopandas.read_file(land_dir)
 
-        '''print(land.geometry)
-        print(benchmark.geometry)
-        print(land.difference(benchmark).area.sum())'''
-
         # check files are correct
         self.assertEqual(land.difference(benchmark).area.sum(), 0, f"The returned land polygon ``f{land}` differs by " +
                          f"`{land.difference(benchmark).area.sum()}` in area from the benchmark of f{benchmark}")
+
+    def test_bathymetry(self):
+        """ A test to check expected bathyemtry contours are loaded """
+
+        bathymetry_contours = self.runner.run(
+            self.instructions['instructions']['linz_api']['bathymetry_contours']['layers'][0],
+            self.instructions['instructions']['linz_api']['bathymetry_contours']['type'])
+
+        f = matplotlib.pyplot.figure(figsize=(10, 10))
+        gs = f.add_gridspec(1, 1)
+        ax1 = f.add_subplot(gs[0, 0])
+        bathymetry_contours.plot(ax=ax1)
+        self.catchment_geometry.catchment.plot(ax=ax1, color="none", edgecolor="red")
+
+        bathymetry_dir = self.cache_dir / "bathymetry_contours.zip"
+        benchmark = geopandas.read_file(bathymetry_dir)
+
+        # check files are correct
+        self.assertEqual(bathymetry_contours.difference(benchmark).area.sum(), 0, "The returned land polygon " +
+                         f"`{bathymetry_contours}` differs by `{bathymetry_contours.difference(benchmark).area.sum()}" +
+                         f"` in area from the benchmark of f{benchmark}")
 
 
 if __name__ == '__main__':
