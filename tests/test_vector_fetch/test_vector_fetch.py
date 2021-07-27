@@ -11,6 +11,7 @@ import pathlib
 import shapely
 import geopandas
 import shutil
+import matplotlib
 
 from src.geofabrics import vector_fetch
 from src.geofabrics import geometry
@@ -29,28 +30,22 @@ class LinzTilesTest(unittest.TestCase):
         in the tests. """
 
         # load in the test instructions
-        file_path = pathlib.Path().cwd() / pathlib.Path("tests/test_vector_tiles_fetch/instruction.json")
+        file_path = pathlib.Path().cwd() / pathlib.Path("tests/test_vector_fetch/instruction.json")
         with open(file_path, 'r') as file_pointer:
             cls.instructions = json.load(file_pointer)
 
         # define cache location - and catchment dirs
         cls.cache_dir = pathlib.Path(cls.instructions['instructions']['data_paths']['local_cache'])
 
-        # ensure the cache directory doesn't exist - i.e. clean up from last test occurred correctly
-        if cls.cache_dir.exists():
-            shutil.rmtree(cls.cache_dir)
-        cls.cache_dir.mkdir()
+        # makes sure the data directory exists and only contains benchmark data
+        cls.clean_data_folder()
 
         # create fake catchment boundary
-        x0 = 1473354
-        x1 = 1473704
-        x2 = 1474598
-        y0 = 5377655
-        y1 = 5377335
-        y2 = 5376291
-        y3 = 5375824
-        catchment = shapely.geometry.Polygon([(x0, y0), (x0, y3), (x2, y3), (x2, y2),
-                                              (x1, y2), (x1, y1), (x2, y1), (x2, y0)])
+        x0 = 1477354
+        x1 = 1484656
+        y0 = 5374408
+        y1 = 5383411
+        catchment = shapely.geometry.Polygon([(x0, y0), (x0, y1), (x1, y1), (x1, y0)])
         catchment = geopandas.GeoSeries([catchment])
         catchment = catchment.set_crs(cls.instructions['instructions']['projection'])
 
@@ -67,25 +62,55 @@ class LinzTilesTest(unittest.TestCase):
                                                         cls.instructions['instructions']['grid_params']['resolution'])
 
         # Run pipeline - download files
-        cls.runner = vector_fetch.LinzTiles(cls.instructions['instructions']['linz_api']['key'],
-                                            catchment_geometry, verbose=True)
+        cls.runner = vector_fetch.LinzVectors(cls.instructions['instructions']['linz_api']['key'],
+                                              catchment_geometry, verbose=True)
+        cls.catchment_geometry = catchment_geometry
 
     @classmethod
     def tearDownClass(cls):
         """ Remove created cache directory and included created and downloaded files at the end of the test. """
 
-        if cls.cache_dir.exists():
-            shutil.rmtree(cls.cache_dir)
+        assert cls.cache_dir.exists(), "The data directory that should include the comparison benchmark files " + \
+            "doesn't exist"
+        cls.clean_data_folder()
 
-    def test_correct_file_list(self):
+    @classmethod
+    def clean_data_folder(cls):
+        """ Remove all generated or downloaded files from the data directory """
+
+        assert cls.cache_dir.exists(), "The data directory that should include the comparison benchmark file " + \
+            "doesn't exist"
+
+        benchmark_files = [cls.cache_dir / "land.zip", cls.cache_dir / "bathymetry_contours.zip"]
+        for file in cls.cache_dir.glob('*'):
+            if file not in benchmark_files:
+                file.unlink()
+
+    def test_land(self):
         """ A test to see if all expected tiles name are located """
 
-        tile_names = self.runner.run(self.instructions['instructions']['linz_api']['lidar_tiles']['layers'][0])
-        print(f"The returned tile names are: {tile_names}")
+        land = self.runner.run(self.instructions['instructions']['linz_api']['layers']['land'])
+
+        f = matplotlib.pyplot.figure(figsize=(10, 10))
+        gs = f.add_gridspec(1, 1)
+        ax1 = f.add_subplot(gs[0, 0])
+        land.plot(ax=ax1)
+        self.catchment_geometry.catchment.plot(ax=ax1, color="none", edgecolor="red")
+        '''land_dir = self.cache_dir / "land"
+        land.to_file(land_dir)
+        shutil.make_archive(base_name=land_dir, format='zip', root_dir=land_dir)
+        shutil.rmtree(land_dir)'''
+
+        land_dir = self.cache_dir / "land.zip"
+        benchmark = geopandas.read_file(land_dir)
+
+        '''print(land.geometry)
+        print(benchmark.geometry)
+        print(land.difference(benchmark).area.sum())'''
 
         # check files are correct
-        self.assertEqual(tile_names, self.TILE_NAMES, f"The returned tile names `{self.runner.tile_names}` "
-                         + f"differ from those expected `{self.TILE_NAMES}`")
+        self.assertEqual(land.difference(benchmark).area.sum(), 0, f"The returned land polygon ``f{land}` differs by " +
+                         f"`{land.difference(benchmark).area.sum()}` in area from the benchmark of f{benchmark}")
 
 
 if __name__ == '__main__':
