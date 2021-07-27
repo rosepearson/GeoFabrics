@@ -143,8 +143,7 @@ class ProcessorRemoteTilesTest(unittest.TestCase):
         with rioxarray.rioxarray.open_rasterio(self.instructions['instructions']['data_paths']['result_dem'],
                                                masked=True) as test_dem:
             test_dem.load()
-        benchmark_dem.plot()
-        test_dem.plot()
+
         # compare the generated and benchmark DEMs
         diff_array = test_dem.data[~numpy.isnan(test_dem.data)]-benchmark_dem.data[~numpy.isnan(benchmark_dem.data)]
         print(f"DEM array diff is: {diff_array[diff_array != 0]}")
@@ -172,9 +171,12 @@ class ProcessorRemoteTilesTest(unittest.TestCase):
         print(f"DEM array diff is: {diff_array[diff_array != 0]}")
 
         threshold = 10e-6
-        self.assertTrue(len(diff_array[diff_array != 0]) < len(diff_array) / 100, f"{len(diff_array[diff_array != 0])} "
-                        + f"or more than 1% of DEM values differ on Linux test run: {diff_array[diff_array != 0]}")
-        self.assertTrue(len(diff_array[numpy.abs(diff_array) > threshold]) < len(diff_array) / 100, "More than 0.1% of "
+        '''self.assertTrue(len(diff_array[diff_array != 0]) < len(diff_array) / 100, f"{len(diff_array[diff_array != 0])} "
+                        + f"or more than 1% of DEM values differ on Linux test run: {diff_array[diff_array != 0]}")'''
+        self.assertTrue(len(diff_array[numpy.abs(diff_array) > threshold]) < len(diff_array) / 100, "More than 1% of "
+                        + "DEM values differ by more than {threshold} on Linux test run: " +
+                        f"{diff_array[numpy.abs(diff_array) > threshold]}")
+        self.assertTrue(len(diff_array[numpy.abs(diff_array) > threshold]) == 0, "Some of the "
                         + "DEM values differ by more than {threshold} on Linux test run: " +
                         f"{diff_array[numpy.abs(diff_array) > threshold]}")
 
