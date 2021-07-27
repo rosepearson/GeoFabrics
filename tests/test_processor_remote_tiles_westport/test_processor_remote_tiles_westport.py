@@ -171,7 +171,7 @@ class ProcessorRemoteTilesTest(unittest.TestCase):
         print(f"DEM array diff is: {diff_array[diff_array != 0]}")
 
         threshold = 10e-2
-        self.assertTrue(len(diff_array[numpy.abs(diff_array) > threshold]) < 0, "Some DEM values differ by more than"
+        self.assertTrue(len(diff_array[numpy.abs(diff_array) > threshold]) == 0, "Some DEM values differ by more than"
                         + f"{threshold} on Linux test run: {diff_array[numpy.abs(diff_array) > threshold]}")
         threshold = 10e-6
         self.assertTrue(len(diff_array[numpy.abs(diff_array) > threshold]) < len(diff_array) / 100,
