@@ -170,10 +170,13 @@ class ProcessorRemoteTilesTest(unittest.TestCase):
         diff_array = test_dem.data[~numpy.isnan(test_dem.data)]-benchmark_dem.data[~numpy.isnan(benchmark_dem.data)]
         print(f"DEM array diff is: {diff_array[diff_array != 0]}")
 
+        threshold = 10e-2
+        self.assertTrue(len(diff_array[numpy.abs(diff_array) > threshold]) < 0, "Some DEM values differ by more than"
+                        + f"{threshold} on Linux test run: {diff_array[numpy.abs(diff_array) > threshold]}")
         threshold = 10e-6
-        self.assertTrue(len(diff_array[numpy.abs(diff_array) > threshold]) < len(diff_array) / 1000, "More than 0.1% of"
-                        + " DEM values differ by more than {threshold} on Linux test run: " +
-                        f"{diff_array[numpy.abs(diff_array) > threshold]}")
+        self.assertTrue(len(diff_array[numpy.abs(diff_array) > threshold]) < len(diff_array) / 100,
+                        f"{len(diff_array[numpy.abs(diff_array) > threshold])} or more than 1% of DEM values differ by "
+                        + f" more than {threshold} on Linux test run: {diff_array[numpy.abs(diff_array) > threshold]}")
 
 
 if __name__ == '__main__':
