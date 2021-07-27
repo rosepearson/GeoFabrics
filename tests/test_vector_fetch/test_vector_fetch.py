@@ -11,7 +11,6 @@ import pathlib
 import shapely
 import geopandas
 import shutil
-import matplotlib
 
 from src.geofabrics import vector_fetch
 from src.geofabrics import geometry
@@ -92,12 +91,7 @@ class LinzTilesTest(unittest.TestCase):
         land = self.runner.run(self.instructions['instructions']['linz_api']['land']['layer'],
                                self.instructions['instructions']['linz_api']['land']['type'])
 
-        f = matplotlib.pyplot.figure(figsize=(10, 10))
-        gs = f.add_gridspec(1, 1)
-        ax1 = f.add_subplot(gs[0, 0])
-        land.plot(ax=ax1)
-        self.catchment_geometry.catchment.plot(ax=ax1, color="none", edgecolor="red")
-
+        # Load in benchmark
         land_dir = self.cache_dir / "land.zip"
         benchmark = geopandas.read_file(land_dir)
 
@@ -112,12 +106,7 @@ class LinzTilesTest(unittest.TestCase):
             self.instructions['instructions']['linz_api']['bathymetry_contours']['layers'][0],
             self.instructions['instructions']['linz_api']['bathymetry_contours']['type'])
 
-        f = matplotlib.pyplot.figure(figsize=(10, 10))
-        gs = f.add_gridspec(1, 1)
-        ax1 = f.add_subplot(gs[0, 0])
-        bathymetry_contours.plot(ax=ax1)
-        self.catchment_geometry.catchment.plot(ax=ax1, color="none", edgecolor="red")
-
+        # Load in benchmark
         bathymetry_dir = self.cache_dir / "bathymetry_contours.zip"
         benchmark = geopandas.read_file(bathymetry_dir)
 
