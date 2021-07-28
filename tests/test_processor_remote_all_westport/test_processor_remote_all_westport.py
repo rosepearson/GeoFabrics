@@ -24,10 +24,10 @@ class ProcessorRemoteAllWestportTest(unittest.TestCase):
     OpenTopography within a small region and then generating a DEM. All files are deleted after checking the DEM."""
 
     DATASETS = ["NZ20_Westport", "51153"]
-    LIDAR_FILES = ["CL2_BR20_2020_1000_4012.laz", "CL2_BR20_2020_1000_4013.laz", "CL2_BR20_2020_1000_4014.laz",
-                   "CL2_BR20_2020_1000_4112.laz", "CL2_BR20_2020_1000_4212.laz", "CL2_BR20_2020_1000_4213.laz",
-                   "CL2_BR20_2020_1000_4214.laz", DATASETS[0] + "_TileIndex.zip"]
-    LIDAR_SIZES = [2636961, 3653378, 4470413, 9036407, 8340310, 6094309, 8492543, 109069]
+    LIDAR_SIZES = {"CL2_BR20_2020_1000_4012.laz": 2636961, "CL2_BR20_2020_1000_4013.laz": 3653378,
+                   "CL2_BR20_2020_1000_4014.laz": 4470413, "CL2_BR20_2020_1000_4112.laz": 9036407,
+                   "CL2_BR20_2020_1000_4212.laz": 8340310, "CL2_BR20_2020_1000_4213.laz": 6094309,
+                   "CL2_BR20_2020_1000_4214.laz": 8492543, DATASETS[0] + "_TileIndex.zip": 109069}
 
     @classmethod
     def setUpClass(cls):
@@ -105,10 +105,10 @@ class ProcessorRemoteAllWestportTest(unittest.TestCase):
                          f"Instead we have: {[file for file in self.cache_dir.iterdir() if file.is_dir()]}")
 
     def test_correct_lidar_files_downloaded(self):
-        """ A test to see if all expected dataset files are downloaded """
+        """ A test to see if all expected LiDAR dataset files are downloaded """
 
         dataset_dir = self.cache_dir / self.DATASETS[0]
-        downloaded_files = [dataset_dir / file for file in self.LIDAR_FILES]
+        downloaded_files = [dataset_dir / file for file in self.LIDAR_SIZES.keys()]
         for file in downloaded_files:
             print(f"{file.name} of size {file.stat().st_size}")
         # check files are correct
@@ -123,13 +123,13 @@ class ProcessorRemoteAllWestportTest(unittest.TestCase):
         """ A test to see if all expected dataset files are of the right size """
 
         dataset_dir = self.cache_dir / self.DATASETS[0]
-        downloaded_files = [dataset_dir / file for file in self.LIDAR_FILES]
+        downloaded_files = [dataset_dir / file for file in self.LIDAR_SIZES.keys()]
 
         # check sizes are correct
-        self.assertTrue(numpy.all([downloaded_file.stat().st_size == self.LIDAR_SIZES[i] for i, downloaded_file in
-                                   enumerate(downloaded_files)]), "There is a miss-match between the size of the " +
-                        f"downloaded files {[downloaded_file.stat().st_size for downloaded_file in downloaded_files]}" +
-                        f" and the expected sizes of {self.LIDAR_SIZES}")
+        self.assertTrue(numpy.all([downloaded_file.stat().st_size == self.LIDAR_SIZES[downloaded_file.name] for
+                                   downloaded_file in downloaded_files]), "There is a miss-match between the size of " +
+                        f"the downloaded files {[file.stat().st_size for file in downloaded_files]} and the expected " +
+                        f"sizes of {self.LIDAR_SIZES.values()}")
 
     @pytest.mark.skipif(sys.platform != 'win32', reason="Windows test - this is strict")
     def test_result_dem_windows(self):
