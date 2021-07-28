@@ -88,7 +88,7 @@ class LinzTilesTest(unittest.TestCase):
     def test_land(self):
         """ A test to check expected island is loaded """
 
-        land = self.runner.run(self.instructions['instructions']['linz_api']['land']['layer'],
+        land = self.runner.run(self.instructions['instructions']['linz_api']['land']['layers'][0],
                                self.instructions['instructions']['linz_api']['land']['type'])
 
         # Load in benchmark

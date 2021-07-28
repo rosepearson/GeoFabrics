@@ -7,6 +7,7 @@ Created on Fri Jun 18 10:52:49 2021
 import numpy
 import json
 import pathlib
+import shutil
 from . import geometry
 from . import lidar
 from . import lidar_fetch
@@ -77,6 +78,54 @@ class GeoFabricsGenerator:
         else:
             return False
 
+    def check_vector(self, key) -> bool:
+        """ Check to see if vector key is included either as a file path or as a LINZ API """
+
+        if "data_paths" in self.instructions['instructions'] and key in self.instructions['instructions']['data_paths']:
+            # Key included in the data paths
+            return True
+        elif "linz_api" in self.instructions['instructions'] and key in self.instructions['instructions']['linz_api']:
+            # Key included in the LINZ APIs
+            return True
+        else:
+            return False
+
+    def get_vector_paths(self, key) -> list:
+        """ Get the path to the vector key data is included either as a file path or as a LINZ API. Return all paths
+        where the vector key is specified. In the case that an API is specified ensure the data is fetched as well. """
+
+        paths = []
+
+        if "data_paths" in self.instructions['instructions'] and key in self.instructions['instructions']['data_paths']:
+            # Key included in the data paths - add - either list or individual path
+            if type(self.instructions['instructions']['data_paths'][key]) == list:
+                paths.extend(self.instructions['instructions']['data_paths'][key])
+            else:
+                paths.append(self.instructions['instructions']['data_paths'][key])
+
+        if "linz_api" in self.instructions['instructions'] and key in self.instructions['instructions']['linz_api']:
+            # Key included the LINZ APIs - download data then add
+
+            assert self.check_instruction_path('local_cache'), "Local cache file path must exist to specify the " + \
+                "location to download vector data from the LINZ API"
+
+            vector_fetcher = vector_fetch.LinzVectors(self.instructions['instructions']['linz_api']['key'],
+                                                      self.catchment_geometry, verbose=True)
+            cache_dir = pathlib.Path(self.check_instruction_path('local_cache'))
+            geometry_type = self.instructions['instructions']['linz_api'][key]['type']
+            for layer in self.instructions['instructions']['linz_api'][key]['layers']:
+                vector = vector_fetcher.run(layer, geometry_type)
+
+                # Ensure directory for layer and save vector file
+                layer_dir = cache_dir / layer
+                layer_dir.mkdir(parents=True, exist_ok=True)
+                vector_dir = layer_dir / key
+                vector.to_file(vector_dir)
+                shutil.make_archive(base_name=vector_dir, format='zip', root_dir=vector_dir)
+                shutil.rmtree(vector_dir)
+                paths.append(layer_dir / f"{key}.zip")
+        return paths
+
     def get_instruction_linz(self, key: str) -> str:
         """ Return the linz API info from the instruction file.
         Raise an error if the key is not in the instructions. """
@@ -114,8 +163,14 @@ class GeoFabricsGenerator:
         verbose = self.get_instruction_general('verbose')
 
         # create the catchment geometry object
-        self.catchment_geometry = geometry.CatchmentGeometry(self.get_instruction_path('catchment_boundary'),
-                                                             self.get_instruction_path('land'),
+        catchment_dirs = self.get_vector_paths('catchment_boundary')
+        land_dirs = self.get_vector_paths('land')
+        assert len(catchment_dirs) == 1, f"{len(catchment_dirs)} catchment_boundary's provided, where only one is " + \
+            f"supported. Specficially catchment_dirs = {catchment_dirs}."
+        assert len(land_dirs) == 1, f"{len(land_dirs)} catchment_boundary's provided, where only one is supported." + \
+            f" Specficially land_dirs = {land_dirs}."
+        self.catchment_geometry = geometry.CatchmentGeometry(catchment_dirs[0],
+                                                             land_dirs[0],
                                                              self.get_projection(),
                                                              self.get_resolution(),
                                                              foreshore_buffer=2)
@@ -167,12 +222,17 @@ class GeoFabricsGenerator:
         # Load in bathymetry and interpolate offshore if significant offshore is not covered by LiDAR
         area_without_lidar = \
             self.catchment_geometry.offshore_without_lidar(self.catchment_lidar.extents).geometry.area.sum()
-        if (self.check_instruction_path('bathymetry_contours') and
+        if (self.check_vector('bathymetry_contours') and
                 area_without_lidar > self.catchment_geometry.offshore.area.sum() * area_threshold):
 
+            # Get the bathymetry data directory
+            bathy_contour_dirs = self.get_vector_paths('bathymetry_contours')
+            assert len(bathy_contour_dirs) == 1, f"{len(bathy_contour_dirs)} bathymetry_contours's provided. " + \
+                f"Specficially {catchment_dirs}. Support has not yet been added for multiple datasets."
+            print(bathy_contour_dirs)
             # Load in bathymetry
             self.bathy_contours = geometry.BathymetryContours(
-                self.get_instruction_path('bathymetry_contours')[0], self.catchment_geometry,
+                bathy_contour_dirs[0], self.catchment_geometry,
                 z_label=self.get_instruction_general('bathymetry_contours_z_label'),
                 exclusion_extent=self.catchment_lidar.extents)
 

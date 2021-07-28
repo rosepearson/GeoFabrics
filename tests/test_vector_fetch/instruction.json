@@ -10,7 +10,7 @@
 	"linz_api": {
 	    "key": "b74b510da6cb4e23ad8e779f9bd1b366",
 	    "land": {
-			"layer": 51153,
+			"layers": [51153],
 			"type": "GEOMETRY"
 		},
 		"bathymetry_contours": {
