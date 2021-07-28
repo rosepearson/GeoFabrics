@@ -16,7 +16,7 @@ from src.geofabrics import vector_fetch
 from src.geofabrics import geometry
 
 
-class LinzTilesTest(unittest.TestCase):
+class LinzVectorsTest(unittest.TestCase):
     """ A class to test the basic lidar_fetch class OpenTopography functionality by downloading files from
     OpenTopography within a small region. All files are deleted after checking their names and size."""
 

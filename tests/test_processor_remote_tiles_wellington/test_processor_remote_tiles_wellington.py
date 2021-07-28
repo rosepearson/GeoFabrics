@@ -19,7 +19,7 @@ import sys
 from src.geofabrics import processor
 
 
-class ProcessorRemoteTilesTest(unittest.TestCase):
+class ProcessorRemoteTilesWellingtonTest(unittest.TestCase):
     """ A class to test the basic processor class Processor functionality for remote tiles by downloading files from
     OpenTopography within a small region and then generating a DEM. All files are deleted after checking the DEM."""
 
