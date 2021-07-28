@@ -10,7 +10,7 @@
 	  "lidars": ["tests/test_processor_local_files/data/lidar.laz"],
 	  "reference_dems": ["tests/test_processor_local_files/data/reference_dem.nc"],
 	  "bathymetry_contours": ["tests/test_processor_local_files/data/bathymetry.zip"],
-	  "tmp_raster": "tests/test_processor_local_files/data/temp_dense_dem.tif",
+	  "temp_raster": "tests/test_processor_local_files/data/temp_dense_dem.tif",
 	  "result_dem": "tests/test_processor_local_files/data/test_dem.nc",
 	  "benchmark_dem": "tests/test_processor_local_files/data/benchmark_dem.nc"
     },

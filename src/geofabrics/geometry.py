@@ -17,20 +17,18 @@ class CatchmentGeometry:
 
     It also supports functions for determining how much of a a region is outside an exclusion zone. """
 
-    def __init__(self, catchment_file: str, land_file: str, crs, resolution, foreshore_buffer=2):
+    def __init__(self, catchment_file: str, crs, resolution, foreshore_buffer=2):
         self._catchment = geopandas.read_file(catchment_file)
-        self._land = geopandas.read_file(land_file)
         self.crs = crs
         self.resolution = resolution
         self.foreshore_buffer = foreshore_buffer
 
         # values set in setup
+        self._land = None
         self._foreshore = None
         self._land_and_foreshore = None
         self._foreshore_and_offshore = None
         self._offshore = None
-
-        self._set_up()
 
     def _set_up(self):
         """ Define the main catchment regions and set CRS """
@@ -63,34 +61,55 @@ class CatchmentGeometry:
     def land(self):
         """ Return the catchment land region """
 
+        assert self._land is not None, "Land has not been set yet. This must be set before anything other than the " + \
+            "`catchment` can be returned from a `CatchmentGeometry` object"
         return self._land
+
+    @land.setter
+    def land(self, land_file: str):
+        """ Set the land value and finish setup. """
+
+        self._land = geopandas.read_file(land_file)
+
+        self._set_up()
 
     @property
     def foreshore(self):
         """ Return the catchment foreshore region """
 
+        assert self._land is not None, "Land has not been set yet. This must be set before anything other than the " + \
+            "`catchment` can be returned from a `CatchmentGeometry` object"
         return self._foreshore
 
     @property
     def land_and_foreshore(self):
         """ Return the catchment land and foreshore region """
 
+        assert self._land is not None, "Land has not been set yet. This must be set before anything other than the " + \
+            "`catchment` can be returned from a `CatchmentGeometry` object"
         return self._land_and_foreshore
 
     @property
     def foreshore_and_offshore(self):
         """ Return the catchment foreshore and offshore region """
 
+        assert self._land is not None, "Land has not been set yet. This must be set before anything other than the " + \
+            "`catchment` can be returned from a `CatchmentGeometry` object"
         return self._foreshore_and_offshore
 
     @property
     def offshore(self):
         """ Return the catchment offshore region """
 
+        assert self._land is not None, "Land has not been set yet. This must be set before anything other than the " + \
+            "`catchment` can be returned from a `CatchmentGeometry` object"
         return self._offshore
 
     def land_and_foreshore_without_lidar(self, lidar_extents):
         """ Return the land and foreshore region without LiDAR """
+
+        assert self._land is not None, "Land has not been set yet. This must be set before anything other than the " + \
+            "`catchment` can be returned from a `CatchmentGeometry` object"
 
         land_and_foreshore_with_lidar = geopandas.clip(lidar_extents, self.land_and_foreshore)
         land_and_foreshore_without_lidar = geopandas.overlay(
@@ -101,6 +120,9 @@ class CatchmentGeometry:
     def offshore_without_lidar(self, lidar_extents):
         """ Return the offshore region without LiDAR """
 
+        assert self._land is not None, "Land has not been set yet. This must be set before anything other than the " + \
+            "`catchment` can be returned from a `CatchmentGeometry` object"
+
         offshore_with_lidar = geopandas.clip(lidar_extents, self.offshore)
         offshore_without_lidar = geopandas.overlay(self.offshore, offshore_with_lidar, how="difference")
 
@@ -110,6 +132,9 @@ class CatchmentGeometry:
         """ Return the offshore edge of where there is 'dense data' i.e. LiDAR or reference DEM """
 
         assert len(lidar_extents) == 1, "LiDAR extents has a length greater than 1"
+
+        assert self._land is not None, "Land has not been set yet. This must be set before anything other than the " + \
+            "`catchment` can be returned from a `CatchmentGeometry` object"
 
         # the foreshore and whatever lidar extents are offshore
         dense_data_extents = geopandas.GeoSeries(shapely.ops.cascaded_union([self.foreshore.loc[0].geometry,
@@ -132,6 +157,9 @@ class CatchmentGeometry:
         """ Return the offshore area where there is no 'dense data' i.e. LiDAR """
 
         assert len(lidar_extents) == 1, "LiDAR extents has a length greater than 1"
+
+        assert self._land is not None, "Land has not been set yet. This must be set before anything other than the " + \
+            "`catchment` can be returned from a `CatchmentGeometry` object"
 
         # lidar extents are offshore
         offshore_dense_data = geopandas.clip(lidar_extents, self.offshore)

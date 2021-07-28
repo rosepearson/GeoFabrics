@@ -32,15 +32,29 @@ class GeoFabricsGenerator:
         self.result_dem = None
 
     def get_instruction_path(self, key: str) -> str:
-        """ Return the file path from the instruction file. Raise an error if the key is not in the instructions. """
+        """ Return the file path from the instruction file, or default if there is a default value and the local cache
+        is specified. Raise an error if the key is not in the instructions. """
 
-        assert key in self.instructions['instructions']['data_paths'], "Key missing from data paths"
-        return self.instructions['instructions']['data_paths'][key]
+        defaults = {'temp_raster': "temp_dense_dem.tif", 'result_dem': "genrated_dem.nc"}
+
+        if key in self.instructions['instructions']['data_paths']:
+            return self.instructions['instructions']['data_paths'][key]
+        elif "local_cache" in self.instructions['instructions']['data_paths'] and key in defaults.keys():
+            return pathlib.Path(self.instructions['instructions']['data_paths']['local_cache']) / defaults[key]
+        else:
+            assert False, f"Either the key `{key}` missing from data paths, or either the `local_cache` is not " + \
+                f"specified in the data paths or the key is not specified in the defaults: {defaults}"
 
     def check_instruction_path(self, key: str) -> bool:
-        """ Return True if the file path exists in the instruction file. """
+        """ Return True if the file path exists in the instruction file, or True if there is a default value and the
+        local cache is specified. """
 
-        return key in self.instructions['instructions']['data_paths']
+        defaults = ['temp_raster', 'result_dem']
+
+        if key in self.instructions['instructions']['data_paths']:
+            return True
+        else:
+            return 'local_cache' in self.instructions['instructions']['data_paths'] and key in defaults
 
     def get_resolution(self) -> float:
         """ Return the resolution from the instruction file. Raise an error if not in the instructions. """
@@ -65,7 +79,7 @@ class GeoFabricsGenerator:
 
         assert key in defaults or key in self.instructions['instructions']['general'], f"The key: {key} is missing " \
             + "from the general instructions, and does not have a default value"
-        if key in self.instructions['instructions']['general']:
+        if 'general' in self.instructions['instructions'] and key in self.instructions['instructions']['general']:
             return self.instructions['instructions']['general'][key]
         else:
             return defaults[key]
@@ -118,16 +132,19 @@ class GeoFabricsGenerator:
 
             assert self.check_instruction_path('local_cache'), "Local cache file path must exist to specify the " + \
                 "location to download vector data from the LINZ API"
+            assert self.catchment_geometry is not None, "The `self.catchment_directory` object must exist before a" + \
+                "vector is downloaded using `vector_fetch.LinzVectors`"
 
             vector_instruction = self.instructions['instructions']['apis']['linz'][key]
-            vector_fetcher = vector_fetch.LinzVectors(vector_instruction, self.catchment_geometry, verbose=True)
-            cache_dir = pathlib.Path(self.check_instruction_path('local_cache'))
+            vector_fetcher = vector_fetch.LinzVectors(self.instructions['instructions']['apis']['linz']['key'],
+                                                      self.catchment_geometry, verbose=True)
+            cache_dir = pathlib.Path(self.get_instruction_path('local_cache'))
             geometry_type = vector_instruction['type']
             for layer in vector_instruction['layers']:
                 vector = vector_fetcher.run(layer, geometry_type)
 
                 # Ensure directory for layer and save vector file
-                layer_dir = cache_dir / layer
+                layer_dir = cache_dir / str(layer)
                 layer_dir.mkdir(parents=True, exist_ok=True)
                 vector_dir = layer_dir / key
                 vector.to_file(vector_dir)
@@ -176,17 +193,17 @@ class GeoFabricsGenerator:
         verbose = self.get_instruction_general('verbose')
 
         # create the catchment geometry object
-        catchment_dirs = self.get_vector_paths('catchment_boundary')
-        land_dirs = self.get_vector_paths('land')
-        assert len(catchment_dirs) == 1, f"{len(catchment_dirs)} catchment_boundary's provided, where only one is " + \
-            f"supported. Specficially catchment_dirs = {catchment_dirs}."
-        assert len(land_dirs) == 1, f"{len(land_dirs)} catchment_boundary's provided, where only one is supported." + \
-            f" Specficially land_dirs = {land_dirs}."
-        self.catchment_geometry = geometry.CatchmentGeometry(catchment_dirs[0],
-                                                             land_dirs[0],
+        catchment_dirs = self.get_instruction_path('catchment_boundary')
+        assert type(catchment_dirs) is not list, f"A list of catchment_boundary's is provided: {catchment_dirs}, " + \
+            "where only one is supported."
+        self.catchment_geometry = geometry.CatchmentGeometry(catchment_dirs,
                                                              self.get_projection(),
                                                              self.get_resolution(),
                                                              foreshore_buffer=2)
+        land_dirs = self.get_vector_paths('land')
+        assert len(land_dirs) == 1, f"{len(land_dirs)} catchment_boundary's provided, where only one is supported." + \
+            f" Specficially land_dirs = {land_dirs}."
+        self.catchment_geometry.land = land_dirs[0]
 
         # Define PDAL/GDAL griding parameter values
         radius = self.catchment_geometry.resolution * numpy.sqrt(2)
@@ -197,7 +214,8 @@ class GeoFabricsGenerator:
         lidar_file_paths = self.get_lidar_file_list(verbose)
 
         # setup dense DEM and catchment LiDAR objects
-        self.dense_dem = dem.DenseDem(self.catchment_geometry, self.get_instruction_path('tmp_raster'), verbose=verbose)
+        self.dense_dem = dem.DenseDem(self.catchment_geometry, self.get_instruction_path('temp_raster'), 
+                                      verbose=verbose)
         self.catchment_lidar = lidar.CatchmentLidar(
             self.catchment_geometry, area_to_drop=self.get_instruction_general('filter_lidar_holes_area'),
             verbose=verbose)

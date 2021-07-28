@@ -56,12 +56,13 @@ class LinzTilesTest(unittest.TestCase):
 
         # cconvert catchment file to zipfile
         catchment_dir = pathlib.Path(str(catchment_dir) + ".zip")
-        catchment_geometry = geometry.CatchmentGeometry(catchment_dir, catchment_dir,  # all land
+        catchment_geometry = geometry.CatchmentGeometry(catchment_dir,
                                                         cls.instructions['instructions']['projection'],
                                                         cls.instructions['instructions']['grid_params']['resolution'])
+        catchment_geometry.land = catchment_dir  # all land
 
         # Run pipeline - download files
-        cls.runner = vector_fetch.LinzVectors(cls.instructions['instructions']['linz_api']['key'],
+        cls.runner = vector_fetch.LinzVectors(cls.instructions['instructions']['apis']['linz']['key'],
                                               catchment_geometry, verbose=True)
         cls.catchment_geometry = catchment_geometry
 
@@ -88,8 +89,8 @@ class LinzTilesTest(unittest.TestCase):
     def test_land(self):
         """ A test to check expected island is loaded """
 
-        land = self.runner.run(self.instructions['instructions']['linz_api']['land']['layers'][0],
-                               self.instructions['instructions']['linz_api']['land']['type'])
+        land = self.runner.run(self.instructions['instructions']['apis']['linz']['land']['layers'][0],
+                               self.instructions['instructions']['apis']['linz']['land']['type'])
 
         # Load in benchmark
         land_dir = self.cache_dir / "land.zip"
@@ -103,8 +104,8 @@ class LinzTilesTest(unittest.TestCase):
         """ A test to check expected bathyemtry contours are loaded """
 
         bathymetry_contours = self.runner.run(
-            self.instructions['instructions']['linz_api']['bathymetry_contours']['layers'][0],
-            self.instructions['instructions']['linz_api']['bathymetry_contours']['type'])
+            self.instructions['instructions']['apis']['linz']['bathymetry_contours']['layers'][0],
+            self.instructions['instructions']['apis']['linz']['bathymetry_contours']['type'])
 
         # Load in benchmark
         bathymetry_dir = self.cache_dir / "bathymetry_contours.zip"

@@ -61,9 +61,10 @@ class OpenTopographyTest(unittest.TestCase):
 
         # create a catchment_geometry
         catchment_dir = pathlib.Path(str(catchment_dir) + ".zip")
-        catchment_geometry = geometry.CatchmentGeometry(catchment_dir, catchment_dir,  # all land
+        catchment_geometry = geometry.CatchmentGeometry(catchment_dir,
                                                         instructions['instructions']['projection'],
                                                         instructions['instructions']['grid_params']['resolution'])
+        catchment_geometry.land = catchment_dir  # all land
 
         # Run pipeline - download files
         runner = lidar_fetch.OpenTopography(catchment_geometry, cls.cache_dir, verbose=True)
