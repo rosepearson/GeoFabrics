@@ -12,6 +12,9 @@
 	  "result_dem": "tests/test_processor_remote_tiles_westport/data/test_dem.nc",
 	  "benchmark_dem": "tests/test_processor_remote_tiles_westport/data/benchmark_dem.nc"
     },
+	"apis": {
+		"open_topography": "True"
+	},
 	"general": {
       "set_dem_shoreline": "True"
     }

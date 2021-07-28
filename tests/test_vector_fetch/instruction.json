@@ -7,15 +7,17 @@
     "data_paths": {
       "local_cache": "tests/test_vector_fetch/data"
     },
-	"linz_api": {
-	    "key": "b74b510da6cb4e23ad8e779f9bd1b366",
-	    "land": {
-			"layers": [51153],
-			"type": "GEOMETRY"
-		},
-		"bathymetry_contours": {
-			"layers": [50448],
-			"type": "shape"
+	"apis": {
+		"linz": {
+			"key": "b74b510da6cb4e23ad8e779f9bd1b366",
+			"land": {
+				"layers": [51153],
+				"type": "GEOMETRY"
+			},
+			"bathymetry_contours": {
+				"layers": [50448],
+				"type": "shape"
+			}
 		}
 	}
   }

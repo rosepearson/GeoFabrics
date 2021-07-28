@@ -78,13 +78,23 @@ class GeoFabricsGenerator:
         else:
             return False
 
+    def check_apis(self, key) -> bool:
+        """ Check to see if vector key is included either as a file path or as a LINZ API """
+
+        if "apis" in self.instructions['instructions']:
+            # 'apis' included instructions and Key included in the APIs
+            return key in self.instructions['instructions']['apis']
+        else:
+            return False
+
     def check_vector(self, key) -> bool:
         """ Check to see if vector key is included either as a file path or as a LINZ API """
 
         if "data_paths" in self.instructions['instructions'] and key in self.instructions['instructions']['data_paths']:
             # Key included in the data paths
             return True
-        elif "linz_api" in self.instructions['instructions'] and key in self.instructions['instructions']['linz_api']:
+        elif "apis" in self.instructions['instructions'] and "linz" in self.instructions['instructions'] and \
+                key in self.instructions['instructions']['apis']['linz']:
             # Key included in the LINZ APIs
             return True
         else:
@@ -103,17 +113,17 @@ class GeoFabricsGenerator:
             else:
                 paths.append(self.instructions['instructions']['data_paths'][key])
 
-        if "linz_api" in self.instructions['instructions'] and key in self.instructions['instructions']['linz_api']:
+        if self.check_apis("linz") and key in self.instructions['instructions']['apis']['linz']:
             # Key included the LINZ APIs - download data then add
 
             assert self.check_instruction_path('local_cache'), "Local cache file path must exist to specify the " + \
                 "location to download vector data from the LINZ API"
 
-            vector_fetcher = vector_fetch.LinzVectors(self.instructions['instructions']['linz_api']['key'],
-                                                      self.catchment_geometry, verbose=True)
+            vector_instruction = self.instructions['instructions']['apis']['linz'][key]
+            vector_fetcher = vector_fetch.LinzVectors(vector_instruction, self.catchment_geometry, verbose=True)
             cache_dir = pathlib.Path(self.check_instruction_path('local_cache'))
-            geometry_type = self.instructions['instructions']['linz_api'][key]['type']
-            for layer in self.instructions['instructions']['linz_api'][key]['layers']:
+            geometry_type = vector_instruction['type']
+            for layer in vector_instruction['layers']:
                 vector = vector_fetcher.run(layer, geometry_type)
 
                 # Ensure directory for layer and save vector file
@@ -138,7 +148,10 @@ class GeoFabricsGenerator:
 
         lidar_dataset_index = 0  # currently only support one LiDAR dataset
 
-        if self.check_instruction_path('local_cache'):
+        if self.check_apis('open_topography'):
+
+            assert self.check_instruction_path('local_cache'), "A 'local_cache' must be specified under the " + \
+                "'file_paths' in the instruction file if you are going to use an API - like 'open_topography'"
 
             # download from OpenTopography - then get the local file path
             self.lidar_fetcher = lidar_fetch.OpenTopography(self.catchment_geometry,
