@@ -109,7 +109,8 @@ class ProcessorRemoteAllWestportTest(unittest.TestCase):
 
         dataset_dir = self.cache_dir / self.DATASETS[0]
         downloaded_files = [dataset_dir / file for file in self.LIDAR_FILES]
-
+        for file in downloaded_files:
+            print(f"{file.name} of size {file.stat().st_size}")
         # check files are correct
         self.assertEqual(len(list(dataset_dir.glob('*'))), len(downloaded_files), "There should have been " +
                          f"{len(downloaded_files)} files downloaded into the {self.DATASETS[0]} directory, instead " +

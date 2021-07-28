@@ -24,10 +24,9 @@ class ProcessorRemoteTilesWellingtonTest(unittest.TestCase):
     OpenTopography within a small region and then generating a DEM. All files are deleted after checking the DEM."""
 
     DATASET = "Wellington_2013"
-    FILES = ["ot_CL1_WLG_2013_1km_085033.laz", "ot_CL1_WLG_2013_1km_086033.laz",
-             "ot_CL1_WLG_2013_1km_085032.laz", "ot_CL1_WLG_2013_1km_086032.laz",
-             DATASET + "_TileIndex.zip"]
-    SIZES = [6795072, 5712485, 1670549, 72787, 598532]
+    FILE_SIZES = {"ot_CL1_WLG_2013_1km_085033.laz": 6795072, "ot_CL1_WLG_2013_1km_086033.laz": 5712485,
+                  "ot_CL1_WLG_2013_1km_085032.laz": 1670549, "ot_CL1_WLG_2013_1km_086032.laz": 72787,
+                  DATASET + "_TileIndex.zip": 598532}
 
     @classmethod
     def setUpClass(cls):
@@ -104,7 +103,7 @@ class ProcessorRemoteTilesWellingtonTest(unittest.TestCase):
         """ A test to see if all expected dataset files are downloaded """
 
         dataset_dir = self.cache_dir / self.DATASET
-        downloaded_files = [dataset_dir / file for file in self.FILES]
+        downloaded_files = [dataset_dir / file for file in self.FILE_SIZES.keys()]
 
         # check files are correct
         self.assertEqual(len(list(dataset_dir.glob('*'))), len(downloaded_files), "There should have been " +
@@ -118,13 +117,13 @@ class ProcessorRemoteTilesWellingtonTest(unittest.TestCase):
         """ A test to see if all expected dataset files are of the right size """
 
         dataset_dir = self.cache_dir / self.DATASET
-        downloaded_files = [dataset_dir / file for file in self.FILES]
+        downloaded_files = [dataset_dir / file for file in self.FILE_SIZES.keys()]
 
         # check sizes are correct
-        self.assertTrue(numpy.all([downloaded_file.stat().st_size == self.SIZES[i] for i, downloaded_file in
-                                   enumerate(downloaded_files)]), "There is a miss-match between the size of the " +
-                        f"downloaded files {[downloaded_file.stat().st_size for downloaded_file in downloaded_files]}" +
-                        f" and the expected sizes of {self.SIZES}")
+        self.assertTrue(numpy.all([downloaded_file.stat().st_size == self.FILE_SIZES[downloaded_file.name] for
+                                   downloaded_file in downloaded_files]), "There is a miss-match between the size" +
+                        f" of the downloaded files {[file.stat().st_size for file in downloaded_files]}" +
+                        f" and the expected sizes of {self.FILE_SIZES.values()}")
 
     @pytest.mark.skipif(sys.platform != 'win32', reason="Windows test - this is strict")
     def test_result_dem_windows(self):
