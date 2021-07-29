@@ -20,10 +20,19 @@ from src.geofabrics import processor
 
 
 class ProcessorRemoteAllWestportTest(unittest.TestCase):
-    """ A class to test the basic processor class Processor functionality for remote LiDAR tiles and remote Bathymetry
-    contours and coast contours by downloading files from OpenTopography and the LINZ data portal within a small region
-    and then generating a DEM. All files are deleted after checking the DEM."""
+    """ A class to test the basic processor class GeoFabricsGenerator functionality for remote LiDAR tiles and remote
+    Bathymetry contours and coast contours by downloading files from OpenTopography and the LINZ data portal within a
+    small region and then generating a DEM. All files are deleted after checking the DEM.
 
+    Tests run include:
+        1. test_correct_datasets - Test that the expected datasets are downloaded from OpenTopography and LINZ
+        2. test_correct_lidar_files_downloaded - Test the downloaded LIDAR files have the expected names
+        3. test_correct_lidar_file_size - Test the downloaded LIDAR files have the expected file sizes
+        4. test_result_dem_windows/linux - Check the generated DEM matches the benchmark DEM, where the
+            rigor of the test depends on the operating system (windows or Linux)
+    """
+
+    # The expected datasets and files to be downloaded - used for comparison in the later tests
     DATASETS = ["NZ20_Westport", "51153"]
     LIDAR_SIZES = {"CL2_BR20_2020_1000_4012.laz": 2636961, "CL2_BR20_2020_1000_4013.laz": 3653378,
                    "CL2_BR20_2020_1000_4014.laz": 4470413, "CL2_BR20_2020_1000_4112.laz": 9036407,
@@ -42,7 +51,7 @@ class ProcessorRemoteAllWestportTest(unittest.TestCase):
         with open(instruction_file_path, 'r') as file_pointer:
             cls.instructions = json.load(file_pointer)
 
-        # define cache location - and catchment dirs
+        # define cache location - and catchment directory
         cls.cache_dir = pathlib.Path(cls.instructions['instructions']['data_paths']['local_cache'])
 
         # ensure the cache directory doesn't exist - i.e. clean up from last test occurred correctly

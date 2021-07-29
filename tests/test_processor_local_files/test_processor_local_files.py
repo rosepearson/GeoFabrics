@@ -21,7 +21,11 @@ from src.geofabrics import processor
 
 class ProcessorLocalFilesTest(unittest.TestCase):
     """ A class to test the basic DEM generation pipeline for a simple example with land, offshore, a reference DEM and
-    LiDAR using the data specified in the test1/instruction.json """
+    LiDAR using the data specified in the test1/instruction.json
+
+    Tests run include:
+        1. test_result_dem  Check the generated DEM matches the benchmark DEM within a tolerance
+    """
 
     @classmethod
     def setUpClass(cls):

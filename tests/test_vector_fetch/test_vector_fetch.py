@@ -17,11 +17,13 @@ from src.geofabrics import geometry
 
 
 class LinzVectorsTest(unittest.TestCase):
-    """ A class to test the basic lidar_fetch class OpenTopography functionality by downloading files from
-    OpenTopography within a small region. All files are deleted after checking their names and size."""
+    """ A class to test the basic vector_fetch class Linz functionality by downloading files from
+    OpenTopography within a small region. All files are deleted after checking their names and size.
 
-    TILE_NAMES = ['BR20_1000_4012', 'BR20_1000_4013', 'BR20_1000_4014', 'BR20_1000_4112',
-                  'BR20_1000_4212', 'BR20_1000_4213', 'BR20_1000_4214']
+    Tests run include:
+        1. test_land - Test that the expected land dataset is downloaded from LINZ
+        2. test_bathymetry - Test that the expected land dataset is downloaded from LINZ
+    """
 
     @classmethod
     def setUpClass(cls):
@@ -62,8 +64,8 @@ class LinzVectorsTest(unittest.TestCase):
         catchment_geometry.land = catchment_dir  # all land
 
         # Run pipeline - download files
-        cls.runner = vector_fetch.LinzVectors(cls.instructions['instructions']['apis']['linz']['key'],
-                                              catchment_geometry, verbose=True)
+        cls.runner = vector_fetch.Linz(cls.instructions['instructions']['apis']['linz']['key'],
+                                       catchment_geometry, verbose=True)
         cls.catchment_geometry = catchment_geometry
 
     @classmethod

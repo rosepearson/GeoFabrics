@@ -21,8 +21,17 @@ from src.geofabrics import processor
 
 class ProcessorRemoteTilesWellingtonTest(unittest.TestCase):
     """ A class to test the basic processor class Processor functionality for remote tiles by downloading files from
-    OpenTopography within a small region and then generating a DEM. All files are deleted after checking the DEM."""
+    OpenTopography within a small region and then generating a DEM. All files are deleted after checking the DEM.
 
+    Tests run include:
+        1. test_correct_dataset - Test that the expected dataset is downloaded from OpenTopography
+        2. test_correct_lidar_files_downloaded - Test the downloaded LIDAR files have the expected names
+        3. test_correct_lidar_file_size - Test the downloaded LIDAR files have the expected file sizes
+        4. test_result_dem_windows/linux - Check the generated DEM matches the benchmark DEM, where the
+            rigor of the test depends on the operating system (windows or Linux)
+    """
+
+    # The expected datasets and files to be downloaded - used for comparison in the later tests
     DATASET = "Wellington_2013"
     FILE_SIZES = {"ot_CL1_WLG_2013_1km_085033.laz": 6795072, "ot_CL1_WLG_2013_1km_086033.laz": 5712485,
                   "ot_CL1_WLG_2013_1km_085032.laz": 1670549, "ot_CL1_WLG_2013_1km_086032.laz": 72787,

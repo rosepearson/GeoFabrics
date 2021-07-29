@@ -13,7 +13,7 @@ import geopandas
 from . import geometry
 
 
-class LinzVectors:
+class Linz:
     """ A class to manage fetching Vector data from LINZ.
 
     API details at: https://www.linz.govt.nz/data/linz-data-service/guides-and-documentation/wfs-spatial-filtering

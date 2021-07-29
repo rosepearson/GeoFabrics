@@ -7,24 +7,36 @@ Created on Fri Jun 18 10:52:49 2021
 import geopandas
 import shapely
 import numpy
+import pathlib
+import typing
 
 
 class CatchmentGeometry:
-    """ A class defining all relevant regions in a catchment
+    """ A class defining all relevant regions as defined by polygons in a catchment
 
-    Specifically, this defines regions like 'land', 'foreshore', 'offshore', and ensures all regions are defined in the
-    same CRS.
+    Specifically, this defines polygon regions like 'land', 'foreshore', 'offshore', and ensures all regions are
+    defined in the same CRS.
 
-    It also supports functions for determining how much of a a region is outside an exclusion zone.
+    The land, foreshore and offshore regions are clipped within the catchment, but do not overlap. The land is
+    polygon is defined by a specified polygon which is clipped within the catchment. The foreshore is defined
+    as a 20m outward buffer from the land and within the catchment extents. The offshore region is any remaining
+    region within the catchment region and outside the land and foreshore polygons.
 
-    It is initalised with the catchment. The land must be added before the land, forshore and offshore attributes can be
-    accessed. """
+    It also supports functions for determining how much of a region is outside an exclusion zone. I.E. is outside
+    `lidar_extents` see class method land_and_foreshore_without_lidar for an example.
 
-    def __init__(self, catchment_file: str, crs, resolution, foreshore_buffer=2):
+
+    It is initalised with the catchment. The land must be added before the other regions (i.e. land, offshore,
+    foreshore, etc) can be accessed. """
+
+    def __init__(self, catchment_file: typing.Union[str, pathlib.Path], crs, resolution, foreshore_buffer=2):
         self._catchment = geopandas.read_file(catchment_file)
         self.crs = crs
         self.resolution = resolution
         self.foreshore_buffer = foreshore_buffer
+
+        # set catchment CRS
+        self._catchment = self._catchment.to_crs(self.crs)
 
         # values set in setup once land has been specified
         self._land = None
@@ -34,9 +46,8 @@ class CatchmentGeometry:
         self._offshore = None
 
     def _set_up(self):
-        """ Define the main catchment regions and set CRS """
+        """ Define the main catchment regions and ensure the CRS is set for each region """
 
-        self._catchment = self._catchment.to_crs(self.crs)
         self._land = self._land.to_crs(self.crs)
 
         self._land = geopandas.clip(self._catchment, self._land)
@@ -69,8 +80,8 @@ class CatchmentGeometry:
         return self._land
 
     @land.setter
-    def land(self, land_file: str):
-        """ Set the land value and finish setup. """
+    def land(self, land_file: typing.Union[str, pathlib.Path]):
+        """ Set the land region and finish setup. """
 
         self._land = geopandas.read_file(land_file)
 

@@ -84,16 +84,8 @@ class GeoFabricsGenerator:
         else:
             return defaults[key]
 
-    def check_instruction_linz(self, key: str) -> bool:
-        """ Check if the specified LINZ layer is specified """
-
-        if "linz_api" in self.instructions['instructions']:
-            return key in self.instructions['instructions']['linz_api']
-        else:
-            return False
-
     def check_apis(self, key) -> bool:
-        """ Check to see if vector key is included either as a file path or as a LINZ API """
+        """ Check to see if APIs are included in the instructions and if the key is included in specified apis """
 
         if "apis" in self.instructions['instructions']:
             # 'apis' included instructions and Key included in the APIs
@@ -102,7 +94,8 @@ class GeoFabricsGenerator:
             return False
 
     def check_vector(self, key) -> bool:
-        """ Check to see if vector key is included either as a file path or as a LINZ API """
+        """ Check to see if vector key is included either as a file path, or as a LINZ API or other APIs that
+        support vectors """
 
         if "data_paths" in self.instructions['instructions'] and key in self.instructions['instructions']['data_paths']:
             # Key included in the data paths
@@ -138,7 +131,7 @@ class GeoFabricsGenerator:
 
             # Key included the LINZ APIs - download data then add
             vector_instruction = self.instructions['instructions']['apis']['linz'][key]
-            vector_fetcher = vector_fetch.LinzVectors(self.instructions['instructions']['apis']['linz']['key'],
+            vector_fetcher = vector_fetch.Linz(self.instructions['instructions']['apis']['linz']['key'],
                                                       self.catchment_geometry, verbose=True)
             cache_dir = pathlib.Path(self.get_instruction_path('local_cache'))
             geometry_type = vector_instruction['type']
