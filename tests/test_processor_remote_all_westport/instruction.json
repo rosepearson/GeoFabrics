@@ -5,10 +5,9 @@
       "resolution": 10
     },
     "data_paths": {
-      "local_cache": "tests/test_processor_remote_all_westport/data",
-	  "benchmark_dem": "tests/test_processor_remote_all_westport/data/benchmark_dem.nc",
-	  "result_dem": "tests/test_processor_remote_all_westport/data/benchmark_dem.nc",
-	  "catchment_boundary": "tests/test_processor_remote_all_westport/data/catchment.zip"
+		"local_cache": "tests/test_processor_remote_all_westport/data",
+		"result_dem": "tests/test_processor_remote_all_westport/data/benchmark_dem.nc",
+		"catchment_boundary": "tests/test_processor_remote_all_westport/data/catchment.zip"
     },
 	"apis": {
 		"open_topography": "True",
