@@ -25,6 +25,10 @@ class LinzVectorsTest(unittest.TestCase):
         2. test_bathymetry - Test that the expected land dataset is downloaded from LINZ
     """
 
+    # The expected datasets and files to be downloaded - used for comparison in the later tests
+    LAND = {"area": 150539169542.39142, "geometryType": 'Polygon', 'length': 6006036.039821969}
+    BATHYMETRY_CONTOURS = {"area": 0.0, "geometryType": 'LineString', 'length': 144353.73387463146}
+
     @classmethod
     def setUpClass(cls):
         """ Create a cache directory and CatchmentGeometry object for use in the tests and also download the files used
@@ -38,8 +42,10 @@ class LinzVectorsTest(unittest.TestCase):
         # define cache location - and catchment dirs
         cls.cache_dir = pathlib.Path(cls.instructions['instructions']['data_paths']['local_cache'])
 
-        # makes sure the data directory exists and only contains benchmark data
-        cls.clean_data_folder()
+        # makes sure the data directory exists but is empty
+        if cls.cache_dir.exists():
+            shutil.rmtree(cls.cache_dir)
+        cls.cache_dir.mkdir()
 
         # create fake catchment boundary
         x0 = 1477354
@@ -70,23 +76,10 @@ class LinzVectorsTest(unittest.TestCase):
 
     @classmethod
     def tearDownClass(cls):
-        """ Remove created cache directory and included created and downloaded files at the end of the test. """
+        """ Remove created cache directory. """
 
-        assert cls.cache_dir.exists(), "The data directory that should include the comparison benchmark files " + \
-            "doesn't exist"
-        cls.clean_data_folder()
-
-    @classmethod
-    def clean_data_folder(cls):
-        """ Remove all generated or downloaded files from the data directory """
-
-        assert cls.cache_dir.exists(), "The data directory that should include the comparison benchmark file " + \
-            "doesn't exist"
-
-        benchmark_files = [cls.cache_dir / "land.zip", cls.cache_dir / "bathymetry_contours.zip"]
-        for file in cls.cache_dir.glob('*'):
-            if file not in benchmark_files:
-                file.unlink()
+        if cls.cache_dir.exists():
+            shutil.rmtree(cls.cache_dir)
 
     def test_land(self):
         """ A test to check expected island is loaded """
@@ -94,13 +87,14 @@ class LinzVectorsTest(unittest.TestCase):
         land = self.runner.run(self.instructions['instructions']['apis']['linz']['land']['layers'][0],
                                self.instructions['instructions']['apis']['linz']['land']['type'])
 
-        # Load in benchmark
-        land_dir = self.cache_dir / "land.zip"
-        benchmark = geopandas.read_file(land_dir)
-
-        # check files are correct
-        self.assertEqual(land.difference(benchmark).area.sum(), 0, f"The returned land polygon ``f{land}` differs by " +
-                         f"`{land.difference(benchmark).area.sum()}` in area from the benchmark of f{benchmark}")
+        # check various shape attributes match those expected
+        self.assertEqual(land.geometry.area.sum(), self.LAND['area'], "The area of the returned land polygon " +
+                         f"`{land.geometry.area.sum()}` differs from the expected {self.LAND['area']}")
+        self.assertEqual(land.geometry.length.sum(), self.LAND['length'], "The length of the returned land polygon " +
+                         f"`{land.geometry.length.sum()}` differs from the expected {self.LAND['length']}")
+        self.assertEqual(land.loc[0].geometry.geometryType(), self.LAND['geometryType'], "The geometryType of the " +
+                         f"returned land polygon `{land.loc[0].geometry.geometryType()}` differs from the expected " +
+                         f"{self.LAND['length']}")
 
     def test_bathymetry(self):
         """ A test to check expected bathyemtry contours are loaded """
@@ -109,14 +103,17 @@ class LinzVectorsTest(unittest.TestCase):
             self.instructions['instructions']['apis']['linz']['bathymetry_contours']['layers'][0],
             self.instructions['instructions']['apis']['linz']['bathymetry_contours']['type'])
 
-        # Load in benchmark
-        bathymetry_dir = self.cache_dir / "bathymetry_contours.zip"
-        benchmark = geopandas.read_file(bathymetry_dir)
-
-        # check files are correct
-        self.assertEqual(bathymetry_contours.difference(benchmark).area.sum(), 0, "The returned land polygon " +
-                         f"`{bathymetry_contours}` differs by `{bathymetry_contours.difference(benchmark).area.sum()}" +
-                         f"` in area from the benchmark of f{benchmark}")
+        # check various shape attributes match those expected
+        self.assertEqual(bathymetry_contours.geometry.area.sum(), self.BATHYMETRY_CONTOURS['area'], "The area of the " +
+                         f"returned bathymetry_contours polygon `{bathymetry_contours.geometry.area.sum()}` differs " +
+                         "from the expected {self.BATHYMETRY_CONTOURS['area']}")
+        self.assertEqual(bathymetry_contours.geometry.length.sum(), self.BATHYMETRY_CONTOURS['length'], "The area of " +
+                         f"the returned bathymetry_contours polygon `{bathymetry_contours.geometry.length.sum()}` " +
+                         "differs from the expected {self.BATHYMETRY_CONTOURS['length']}")
+        self.assertEqual(bathymetry_contours.loc[0].geometry.geometryType(), self.BATHYMETRY_CONTOURS['geometryType'],
+                         "The geometryType of the returned land polygon " +
+                         f"`{bathymetry_contours.loc[0].geometry.geometryType()}` differs from the expected " +
+                         f"{self.BATHYMETRY_CONTOURS['length']}")
 
 
 if __name__ == '__main__':
