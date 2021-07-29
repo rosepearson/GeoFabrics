@@ -132,7 +132,7 @@ class GeoFabricsGenerator:
             # Key included the LINZ APIs - download data then add
             vector_instruction = self.instructions['instructions']['apis']['linz'][key]
             vector_fetcher = vector_fetch.Linz(self.instructions['instructions']['apis']['linz']['key'],
-                                                      self.catchment_geometry, verbose=True)
+                                               self.catchment_geometry, verbose=True)
             cache_dir = pathlib.Path(self.get_instruction_path('local_cache'))
             geometry_type = vector_instruction['type']
 
@@ -204,7 +204,7 @@ class GeoFabricsGenerator:
         lidar_file_paths = self.get_lidar_file_list(verbose)
 
         # setup dense DEM and catchment LiDAR objects
-        self.dense_dem = dem.DenseDem(self.catchment_geometry, self.get_instruction_path('temp_raster'), 
+        self.dense_dem = dem.DenseDem(self.catchment_geometry, self.get_instruction_path('temp_raster'),
                                       verbose=verbose)
         self.catchment_lidar = lidar.CatchmentLidar(
             self.catchment_geometry, area_to_drop=self.get_instruction_general('filter_lidar_holes_area'),
