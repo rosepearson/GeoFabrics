@@ -15,7 +15,10 @@ class CatchmentGeometry:
     Specifically, this defines regions like 'land', 'foreshore', 'offshore', and ensures all regions are defined in the
     same CRS.
 
-    It also supports functions for determining how much of a a region is outside an exclusion zone. """
+    It also supports functions for determining how much of a a region is outside an exclusion zone.
+
+    It is initalised with the catchment. The land must be added before the land, forshore and offshore attributes can be
+    accessed. """
 
     def __init__(self, catchment_file: str, crs, resolution, foreshore_buffer=2):
         self._catchment = geopandas.read_file(catchment_file)
@@ -23,7 +26,7 @@ class CatchmentGeometry:
         self.resolution = resolution
         self.foreshore_buffer = foreshore_buffer
 
-        # values set in setup
+        # values set in setup once land has been specified
         self._land = None
         self._foreshore = None
         self._land_and_foreshore = None
@@ -318,29 +321,20 @@ class TileInfo:
         self._set_up()
 
     def _set_up(self):
-        """ Set CRS and select all tiles partially within the catchment """
+        """ Set CRS and select all tiles partially within the catchment, and look up the file column name """
 
         self._tile_info = self._tile_info.to_crs(self.catchment_geometry.crs)
         self._tile_info = geopandas.sjoin(self._tile_info, self.catchment_geometry.catchment)
         self._tile_info = self._tile_info.reset_index(drop=True)
 
         column_names = self._tile_info.columns
-        if "Filename" in column_names:
-            self.file_name = "Filename"
-        elif "filename" in column_names:
-            self.file_name = "filename"
-        elif "FILENAME" in column_names:
-            self.file_name = "FILENAME"
-        elif "file_name" in column_names:
-            self.file_name = "file_name"
-        elif "File_name" in column_names:
-            self.file_name = "File_name"
-        elif "File_Name" in column_names:
-            self.file_name = "File_Name"
-        elif "FILE_NAME" in column_names:
-            self.file_name = "FILE_NAME"
-        else:
-            assert False, f"No file name column detected in the tile file with columns: {column_names}"
+
+        column_name_matches = [name for name in column_names if "filename" == name.lower()]
+        column_name_matches.extend([name for name in column_names if "file_name" == name.lower()])
+        print(column_name_matches)
+        assert len(column_name_matches) == 1, "No single `file name` column detected in the tile file with" + \
+            f" columns: {column_names}"
+        self.file_name = column_name_matches[0]
 
     @property
     def tile_names(self):
