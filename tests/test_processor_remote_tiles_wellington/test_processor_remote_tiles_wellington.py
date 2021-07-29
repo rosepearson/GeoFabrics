@@ -30,8 +30,8 @@ class ProcessorRemoteTilesWellingtonTest(unittest.TestCase):
 
     @classmethod
     def setUpClass(cls):
-        """ Create a cache directory and CatchmentGeometry object for use in the tests and also download the files used
-        in the tests. """
+        """ Create a CatchmentGeometry object and then run the GeoFabricsGenerator processing chain to download remote
+        files and produce a DEM prior to testing. """
 
         test_path = pathlib.Path().cwd() / pathlib.Path("tests/test_processor_remote_tiles_wellington")
 
@@ -67,7 +67,7 @@ class ProcessorRemoteTilesWellingtonTest(unittest.TestCase):
 
     @classmethod
     def tearDownClass(cls):
-        """ Remove created cache directory and included created and downloaded files at the end of the test. """
+        """ Remove created and downloaded files at the end of the test. """
 
         cls.clean_data_folder()
 

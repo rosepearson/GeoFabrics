@@ -20,8 +20,9 @@ from src.geofabrics import processor
 
 
 class ProcessorRemoteAllWestportTest(unittest.TestCase):
-    """ A class to test the basic processor class Processor functionality for remote tiles by downloading files from
-    OpenTopography within a small region and then generating a DEM. All files are deleted after checking the DEM."""
+    """ A class to test the basic processor class Processor functionality for remote LiDAR tiles and remote Bathymetry
+    contours and coast contours by downloading files from OpenTopography and the LINZ data portal within a small region
+    and then generating a DEM. All files are deleted after checking the DEM."""
 
     DATASETS = ["NZ20_Westport", "51153"]
     LIDAR_SIZES = {"CL2_BR20_2020_1000_4012.laz": 2636961, "CL2_BR20_2020_1000_4013.laz": 3653378,
@@ -31,8 +32,8 @@ class ProcessorRemoteAllWestportTest(unittest.TestCase):
 
     @classmethod
     def setUpClass(cls):
-        """ Create a cache directory and CatchmentGeometry object for use in the tests and also download the files used
-        in the tests. """
+        """ Create a CatchmentGeometry object and then run the GeoFabricsGenerator processing chain to download remote
+        files and produce a DEM prior to testing. """
 
         test_path = pathlib.Path().cwd() / pathlib.Path("tests/test_processor_remote_all_westport")
 
@@ -91,7 +92,7 @@ class ProcessorRemoteAllWestportTest(unittest.TestCase):
                 shutil.rmtree(file)
 
     def test_correct_datasets(self):
-        """ A test to see if the correct dataset is downloaded """
+        """ A test to see if the correct datasets were downloaded """
 
         dataset_dirs = [self.cache_dir / dataset for dataset in self.DATASETS]
 
@@ -120,7 +121,7 @@ class ProcessorRemoteAllWestportTest(unittest.TestCase):
                         + f" {list(dataset_dir.glob('*'))} do not match the expected files {downloaded_files}")
 
     def test_correct_lidar_file_size(self):
-        """ A test to see if all expected dataset files are of the right size """
+        """ A test to see if all expected LiDAR dataset files are of the right size """
 
         dataset_dir = self.cache_dir / self.DATASETS[0]
         downloaded_files = [dataset_dir / file for file in self.LIDAR_SIZES.keys()]
