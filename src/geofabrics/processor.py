@@ -35,7 +35,7 @@ class GeoFabricsGenerator:
         """ Return the file path from the instruction file, or default if there is a default value and the local cache
         is specified. Raise an error if the key is not in the instructions. """
 
-        defaults = {'temp_raster': "temp_dense_dem.tif", 'result_dem': "genrated_dem.nc"}
+        defaults = {'temp_raster': "temp_dense_dem.tif", 'result_dem': "generated_dem.nc"}
 
         if key in self.instructions['instructions']['data_paths']:
             return self.instructions['instructions']['data_paths'][key]
