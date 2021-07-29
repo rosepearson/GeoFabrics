@@ -115,11 +115,12 @@ class GeoFabricsGenerator:
             return False
 
     def get_vector_paths(self, key) -> list:
-        """ Get the path to the vector key data is included either as a file path or as a LINZ API. Return all paths
+        """ Get the path to the vector key data included either as a file path or as a LINZ API. Return all paths
         where the vector key is specified. In the case that an API is specified ensure the data is fetched as well. """
 
         paths = []
 
+        # Check the instructions for vector data specified as a data_paths
         if "data_paths" in self.instructions['instructions'] and key in self.instructions['instructions']['data_paths']:
             # Key included in the data paths - add - either list or individual path
             if type(self.instructions['instructions']['data_paths'][key]) == list:
@@ -127,19 +128,22 @@ class GeoFabricsGenerator:
             else:
                 paths.append(self.instructions['instructions']['data_paths'][key])
 
+        # Check the instructions for LINZ hoster vector data
         if self.check_apis("linz") and key in self.instructions['instructions']['apis']['linz']:
-            # Key included the LINZ APIs - download data then add
 
             assert self.check_instruction_path('local_cache'), "Local cache file path must exist to specify the " + \
                 "location to download vector data from the LINZ API"
             assert self.catchment_geometry is not None, "The `self.catchment_directory` object must exist before a" + \
                 "vector is downloaded using `vector_fetch.LinzVectors`"
 
+            # Key included the LINZ APIs - download data then add
             vector_instruction = self.instructions['instructions']['apis']['linz'][key]
             vector_fetcher = vector_fetch.LinzVectors(self.instructions['instructions']['apis']['linz']['key'],
                                                       self.catchment_geometry, verbose=True)
             cache_dir = pathlib.Path(self.get_instruction_path('local_cache'))
             geometry_type = vector_instruction['type']
+
+            # Cycle through all layers specified - save each and add to the path list
             for layer in vector_instruction['layers']:
                 vector = vector_fetcher.run(layer, geometry_type)
 
@@ -152,13 +156,6 @@ class GeoFabricsGenerator:
                 shutil.rmtree(vector_dir)
                 paths.append(layer_dir / f"{key}.zip")
         return paths
-
-    def get_instruction_linz(self, key: str) -> str:
-        """ Return the linz API info from the instruction file.
-        Raise an error if the key is not in the instructions. """
-
-        assert key in self.instructions['instructions']['linz_api'], "Key missing from data paths"
-        return self.instructions['instructions']['linz_api'][key]
 
     def get_lidar_file_list(self, verbose) -> list:
         """ Load or construct a list of lidar tiles to construct a DEM from. """
