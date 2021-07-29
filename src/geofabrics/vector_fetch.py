@@ -16,16 +16,15 @@ from . import geometry
 class LinzVectors:
     """ A class to manage fetching Vector data from LINZ.
 
-    API details at: https://help.koordinates.com/query-api-and-web-services/vector-query/
-    """
+    API details at: https://www.linz.govt.nz/data/linz-data-service/guides-and-documentation/wfs-spatial-filtering
+
+    The specified vector layer is queried each time run is called and any vectors passing though the catchment defined
+    in the catchment_geometry are returned. """
 
     SCHEME = "https"
     NETLOC_API = "data.linz.govt.nz"
     WFS_PATH_API_START = "/services;key="
     WFS_PATH_API_END = "/wfs"
-
-    MAX_RESULTS = 100
-    MAX_RADIUS = 100000
 
     def __init__(self, key: str, catchment_geometry: geometry.CatchmentGeometry, verbose: bool = False):
         """ Load in vector information from LINZ. Specify the layer to import during run.
@@ -36,8 +35,8 @@ class LinzVectors:
         self.verbose = verbose
 
     def run(self, layer: int, geometry_type: str):
-        """ Query for tiles within a catchment for a specified layer and return a list of the tile names within
-        the catchment """
+        """ Query for tiles within a catchment for a specified layer and return a list of the vector features names
+        within the catchment """
 
         features = self.get_features_inside_catchment(layer, geometry_type)
 
@@ -50,7 +49,7 @@ class LinzVectors:
         Note that depending on the LDS layer the geometry name may be 'shape' - most property/titles,
         or GEOMETRY - most other layers including Hydrographic and Topographic data.
 
-        bounds defines the bounding box containing in the catchment boundary CRS specified by SRSName """
+        bounds defines the bounding box containing in the catchment boundary """
 
         data_url = urllib.parse.urlunparse((self.SCHEME, self.NETLOC_API,
                                             f"{self.WFS_PATH_API_START}{self.key}{self.WFS_PATH_API_END}",
@@ -74,7 +73,7 @@ class LinzVectors:
         return response.json()
 
     def get_features_inside_catchment(self, layer: int, geometry_type: str):
-        """ Get a list of tiles within the catchment boundary """
+        """ Get a list of features within the catchment boundary """
 
         # radius in metres
         catchment_bounds = self.catchment_geometry.catchment.geometry.bounds
