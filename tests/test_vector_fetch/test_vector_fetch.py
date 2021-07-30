@@ -11,6 +11,8 @@ import pathlib
 import shapely
 import geopandas
 import shutil
+import dotenv
+import os
 
 from src.geofabrics import vector_fetch
 from src.geofabrics import geometry
@@ -38,6 +40,11 @@ class LinzVectorsTest(unittest.TestCase):
         file_path = pathlib.Path().cwd() / pathlib.Path("tests/test_vector_fetch/instruction.json")
         with open(file_path, 'r') as file_pointer:
             cls.instructions = json.load(file_pointer)
+
+        # Load in environment variables to get and set the private API keys
+        dotenv.load_dotenv()
+        linz_key = os.environ.get('LINZ_API', None)
+        cls.instructions['instructions']['apis']['linz']['key'] = linz_key
 
         # define cache location - and catchment dirs
         cls.cache_dir = pathlib.Path(cls.instructions['instructions']['data_paths']['local_cache'])

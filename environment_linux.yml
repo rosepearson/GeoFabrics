@@ -13,6 +13,7 @@ dependencies:
   - rioxarray
   - pdal=2.2
   - python-pdal=2.4=py38h1fd1430_1 # pin version so compatible with PDAL 2.2 but for Linux
+  - python-dotenv
   - matplotlib
   - ipykernel
   - ipython

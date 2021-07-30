@@ -13,7 +13,6 @@
 	"apis": {
 		"open_topography": "True",
 		"linz": {
-			"key": "b74b510da6cb4e23ad8e779f9bd1b366",
 			"land": {
 				"layers": [51153],
 				"type": "GEOMETRY"

@@ -15,6 +15,8 @@ import numpy
 import rioxarray
 import pytest
 import sys
+import dotenv
+import os
 
 from src.geofabrics import processor
 
@@ -50,6 +52,11 @@ class ProcessorRemoteAllWestportTest(unittest.TestCase):
         instruction_file_path = test_path / "instruction.json"
         with open(instruction_file_path, 'r') as file_pointer:
             cls.instructions = json.load(file_pointer)
+
+        # Load in environment variables to get and set the private API keys
+        dotenv.load_dotenv()
+        linz_key = os.environ.get('LINZ_API', None)
+        cls.instructions['instructions']['apis']['linz']['key'] = linz_key
 
         # define cache location - and catchment directory
         cls.cache_dir = pathlib.Path(cls.instructions['instructions']['data_paths']['local_cache'])
