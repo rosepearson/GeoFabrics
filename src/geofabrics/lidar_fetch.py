@@ -54,7 +54,7 @@ class OpenTopography:
     def _to_gbytes(self, bytes_number):
         """ convert bytes into gigabytes"""
 
-        return bytes_number/1000/1000/1000
+        return bytes_number/1024/1024/1024
 
     def run(self):
         """ Query for LiDAR data within a catchment and download any that hasn't already been downloaded """
