@@ -11,6 +11,13 @@ The GeoFabrics and associated sub-packages include routines and classes for comb
 ### Fetching geospatial data from web APIs
 GeoFabrics also contains support for downloading all LiDAR tiles from OpenTopography, or a particular vector layer from the LINZ data service. In both cases this data is only downloaded within a spectified polygon (catchment region). This functionality is contained in the lidar_fetch module for LiDAR, and the vector_fetch model for vector data. It can be used independently of the other geofabrics modules (aside from a slight gepency on the geometry module) and will be separated into an independent package in issue [23](https://github.com/rosepearson/GeoFabrics/issues/23). Example of its usage can be found in tests/test_lidar_fetch and tests/test_vector_fetch.
 
+## Requirements
+### Required Software
+See the `environment_windows.yml` or `environment_linux.yml` depending on your operating system under root for a list of package dependencies.
+
+### Required Credentials
+You will need a https://data.linz.govt.nz/ login and API key to pull vector data from the LINZ data service, or to run the tests locally on your machine. Create a login and navigate to https://data.linz.govt.nz/my/api/ to create an API.
+
 ## Import into a conda environment
 You can use this package by using pip to install the package and dependencies using the following commands in a conda terminal to add it to that environment, where you must either specify `environment_windows.yml` or `environment_linux.yml` depending on your operating system. Each file is located in the root repository folder. Sorry there is no macOS support at this stage.
 
@@ -33,6 +40,7 @@ with open(r'path\to\file\\', 'r') as file_pointer:
 runner = processor.GeoFabricsGenerator(instructions)
 runner.run()
 ```
+
 ### Running main.py script
 In the conda environment defined in the root\environment.yml, run the following:
 
@@ -42,11 +50,14 @@ In the conda environment defined in the root\environment.yml, run the following:
 Tests exist for stand alone functionality (i.e. fetch lidar), and complete processing chain (i.e. creating a DEM from LiDAR files within a shapefile). A 'benchmark_dem.nc' is uploaded for each test when a DEM is generated. This is stored using git LTS as these file are not human readable. 
 
 ### Automated testing
-[Github Actions](https://docs.github.com/en/actions) are used to run tests after each push to remote (i.e. github). [Miniconda](https://github.com/marketplace/actions/setup-miniconda) from the GitHub Actions marketplace is used to install the package dependencies. Linting with [Flake8](https://github.com/py-actions/flake8) and testing with [PyTest](https://docs.pytest.org/en/6.2.x/contents.html) is then performed. 
+[Github Actions](https://docs.github.com/en/actions) are used to run tests after each push to remote (i.e. github). [Miniconda](https://github.com/marketplace/actions/setup-miniconda) from the GitHub Actions marketplace is used to install the package dependencies. Linting with [Flake8](https://github.com/py-actions/flake8) and testing with [PyTest](https://docs.pytest.org/en/6.2.x/contents.html) is then performed. Several tests require a API key. This is stored as a GitHub secrete and accessed by the workflow.
 
 Check the actions tab after you push to check if your tests run successfully.
 
 ### Running tests locally
+Several tests (test_vector_fetch, and test_processor_remote_all_westport) require a LINZ API token. Create an API token using the instructions under the **Requirements** section then create an `.env` file under root and copy the key there as follows:
+`LINZ_API="COPY_YOUR_API_KEY_HERE"`
+
 In the conda environment defined in the root\environment_[windows|linux].yml, run the following in the repository root folder:
 
 1. to run individual tests
