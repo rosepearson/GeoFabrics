@@ -16,7 +16,7 @@ GeoFabrics also contains support for downloading all LiDAR tiles from OpenTopogr
 See the `environment_windows.yml` or `environment_linux.yml` depending on your operating system under root for a list of package dependencies.
 
 ### Required Credentials
-You will need a https://data.linz.govt.nz/ login and API key to pull vector data from the LINZ data service, or to run the tests locally on your machine. Create a login and navigate to https://data.linz.govt.nz/my/api/ to create an API.
+You will need a https://data.linz.govt.nz/ login and API key to pull vector data from the LINZ data service, and to run the tests locally on your machine. Navigate to https://data.linz.govt.nz/my/api/ to create an API once you have created your login.
 
 ## Import into a conda environment
 You can use this package by using pip to install the package and dependencies using the following commands in a conda terminal to add it to that environment, where you must either specify `environment_windows.yml` or `environment_linux.yml` depending on your operating system. Each file is located in the root repository folder. Sorry there is no macOS support at this stage.
@@ -41,6 +41,8 @@ runner = processor.GeoFabricsGenerator(instructions)
 runner.run()
 ```
 
+Information about accepted instruction file key-words can be found in the Wiki under [Instruction file contents](https://github.com/rosepearson/GeoFabrics/wiki/Instruction-file-contents).
+
 ### Running main.py script
 In the conda environment defined in the root\environment.yml, run the following:
 
@@ -55,7 +57,8 @@ Tests exist for stand alone functionality (i.e. fetch lidar), and complete proce
 Check the actions tab after you push to check if your tests run successfully.
 
 ### Running tests locally
-Several tests (test_vector_fetch, and test_processor_remote_all_westport) require a LINZ API token. Create an API token using the instructions under the **Requirements** section then create an `.env` file under root and copy the key there as follows:
+Several tests (test_vector_fetch, and test_processor_remote_all_westport) require a LINZ API token. Create an API token using the instructions under the **Requirements** section then store it in an `.env` file under root.
+
 `LINZ_API="COPY_YOUR_API_KEY_HERE"`
 
 In the conda environment defined in the root\environment_[windows|linux].yml, run the following in the repository root folder:
