@@ -55,7 +55,7 @@ class Linz:
                                             f"{self.WFS_PATH_API_START}{self.key}{self.WFS_PATH_API_END}",
                                             "", "", ""))
 
-        api_queary = {
+        api_query = {
             "service": "WFS",
             "version": 2.0,
             "request": "GetFeature",
@@ -67,7 +67,7 @@ class Linz:
                           f"'urn:ogc:def:crs:EPSG:{self.catchment_geometry.crs}')"
         }
 
-        response = requests.get(data_url, params=api_queary, stream=True)
+        response = requests.get(data_url, params=api_query, stream=True)
 
         response.raise_for_status()
         return response.json()

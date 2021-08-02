@@ -89,7 +89,7 @@ class OpenTopography:
         https://portal.opentopography.org/apidocs/#/Public/getOtCatalog """
 
         catchment_bounds = self.catchment_geometry.catchment.geometry.to_crs(self.OT_CRS).bounds
-        api_queary = {
+        api_query = {
             "productFormat": "PointCloud",
             "minx": catchment_bounds['minx'].min(),
             "miny": catchment_bounds['miny'].min(),
@@ -102,7 +102,7 @@ class OpenTopography:
 
         data_url = urllib.parse.urlunparse((self.SCHEME, self.NETLOC_API, self.PATH_API, "", "", ""))
 
-        response = requests.get(data_url, params=api_queary, stream=True)
+        response = requests.get(data_url, params=api_query, stream=True)
         response.raise_for_status()
         return response.json()
 
