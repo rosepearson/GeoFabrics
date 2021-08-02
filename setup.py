@@ -47,7 +47,8 @@ setuptools.setup(
                       'shapely>=1.7',
                       'scipy>=1.6',
                       'requests>=2.25',
-                      'boto3>=1.17'],
+                      'boto3>=1.17',
+					  'python-dotenv>=0.19'],
     extras_require={
         'dev': ['check-manifest'],
     },
