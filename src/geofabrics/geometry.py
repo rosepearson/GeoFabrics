@@ -65,6 +65,10 @@ class CatchmentGeometry:
         assert len(self._catchment) == 1, "The catchment is made of multiple separate polygons it must be a single " + \
             "polygon object - a MultiPolygon is fine"
 
+    def _assert_land_set(self):
+        assert self._land is not None, "Land has not been set yet. This must be set before anything other than the " + \
+            "`catchment` can be returned from a `CatchmentGeometry` object"
+
     @property
     def catchment(self):
         """ Return the catchment region """
@@ -75,8 +79,7 @@ class CatchmentGeometry:
     def land(self):
         """ Return the catchment land region """
 
-        assert self._land is not None, "Land has not been set yet. This must be set before anything other than the " + \
-            "`catchment` can be returned from a `CatchmentGeometry` object"
+        self._assert_land_set()
         return self._land
 
     @land.setter
@@ -91,39 +94,34 @@ class CatchmentGeometry:
     def foreshore(self):
         """ Return the catchment foreshore region """
 
-        assert self._land is not None, "Land has not been set yet. This must be set before anything other than the " + \
-            "`catchment` can be returned from a `CatchmentGeometry` object"
+        self._assert_land_set()
         return self._foreshore
 
     @property
     def land_and_foreshore(self):
         """ Return the catchment land and foreshore region """
 
-        assert self._land is not None, "Land has not been set yet. This must be set before anything other than the " + \
-            "`catchment` can be returned from a `CatchmentGeometry` object"
+        self._assert_land_set()
         return self._land_and_foreshore
 
     @property
     def foreshore_and_offshore(self):
         """ Return the catchment foreshore and offshore region """
 
-        assert self._land is not None, "Land has not been set yet. This must be set before anything other than the " + \
-            "`catchment` can be returned from a `CatchmentGeometry` object"
+        self._assert_land_set()
         return self._foreshore_and_offshore
 
     @property
     def offshore(self):
         """ Return the catchment offshore region """
 
-        assert self._land is not None, "Land has not been set yet. This must be set before anything other than the " + \
-            "`catchment` can be returned from a `CatchmentGeometry` object"
+        self._assert_land_set()
         return self._offshore
 
     def land_and_foreshore_without_lidar(self, lidar_extents):
         """ Return the land and foreshore region without LiDAR """
 
-        assert self._land is not None, "Land has not been set yet. This must be set before anything other than the " + \
-            "`catchment` can be returned from a `CatchmentGeometry` object"
+        self._assert_land_set()
 
         land_and_foreshore_with_lidar = geopandas.clip(lidar_extents, self.land_and_foreshore)
         land_and_foreshore_without_lidar = geopandas.overlay(
@@ -134,8 +132,7 @@ class CatchmentGeometry:
     def offshore_without_lidar(self, lidar_extents):
         """ Return the offshore region without LiDAR """
 
-        assert self._land is not None, "Land has not been set yet. This must be set before anything other than the " + \
-            "`catchment` can be returned from a `CatchmentGeometry` object"
+        self._assert_land_set()
 
         offshore_with_lidar = geopandas.clip(lidar_extents, self.offshore)
         offshore_without_lidar = geopandas.overlay(self.offshore, offshore_with_lidar, how="difference")
