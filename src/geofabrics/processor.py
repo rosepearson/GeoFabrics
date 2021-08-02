@@ -7,9 +7,11 @@ Created on Fri Jun 18 10:52:49 2021
 import numpy
 import json
 import pathlib
+import shutil
 from . import geometry
 from . import lidar
 from . import lidar_fetch
+from . import vector_fetch
 from . import dem
 
 
@@ -30,15 +32,29 @@ class GeoFabricsGenerator:
         self.result_dem = None
 
     def get_instruction_path(self, key: str) -> str:
-        """ Return the file path from the instruction file. Raise an error if the key is not in the instructions. """
+        """ Return the file path from the instruction file, or default if there is a default value and the local cache
+        is specified. Raise an error if the key is not in the instructions. """
 
-        assert key in self.instructions['instructions']['data_paths'], "Key missing from data paths"
-        return self.instructions['instructions']['data_paths'][key]
+        defaults = {'temp_raster': "temp_dense_dem.tif", 'result_dem': "generated_dem.nc"}
+
+        if key in self.instructions['instructions']['data_paths']:
+            return self.instructions['instructions']['data_paths'][key]
+        elif "local_cache" in self.instructions['instructions']['data_paths'] and key in defaults.keys():
+            return pathlib.Path(self.instructions['instructions']['data_paths']['local_cache']) / defaults[key]
+        else:
+            assert False, f"Either the key `{key}` missing from data paths, or either the `local_cache` is not " + \
+                f"specified in the data paths or the key is not specified in the defaults: {defaults}"
 
     def check_instruction_path(self, key: str) -> bool:
-        """ Return True if the file path exists in the instruction file. """
+        """ Return True if the file path exists in the instruction file, or True if there is a default value and the
+        local cache is specified. """
 
-        return key in self.instructions['instructions']['data_paths']
+        defaults = ['temp_raster', 'result_dem']
+
+        if key in self.instructions['instructions']['data_paths']:
+            return True
+        else:
+            return 'local_cache' in self.instructions['instructions']['data_paths'] and key in defaults
 
     def get_resolution(self) -> float:
         """ Return the resolution from the instruction file. Raise an error if not in the instructions. """
@@ -63,20 +79,91 @@ class GeoFabricsGenerator:
 
         assert key in defaults or key in self.instructions['instructions']['general'], f"The key: {key} is missing " \
             + "from the general instructions, and does not have a default value"
-        if key in self.instructions['instructions']['general']:
+        if 'general' in self.instructions['instructions'] and key in self.instructions['instructions']['general']:
             return self.instructions['instructions']['general'][key]
         else:
             return defaults[key]
+
+    def check_apis(self, key) -> bool:
+        """ Check to see if APIs are included in the instructions and if the key is included in specified apis """
+
+        if "apis" in self.instructions['instructions']:
+            # 'apis' included instructions and Key included in the APIs
+            return key in self.instructions['instructions']['apis']
+        else:
+            return False
+
+    def check_vector(self, key) -> bool:
+        """ Check to see if vector key is included either as a file path, or as a LINZ API or other APIs that
+        support vectors """
+
+        if "data_paths" in self.instructions['instructions'] and key in self.instructions['instructions']['data_paths']:
+            # Key included in the data paths
+            return True
+        elif "apis" in self.instructions['instructions'] and "linz" in self.instructions['instructions'] and \
+                key in self.instructions['instructions']['apis']['linz']:
+            # Key included in the LINZ APIs
+            return True
+        else:
+            return False
+
+    def get_vector_paths(self, key) -> list:
+        """ Get the path to the vector key data included either as a file path or as a LINZ API. Return all paths
+        where the vector key is specified. In the case that an API is specified ensure the data is fetched as well. """
+
+        paths = []
+
+        # Check the instructions for vector data specified as a data_paths
+        if "data_paths" in self.instructions['instructions'] and key in self.instructions['instructions']['data_paths']:
+            # Key included in the data paths - add - either list or individual path
+            if type(self.instructions['instructions']['data_paths'][key]) == list:
+                paths.extend(self.instructions['instructions']['data_paths'][key])
+            else:
+                paths.append(self.instructions['instructions']['data_paths'][key])
+
+        # Check the instructions for LINZ hoster vector data
+        if self.check_apis("linz") and key in self.instructions['instructions']['apis']['linz']:
+
+            assert self.check_instruction_path('local_cache'), "Local cache file path must exist to specify the " + \
+                "location to download vector data from the LINZ API"
+            assert self.catchment_geometry is not None, "The `self.catchment_directory` object must exist before a" + \
+                "vector is downloaded using `vector_fetch.LinzVectors`"
+
+            # Key included the LINZ APIs - download data then add
+            vector_instruction = self.instructions['instructions']['apis']['linz'][key]
+            vector_fetcher = vector_fetch.Linz(self.instructions['instructions']['apis']['linz']['key'],
+                                               self.catchment_geometry, verbose=True)
+            cache_dir = pathlib.Path(self.get_instruction_path('local_cache'))
+            geometry_type = vector_instruction['type']
+
+            # Cycle through all layers specified - save each and add to the path list
+            for layer in vector_instruction['layers']:
+                vector = vector_fetcher.run(layer, geometry_type)
+
+                # Ensure directory for layer and save vector file
+                layer_dir = cache_dir / str(layer)
+                layer_dir.mkdir(parents=True, exist_ok=True)
+                vector_dir = layer_dir / key
+                vector.to_file(vector_dir)
+                shutil.make_archive(base_name=vector_dir, format='zip', root_dir=vector_dir)
+                shutil.rmtree(vector_dir)
+                paths.append(layer_dir / f"{key}.zip")
+        return paths
 
     def get_lidar_file_list(self, verbose) -> list:
         """ Load or construct a list of lidar tiles to construct a DEM from. """
 
         lidar_dataset_index = 0  # currently only support one LiDAR dataset
 
-        if 'local_cache' in self.instructions['instructions']['data_paths']:
+        if self.check_apis('open_topography'):
+
+            assert self.check_instruction_path('local_cache'), "A 'local_cache' must be specified under the " + \
+                "'file_paths' in the instruction file if you are going to use an API - like 'open_topography'"
+
             # download from OpenTopography - then get the local file path
-            self.lidar_fetcher = lidar_fetch.OpenTopography(
-                self.catchment_geometry, self.get_instruction_path('local_cache'), verbose=verbose)
+            self.lidar_fetcher = lidar_fetch.OpenTopography(self.catchment_geometry,
+                                                            self.get_instruction_path('local_cache'),
+                                                            verbose=verbose)
             self.lidar_fetcher.run()
             lidar_file_paths = sorted(pathlib.Path(self.lidar_fetcher.cache_path /
                                       self.lidar_fetcher.dataset_prefixes[lidar_dataset_index]).glob('*.laz'))
@@ -96,11 +183,17 @@ class GeoFabricsGenerator:
         verbose = self.get_instruction_general('verbose')
 
         # create the catchment geometry object
-        self.catchment_geometry = geometry.CatchmentGeometry(self.get_instruction_path('catchment_boundary'),
-                                                             self.get_instruction_path('land'),
+        catchment_dirs = self.get_instruction_path('catchment_boundary')
+        assert type(catchment_dirs) is not list, f"A list of catchment_boundary's is provided: {catchment_dirs}, " + \
+            "where only one is supported."
+        self.catchment_geometry = geometry.CatchmentGeometry(catchment_dirs,
                                                              self.get_projection(),
                                                              self.get_resolution(),
                                                              foreshore_buffer=2)
+        land_dirs = self.get_vector_paths('land')
+        assert len(land_dirs) == 1, f"{len(land_dirs)} catchment_boundary's provided, where only one is supported." + \
+            f" Specficially land_dirs = {land_dirs}."
+        self.catchment_geometry.land = land_dirs[0]
 
         # Define PDAL/GDAL griding parameter values
         radius = self.catchment_geometry.resolution * numpy.sqrt(2)
@@ -111,7 +204,8 @@ class GeoFabricsGenerator:
         lidar_file_paths = self.get_lidar_file_list(verbose)
 
         # setup dense DEM and catchment LiDAR objects
-        self.dense_dem = dem.DenseDem(self.catchment_geometry, self.get_instruction_path('tmp_raster'), verbose=verbose)
+        self.dense_dem = dem.DenseDem(self.catchment_geometry, self.get_instruction_path('temp_raster'),
+                                      verbose=verbose)
         self.catchment_lidar = lidar.CatchmentLidar(
             self.catchment_geometry, area_to_drop=self.get_instruction_general('filter_lidar_holes_area'),
             verbose=verbose)
@@ -149,12 +243,17 @@ class GeoFabricsGenerator:
         # Load in bathymetry and interpolate offshore if significant offshore is not covered by LiDAR
         area_without_lidar = \
             self.catchment_geometry.offshore_without_lidar(self.catchment_lidar.extents).geometry.area.sum()
-        if (self.check_instruction_path('bathymetry_contours') and
+        if (self.check_vector('bathymetry_contours') and
                 area_without_lidar > self.catchment_geometry.offshore.area.sum() * area_threshold):
 
+            # Get the bathymetry data directory
+            bathy_contour_dirs = self.get_vector_paths('bathymetry_contours')
+            assert len(bathy_contour_dirs) == 1, f"{len(bathy_contour_dirs)} bathymetry_contours's provided. " + \
+                f"Specficially {catchment_dirs}. Support has not yet been added for multiple datasets."
+            print(bathy_contour_dirs)
             # Load in bathymetry
             self.bathy_contours = geometry.BathymetryContours(
-                self.get_instruction_path('bathymetry_contours')[0], self.catchment_geometry,
+                bathy_contour_dirs[0], self.catchment_geometry,
                 z_label=self.get_instruction_general('bathymetry_contours_z_label'),
                 exclusion_extent=self.catchment_lidar.extents)
 

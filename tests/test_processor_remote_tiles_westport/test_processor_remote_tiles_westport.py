@@ -19,22 +19,31 @@ import sys
 from src.geofabrics import processor
 
 
-class ProcessorRemoteTilesTest(unittest.TestCase):
+class ProcessorRemoteTilesWestportTest(unittest.TestCase):
     """ A class to test the basic processor class Processor functionality for remote tiles by downloading files from
-    OpenTopography within a small region and then generating a DEM. All files are deleted after checking the DEM."""
+    OpenTopography within a small region and then generating a DEM. All files are deleted after checking the DEM.
 
-    DATASET = "Wellington_2013"
-    FILES = ["ot_CL1_WLG_2013_1km_085033.laz", "ot_CL1_WLG_2013_1km_086033.laz",
-             "ot_CL1_WLG_2013_1km_085032.laz", "ot_CL1_WLG_2013_1km_086032.laz",
-             DATASET + "_TileIndex.zip"]
-    SIZES = [6795072, 5712485, 1670549, 72787, 598532]
+    Tests run include:
+        1. test_correct_dataset - Test that the expected dataset is downloaded from OpenTopography
+        2. test_correct_lidar_files_downloaded - Test the downloaded LIDAR files have the expected names
+        3. test_correct_lidar_file_size - Test the downloaded LIDAR files have the expected file sizes
+        4. test_result_dem_windows/linux - Check the generated DEM matches the benchmark DEM, where the
+            rigor of the test depends on the operating system (windows or Linux)
+    """
+
+    # The expected datasets and files to be downloaded - used for comparison in the later tests
+    DATASET = "NZ20_Westport"
+    FILE_SIZES = {"CL2_BR20_2020_1000_4012.laz": 2636961, "CL2_BR20_2020_1000_4013.laz": 3653378,
+                  "CL2_BR20_2020_1000_4014.laz": 4470413, "CL2_BR20_2020_1000_4112.laz": 9036407,
+                  "CL2_BR20_2020_1000_4212.laz": 8340310, "CL2_BR20_2020_1000_4213.laz": 6094309,
+                  "CL2_BR20_2020_1000_4214.laz": 8492543, DATASET + "_TileIndex.zip": 109069}
 
     @classmethod
     def setUpClass(cls):
-        """ Create a cache directory and CatchmentGeometry object for use in the tests and also download the files used
-        in the tests. """
+        """ Create a CatchmentGeometry object and then run the GeoFabricsGenerator processing chain to download remote
+        files and produce a DEM prior to testing. """
 
-        test_path = pathlib.Path().cwd() / pathlib.Path("tests/test_processor_remote_tiles")
+        test_path = pathlib.Path().cwd() / pathlib.Path("tests/test_processor_remote_tiles_westport")
 
         # load in the test instructions
         instruction_file_path = test_path / "instruction.json"
@@ -48,11 +57,15 @@ class ProcessorRemoteTilesTest(unittest.TestCase):
         cls.clean_data_folder()
 
         # create fake catchment boundary
-        x0 = 1764864
-        y0 = 5470382
-        x1 = 1765656
-        y1 = 5471304
-        catchment = shapely.geometry.Polygon([(x0, y0), (x1, y0), (x1, y1), (x0, y1)])
+        x0 = 1473354
+        x1 = 1473704
+        x2 = 1474598
+        y0 = 5377655
+        y1 = 5377335
+        y2 = 5376291
+        y3 = 5375824
+        catchment = shapely.geometry.Polygon([(x0, y0), (x0, y3), (x2, y3), (x2, y2),
+                                              (x1, y2), (x1, y1), (x2, y1), (x2, y0)])
         catchment = geopandas.GeoSeries([catchment])
         catchment = catchment.set_crs(cls.instructions['instructions']['projection'])
 
@@ -104,7 +117,7 @@ class ProcessorRemoteTilesTest(unittest.TestCase):
         """ A test to see if all expected dataset files are downloaded """
 
         dataset_dir = self.cache_dir / self.DATASET
-        downloaded_files = [dataset_dir / file for file in self.FILES]
+        downloaded_files = [dataset_dir / file for file in self.FILE_SIZES.keys()]
 
         # check files are correct
         self.assertEqual(len(list(dataset_dir.glob('*'))), len(downloaded_files), "There should have been " +
@@ -118,13 +131,13 @@ class ProcessorRemoteTilesTest(unittest.TestCase):
         """ A test to see if all expected dataset files are of the right size """
 
         dataset_dir = self.cache_dir / self.DATASET
-        downloaded_files = [dataset_dir / file for file in self.FILES]
+        downloaded_files = [dataset_dir / file for file in self.FILE_SIZES.keys()]
 
         # check sizes are correct
-        self.assertTrue(numpy.all([downloaded_file.stat().st_size == self.SIZES[i] for i, downloaded_file in
-                                   enumerate(downloaded_files)]), "There is a miss-match between the size of the " +
-                        f"downloaded files {[downloaded_file.stat().st_size for downloaded_file in downloaded_files]}" +
-                        f" and the expected sizes of {self.SIZES}")
+        self.assertTrue(numpy.all([downloaded_file.stat().st_size == self.FILE_SIZES[downloaded_file.name] for
+                                   downloaded_file in downloaded_files]), "There is a miss-match between the size" +
+                        f" of the downloaded files {[file.stat().st_size for file in downloaded_files]}" +
+                        f" and the expected sizes of {self.FILE_SIZES.values()}")
 
     @pytest.mark.skipif(sys.platform != 'win32', reason="Windows test - this is strict")
     def test_result_dem_windows(self):
@@ -141,9 +154,10 @@ class ProcessorRemoteTilesTest(unittest.TestCase):
             test_dem.load()
 
         # compare the generated and benchmark DEMs
-        diff_array = test_dem.data-benchmark_dem.data
+        diff_array = test_dem.data[~numpy.isnan(test_dem.data)]-benchmark_dem.data[~numpy.isnan(benchmark_dem.data)]
         print(f"DEM array diff is: {diff_array[diff_array != 0]}")
-        numpy.testing.assert_array_almost_equal(test_dem.data, benchmark_dem.data,
+        numpy.testing.assert_array_almost_equal(test_dem.data[~numpy.isnan(test_dem.data)],
+                                                benchmark_dem.data[~numpy.isnan(benchmark_dem.data)],
                                                 err_msg="The generated result_dem has different data from the " +
                                                 "benchmark_dem")
 
@@ -162,15 +176,16 @@ class ProcessorRemoteTilesTest(unittest.TestCase):
             test_dem.load()
 
         # compare the generated and benchmark DEMs
-        diff_array = (test_dem.data-benchmark_dem.data).flatten()
+        diff_array = test_dem.data[~numpy.isnan(test_dem.data)]-benchmark_dem.data[~numpy.isnan(benchmark_dem.data)]
         print(f"DEM array diff is: {diff_array[diff_array != 0]}")
 
+        threshold = 10e-2
+        self.assertTrue(len(diff_array[numpy.abs(diff_array) > threshold]) == 0, "Some DEM values differ by more than"
+                        + f"{threshold} on Linux test run: {diff_array[numpy.abs(diff_array) > threshold]}")
         threshold = 10e-6
-        self.assertTrue(len(diff_array[diff_array != 0]) < len(diff_array) / 100, f"{len(diff_array[diff_array != 0])} "
-                        + f"or more than 1% of DEM values differ on Linux test run: {diff_array[diff_array != 0]}")
-        self.assertTrue(len(diff_array[numpy.abs(diff_array) > threshold]) < len(diff_array) / 100, "More than 0.1% of "
-                        + "DEM values differ by more than {threshold} on Linux test run: " +
-                        f"{diff_array[numpy.abs(diff_array) > threshold]}")
+        self.assertTrue(len(diff_array[numpy.abs(diff_array) > threshold]) < len(diff_array) / 100,
+                        f"{len(diff_array[numpy.abs(diff_array) > threshold])} or more than 1% of DEM values differ by "
+                        + f" more than {threshold} on Linux test run: {diff_array[numpy.abs(diff_array) > threshold]}")
 
 
 if __name__ == '__main__':

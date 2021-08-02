@@ -1,0 +1,23 @@
+{"instructions": 
+  {
+    "projection": 2193,
+	"grid_params": {
+      "resolution": 10
+    },
+    "data_paths": {
+      "local_cache": "tests/test_vector_fetch/data"
+    },
+	"apis": {
+		"linz": {
+			"land": {
+				"layers": [51153],
+				"type": "GEOMETRY"
+			},
+			"bathymetry_contours": {
+				"layers": [50448],
+				"type": "shape"
+			}
+		}
+	}
+  }
+}

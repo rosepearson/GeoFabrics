@@ -14,6 +14,7 @@ dependencies:
   - rioxarray
   - pdal
   - python-pdal
+  - python-dotenv
   - matplotlib
   - ipykernel
   - ipython

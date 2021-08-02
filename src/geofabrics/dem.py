@@ -57,28 +57,38 @@ class ReferenceDem:
     def _extract_points(self):
         """ Create a points list from the DEM """
 
-        land_dem = self._dem.rio.clip(self.catchment_geometry.land.geometry)
-        foreshore_dem = self._dem.rio.clip(self.catchment_geometry.foreshore.geometry)
+        if self.catchment_geometry.land.area.sum() > 0:
+            land_dem = self._dem.rio.clip(self.catchment_geometry.land.geometry)
+            # get reference DEM points on land
+            land_flat_z = land_dem.data[0].flatten()
+            land_mask_z = ~numpy.isnan(land_flat_z)
+            land_grid_x, land_grid_y = numpy.meshgrid(land_dem.x, land_dem.y)
 
-        # get reference DEM points on land
-        land_flat_z = land_dem.data[0].flatten()
-        land_mask_z = ~numpy.isnan(land_flat_z)
-        land_grid_x, land_grid_y = numpy.meshgrid(land_dem.x, land_dem.y)
+            land_x = land_grid_x.flatten()[land_mask_z]
+            land_y = land_grid_y.flatten()[land_mask_z]
+            land_z = land_flat_z[land_mask_z]
+        else:  # In the case that there is no DEM outside LiDAR/exclusion_extent and on land
+            land_x = []
+            land_y = []
+            land_z = []
 
-        land_x = land_grid_x.flatten()[land_mask_z]
-        land_y = land_grid_y.flatten()[land_mask_z]
-        land_z = land_flat_z[land_mask_z]
+        if self.catchment_geometry.foreshore.area.sum() > 0:
+            foreshore_dem = self._dem.rio.clip(self.catchment_geometry.foreshore.geometry)
 
-        # get reference DEM points on the foreshore
-        if self.set_foreshore:
-            foreshore_dem.data[0][foreshore_dem.data[0] > 0] = 0
-        foreshore_flat_z = foreshore_dem.data[0].flatten()
-        foreshore_mask_z = ~numpy.isnan(foreshore_flat_z)
-        foreshore_grid_x, foreshore_grid_y = numpy.meshgrid(foreshore_dem.x, foreshore_dem.y)
+            # get reference DEM points on the foreshore
+            if self.set_foreshore:
+                foreshore_dem.data[0][foreshore_dem.data[0] > 0] = 0
+            foreshore_flat_z = foreshore_dem.data[0].flatten()
+            foreshore_mask_z = ~numpy.isnan(foreshore_flat_z)
+            foreshore_grid_x, foreshore_grid_y = numpy.meshgrid(foreshore_dem.x, foreshore_dem.y)
 
-        foreshore_x = foreshore_grid_x.flatten()[foreshore_mask_z]
-        foreshore_y = foreshore_grid_y.flatten()[foreshore_mask_z]
-        foreshore_z = foreshore_flat_z[foreshore_mask_z]
+            foreshore_x = foreshore_grid_x.flatten()[foreshore_mask_z]
+            foreshore_y = foreshore_grid_y.flatten()[foreshore_mask_z]
+            foreshore_z = foreshore_flat_z[foreshore_mask_z]
+        else:  # In the case that there is no DEM outside LiDAR/exclusion_extent and on foreshore
+            foreshore_x = []
+            foreshore_y = []
+            foreshore_z = []
 
         assert len(land_x) + len(foreshore_x) > 0, "The reference DEM has no values on the land or foreshore"
 
