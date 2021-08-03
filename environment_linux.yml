@@ -23,5 +23,7 @@ dependencies:
   - pytest
   - spyder
   - spyder-kernels
+  - pip:
+    - geoapis==0.1.0
 
 prefix: C:\ProgramData\Anaconda3\envs\geofabrics

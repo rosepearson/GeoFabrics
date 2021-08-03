@@ -10,8 +10,8 @@ import pathlib
 import shutil
 from . import geometry
 from . import lidar
-from . import lidar_fetch
-from . import vector_fetch
+from geoapis import lidar_fetch
+from geoapis import vector_fetch
 from . import dem
 
 
@@ -132,7 +132,7 @@ class GeoFabricsGenerator:
             # Key included the LINZ APIs - download data then add
             vector_instruction = self.instructions['instructions']['apis']['linz'][key]
             vector_fetcher = vector_fetch.Linz(self.instructions['instructions']['apis']['linz']['key'],
-                                               self.catchment_geometry, verbose=True)
+                                               self.catchment_geometry.catchment, verbose=True)
             cache_dir = pathlib.Path(self.get_instruction_path('local_cache'))
             geometry_type = vector_instruction['type']
 
@@ -161,7 +161,7 @@ class GeoFabricsGenerator:
                 "'file_paths' in the instruction file if you are going to use an API - like 'open_topography'"
 
             # download from OpenTopography - then get the local file path
-            self.lidar_fetcher = lidar_fetch.OpenTopography(self.catchment_geometry,
+            self.lidar_fetcher = lidar_fetch.OpenTopography(self.catchment_geometry.catchment,
                                                             self.get_instruction_path('local_cache'),
                                                             verbose=verbose)
             self.lidar_fetcher.run()
