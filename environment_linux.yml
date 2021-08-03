@@ -24,6 +24,6 @@ dependencies:
   - spyder
   - spyder-kernels
   - pip:
-    - geoapis==git+https://github.com/niwa/geoapis
+    - git+https://github.com/niwa/geoapis
 
 prefix: C:\ProgramData\Anaconda3\envs\geofabrics
