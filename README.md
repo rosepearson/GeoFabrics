@@ -8,7 +8,15 @@
 
 The GeoFabrics and associated sub-packages include routines and classes for combining point (i.e. LiDAR), vector (i.e. catchment of interest, infrastructure) and raster (i.e. reference DEM) to generate a hydrologically conditioned raster. 
 
+### General workflow
+
+![image](https://user-images.githubusercontent.com/22883860/128109715-80738b70-b5d9-480e-811e-1c045c27105f.png)
+
+### Wiki
+
 For detailed instructions on installation, usage, and testing please check out the repo [wiki](https://github.com/rosepearson/GeoFabrics/wiki). 
+
+For 'install instructions' see [Package Install Instructions](https://github.com/rosepearson/GeoFabrics/wiki/Package-Install-Instructions)
 
 ## Related material
 Scripts used as part of the development of this project are included in a separate repo. See https://github.com/rosepearson/Hydrologic-DEMs-scripts for an example.
