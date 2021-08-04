@@ -10,8 +10,8 @@ import pathlib
 import shutil
 from . import geometry
 from . import lidar
-from geoapis import lidar_fetch
-from geoapis import vector_fetch
+import geoapis.lidar
+import geoapis.vector
 from . import dem
 
 
@@ -127,12 +127,12 @@ class GeoFabricsGenerator:
             assert self.check_instruction_path('local_cache'), "Local cache file path must exist to specify the " + \
                 "location to download vector data from the LINZ API"
             assert self.catchment_geometry is not None, "The `self.catchment_directory` object must exist before a" + \
-                "vector is downloaded using `vector_fetch.LinzVectors`"
+                "vector is downloaded using `vector.Linz`"
 
             # Key included the LINZ APIs - download data then add
             vector_instruction = self.instructions['instructions']['apis']['linz'][key]
-            vector_fetcher = vector_fetch.Linz(self.instructions['instructions']['apis']['linz']['key'],
-                                               self.catchment_geometry.catchment, verbose=True)
+            vector_fetcher = geoapis.vector.Linz(self.instructions['instructions']['apis']['linz']['key'],
+                                                 self.catchment_geometry.catchment, verbose=True)
             cache_dir = pathlib.Path(self.get_instruction_path('local_cache'))
             geometry_type = vector_instruction['type']
 
@@ -161,9 +161,9 @@ class GeoFabricsGenerator:
                 "'file_paths' in the instruction file if you are going to use an API - like 'open_topography'"
 
             # download from OpenTopography - then get the local file path
-            self.lidar_fetcher = lidar_fetch.OpenTopography(self.catchment_geometry.catchment,
-                                                            self.get_instruction_path('local_cache'),
-                                                            verbose=verbose)
+            self.lidar_fetcher = geoapis.lidar.OpenTopography(self.catchment_geometry.catchment,
+                                                              self.get_instruction_path('local_cache'),
+                                                              verbose=verbose)
             self.lidar_fetcher.run()
             lidar_file_paths = sorted(pathlib.Path(self.lidar_fetcher.cache_path /
                                       self.lidar_fetcher.dataset_prefixes[lidar_dataset_index]).glob('*.laz'))
