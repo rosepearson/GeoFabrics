@@ -10,6 +10,7 @@ import argparse
 import rioxarray
 import numpy
 import matplotlib
+import time
 
 
 def parse_args():
@@ -31,8 +32,12 @@ def launch_processor(args):
         instructions = json.load(file_pointer)
 
     # run the pipeline
+    start_time = time.time()
     runner = processor.GeoFabricsGenerator(instructions)
     runner.run()
+    end_time = time.time()
+
+    print(f"Execution time is {end_time - start_time}")
 
     # load in benchmark DEM and compare - if specified in the instructions
     if 'benchmark_dem' in instructions['instructions']['data_paths']:
