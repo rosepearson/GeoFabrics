@@ -18,6 +18,7 @@ class CatchmentLidar:
 
     Specifically, this supports the addition of LiDAR data tile by tile.
     """
+    VERTICAL_EPSG = '7839'
 
     def __init__(self, catchment_geometry: geometry.CatchmentGeometry, area_to_drop: float = None,
                  verbose: bool = True):
@@ -38,16 +39,39 @@ class CatchmentLidar:
 
         In future we may want to have the option of filtering by foreshore / land """
 
+        # Load in the LiDAR
         pdal_pipeline_instructions = [
             {"type":  "readers.las", "filename": str(lidar_file)},
-            {"type": "filters.reprojection", "out_srs": "EPSG:" +
-                str(self.catchment_geometry.crs)},  # reproject to NZTM
+        ]
+
+        self._pdal_pipeline = pdal.Pipeline(json.dumps(pdal_pipeline_instructions))
+        self._pdal_pipeline.execute()
+
+        # Extract CRS of loaded in LAZ file
+        metadata = json.loads(self._pdal_pipeline.get_metadata())
+        horizontal_crs = metadata['metadata']['readers.las']['srs']['horizontal']
+        horizontal_crs = horizontal_crs[horizontal_crs.rfind('AUTHORITY["EPSG",'):].strip(
+            'AUTHORITY["EPSG",""').strip('"]]')
+        assert horizontal_crs.isdigit(), "The string manipulation of " + \
+            f"{metadata['metadata']['readers.las']['srs']['horizontal']} did not produce a valid EPSG number" + \
+            f" instead producing '{horizontal_crs}'"
+
+        vertical_crs = metadata['metadata']['readers.las']['srs']['vertical']
+        vertical_crs = vertical_crs[vertical_crs.rfind('AUTHORITY["EPSG",'):].strip(
+            'AUTHORITY["EPSG",""').strip('"]]')
+        assert vertical_crs == self.VERTICAL_EPSG, "An unexpected vertical datum" + \
+               f" of EPSG:{vertical_crs} instead of the expected EPSG:{self.VERTICAL_EPSG}"
+
+        # Reproject, clip in catchment, and get extents of the remaining point cloud
+        pdal_pipeline_instructions = [
+            {"type": "filters.reprojection", "in_srs": "EPSG:" + horizontal_crs,
+             "out_srs": "EPSG:" + str(self.catchment_geometry.crs)},  # reproject to NZTM
             {"type": "filters.crop", "polygon": str(
                 self.catchment_geometry.catchment.loc[0].geometry)},  # filter within boundary
             {"type": "filters.hexbin"}  # create a polygon boundary of the LiDAR
         ]
 
-        self._pdal_pipeline = pdal.Pipeline(json.dumps(pdal_pipeline_instructions))
+        self._pdal_pipeline = pdal.Pipeline(json.dumps(pdal_pipeline_instructions), self._pdal_pipeline.arrays)
         self._pdal_pipeline.execute()
 
         # update the catchment geometry with the LiDAR extents
