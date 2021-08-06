@@ -29,14 +29,16 @@ class CatchmentGeometry:
     It is initalised with the catchment. The land must be added before the other regions (i.e. land, offshore,
     foreshore, etc) can be accessed. """
 
-    def __init__(self, catchment_file: typing.Union[str, pathlib.Path], crs, resolution, foreshore_buffer=2):
+    def __init__(self, catchment_file: typing.Union[str, pathlib.Path], horizontal_crs, vertical_crs, resolution,
+                 foreshore_buffer=2):
         self._catchment = geopandas.read_file(catchment_file)
-        self.crs = crs
+        self.horizontal_crs = horizontal_crs
+        self.vertical_crs = vertical_crs
         self.resolution = resolution
         self.foreshore_buffer = foreshore_buffer
 
         # set catchment CRS
-        self._catchment = self._catchment.to_crs(self.crs)
+        self._catchment = self._catchment.to_crs(self.horizontal_crs)
 
         # values set in setup once land has been specified
         self._land = None
@@ -48,14 +50,14 @@ class CatchmentGeometry:
     def _set_up(self):
         """ Define the main catchment regions and ensure the CRS is set for each region """
 
-        self._land = self._land.to_crs(self.crs)
+        self._land = self._land.to_crs(self.horizontal_crs)
 
         self._land = geopandas.clip(self._catchment, self._land)
 
         self._foreshore_and_offshore = geopandas.overlay(self.catchment, self.land, how='difference')
 
         self._land_and_foreshore = geopandas.GeoDataFrame(
-            index=[0], geometry=self.land.buffer(self.resolution * self.foreshore_buffer), crs=self.crs)
+            index=[0], geometry=self.land.buffer(self.resolution * self.foreshore_buffer), crs=self.horizontal_crs)
         self._land_and_foreshore = geopandas.clip(self.catchment, self._land_and_foreshore)
 
         self._foreshore = geopandas.overlay(self.land_and_foreshore, self.land, how='difference')
@@ -150,14 +152,14 @@ class CatchmentGeometry:
         # the foreshore and whatever lidar extents are offshore
         dense_data_extents = geopandas.GeoSeries(shapely.ops.cascaded_union([self.foreshore.loc[0].geometry,
                                                                              lidar_extents.loc[0].geometry]))
-        dense_data_extents = geopandas.GeoDataFrame(index=[0], geometry=dense_data_extents, crs=self.crs)
+        dense_data_extents = geopandas.GeoDataFrame(index=[0], geometry=dense_data_extents, crs=self.horizontal_crs)
         dense_data_extents = geopandas.clip(dense_data_extents, self.foreshore_and_offshore)
 
         # deflate this
         deflated_dense_data_extents = geopandas.GeoDataFrame(index=[0],
                                                              geometry=dense_data_extents.buffer(
                                                                  self.resolution * -1 * self.foreshore_buffer),
-                                                             crs=self.crs)
+                                                             crs=self.horizontal_crs)
 
         # get the difference between them
         offshore_dense_data_edge = geopandas.overlay(dense_data_extents, deflated_dense_data_extents, how='difference')
@@ -203,7 +205,7 @@ class BathymetryContours:
     def _set_up(self, exclusion_extent):
         """ Set CRS and clip to catchment """
 
-        self._contour = self._contour.to_crs(self.catchment_geometry.crs)
+        self._contour = self._contour.to_crs(self.catchment_geometry.horizontal_crs)
 
         if exclusion_extent is not None:
             exclusion_extent = geopandas.clip(exclusion_extent, self.catchment_geometry.offshore)
@@ -271,7 +273,7 @@ class BathymetryPoints:
     def _set_up(self, exclusion_extent):
         """ Set CRS and clip to catchment """
 
-        self._points = self._points.to_crs(self.catchment_geometry.crs)
+        self._points = self._points.to_crs(self.catchment_geometry.horizontal_crs)
 
         if exclusion_extent is not None:
             exclusion_extent = geopandas.clip(exclusion_extent, self.catchment_geometry.offshore)
@@ -331,7 +333,7 @@ class TileInfo:
     def _set_up(self):
         """ Set CRS and select all tiles partially within the catchment, and look up the file column name """
 
-        self._tile_info = self._tile_info.to_crs(self.catchment_geometry.crs)
+        self._tile_info = self._tile_info.to_crs(self.catchment_geometry.horizontal_crs)
         self._tile_info = geopandas.sjoin(self._tile_info, self.catchment_geometry.catchment)
         self._tile_info = self._tile_info.reset_index(drop=True)
 

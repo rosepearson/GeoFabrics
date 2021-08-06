@@ -63,12 +63,20 @@ class GeoFabricsGenerator:
             "'resolution' is not a key-word in the instructions"
         return self.instructions['instructions']['grid_params']['resolution']
 
-    def get_projection(self) -> float:
+    def get_crs(self, key: str) -> float:
         """ Return the CRS projection from the instruction file. Raise an error if not in the instructions. """
 
-        assert 'projection' in self.instructions['instructions'], \
-            "'projection' is not a key-word in the instructions"
-        return self.instructions['instructions']['projection']
+        defaults = {'horizontal': 2193, 'vertical': 7839}
+
+        assert 'crs' in self.instructions['instructions'], "'crs' is not a key-word in the instructions"
+
+        if key in self.instructions['instructions']['crs']:
+            return self.instructions['instructions']['crs'][key]
+        elif key in defaults.keys():
+            return defaults[key]
+        else:
+            assert False, f"The key `{key}` is both missing from instructions crs, and is not defined in the " + \
+                f"{defaults}"
 
     def get_instruction_general(self, key: str):
         """ Return the general instruction from the instruction file or return the default value if not specified in
@@ -187,9 +195,8 @@ class GeoFabricsGenerator:
         assert type(catchment_dirs) is not list, f"A list of catchment_boundary's is provided: {catchment_dirs}, " + \
             "where only one is supported."
         self.catchment_geometry = geometry.CatchmentGeometry(catchment_dirs,
-                                                             self.get_projection(),
-                                                             self.get_resolution(),
-                                                             foreshore_buffer=2)
+                                                             self.get_crs('horizontal'), self.get_crs('vertical'),
+                                                             self.get_resolution(), foreshore_buffer=2)
         land_dirs = self.get_vector_paths('land')
         assert len(land_dirs) == 1, f"{len(land_dirs)} catchment_boundary's provided, where only one is supported." + \
             f" Specficially land_dirs = {land_dirs}."

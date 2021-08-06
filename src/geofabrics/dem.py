@@ -42,7 +42,7 @@ class ReferenceDem:
     def _set_up(self, exclusion_extent):
         """ Set DEM CRS and trim the DEM to size """
 
-        self._dem.rio.set_crs(self.catchment_geometry.crs)
+        self._dem.rio.set_crs(self.catchment_geometry.horizontal_crs)
 
         if exclusion_extent is not None:
             exclusion_extent = geopandas.clip(exclusion_extent, self.catchment_geometry.land_and_foreshore)
@@ -163,7 +163,7 @@ class DenseDem:
         empty_points = numpy.zeros([1], dtype=[('X', numpy.float64), ('Y', numpy.float64), ('Z', numpy.float64)])
         pdal_pipeline_instructions = [
             {"type":  "writers.gdal", "resolution": self.catchment_geometry.resolution,
-             "gdalopts": "a_srs=EPSG:" + str(self.catchment_geometry.crs),
+             "gdalopts": "a_srs=EPSG:" + str(self.catchment_geometry.horizontal_crs),
              "output_type": ["idw"], "filename": str(self._temp_dem_file),
              "origin_x": self.raster_origin[0], "origin_y": self.raster_origin[1],
              "width": self.raster_size[0], "height": self.raster_size[1]}
@@ -177,7 +177,7 @@ class DenseDem:
 
         with rioxarray.rioxarray.open_rasterio(str(self._temp_dem_file), masked=True) as dem_temp:
             dem_temp.load()
-            dem_temp.rio.set_crs(self.catchment_geometry.crs)
+            dem_temp.rio.set_crs(self.catchment_geometry.horizontal_crs)
 
         # check if the raster origin has been moved by PDAL writers.gdal
         raster_origin = [dem_temp.x.data.min() - self.catchment_geometry.resolution/2,
@@ -200,7 +200,7 @@ class DenseDem:
             self._temp_dem_file.unlink()
         pdal_pipeline_instructions = [
             {"type":  "writers.gdal", "resolution": self.catchment_geometry.resolution,
-             "gdalopts": f"a_srs=EPSG:{self.catchment_geometry.crs}", "output_type": [self.DENSE_BINNING],
+             "gdalopts": f"a_srs=EPSG:{self.catchment_geometry.horizontal_crs}", "output_type": [self.DENSE_BINNING],
              "filename": str(self._temp_dem_file),
              "window_size": window_size, "power": idw_power, "radius": radius,
              "origin_x": self.raster_origin[0], "origin_y": self.raster_origin[1],
@@ -232,7 +232,7 @@ class DenseDem:
         # load generated tile
         with rioxarray.rioxarray.open_rasterio(self._temp_dem_file, masked=True) as tile:
             tile.load()
-        tile.rio.set_crs(self.catchment_geometry.crs)
+        tile.rio.set_crs(self.catchment_geometry.horizontal_crs)
 
         # ensure the tile is lined up with the whole dense DEM - i.e. that that raster origin values match
         raster_origin = [tile.x.data.min() - self.catchment_geometry.resolution/2,

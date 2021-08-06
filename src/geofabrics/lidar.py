@@ -18,7 +18,6 @@ class CatchmentLidar:
 
     Specifically, this supports the addition of LiDAR data tile by tile.
     """
-    VERTICAL_EPSG = '7839'
 
     def __init__(self, catchment_geometry: geometry.CatchmentGeometry, area_to_drop: float = None,
                  verbose: bool = True):
@@ -59,15 +58,15 @@ class CatchmentLidar:
         vertical_crs = metadata['metadata']['readers.las']['srs']['vertical']
         vertical_crs = vertical_crs[vertical_crs.rfind('AUTHORITY["EPSG",'):].strip(
             'AUTHORITY["EPSG",""').strip('"]]')
-        assert vertical_crs == self.VERTICAL_EPSG, "An unexpected vertical datum" + \
+        assert vertical_crs == str(self.catchment_geometry.vertical_crs), "An unexpected vertical datum" + \
                f" of EPSG:{vertical_crs} instead of the expected EPSG:{self.VERTICAL_EPSG}"
 
         # Reproject, clip in catchment, and get extents of the remaining point cloud
         pdal_pipeline_instructions = [
             {"type": "filters.reprojection", "in_srs": "EPSG:" + horizontal_crs,
-             "out_srs": "EPSG:" + str(self.catchment_geometry.crs)},  # reproject to NZTM
+             "out_srs": "EPSG:" + str(self.catchment_geometry.horizontal_crs)},
             {"type": "filters.crop", "polygon": str(
-                self.catchment_geometry.catchment.loc[0].geometry)},  # filter within boundary
+                self.catchment_geometry.catchment.loc[0].geometry)},  # filter within catchment
             {"type": "filters.hexbin"}  # create a polygon boundary of the LiDAR
         ]
 
@@ -89,15 +88,15 @@ class CatchmentLidar:
         if tile_extents.area > 0:  # check polygon isn't empty
 
             if self._extents is None:
-                self._extents = geopandas.GeoSeries([tile_extents], crs=self.catchment_geometry.crs)
+                self._extents = geopandas.GeoSeries([tile_extents], crs=self.catchment_geometry.horizontal_crs)
                 self._extents = geopandas.GeoDataFrame(
-                    index=[0], geometry=self._extents, crs=self.catchment_geometry.crs)
+                    index=[0], geometry=self._extents, crs=self.catchment_geometry.horizontal_crs)
             else:
                 self._extents = geopandas.GeoSeries(
                     shapely.ops.cascaded_union([self._extents.loc[0].geometry, tile_extents]),
-                    crs=self.catchment_geometry.crs)
+                    crs=self.catchment_geometry.horizontal_crs)
                 self._extents = geopandas.GeoDataFrame(
-                    index=[0], geometry=self._extents, crs=self.catchment_geometry.crs)
+                    index=[0], geometry=self._extents, crs=self.catchment_geometry.horizontal_crs)
             self._extents = geopandas.clip(self.catchment_geometry.catchment, self._extents)
 
     @property
@@ -133,9 +132,9 @@ class CatchmentLidar:
             polygon = shapely.geometry.Polygon(
                 polygon.exterior.coords, [interior for interior in polygon.interiors if
                                           shapely.geometry.Polygon(interior).area > self.area_to_drop])
-            self._extents = geopandas.GeoSeries([polygon], crs=self.catchment_geometry.crs)
+            self._extents = geopandas.GeoSeries([polygon], crs=self.catchment_geometry.horizontal_crs)
             self._extents = geopandas.GeoDataFrame(index=[0], geometry=self._extents,
-                                                   crs=self.catchment_geometry.crs)
+                                                   crs=self.catchment_geometry.horizontal_crs)
             self._extents = geopandas.clip(self.catchment_geometry.catchment, self._extents)
         else:
             if self.verbose:

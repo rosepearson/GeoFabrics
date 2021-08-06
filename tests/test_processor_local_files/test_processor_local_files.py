@@ -57,7 +57,7 @@ class ProcessorLocalFilesTest(unittest.TestCase):
         y1 = 750
         catchment = shapely.geometry.Polygon([(x0, y0), (x1, y0), (x1, y1), (x0, y1)])
         catchment = geopandas.GeoSeries([catchment])
-        catchment = catchment.set_crs(cls.instructions['instructions']['projection'])
+        catchment = catchment.set_crs(cls.instructions['instructions']['crs']['horizontal'])
         catchment.to_file(catchment_dir)
         shutil.make_archive(base_name=catchment_dir, format='zip', root_dir=catchment_dir)
         shutil.rmtree(catchment_dir)
@@ -70,7 +70,7 @@ class ProcessorLocalFilesTest(unittest.TestCase):
         y1 = 1000
         land = shapely.geometry.Polygon([(x0, y0), (x1, y0), (x1, y1), (x0, y1)])
         land = geopandas.GeoSeries([land])
-        land = land.set_crs(cls.instructions['instructions']['projection'])
+        land = land.set_crs(cls.instructions['instructions']['crs']['horizontal'])
         land.to_file(land_dir)
         shutil.make_archive(base_name=land_dir, format='zip', root_dir=land_dir)
         shutil.rmtree(land_dir)
@@ -86,7 +86,7 @@ class ProcessorLocalFilesTest(unittest.TestCase):
         contour_1 = shapely.geometry.LineString([(x0, y1, -y1/10), (x1, y1, -y1/10)])
         contour_2 = shapely.geometry.LineString([(x0, y2, -y2/10), (x1, y2, -y2/10)])
         contours = geopandas.GeoSeries([contour_0, contour_1, contour_2])
-        contours = contours.set_crs(cls.instructions['instructions']['projection'])
+        contours = contours.set_crs(cls.instructions['instructions']['crs']['horizontal'])
         contours.to_file(bathymetry_dir)
         shutil.make_archive(base_name=bathymetry_dir, format='zip', root_dir=bathymetry_dir)
         shutil.rmtree(bathymetry_dir)
@@ -101,7 +101,7 @@ class ProcessorLocalFilesTest(unittest.TestCase):
             (numpy.abs(grid_dem_x[grid_dem_y > 0] - 750) / 500 + 0.1) / 1.1
         dem = xarray.DataArray(grid_dem_z, coords={'x': grid_dem_x[0], 'y': grid_dem_y[:, 0]}, dims=['y', 'x'],
                                attrs={'scale_factor': 1.0, 'add_offset': 0.0})
-        dem.rio.set_crs(cls.instructions['instructions']['projection'])
+        dem.rio.set_crs(cls.instructions['instructions']['crs']['horizontal'])
         dem.to_netcdf(dem_file)
 
         # create LiDAR
@@ -119,8 +119,9 @@ class ProcessorLocalFilesTest(unittest.TestCase):
         lidar_array['Z'] = grid_lidar_z.flatten()
 
         pdal_pipeline_instructions = [
-            {"type":  "writers.las", "a_srs": "EPSG:" + str(cls.instructions['instructions']['projection']), "filename":
-             str(lidar_file),
+            {"type":  "writers.las",
+             "a_srs": "EPSG:" + str(cls.instructions['instructions']['crs']['horizontal']),
+             "filename": str(lidar_file),
              "compression": "laszip"}
         ]
 
