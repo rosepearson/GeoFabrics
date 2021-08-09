@@ -238,6 +238,13 @@ class GeoFabricsGenerator:
         if (self.check_instruction_path('reference_dems') and
                 area_without_lidar > self.catchment_geometry.land_and_foreshore.area.sum() * area_threshold):
 
+            assert len(self.get_instruction_path('reference_dems')) == 1, \
+                f"{len(self.get_instruction_path('reference_dems'))} reference_dems specified, but only one supported" \
+                + f" currently. reference_dems: {self.get_instruction_path('reference_dems')}"
+
+            if verbose:
+                print(f"Incorporting background DEM: {self.get_instruction_path('reference_dems')}")
+
             # Load in background DEM - cut away within the LiDAR extents
             self.reference_dem = dem.ReferenceDem(self.get_instruction_path('reference_dems')[0],
                                                   self.catchment_geometry,
@@ -257,7 +264,10 @@ class GeoFabricsGenerator:
             bathy_contour_dirs = self.get_vector_paths('bathymetry_contours')
             assert len(bathy_contour_dirs) == 1, f"{len(bathy_contour_dirs)} bathymetry_contours's provided. " + \
                 f"Specficially {catchment_dirs}. Support has not yet been added for multiple datasets."
-            print(bathy_contour_dirs)
+
+            if verbose:
+                print(f"Incorporting Bathymetry: {bathy_contour_dirs}")
+
             # Load in bathymetry
             self.bathy_contours = geometry.BathymetryContours(
                 bathy_contour_dirs[0], self.catchment_geometry,
