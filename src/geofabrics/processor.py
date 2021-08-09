@@ -108,7 +108,7 @@ class GeoFabricsGenerator:
         if "data_paths" in self.instructions['instructions'] and key in self.instructions['instructions']['data_paths']:
             # Key included in the data paths
             return True
-        elif "apis" in self.instructions['instructions'] and "linz" in self.instructions['instructions'] and \
+        elif "apis" in self.instructions['instructions'] and "linz" in self.instructions['instructions']['apis'] and \
                 key in self.instructions['instructions']['apis']['linz']:
             # Key included in the LINZ APIs
             return True
