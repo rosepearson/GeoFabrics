@@ -37,9 +37,9 @@ class CatchmentLidar:
 
         if self.source_crs is not None:
             assert 'horizontal' in self.source_crs, "The horizontal component of the source CRS is not specified. " + \
-                f"The source_crs specified is: {self.source_crs}"
+                f"Both horizontal and vertical CRS need to be defined. The source_crs specified is: {self.source_crs}"
             assert 'vertical' in self.source_crs, "The vertical component of the source CRS is not specified. " + \
-                f"The source_crs specified is: {self.source_crs}"
+                f"Both horizontal and vertical CRS need to be defined. The source_crs specified is: {self.source_crs}"
 
     def load_tile(self, lidar_file: typing.Union[str, pathlib.Path]):
         """ Function loading in the LiDAR
@@ -55,12 +55,14 @@ class CatchmentLidar:
         if self.source_crs is None:
             pdal_pipeline_instructions.append(
                 {"type": "filters.reprojection",
-                 "out_srs": f"EPSG:{self.catchment_geometry.horizontal_crs}+{self.catchment_geometry.vertical_crs}"})
+                 "out_srs": f"EPSG:{self.catchment_geometry.crs['horizontal']}+" +
+                 f"{self.catchment_geometry.crs['vertical']}"})
         else:
             pdal_pipeline_instructions.append(
                 {"type": "filters.reprojection",
                  "in_srs": f"EPSG:{self.source_crs['horizontal']}+{self.source_crs['vertical']}",
-                 "out_srs": f"EPSG:{self.catchment_geometry.horizontal_crs}+{self.catchment_geometry.vertical_crs}"})
+                 "out_srs": f"EPSG:{self.catchment_geometry.crs['horizontal']}+" +
+                 f"{self.catchment_geometry.crs['vertical']}"})
 
         # Add instructions for clip within the catchment, and creating a polygon extents of the remaining point cloud
         pdal_pipeline_instructions.append(
@@ -86,15 +88,15 @@ class CatchmentLidar:
         if tile_extents.area > 0:  # check polygon isn't empty
 
             if self._extents is None:
-                self._extents = geopandas.GeoSeries([tile_extents], crs=self.catchment_geometry.horizontal_crs)
+                self._extents = geopandas.GeoSeries([tile_extents], crs=self.catchment_geometry.crs['horizontal'])
                 self._extents = geopandas.GeoDataFrame(
-                    index=[0], geometry=self._extents, crs=self.catchment_geometry.horizontal_crs)
+                    index=[0], geometry=self._extents, crs=self.catchment_geometry.crs['horizontal'])
             else:
                 self._extents = geopandas.GeoSeries(
                     shapely.ops.cascaded_union([self._extents.loc[0].geometry, tile_extents]),
-                    crs=self.catchment_geometry.horizontal_crs)
+                    crs=self.catchment_geometry.crs['horizontal'])
                 self._extents = geopandas.GeoDataFrame(
-                    index=[0], geometry=self._extents, crs=self.catchment_geometry.horizontal_crs)
+                    index=[0], geometry=self._extents, crs=self.catchment_geometry.crs['horizontal'])
             self._extents = geopandas.clip(self.catchment_geometry.catchment, self._extents)
 
     @property
@@ -130,9 +132,9 @@ class CatchmentLidar:
             polygon = shapely.geometry.Polygon(
                 polygon.exterior.coords, [interior for interior in polygon.interiors if
                                           shapely.geometry.Polygon(interior).area > self.area_to_drop])
-            self._extents = geopandas.GeoSeries([polygon], crs=self.catchment_geometry.horizontal_crs)
+            self._extents = geopandas.GeoSeries([polygon], crs=self.catchment_geometry.crs['horizontal'])
             self._extents = geopandas.GeoDataFrame(index=[0], geometry=self._extents,
-                                                   crs=self.catchment_geometry.horizontal_crs)
+                                                   crs=self.catchment_geometry.crs['horizontal'])
             self._extents = geopandas.clip(self.catchment_geometry.catchment, self._extents)
         else:
             if self.verbose:

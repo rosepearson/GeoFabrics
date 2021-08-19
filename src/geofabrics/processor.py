@@ -65,9 +65,10 @@ class GeoFabricsGenerator:
             "'resolution' is not a key-word in the instructions"
         return self.instructions['instructions']['output']['grid_params']['resolution']
 
-    def get_crs(self, key: str) -> float:
-        """ Return the CRS projection from the instruction file. Raise an error if 'output' is not in the instructions.
-        If no 'crs' or 'horizontal' or 'vertical' values are specified then use the defaults."""
+    def get_crs(self, verbose: bool) -> dict:
+        """ Return the CRS projection information (horiztonal and vertical) from the instruction file. Raise an error
+        if 'output' is not in the instructions. If no 'crs' or 'horizontal' or 'vertical' values are specified then use
+        the default value for each one missing from the instructions."""
 
         defaults = {'horizontal': 2193, 'vertical': 7839}
 
@@ -75,16 +76,19 @@ class GeoFabricsGenerator:
             "should exist and is where the resolution and optionally the CRS of the output DEM is defined."
 
         if 'crs' not in self.instructions['instructions']['output']:
-            assert key in defaults.keys(), "The CRS is not specified in the 'output' with the 'crs' key-word, and " + \
-                f"the key: {key} is not included in the defaults {defaults}"
-            return defaults[key]
-        elif key in self.instructions['instructions']['output']['crs']:
-            return self.instructions['instructions']['output']['crs'][key]
-        elif key in defaults.keys():
-            return defaults[key]
+            print(f"Warning: No output CRS values specified. We will instead be using the defaults: {defaults}.")
+            return defaults
         else:
-            assert False, f"The key `{key}` is both missing from instructions 'crs', and is not defined in the " + \
-                f"{defaults}"
+            crs_instruction = self.instructions['instructions']['output']['crs']
+            crs_dict = {}
+            crs_dict['horizontal'] = crs_instruction['horizontal'] if 'horizontal' in crs_instruction else \
+                defaults['horizontal']
+            crs_dict['vertical'] = crs_instruction['vertical'] if 'vertical' in crs_instruction else \
+                defaults['vertical']
+            if verbose:
+                print(f"The output CRS values of {crs_dict} will be used. If these are not as epected. Check both the" +
+                      " 'horizontal' and 'vertical' values are specified.")
+            return crs_dict
 
     def get_instruction_general(self, key: str):
         """ Return the general instruction from the instruction file or return the default value if not specified in
@@ -240,9 +244,10 @@ class GeoFabricsGenerator:
         return lidar_dataset_info
 
     def run(self):
-        """ This method executes the geofabrics generation pipeline to produce geofabric derivatives. """
+        """ This method executes the geofabrics generation pipeline to produce geofabric derivatives.
 
-        # Note correctly only consider one LiDAR dataset.
+        Note it currently only considers one LiDAR dataset. See 'get_lidar_file_list' for where to change this. """
+
         area_threshold = 10.0/100  # 10%
 
         # load in instruction values or set to defaults
@@ -252,8 +257,7 @@ class GeoFabricsGenerator:
         catchment_dirs = self.get_instruction_path('catchment_boundary')
         assert type(catchment_dirs) is not list, f"A list of catchment_boundary's is provided: {catchment_dirs}, " + \
             "where only one is supported."
-        self.catchment_geometry = geometry.CatchmentGeometry(catchment_dirs,
-                                                             self.get_crs('horizontal'), self.get_crs('vertical'),
+        self.catchment_geometry = geometry.CatchmentGeometry(catchment_dirs, self.get_crs(verbose),
                                                              self.get_resolution(), foreshore_buffer=2)
         land_dirs = self.get_vector_paths('land', verbose)
         assert len(land_dirs) == 1, f"{len(land_dirs)} catchment_boundary's provided, where only one is supported." + \
