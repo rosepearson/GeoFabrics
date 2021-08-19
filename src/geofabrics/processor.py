@@ -59,23 +59,31 @@ class GeoFabricsGenerator:
     def get_resolution(self) -> float:
         """ Return the resolution from the instruction file. Raise an error if not in the instructions. """
 
-        assert 'resolution' in self.instructions['instructions']['grid_params'], \
+        assert 'output' in self.instructions['instructions'], "'output' is not a key-word in the instructions. It " + \
+            "should exist and is where the resolution and optionally the CRS of the output DEM is defined."
+        assert 'resolution' in self.instructions['instructions']['output']['grid_params'], \
             "'resolution' is not a key-word in the instructions"
-        return self.instructions['instructions']['grid_params']['resolution']
+        return self.instructions['instructions']['output']['grid_params']['resolution']
 
     def get_crs(self, key: str) -> float:
-        """ Return the CRS projection from the instruction file. Raise an error if not in the instructions. """
+        """ Return the CRS projection from the instruction file. Raise an error if 'output' is not in the instructions.
+        If no 'crs' or 'horizontal' or 'vertical' values are specified then use the defaults."""
 
         defaults = {'horizontal': 2193, 'vertical': 7839}
 
-        assert 'crs' in self.instructions['instructions'], "'crs' is not a key-word in the instructions"
+        assert 'output' in self.instructions['instructions'], "'output' is not a key-word in the instructions. It " + \
+            "should exist and is where the resolution and optionally the CRS of the output DEM is defined."
 
-        if key in self.instructions['instructions']['crs']:
-            return self.instructions['instructions']['crs'][key]
+        if 'crs' not in self.instructions['instructions']['output']:
+            assert key in defaults.keys(), "The CRS is not specified in the 'output' with the 'crs' key-word, and " + \
+                f"the key: {key} is not included in the defaults {defaults}"
+            return defaults[key]
+        elif key in self.instructions['instructions']['output']['crs']:
+            return self.instructions['instructions']['output']['crs'][key]
         elif key in defaults.keys():
             return defaults[key]
         else:
-            assert False, f"The key `{key}` is both missing from instructions crs, and is not defined in the " + \
+            assert False, f"The key `{key}` is both missing from instructions 'crs', and is not defined in the " + \
                 f"{defaults}"
 
     def get_instruction_general(self, key: str):
@@ -102,20 +110,24 @@ class GeoFabricsGenerator:
             return False
 
     def check_vector(self, key) -> bool:
-        """ Check to see if vector key is included either as a file path, or as a LINZ API or other APIs that
-        support vectors """
+        """ Check to see if vector key (i.e. land, bathymetry_contours, etc) is included either as a file path, or
+        within any of the vector API's (i.e. LINZ or LRIS). """
+
+        data_services = ["linz", "lris"]  # This list will increase as geopais is extended to support more vector APIs
 
         if "data_paths" in self.instructions['instructions'] and key in self.instructions['instructions']['data_paths']:
             # Key included in the data paths
             return True
-        elif "apis" in self.instructions['instructions'] and "linz" in self.instructions['instructions']['apis'] and \
-                key in self.instructions['instructions']['apis']['linz']:
-            # Key included in the LINZ APIs
-            return True
+        elif "apis" in self.instructions['instructions']:
+            for data_service in data_services:
+                if data_service in self.instructions['instructions']['apis'] \
+                        and key in self.instructions['instructions']['apis'][data_service]:
+                    # Key is included in one or more of the data_service's APIs
+                    return True
         else:
             return False
 
-    def get_vector_paths(self, key) -> list:
+    def get_vector_paths(self, key, verbose: bool = False) -> list:
         """ Get the path to the vector key data included either as a file path or as a LINZ API. Return all paths
         where the vector key is specified. In the case that an API is specified ensure the data is fetched as well. """
 
@@ -130,35 +142,45 @@ class GeoFabricsGenerator:
                 paths.append(self.instructions['instructions']['data_paths'][key])
 
         # Check the instructions for LINZ hoster vector data
-        if self.check_apis("linz") and key in self.instructions['instructions']['apis']['linz']:
-
-            assert self.check_instruction_path('local_cache'), "Local cache file path must exist to specify the " + \
-                "location to download vector data from the LINZ API"
-            assert self.catchment_geometry is not None, "The `self.catchment_directory` object must exist before a" + \
-                "vector is downloaded using `vector.Linz`"
-
-            # Key included the LINZ APIs - download data then add
-            vector_instruction = self.instructions['instructions']['apis']['linz'][key]
-            vector_fetcher = geoapis.vector.Linz(self.instructions['instructions']['apis']['linz']['key'],
-                                                 self.catchment_geometry.catchment, verbose=True)
+        data_services = {"linz": geoapis.vector.Linz, "lris": geoapis.vector.Lris}  # API name and geoapis class pairs
+        for data_service in data_services.keys():
             cache_dir = pathlib.Path(self.get_instruction_path('local_cache'))
-            geometry_type = vector_instruction['type']
+            if self.check_apis(data_service) and key in self.instructions['instructions']['apis'][data_service]:
 
-            # Cycle through all layers specified - save each and add to the path list
-            for layer in vector_instruction['layers']:
-                vector = vector_fetcher.run(layer, geometry_type)
+                api_key = self.instructions['instructions']['apis'][data_service]['key']
 
-                # Ensure directory for layer and save vector file
-                layer_dir = cache_dir / str(layer)
-                layer_dir.mkdir(parents=True, exist_ok=True)
-                vector_dir = layer_dir / key
-                vector.to_file(vector_dir)
-                shutil.make_archive(base_name=vector_dir, format='zip', root_dir=vector_dir)
-                shutil.rmtree(vector_dir)
-                paths.append(layer_dir / f"{key}.zip")
+                assert self.check_instruction_path('local_cache'), "Local cache file path must exist to specify the" + \
+                    f" location to download vector data from the vector APIs: {data_services}"
+                assert self.catchment_geometry is not None, "The `self.catchment_directory` object must exist " + \
+                    "before avector is downloaded using `vector.Linz`"
+
+                # Instantiate object for downloading vectors from the data service. Download layers with the run method
+                vector_fetcher = data_services[data_service](api_key,
+                                                             bounding_polygon=self.catchment_geometry.catchment,
+                                                             verbose=True)
+
+                vector_instruction = self.instructions['instructions']['apis'][data_service][key]
+                geometry_type = vector_instruction['type'] if 'type' in vector_instruction else None
+
+                if verbose:
+                    print(f"Downloading vector layers {vector_instruction['layers']} from the {data_service} data" +
+                          "service")
+
+                # Cycle through all layers specified - save each and add to the path list
+                for layer in vector_instruction['layers']:
+                    vector = vector_fetcher.run(layer, geometry_type)
+
+                    # Ensure directory for layer and save vector file
+                    layer_dir = cache_dir / str(layer)
+                    layer_dir.mkdir(parents=True, exist_ok=True)
+                    vector_dir = layer_dir / key
+                    vector.to_file(vector_dir)
+                    shutil.make_archive(base_name=vector_dir, format='zip', root_dir=vector_dir)
+                    shutil.rmtree(vector_dir)
+                    paths.append(layer_dir / f"{key}.zip")
         return paths
 
-    def get_lidar_file_list(self, verbose) -> list:
+    def get_lidar_file_list(self, verbose: bool = False) -> list:
         """ Load or construct a list of lidar tiles to construct a DEM from. """
 
         lidar_dataset_index = 0  # currently only support one LiDAR dataset
@@ -197,7 +219,7 @@ class GeoFabricsGenerator:
         self.catchment_geometry = geometry.CatchmentGeometry(catchment_dirs,
                                                              self.get_crs('horizontal'), self.get_crs('vertical'),
                                                              self.get_resolution(), foreshore_buffer=2)
-        land_dirs = self.get_vector_paths('land')
+        land_dirs = self.get_vector_paths('land', verbose)
         assert len(land_dirs) == 1, f"{len(land_dirs)} catchment_boundary's provided, where only one is supported." + \
             f" Specficially land_dirs = {land_dirs}."
         self.catchment_geometry.land = land_dirs[0]

@@ -67,7 +67,7 @@ class ProcessorRemoteTilesWestportTest(unittest.TestCase):
         catchment = shapely.geometry.Polygon([(x0, y0), (x0, y3), (x2, y3), (x2, y2),
                                               (x1, y2), (x1, y1), (x2, y1), (x2, y0)])
         catchment = geopandas.GeoSeries([catchment])
-        catchment = catchment.set_crs(cls.instructions['instructions']['crs']['horizontal'])
+        catchment = catchment.set_crs(cls.instructions['instructions']['output']['crs']['horizontal'])
 
         # save faked catchment boundary - used as land boundary as well
         catchment_dir = cls.cache_dir / "catchment"
