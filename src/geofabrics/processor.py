@@ -144,9 +144,8 @@ class GeoFabricsGenerator:
         # Check the instructions for LINZ hoster vector data
         data_services = {"linz": geoapis.vector.Linz, "lris": geoapis.vector.Lris}  # API name and geoapis class pairs
         for data_service in data_services.keys():
-            cache_dir = pathlib.Path(self.get_instruction_path('local_cache'))
             if self.check_apis(data_service) and key in self.instructions['instructions']['apis'][data_service]:
-
+                cache_dir = pathlib.Path(self.get_instruction_path('local_cache'))
                 api_key = self.instructions['instructions']['apis'][data_service]['key']
 
                 assert self.check_instruction_path('local_cache'), "Local cache file path must exist to specify the" + \
