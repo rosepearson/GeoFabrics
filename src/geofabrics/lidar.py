@@ -19,17 +19,27 @@ class CatchmentLidar:
     Specifically, this supports the addition of LiDAR data tile by tile.
     """
 
-    def __init__(self, catchment_geometry: geometry.CatchmentGeometry, area_to_drop: float = None,
-                 verbose: bool = True):
+    def __init__(self, catchment_geometry: geometry.CatchmentGeometry, source_crs: dict = None,
+                 area_to_drop: float = None, verbose: bool = True):
         """ Load in LiDAR with relevant processing chain """
 
         self.catchment_geometry = catchment_geometry
+        self.source_crs = source_crs
         self.area_to_drop = area_to_drop
         self.verbose = verbose
 
         self._pdal_pipeline = None
         self._tile_array = None
         self._extents = None
+
+    def _set_up(self):
+        """ Ensure the source_crs is either None or fully and correctly populated """
+
+        if self.source_crs is not None:
+            assert 'horizontal' in self.source_crs, "The horizontal component of the source CRS is not specified. " + \
+                f"The source_crs specified is: {self.source_crs}"
+            assert 'vertical' in self.source_crs, "The vertical component of the source CRS is not specified. " + \
+                f"The source_crs specified is: {self.source_crs}"
 
     def load_tile(self, lidar_file: typing.Union[str, pathlib.Path]):
         """ Function loading in the LiDAR
@@ -38,39 +48,27 @@ class CatchmentLidar:
 
         In future we may want to have the option of filtering by foreshore / land """
 
-        # Load in the LiDAR
-        pdal_pipeline_instructions = [
-            {"type":  "readers.las", "filename": str(lidar_file)},
-        ]
+        # Define instructions for loading in LiDAR
+        pdal_pipeline_instructions = [{"type":  "readers.las", "filename": str(lidar_file)}]
 
+        # Specify reprojection - if a source_crs is specified use this to define the 'in_srs'
+        if self.source_crs is None:
+            pdal_pipeline_instructions.append(
+                {"type": "filters.reprojection",
+                 "out_srs": f"EPSG:{self.catchment_geometry.horizontal_crs}+{self.catchment_geometry.vertical_crs}"})
+        else:
+            pdal_pipeline_instructions.append(
+                {"type": "filters.reprojection",
+                 "in_srs": f"EPSG:{self.source_crs['horizontal']}+{self.source_crs['vertical']}",
+                 "out_srs": f"EPSG:{self.catchment_geometry.horizontal_crs}+{self.catchment_geometry.vertical_crs}"})
+
+        # Add instructions for clip within the catchment, and creating a polygon extents of the remaining point cloud
+        pdal_pipeline_instructions.append(
+            {"type": "filters.crop", "polygon": str(self.catchment_geometry.catchment.loc[0].geometry)})
+        pdal_pipeline_instructions.append({"type": "filters.hexbin"})
+        print(json.dumps(pdal_pipeline_instructions))
+        # Load in LiDAR and perform operations
         self._pdal_pipeline = pdal.Pipeline(json.dumps(pdal_pipeline_instructions))
-        self._pdal_pipeline.execute()
-
-        # Extract CRS of loaded in LAZ file
-        metadata = json.loads(self._pdal_pipeline.get_metadata())
-        horizontal_crs = metadata['metadata']['readers.las']['srs']['horizontal']
-        horizontal_crs = horizontal_crs[horizontal_crs.rfind('AUTHORITY["EPSG",'):].strip(
-            'AUTHORITY["EPSG",""').strip('"]]')
-        assert horizontal_crs.isdigit(), "The string manipulation of " + \
-            f"{metadata['metadata']['readers.las']['srs']['horizontal']} did not produce a valid EPSG number" + \
-            f" instead producing '{horizontal_crs}'"
-
-        vertical_crs = metadata['metadata']['readers.las']['srs']['vertical']
-        vertical_crs = vertical_crs[vertical_crs.rfind('AUTHORITY["EPSG",'):].strip(
-            'AUTHORITY["EPSG",""').strip('"]]')
-        assert vertical_crs == str(self.catchment_geometry.vertical_crs), "An unexpected vertical datum" + \
-               f" of EPSG:{vertical_crs} instead of the expected EPSG:{self.VERTICAL_EPSG}"
-
-        # Reproject, clip in catchment, and get extents of the remaining point cloud
-        pdal_pipeline_instructions = [
-            {"type": "filters.reprojection", "in_srs": "EPSG:" + horizontal_crs,
-             "out_srs": "EPSG:" + str(self.catchment_geometry.horizontal_crs)},
-            {"type": "filters.crop", "polygon": str(
-                self.catchment_geometry.catchment.loc[0].geometry)},  # filter within catchment
-            {"type": "filters.hexbin"}  # create a polygon boundary of the LiDAR
-        ]
-
-        self._pdal_pipeline = pdal.Pipeline(json.dumps(pdal_pipeline_instructions), self._pdal_pipeline.arrays)
         self._pdal_pipeline.execute()
 
         # update the catchment geometry with the LiDAR extents

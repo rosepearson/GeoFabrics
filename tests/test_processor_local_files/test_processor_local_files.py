@@ -120,7 +120,8 @@ class ProcessorLocalFilesTest(unittest.TestCase):
 
         pdal_pipeline_instructions = [
             {"type":  "writers.las",
-             "a_srs": "EPSG:" + str(cls.instructions['instructions']['output']['crs']['horizontal']),
+             "a_srs": f"EPSG:{cls.instructions['instructions']['output']['crs']['horizontal']}+" +
+             f"{cls.instructions['instructions']['output']['crs']['vertical']}",
              "filename": str(lidar_file),
              "compression": "laszip"}
         ]

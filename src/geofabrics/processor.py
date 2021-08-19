@@ -179,12 +179,46 @@ class GeoFabricsGenerator:
                     paths.append(layer_dir / f"{key}.zip")
         return paths
 
-    def get_lidar_file_list(self, verbose: bool = False) -> list:
-        """ Load or construct a list of lidar tiles to construct a DEM from. """
+    def get_lidar_dataset_crs(self, data_service, dataset_name, verbose: bool = False) -> dict:
+        """ Checks to see if source CRS of an associated LiDAR datasets has be specified in the instruction file. If it
+        has been specified, this CRS is returned, and will later by used to override the CRS encoded in the LAS files.
+        """
+
+        if self.check_apis(data_service) and dataset_name in self.instructions['instructions']['apis'][data_service]:
+            dataset_instruction = self.instructions['instructions']['apis'][data_service][dataset_name]
+
+            if 'crs' in dataset_instruction and 'horizontal' in dataset_instruction['crs'] and \
+                    'vertical' in dataset_instruction['crs']:
+                dataset_crs = {'horizontal': dataset_instruction['crs']['horizontal'],
+                               'vertical': dataset_instruction['crs']['vertical']}
+                if verbose:
+                    print(f"The LiDAR dataset {dataset_name} is assumed to have the source CRS: {dataset_crs} as " +
+                          "defined in the instruction file")
+                return dataset_crs
+            else:
+                if verbose:
+                    print(f"The LiDAR dataset {dataset_name} will use the source CRS defined in its LAZ files")
+                return None
+        if verbose:
+            print(f"The LiDAR dataset {dataset_name} will use the source CRS defined in its LAZ files")
+        return None
+
+    def get_lidar_file_list(self, data_service, verbose: bool = False) -> dict:
+        """ Return a dictionary that contains a list of LiDAR tiles to process under the key 'file_paths' and optionally
+        the CRS of these files under the key 'crs'. The 'crs' should only be set if the CRS information is not correctly
+        encoded in the LAZ/LAS files.
+
+        If a LiDAR API is specified this is checked and all files within the catchment area are downloaded and used to
+        construct the file list. If none is specified, the instruction 'data_paths' is checked for 'lidars' and these
+        are returned.
+        """
 
         lidar_dataset_index = 0  # currently only support one LiDAR dataset
 
-        if self.check_apis('open_topography'):
+        lidar_dataset_info = {}
+
+        # See if OpenTopography has been specified as an area to look first
+        if self.check_apis(data_service):
 
             assert self.check_instruction_path('local_cache'), "A 'local_cache' must be specified under the " + \
                 "'file_paths' in the instruction file if you are going to use an API - like 'open_topography'"
@@ -194,13 +228,16 @@ class GeoFabricsGenerator:
                                                               self.get_instruction_path('local_cache'),
                                                               verbose=verbose)
             self.lidar_fetcher.run()
-            lidar_file_paths = sorted(pathlib.Path(self.lidar_fetcher.cache_path /
-                                      self.lidar_fetcher.dataset_prefixes[lidar_dataset_index]).glob('*.laz'))
+            dataset_prefix = self.lidar_fetcher.dataset_prefixes[lidar_dataset_index]
+            lidar_dataset_info['file_paths'] = sorted(
+                pathlib.Path(self.lidar_fetcher.cache_path / dataset_prefix).glob('*.laz'))
+            lidar_dataset_info['crs'] = self.get_lidar_dataset_crs(data_service, dataset_prefix)
         else:
             # get the specified file paths from the instructions
-            lidar_file_paths = self.get_instruction_path('lidars')
+            lidar_dataset_info['file_paths'] = self.get_instruction_path('lidars')
+            lidar_dataset_info['crs'] = None
 
-        return lidar_file_paths
+        return lidar_dataset_info
 
     def run(self):
         """ This method executes the geofabrics generation pipeline to produce geofabric derivatives. """
@@ -229,19 +266,20 @@ class GeoFabricsGenerator:
         idw_power = 2
 
         # Get LiDAR data file-list - this may involve downloading lidar files
-        lidar_file_paths = self.get_lidar_file_list(verbose)
+        lidar_dataset_info = self.get_lidar_file_list('open_topography', verbose)
 
         # setup dense DEM and catchment LiDAR objects
         self.dense_dem = dem.DenseDem(self.catchment_geometry, self.get_instruction_path('temp_raster'),
                                       verbose=verbose)
         self.catchment_lidar = lidar.CatchmentLidar(
-            self.catchment_geometry, area_to_drop=self.get_instruction_general('filter_lidar_holes_area'),
+            self.catchment_geometry, source_crs=lidar_dataset_info['crs'],
+            area_to_drop=self.get_instruction_general('filter_lidar_holes_area'),
             verbose=verbose)
 
         # Load in LiDAR tiles
-        for index, lidar_file_path in enumerate(lidar_file_paths):
+        for index, lidar_file_path in enumerate(lidar_dataset_info['file_paths']):
             if verbose:
-                print(f"Looking at LiDAR tile {index + 1} of {len(lidar_file_paths)}: {lidar_file_path}")
+                print(f"On LiDAR tile {index + 1} of {len(lidar_dataset_info['file_paths'])}: {lidar_file_path}")
 
             # load in LiDAR tile
             self.catchment_lidar.load_tile(lidar_file_path)
