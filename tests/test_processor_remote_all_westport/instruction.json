@@ -1,27 +1,30 @@
 {"instructions": 
-  {
-    "projection": 2193,
-	"grid_params": {
-      "resolution": 10
-    },
-    "data_paths": {
-		"local_cache": "tests/test_processor_remote_all_westport/data",
-		"benchmark_dem": "tests/test_processor_remote_all_westport/data/benchmark_dem.nc",
-		"result_dem": "tests/test_processor_remote_all_westport/data/benchmark_dem.nc",
-		"catchment_boundary": "tests/test_processor_remote_all_westport/data/catchment.zip"
-    },
-	"apis": {
-		"open_topography": "True",
-		"linz": {
-			"land": {
-				"layers": [51153],
-				"type": "GEOMETRY"
+	{
+		"output": {
+			"crs": {
+				"horizontal": 2193,
+				"vertical": 7839
 			},
-			"bathymetry_contours": {
-				"layers": [50448],
-				"type": "shape"
+			"grid_params": {
+				"resolution": 10
+			}
+		},
+		"data_paths": {
+			"local_cache": "tests/test_processor_remote_all_westport/data",
+			"benchmark_dem": "tests/test_processor_remote_all_westport/data/benchmark_dem.nc",
+			"result_dem": "tests/test_processor_remote_all_westport/data/test_dem.nc",
+			"catchment_boundary": "tests/test_processor_remote_all_westport/data/catchment.zip"
+		},
+		"apis": {
+			"open_topography": "True",
+			"linz": {
+				"land": {
+					"layers": [51153]
+				},
+				"bathymetry_contours": {
+					"layers": [50448]
+				}
 			}
 		}
 	}
-  }
 }

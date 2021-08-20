@@ -1,22 +1,34 @@
 {"instructions": 
-  {
-    "projection": 2193,
-	"grid_params": {
-      "resolution": 10
-    },
-    "data_paths": {
-      "local_cache": "tests/test_processor_remote_tiles_wellington/data",
-	  "catchment_boundary": "tests/test_processor_remote_tiles_wellington/data/catchment.zip",
-	  "land": "tests/test_processor_remote_tiles_wellington/data/catchment.zip",
-	  "temp_raster": "tests/test_processor_remote_tiles_wellington/data/temp_dense_dem.tif",
-	  "result_dem": "tests/test_processor_remote_tiles_wellington/data/test_dem.nc",
-	  "benchmark_dem": "tests/test_processor_remote_tiles_wellington/data/benchmark_dem.nc"
-    },
-	"apis": {
-		"open_topography": "True"
-	},
-    "general": {
-      "set_dem_shoreline": "True"
-    }
-  }
+	{
+		"output": {
+			"crs": {
+				"horizontal": 2193,
+				"vertical": 7839
+			},
+			"grid_params": {
+				"resolution": 10
+			}
+		},
+		"data_paths": {
+		  "local_cache": "tests/test_processor_remote_tiles_wellington/data",
+		  "catchment_boundary": "tests/test_processor_remote_tiles_wellington/data/catchment.zip",
+		  "land": "tests/test_processor_remote_tiles_wellington/data/catchment.zip",
+		  "temp_raster": "tests/test_processor_remote_tiles_wellington/data/temp_dense_dem.tif",
+		  "result_dem": "tests/test_processor_remote_tiles_wellington/data/test_dem.nc",
+		  "benchmark_dem": "tests/test_processor_remote_tiles_wellington/data/benchmark_dem.nc"
+		},
+		"apis": {
+			"open_topography": {
+				"Wellington_2013": {
+					"crs": {
+						"horizontal": 2193,
+						"vertical": 7839
+					}
+				}
+			}
+		},
+		"general": {
+		  "set_dem_shoreline": "True"
+		}
+	}
 }
