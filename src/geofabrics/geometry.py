@@ -341,7 +341,7 @@ class TileInfo:
 
         column_name_matches = [name for name in column_names if "filename" == name.lower()]
         column_name_matches.extend([name for name in column_names if "file_name" == name.lower()])
-        print(column_name_matches)
+
         assert len(column_name_matches) == 1, "No single `file name` column detected in the tile file with" + \
             f" columns: {column_names}"
         self.file_name = column_name_matches[0]

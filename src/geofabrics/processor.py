@@ -76,7 +76,8 @@ class GeoFabricsGenerator:
             "should exist and is where the resolution and optionally the CRS of the output DEM is defined."
 
         if 'crs' not in self.instructions['instructions']['output']:
-            print(f"Warning: No output CRS values specified. We will instead be using the defaults: {defaults}.")
+            print("Warning: No output the coordinate system EPSG values specified. We will instead be using the " +
+                  f"defaults: {defaults}.")
             return defaults
         else:
             crs_instruction = self.instructions['instructions']['output']['crs']
@@ -86,8 +87,8 @@ class GeoFabricsGenerator:
             crs_dict['vertical'] = crs_instruction['vertical'] if 'vertical' in crs_instruction else \
                 defaults['vertical']
             if verbose:
-                print(f"The output CRS values of {crs_dict} will be used. If these are not as expected. Check both " +
-                      "the 'horizontal' and 'vertical' values are specified.")
+                print(f"The output the coordinate system EPSG values of {crs_dict} will be used. If these are not as " +
+                      "expected. Check both the 'horizontal' and 'vertical' values are specified.")
             return crs_dict
 
     def get_instruction_general(self, key: str):
@@ -206,15 +207,16 @@ class GeoFabricsGenerator:
                 dataset_crs = {'horizontal': dataset_instruction['crs']['horizontal'],
                                'vertical': dataset_instruction['crs']['vertical']}
                 if verbose:
-                    print(f"The LiDAR dataset {dataset_name} is assumed to have the source CRS: {dataset_crs} as " +
-                          "defined in the instruction file")
+                    print(f"The LiDAR dataset {dataset_name} is assumed to have the source coordinate system EPSG: " +
+                          f"{dataset_crs} as defined in the instruction file")
                 return dataset_crs
             else:
                 if verbose:
-                    print(f"The LiDAR dataset {dataset_name} will use the source CRS defined in its LAZ files")
+                    print(f"The LiDAR dataset {dataset_name} will use the source the coordinate system EPSG defined" +
+                          " in its LAZ files")
                 return None
         if verbose:
-            print(f"The LiDAR dataset {dataset_name} will use the source CRS defined in its LAZ files")
+            print(f"The LiDAR dataset {dataset_name} will use the source coordinate system EPSG from its LAZ files")
         return None
 
     def get_lidar_file_list(self, data_service, verbose: bool = False) -> dict:
