@@ -145,19 +145,28 @@ class GeoFabricsGenerator:
             else:
                 paths.append(self.instructions['instructions']['data_paths'][key])
 
-        # Check the instructions for LINZ hoster vector data
-        data_services = {"linz": geoapis.vector.Linz, "lris": geoapis.vector.Lris}  # API name and geoapis class pairs
+        # Define the supported vector 'apis' keywords and the geoapis class for accessing that data service
+        data_services = {"linz": geoapis.vector.Linz, "lris": geoapis.vector.Lris}
+
+        # Check the instructions for vector data hosted in the supported vector data services: LINZ and LRIS
         for data_service in data_services.keys():
             if self.check_apis(data_service) and key in self.instructions['instructions']['apis'][data_service]:
-                cache_dir = pathlib.Path(self.get_instruction_path('local_cache'))
-                api_key = self.instructions['instructions']['apis'][data_service]['key']
 
+                # Get the location to cache vector data downloaded from data services
                 assert self.check_instruction_path('local_cache'), "Local cache file path must exist to specify the" + \
                     f" location to download vector data from the vector APIs: {data_services}"
-                assert self.catchment_geometry is not None, "The `self.catchment_directory` object must exist " + \
+                cache_dir = pathlib.Path(self.get_instruction_path('local_cache'))
+
+                # Get the API key for the data_serive being checked
+                assert 'key' in self.instructions['instructions']['apis'][data_service], "A 'key' must be specified" + \
+                    f" for the {data_service} data service instead the instruction only includes: " + \
+                    f"{self.instructions['instructions']['apis'][data_service]}"
+                api_key = self.instructions['instructions']['apis'][data_service]['key']
+
+                assert self.catchment_geometry is not None, "The `self.catchment_geometry` object must exist " + \
                     "before a vector is downloaded using `vector.Linz`"
 
-                # Instantiate object for downloading vectors from the data service. Download layers with the run method
+                # Instantiate the geoapis object for downloading vectors from the data service.
                 vector_fetcher = data_services[data_service](api_key,
                                                              bounding_polygon=self.catchment_geometry.catchment,
                                                              verbose=True)
@@ -171,6 +180,7 @@ class GeoFabricsGenerator:
 
                 # Cycle through all layers specified - save each and add to the path list
                 for layer in vector_instruction['layers']:
+                    # Use the run method to download each layer in turn
                     vector = vector_fetcher.run(layer, geometry_type)
 
                     # Ensure directory for layer and save vector file
@@ -185,7 +195,7 @@ class GeoFabricsGenerator:
 
     def get_lidar_dataset_crs(self, data_service, dataset_name, verbose: bool = False) -> dict:
         """ Checks to see if source CRS of an associated LiDAR datasets has be specified in the instruction file. If it
-        has been specified, this CRS is returned, and will later by used to override the CRS encoded in the LAS files.
+        has been specified, this CRS is returned, and will later be used to override the CRS encoded in the LAS files.
         """
 
         if self.check_apis(data_service) and dataset_name in self.instructions['instructions']['apis'][data_service]:
