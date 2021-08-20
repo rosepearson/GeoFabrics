@@ -86,8 +86,8 @@ class GeoFabricsGenerator:
             crs_dict['vertical'] = crs_instruction['vertical'] if 'vertical' in crs_instruction else \
                 defaults['vertical']
             if verbose:
-                print(f"The output CRS values of {crs_dict} will be used. If these are not as epected. Check both the" +
-                      " 'horizontal' and 'vertical' values are specified.")
+                print(f"The output CRS values of {crs_dict} will be used. If these are not as expected. Check both " +
+                      "the 'horizontal' and 'vertical' values are specified.")
             return crs_dict
 
     def get_instruction_general(self, key: str):
@@ -155,7 +155,7 @@ class GeoFabricsGenerator:
                 assert self.check_instruction_path('local_cache'), "Local cache file path must exist to specify the" + \
                     f" location to download vector data from the vector APIs: {data_services}"
                 assert self.catchment_geometry is not None, "The `self.catchment_directory` object must exist " + \
-                    "before avector is downloaded using `vector.Linz`"
+                    "before a vector is downloaded using `vector.Linz`"
 
                 # Instantiate object for downloading vectors from the data service. Download layers with the run method
                 vector_fetcher = data_services[data_service](api_key,

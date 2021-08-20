@@ -68,7 +68,7 @@ class CatchmentLidar:
         pdal_pipeline_instructions.append(
             {"type": "filters.crop", "polygon": str(self.catchment_geometry.catchment.loc[0].geometry)})
         pdal_pipeline_instructions.append({"type": "filters.hexbin"})
-        print(json.dumps(pdal_pipeline_instructions))
+
         # Load in LiDAR and perform operations
         self._pdal_pipeline = pdal.Pipeline(json.dumps(pdal_pipeline_instructions))
         self._pdal_pipeline.execute()
