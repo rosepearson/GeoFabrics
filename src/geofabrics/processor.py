@@ -163,7 +163,7 @@ class GeoFabricsGenerator:
                                                              verbose=True)
 
                 vector_instruction = self.instructions['instructions']['apis'][data_service][key]
-                geometry_type = vector_instruction['type'] if 'type' in vector_instruction else None
+                geometry_type = vector_instruction['geometry_name '] if 'geometry_name ' in vector_instruction else None
 
                 if verbose:
                     print(f"Downloading vector layers {vector_instruction['layers']} from the {data_service} data" +
