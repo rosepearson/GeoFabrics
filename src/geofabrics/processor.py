@@ -96,7 +96,7 @@ class GeoFabricsGenerator:
         the instruction file. Raise an error if the key is not in the instructions and there is no default value. """
 
         defaults = {'filter_lidar_holes_area': None, 'verbose': True, 'set_dem_shoreline': True,
-                    'bathymetry_contours_z_label': None}
+                    'bathymetry_contours_z_label': None, 'drop_offshore_lidar': True}
 
         assert key in defaults or key in self.instructions['instructions']['general'], f"The key: {key} is missing " \
             + "from the general instructions, and does not have a default value"
@@ -199,7 +199,8 @@ class GeoFabricsGenerator:
         has been specified, this CRS is returned, and will later be used to override the CRS encoded in the LAS files.
         """
 
-        if self.check_apis(data_service) and dataset_name in self.instructions['instructions']['apis'][data_service]:
+        if self.check_apis(data_service) and type(self.instructions['instructions']['apis'][data_service]) is dict \
+                and dataset_name in self.instructions['instructions']['apis'][data_service]:
             dataset_instruction = self.instructions['instructions']['apis'][data_service][dataset_name]
 
             if 'crs' in dataset_instruction and 'horizontal' in dataset_instruction['crs'] and \
@@ -215,9 +216,10 @@ class GeoFabricsGenerator:
                     print(f"The LiDAR dataset {dataset_name} will use the source the coordinate system EPSG defined" +
                           " in its LAZ files")
                 return None
-        if verbose:
-            print(f"The LiDAR dataset {dataset_name} will use the source coordinate system EPSG from its LAZ files")
-        return None
+        else:
+            if verbose:
+                print(f"The LiDAR dataset {dataset_name} will use the source coordinate system EPSG from its LAZ files")
+            return None
 
     def get_lidar_file_list(self, data_service, verbose: bool = False) -> dict:
         """ Return a dictionary that contains a list of LiDAR tiles to process under the key 'file_paths' and optionally
@@ -289,6 +291,7 @@ class GeoFabricsGenerator:
                                       verbose=verbose)
         self.catchment_lidar = lidar.CatchmentLidar(
             self.catchment_geometry, source_crs=lidar_dataset_info['crs'],
+            drop_offshore_lidar=self.get_instruction_general('drop_offshore_lidar'),
             area_to_drop=self.get_instruction_general('filter_lidar_holes_area'),
             verbose=verbose)
 

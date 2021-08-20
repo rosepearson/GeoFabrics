@@ -20,11 +20,12 @@ class CatchmentLidar:
     """
 
     def __init__(self, catchment_geometry: geometry.CatchmentGeometry, source_crs: dict = None,
-                 area_to_drop: float = None, verbose: bool = True):
+                 drop_offshore_lidar: bool = True, area_to_drop: float = None, verbose: bool = True):
         """ Load in LiDAR with relevant processing chain """
 
         self.catchment_geometry = catchment_geometry
         self.source_crs = source_crs
+        self.drop_offshore_lidar = drop_offshore_lidar
         self.area_to_drop = area_to_drop
         self.verbose = verbose
 
@@ -64,9 +65,15 @@ class CatchmentLidar:
                  "out_srs": f"EPSG:{self.catchment_geometry.crs['horizontal']}+" +
                  f"{self.catchment_geometry.crs['vertical']}"})
 
-        # Add instructions for clip within the catchment, and creating a polygon extents of the remaining point cloud
-        pdal_pipeline_instructions.append(
-            {"type": "filters.crop", "polygon": str(self.catchment_geometry.catchment.loc[0].geometry)})
+        # Add instructions for clip within either the catchment, or the land and foreshore
+        if self.drop_offshore_lidar:
+            pdal_pipeline_instructions.append(
+                {"type": "filters.crop", "polygon": str(self.catchment_geometry.land_and_foreshore.loc[0].geometry)})
+        else:
+            pdal_pipeline_instructions.append(
+                {"type": "filters.crop", "polygon": str(self.catchment_geometry.catchment.loc[0].geometry)})
+
+        # Add instructions for creating a polygon extents of the remaining point cloud
         pdal_pipeline_instructions.append({"type": "filters.hexbin"})
 
         # Load in LiDAR and perform operations

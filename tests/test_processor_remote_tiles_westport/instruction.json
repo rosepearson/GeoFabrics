@@ -18,10 +18,11 @@
 			"benchmark_dem": "tests/test_processor_remote_tiles_westport/data/benchmark_dem.nc"
 		},
 		"apis": {
-			"open_topography": "True"
+			"open_topography": true
 		},
 		"general": {
-			"set_dem_shoreline": "True"
+			"set_dem_shoreline": true,
+			"drop_offshore_lidar": false
 		}
 	}
 }

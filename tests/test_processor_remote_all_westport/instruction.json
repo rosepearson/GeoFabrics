@@ -16,7 +16,7 @@
 			"catchment_boundary": "tests/test_processor_remote_all_westport/data/catchment.zip"
 		},
 		"apis": {
-			"open_topography": "True",
+			"open_topography": true,
 			"linz": {
 				"land": {
 					"layers": [51153]
@@ -25,6 +25,9 @@
 					"layers": [50448]
 				}
 			}
+		},
+		"general": {
+			"drop_offshore_lidar": false
 		}
 	}
 }
