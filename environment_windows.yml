@@ -9,8 +9,6 @@ dependencies:
   - pip
   - gdal
   - geopandas
-  - requests
-  - boto3
   - rioxarray
   - pdal
   - python-pdal
