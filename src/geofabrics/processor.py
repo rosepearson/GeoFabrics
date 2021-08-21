@@ -287,12 +287,13 @@ class GeoFabricsGenerator:
         lidar_dataset_info = self.get_lidar_file_list('open_topography', verbose)
 
         # setup dense DEM and catchment LiDAR objects
-        self.dense_dem = dem.DenseDem(self.catchment_geometry, self.get_instruction_path('temp_raster'),
+        self.dense_dem = dem.DenseDem(catchment_geometry=self.catchment_geometry,
+                                      temp_raster_path=self.get_instruction_path('temp_raster'),
+                                      area_to_drop=self.get_instruction_general('filter_lidar_holes_area'),
                                       verbose=verbose)
         self.catchment_lidar = lidar.CatchmentLidar(
             self.catchment_geometry, source_crs=lidar_dataset_info['crs'],
             drop_offshore_lidar=self.get_instruction_general('drop_offshore_lidar'),
-            area_to_drop=self.get_instruction_general('filter_lidar_holes_area'),
             verbose=verbose)
 
         # Load in LiDAR tiles
@@ -304,15 +305,17 @@ class GeoFabricsGenerator:
             self.catchment_lidar.load_tile(lidar_file_path)
 
             # update the dense DEM with a patch created from the LiDAR tile
-            self.dense_dem.add_tile(self.catchment_lidar.tile_array, window_size, idw_power, radius)
+            self.dense_dem.add_tile(tile_points=self.catchment_lidar.tile_array,
+                                    tile_extent=self.catchment_lidar.tile_extent,
+                                    window_size=window_size, idw_power=idw_power, radius=radius)
             del self.catchment_lidar.tile_array
 
         # Filter the LiDAR extents based on the area_to_drop
-        self.catchment_lidar.filter_lidar_extents_for_holes()
+        self.dense_dem.filter_lidar_extents_for_holes()
 
         # Load in reference DEM if any significant land/foreshore not covered by LiDAR
         area_without_lidar = \
-            self.catchment_geometry.land_and_foreshore_without_lidar(self.catchment_lidar.extents).geometry.area.sum()
+            self.catchment_geometry.land_and_foreshore_without_lidar(self.dense_dem.extents).geometry.area.sum()
         if (self.check_instruction_path('reference_dems') and
                 area_without_lidar > self.catchment_geometry.land_and_foreshore.area.sum() * area_threshold):
 
@@ -327,14 +330,14 @@ class GeoFabricsGenerator:
             self.reference_dem = dem.ReferenceDem(self.get_instruction_path('reference_dems')[0],
                                                   self.catchment_geometry,
                                                   self.get_instruction_general('set_dem_shoreline'),
-                                                  exclusion_extent=self.catchment_lidar.extents)
+                                                  exclusion_extent=self.dense_dem.extents)
 
             # update the dense DEM with a patch created from the reference DEM where there isn't LiDAR
             self.dense_dem.add_tile(self.reference_dem.points, window_size, idw_power, radius)
 
         # Load in bathymetry and interpolate offshore if significant offshore is not covered by LiDAR
         area_without_lidar = \
-            self.catchment_geometry.offshore_without_lidar(self.catchment_lidar.extents).geometry.area.sum()
+            self.catchment_geometry.offshore_without_lidar(self.dense_dem.extents).geometry.area.sum()
         if (self.check_vector('bathymetry_contours') and
                 area_without_lidar > self.catchment_geometry.offshore.area.sum() * area_threshold):
 
@@ -350,10 +353,10 @@ class GeoFabricsGenerator:
             self.bathy_contours = geometry.BathymetryContours(
                 bathy_contour_dirs[0], self.catchment_geometry,
                 z_label=self.get_instruction_general('bathymetry_contours_z_label'),
-                exclusion_extent=self.catchment_lidar.extents)
+                exclusion_extent=self.dense_dem.extents)
 
             # interpolate
-            self.dense_dem.interpolate_offshore(self.bathy_contours, self.catchment_lidar.extents)
+            self.dense_dem.interpolate_offshore(self.bathy_contours)
 
         # fill combined dem
         self.result_dem = self.dense_dem.dem

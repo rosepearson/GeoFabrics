@@ -13,6 +13,7 @@ import json
 import typing
 import pathlib
 import geopandas
+import shapely
 import scipy.interpolate
 from . import geometry
 
@@ -128,14 +129,16 @@ class DenseDem:
     CACHE_SIZE = 10000
 
     def __init__(self, catchment_geometry: geometry.CatchmentGeometry,
-                 temp_raster_path: typing.Union[str, pathlib.Path], verbose: bool = True):
+                 temp_raster_path: typing.Union[str, pathlib.Path], area_to_drop: float = None, verbose: bool = True):
         """ Setup base DEM to add future tiles too """
 
         self.catchment_geometry = catchment_geometry
         self._tiles = None
+        self._extents = None
 
         self._temp_dem_file = pathlib.Path(temp_raster_path)
 
+        self.area_to_drop = area_to_drop
         self.verbose = verbose
 
         self.raster_origin = None
@@ -216,7 +219,7 @@ class DenseDem:
             " been written out in an unexpected location. It has been witten out to " + \
             f"{metadata['metadata']['writers.gdal']['filename'][0]} instead of {self._temp_dem_file}"
 
-    def add_tile(self, tile_points: numpy.ndarray, window_size: int, idw_power: int, radius: float,
+    def add_tile(self, tile_points: numpy.ndarray, tile_extent, window_size: int, idw_power: int, radius: float,
                  method: str = 'first'):
         """ Create the DEM tile and then update the overall DEM with the tile.
 
@@ -241,12 +244,57 @@ class DenseDem:
             f"generated tile is not aligned with the overall dense DEM. The DEM raster origin is {raster_origin} " + \
             f"instead of {self.raster_origin}"
 
-        # trim to only include cells within catchment
+        # trim to only include cells within catchment - and update the tile extents with this new tile
         tile = tile.rio.clip(self.catchment_geometry.catchment.geometry)
         self._tiles = rioxarray.merge.merge_arrays([self._tiles, tile], method=method)
+        self._update_extents(tile_extent)
 
         # ensure the dem will be recalculated as another tile has been added
         self._dem = None
+
+    def _update_extents(self, tile_extent):
+        """ Update the extents of all LiDAR tiles updated """
+
+        if tile_extent.area > 0:  # check polygon isn't empty
+            if self._extents is None:
+                self._extents = geopandas.GeoSeries([tile_extent], crs=self.catchment_geometry.crs['horizontal'])
+                self._extents = geopandas.GeoDataFrame(
+                    index=[0], geometry=self._extents, crs=self.catchment_geometry.crs['horizontal'])
+            else:
+                self._extents = geopandas.GeoSeries(
+                    shapely.ops.cascaded_union([self._extents.loc[0].geometry, tile_extent]),
+                    crs=self.catchment_geometry.crs['horizontal'])
+                self._extents = geopandas.GeoDataFrame(
+                    index=[0], geometry=self._extents, crs=self.catchment_geometry.crs['horizontal'])
+            self._extents = geopandas.clip(self.catchment_geometry.catchment, self._extents)
+
+    def filter_lidar_extents_for_holes(self):
+        """ Remove holes below a filter size within the extents """
+
+        if self.area_to_drop is None:
+            return  # do nothing
+
+        polygon = self._extents.loc[0].geometry
+
+        if polygon.geometryType() == "Polygon":
+            polygon = shapely.geometry.Polygon(
+                polygon.exterior.coords, [interior for interior in polygon.interiors if
+                                          shapely.geometry.Polygon(interior).area > self.area_to_drop])
+            self._extents = geopandas.GeoSeries([polygon], crs=self.catchment_geometry.crs['horizontal'])
+            self._extents = geopandas.GeoDataFrame(index=[0], geometry=self._extents,
+                                                   crs=self.catchment_geometry.crs['horizontal'])
+            self._extents = geopandas.clip(self.catchment_geometry.catchment, self._extents)
+        else:
+            if self.verbose:
+                print("Warning filtering holes in CatchmentLidar using filter_lidar_extents_for_holes is not yet "
+                      + f"supported for {polygon.geometryType()}")
+
+    @property
+    def extents(self):
+        """ The combined extents for all added LiDAR tiles """
+
+        assert self._extents is not None, "No tiles have been added yet"
+        return self._extents
 
     @property
     def dem(self):
@@ -278,10 +326,10 @@ class DenseDem:
         dem = dem.reindex(x=x, y=y)
         return dem
 
-    def _offshore_edge(self, lidar_extents):
+    def _offshore_edge(self):
         """ Return the offshore edge cells to be used for offshore interpolation """
 
-        offshore_dense_data_edge = self.catchment_geometry.offshore_dense_data_edge(lidar_extents)
+        offshore_dense_data_edge = self.catchment_geometry.offshore_dense_data_edge(self._extents)
 
         offshore_edge_dem = self._tiles.rio.clip(offshore_dense_data_edge.geometry)
         offshore_grid_x, offshore_grid_y = numpy.meshgrid(offshore_edge_dem.x, offshore_edge_dem.y)
@@ -294,10 +342,10 @@ class DenseDem:
 
         return offshore_edge
 
-    def interpolate_offshore(self, bathy_contours, lidar_extents):
+    def interpolate_offshore(self, bathy_contours):
         """ Performs interpolation offshore outside LiDAR extents using the SciPy RBF function. """
 
-        offshore_edge = self._offshore_edge(lidar_extents)
+        offshore_edge = self._offshore_edge()
         x = numpy.concatenate([offshore_edge['x'], bathy_contours.x])
         y = numpy.concatenate([offshore_edge['y'], bathy_contours.y])
         z = numpy.concatenate([offshore_edge['z'], bathy_contours.z])
@@ -306,7 +354,7 @@ class DenseDem:
         rbf_function = scipy.interpolate.Rbf(x, y, z, function='linear')
 
         # setup the empty offshore area ready for interpolation
-        offshore_no_dense_data = self.catchment_geometry.offshore_no_dense_data(lidar_extents)
+        offshore_no_dense_data = self.catchment_geometry.offshore_no_dense_data(self._extents)
         self._offshore = self._tiles.rio.clip(self.catchment_geometry.offshore.geometry)
         self._offshore.data[0] = 0  # set all to zero then clip out dense region where we don't need to interpolate
         self._offshore = self._offshore.rio.clip(offshore_no_dense_data.geometry)
