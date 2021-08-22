@@ -9,6 +9,7 @@ import json
 import typing
 import pathlib
 import shapely
+import geopandas
 import numpy
 from . import geometry
 
@@ -80,7 +81,9 @@ class CatchmentLidar:
         tile_extents_string = metadata['metadata']['filters.hexbin']['boundary']
 
         self._tile_array = self._pdal_pipeline.arrays[0]
-        self._tile_extent = shapely.wkt.loads(tile_extents_string)
+        # Only care about horizontal extents
+        self._tile_extent = geopandas.GeoDataFrame({'geometry': [shapely.wkt.loads(tile_extents_string)]},
+                                                   crs=self.catchment_geometry.crs['horizontal'])
 
     @property
     def tile_array(self) -> numpy.ndarray:
@@ -97,7 +100,7 @@ class CatchmentLidar:
         self._pdal_pipeline = None
 
     @property
-    def tile_extent(self):
+    def tile_extent(self) -> geopandas.GeoDataFrame:
         """ Function returning the extent for the last LiDAR tile. """
 
         return self._tile_extent

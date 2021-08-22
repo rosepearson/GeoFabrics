@@ -99,7 +99,7 @@ class ProcessorLocalFilesTest(unittest.TestCase):
                                attrs={'scale_factor': 1.0, 'add_offset': 0.0})
         dem.rio.write_crs(cls.instructions['instructions']['output']['crs']['horizontal'], inplace=True)
         dem.name = 'z'
-        dem.to_netcdf(dem_file)
+        dem.rio.to_raster(dem_file)
 
         # create LiDAR
         lidar_file = cls.cache_dir / "lidar.laz"

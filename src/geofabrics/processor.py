@@ -327,13 +327,14 @@ class GeoFabricsGenerator:
                 print(f"Incorporting background DEM: {self.get_instruction_path('reference_dems')}")
 
             # Load in background DEM - cut away within the LiDAR extents
-            self.reference_dem = dem.ReferenceDem(self.get_instruction_path('reference_dems')[0],
-                                                  self.catchment_geometry,
-                                                  self.get_instruction_general('set_dem_shoreline'),
+            self.reference_dem = dem.ReferenceDem(dem_file=self.get_instruction_path('reference_dems')[0],
+                                                  catchment_geometry=self.catchment_geometry,
+                                                  set_foreshore=self.get_instruction_general('set_dem_shoreline'),
                                                   exclusion_extent=self.dense_dem.extents)
 
-            # update the dense DEM with a patch created from the reference DEM where there isn't LiDAR
-            self.dense_dem.add_tile(self.reference_dem.points, window_size, idw_power, radius)
+            # Add the reference DEM patch where there's no LiDAR to the dense DEM without updting the extents
+            self.dense_dem.add_tile(tile_points=self.reference_dem.points, tile_extent=self.reference_dem.extents,
+                                    window_size=window_size, idw_power=idw_power, radius=radius)
 
         # Load in bathymetry and interpolate offshore if significant offshore is not covered by LiDAR
         area_without_lidar = \

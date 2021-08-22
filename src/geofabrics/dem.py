@@ -27,7 +27,7 @@ class ReferenceDem:
     If set_foreshore is True all positive DEM values in the foreshore are set to zero. """
 
     def __init__(self, dem_file, catchment_geometry: geometry.CatchmentGeometry, set_foreshore: bool = True,
-                 exclusion_extent=None):
+                 exclusion_extent: geopandas.GeoDataFrame = None):
         """ Load in the reference DEM, clip and extract points """
 
         self.catchment_geometry = catchment_geometry
@@ -35,7 +35,7 @@ class ReferenceDem:
         with rioxarray.rioxarray.open_rasterio(dem_file, masked=True) as self._dem:
             self._dem.load()
 
-        self._extent = None
+        self._extents = None
         self._points = None
 
         self._set_up(exclusion_extent)
@@ -47,12 +47,12 @@ class ReferenceDem:
 
         if exclusion_extent is not None:
             exclusion_extent = geopandas.clip(exclusion_extent, self.catchment_geometry.land_and_foreshore)
-            self._extent = geopandas.overlay(self.catchment_geometry.land_and_foreshore,
-                                             exclusion_extent, how="difference")
+            self._extents = geopandas.overlay(self.catchment_geometry.land_and_foreshore,
+                                              exclusion_extent, how="difference")
         else:
-            self._extent = self.catchment_geometry.land_and_foreshore
+            self._extents = self.catchment_geometry.land_and_foreshore
 
-        self._dem = self._dem.rio.clip(self._extent.geometry)
+        self._dem = self._dem.rio.clip(self._extents.geometry)
         self._extract_points()
 
     def _extract_points(self):
@@ -105,14 +105,14 @@ class ReferenceDem:
         self._points['Z'][len(land_x):] = foreshore_z
 
     @property
-    def points(self):
+    def points(self) -> numpy.ndarray:
         """ The reference DEM points after any extent or foreshore value
         filtering. """
 
         return self._points
 
     @property
-    def extents(self):
+    def extents(self) -> geopandas.GeoDataFrame:
         """ The extents for the reference DEM """
 
         return self._extents
@@ -219,8 +219,8 @@ class DenseDem:
             " been written out in an unexpected location. It has been witten out to " + \
             f"{metadata['metadata']['writers.gdal']['filename'][0]} instead of {self._temp_dem_file}"
 
-    def add_tile(self, tile_points: numpy.ndarray, tile_extent, window_size: int, idw_power: int, radius: float,
-                 method: str = 'first'):
+    def add_tile(self, tile_points: numpy.ndarray, tile_extent: geopandas.GeoDataFrame, window_size: int,
+                 idw_power: int, radius: float, method: str = 'first'):
         """ Create the DEM tile and then update the overall DEM with the tile.
 
         Ensure the tile DEM CRS is set and also trim the tile DEM prior to adding. """
@@ -252,20 +252,20 @@ class DenseDem:
         # ensure the dem will be recalculated as another tile has been added
         self._dem = None
 
-    def _update_extents(self, tile_extent):
+    def _update_extents(self, tile_extent: geopandas.GeoDataFrame):
         """ Update the extents of all LiDAR tiles updated """
 
-        if tile_extent.area > 0:  # check polygon isn't empty
+        assert len(tile_extent) == 1, "The tile_extent is expected to be contained in one shape. Instead " + \
+            f"tile_extent: {tile_extent} is of length {len(tile_extent)}."
+
+        if tile_extent.geometry.area.sum() > 0:  # check polygon isn't empty
             if self._extents is None:
-                self._extents = geopandas.GeoSeries([tile_extent], crs=self.catchment_geometry.crs['horizontal'])
-                self._extents = geopandas.GeoDataFrame(
-                    index=[0], geometry=self._extents, crs=self.catchment_geometry.crs['horizontal'])
+                self._extents = tile_extent
             else:
-                self._extents = geopandas.GeoSeries(
-                    shapely.ops.cascaded_union([self._extents.loc[0].geometry, tile_extent]),
-                    crs=self.catchment_geometry.crs['horizontal'])
                 self._extents = geopandas.GeoDataFrame(
-                    index=[0], geometry=self._extents, crs=self.catchment_geometry.crs['horizontal'])
+                    {'geometry': [shapely.ops.cascaded_union([self._extents.loc[0].geometry,
+                                                              tile_extent.loc[0].geometry])]},
+                    crs=self.catchment_geometry.crs['horizontal'])
             self._extents = geopandas.clip(self.catchment_geometry.catchment, self._extents)
 
     def filter_lidar_extents_for_holes(self):
