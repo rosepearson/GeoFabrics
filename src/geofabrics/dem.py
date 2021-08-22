@@ -272,6 +272,11 @@ class DenseDem:
         """ Remove holes below a filter size within the extents """
 
         if self.area_to_drop is None:
+            # Try a basic repair if not valid, but otherwise do nothing
+            if not self._extents.loc[0].geometry.is_valid:
+                if self.verbose:
+                    print("Warning LiDAR extents are not valid, trying a basic repair with buffer(0)")
+                self._extents.loc[0].geometry = self._extents.loc[0].geometry.buffer(0)
             return  # do nothing
 
         polygon = self._extents.loc[0].geometry
@@ -288,6 +293,15 @@ class DenseDem:
             if self.verbose:
                 print("Warning filtering holes in CatchmentLidar using filter_lidar_extents_for_holes is not yet "
                       + f"supported for {polygon.geometryType()}")
+
+        # Check valid and otherwise try a basic repair
+        if not self._extents.loc[0].geometry.is_valid:
+            if self.verbose:
+                print("Warning LiDAR extents are not valid, trying a basic repair with buffer(0)")
+            self._extents.loc[0].geometry = self._extents.loc[0].geometry.buffer(0)
+
+        assert len(self._extents) == 1, "The length of the extents is expected to be one. Instead " + \
+            f"{self._extents} is length {len(self._extents)}"
 
     @property
     def extents(self):
