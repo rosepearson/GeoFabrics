@@ -35,7 +35,7 @@ class ProcessorRemoteAllWestportTest(unittest.TestCase):
     """
 
     # The expected datasets and files to be downloaded - used for comparison in the later tests
-    DATASETS = ["NZ20_Westport", "51153"]
+    DATASETS = ["NZ20_Westport", "51153", "50448"]
     LIDAR_SIZES = {"CL2_BR20_2020_1000_4012.laz": 2636961, "CL2_BR20_2020_1000_4013.laz": 3653378,
                    "CL2_BR20_2020_1000_4014.laz": 4470413, "CL2_BR20_2020_1000_4112.laz": 9036407,
                    "CL2_BR20_2020_1000_4212.laz": 8340310, "CL2_BR20_2020_1000_4213.laz": 6094309,
