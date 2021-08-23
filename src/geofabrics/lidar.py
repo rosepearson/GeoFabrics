@@ -19,14 +19,17 @@ class CatchmentLidar:
 
     Specifically, this supports the addition of LiDAR data tile by tile.
     """
+    LAS_GROUND = 2
 
     def __init__(self, catchment_geometry: geometry.CatchmentGeometry, source_crs: dict = None,
-                 drop_offshore_lidar: bool = True, verbose: bool = True):
+                 drop_offshore_lidar: bool = True, keep_only_ground_lidar: bool = True,
+                 verbose: bool = True):
         """ Load in LiDAR with relevant processing chain """
 
         self.catchment_geometry = catchment_geometry
         self.source_crs = source_crs
         self.drop_offshore_lidar = drop_offshore_lidar
+        self.keep_only_ground_lidar = keep_only_ground_lidar
         self.verbose = verbose
 
         self._pdal_pipeline = None
@@ -81,6 +84,9 @@ class CatchmentLidar:
         tile_extents_string = metadata['metadata']['filters.hexbin']['boundary']
 
         self._tile_array = self._pdal_pipeline.arrays[0]
+        # keep only points code as ground if specified
+        if self.keep_only_ground_lidar:
+            self._tile_array = self._tile_array[self._tile_array['Classification'] == self.LAS_GROUND]
         # Only care about horizontal extents
         self._tile_extent = geopandas.GeoDataFrame({'geometry': [shapely.wkt.loads(tile_extents_string)]},
                                                    crs=self.catchment_geometry.crs['horizontal'])
