@@ -285,8 +285,7 @@ class DenseDem:
             polygon = shapely.geometry.Polygon(
                 polygon.exterior.coords, [interior for interior in polygon.interiors if
                                           shapely.geometry.Polygon(interior).area > self.area_to_drop])
-            self._extents = geopandas.GeoSeries([polygon], crs=self.catchment_geometry.crs['horizontal'])
-            self._extents = geopandas.GeoDataFrame(index=[0], geometry=self._extents,
+            self._extents = geopandas.GeoDataFrame({geometry: [polygon]},
                                                    crs=self.catchment_geometry.crs['horizontal'])
             self._extents = geopandas.clip(self.catchment_geometry.catchment, self._extents)
         else:
