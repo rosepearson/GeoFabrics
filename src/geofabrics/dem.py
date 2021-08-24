@@ -129,7 +129,8 @@ class DenseDem:
     CACHE_SIZE = 10000
 
     def __init__(self, catchment_geometry: geometry.CatchmentGeometry,
-                 temp_raster_path: typing.Union[str, pathlib.Path], area_to_drop: float = None, verbose: bool = True):
+                 temp_raster_path: typing.Union[str, pathlib.Path], drop_offshore_lidar: bool = True,
+                 area_to_drop: float = None, verbose: bool = True):
         """ Setup base DEM to add future tiles too """
 
         self.catchment_geometry = catchment_geometry
@@ -139,6 +140,7 @@ class DenseDem:
         self._temp_dem_file = pathlib.Path(temp_raster_path)
 
         self.area_to_drop = area_to_drop
+        self.drop_offshore_lidar = drop_offshore_lidar
         self.verbose = verbose
 
         self.raster_origin = None
@@ -245,7 +247,10 @@ class DenseDem:
             f"instead of {self.raster_origin}"
 
         # trim to only include cells within catchment - and update the tile extents with this new tile
-        tile = tile.rio.clip(self.catchment_geometry.catchment.geometry)
+        if self.drop_offshore_lidar:
+            tile = tile.rio.clip(self.catchment_geometry.land_and_foreshore.geometry)
+        else:
+            tile = tile.rio.clip(self.catchment_geometry.catchment.geometry)
         self._tiles = rioxarray.merge.merge_arrays([self._tiles, tile], method=method)
         self._update_extents(tile_extent)
 
@@ -267,7 +272,10 @@ class DenseDem:
                                                               tile_extent.loc[0].geometry])]},
                     crs=self.catchment_geometry.crs['horizontal'])
 
-            self._extents = geopandas.clip(self.catchment_geometry.catchment, self._extents)
+            if self.drop_offshore_lidar:
+                self._extents = geopandas.clip(self.catchment_geometry.land_and_foreshore, self._extents)
+            else:
+                self._extents = geopandas.clip(self.catchment_geometry.catchment, self._extents)
 
     def filter_lidar_extents_for_holes(self):
         """ Remove holes below a filter size within the extents """
