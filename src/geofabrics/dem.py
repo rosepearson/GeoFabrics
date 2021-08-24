@@ -129,7 +129,8 @@ class DenseDem:
     CACHE_SIZE = 10000
 
     def __init__(self, catchment_geometry: geometry.CatchmentGeometry,
-                 temp_raster_path: typing.Union[str, pathlib.Path], area_to_drop: float = None, verbose: bool = True):
+                 temp_raster_path: typing.Union[str, pathlib.Path], area_to_drop: float = None,
+                 drop_offshore_lidar: bool = True, verbose: bool = True):
         """ Setup base DEM to add future tiles too """
 
         self.catchment_geometry = catchment_geometry
@@ -139,6 +140,7 @@ class DenseDem:
         self._temp_dem_file = pathlib.Path(temp_raster_path)
 
         self.area_to_drop = area_to_drop
+        self.drop_offshore_lidar = drop_offshore_lidar
         self.verbose = verbose
 
         self.raster_origin = None
@@ -192,7 +194,10 @@ class DenseDem:
 
         # set empty DEM - all NaN - to add tiles to
         dem_temp.data[0] = numpy.nan
-        self._tiles = dem_temp.rio.clip(self.catchment_geometry.catchment.geometry)
+        if self.drop_offshore_lidar:
+            self._tiles = dem_temp.rio.clip(self.catchment_geometry.land_and_foreshore.geometry)
+        else:
+            self._tiles = dem_temp.rio.clip(self.catchment_geometry.catchment.geometry)
 
     def _create_dem_tile_with_pdal(self, tile_points: numpy.ndarray, window_size: int, idw_power: int, radius: float):
         """ Create a DEM tile from a LiDAR tile over a specified region.
@@ -266,7 +271,10 @@ class DenseDem:
                     {'geometry': [shapely.ops.cascaded_union([self._extents.loc[0].geometry,
                                                               tile_extent.loc[0].geometry])]},
                     crs=self.catchment_geometry.crs['horizontal'])
-            self._extents = geopandas.clip(self.catchment_geometry.catchment, self._extents)
+            if self.drop_offshore_lidar:
+                self._extents = geopandas.clip(self.catchment_geometry.land_and_foreshore, self._extents)
+            else:
+                self._extents = geopandas.clip(self.catchment_geometry.catchment, self._extents)
 
     def filter_lidar_extents_for_holes(self):
         """ Remove holes below a filter size within the extents """
@@ -285,7 +293,7 @@ class DenseDem:
             polygon = shapely.geometry.Polygon(
                 polygon.exterior.coords, [interior for interior in polygon.interiors if
                                           shapely.geometry.Polygon(interior).area > self.area_to_drop])
-            self._extents = geopandas.GeoDataFrame({geometry: [polygon]},
+            self._extents = geopandas.GeoDataFrame({'geometry': [polygon]},
                                                    crs=self.catchment_geometry.crs['horizontal'])
             self._extents = geopandas.clip(self.catchment_geometry.catchment, self._extents)
         else:
