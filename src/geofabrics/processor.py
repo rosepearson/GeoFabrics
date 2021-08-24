@@ -19,7 +19,8 @@ class GeoFabricsGenerator:
     """ A class executing a pipeline for creating geofabric derivatives.
 
     The pipeline is controlled by the contents of the json_instructions file.
-    See the README.md for usage examples or GeoFabrics/tests/test1 for an example of usage and an instruction file.
+
+    See the README.md for usage examples or GeoFabrics/tests/ for examples of usage and an instruction file.
     """
 
     def __init__(self, json_instructions: json):
