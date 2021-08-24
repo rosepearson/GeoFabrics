@@ -266,6 +266,7 @@ class DenseDem:
                     {'geometry': [shapely.ops.cascaded_union([self._extents.loc[0].geometry,
                                                               tile_extent.loc[0].geometry])]},
                     crs=self.catchment_geometry.crs['horizontal'])
+
             self._extents = geopandas.clip(self.catchment_geometry.catchment, self._extents)
 
     def filter_lidar_extents_for_holes(self):
@@ -288,7 +289,7 @@ class DenseDem:
             polygon = shapely.geometry.Polygon(
                 polygon.exterior.coords, [interior for interior in polygon.interiors if
                                           shapely.geometry.Polygon(interior).area > self.area_to_drop])
-            self._extents = geopandas.GeoDataFrame({geometry: [polygon]},
+            self._extents = geopandas.GeoDataFrame({'geometry': [polygon]},
                                                    crs=self.catchment_geometry.crs['horizontal'])
             self._extents = geopandas.clip(self.catchment_geometry.catchment, self._extents)
         else:
