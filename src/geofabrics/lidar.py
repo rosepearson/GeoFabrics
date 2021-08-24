@@ -15,9 +15,7 @@ from . import geometry
 
 
 class CatchmentLidar:
-    """ A class to manage LiDAR data in a catchment context
-
-    Specifically, this supports the addition of LiDAR data tile by tile.
+    """ A class to manage LiDAR data in a catchment context by supporting the addition of LiDAR data tile by tile.
     """
 
     def __init__(self, catchment_geometry: geometry.CatchmentGeometry, source_crs: dict = None,
