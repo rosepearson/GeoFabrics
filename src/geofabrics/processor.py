@@ -272,7 +272,7 @@ class GeoFabricsGenerator:
         assert type(catchment_dirs) is not list, f"A list of catchment_boundary's is provided: {catchment_dirs}, " + \
             "where only one is supported."
         self.catchment_geometry = geometry.CatchmentGeometry(catchment_dirs, self.get_crs(verbose),
-                                                             self.get_resolution(), foreshore_buffer=2)
+                                                             self.get_resolution(), foreshore_buffer=2, verbose=verbose)
         land_dirs = self.get_vector_paths('land', verbose)
         assert len(land_dirs) == 1, f"{len(land_dirs)} catchment_boundary's provided, where only one is supported." + \
             f" Specficially land_dirs = {land_dirs}."

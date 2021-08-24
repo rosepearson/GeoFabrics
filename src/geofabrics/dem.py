@@ -271,7 +271,10 @@ class DenseDem:
     def filter_lidar_extents_for_holes(self):
         """ Remove holes below a filter size within the extents """
 
-        if self.area_to_drop is None:
+        if self._extents is None:
+            # No extents exist to be filtered to remove holes
+            return
+        elif self.area_to_drop is None:
             # Try a basic repair if not valid, but otherwise do nothing
             if not self._extents.loc[0].geometry.is_valid:
                 if self.verbose:
@@ -306,7 +309,8 @@ class DenseDem:
     def extents(self):
         """ The combined extents for all added LiDAR tiles """
 
-        assert self._extents is not None, "No tiles have been added yet"
+        if self.verbose and self._extents is None:
+            print("Warning in DenseDem.extents: No tiles with extents have been added yet")
         return self._extents
 
     @property

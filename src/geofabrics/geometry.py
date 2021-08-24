@@ -31,11 +31,12 @@ class CatchmentGeometry:
     foreshore, etc) can be accessed. """
 
     def __init__(self, catchment_file: typing.Union[str, pathlib.Path], crs: dict, resolution: float,
-                 foreshore_buffer: int = 2):
+                 foreshore_buffer: int = 2, verbose: bool = True):
         self._catchment = geopandas.read_file(catchment_file)
         self.crs = crs
         self.resolution = resolution
         self.foreshore_buffer = foreshore_buffer
+        self.verbose = True
 
         # set catchment CRS
         self._catchment = self._catchment.to_crs(self.crs['horizontal'])
@@ -120,39 +121,54 @@ class CatchmentGeometry:
         self._assert_land_set()
         return self._offshore
 
-    def land_and_foreshore_without_lidar(self, lidar_extents):
+    def land_and_foreshore_without_lidar(self, dense_extents: geopandas.GeoDataFrame):
         """ Return the land and foreshore region without LiDAR """
 
         self._assert_land_set()
 
-        land_and_foreshore_with_lidar = geopandas.clip(lidar_extents, self.land_and_foreshore)
+        if dense_extents is None:
+            if self.verbose:
+                print("Warning dense extents are `None` so `land_and_foreshore_without_lidar`" +
+                      "is returning `land_and_foreshore`")
+            return self.land_and_foreshore
+
+        land_and_foreshore_with_lidar = geopandas.clip(dense_extents, self.land_and_foreshore)
         land_and_foreshore_without_lidar = geopandas.overlay(
             self.land_and_foreshore, land_and_foreshore_with_lidar, how="difference")
 
         return land_and_foreshore_without_lidar
 
-    def offshore_without_lidar(self, lidar_extents):
+    def offshore_without_lidar(self, dense_extents: geopandas.GeoDataFrame):
         """ Return the offshore region without LiDAR """
 
         self._assert_land_set()
 
-        offshore_with_lidar = geopandas.clip(lidar_extents, self.offshore)
+        if dense_extents is None:
+            if self.verbose:
+                print("Warning dense extents are `None` so `offshore_without_lidar`" +
+                      "is returning `offshore`")
+            return self.offshore
+
+        offshore_with_lidar = geopandas.clip(dense_extents, self.offshore)
         offshore_without_lidar = geopandas.overlay(self.offshore, offshore_with_lidar, how="difference")
 
         return offshore_without_lidar
 
-    def offshore_dense_data_edge(self, lidar_extents):
+    def offshore_dense_data_edge(self, dense_extents: geopandas.GeoDataFrame):
         """ Return the offshore edge of where there is 'dense data' i.e. LiDAR or reference DEM """
 
-        assert len(lidar_extents) == 1, "LiDAR extents has a length greater than 1"
+        self._assert_land_set()
 
-        assert self._land is not None, "Land has not been set yet. This must be set before anything other than the " + \
-            "`catchment` can be returned from a `CatchmentGeometry` object"
+        if dense_extents is None:
+            if self.verbose:
+                print("Warning dense extents are `None` so `offshore_dense_data_edge`" +
+                      "is returning `None`")
+            return None
 
         # the foreshore and whatever lidar extents are offshore
         dense_data_extents = geopandas.GeoDataFrame({'geometry':
                                                      [shapely.ops.cascaded_union([self.foreshore.loc[0].geometry,
-                                                                                  lidar_extents.loc[0].geometry])]},
+                                                                                  dense_extents.loc[0].geometry])]},
                                                     crs=self.crs['horizontal'])
         dense_data_extents = geopandas.clip(dense_data_extents, self.foreshore_and_offshore)
 

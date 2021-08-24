@@ -79,14 +79,16 @@ class CatchmentLidar:
         self._pdal_pipeline = pdal.Pipeline(json.dumps(pdal_pipeline_instructions))
         self._pdal_pipeline.execute()
 
-        # update the catchment geometry with the LiDAR extents
+        self._tile_array = self._pdal_pipeline.arrays[0]
+
+        # update the catchment geometry with the LiDAR extents - note has to run on imported LAS file not point data
         metadata = json.loads(self._pdal_pipeline.get_metadata())
         tile_extents_string = metadata['metadata']['filters.hexbin']['boundary']
 
-        self._tile_array = self._pdal_pipeline.arrays[0]
-        # keep only points code as ground if specified
+        # Optionally filter the points by classification code - to keep only ground coded points
         if self.keep_only_ground_lidar:
             self._tile_array = self._tile_array[self._tile_array['Classification'] == self.LAS_GROUND]
+
         # Only care about horizontal extents
         self._tile_extent = geopandas.GeoDataFrame({'geometry': [shapely.wkt.loads(tile_extents_string)]},
                                                    crs=self.catchment_geometry.crs['horizontal'])
