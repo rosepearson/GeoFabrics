@@ -27,6 +27,8 @@ class ProcessorLocalFilesTest(unittest.TestCase):
         1. test_result_dem  Check the generated DEM matches the benchmark DEM within a tolerance
     """
 
+    LAS_GROUND = 2
+
     @classmethod
     def setUpClass(cls):
         """ Create a cache directory and CatchmentGeometry object for use in the tests and also download the files used
@@ -110,10 +112,12 @@ class ProcessorLocalFilesTest(unittest.TestCase):
         grid_lidar_z[grid_lidar_y > 0] = grid_lidar_y[grid_lidar_y > 0] / 10 * (numpy.abs(grid_lidar_x[grid_lidar_y > 0]
                                                                                           - 750)
                                                                                 / 500 + 0.1) / 1.1
-        lidar_array = numpy.empty([len(grid_lidar_x.flatten())], dtype=[('X', '<f8'), ('Y', '<f8'), ('Z', '<f8')])
+        lidar_array = numpy.empty([len(grid_lidar_x.flatten())], dtype=[('X', '<f8'), ('Y', '<f8'), ('Z', '<f8'),
+                                                                        ('Classification', 'u1')])
         lidar_array['X'] = grid_lidar_x.flatten()
         lidar_array['Y'] = grid_lidar_y.flatten()
         lidar_array['Z'] = grid_lidar_z.flatten()
+        lidar_array['Classification'] = cls.LAS_GROUND
 
         pdal_pipeline_instructions = [
             {"type":  "writers.las",

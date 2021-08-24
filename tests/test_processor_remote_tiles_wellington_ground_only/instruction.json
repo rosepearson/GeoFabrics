@@ -1,0 +1,36 @@
+{"instructions": 
+	{
+		"output": {
+			"crs": {
+				"horizontal": 2193,
+				"vertical": 7839
+			},
+			"grid_params": {
+				"resolution": 10
+			}
+		},
+		"data_paths": {
+		  "local_cache": "tests/test_processor_remote_tiles_wellington_ground_only/data",
+		  "catchment_boundary": "tests/test_processor_remote_tiles_wellington_ground_only/data/catchment.zip",
+		  "land": "tests/test_processor_remote_tiles_wellington_ground_only/data/catchment.zip",
+		  "temp_raster": "tests/test_processor_remote_tiles_wellington_ground_only/data/temp_dense_dem.tif",
+		  "result_dem": "tests/test_processor_remote_tiles_wellington_ground_only/data/test_dem.nc",
+		  "benchmark_dem": "tests/test_processor_remote_tiles_wellington_ground_only/data/benchmark_dem.nc"
+		},
+		"apis": {
+			"open_topography": {
+				"Wellington_2013": {
+					"crs": {
+						"horizontal": 2193,
+						"vertical": 7839
+					}
+				}
+			}
+		},
+		"general": {
+		  "set_dem_shoreline": true,
+			"drop_offshore_lidar": false,
+			"keep_only_ground_lidar": true
+		}
+	}
+}
