@@ -19,13 +19,24 @@ class GeoFabricsGenerator:
     """ A class executing a pipeline for creating geofabric derivatives.
 
     The pipeline is controlled by the contents of the json_instructions file.
-    See the README.md for usage examples or GeoFabrics/tests/test1 for an example of usage and an instruction file.
+
+    The `GeoFabricsGenerator` class contains several important class members:
+     * catchment_geometry - Defines all relevant regions in a catchment required in the generation of a DEM as polygons.
+     * catchment_lidar - Supports the addition of LiDAR data tile by tile
+     * dense_dem - Defines the hydrologically conditioned DEM as a combination of tiles from LiDAR and interpolated from
+       bathymetry.
+     * reference_dem - This optional object defines a background DEM that may be used to fill on land gaps in the LiDAR.
+     * bathy_contours - This optional object defines the bathymetry vectors used by the dense_dem to define the DEM
+       offshore.
+
+    See the README.md for usage examples or GeoFabrics/tests/ for examples of usage and an instruction file
     """
 
     def __init__(self, json_instructions: json):
         self.instructions = json_instructions
 
         self.catchment_geometry = None
+        self.catchment_lidar = None
         self.dense_dem = None
         self.reference_dem = None
         self.bathy_contours = None
@@ -361,8 +372,5 @@ class GeoFabricsGenerator:
             # interpolate
             self.dense_dem.interpolate_offshore(self.bathy_contours)
 
-        # fill combined dem
-        self.result_dem = self.dense_dem.dem
-
-        # save results
-        self.result_dem.to_netcdf(self.get_instruction_path('result_dem'))
+        # fill combined dem - save results
+        self.dense_dem.dem.to_netcdf(self.get_instruction_path('result_dem'))

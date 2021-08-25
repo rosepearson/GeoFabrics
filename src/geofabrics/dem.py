@@ -123,7 +123,13 @@ class DenseDem:
 
     The dense DEM is made up of tiles created from dense point data - Either LiDAR point clouds, or a reference DEM
 
-    And also interpolated values from bathymetry contours offshore and outside all LiDAR tiles. """
+    And also interpolated values from bathymetry contours offshore and outside all LiDAR tiles.
+
+    DenseDem logic can be controlled by the constructor inputs:
+        * area_to_drop - If '> 0' this defines the size of any holdes in the LiDAR coverage to ignore.
+        * drop_offshore_lidar - If True only keep LiDAR values within the foreshore and land regions defined by
+          the catchment_geometry. If False keep all LiDAR values.
+    """
 
     DENSE_BINNING = "idw"
     CACHE_SIZE = 10000
@@ -131,6 +137,7 @@ class DenseDem:
     def __init__(self, catchment_geometry: geometry.CatchmentGeometry,
                  temp_raster_path: typing.Union[str, pathlib.Path], drop_offshore_lidar: bool = True,
                  area_to_drop: float = None, verbose: bool = True):
+
         """ Setup base DEM to add future tiles too """
 
         self.catchment_geometry = catchment_geometry
@@ -194,7 +201,10 @@ class DenseDem:
 
         # set empty DEM - all NaN - to add tiles to
         dem_temp.data[0] = numpy.nan
-        self._tiles = dem_temp.rio.clip(self.catchment_geometry.catchment.geometry)
+        if self.drop_offshore_lidar:
+            self._tiles = dem_temp.rio.clip(self.catchment_geometry.land_and_foreshore.geometry)
+        else:
+            self._tiles = dem_temp.rio.clip(self.catchment_geometry.catchment.geometry)
 
     def _create_dem_tile_with_pdal(self, tile_points: numpy.ndarray, window_size: int, idw_power: int, radius: float):
         """ Create a DEM tile from a LiDAR tile over a specified region.
@@ -251,6 +261,7 @@ class DenseDem:
             tile = tile.rio.clip(self.catchment_geometry.land_and_foreshore.geometry)
         else:
             tile = tile.rio.clip(self.catchment_geometry.catchment.geometry)
+
         self._tiles = rioxarray.merge.merge_arrays([self._tiles, tile], method=method)
         self._update_extents(tile_extent)
 
@@ -258,7 +269,8 @@ class DenseDem:
         self._dem = None
 
     def _update_extents(self, tile_extent: geopandas.GeoDataFrame):
-        """ Update the extents of all LiDAR tiles updated """
+        """ Update the extents of all LiDAR tiles updated - if 'drop_offshore_lidar' is True ensure extents are
+        limited to the land and foreshore of the catchment. """
 
         assert len(tile_extent) == 1, "The tile_extent is expected to be contained in one shape. Instead " + \
             f"tile_extent: {tile_extent} is of length {len(tile_extent)}."
@@ -278,7 +290,9 @@ class DenseDem:
                 self._extents = geopandas.clip(self.catchment_geometry.catchment, self._extents)
 
     def filter_lidar_extents_for_holes(self):
-        """ Remove holes below a filter size within the extents """
+        """ Remove holes below a filter size within the extents if 'area_to_drop' is '> 0'. In the case that
+        'drop_offshore_lidar' is True ensure extents are limited to the land and foreshore of the catchment
+        once filtering is complete. """
 
         if self._extents is None:
             # No extents exist to be filtered to remove holes
@@ -320,6 +334,7 @@ class DenseDem:
 
         if self.verbose and self._extents is None:
             print("Warning in DenseDem.extents: No tiles with extents have been added yet")
+
         return self._extents
 
     @property
