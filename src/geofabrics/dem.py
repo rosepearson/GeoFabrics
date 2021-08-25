@@ -137,7 +137,6 @@ class DenseDem:
     def __init__(self, catchment_geometry: geometry.CatchmentGeometry,
                  temp_raster_path: typing.Union[str, pathlib.Path], drop_offshore_lidar: bool = True,
                  area_to_drop: float = None, verbose: bool = True):
-
         """ Setup base DEM to add future tiles too """
 
         self.catchment_geometry = catchment_geometry
