@@ -8,29 +8,28 @@ import pdal
 import json
 import typing
 import pathlib
-import geopandas
 import shapely
+import geopandas
+import numpy
 from . import geometry
 
 
 class CatchmentLidar:
-    """ A class to manage LiDAR data in a catchment context
-
-    Specifically, this supports the addition of LiDAR data tile by tile.
+    """ A class to manage LiDAR data in a catchment context by supporting the addition of LiDAR data tile by tile.
     """
 
     def __init__(self, catchment_geometry: geometry.CatchmentGeometry, source_crs: dict = None,
-                 area_to_drop: float = None, verbose: bool = True):
+                 drop_offshore_lidar: bool = True, verbose: bool = True):
         """ Load in LiDAR with relevant processing chain """
 
         self.catchment_geometry = catchment_geometry
         self.source_crs = source_crs
-        self.area_to_drop = area_to_drop
+        self.drop_offshore_lidar = drop_offshore_lidar
         self.verbose = verbose
 
         self._pdal_pipeline = None
         self._tile_array = None
-        self._extents = None
+        self._tile_extent = None
 
     def _set_up(self):
         """ Ensure the source_crs is either None or fully and correctly populated """
@@ -42,11 +41,7 @@ class CatchmentLidar:
                 f"Both horizontal and vertical CRS need to be defined. The source_crs specified is: {self.source_crs}"
 
     def load_tile(self, lidar_file: typing.Union[str, pathlib.Path]):
-        """ Function loading in the LiDAR
-
-        This updates the LiDAR extents in the catchment_geometry
-
-        In future we may want to have the option of filtering by foreshore / land """
+        """ Function loading in a LiDAR tile and its extent """
 
         # Define instructions for loading in LiDAR
         pdal_pipeline_instructions = [{"type":  "readers.las", "filename": str(lidar_file)}]
@@ -64,9 +59,15 @@ class CatchmentLidar:
                  "out_srs": f"EPSG:{self.catchment_geometry.crs['horizontal']}+" +
                  f"{self.catchment_geometry.crs['vertical']}"})
 
-        # Add instructions for clip within the catchment, and creating a polygon extents of the remaining point cloud
-        pdal_pipeline_instructions.append(
-            {"type": "filters.crop", "polygon": str(self.catchment_geometry.catchment.loc[0].geometry)})
+        # Add instructions for clip within either the catchment, or the land and foreshore
+        if self.drop_offshore_lidar:
+            pdal_pipeline_instructions.append(
+                {"type": "filters.crop", "polygon": str(self.catchment_geometry.land_and_foreshore.loc[0].geometry)})
+        else:
+            pdal_pipeline_instructions.append(
+                {"type": "filters.crop", "polygon": str(self.catchment_geometry.catchment.loc[0].geometry)})
+
+        # Add instructions for creating a polygon extents of the remaining point cloud
         pdal_pipeline_instructions.append({"type": "filters.hexbin"})
 
         # Load in LiDAR and perform operations
@@ -77,30 +78,13 @@ class CatchmentLidar:
         metadata = json.loads(self._pdal_pipeline.get_metadata())
         tile_extents_string = metadata['metadata']['filters.hexbin']['boundary']
 
-        self._update_extents(tile_extents_string)
         self._tile_array = self._pdal_pipeline.arrays[0]
-
-    def _update_extents(self, tile_extents_string: str):
-        """ Update the extents of all LiDAR tiles updated """
-
-        tile_extents = shapely.wkt.loads(tile_extents_string)
-
-        if tile_extents.area > 0:  # check polygon isn't empty
-
-            if self._extents is None:
-                self._extents = geopandas.GeoSeries([tile_extents], crs=self.catchment_geometry.crs['horizontal'])
-                self._extents = geopandas.GeoDataFrame(
-                    index=[0], geometry=self._extents, crs=self.catchment_geometry.crs['horizontal'])
-            else:
-                self._extents = geopandas.GeoSeries(
-                    shapely.ops.cascaded_union([self._extents.loc[0].geometry, tile_extents]),
-                    crs=self.catchment_geometry.crs['horizontal'])
-                self._extents = geopandas.GeoDataFrame(
-                    index=[0], geometry=self._extents, crs=self.catchment_geometry.crs['horizontal'])
-            self._extents = geopandas.clip(self.catchment_geometry.catchment, self._extents)
+        # Only care about horizontal extents
+        self._tile_extent = geopandas.GeoDataFrame({'geometry': [shapely.wkt.loads(tile_extents_string)]},
+                                                   crs=self.catchment_geometry.crs['horizontal'])
 
     @property
-    def tile_array(self):
+    def tile_array(self) -> numpy.ndarray:
         """ Function returning the LiDAR point values. """
 
         return self._tile_array
@@ -114,29 +98,7 @@ class CatchmentLidar:
         self._pdal_pipeline = None
 
     @property
-    def extents(self):
-        """ The combined extents for all added LiDAR tiles """
+    def tile_extent(self) -> geopandas.GeoDataFrame:
+        """ Function returning the extent for the last LiDAR tile. """
 
-        assert self._extents is not None, "No tiles have been added yet"
-        return self._extents
-
-    def filter_lidar_extents_for_holes(self):
-        """ Remove holes below a filter size within the extents """
-
-        if self.area_to_drop is None:
-            return  # do nothing
-
-        polygon = self._extents.loc[0].geometry
-
-        if polygon.geometryType() == "Polygon":
-            polygon = shapely.geometry.Polygon(
-                polygon.exterior.coords, [interior for interior in polygon.interiors if
-                                          shapely.geometry.Polygon(interior).area > self.area_to_drop])
-            self._extents = geopandas.GeoSeries([polygon], crs=self.catchment_geometry.crs['horizontal'])
-            self._extents = geopandas.GeoDataFrame(index=[0], geometry=self._extents,
-                                                   crs=self.catchment_geometry.crs['horizontal'])
-            self._extents = geopandas.clip(self.catchment_geometry.catchment, self._extents)
-        else:
-            if self.verbose:
-                print("Warning filtering holes in CatchmentLidar using filter_lidar_extents_for_holes is not yet "
-                      + f"supported for {polygon.geometryType()}")
+        return self._tile_extent

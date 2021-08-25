@@ -57,7 +57,7 @@ class CatchmentGeometry:
         self._foreshore_and_offshore = geopandas.overlay(self.catchment, self.land, how='difference')
 
         self._land_and_foreshore = geopandas.GeoDataFrame(
-            index=[0], geometry=self.land.buffer(self.resolution * self.foreshore_buffer), crs=self.crs['horizontal'])
+            {'geometry': self.land.buffer(self.resolution * self.foreshore_buffer)}, crs=self.crs['horizontal'])
         self._land_and_foreshore = geopandas.clip(self.catchment, self._land_and_foreshore)
 
         self._foreshore = geopandas.overlay(self.land_and_foreshore, self.land, how='difference')
@@ -150,16 +150,16 @@ class CatchmentGeometry:
             "`catchment` can be returned from a `CatchmentGeometry` object"
 
         # the foreshore and whatever lidar extents are offshore
-        dense_data_extents = geopandas.GeoSeries(shapely.ops.cascaded_union([self.foreshore.loc[0].geometry,
-                                                                             lidar_extents.loc[0].geometry]))
-        dense_data_extents = geopandas.GeoDataFrame(index=[0], geometry=dense_data_extents, crs=self.crs['horizontal'])
+        dense_data_extents = geopandas.GeoDataFrame({'geometry':
+                                                     [shapely.ops.cascaded_union([self.foreshore.loc[0].geometry,
+                                                                                  lidar_extents.loc[0].geometry])]},
+                                                    crs=self.crs['horizontal'])
         dense_data_extents = geopandas.clip(dense_data_extents, self.foreshore_and_offshore)
 
         # deflate this
-        deflated_dense_data_extents = geopandas.GeoDataFrame(index=[0],
-                                                             geometry=dense_data_extents.buffer(
-                                                                 self.resolution * -1 * self.foreshore_buffer),
-                                                             crs=self.crs['horizontal'])
+        deflated_dense_data_extents = geopandas.GeoDataFrame(
+                {'geometry': dense_data_extents.buffer(self.resolution * -1 * self.foreshore_buffer)},
+                crs=self.crs['horizontal'])
 
         # get the difference between them
         offshore_dense_data_edge = geopandas.overlay(dense_data_extents, deflated_dense_data_extents, how='difference')

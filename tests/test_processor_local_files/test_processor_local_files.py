@@ -43,11 +43,7 @@ class ProcessorLocalFilesTest(unittest.TestCase):
         cls.cache_dir = test_path / "data"
         assert cls.cache_dir.exists(), "The data directory that should include the comparison benchmark dem file " + \
             "doesn't exist"
-        benchmark_file = cls.cache_dir / "benchmark_dem.nc"
-        assert benchmark_file.exists(), "The comparison benchmark dem file doesn't exist"
-        for file in cls.cache_dir.glob('*'):
-            if file != benchmark_file:
-                file.unlink()
+        cls.tearDownClass()
 
         # generate catchment data
         catchment_dir = cls.cache_dir / "catchment_boundary"
@@ -101,8 +97,9 @@ class ProcessorLocalFilesTest(unittest.TestCase):
             (numpy.abs(grid_dem_x[grid_dem_y > 0] - 750) / 500 + 0.1) / 1.1
         dem = xarray.DataArray(grid_dem_z, coords={'x': grid_dem_x[0], 'y': grid_dem_y[:, 0]}, dims=['y', 'x'],
                                attrs={'scale_factor': 1.0, 'add_offset': 0.0})
-        dem.rio.set_crs(cls.instructions['instructions']['output']['crs']['horizontal'])
-        dem.to_netcdf(dem_file)
+        dem.rio.write_crs(cls.instructions['instructions']['output']['crs']['horizontal'], inplace=True)
+        dem.name = 'z'
+        dem.rio.to_raster(dem_file)
 
         # create LiDAR
         lidar_file = cls.cache_dir / "lidar.laz"

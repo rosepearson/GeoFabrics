@@ -20,7 +20,8 @@
 			"benchmark_dem": "tests/test_processor_local_files/data/benchmark_dem.nc"
 		},
 		"general": {
-			"set_dem_shoreline": "True"
+			"set_dem_shoreline": true,
+			"drop_offshore_lidar": false
 		}
 	}
 }

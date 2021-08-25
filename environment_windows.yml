@@ -5,7 +5,7 @@ channels:
   - conda-forge
   - defaults
 dependencies:
-  - pyproj=3.0.1 # note library version has caused issues
+  - pyproj
   - pip
   - gdal
   - geopandas
