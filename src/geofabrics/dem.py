@@ -123,7 +123,13 @@ class DenseDem:
 
     The dense DEM is made up of tiles created from dense point data - Either LiDAR point clouds, or a reference DEM
 
-    And also interpolated values from bathymetry contours offshore and outside all LiDAR tiles. """
+    And also interpolated values from bathymetry contours offshore and outside all LiDAR tiles.
+
+    DenseDem logic can be controlled by the constructor inputs:
+        * area_to_drop - If '> 0' this defines the size of any holdes in the LiDAR coverage to ignore.
+        * drop_offshore_lidar - If True only keep LiDAR values within the foreshore and land regions defined by
+          the catchment_geometry. If False keep all LiDAR values.
+    """
 
     DENSE_BINNING = "idw"
     CACHE_SIZE = 10000
@@ -258,7 +264,8 @@ class DenseDem:
         self._dem = None
 
     def _update_extents(self, tile_extent: geopandas.GeoDataFrame):
-        """ Update the extents of all LiDAR tiles updated """
+        """ Update the extents of all LiDAR tiles updated - if 'drop_offshore_lidar' is True ensure extents are
+        limited to the land and foreshore of the catchment. """
 
         assert len(tile_extent) == 1, "The tile_extent is expected to be contained in one shape. Instead " + \
             f"tile_extent: {tile_extent} is of length {len(tile_extent)}."
@@ -277,7 +284,9 @@ class DenseDem:
                 self._extents = geopandas.clip(self.catchment_geometry.catchment, self._extents)
 
     def filter_lidar_extents_for_holes(self):
-        """ Remove holes below a filter size within the extents """
+        """ Remove holes below a filter size within the extents if 'area_to_drop' is '> 0'. In the case that
+        'drop_offshore_lidar' is True ensure extents are limited to the land and foreshore of the catchment
+        once filtering is complete. """
 
         if self.area_to_drop is None:
             # Try a basic repair if not valid, but otherwise do nothing
