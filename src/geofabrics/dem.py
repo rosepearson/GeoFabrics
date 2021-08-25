@@ -201,10 +201,7 @@ class DenseDem:
 
         # set empty DEM - all NaN - to add tiles to
         dem_temp.data[0] = numpy.nan
-        if self.drop_offshore_lidar:
-            self._tiles = dem_temp.rio.clip(self.catchment_geometry.land_and_foreshore.geometry)
-        else:
-            self._tiles = dem_temp.rio.clip(self.catchment_geometry.catchment.geometry)
+        self._tiles = dem_temp.rio.clip(self.catchment_geometry.catchment.geometry)
 
     def _create_dem_tile_with_pdal(self, tile_points: numpy.ndarray, window_size: int, idw_power: int, radius: float):
         """ Create a DEM tile from a LiDAR tile over a specified region.
