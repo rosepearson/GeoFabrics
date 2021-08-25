@@ -4,4 +4,5 @@ Created on Thu Jul  1 09:57:30 2021
 
 @author: pearsonra
 """
-__version__ = "0.6.2"
+
+__version__ = "0.7.0"

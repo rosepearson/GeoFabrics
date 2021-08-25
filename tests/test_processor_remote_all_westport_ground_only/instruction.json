@@ -10,10 +10,10 @@
 			}
 		},
 		"data_paths": {
-			"local_cache": "tests/test_processor_remote_all_westport/data",
-			"benchmark_dem": "tests/test_processor_remote_all_westport/data/benchmark_dem.nc",
-			"result_dem": "tests/test_processor_remote_all_westport/data/test_dem.nc",
-			"catchment_boundary": "tests/test_processor_remote_all_westport/data/catchment.zip"
+			"local_cache": "tests/test_processor_remote_all_westport_ground_only/data",
+			"benchmark_dem": "tests/test_processor_remote_all_westport_ground_only/data/benchmark_dem.nc",
+			"result_dem": "tests/test_processor_remote_all_westport_ground_only/data/test_dem.nc",
+			"catchment_boundary": "tests/test_processor_remote_all_westport_ground_only/data/catchment.zip"
 		},
 		"apis": {
 			"open_topography": true,
@@ -29,7 +29,7 @@
 		"general": {
 			"drop_offshore_lidar": true,
 			"bathymetry_contours_z_label": "valdco",
-			"keep_only_ground_lidar": false
+			"keep_only_ground_lidar": true
 		}
 	}
 }

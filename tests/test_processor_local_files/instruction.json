@@ -21,7 +21,8 @@
 		},
 		"general": {
 			"set_dem_shoreline": true,
-			"drop_offshore_lidar": false
+			"drop_offshore_lidar": false,
+			"keep_only_ground_lidar": true
 		}
 	}
 }

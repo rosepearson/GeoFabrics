@@ -107,7 +107,7 @@ class GeoFabricsGenerator:
         the instruction file. Raise an error if the key is not in the instructions and there is no default value. """
 
         defaults = {'filter_lidar_holes_area': None, 'verbose': True, 'set_dem_shoreline': True,
-                    'bathymetry_contours_z_label': None, 'drop_offshore_lidar': True}
+                    'bathymetry_contours_z_label': None, 'drop_offshore_lidar': True, 'keep_only_ground_lidar': True}
 
         assert key in defaults or key in self.instructions['instructions']['general'], f"The key: {key} is missing " \
             + "from the general instructions, and does not have a default value"
@@ -283,7 +283,7 @@ class GeoFabricsGenerator:
         assert type(catchment_dirs) is not list, f"A list of catchment_boundary's is provided: {catchment_dirs}, " + \
             "where only one is supported."
         self.catchment_geometry = geometry.CatchmentGeometry(catchment_dirs, self.get_crs(verbose),
-                                                             self.get_resolution(), foreshore_buffer=2)
+                                                             self.get_resolution(), foreshore_buffer=2, verbose=verbose)
         land_dirs = self.get_vector_paths('land', verbose)
         assert len(land_dirs) == 1, f"{len(land_dirs)} catchment_boundary's provided, where only one is supported." + \
             f" Specficially land_dirs = {land_dirs}."
@@ -306,6 +306,7 @@ class GeoFabricsGenerator:
         self.catchment_lidar = lidar.CatchmentLidar(
             self.catchment_geometry, source_crs=lidar_dataset_info['crs'],
             drop_offshore_lidar=self.get_instruction_general('drop_offshore_lidar'),
+            keep_only_ground_lidar=self.get_instruction_general('keep_only_ground_lidar'),
             verbose=verbose)
 
         # Load in LiDAR tiles

@@ -135,8 +135,8 @@ class DenseDem:
     CACHE_SIZE = 10000
 
     def __init__(self, catchment_geometry: geometry.CatchmentGeometry,
-                 temp_raster_path: typing.Union[str, pathlib.Path], area_to_drop: float = None,
-                 drop_offshore_lidar: bool = True, verbose: bool = True):
+                 temp_raster_path: typing.Union[str, pathlib.Path], drop_offshore_lidar: bool = True,
+                 area_to_drop: float = None, verbose: bool = True):
         """ Setup base DEM to add future tiles too """
 
         self.catchment_geometry = catchment_geometry
@@ -200,10 +200,7 @@ class DenseDem:
 
         # set empty DEM - all NaN - to add tiles to
         dem_temp.data[0] = numpy.nan
-        if self.drop_offshore_lidar:
-            self._tiles = dem_temp.rio.clip(self.catchment_geometry.land_and_foreshore.geometry)
-        else:
-            self._tiles = dem_temp.rio.clip(self.catchment_geometry.catchment.geometry)
+        self._tiles = dem_temp.rio.clip(self.catchment_geometry.catchment.geometry)
 
     def _create_dem_tile_with_pdal(self, tile_points: numpy.ndarray, window_size: int, idw_power: int, radius: float):
         """ Create a DEM tile from a LiDAR tile over a specified region.
@@ -256,7 +253,11 @@ class DenseDem:
             f"instead of {self.raster_origin}"
 
         # trim to only include cells within catchment - and update the tile extents with this new tile
-        tile = tile.rio.clip(self.catchment_geometry.catchment.geometry)
+        if self.drop_offshore_lidar:
+            tile = tile.rio.clip(self.catchment_geometry.land_and_foreshore.geometry)
+        else:
+            tile = tile.rio.clip(self.catchment_geometry.catchment.geometry)
+
         self._tiles = rioxarray.merge.merge_arrays([self._tiles, tile], method=method)
         self._update_extents(tile_extent)
 
@@ -278,6 +279,7 @@ class DenseDem:
                     {'geometry': [shapely.ops.cascaded_union([self._extents.loc[0].geometry,
                                                               tile_extent.loc[0].geometry])]},
                     crs=self.catchment_geometry.crs['horizontal'])
+
             if self.drop_offshore_lidar:
                 self._extents = geopandas.clip(self.catchment_geometry.land_and_foreshore, self._extents)
             else:
@@ -288,7 +290,10 @@ class DenseDem:
         'drop_offshore_lidar' is True ensure extents are limited to the land and foreshore of the catchment
         once filtering is complete. """
 
-        if self.area_to_drop is None:
+        if self._extents is None:
+            # No extents exist to be filtered to remove holes
+            return
+        elif self.area_to_drop is None:
             # Try a basic repair if not valid, but otherwise do nothing
             if not self._extents.loc[0].geometry.is_valid:
                 if self.verbose:
@@ -323,7 +328,9 @@ class DenseDem:
     def extents(self):
         """ The combined extents for all added LiDAR tiles """
 
-        assert self._extents is not None, "No tiles have been added yet"
+        if self.verbose and self._extents is None:
+            print("Warning in DenseDem.extents: No tiles with extents have been added yet")
+
         return self._extents
 
     @property
