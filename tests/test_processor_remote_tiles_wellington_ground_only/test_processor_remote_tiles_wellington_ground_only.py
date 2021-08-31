@@ -116,7 +116,7 @@ class ProcessorRemoteTilesWellingtonTest(unittest.TestCase):
 
         dataset_dir = self.cache_dir / self.DATASET
         downloaded_files = [dataset_dir / file for file in self.FILE_SIZES.keys()]
-        print(downloaded_files)
+
         # check files are correct
         self.assertEqual(len(list(dataset_dir.glob('*'))), len(downloaded_files), "There should have been " +
                          f"{len(downloaded_files)} files downloaded into the {self.DATASET} directory, instead there " +
@@ -130,7 +130,7 @@ class ProcessorRemoteTilesWellingtonTest(unittest.TestCase):
 
         dataset_dir = self.cache_dir / self.DATASET
         downloaded_files = [dataset_dir / file for file in self.FILE_SIZES.keys()]
-        print(downloaded_file.stat().st_size for downloaded_file in downloaded_files)
+
         # check sizes are correct
         self.assertTrue(numpy.all([downloaded_file.stat().st_size == self.FILE_SIZES[downloaded_file.name] for
                                    downloaded_file in downloaded_files]), "There is a miss-match between the size" +
