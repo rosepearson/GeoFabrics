@@ -132,7 +132,7 @@ class DenseDem:
     """
 
     DENSE_BINNING = "idw"
-    CACHE_SIZE = 10000
+    CACHE_SIZE = 10000  # The max number of points to create the offshore RBF and to evaluate in the RBF at one time
 
     def __init__(self, catchment_geometry: geometry.CatchmentGeometry,
                  temp_raster_path: typing.Union[str, pathlib.Path], drop_offshore_lidar: bool = True,
@@ -387,7 +387,13 @@ class DenseDem:
         y = numpy.concatenate([offshore_edge['y'], bathy_contours.y])
         z = numpy.concatenate([offshore_edge['z'], bathy_contours.z])
 
+        if len(x) > self.CACHE_SIZE:
+            offshore_sampling_resolution = self.resolution * len(x) / self.CACHE_SIZE
+            print(f"In future will reduce the number of points used to create the RBF function to <= {self.CACHE_SIZE}")
+
         # set up the interpolation function
+        if self.verbose:
+            print("Creating offshore interpolant")
         rbf_function = scipy.interpolate.Rbf(x, y, z, function='linear')
 
         # setup the empty offshore area ready for interpolation
@@ -408,6 +414,8 @@ class DenseDem:
 
         number_offshore_tiles = math.ceil(len(flat_x_masked)/self.CACHE_SIZE)
         for i in range(number_offshore_tiles):
+            if self.verbose:
+                print(f"Offshore intepolant tile {i} of {number_offshore_tiles}")
             start_index = int(i*self.CACHE_SIZE)
             end_index = int((i+1)*self.CACHE_SIZE) if i + 1 != number_offshore_tiles else len(flat_x_masked)
 
