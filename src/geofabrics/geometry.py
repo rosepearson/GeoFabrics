@@ -229,9 +229,23 @@ class BathymetryContours:
         else:
             self._extent = self.catchment_geometry.offshore
 
+        # Keep only contours in the 'extents' i.e. inside the catchment and outside any exclusion_extent
         self._contour = geopandas.clip(self._contour, self._extent)
         self._contour = self._contour.reset_index(drop=True)
 
+        # Convert any 'GeometryCollection' objects to 'MultiLineString' objects - dropping any points
+        if (self._contour.geometry.type == 'GeometryCollection').any():
+            geometry_list = []
+            for geometry_row in self._contour.geometry:
+                if geometry_row.geometryType() == 'LineString' or geometry_row.geometryType() == 'MultiLineString':
+                    geometry_list.append(geometry_row)
+                elif geometry_row.geometryType() == 'GeometryCollection':
+                    geometry_list.append(
+                        shapely.geometry.MultiLineString([geometry_element for geometry_element in geometry_row if
+                                                          geometry_element.geometryType() == 'LineString']))
+            self._contour.set_geometry(geometry_list, inplace=True)
+
+        # Sample to give points along the line
         resolution = self.catchment_geometry.resolution
         assert self._points_label not in self._contour.columns, "The bathymetry data already has a points column that" \
             + " will be overridden"
