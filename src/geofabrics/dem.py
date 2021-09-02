@@ -363,12 +363,23 @@ class DenseDem:
         dem = dem.reindex(x=x, y=y)
         return dem
 
-    def _sample_offshore_edge(self, resolution):
+    def _sample_offshore_edge(self, resolution) -> numpy.ndarray:
         """ Return the offshore edge cells to be used for offshore interpolation """
 
-        offshore_dense_data_edge = self.catchment_geometry.offshore_dense_data_edge(self._extents)
+        assert resolution >= self.catchment_geometry.resolution, "_sample_offshore_edge only supports downsampling" + \
+            f" and not  up-samping. The requested sampling resolution of {resolution} must be equal to or larger than" + \
+            f" the catchment resolution of {self.catchment_geometry.resolution}"
 
+        offshore_dense_data_edge = self.catchment_geometry.offshore_dense_data_edge(self._extents)
         offshore_edge_dem = self._tiles.rio.clip(offshore_dense_data_edge.geometry)
+
+        # If the sampling resolution is larger than the catchment_geometry resolution resample the DEM
+        if resolution > self.catchment_geometry.resolution:
+            x = numpy.arange(offshore_edge_dem.x.min(), offshore_edge_dem.x.max() + resolution / 2, resolution)
+            y = numpy.arange(offshore_edge_dem.y.min(), offshore_edge_dem.y.max() + resolution / 2, resolution)
+            offshore_edge_dem = offshore_edge_dem.interp(x=x, y=y, method="nearest")
+            offshore_edge_dem = offshore_edge_dem.rio.clip(offshore_dense_data_edge.geometry)  # Reclip to inbounds
+
         offshore_grid_x, offshore_grid_y = numpy.meshgrid(offshore_edge_dem.x, offshore_edge_dem.y)
         offshore_flat_z = offshore_edge_dem.data[0].flatten()
         offshore_mask_z = ~numpy.isnan(offshore_flat_z)
@@ -422,7 +433,7 @@ class DenseDem:
         number_offshore_tiles = math.ceil(len(flat_x_masked)/self.CACHE_SIZE)
         for i in range(number_offshore_tiles):
             if self.verbose:
-                print(f"Offshore intepolant tile {i} of {number_offshore_tiles}")
+                print(f"Offshore intepolant tile {i+1} of {number_offshore_tiles}")
             start_index = int(i*self.CACHE_SIZE)
             end_index = int((i+1)*self.CACHE_SIZE) if i + 1 != number_offshore_tiles else len(flat_x_masked)
 
