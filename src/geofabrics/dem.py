@@ -402,7 +402,7 @@ class DenseDem:
 
         if len(offshore_points) > self.CACHE_SIZE:
             reduced_resolution = self.catchment_geometry.resolution * len(offshore_points) / self.CACHE_SIZE
-            print("Reducing the number of 'offshore_points' used to create the RBF function by increating the " +
+            print("Reducing the number of 'offshore_points' used to create the RBF function by increasing the " +
                   f"resolution from {self.catchment_geometry.resolution} to {reduced_resolution}")
             offshore_edge_points = self._sample_offshore_edge(reduced_resolution)
             bathy_points = bathy_contours.sample_contours(reduced_resolution)
