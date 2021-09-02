@@ -363,7 +363,7 @@ class DenseDem:
         dem = dem.reindex(x=x, y=y)
         return dem
 
-    def _offshore_edge(self):
+    def _sample_offshore_edge(self, resolution):
         """ Return the offshore edge cells to be used for offshore interpolation """
 
         offshore_dense_data_edge = self.catchment_geometry.offshore_dense_data_edge(self._extents)
@@ -373,30 +373,35 @@ class DenseDem:
         offshore_flat_z = offshore_edge_dem.data[0].flatten()
         offshore_mask_z = ~numpy.isnan(offshore_flat_z)
 
-        offshore_edge = {'x': offshore_grid_x.flatten()[offshore_mask_z],
-                         'y': offshore_grid_y.flatten()[offshore_mask_z],
-                         'z': offshore_flat_z[offshore_mask_z]}
+        offshore_edge = numpy.empty([offshore_mask_z.sum().sum()],
+                                    dtype=[('X', numpy.float64), ('Y', numpy.float64), ('Z', numpy.float64)])
+
+        offshore_edge['X'] = offshore_grid_x.flatten()[offshore_mask_z]
+        offshore_edge['Y'] = offshore_grid_y.flatten()[offshore_mask_z]
+        offshore_edge['Z'] = offshore_flat_z[offshore_mask_z]
 
         return offshore_edge
 
     def interpolate_offshore(self, bathy_contours):
         """ Performs interpolation offshore outside LiDAR extents using the SciPy RBF function. """
 
-        offshore_edge = self._offshore_edge()
+        offshore_edge_points = self._sample_offshore_edge(self.catchment_geometry.resolution)
         bathy_points = bathy_contours.sample_contours(self.catchment_geometry.resolution)
-        x = numpy.concatenate([offshore_edge['x'], bathy_points['X']])
-        y = numpy.concatenate([offshore_edge['y'], bathy_points['Y']])
-        z = numpy.concatenate([offshore_edge['z'], bathy_points['Z']])
+        offshore_points = numpy.concatenate([offshore_edge_points, bathy_points])
 
-        if len(x) > self.CACHE_SIZE:
-            reduced_resolution = self.catchment_geometry.resolution * len(x) / self.CACHE_SIZE
+        if len(offshore_points) > self.CACHE_SIZE:
+            reduced_resolution = self.catchment_geometry.resolution * len(offshore_points) / self.CACHE_SIZE
+            print("Reducing the number of 'offshore_points' used to create the RBF function by increating the " +
+                  f"resolution from {self.catchment_geometry.resolution} to {reduced_resolution}")
+            offshore_edge_points = self._sample_offshore_edge(reduced_resolution)
             bathy_points = bathy_contours.sample_contours(reduced_resolution)
-            print(f"In future will reduce the number of points used to create the RBF function to <= {self.CACHE_SIZE}")
+            offshore_points = numpy.concatenate([offshore_edge_points, bathy_points])
 
         # set up the interpolation function
         if self.verbose:
             print("Creating offshore interpolant")
-        rbf_function = scipy.interpolate.Rbf(x, y, z, function='linear')
+        rbf_function = scipy.interpolate.Rbf(offshore_points['X'], offshore_points['Y'], offshore_points['Z'],
+                                             function='linear')
 
         # setup the empty offshore area ready for interpolation
         offshore_no_dense_data = self.catchment_geometry.offshore_no_dense_data(self._extents)
