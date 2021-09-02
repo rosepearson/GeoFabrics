@@ -22,7 +22,6 @@ class CatchmentLidar:
     def __init__(self, catchment_geometry: geometry.CatchmentGeometry, source_crs: dict = None,
                  drop_offshore_lidar: bool = True, keep_only_ground_lidar: bool = True,
                  verbose: bool = True):
-
         """ Load in LiDAR with relevant processing chain """
 
         self.catchment_geometry = catchment_geometry

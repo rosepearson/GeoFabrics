@@ -383,12 +383,14 @@ class DenseDem:
         """ Performs interpolation offshore outside LiDAR extents using the SciPy RBF function. """
 
         offshore_edge = self._offshore_edge()
-        x = numpy.concatenate([offshore_edge['x'], bathy_contours.x])
-        y = numpy.concatenate([offshore_edge['y'], bathy_contours.y])
-        z = numpy.concatenate([offshore_edge['z'], bathy_contours.z])
+        bathy_points = bathy_contours.sample_contours(self.catchment_geometry.resolution)
+        x = numpy.concatenate([offshore_edge['x'], bathy_points['X']])
+        y = numpy.concatenate([offshore_edge['y'], bathy_points['Y']])
+        z = numpy.concatenate([offshore_edge['z'], bathy_points['Z']])
 
         if len(x) > self.CACHE_SIZE:
-            offshore_sampling_resolution = self.resolution * len(x) / self.CACHE_SIZE
+            reduced_resolution = self.catchment_geometry.resolution * len(x) / self.CACHE_SIZE
+            bathy_points = bathy_contours.sample_contours(reduced_resolution)
             print(f"In future will reduce the number of points used to create the RBF function to <= {self.CACHE_SIZE}")
 
         # set up the interpolation function
