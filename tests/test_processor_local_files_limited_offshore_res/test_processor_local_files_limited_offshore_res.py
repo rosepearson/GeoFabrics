@@ -14,6 +14,8 @@ import numpy
 import shapely
 import geopandas
 import pdal
+import pytest
+import sys
 
 from src.geofabrics import processor
 
@@ -25,8 +27,8 @@ class ProcessorLocalFilesTest(unittest.TestCase):
     The dem.DenseDem.CACHE_SIZE is exceded and the offshore sampled points are re-sampled at a lower resolution.
 
     Tests run include:
-        1. test_result_dem  Check the generated DEM matches the benchmark DEM exactly. It aims to ensure the offshore
-           resolution is reduced.
+        1. test_result_dem  Check the generated DEM matches the benchmark DEM exactly in Windows, or approximately in
+        Linux. It aims to ensure the offshore resolution is reduced.
     """
 
     LAS_GROUND = 2
@@ -118,7 +120,8 @@ class ProcessorLocalFilesTest(unittest.TestCase):
         pdal_pipeline = pdal.Pipeline(json.dumps(pdal_pipeline_instructions), [lidar_array])
         pdal_pipeline.execute()
 
-    def test_result_dem(self):
+    @pytest.mark.skipif(sys.platform != 'win32', reason="Windows test - this is strict")
+    def test_result_dem_windows(self):
         """ A basic comparison between the generated and benchmark DEM """
 
         # Run pipeline
@@ -140,6 +143,31 @@ class ProcessorLocalFilesTest(unittest.TestCase):
         print(f"DEM array diff is: {diff_array[diff_array != 0]}")
         numpy.testing.assert_array_equal(saved_dem.data, benchmark_dem.data,
                                          err_msg="The generated result_dem has different data from the benchmark_dem")
+
+    @pytest.mark.skipif(sys.platform != 'linux', reason="Linux test - this is less strict")
+    def test_result_dem_test(self):
+        """ A basic comparison between the generated and benchmark DEM """
+
+        # Run pipeline
+        runner = processor.GeoFabricsGenerator(self.instructions)
+        runner.run()
+
+        # load in benchmark DEM
+        with rioxarray.rioxarray.open_rasterio(self.instructions['instructions']['data_paths']['benchmark_dem'],
+                                               masked=True) as benchmark_dem:
+            benchmark_dem.load()
+
+        # load in result DEM
+        with rioxarray.rioxarray.open_rasterio(self.instructions['instructions']['data_paths']['result_dem'],
+                                               masked=True) as saved_dem:
+            saved_dem.load()
+
+        # compare DEMs - load from file as rioxarray.rioxarray.open_rasterio ignores index order
+        diff_array = saved_dem.data-benchmark_dem.data
+        print(f"DEM array diff is: {diff_array[diff_array != 0]}")
+        numpy.testing.assert_array_almost_equal(saved_dem.data, benchmark_dem.data,
+                                                err_msg="The generated result_dem has different data from the " +
+                                                "benchmark_dem")
 
     @classmethod
     def tearDownClass(cls):
