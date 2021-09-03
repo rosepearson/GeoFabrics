@@ -266,7 +266,7 @@ class DenseDem:
         self._dem = None
 
 
-class DenseDemFromFile(DenseDem):
+class DenseDemFromFiles(DenseDem):
     """ A class to manage loading in an already created and saved dense DEM that has yet to have an offshore DEM
     associated with it.
     """
@@ -278,10 +278,11 @@ class DenseDemFromFile(DenseDem):
 
         with rioxarray.rioxarray.open_rasterio(pathlib.Path(dense_dem_path), masked=True) as dense_dem:
             dense_dem.load()
+            dense_dem.rio.set_crs(catchment_geometry.crs['horizontal'])
         extents = geopandas.read_file(pathlib.Path(extents_path))
 
-        super(DenseDemFromFile, self).__init__(catchment_geometry=catchment_geometry, dense_dem=dense_dem,
-                                               extents=extents, verbose=verbose)
+        super(DenseDemFromFiles, self).__init__(catchment_geometry=catchment_geometry, dense_dem=dense_dem,
+                                                extents=extents, verbose=verbose)
 
 
 class DenseDemFromTiles(DenseDem):

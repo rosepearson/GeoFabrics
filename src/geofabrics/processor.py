@@ -389,6 +389,7 @@ class DemGenerator(BaseProcessor):
 
         # fill combined dem - save results
         self.dense_dem.dem.to_netcdf(self.get_instruction_path('result_dem'))
+        self.dense_dem.extents.to_file(self.get_instruction_path('dense_dem_extents'))
 
 
 class OffshoreDemGenerator(BaseProcessor):

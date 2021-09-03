@@ -109,7 +109,7 @@ class ProcessorRemoteTilesWestportTest(unittest.TestCase):
         dataset_dir = self.cache_dir / self.DATASET
 
         # check the right dataset is downloaded - self.DATASET
-        self.assertEqual(len(list(self.cache_dir.glob('*/**'))), 1,
+        self.assertEqual(len(list(self.cache_dir.glob('*/**'))), 2,  # The extents.json file as well
                          f"There should only be one dataset named {self.DATASET} instead there are " +
                          f"{len(list(self.cache_dir.glob('*/**')))} list {list(self.cache_dir.glob('*/**'))}")
 

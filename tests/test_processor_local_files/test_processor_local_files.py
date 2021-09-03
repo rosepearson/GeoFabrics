@@ -130,6 +130,26 @@ class ProcessorLocalFilesTest(unittest.TestCase):
         pdal_pipeline = pdal.Pipeline(json.dumps(pdal_pipeline_instructions), [lidar_array])
         pdal_pipeline.execute()
 
+    @classmethod
+    def tearDownClass(cls):
+        """ Remove created files in the cache directory as part of the testing process at the end of the test. """
+
+        cls.clean_data_folder()
+
+    @classmethod
+    def clean_data_folder(cls):
+        """ Remove all generated or downloaded files from the data directory """
+
+        assert cls.cache_dir.exists(), "The data directory that should include the comparison benchmark dem file " + \
+            "doesn't exist"
+
+        benchmark_file = cls.cache_dir / "benchmark_dem.nc"
+        for file in cls.cache_dir.glob('*'):  # only files
+            if file != benchmark_file and file.is_file():
+                file.unlink()
+            elif file != benchmark_file and file.is_dir():
+                shutil.rmtree(file)
+
     def test_result_dem(self):
         """ A basic comparison between the generated and benchmark DEM """
 
@@ -153,15 +173,6 @@ class ProcessorLocalFilesTest(unittest.TestCase):
         numpy.testing.assert_array_almost_equal(saved_dem.data, benchmark_dem.data,
                                                 err_msg="The generated result_dem has different data from the " +
                                                 "benchmark_dem")
-
-    @classmethod
-    def tearDownClass(cls):
-        """ Remove created files in the cache directory as part of the testing process at the end of the test. """
-
-        benchmark_file = cls.cache_dir / "benchmark_dem.nc"
-        for file in cls.cache_dir.glob('*'):
-            if file != benchmark_file:
-                file.unlink()
 
 
 if __name__ == '__main__':
