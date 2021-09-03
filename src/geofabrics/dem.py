@@ -6,6 +6,7 @@ Created on Fri Jun 18 10:52:49 2021
 """
 import rioxarray
 import rioxarray.merge
+import xarray
 import numpy
 import math
 import pdal
@@ -116,9 +117,6 @@ class ReferenceDem:
         """ The extents for the reference DEM """
 
         return self._extents
-
-
-class DenseDem:
     """ A class to manage the dense DEM in a catchment context.
 
     The dense DEM is made up of tiles created from dense point data - Either LiDAR point clouds, or a reference DEM
@@ -444,3 +442,365 @@ class DenseDem:
 
         # ensure the DEM will be recalculated as the offshore has been interpolated
         self._dem = None
+
+
+class DenseDem:
+    """ A class to manage the dense DEM in a catchment context.
+
+    The dense DEM is made up of a dense DEM that is loaded in, and an offshore DEM that is interpolated from bathymetry
+    contours offshore and outside all LiDAR tiles.
+
+    """
+
+    DENSE_BINNING = "idw"
+    CACHE_SIZE = 10000  # The max number of points to create the offshore RBF and to evaluate in the RBF at one time
+
+    def __init__(self, catchment_geometry: geometry.CatchmentGeometry,
+                 extents: geopandas.GeoDataFrame, dense_dem: xarray.core.dataarray.DataArray, verbose: bool = True):
+        """ Setup base DEM to add future tiles too """
+
+        self.catchment_geometry = catchment_geometry
+        self._dense_dem = dense_dem
+        self._extents = extents
+
+        self.verbose = verbose
+
+        self._offshore_dem = None
+
+        self._dem = None
+
+    @property
+    def extents(self):
+        """ The combined extents for all added LiDAR tiles """
+
+        if self.verbose and self._extents is None:
+            print("Warning in DenseDem.extents: No tiles with extents have been added yet")
+
+        return self._extents
+
+    @property
+    def dem(self):
+        """ Return the combined DEM from tiles and any interpolated offshore values """
+
+        if self._dem is None:
+            if self._offshore_dem is None:
+                self._dem = self._dense_dem
+            else:
+                # should give the same for either (method='first' or 'last') as values in overlap should be the same
+                self._dem = rioxarray.merge.merge_arrays([self._dense_dem, self._offshore_dem])
+        # Ensure valid name and increasing dimension indexing for the dem
+        self._dem = self._dem.rename(self.DENSE_BINNING)
+        self._dem = self._dem.rio.interpolate_na()
+        self._dem = self._dem.rio.clip(self.catchment_geometry.catchment.geometry)
+        self._dem = self._ensure_positive_indexing(self._dem)  # Some programs require positively increasing indices
+        return self._dem
+
+    @staticmethod
+    def _ensure_positive_indexing(dem: xarray.core.dataarray.DataArray) -> xarray.core.dataarray.DataArray:
+        """ A routine to check an xarray has positive dimension indexing and to reindex if needed. """
+
+        x = dem.x
+        y = dem.y
+        if x[0] > x[-1]:
+            x = x[::-1]
+        if y[0] > y[-1]:
+            y = y[::-1]
+        dem = dem.reindex(x=x, y=y)
+        return dem
+
+    def _sample_offshore_edge(self, resolution) -> numpy.ndarray:
+        """ Return the offshore edge cells to be used for offshore interpolation """
+
+        assert resolution >= self.catchment_geometry.resolution, "_sample_offshore_edge only supports downsampling" + \
+            f" and not  up-samping. The requested sampling resolution of {resolution} must be equal to or larger than" + \
+            f" the catchment resolution of {self.catchment_geometry.resolution}"
+
+        offshore_dense_data_edge = self.catchment_geometry.offshore_dense_data_edge(self._extents)
+        offshore_edge_dem = self._dense_dem.rio.clip(offshore_dense_data_edge.geometry)
+
+        # If the sampling resolution is larger than the catchment_geometry resolution resample the DEM
+        if resolution > self.catchment_geometry.resolution:
+            x = numpy.arange(offshore_edge_dem.x.min(), offshore_edge_dem.x.max() + resolution / 2, resolution)
+            y = numpy.arange(offshore_edge_dem.y.min(), offshore_edge_dem.y.max() + resolution / 2, resolution)
+            offshore_edge_dem = offshore_edge_dem.interp(x=x, y=y, method="nearest")
+            offshore_edge_dem = offshore_edge_dem.rio.clip(offshore_dense_data_edge.geometry)  # Reclip to inbounds
+
+        offshore_grid_x, offshore_grid_y = numpy.meshgrid(offshore_edge_dem.x, offshore_edge_dem.y)
+        offshore_flat_z = offshore_edge_dem.data[0].flatten()
+        offshore_mask_z = ~numpy.isnan(offshore_flat_z)
+
+        offshore_edge = numpy.empty([offshore_mask_z.sum().sum()],
+                                    dtype=[('X', numpy.float64), ('Y', numpy.float64), ('Z', numpy.float64)])
+
+        offshore_edge['X'] = offshore_grid_x.flatten()[offshore_mask_z]
+        offshore_edge['Y'] = offshore_grid_y.flatten()[offshore_mask_z]
+        offshore_edge['Z'] = offshore_flat_z[offshore_mask_z]
+
+        return offshore_edge
+
+    def interpolate_offshore(self, bathy_contours):
+        """ Performs interpolation offshore outside LiDAR extents using the SciPy RBF function. """
+
+        offshore_edge_points = self._sample_offshore_edge(self.catchment_geometry.resolution)
+        bathy_points = bathy_contours.sample_contours(self.catchment_geometry.resolution)
+        offshore_points = numpy.concatenate([offshore_edge_points, bathy_points])
+
+        if len(offshore_points) > self.CACHE_SIZE:
+            reduced_resolution = self.catchment_geometry.resolution * len(offshore_points) / self.CACHE_SIZE
+            print("Reducing the number of 'offshore_points' used to create the RBF function by increasing the " +
+                  f"resolution from {self.catchment_geometry.resolution} to {reduced_resolution}")
+            offshore_edge_points = self._sample_offshore_edge(reduced_resolution)
+            bathy_points = bathy_contours.sample_contours(reduced_resolution)
+            offshore_points = numpy.concatenate([offshore_edge_points, bathy_points])
+
+        # set up the interpolation function
+        if self.verbose:
+            print("Creating offshore interpolant")
+        rbf_function = scipy.interpolate.Rbf(offshore_points['X'], offshore_points['Y'], offshore_points['Z'],
+                                             function='linear')
+
+        # setup the empty offshore area ready for interpolation
+        offshore_no_dense_data = self.catchment_geometry.offshore_no_dense_data(self._extents)
+        self._offshore_dem = self._dense_dem.rio.clip(self.catchment_geometry.offshore.geometry)
+        self._offshore_dem.data[0] = 0  # set all to zero then clip out dense region where we don't need to interpolate
+        self._offshore_dem = self._offshore_dem.rio.clip(offshore_no_dense_data.geometry)
+
+        # Interpolate over offshore region outside LiDAR extents
+        grid_x, grid_y = numpy.meshgrid(self._offshore_dem.x, self._offshore_dem.y)
+        flat_z = self._offshore_dem.data[0].flatten()
+        mask_z = ~numpy.isnan(flat_z)
+
+        # tile offshore area - this limits the maximum memory required at any one time
+        flat_x_masked = grid_x.flatten()[mask_z]
+        flat_y_masked = grid_y.flatten()[mask_z]
+        flat_z_masked = flat_z[mask_z]
+
+        number_offshore_tiles = math.ceil(len(flat_x_masked)/self.CACHE_SIZE)
+        for i in range(number_offshore_tiles):
+            if self.verbose:
+                print(f"Offshore intepolant tile {i+1} of {number_offshore_tiles}")
+            start_index = int(i*self.CACHE_SIZE)
+            end_index = int((i+1)*self.CACHE_SIZE) if i + 1 != number_offshore_tiles else len(flat_x_masked)
+
+            flat_z_masked[start_index:end_index] = rbf_function(flat_x_masked[start_index:end_index],
+                                                                flat_y_masked[start_index:end_index])
+        flat_z[mask_z] = flat_z_masked
+        self._offshore_dem.data[0] = flat_z.reshape(self._offshore_dem.data[0].shape)
+
+        # ensure the DEM will be recalculated as the offshore has been interpolated
+        self._dem = None
+
+
+class DenseDemFromFile(DenseDem):
+    """ A class to manage loading in an already created and saved dense DEM that has yet to have an offshore DEM
+    associated with it.
+    """
+
+    def __init__(self, catchment_geometry: geometry.CatchmentGeometry,
+                 dense_dem_path: typing.Union[str, pathlib.Path], extents_path: typing.Union[str, pathlib.Path],
+                 verbose: bool = True):
+        """ Setup base DEM to add future tiles too """
+
+        with rioxarray.rioxarray.open_rasterio(pathlib.Path(dense_dem_path), masked=True) as dense_dem:
+            dense_dem.load()
+        extents = geopandas.read_file(pathlib.Path(extents_path))
+
+        super(DenseDemFromFile, self).__init__(catchment_geometry=catchment_geometry, dense_dem=dense_dem,
+                                               extents=extents, verbose=verbose)
+
+
+class DenseDemFromTiles(DenseDem):
+    """ A class to manage the population of the DenseDem's dense_dem from LiDAR tiles, or a reference DEM.
+
+    The dense DEM is made up of tiles created from dense point data - Either LiDAR point clouds, or a reference DEM
+
+    DenseDemFromTiles logic can be controlled by the constructor inputs:
+        * area_to_drop - If '> 0' this defines the size of any holdes in the LiDAR coverage to ignore.
+        * drop_offshore_lidar - If True only keep LiDAR values within the foreshore and land regions defined by
+          the catchment_geometry. If False keep all LiDAR values.
+    """
+
+    def __init__(self, catchment_geometry: geometry.CatchmentGeometry,
+                 temp_raster_path: typing.Union[str, pathlib.Path], drop_offshore_lidar: bool = True,
+                 area_to_drop: float = None, verbose: bool = True):
+        """ Setup base DEM to add future tiles too """
+
+        self._temp_dem_file = pathlib.Path(temp_raster_path)
+
+        self.area_to_drop = area_to_drop
+        self.drop_offshore_lidar = drop_offshore_lidar
+
+        self.raster_origin = None
+        self.raster_size = None
+
+        empty_dem = self._set_up(catchment_geometry)
+
+        super(DenseDemFromTiles, self).__init__(catchment_geometry=catchment_geometry, dense_dem=empty_dem,
+                                                extents=None, verbose=verbose)
+
+    def _set_up(self, catchment_geometry):
+        """ Create the dense DEM to fill and define the raster size and origin """
+
+        catchment_bounds = catchment_geometry.catchment.loc[0].geometry.bounds
+        self.raster_origin = [catchment_bounds[0],
+                              catchment_bounds[1]]
+
+        self.raster_size = [int((catchment_bounds[2] -
+                                 catchment_bounds[0]) / catchment_geometry.resolution),
+                            int((catchment_bounds[3] -
+                                 catchment_bounds[1]) / catchment_geometry.resolution)]
+
+        # create a dummy DEM for updated origin and size
+        empty_points = numpy.zeros([1], dtype=[('X', numpy.float64), ('Y', numpy.float64), ('Z', numpy.float64)])
+        pdal_pipeline_instructions = [
+            {"type":  "writers.gdal", "resolution": catchment_geometry.resolution,
+             "gdalopts": "a_srs=EPSG:" + str(catchment_geometry.crs['horizontal']),
+             "output_type": ["idw"], "filename": str(self._temp_dem_file),
+             "origin_x": self.raster_origin[0], "origin_y": self.raster_origin[1],
+             "width": self.raster_size[0], "height": self.raster_size[1]}
+        ]
+        pdal_pipeline = pdal.Pipeline(json.dumps(pdal_pipeline_instructions), [empty_points])
+        pdal_pipeline.execute()
+        metadata = json.loads(pdal_pipeline.get_metadata())
+        assert metadata['metadata']['writers.gdal']['filename'][0] == str(self._temp_dem_file), "The specified  file" \
+            + f"file location: {self._temp_dem_file} and written file location: " + \
+            f"{metadata['metadata']['writers.gdal']['filename'][0]} do not match."
+
+        with rioxarray.rioxarray.open_rasterio(str(self._temp_dem_file), masked=True) as empty_dem:
+            empty_dem.load()
+            empty_dem.rio.set_crs(catchment_geometry.crs['horizontal'])
+
+        # check if the raster origin has been moved by PDAL writers.gdal
+        raster_origin = [empty_dem.x.data.min() - catchment_geometry.resolution/2,
+                         empty_dem.y.data.min() - catchment_geometry.resolution/2]
+        if self.raster_origin != raster_origin:
+            print("In process: The generated dense DEM has an origin differing from the one specified. Updating the " +
+                  f"catchment geometry raster origin from {self.raster_origin} to {raster_origin}")
+            self.raster_origin = raster_origin
+
+        # set empty DEM - all NaN - to add tiles to
+        empty_dem.data[0] = numpy.nan
+        empty_dem = empty_dem.rio.clip(catchment_geometry.catchment.geometry)
+        return empty_dem
+
+    def _create_dem_tile_with_pdal(self, tile_points: numpy.ndarray, window_size: int, idw_power: int, radius: float):
+        """ Create a DEM tile from a LiDAR tile over a specified region.
+        Currently PDAL writers.gdal is used and a temporary file is written out. In future another approach may be used.
+        """
+
+        if self._temp_dem_file.exists():
+            self._temp_dem_file.unlink()
+        pdal_pipeline_instructions = [
+            {"type":  "writers.gdal", "resolution": self.catchment_geometry.resolution,
+             "gdalopts": f"a_srs=EPSG:{self.catchment_geometry.crs['horizontal']}", "output_type": [self.DENSE_BINNING],
+             "filename": str(self._temp_dem_file),
+             "window_size": window_size, "power": idw_power, "radius": radius,
+             "origin_x": self.raster_origin[0], "origin_y": self.raster_origin[1],
+             "width": self.raster_size[0], "height": self.raster_size[1]}
+        ]
+
+        pdal_pipeline = pdal.Pipeline(json.dumps(pdal_pipeline_instructions), [tile_points])
+        pdal_pipeline.execute()
+
+        # assert the temp file name is used
+        metadata = json.loads(pdal_pipeline.get_metadata())
+        assert str(self._temp_dem_file) == metadata['metadata']['writers.gdal']['filename'][0], "The DEM tile has " + \
+            " been written out in an unexpected location. It has been witten out to " + \
+            f"{metadata['metadata']['writers.gdal']['filename'][0]} instead of {self._temp_dem_file}"
+
+    def add_tile(self, tile_points: numpy.ndarray, tile_extent: geopandas.GeoDataFrame, window_size: int,
+                 idw_power: int, radius: float, method: str = 'first'):
+        """ Create the DEM tile and then update the overall DEM with the tile.
+
+        Ensure the tile DEM CRS is set and also trim the tile DEM prior to adding. """
+
+        if len(tile_points) == 0:
+            if self.verbose:
+                print("Warning in DenseDem.add_tile the latest tile has no data and is being ignored.")
+            return
+
+        self._create_dem_tile_with_pdal(tile_points, window_size, idw_power, radius)
+
+        # load generated tile
+        with rioxarray.rioxarray.open_rasterio(self._temp_dem_file, masked=True) as tile:
+            tile.load()
+        tile.rio.set_crs(self.catchment_geometry.crs['horizontal'])
+
+        # ensure the tile is lined up with the whole dense DEM - i.e. that that raster origin values match
+        raster_origin = [tile.x.data.min() - self.catchment_geometry.resolution/2,
+                         tile.y.data.min() - self.catchment_geometry.resolution/2]
+        assert self.raster_origin[0] == raster_origin[0] and self.raster_origin[1] == raster_origin[1], "The " + \
+            f"generated tile is not aligned with the overall dense DEM. The DEM raster origin is {raster_origin} " + \
+            f"instead of {self.raster_origin}"
+
+        # trim to only include cells within catchment - and update the tile extents with this new tile
+        if self.drop_offshore_lidar:
+            tile = tile.rio.clip(self.catchment_geometry.land_and_foreshore.geometry)
+        else:
+            tile = tile.rio.clip(self.catchment_geometry.catchment.geometry)
+
+        self._dense_dem = rioxarray.merge.merge_arrays([self._dense_dem, tile], method=method)
+        self._update_extents(tile_extent)
+
+        # ensure the dem will be recalculated as another tile has been added
+        self._dem = None
+
+    def _update_extents(self, tile_extent: geopandas.GeoDataFrame):
+        """ Update the extents of all LiDAR tiles updated - if 'drop_offshore_lidar' is True ensure extents are
+        limited to the land and foreshore of the catchment. """
+
+        assert len(tile_extent) == 1, "The tile_extent is expected to be contained in one shape. Instead " + \
+            f"tile_extent: {tile_extent} is of length {len(tile_extent)}."
+
+        if tile_extent.geometry.area.sum() > 0:  # check polygon isn't empty
+            if self._extents is None:
+                self._extents = tile_extent
+            else:
+                self._extents = geopandas.GeoDataFrame(
+                    {'geometry': [shapely.ops.cascaded_union([self._extents.loc[0].geometry,
+                                                              tile_extent.loc[0].geometry])]},
+                    crs=self.catchment_geometry.crs['horizontal'])
+
+            if self.drop_offshore_lidar:
+                self._extents = geopandas.clip(self.catchment_geometry.land_and_foreshore, self._extents)
+            else:
+                self._extents = geopandas.clip(self.catchment_geometry.catchment, self._extents)
+
+    def filter_lidar_extents_for_holes(self):
+        """ Remove holes below a filter size within the extents if 'area_to_drop' is '> 0'. In the case that
+        'drop_offshore_lidar' is True ensure extents are limited to the land and foreshore of the catchment
+        once filtering is complete. """
+
+        if self._extents is None:
+            # No extents exist to be filtered to remove holes
+            return
+        elif self.area_to_drop is None:
+            # Try a basic repair if not valid, but otherwise do nothing
+            if not self._extents.loc[0].geometry.is_valid:
+                if self.verbose:
+                    print("Warning LiDAR extents are not valid, trying a basic repair with buffer(0)")
+                self._extents.loc[0].geometry = self._extents.loc[0].geometry.buffer(0)
+            return  # do nothing
+
+        polygon = self._extents.loc[0].geometry
+
+        if polygon.geometryType() == "Polygon":
+            polygon = shapely.geometry.Polygon(
+                polygon.exterior.coords, [interior for interior in polygon.interiors if
+                                          shapely.geometry.Polygon(interior).area > self.area_to_drop])
+            self._extents = geopandas.GeoDataFrame({'geometry': [polygon]},
+                                                   crs=self.catchment_geometry.crs['horizontal'])
+            self._extents = geopandas.clip(self.catchment_geometry.catchment, self._extents)
+        else:
+            if self.verbose:
+                print("Warning filtering holes in CatchmentLidar using filter_lidar_extents_for_holes is not yet "
+                      + f"supported for {polygon.geometryType()}")
+
+        # Check valid and otherwise try a basic repair
+        if not self._extents.loc[0].geometry.is_valid:
+            if self.verbose:
+                print("Warning LiDAR extents are not valid, trying a basic repair with buffer(0)")
+            self._extents.loc[0].geometry = self._extents.loc[0].geometry.buffer(0)
+
+        assert len(self._extents) == 1, "The length of the extents is expected to be one. Instead " + \
+            f"{self._extents} is length {len(self._extents)}"

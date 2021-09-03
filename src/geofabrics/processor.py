@@ -298,11 +298,11 @@ class GeoFabricsGenerator:
         lidar_dataset_info = self.get_lidar_file_list('open_topography', verbose)
 
         # setup dense DEM and catchment LiDAR objects
-        self.dense_dem = dem.DenseDem(catchment_geometry=self.catchment_geometry,
-                                      temp_raster_path=self.get_instruction_path('temp_raster'),
-                                      area_to_drop=self.get_instruction_general('filter_lidar_holes_area'),
-                                      drop_offshore_lidar=self.get_instruction_general('drop_offshore_lidar'),
-                                      verbose=verbose)
+        self.dense_dem = dem.DenseDemFromTiles(catchment_geometry=self.catchment_geometry,
+                                              temp_raster_path=self.get_instruction_path('temp_raster'),
+                                              area_to_drop=self.get_instruction_general('filter_lidar_holes_area'),
+                                              drop_offshore_lidar=self.get_instruction_general('drop_offshore_lidar'),
+                                              verbose=verbose)
         self.catchment_lidar = lidar.CatchmentLidar(
             self.catchment_geometry, source_crs=lidar_dataset_info['crs'],
             drop_offshore_lidar=self.get_instruction_general('drop_offshore_lidar'),
