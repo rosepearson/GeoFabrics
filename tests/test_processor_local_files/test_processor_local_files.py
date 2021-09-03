@@ -134,7 +134,7 @@ class ProcessorLocalFilesTest(unittest.TestCase):
         """ A basic comparison between the generated and benchmark DEM """
 
         # Run pipeline
-        runner = processor.GeoFabricsGenerator(self.instructions)
+        runner = processor.DemGenerator(self.instructions)
         runner.run()
 
         # load in benchmark DEM

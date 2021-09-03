@@ -40,7 +40,7 @@ class ProcessorRemoteTilesWestportTest(unittest.TestCase):
 
     @classmethod
     def setUpClass(cls):
-        """ Create a CatchmentGeometry object and then run the GeoFabricsGenerator processing chain to download remote
+        """ Create a CatchmentGeometry object and then run the DemGenerator processing chain to download remote
         files and produce a DEM prior to testing. """
 
         test_path = pathlib.Path().cwd() / pathlib.Path("tests/test_processor_remote_tiles_westport")
@@ -76,7 +76,7 @@ class ProcessorRemoteTilesWestportTest(unittest.TestCase):
         shutil.rmtree(catchment_dir)
 
         # Run pipeline - download files and generated DEM
-        runner = processor.GeoFabricsGenerator(cls.instructions)
+        runner = processor.DemGenerator(cls.instructions)
         runner.run()
 
     @classmethod

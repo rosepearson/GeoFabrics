@@ -33,7 +33,7 @@ def launch_processor(args):
 
     # run the pipeline
     start_time = time.time()
-    runner = processor.GeoFabricsGenerator(instructions)
+    runner = processor.DemGenerator(instructions)
     runner.run()
     end_time = time.time()
 

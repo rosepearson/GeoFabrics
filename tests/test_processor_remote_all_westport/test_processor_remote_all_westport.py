@@ -22,7 +22,7 @@ from src.geofabrics import processor
 
 
 class ProcessorRemoteAllWestportTest(unittest.TestCase):
-    """ A class to test the basic processor class GeoFabricsGenerator functionality for remote LiDAR tiles and remote
+    """ A class to test the basic processor class DemGenerator functionality for remote LiDAR tiles and remote
     Bathymetry contours and coast contours by downloading files from OpenTopography and the LINZ data portal within a
     small region and then generating a DEM. All files are deleted after checking the DEM.
 
@@ -43,7 +43,7 @@ class ProcessorRemoteAllWestportTest(unittest.TestCase):
 
     @classmethod
     def setUpClass(cls):
-        """ Create a CatchmentGeometry object and then run the GeoFabricsGenerator processing chain to download remote
+        """ Create a CatchmentGeometry object and then run the DemGenerator processing chain to download remote
         files and produce a DEM prior to testing. """
 
         test_path = pathlib.Path().cwd() / pathlib.Path("tests/test_processor_remote_all_westport")
@@ -84,7 +84,7 @@ class ProcessorRemoteAllWestportTest(unittest.TestCase):
         shutil.rmtree(catchment_dir)
 
         # Run pipeline - download files and generated DEM
-        runner = processor.GeoFabricsGenerator(cls.instructions)
+        runner = processor.DemGenerator(cls.instructions)
         runner.run()
 
     @classmethod
