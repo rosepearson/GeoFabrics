@@ -33,8 +33,16 @@ def launch_processor(args):
 
     # run the pipeline
     start_time = time.time()
-    runner = processor.DemGenerator(instructions)
-    runner.run()
+    if 'dense_dem' in instructions['instructions']['data_paths']:
+        # update a dense DEM with offshore values
+        print("Run processor.OffshoreDemGenerator")
+        runner = processor.OffshoreDemGenerator(instructions)
+        runner.run()
+    else:
+        # create a DEM from dense data (LiDAR, reference DEM) and bathymetry if specified
+        print("Run processor.DemGenerator")
+        runner = processor.DemGenerator(instructions)
+        runner.run()
     end_time = time.time()
 
     print(f"Execution time is {end_time - start_time}")
