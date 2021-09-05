@@ -31,7 +31,7 @@ class BaseProcessor(abc.ABC):
         """ Return the file path from the instruction file, or default if there is a default value and the local cache
         is specified. Raise an error if the key is not in the instructions. """
 
-        defaults = {'temp_raster': "temp_dense_dem.tif", 'result_dem': "generated_dem.nc",
+        defaults = {'temp_raster': "temp_tile_dem.tif", 'result_dem': "generated_dem.nc",
                     'dense_dem_extents': "dense_extents.geojson"}
 
         if key in self.instructions['instructions']['data_paths']:
@@ -46,7 +46,7 @@ class BaseProcessor(abc.ABC):
         """ Return True if the file path exists in the instruction file, or True if there is a default value and the
         local cache is specified. """
 
-        defaults = ['temp_raster', 'result_dem']
+        defaults = ['temp_raster', 'result_dem', 'dense_dem_extents']
 
         if key in self.instructions['instructions']['data_paths']:
             return True
