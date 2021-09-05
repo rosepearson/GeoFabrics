@@ -15,6 +15,7 @@ import typing
 import pathlib
 import geopandas
 import shapely
+import abc
 import scipy.interpolate
 from . import geometry
 
@@ -119,8 +120,8 @@ class ReferenceDem:
         return self._extents
 
 
-class DenseDem:
-    """ A class to manage the dense DEM in a catchment context.
+class DenseDem(abc.ABC):
+    """ An abstract class class to manage the dense DEM in a catchment context.
 
     The dense DEM is made up of a dense DEM that is loaded in, and an offshore DEM that is interpolated from bathymetry
     contours offshore and outside all LiDAR tiles.
@@ -163,6 +164,7 @@ class DenseDem:
             else:
                 # method='first' or 'last'; use method='first' as `DenseDemFromFiles._dense_dem` clipped to extents
                 self._dem = rioxarray.merge.merge_arrays([self._dense_dem, self._offshore_dem], method='first')
+
         # Ensure valid name and increasing dimension indexing for the dem
         self._dem = self._dem.rename(self.DENSE_BINNING)
         self._dem = self._dem.rio.interpolate_na()
@@ -184,7 +186,7 @@ class DenseDem:
         return dem
 
     def _sample_offshore_edge(self, resolution) -> numpy.ndarray:
-        """ Return the offshore edge cells to be used for offshore interpolation """
+        """ Return the pixel values of the offshore edge to be used for offshore interpolation """
 
         assert resolution >= self.catchment_geometry.resolution, "_sample_offshore_edge only supports downsampling" + \
             f" and not  up-samping. The requested sampling resolution of {resolution} must be equal to or larger than" + \
@@ -193,7 +195,7 @@ class DenseDem:
         offshore_dense_data_edge = self.catchment_geometry.offshore_dense_data_edge(self._extents)
         offshore_edge_dem = self._dense_dem.rio.clip(offshore_dense_data_edge.geometry)
 
-        # If the sampling resolution is larger than the catchment_geometry resolution resample the DEM
+        # If the sampling resolution is coaser than the catchment_geometry resolution resample the DEM
         if resolution > self.catchment_geometry.resolution:
             x = numpy.arange(offshore_edge_dem.x.min(), offshore_edge_dem.x.max() + resolution / 2, resolution)
             y = numpy.arange(offshore_edge_dem.y.min(), offshore_edge_dem.y.max() + resolution / 2, resolution)
@@ -220,6 +222,7 @@ class DenseDem:
         bathy_points = bathy_contours.sample_contours(self.catchment_geometry.resolution)
         offshore_points = numpy.concatenate([offshore_edge_points, bathy_points])
 
+        # Resample at a low8er resolution if too many offshore points
         if len(offshore_points) > self.CACHE_SIZE:
             reduced_resolution = self.catchment_geometry.resolution * len(offshore_points) / self.CACHE_SIZE
             print("Reducing the number of 'offshore_points' used to create the RBF function by increasing the " +
@@ -228,28 +231,27 @@ class DenseDem:
             bathy_points = bathy_contours.sample_contours(reduced_resolution)
             offshore_points = numpy.concatenate([offshore_edge_points, bathy_points])
 
-        # set up the interpolation function
+        # Set up the interpolation function
         if self.verbose:
             print("Creating offshore interpolant")
         rbf_function = scipy.interpolate.Rbf(offshore_points['X'], offshore_points['Y'], offshore_points['Z'],
                                              function='linear')
 
-        # setup the empty offshore area ready for interpolation
+        # Setup the empty offshore area ready for interpolation
         offshore_no_dense_data = self.catchment_geometry.offshore_no_dense_data(self._extents)
         self._offshore_dem = self._dense_dem.rio.clip(self.catchment_geometry.offshore.geometry)
         self._offshore_dem.data[0] = 0  # set all to zero then clip out dense region where we don't need to interpolate
         self._offshore_dem = self._offshore_dem.rio.clip(offshore_no_dense_data.geometry)
 
-        # Interpolate over offshore region outside LiDAR extents
         grid_x, grid_y = numpy.meshgrid(self._offshore_dem.x, self._offshore_dem.y)
         flat_z = self._offshore_dem.data[0].flatten()
         mask_z = ~numpy.isnan(flat_z)
 
-        # tile offshore area - this limits the maximum memory required at any one time
         flat_x_masked = grid_x.flatten()[mask_z]
         flat_y_masked = grid_y.flatten()[mask_z]
         flat_z_masked = flat_z[mask_z]
 
+        # Tile offshore area - this limits the maximum memory required at any one time
         number_offshore_tiles = math.ceil(len(flat_x_masked)/self.CACHE_SIZE)
         for i in range(number_offshore_tiles):
             if self.verbose:
@@ -262,7 +264,7 @@ class DenseDem:
         flat_z[mask_z] = flat_z_masked
         self._offshore_dem.data[0] = flat_z.reshape(self._offshore_dem.data[0].shape)
 
-        # ensure the DEM will be recalculated as the offshore has been interpolated
+        # Ensure the DEM will be recalculated to include the interpolated offshore region
         self._dem = None
 
 
@@ -274,11 +276,11 @@ class DenseDemFromFiles(DenseDem):
     def __init__(self, catchment_geometry: geometry.CatchmentGeometry,
                  dense_dem_path: typing.Union[str, pathlib.Path], extents_path: typing.Union[str, pathlib.Path],
                  verbose: bool = True):
-        """ Setup base DEM to add future tiles too """
+        """ Load in the extents and dense DEM. Ensure the dense DEM is clipped within the extents """
 
         extents = geopandas.read_file(pathlib.Path(extents_path))
 
-        # Read in the dense DEM raster - and free up file
+        # Read in the dense DEM raster - and free up file by performing a deep copy.
         with rioxarray.rioxarray.open_rasterio(pathlib.Path(dense_dem_path), masked=True) as dense_dem:
             dense_dem.load()
         dense_dem = dense_dem.copy(deep=True)  # Deep copy is required to ensure the opened file is properly unlocked
@@ -289,17 +291,18 @@ class DenseDemFromFiles(DenseDem):
         dense_dem.data[0] = numpy.nan
         dense_dem = rioxarray.merge.merge_arrays([dense_dem, dense_dem_inside_extents], method='first')
 
+        # Setup the DenseDem class
         super(DenseDemFromFiles, self).__init__(catchment_geometry=catchment_geometry, dense_dem=dense_dem,
                                                 extents=extents, verbose=verbose)
 
 
 class DenseDemFromTiles(DenseDem):
-    """ A class to manage the population of the DenseDem's dense_dem from LiDAR tiles, or a reference DEM.
+    """ A class to manage the population of the DenseDem's dense_dem from LiDAR tiles, and/or a reference DEM.
 
     The dense DEM is made up of tiles created from dense point data - Either LiDAR point clouds, or a reference DEM
 
     DenseDemFromTiles logic can be controlled by the constructor inputs:
-        * area_to_drop - If '> 0' this defines the size of any holdes in the LiDAR coverage to ignore.
+        * area_to_drop - If '> 0' this defines the size of any holes in the LiDAR coverage to ignore.
         * drop_offshore_lidar - If True only keep LiDAR values within the foreshore and land regions defined by
           the catchment_geometry. If False keep all LiDAR values.
     """
@@ -323,7 +326,7 @@ class DenseDemFromTiles(DenseDem):
                                                 extents=None, verbose=verbose)
 
     def _set_up(self, catchment_geometry):
-        """ Create the dense DEM to fill and define the raster size and origin """
+        """ Create the empty dense DEM to fill and define the raster size and origin """
 
         catchment_bounds = catchment_geometry.catchment.loc[0].geometry.bounds
         self.raster_origin = [catchment_bounds[0],
@@ -334,7 +337,7 @@ class DenseDemFromTiles(DenseDem):
                             int((catchment_bounds[3] -
                                  catchment_bounds[1]) / catchment_geometry.resolution)]
 
-        # create a dummy DEM for updated origin and size
+        # Create a dummy DEM for updated origin and size
         empty_points = numpy.zeros([1], dtype=[('X', numpy.float64), ('Y', numpy.float64), ('Z', numpy.float64)])
         pdal_pipeline_instructions = [
             {"type":  "writers.gdal", "resolution": catchment_geometry.resolution,
@@ -354,7 +357,7 @@ class DenseDemFromTiles(DenseDem):
             empty_dem.load()
             empty_dem.rio.set_crs(catchment_geometry.crs['horizontal'])
 
-        # check if the raster origin has been moved by PDAL writers.gdal
+        # Check if the raster origin has been moved by PDAL writers.gdal and update if it has
         raster_origin = [empty_dem.x.data.min() - catchment_geometry.resolution/2,
                          empty_dem.y.data.min() - catchment_geometry.resolution/2]
         if self.raster_origin != raster_origin:
@@ -362,7 +365,7 @@ class DenseDemFromTiles(DenseDem):
                   f"catchment geometry raster origin from {self.raster_origin} to {raster_origin}")
             self.raster_origin = raster_origin
 
-        # set empty DEM - all NaN - to add tiles to
+        # Ensure the DEM is empty - all NaN
         empty_dem.data[0] = numpy.nan
         empty_dem = empty_dem.rio.clip(catchment_geometry.catchment.geometry)
         return empty_dem
@@ -372,8 +375,11 @@ class DenseDemFromTiles(DenseDem):
         Currently PDAL writers.gdal is used and a temporary file is written out. In future another approach may be used.
         """
 
+        # Remove the previous temp DEM file
         if self._temp_dem_file.exists():
             self._temp_dem_file.unlink()
+
+        # Create the next tile using PDAL gdal.writers
         pdal_pipeline_instructions = [
             {"type":  "writers.gdal", "resolution": self.catchment_geometry.resolution,
              "gdalopts": f"a_srs=EPSG:{self.catchment_geometry.crs['horizontal']}", "output_type": [self.DENSE_BINNING],
@@ -386,7 +392,7 @@ class DenseDemFromTiles(DenseDem):
         pdal_pipeline = pdal.Pipeline(json.dumps(pdal_pipeline_instructions), [tile_points])
         pdal_pipeline.execute()
 
-        # assert the temp file name is used
+        # Assert PDAL wrote the DEm tile to the temp file name
         metadata = json.loads(pdal_pipeline.get_metadata())
         assert str(self._temp_dem_file) == metadata['metadata']['writers.gdal']['filename'][0], "The DEM tile has " + \
             " been written out in an unexpected location. It has been witten out to " + \
@@ -403,32 +409,35 @@ class DenseDemFromTiles(DenseDem):
                 print("Warning in DenseDem.add_tile the latest tile has no data and is being ignored.")
             return
 
+        # Use PDAL to create a DEM from the tile points
         self._create_dem_tile_with_pdal(tile_points, window_size, idw_power, radius)
 
-        # load generated tile
+        # Load generated tile
         with rioxarray.rioxarray.open_rasterio(self._temp_dem_file, masked=True) as tile:
             tile.load()
         tile.rio.set_crs(self.catchment_geometry.crs['horizontal'])
 
-        # ensure the tile is lined up with the whole dense DEM - i.e. that that raster origin values match
+        # Ensure the tile is lined up with the dense DEM - i.e. that that raster origin values match
         raster_origin = [tile.x.data.min() - self.catchment_geometry.resolution/2,
                          tile.y.data.min() - self.catchment_geometry.resolution/2]
         assert self.raster_origin[0] == raster_origin[0] and self.raster_origin[1] == raster_origin[1], "The " + \
             f"generated tile is not aligned with the overall dense DEM. The DEM raster origin is {raster_origin} " + \
             f"instead of {self.raster_origin}"
 
-        # update the tile extents with the new tile, then clip tile by extents (remove bleeding outside LiDAR area)
+        # Update the tile extents with the new tile, then clip tile by extents (remove bleeding outside LiDAR area)
         self._update_extents(tile_extent)
         tile = tile.rio.clip(self.extents.geometry)
 
+        # Add the tile to the dense DEM
         self._dense_dem = rioxarray.merge.merge_arrays([self._dense_dem, tile], method=method)
 
-        # ensure the dem will be recalculated as another tile has been added
+        # Ensure the dem will be recalculated as another tile has been added
         self._dem = None
 
     def _update_extents(self, tile_extent: geopandas.GeoDataFrame):
-        """ Update the extents of all LiDAR tiles updated - if 'drop_offshore_lidar' is True ensure extents are
-        limited to the land and foreshore of the catchment. """
+        """ Update the extents of all LiDAR tiles updated. If 'drop_offshore_lidar' is True ensure extents are
+        limited to the land and foreshore of the catchment. If 'area_to_drop' is True extend the extents to fill
+        any holes around the catchment boundary smaller than the specified 'area_to_drop'."""
 
         assert len(tile_extent) == 1, "The tile_extent is expected to be contained in one shape. Instead " + \
             f"tile_extent: {tile_extent} is of length {len(tile_extent)}."
@@ -442,7 +451,7 @@ class DenseDemFromTiles(DenseDem):
                                                               tile_extent.loc[0].geometry])]},
                     crs=self.catchment_geometry.crs['horizontal'])
 
-            # If 'area_to_drop' remove any gaps between the LiDAR and catchment edge smaller than the area_to_drop
+            # If 'area_to_drop' fill any holes between the extents and catchment edge smaller than the area_to_drop
             if self.area_to_drop is not None:
                 polygon = geopandas.overlay(self.catchment_geometry.catchment, self._extents, how="difference")
                 if len(polygon) > 0:
@@ -450,12 +459,14 @@ class DenseDemFromTiles(DenseDem):
                         "extents and the catchment polygons should have length 1."
                     polygon = polygon.loc[0].geometry
                     if polygon.geometryType() == "MultiPolygon":
+                        # Run through each polygon element checking if smaller than the 'area_to_drop' - add if so
                         polygon_list = [polygon_i for polygon_i in polygon if polygon_i.area < self.area_to_drop]
                         polygon_list.append(self._extents.loc[0].geometry)
                         self._extents = geopandas.GeoDataFrame(
                             {'geometry': [shapely.ops.cascaded_union(polygon_list)]},
                             crs=self.catchment_geometry.crs['horizontal'])
                     elif polygon.geometryType() == "Polygon" and polygon.area < self.area_to_drop:
+                        # Check if the polygon is smaller than the 'area_to_drop' - add if so
                         self._extents = geopandas.GeoDataFrame(
                             {'geometry': [shapely.ops.cascaded_union([self._extents.loc[0].geometry, polygon])]},
                             crs=self.catchment_geometry.crs['horizontal'])
@@ -483,11 +494,12 @@ class DenseDemFromTiles(DenseDem):
                 if self.verbose:
                     print("Warning LiDAR extents are not valid, trying a basic repair with buffer(0)")
                 self._extents.loc[0].geometry = self._extents.loc[0].geometry.buffer(0)
-            return  # do nothing
+            return
 
+        # Check through the extents geometry and remove any internal holes with an area less than the 'area_to_drop'
         polygon = self._extents.loc[0].geometry
 
-        # Remove any holes internal to the extents less than the area_to_drop
+        # Remove any holes internal to the extents that are less than the area_to_drop
         if polygon.geometryType() == "Polygon":
             polygon = shapely.geometry.Polygon(
                 polygon.exterior.coords, [interior for interior in polygon.interiors if

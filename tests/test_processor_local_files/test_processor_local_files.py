@@ -20,8 +20,8 @@ from src.geofabrics import processor
 
 
 class ProcessorLocalFilesTest(unittest.TestCase):
-    """ A class to test the basic DEM generation pipeline for a simple example with land, offshore, a reference DEM and
-    LiDAR using the data specified in the test1/instruction.json
+    """ Tests the basic DemGenerator processor class for a simple example with land, offshore, a reference DEM and
+    LiDAR using the data specified in the instruction.json
 
     Tests run include:
         1. test_result_dem  Check the generated DEM matches the benchmark DEM within a tolerance
@@ -36,18 +36,18 @@ class ProcessorLocalFilesTest(unittest.TestCase):
 
         test_path = pathlib.Path().cwd() / pathlib.Path("tests/test_processor_local_files")
 
-        # load in the test instructions
+        # Load in the test instructions
         instruction_file_path = test_path / "instruction.json"
         with open(instruction_file_path, 'r') as file_pointer:
             cls.instructions = json.load(file_pointer)
 
-        # remove any files from last test in the cache directory
+        # Remove any files from last test in the cache directory
         cls.cache_dir = test_path / "data"
         assert cls.cache_dir.exists(), "The data directory that should include the comparison benchmark dem file " + \
             "doesn't exist"
         cls.tearDownClass()
 
-        # generate catchment data
+        # Generate catchment data
         catchment_dir = cls.cache_dir / "catchment_boundary"
         x0 = 250
         y0 = -250
@@ -60,7 +60,7 @@ class ProcessorLocalFilesTest(unittest.TestCase):
         shutil.make_archive(base_name=catchment_dir, format='zip', root_dir=catchment_dir)
         shutil.rmtree(catchment_dir)
 
-        # generate land data
+        # Generate land data
         land_dir = cls.cache_dir / "land"
         x0 = 0
         y0 = 0
@@ -73,7 +73,7 @@ class ProcessorLocalFilesTest(unittest.TestCase):
         shutil.make_archive(base_name=land_dir, format='zip', root_dir=land_dir)
         shutil.rmtree(land_dir)
 
-        # generate bathymetry data
+        # Generate bathymetry data
         bathymetry_dir = cls.cache_dir / "bathymetry"
         x0 = 0
         x1 = 1500
@@ -89,7 +89,7 @@ class ProcessorLocalFilesTest(unittest.TestCase):
         shutil.make_archive(base_name=bathymetry_dir, format='zip', root_dir=bathymetry_dir)
         shutil.rmtree(bathymetry_dir)
 
-        # Create DEM
+        # Create a reference DEM
         dem_file = cls.cache_dir / "reference_dem.nc"
         dxy = 15
         grid_dem_x, grid_dem_y = numpy.meshgrid(numpy.arange(200, 1300, dxy), numpy.arange(-25, 800, dxy))
@@ -103,7 +103,7 @@ class ProcessorLocalFilesTest(unittest.TestCase):
         dem.name = 'z'
         dem.rio.to_raster(dem_file)
 
-        # create LiDAR
+        # Create LiDAR
         lidar_file = cls.cache_dir / "lidar.laz"
         dxy = 1
         grid_lidar_x, grid_lidar_y = numpy.meshgrid(numpy.arange(500, 1000, dxy), numpy.arange(-25, 475, dxy))
@@ -157,17 +157,17 @@ class ProcessorLocalFilesTest(unittest.TestCase):
         runner = processor.DemGenerator(self.instructions)
         runner.run()
 
-        # load in benchmark DEM
+        # Load in benchmark DEM
         with rioxarray.rioxarray.open_rasterio(self.instructions['instructions']['data_paths']['benchmark_dem'],
                                                masked=True) as benchmark_dem:
             benchmark_dem.load()
 
-        # load in result DEM
+        # Load in result DEM
         with rioxarray.rioxarray.open_rasterio(self.instructions['instructions']['data_paths']['result_dem'],
                                                masked=True) as saved_dem:
             saved_dem.load()
 
-        # compare DEMs - load from file as rioxarray.rioxarray.open_rasterio ignores index order
+        # Compare DEMs - load both from file as rioxarray.rioxarray.open_rasterio ignores index order
         diff_array = saved_dem.data-benchmark_dem.data
         print(f"DEM array diff is: {diff_array[diff_array != 0]}")
         numpy.testing.assert_array_almost_equal(saved_dem.data, benchmark_dem.data,

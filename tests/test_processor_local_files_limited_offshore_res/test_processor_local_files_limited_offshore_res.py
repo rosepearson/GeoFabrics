@@ -21,8 +21,8 @@ from src.geofabrics import processor
 
 
 class ProcessorLocalFilesTest(unittest.TestCase):
-    """ A class to test the basic DEM generation pipeline for a simple example with land, offshore bathymetry, and
-    LiDAR using the data  generated in the set-up routine and referenced in instruction.json
+    """ A class to test the basic DemGenerator processor class for a simple example with land, offshore bathymetry, and
+    LiDAR using the data generated in the set-up routine and referenced in the instruction.json
 
     The dem.DenseDem.CACHE_SIZE is exceded and the offshore sampled points are re-sampled at a lower resolution.
 
@@ -40,18 +40,18 @@ class ProcessorLocalFilesTest(unittest.TestCase):
 
         test_path = pathlib.Path().cwd() / pathlib.Path("tests/test_processor_local_files_limited_offshore_res")
 
-        # load in the test instructions
+        # Load in the test instructions
         instruction_file_path = test_path / "instruction.json"
         with open(instruction_file_path, 'r') as file_pointer:
             cls.instructions = json.load(file_pointer)
 
-        # remove any files from last test in the cache directory
+        # Remove any files from last test in the cache directory
         cls.cache_dir = test_path / "data"
         assert cls.cache_dir.exists(), "The data directory that should include the comparison benchmark dem file " + \
             "doesn't exist"
         cls.clean_data_folder()
 
-        # generate catchment data
+        # Generate catchment data
         catchment_dir = cls.cache_dir / "catchment_boundary"
         x0 = 0
         x1 = 3000
@@ -64,7 +64,7 @@ class ProcessorLocalFilesTest(unittest.TestCase):
         shutil.make_archive(base_name=catchment_dir, format='zip', root_dir=catchment_dir)
         shutil.rmtree(catchment_dir)
 
-        # generate land data - wider than catchment
+        # Generate land data - wider than catchment
         land_dir = cls.cache_dir / "land"
         x0 = -50
         x1 = 3050
@@ -77,7 +77,7 @@ class ProcessorLocalFilesTest(unittest.TestCase):
         shutil.make_archive(base_name=land_dir, format='zip', root_dir=land_dir)
         shutil.rmtree(land_dir)
 
-        # generate bathymetry data - wider than catchment
+        # Generate bathymetry data - wider than catchment
         bathymetry_dir = cls.cache_dir / "bathymetry"
         x0 = -50
         x1 = 3050
@@ -93,7 +93,7 @@ class ProcessorLocalFilesTest(unittest.TestCase):
         shutil.make_archive(base_name=bathymetry_dir, format='zip', root_dir=bathymetry_dir)
         shutil.rmtree(bathymetry_dir)
 
-        # create LiDAR - wider than catchment
+        # Create LiDAR - wider than catchment
         lidar_file = cls.cache_dir / "lidar.laz"
         x0 = -50
         x1 = 3050
@@ -148,41 +148,41 @@ class ProcessorLocalFilesTest(unittest.TestCase):
         runner = processor.DemGenerator(self.instructions)
         runner.run()
 
-        # load in benchmark DEM
+        # Load in benchmark DEM
         with rioxarray.rioxarray.open_rasterio(self.instructions['instructions']['data_paths']['benchmark_dem'],
                                                masked=True) as benchmark_dem:
             benchmark_dem.load()
 
-        # load in result DEM
+        # Load in result DEM
         with rioxarray.rioxarray.open_rasterio(self.instructions['instructions']['data_paths']['result_dem'],
                                                masked=True) as saved_dem:
             saved_dem.load()
 
-        # compare DEMs - load from file as rioxarray.rioxarray.open_rasterio ignores index order
+        # Compare DEMs - load from file as rioxarray.rioxarray.open_rasterio ignores index order
         diff_array = saved_dem.data-benchmark_dem.data
         print(f"DEM array diff is: {diff_array[diff_array != 0]}")
         numpy.testing.assert_array_equal(saved_dem.data, benchmark_dem.data,
                                          err_msg="The generated result_dem has different data from the benchmark_dem")
 
     @pytest.mark.skipif(sys.platform != 'linux', reason="Linux test - this is less strict")
-    def test_result_dem_test(self):
+    def test_result_dem_linux(self):
         """ A basic comparison between the generated and benchmark DEM """
 
         # Run pipeline
         runner = processor.DemGenerator(self.instructions)
         runner.run()
 
-        # load in benchmark DEM
+        # Load in benchmark DEM
         with rioxarray.rioxarray.open_rasterio(self.instructions['instructions']['data_paths']['benchmark_dem'],
                                                masked=True) as benchmark_dem:
             benchmark_dem.load()
 
-        # load in result DEM
+        # Load in result DEM
         with rioxarray.rioxarray.open_rasterio(self.instructions['instructions']['data_paths']['result_dem'],
                                                masked=True) as saved_dem:
             saved_dem.load()
 
-        # compare DEMs - load from file as rioxarray.rioxarray.open_rasterio ignores index order
+        # Compare DEMs - load both from file as rioxarray.rioxarray.open_rasterio ignores index order
         diff_array = saved_dem.data-benchmark_dem.data
         print(f"DEM array diff is: {diff_array[diff_array != 0]}")
         numpy.testing.assert_array_almost_equal(saved_dem.data, benchmark_dem.data,

@@ -17,7 +17,8 @@ from . import dem
 
 
 class BaseProcessor(abc.ABC):
-    """ An abstract class with general methods for accessing keys in instruction files, etc.
+    """ An abstract class with general methods for accessing elements in instruction files including populating default
+    values. Also contains functions for downloading remote data using geopais, and constructing data file lists.
     """
 
     def __init__(self, json_instructions: json):
@@ -261,8 +262,8 @@ class BaseProcessor(abc.ABC):
 
 
 class DemGenerator(BaseProcessor):
-    """ DemGenerator executes a pipeline from a the json_instructions file for creating a hydrologically conditioned
-    DEM from an instruction file.
+    """ DemGenerator executes a pipeline for creating a hydraulogically conditioned DEM from LiDAR and optionally a
+    reference DEM and/or bathymetry contours. The data and pipeline logic is defined in the json_instructions file.
 
     The `DemGenerator` class contains several important class members:
      * catchment_geometry - Defines all relevant regions in a catchment required in the generation of a DEM as polygons.
@@ -393,15 +394,14 @@ class DemGenerator(BaseProcessor):
 
 
 class OffshoreDemGenerator(BaseProcessor):
-    """ OffshoreDemGenerator executes a pipeline from an instruction file for loading in a Dense DEM and extents before
-    interpolating offshore DEM values.
-    The pipeline is controlled by the contents of the json_instructions file.
+    """ OffshoreDemGenerator executes a pipeline for loading in a Dense DEM and extents before interpolating offshore
+    DEM values. The data and pipeline logic is defined in the json_instructions file.
 
     The `DemGenerator` class contains several important class members:
      * catchment_geometry - Defines all relevant regions in a catchment required in the generation of a DEM as polygons.
      * dense_dem - Defines the hydrologically conditioned DEM as a combination of tiles from LiDAR and interpolated from
        bathymetry.
-     * bathy_contours - This optional object defines the bathymetry vectors used by the dense_dem to define the DEM
+     * bathy_contours - This object defines the bathymetry vectors used by the dense_dem to define the DEM
        offshore.
 
     See the README.md for usage examples or GeoFabrics/tests/ for examples of usage and an instruction file
