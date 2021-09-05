@@ -283,7 +283,6 @@ class DemGenerator(BaseProcessor):
         self.dense_dem = None
         self.reference_dem = None
         self.bathy_contours = None
-        self.result_dem = None
 
     def run(self):
         """ This method executes the geofabrics generation pipeline to produce geofabric derivatives.
@@ -413,7 +412,6 @@ class OffshoreDemGenerator(BaseProcessor):
 
         self.dense_dem = None
         self.bathy_contours = None
-        self.result_dem = None
 
     def run(self):
         """ This method executes the geofabrics generation pipeline to produce geofabric derivatives.
