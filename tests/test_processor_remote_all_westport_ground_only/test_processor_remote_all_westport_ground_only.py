@@ -192,7 +192,7 @@ class ProcessorRemoteAllWestportTest(unittest.TestCase):
         print(f"DEM array diff is: {diff_array[diff_array != 0]}")
 
         threshold = 10e-2
-        allowable_number_above = 1
+        allowable_number_above = 3
         self.assertTrue(len(diff_array[numpy.abs(diff_array) > threshold]) <= allowable_number_above, "Some DEM values "
                         + f"differ by more than {threshold} on Linux test run: " +
                         f"{diff_array[numpy.abs(diff_array) > threshold]}")
