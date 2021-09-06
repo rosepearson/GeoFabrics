@@ -106,8 +106,9 @@ class ProcessorRemoteTilesWestportTest(unittest.TestCase):
 
         # check the right dataset is downloaded - self.DATASET
         self.assertEqual(len(list(self.cache_dir.glob('*/**'))), 2,  # The extents.json file as well
-                         f"There should only be one dataset named {self.DATASET} instead there are " +
-                         f"{len(list(self.cache_dir.glob('*/**')))} list {list(self.cache_dir.glob('*/**'))}")
+                         f"There should only be one dataset named {self.DATASET} as well as the generated " +
+                         f"extents.geojson instead there are {len(list(self.cache_dir.glob('*/**')))} list " +
+                         f"{list(self.cache_dir.glob('*/**'))}")
 
         self.assertEqual(len([file for file in self.cache_dir.iterdir() if file.is_dir() and file == dataset_dir]), 1,
                          f"Only the {self.DATASET} directory should have been downloaded. Instead we have: " +
