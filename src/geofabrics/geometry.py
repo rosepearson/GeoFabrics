@@ -232,7 +232,7 @@ class BathymetryContours:
         if (self._contour.geometry.type == 'GeometryCollection').any():
             geometry_list = []
             for geometry_row in self._contour.geometry:
-                if geometry_row.geometryType() == 'LineString' or geometry_row.geometryType() == 'MultiLineString':
+                if geometry_row.geometryType() in {'LineString', 'MultiLineString'}:
                     geometry_list.append(geometry_row)
                 elif geometry_row.geometryType() == 'GeometryCollection':
                     geometry_list.append(
