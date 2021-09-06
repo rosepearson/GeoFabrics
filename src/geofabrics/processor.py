@@ -262,7 +262,7 @@ class BaseProcessor(abc.ABC):
 
 
 class DemGenerator(BaseProcessor):
-    """ DemGenerator executes a pipeline for creating a hydraulogically conditioned DEM from LiDAR and optionally a
+    """ DemGenerator executes a pipeline for creating a hydrologically conditioned DEM from LiDAR and optionally a
     reference DEM and/or bathymetry contours. The data and pipeline logic is defined in the json_instructions file.
 
     The `DemGenerator` class contains several important class members:
