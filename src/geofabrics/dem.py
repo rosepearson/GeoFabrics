@@ -508,13 +508,15 @@ class DenseDemFromTiles(DenseDem):
                                                    crs=self.catchment_geometry.crs['horizontal'])
             self._extents = geopandas.clip(self.catchment_geometry.catchment, self._extents)
         elif polygon.geometryType() == "MultiPolygon":
+            polygons = []
             for polygon_i in polygon:
-                polygon = shapely.geometry.Polygon(
-                    polygon.exterior.coords, [interior for interior in polygon.interiors if
-                                              shapely.geometry.Polygon(interior).area > self.area_to_drop])
-                self._extents = geopandas.GeoDataFrame({'geometry': [polygon]},
-                                                       crs=self.catchment_geometry.crs['horizontal'])
-                self._extents = geopandas.clip(self.catchment_geometry.catchment, self._extents)
+                polygons.append(shapely.geometry.Polygon(
+                    polygon_i.exterior.coords, [interior for interior in polygon_i.interiors if
+                                                shapely.geometry.Polygon(interior).area > self.area_to_drop]))
+            polygon = shapely.geometry.MultiPolygon(polygons)
+            self._extents = geopandas.GeoDataFrame({'geometry': [polygon]},
+                                                   crs=self.catchment_geometry.crs['horizontal'])
+            self._extents = geopandas.clip(self.catchment_geometry.catchment, self._extents)
         else:
             if self.verbose:
                 print("Warning filtering holes in CatchmentLidar using filter_lidar_extents_for_holes is not yet "
