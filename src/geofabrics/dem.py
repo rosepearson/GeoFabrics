@@ -465,11 +465,12 @@ class DenseDemFromTiles(DenseDem):
                         self._extents = geopandas.GeoDataFrame(
                             {'geometry': [shapely.ops.cascaded_union(polygon_list)]},
                             crs=self.catchment_geometry.crs['horizontal'])
-                    elif polygon.geometryType() == "Polygon" and polygon.area < self.area_to_drop:
-                        # Check if the polygon is smaller than the 'area_to_drop' - add if so
-                        self._extents = geopandas.GeoDataFrame(
-                            {'geometry': [shapely.ops.cascaded_union([self._extents.loc[0].geometry, polygon])]},
-                            crs=self.catchment_geometry.crs['horizontal'])
+                    elif polygon.geometryType() == "Polygon":
+                        if polygon.area < self.area_to_drop:
+                            # Check if the polygon is smaller than the 'area_to_drop' - add if so
+                            self._extents = geopandas.GeoDataFrame(
+                                {'geometry': [shapely.ops.cascaded_union([self._extents.loc[0].geometry, polygon])]},
+                                crs=self.catchment_geometry.crs['horizontal'])
                     else:
                         if self.verbose:
                             print("Warning filtering holes in DenseDem using _update_extents is not yet "
