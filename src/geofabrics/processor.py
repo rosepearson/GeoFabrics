@@ -291,7 +291,8 @@ class DemGenerator(BaseProcessor):
 
         Note it currently only considers one LiDAR dataset. See 'get_lidar_file_list' for where to change this. """
 
-        area_threshold = 10.0/100  # 10%
+        # Only include data in addition to LiDAR if the area_threshold is not covered
+        area_threshold = 10.0/100  # Used to decide if a background DEM or bathymetry should be included
 
         # create the catchment geometry object
         catchment_dirs = self.get_instruction_path('catchment_boundary')
@@ -419,7 +420,8 @@ class OffshoreDemGenerator(BaseProcessor):
 
         Note it currently only considers one LiDAR dataset. See 'get_lidar_file_list' for where to change this. """
 
-        area_threshold = 10.0/100  # 10%
+        # Only include data in addition to LiDAR if the area_threshold is not covered
+        area_threshold = 10.0/100  # Used to decide if bathymetry should be included
 
         # create the catchment geometry object
         catchment_dirs = self.get_instruction_path('catchment_boundary')
