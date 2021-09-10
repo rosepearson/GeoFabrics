@@ -17,6 +17,7 @@
 			"bathymetry_contours": ["tests/test_processor_local_files/data/bathymetry.zip"],
 			"temp_raster": "tests/test_processor_local_files/data/temp_dense_dem.tif",
 			"result_dem": "tests/test_processor_local_files/data/test_dem.nc",
+			"dense_dem_extents": "tests/test_processor_local_files/data/extents.geojson",
 			"benchmark_dem": "tests/test_processor_local_files/data/benchmark_dem.nc"
 		},
 		"general": {

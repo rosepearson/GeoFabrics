@@ -15,6 +15,7 @@
 			"land": "tests/test_processor_remote_tiles_westport/data/catchment.zip",
 			"temp_raster": "tests/test_processor_remote_tiles_westport/data/temp_dense_dem.tif",
 			"result_dem": "tests/test_processor_remote_tiles_westport/data/test_dem.nc",
+			"dense_dem_extents": "tests/test_processor_remote_tiles_westport/data/extents.geojson",
 			"benchmark_dem": "tests/test_processor_remote_tiles_westport/data/benchmark_dem.nc"
 		},
 		"apis": {

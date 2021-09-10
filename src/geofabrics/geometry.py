@@ -208,13 +208,8 @@ class BathymetryContours:
         self._contour = geopandas.read_file(contour_file)
         self.catchment_geometry = catchment_geometry
         self.z_label = z_label
-        self._points_label = 'points'
 
         self._extents = None
-
-        self._x = None
-        self._y = None
-        self._z = None
 
         self._set_up(exclusion_extent)
 
@@ -229,50 +224,44 @@ class BathymetryContours:
         else:
             self._extent = self.catchment_geometry.offshore
 
+        # Keep only contours in the 'extents' i.e. inside the catchment and outside any exclusion_extent
         self._contour = geopandas.clip(self._contour, self._extent)
         self._contour = self._contour.reset_index(drop=True)
 
-        resolution = self.catchment_geometry.resolution
-        assert self._points_label not in self._contour.columns, "The bathymetry data already has a points column that" \
-            + " will be overridden"
-        self._contour[self._points_label] = self._contour.geometry.apply(lambda row: shapely.geometry.MultiPoint(
+        # Convert any 'GeometryCollection' objects to 'MultiLineString' objects - dropping any points
+        if (self._contour.geometry.type == 'GeometryCollection').any():
+            geometry_list = []
+            for geometry_row in self._contour.geometry:
+                if geometry_row.geometryType() in {'LineString', 'MultiLineString'}:
+                    geometry_list.append(geometry_row)
+                elif geometry_row.geometryType() == 'GeometryCollection':
+                    geometry_list.append(
+                        shapely.geometry.MultiLineString([geometry_element for geometry_element in geometry_row if
+                                                          geometry_element.geometryType() == 'LineString']))
+            self._contour.set_geometry(geometry_list, inplace=True)
+
+    def sample_contours(self, resolution: float) -> numpy.ndarray:
+        """ Sample the contours at the specified resolution. """
+
+        assert resolution > 0, f"The sampling resolution must be greater than 0. Instead, it is {resolution}."
+
+        points_df = self._contour.geometry.apply(lambda row: shapely.geometry.MultiPoint(
             [row.interpolate(i * resolution) for i in range(int(numpy.ceil(row.length/resolution)))]))
 
-    @property
-    def points(self):
-        """ Return the sampled points column with points along each contour """
+        points = numpy.empty([points_df.apply(lambda row: len(row)).sum()],
+                             dtype=[('X', numpy.float64), ('Y', numpy.float64), ('Z', numpy.float64)])
 
-        return self._contour[self._points_label]
+        # Extract the x, y and z values from the Shapely MultiPoints and possibly a depth column
+        points['X'] = numpy.concatenate(points_df.apply(lambda row: [row[i].x for i in range(len(row))]).to_list())
+        points['Y'] = numpy.concatenate(points_df.apply(lambda row: [row[i].y for i in range(len(row))]).to_list())
+        if self.z_label is None:
+            points['Z'] = numpy.concatenate(points_df.apply(lambda row:
+                                                            [row[i].z for i in range(len(row))]).to_list()) * -1
+        else:
+            points['Z'] = numpy.concatenate([numpy.ones(len(points_df.loc[i])) * self._contour[self.z_label].loc[i]
+                                             for i in range(len(points_df))]) * -1
 
-    @property
-    def x(self):
-        """ The sampled contour x values """
-        if self._x is None:
-            self._x = numpy.concatenate(self.points.apply(lambda row: [row[i].x for i in range(len(row))]).to_list())
-
-        return self._x
-
-    @property
-    def y(self):
-        """ The sampled contour y values """
-        if self._y is None:
-            self._y = numpy.concatenate(self.points.apply(lambda row: [row[i].y for i in range(len(row))]).to_list())
-
-        return self._y
-
-    @property
-    def z(self):
-        """ The sampled contour z values """
-        if self._z is None:
-            # map depth to elevation
-            if self.z_label is None:
-                self._z = numpy.concatenate(self.points.apply(
-                    lambda row: [row[i].z for i in range(len(row))]).to_list()) * -1
-            else:
-                self._z = numpy.concatenate(self._contour.apply(lambda row: (
-                    row[self.z_label] * numpy.ones(len(row[self._points_label]))), axis=1).to_list()) * -1
-
-        return self._z
+        return points
 
 
 class BathymetryPoints:

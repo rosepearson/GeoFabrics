@@ -39,7 +39,7 @@ class ProcessorRemoteTilesWellingtonTest(unittest.TestCase):
 
     @classmethod
     def setUpClass(cls):
-        """ Create a CatchmentGeometry object and then run the GeoFabricsGenerator processing chain to download remote
+        """ Create a CatchmentGeometry object and then run the DemGenerator processing chain to download remote
         files and produce a DEM prior to testing. """
 
         test_path = pathlib.Path().cwd() / pathlib.Path("tests/test_processor_remote_tiles_wellington")
@@ -71,7 +71,7 @@ class ProcessorRemoteTilesWellingtonTest(unittest.TestCase):
         shutil.rmtree(catchment_dir)
 
         # Run pipeline - download files and generated DEM
-        runner = processor.GeoFabricsGenerator(cls.instructions)
+        runner = processor.DemGenerator(cls.instructions)
         runner.run()
 
     @classmethod
@@ -100,7 +100,7 @@ class ProcessorRemoteTilesWellingtonTest(unittest.TestCase):
         dataset_dir = self.cache_dir / self.DATASET
 
         # check the right dataset is downloaded - self.DATASET
-        self.assertEqual(len(list(self.cache_dir.glob('*/**'))), 1,
+        self.assertEqual(len(list(self.cache_dir.glob('*/**'))), 2,  # The extents.json file as well
                          f"There should only be one dataset named {self.DATASET} instead there are " +
                          f"{len(list(self.cache_dir.glob('*/**')))} list {list(self.cache_dir.glob('*/**'))}")
 

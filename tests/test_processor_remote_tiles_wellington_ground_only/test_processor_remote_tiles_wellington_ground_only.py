@@ -42,7 +42,7 @@ class ProcessorRemoteTilesWellingtonTest(unittest.TestCase):
 
     @classmethod
     def setUpClass(cls):
-        """ Create a CatchmentGeometry object and then run the GeoFabricsGenerator processing chain to download remote
+        """ Create a CatchmentGeometry object and then run the DemGenerator processing chain to download remote
         files and produce a DEM prior to testing. """
 
         test_path = pathlib.Path().cwd() / pathlib.Path("tests/test_processor_remote_tiles_wellington_ground_only")
@@ -74,7 +74,7 @@ class ProcessorRemoteTilesWellingtonTest(unittest.TestCase):
         shutil.rmtree(catchment_dir)
 
         # Run pipeline - download files and generated DEM
-        runner = processor.GeoFabricsGenerator(cls.instructions)
+        runner = processor.DemGenerator(cls.instructions)
         runner.run()
 
     @classmethod
@@ -103,7 +103,7 @@ class ProcessorRemoteTilesWellingtonTest(unittest.TestCase):
         dataset_dir = self.cache_dir / self.DATASET
 
         # check the right dataset is downloaded - self.DATASET
-        self.assertEqual(len(list(self.cache_dir.glob('*/**'))), 1,
+        self.assertEqual(len(list(self.cache_dir.glob('*/**'))), 2,  # The extents.json file as well
                          f"There should only be one dataset named {self.DATASET} instead there are " +
                          f"{len(list(self.cache_dir.glob('*/**')))} list {list(self.cache_dir.glob('*/**'))}")
 
@@ -116,7 +116,7 @@ class ProcessorRemoteTilesWellingtonTest(unittest.TestCase):
 
         dataset_dir = self.cache_dir / self.DATASET
         downloaded_files = [dataset_dir / file for file in self.FILE_SIZES.keys()]
-        print(downloaded_files)
+
         # check files are correct
         self.assertEqual(len(list(dataset_dir.glob('*'))), len(downloaded_files), "There should have been " +
                          f"{len(downloaded_files)} files downloaded into the {self.DATASET} directory, instead there " +
@@ -130,7 +130,7 @@ class ProcessorRemoteTilesWellingtonTest(unittest.TestCase):
 
         dataset_dir = self.cache_dir / self.DATASET
         downloaded_files = [dataset_dir / file for file in self.FILE_SIZES.keys()]
-        print(downloaded_file.stat().st_size for downloaded_file in downloaded_files)
+
         # check sizes are correct
         self.assertTrue(numpy.all([downloaded_file.stat().st_size == self.FILE_SIZES[downloaded_file.name] for
                                    downloaded_file in downloaded_files]), "There is a miss-match between the size" +

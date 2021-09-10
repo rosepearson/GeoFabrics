@@ -15,13 +15,14 @@ import numpy
 import shapely
 import geopandas
 import pdal
+import copy
 
 from src.geofabrics import processor
 
 
 class ProcessorLocalFilesTest(unittest.TestCase):
-    """ Tests the basic DemGenerator processor class for a simple example with land, offshore, a reference DEM and
-    LiDAR using the data specified in the instruction.json
+    """ A class to test the basic DemGenerator processor class for a simple example with land, offshore, a reference DEM and
+    LiDAR using the data specified in the test1/instruction.json
 
     Tests run include:
         1. test_result_dem  Check the generated DEM matches the benchmark DEM within a tolerance
@@ -34,7 +35,7 @@ class ProcessorLocalFilesTest(unittest.TestCase):
         """ Create a cache directory and CatchmentGeometry object for use in the tests and also download the files used
         in the tests. """
 
-        test_path = pathlib.Path().cwd() / pathlib.Path("tests/test_processor_local_files")
+        test_path = pathlib.Path().cwd() / pathlib.Path("tests/test_processor_local_files_offshore_after")
 
         # Load in the test instructions
         instruction_file_path = test_path / "instruction.json"
@@ -45,7 +46,7 @@ class ProcessorLocalFilesTest(unittest.TestCase):
         cls.cache_dir = test_path / "data"
         assert cls.cache_dir.exists(), "The data directory that should include the comparison benchmark dem file " + \
             "doesn't exist"
-        cls.tearDownClass()
+        cls.clean_data_folder()
 
         # Generate catchment data
         catchment_dir = cls.cache_dir / "catchment_boundary"
@@ -153,8 +154,24 @@ class ProcessorLocalFilesTest(unittest.TestCase):
     def test_result_dem(self):
         """ A basic comparison between the generated and benchmark DEM """
 
-        # Run pipeline
-        runner = processor.DemGenerator(self.instructions)
+        # Run dense DEM generation pipeline
+        dense_instructions = copy.deepcopy(self.instructions)
+        dense_instructions['instructions']['data_paths'].pop('bathymetry_contours')
+        dense_instructions['instructions']['data_paths'].pop('final_result_dem')
+        dense_instructions['instructions']['data_paths'].pop('benchmark_dem')
+        runner = processor.DemGenerator(dense_instructions)
+        runner.run()
+
+        # Run offshore DEM generation pipeline
+        self.instructions['instructions']['data_paths']['dense_dem'] = \
+            self.instructions['instructions']['data_paths']['result_dem']
+        self.instructions['instructions']['data_paths']['result_dem'] = \
+            self.instructions['instructions']['data_paths']['final_result_dem']
+        self.instructions['instructions']['data_paths'].pop('lidars')
+        self.instructions['instructions']['data_paths'].pop('reference_dems')
+        self.instructions['instructions']['data_paths'].pop('temp_raster')
+        self.instructions['instructions']['data_paths'].pop('final_result_dem')
+        runner = processor.OffshoreDemGenerator(self.instructions)
         runner.run()
 
         # Load in benchmark DEM

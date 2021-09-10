@@ -1,0 +1,29 @@
+{"instructions": 
+	{
+		"output": {
+			"crs": {
+				"horizontal": 2193,
+				"vertical": 7839
+			},
+			"grid_params": {
+				"resolution": 1
+			}
+		},
+		"data_paths": {
+			"catchment_boundary": "tests/test_processor_local_files_limited_offshore_res/data/catchment_boundary.zip",
+			"land": "tests/test_processor_local_files_limited_offshore_res/data/land.zip",
+			"lidars": ["tests/test_processor_local_files_limited_offshore_res/data/lidar.laz"],
+			"bathymetry_contours": ["tests/test_processor_local_files_limited_offshore_res/data/bathymetry.zip"],
+			"temp_raster": "tests/test_processor_local_files_limited_offshore_res/data/temp_dense_dem.tif",
+			"result_dem": "tests/test_processor_local_files_limited_offshore_res/data/test_dem.nc",
+			"dense_dem_extents": "tests/test_processor_local_files_limited_offshore_res/data/extents.geojson",
+			"benchmark_dem": "tests/test_processor_local_files_limited_offshore_res/data/benchmark_dem.nc"
+		},
+		"general": {
+			"set_dem_shoreline": true,
+			"drop_offshore_lidar": true,
+			"keep_only_ground_lidar": true,
+			"filter_lidar_holes_area": 1
+		}
+	}
+}
