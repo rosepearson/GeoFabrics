@@ -239,8 +239,8 @@ class BaseProcessor(abc.ABC):
                 "'file_paths' in the instruction file if you are going to use an API - like 'open_topography'"
 
             # download from OpenTopography - then get the local file path
-            self.lidar_fetcher = geoapis.lidar.OpenTopography(self.catchment_geometry.catchment,
-                                                              self.get_instruction_path('local_cache'),
+            self.lidar_fetcher = geoapis.lidar.OpenTopography(cache_path=self.get_instruction_path('local_cache'),
+                                                              search_polygon=self.catchment_geometry.catchment,
                                                               verbose=self.verbose)
             self.lidar_fetcher.run()
             dataset_prefix = self.lidar_fetcher.dataset_prefixes[lidar_dataset_index]
