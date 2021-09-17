@@ -8,3 +8,4 @@ DESCRIPTION OF PR:
  - [ ] Update documentation
    - [ ] Doc strings
    - [ ] Wiki 
+  - [ ] Update package version (if needed) 
