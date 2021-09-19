@@ -6,7 +6,7 @@
 
 ## Introduction
 
-The GeoFabrics and associated sub-packages include routines and classes for combining point (i.e. LiDAR), vector (i.e. catchment of interest, infrastructure) and raster (i.e. reference DEM) to generate a hydrologically conditioned raster. 
+The `geofabrics` package includes routines and classes for combining point (i.e. LiDAR), vector (i.e. catchment of interest, infrastructure), and raster (i.e. reference DEM) to generate a hydrologically conditioned raster. 
 
 ### General workflow
 
