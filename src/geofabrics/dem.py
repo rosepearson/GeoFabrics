@@ -17,6 +17,7 @@ import geopandas
 import shapely
 import abc
 import scipy.interpolate
+import scipy.spatial
 from . import geometry
 
 
@@ -222,7 +223,7 @@ class DenseDem(abc.ABC):
         bathy_points = bathy_contours.sample_contours(self.catchment_geometry.resolution)
         offshore_points = numpy.concatenate([offshore_edge_points, bathy_points])
 
-        # Resample at a low8er resolution if too many offshore points
+        # Resample at a lower resolution if too many offshore points
         if len(offshore_points) > self.CACHE_SIZE:
             reduced_resolution = self.catchment_geometry.resolution * len(offshore_points) / self.CACHE_SIZE
             print("Reducing the number of 'offshore_points' used to create the RBF function by increasing the " +
@@ -398,8 +399,36 @@ class DenseDemFromTiles(DenseDem):
             " been written out in an unexpected location. It has been witten out to " + \
             f"{metadata['metadata']['writers.gdal']['filename'][0]} instead of {self._temp_dem_file}"
 
-    def add_tile(self, tile_points: numpy.ndarray, tile_extent: geopandas.GeoDataFrame, window_size: int,
-                 idw_power: int, radius: float, method: str = 'first'):
+    def _point_cloud_to_raster_idw(self, point_cloud: numpy.ndarray, xy_out, power: int, search_radius: float,
+                                   smoothing: float = 0, eps: float = 0, leaf_size = 10):
+        """ Create a DEM tile from a LiDAR tile over a specified region.
+        Currently PDAL writers.gdal is used and a temporary file is written out. In future another approach may be used.
+        """
+        xy_in = numpy.empty((len(point_cloud), 2))
+        xy_in[:, 0] = point_cloud['X']
+        xy_in[:, 1] = point_cloud['Y']
+
+        tree = scipy.spatial.KDTree(xy_in, leafsize=leaf_size)  # build the tree
+        tree_index_list = tree.query_ball_point(xy_out, r=search_radius, eps=eps)  # , eps=0.2)
+        z_out = numpy.zeros(len(xy_out))
+
+        for i, (near_indicies, point) in enumerate(zip(tree_index_list, xy_out)):
+
+            if len(near_indicies) == 0:  # Set NaN if no values in search region
+                z_out[i] = numpy.nan
+            else:
+                distance_vectors = point - tree.data[near_indicies]
+                smoothed_distances = numpy.sqrt(((distance_vectors**2).sum(axis=1)+smoothing**2))
+                if smoothed_distances.min() == 0:  # incase the of an exact match
+                    z_out[i] = point_cloud['Z'][tree.query(point, k=1)[1]]
+                else:
+                    z_out[i] = (point_cloud['Z'][near_indicies] / (smoothed_distances**power)).sum(axis=0) \
+                        / (1 / (smoothed_distances**power)).sum(axis=0)
+
+        return z_out
+
+    def add_tile_using_pdal(self, tile_points: numpy.ndarray, tile_extent: geopandas.GeoDataFrame, window_size: int,
+                            idw_power: int, radius: float, method: str = 'first'):
         """ Create the DEM tile and then update the overall DEM with the tile.
 
         Ensure the tile DEM CRS is set and also trim the tile DEM prior to adding. """
@@ -427,6 +456,44 @@ class DenseDemFromTiles(DenseDem):
         # Update the tile extents with the new tile, then clip tile by extents (remove bleeding outside LiDAR area)
         self._update_extents(tile_extent)
         tile = tile.rio.clip(self.extents.geometry)
+
+        # Add the tile to the dense DEM
+        self._dense_dem = rioxarray.merge.merge_arrays([self._dense_dem, tile], method=method)
+
+        # Ensure the dem will be recalculated as another tile has been added
+        self._dem = None
+
+    def add_tile(self, tile_points: numpy.ndarray, tile_extent: geopandas.GeoDataFrame, window_size: int,
+                        idw_power: int, radius: float, method: str = 'first'):
+        """ Create the DEM tile and then update the overall DEM with the tile. Only perform IDW within the tile
+        extents. """
+
+        if len(tile_points) == 0:
+            if self.verbose:
+                print("Warning in DenseDem.add_tile the latest tile has no data and is being ignored.")
+            return
+
+        # Update the tile extents with the new tile, then clip tile by extents (remove bleeding outside LiDAR area)
+        self._update_extents(tile_extent)
+
+        # Get the indicies overwhich to perform IDW
+        tile = self._dense_dem.rio.clip(tile_extent.geometry)
+        tile.data[0] = 0  # set all to zero then clip outside tile again - setting it to NaN
+        tile = tile.rio.clip(tile_extent.geometry)
+
+        grid_x, grid_y = numpy.meshgrid(tile.x, tile.y)
+        flat_z = tile.data[0].flatten()
+        mask_z = ~numpy.isnan(flat_z)
+
+        xy_out = numpy.empty((mask_z.sum(), 2))
+        xy_out[:, 0] = grid_x.flatten()[mask_z]
+        xy_out[:, 1] = grid_y.flatten()[mask_z]
+
+        # Perform IDW over the dense DEM within the extents of this point cloud tile
+        z_idw = self._point_cloud_to_raster_idw(tile_points, xy_out, idw_power, radius,
+                                                smoothing=0, eps=0, leaf_size=10)
+        flat_z[mask_z] = z_idw
+        tile.data[0] = flat_z.reshape(grid_x.shape)
 
         # Add the tile to the dense DEM
         self._dense_dem = rioxarray.merge.merge_arrays([self._dense_dem, tile], method=method)
