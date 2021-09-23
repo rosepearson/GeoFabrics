@@ -155,13 +155,13 @@ class ProcessorLocalFilesTest(unittest.TestCase):
 
         # Load in result DEM
         with rioxarray.rioxarray.open_rasterio(self.instructions['instructions']['data_paths']['result_dem'],
-                                               masked=True) as saved_dem:
-            saved_dem.load()
+                                               masked=True) as test_dem:
+            test_dem.load()
 
         # Compare DEMs - load from file as rioxarray.rioxarray.open_rasterio ignores index order
-        diff_array = saved_dem.data-benchmark_dem.data
+        diff_array = test_dem.data-benchmark_dem.data
         print(f"DEM array diff is: {diff_array[diff_array != 0]}")
-        numpy.testing.assert_array_equal(saved_dem.data, benchmark_dem.data,
+        numpy.testing.assert_array_equal(test_dem.data, benchmark_dem.data,
                                          err_msg="The generated result_dem has different data from the benchmark_dem")
 
     @pytest.mark.skipif(sys.platform != 'linux', reason="Linux test - this is less strict")
@@ -179,13 +179,13 @@ class ProcessorLocalFilesTest(unittest.TestCase):
 
         # Load in result DEM
         with rioxarray.rioxarray.open_rasterio(self.instructions['instructions']['data_paths']['result_dem'],
-                                               masked=True) as saved_dem:
-            saved_dem.load()
+                                               masked=True) as test_dem:
+            test_dem.load()
 
         # Compare DEMs - load both from file as rioxarray.rioxarray.open_rasterio ignores index order
-        diff_array = saved_dem.data-benchmark_dem.data
+        diff_array = test_dem.data-benchmark_dem.data
         print(f"DEM array diff is: {diff_array[diff_array != 0]}")
-        numpy.testing.assert_array_almost_equal(saved_dem.data, benchmark_dem.data,
+        numpy.testing.assert_array_almost_equal(test_dem.data, benchmark_dem.data,
                                                 err_msg="The generated result_dem has different data from the " +
                                                 "benchmark_dem")
 
