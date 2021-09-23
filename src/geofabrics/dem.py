@@ -474,7 +474,7 @@ class DenseDemFromTiles(DenseDem):
             return
 
         # Update the tile extents with the new tile, then clip tile by extents (remove bleeding outside LiDAR area)
-        self._update_extents(tile_extent)
+        tile_extent = self._update_extents(tile_extent)
 
         # Get the indicies overwhich to perform IDW
         tile = self._dense_dem.rio.clip(tile_extent.geometry)
@@ -501,26 +501,28 @@ class DenseDemFromTiles(DenseDem):
         # Ensure the dem will be recalculated as another tile has been added
         self._dem = None
 
-    def _update_extents(self, tile_extent: geopandas.GeoDataFrame):
+    def _update_extents(self, tile_extent: geopandas.GeoDataFrame) -> geopandas.GeoDataFrame:
         """ Update the extents of all LiDAR tiles updated. If 'drop_offshore_lidar' is True ensure extents are
         limited to the land and foreshore of the catchment. If 'area_to_drop' is True extend the extents to fill
-        any holes around the catchment boundary smaller than the specified 'area_to_drop'."""
+        any holes around the catchment boundary smaller than the specified 'area_to_drop'.
+
+        Return the updated tile_extent after filling any holes and any gaps around the edge and triming offshore."""
 
         assert len(tile_extent) == 1, "The tile_extent is expected to be contained in one shape. Instead " + \
             f"tile_extent: {tile_extent} is of length {len(tile_extent)}."
 
         if tile_extent.geometry.area.sum() > 0:  # check polygon isn't empty
             if self._extents is None:
-                self._extents = tile_extent
+                updated_extents = tile_extent
             else:
-                self._extents = geopandas.GeoDataFrame(
+                updated_extents = geopandas.GeoDataFrame(
                     {'geometry': [shapely.ops.cascaded_union([self._extents.loc[0].geometry,
                                                               tile_extent.loc[0].geometry])]},
                     crs=self.catchment_geometry.crs['horizontal'])
 
             # If 'area_to_drop' fill any holes between the extents and catchment edge smaller than the area_to_drop
             if self.area_to_drop is not None:
-                polygon = geopandas.overlay(self.catchment_geometry.catchment, self._extents, how="difference")
+                polygon = geopandas.overlay(self.catchment_geometry.catchment, updated_extents, how="difference")
                 if len(polygon) > 0:
                     assert len(polygon) == 1, f"Expected the difference polygon {polygon} to have length 1 as both " + \
                         "extents and the catchment polygons should have length 1."
@@ -528,15 +530,15 @@ class DenseDemFromTiles(DenseDem):
                     if polygon.geometryType() == "MultiPolygon":
                         # Run through each polygon element checking if smaller than the 'area_to_drop' - add if so
                         polygon_list = [polygon_i for polygon_i in polygon if polygon_i.area < self.area_to_drop]
-                        polygon_list.append(self._extents.loc[0].geometry)
-                        self._extents = geopandas.GeoDataFrame(
+                        polygon_list.append(updated_extents.loc[0].geometry)
+                        updated_extents = geopandas.GeoDataFrame(
                             {'geometry': [shapely.ops.cascaded_union(polygon_list)]},
                             crs=self.catchment_geometry.crs['horizontal'])
                     elif polygon.geometryType() == "Polygon":
                         if polygon.area < self.area_to_drop:
                             # Check if the polygon is smaller than the 'area_to_drop' - add if so
-                            self._extents = geopandas.GeoDataFrame(
-                                {'geometry': [shapely.ops.cascaded_union([self._extents.loc[0].geometry, polygon])]},
+                            updated_extents = geopandas.GeoDataFrame(
+                                {'geometry': [shapely.ops.cascaded_union([updated_extents.loc[0].geometry, polygon])]},
                                 crs=self.catchment_geometry.crs['horizontal'])
                     else:
                         if self.verbose:
@@ -544,9 +546,21 @@ class DenseDemFromTiles(DenseDem):
                                   + f"supported for {polygon.geometryType()}")
 
             if self.drop_offshore_lidar:
-                self._extents = geopandas.clip(self.catchment_geometry.land_and_foreshore, self._extents)
+                updated_extents = geopandas.clip(self.catchment_geometry.land_and_foreshore, updated_extents)
             else:
-                self._extents = geopandas.clip(self.catchment_geometry.catchment, self._extents)
+                updated_extents = geopandas.clip(self.catchment_geometry.catchment, updated_extents)
+
+            # Update the tile extents based on the updated overall cumlative tiles extents
+            if self._extents is None:
+                filtered_tile_extents = updated_extents
+            else:
+                filtered_tile_extents = geopandas.overlay(self._extents, updated_extents, how="difference")
+
+            # Update the cumlative extents
+            self._extents = updated_extents
+            return filtered_tile_extents
+        else:
+            return tile_extent
 
     def filter_lidar_extents_for_holes(self):
         """ Remove holes below a filter size within the extents if 'area_to_drop' is '> 0'. In the case that
