@@ -459,28 +459,7 @@ class DenseDemFromTiles(DenseDem):
 
             # If 'area_to_drop' fill any holes between the extents and catchment edge smaller than the area_to_drop
             if self.area_to_drop is not None:
-                polygon = geopandas.overlay(self.catchment_geometry.catchment, updated_extents, how="difference")
-                if len(polygon) > 0:
-                    assert len(polygon) == 1, f"Expected the difference polygon {polygon} to have length 1 as both " + \
-                        "extents and the catchment polygons should have length 1."
-                    polygon = polygon.loc[0].geometry
-                    if polygon.geometryType() == "MultiPolygon":
-                        # Run through each polygon element checking if smaller than the 'area_to_drop' - add if so
-                        polygon_list = [polygon_i for polygon_i in polygon if polygon_i.area < self.area_to_drop]
-                        polygon_list.append(updated_extents.loc[0].geometry)
-                        updated_extents = geopandas.GeoDataFrame(
-                            {'geometry': [shapely.ops.cascaded_union(polygon_list)]},
-                            crs=self.catchment_geometry.crs['horizontal'])
-                    elif polygon.geometryType() == "Polygon":
-                        if polygon.area < self.area_to_drop:
-                            # Check if the polygon is smaller than the 'area_to_drop' - add if so
-                            updated_extents = geopandas.GeoDataFrame(
-                                {'geometry': [shapely.ops.cascaded_union([updated_extents.loc[0].geometry, polygon])]},
-                                crs=self.catchment_geometry.crs['horizontal'])
-                    else:
-                        if self.verbose:
-                            print("Warning filtering holes in DenseDem using _update_extents is not yet "
-                                  + f"supported for {polygon.geometryType()}")
+                updated_extents = self._filter_holes_around_polygon(self.area_to_drop, updated_extents)
 
             if self.drop_offshore_lidar:
                 updated_extents = geopandas.clip(self.catchment_geometry.land_and_foreshore, updated_extents)
@@ -499,6 +478,75 @@ class DenseDemFromTiles(DenseDem):
         else:
             return tile_extent
 
+    def _filter_holes_inside_polygon(self, area_to_filter: float,
+                                     polygon_in: geopandas.GeoDataFrame) -> geopandas.GeoDataFrame:
+        """ Check through the input polygon geometry and remove any holes less than the specified area. """
+
+        if area_to_filter is None or area_to_filter <= 0:
+            return polygon_in
+        else:
+            # Check through the extents geometry and remove any internal holes with an area less than the 'area_to_drop'
+            polygon = polygon_in.loc[0].geometry
+
+            # Remove any holes internal to the extents that are less than the area_to_drop
+            if polygon.geometryType() == "Polygon":
+                polygon = shapely.geometry.Polygon(
+                    polygon.exterior.coords, [interior for interior in polygon.interiors if
+                                              shapely.geometry.Polygon(interior).area > area_to_filter])
+                polygon_out = geopandas.GeoDataFrame({'geometry': [polygon]},
+                                                     crs=self.catchment_geometry.crs['horizontal'])
+                polygon_out = geopandas.clip(self.catchment_geometry.catchment, polygon_out)
+            elif polygon.geometryType() == "MultiPolygon":
+                polygons = []
+                for polygon_i in polygon:
+                    polygons.append(shapely.geometry.Polygon(
+                        polygon_i.exterior.coords, [interior for interior in polygon_i.interiors if
+                                                    shapely.geometry.Polygon(interior).area > area_to_filter]))
+                polygon = shapely.geometry.MultiPolygon(polygons)
+                polygon_out = geopandas.GeoDataFrame({'geometry': [polygon]},
+                                                     crs=self.catchment_geometry.crs['horizontal'])
+                polygon_out = geopandas.clip(self.catchment_geometry.catchment, polygon_out)
+            else:
+                if self.verbose:
+                    print("Warning filtering holes in CatchmentLidar using filter_lidar_extents_for_holes is not yet "
+                          + f"supported for {polygon.geometryType()}")
+            return polygon_out
+
+    def _filter_holes_around_polygon(self, area_to_filter: float,
+                                     polygon_in: geopandas.GeoDataFrame) -> geopandas.GeoDataFrame:
+        """ Check around the input polygon geometry and remove any holes less than the specified area between it and the
+        catchment polygon geometry. """
+
+        if area_to_filter is None or area_to_filter <= 0:
+            return polygon_in
+        else:
+            # Check through the extents geometry and remove any internal holes with an area less than the 'area_to_drop'
+            polygon = geopandas.overlay(self.catchment_geometry.catchment, polygon_in, how="difference")
+
+            if len(polygon) > 0:
+                assert len(polygon) == 1, f"Expected the difference polygon {polygon} to have length 1 as both " + \
+                    "input polygon and the catchment polygons are expected to have length 1."
+                polygon = polygon.loc[0].geometry
+                if polygon.geometryType() == "MultiPolygon":
+                    # Run through each polygon element checking if smaller than the 'area_to_drop' - add if so
+                    polygon_list = [polygon_i for polygon_i in polygon if polygon_i.area < area_to_filter]
+                    polygon_list.append(polygon_in.loc[0].geometry)
+                    polygon_out = geopandas.GeoDataFrame(
+                        {'geometry': [shapely.ops.cascaded_union(polygon_list)]},
+                        crs=self.catchment_geometry.crs['horizontal'])
+
+                elif polygon.geometryType() == "Polygon":
+                    if polygon.area < area_to_filter:
+                        # Check if the polygon is smaller than the 'area_to_drop' - add if so
+                        polygon_out = geopandas.GeoDataFrame(
+                            {'geometry': [shapely.ops.cascaded_union([polygon_in.loc[0].geometry, polygon])]},
+                            crs=self.catchment_geometry.crs['horizontal'])
+                else:
+                    if self.verbose:
+                        print("Warning filtering holes in DenseDem using _update_extents is not yet "
+                              + f"supported for {polygon.geometryType()}")
+            return polygon_out
+
     def filter_lidar_extents_for_holes(self):
         """ Remove holes below a filter size within the extents if 'area_to_drop' is '> 0'. In the case that
         'drop_offshore_lidar' is True ensure extents are limited to the land and foreshore of the catchment
@@ -515,31 +563,7 @@ class DenseDemFromTiles(DenseDem):
                 self._extents.loc[0].geometry = self._extents.loc[0].geometry.buffer(0)
             return
 
-        # Check through the extents geometry and remove any internal holes with an area less than the 'area_to_drop'
-        polygon = self._extents.loc[0].geometry
-
-        # Remove any holes internal to the extents that are less than the area_to_drop
-        if polygon.geometryType() == "Polygon":
-            polygon = shapely.geometry.Polygon(
-                polygon.exterior.coords, [interior for interior in polygon.interiors if
-                                          shapely.geometry.Polygon(interior).area > self.area_to_drop])
-            self._extents = geopandas.GeoDataFrame({'geometry': [polygon]},
-                                                   crs=self.catchment_geometry.crs['horizontal'])
-            self._extents = geopandas.clip(self.catchment_geometry.catchment, self._extents)
-        elif polygon.geometryType() == "MultiPolygon":
-            polygons = []
-            for polygon_i in polygon:
-                polygons.append(shapely.geometry.Polygon(
-                    polygon_i.exterior.coords, [interior for interior in polygon_i.interiors if
-                                                shapely.geometry.Polygon(interior).area > self.area_to_drop]))
-            polygon = shapely.geometry.MultiPolygon(polygons)
-            self._extents = geopandas.GeoDataFrame({'geometry': [polygon]},
-                                                   crs=self.catchment_geometry.crs['horizontal'])
-            self._extents = geopandas.clip(self.catchment_geometry.catchment, self._extents)
-        else:
-            if self.verbose:
-                print("Warning filtering holes in CatchmentLidar using filter_lidar_extents_for_holes is not yet "
-                      + f"supported for {polygon.geometryType()}")
+        self._extents = self._filter_holes_inside_polygon(self.area_to_drop, self._extents)
 
         # Check valid and otherwise try a basic repair
         if not self._extents.loc[0].geometry.is_valid:
