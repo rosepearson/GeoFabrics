@@ -371,36 +371,8 @@ class DenseDemFromTiles(DenseDem):
         empty_dem = empty_dem.rio.clip(catchment_geometry.catchment.geometry)
         return empty_dem
 
-    def _create_dem_tile_with_pdal(self, tile_points: numpy.ndarray, window_size: int, idw_power: int, radius: float):
-        """ Create a DEM tile from a LiDAR tile over a specified region.
-        Currently PDAL writers.gdal is used and a temporary file is written out. In future another approach may be used.
-        """
-
-        # Remove the previous temp DEM file
-        if self._temp_dem_file.exists():
-            self._temp_dem_file.unlink()
-
-        # Create the next tile using PDAL gdal.writers
-        pdal_pipeline_instructions = [
-            {"type":  "writers.gdal", "resolution": self.catchment_geometry.resolution,
-             "gdalopts": f"a_srs=EPSG:{self.catchment_geometry.crs['horizontal']}", "output_type": [self.DENSE_BINNING],
-             "filename": str(self._temp_dem_file),
-             "window_size": window_size, "power": idw_power, "radius": radius,
-             "origin_x": self.raster_origin[0], "origin_y": self.raster_origin[1],
-             "width": self.raster_size[0], "height": self.raster_size[1]}
-        ]
-
-        pdal_pipeline = pdal.Pipeline(json.dumps(pdal_pipeline_instructions), [tile_points])
-        pdal_pipeline.execute()
-
-        # Assert PDAL wrote the DEm tile to the temp file name
-        metadata = json.loads(pdal_pipeline.get_metadata())
-        assert str(self._temp_dem_file) == metadata['metadata']['writers.gdal']['filename'][0], "The DEM tile has " + \
-            " been written out in an unexpected location. It has been witten out to " + \
-            f"{metadata['metadata']['writers.gdal']['filename'][0]} instead of {self._temp_dem_file}"
-
     def _point_cloud_to_raster_idw(self, point_cloud: numpy.ndarray, xy_out, power: int, search_radius: float,
-                                   smoothing: float = 0, eps: float = 0, leaf_size = 10):
+                                   smoothing: float = 0, eps: float = 0, leaf_size: int = 10):
         """ Create a DEM tile from a LiDAR tile over a specified region.
         Currently PDAL writers.gdal is used and a temporary file is written out. In future another approach may be used.
         """
@@ -427,41 +399,6 @@ class DenseDemFromTiles(DenseDem):
 
         return z_out
 
-    def add_tile_using_pdal(self, tile_points: numpy.ndarray, tile_extent: geopandas.GeoDataFrame, window_size: int,
-                            idw_power: int, radius: float, method: str = 'first'):
-        """ Create the DEM tile and then update the overall DEM with the tile.
-
-        Ensure the tile DEM CRS is set and also trim the tile DEM prior to adding. """
-
-        if len(tile_points) == 0:
-            if self.verbose:
-                print("Warning in DenseDem.add_tile the latest tile has no data and is being ignored.")
-            return
-
-        # Use PDAL to create a DEM from the tile points
-        self._create_dem_tile_with_pdal(tile_points, window_size, idw_power, radius)
-
-        # Load generated tile
-        with rioxarray.rioxarray.open_rasterio(self._temp_dem_file, masked=True) as tile:
-            tile.load()
-        tile.rio.set_crs(self.catchment_geometry.crs['horizontal'])
-
-        # Ensure the tile is lined up with the dense DEM - i.e. that that raster origin values match
-        raster_origin = [tile.x.data.min() - self.catchment_geometry.resolution/2,
-                         tile.y.data.min() - self.catchment_geometry.resolution/2]
-        assert self.raster_origin[0] == raster_origin[0] and self.raster_origin[1] == raster_origin[1], "The " + \
-            f"generated tile is not aligned with the overall dense DEM. The DEM raster origin is {raster_origin} " + \
-            f"instead of {self.raster_origin}"
-
-        # Update the tile extents with the new tile, then clip tile by extents (remove bleeding outside LiDAR area)
-        self._update_extents(tile_extent)
-        tile = tile.rio.clip(self.extents.geometry)
-
-        # Add the tile to the dense DEM
-        self._dense_dem = rioxarray.merge.merge_arrays([self._dense_dem, tile], method=method)
-
-        # Ensure the dem will be recalculated as another tile has been added
-        self._dem = None
 
     def add_tile(self, tile_points: numpy.ndarray, tile_extent: geopandas.GeoDataFrame, window_size: int,
                  idw_power: int, radius: float, method: str = 'first'):
