@@ -554,7 +554,7 @@ class DenseDemFromTiles(DenseDem):
             if self._extents is None:
                 filtered_tile_extents = updated_extents
             else:
-                filtered_tile_extents = geopandas.overlay(self._extents, updated_extents, how="difference")
+                filtered_tile_extents = geopandas.overlay(updated_extents, self._extents, how="difference")
 
             # Update the cumlative extents
             self._extents = updated_extents
