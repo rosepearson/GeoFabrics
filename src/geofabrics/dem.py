@@ -320,6 +320,7 @@ class DenseDemFromTiles(DenseDem):
 
         self.raster_origin = None
         self.raster_size = None
+        self.raster_type = numpy.float64
 
         empty_dem = self._set_up(catchment_geometry)
 
@@ -327,6 +328,29 @@ class DenseDemFromTiles(DenseDem):
                                                 extents=None, verbose=verbose)
 
     def _set_up(self, catchment_geometry):
+        """ Create the empty dense DEM to fill and define the raster size and origin """
+
+        catchment_bounds = catchment_geometry.catchment.loc[0].geometry.bounds
+        resolution = catchment_geometry.resolution
+
+        # Create an empty xarray to store results in
+        dim_x = numpy.arange(catchment_bounds[0] + resolution / 2, catchment_bounds[2], resolution,
+                             dtype=self.raster_type)
+        dim_y = numpy.arange(catchment_bounds[3] - resolution / 2, catchment_bounds[1], -resolution,
+                             dtype=self.raster_type)
+        grid_dem_z = numpy.empty((1, len(dim_x), len(dim_y)), dtype=self.raster_type)
+        dem = xarray.DataArray(grid_dem_z, coords={'band': [1], 'x': dim_x, 'y': dim_y}, dims=['band', 'y', 'x'],
+                               attrs={'scale_factor': 1.0, 'add_offset': 0.0, 'long_name': 'idw'})
+        dem.rio.write_crs(catchment_geometry.crs['horizontal'], inplace=True)
+        dem.name = 'z'
+        dem = dem.rio.write_nodata(numpy.nan)
+
+        # Ensure the DEM is empty - all NaN - and clipped to size
+        dem.data[0] = numpy.nan
+        dem = dem.rio.clip(catchment_geometry.catchment.geometry)
+        return dem
+
+    def _set_up_pdal(self, catchment_geometry):
         """ Create the empty dense DEM to fill and define the raster size and origin """
 
         catchment_bounds = catchment_geometry.catchment.loc[0].geometry.bounds
@@ -398,7 +422,6 @@ class DenseDemFromTiles(DenseDem):
                         / (1 / (smoothed_distances**power)).sum(axis=0)
 
         return z_out
-
 
     def add_tile(self, tile_points: numpy.ndarray, tile_extent: geopandas.GeoDataFrame, window_size: int,
                  idw_power: int, radius: float, method: str = 'first'):
