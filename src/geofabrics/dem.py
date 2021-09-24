@@ -449,6 +449,7 @@ class DenseDemFromTiles(DenseDem):
             f"tile_extent: {tile_extent} is of length {len(tile_extent)}."
 
         if tile_extent.geometry.area.sum() > 0:  # check polygon isn't empty
+
             if self._extents is None:
                 updated_extents = tile_extent
             else:
@@ -457,8 +458,9 @@ class DenseDemFromTiles(DenseDem):
                                                               tile_extent.loc[0].geometry])]},
                     crs=self.catchment_geometry.crs['horizontal'])
 
-            # If 'area_to_drop' fill any holes between the extents and catchment edge smaller than the area_to_drop
-            if self.area_to_drop is not None:
+            # Fill any holes smaller than the 'area_to_drop' internal to the extents or between it and catchment edge
+            if self.area_to_drop is not None and self.area_to_drop >= 0:
+                updated_extents = self._filter_holes_inside_polygon(self.area_to_drop, updated_extents)
                 updated_extents = self._filter_holes_around_polygon(self.area_to_drop, updated_extents)
 
             if self.drop_offshore_lidar:
@@ -482,7 +484,7 @@ class DenseDemFromTiles(DenseDem):
                                      polygon_in: geopandas.GeoDataFrame) -> geopandas.GeoDataFrame:
         """ Check through the input polygon geometry and remove any holes less than the specified area. """
 
-        if area_to_filter is None or area_to_filter <= 0:
+        if area_to_filter is None and area_to_filter <= 0:
             return polygon_in
         else:
             # Check through the extents geometry and remove any internal holes with an area less than the 'area_to_drop'
@@ -517,7 +519,7 @@ class DenseDemFromTiles(DenseDem):
         """ Check around the input polygon geometry and remove any holes less than the specified area between it and the
         catchment polygon geometry. """
 
-        if area_to_filter is None or area_to_filter <= 0:
+        if area_to_filter is None and area_to_filter <= 0:
             return polygon_in
         else:
             # Check through the extents geometry and remove any internal holes with an area less than the 'area_to_drop'
@@ -546,30 +548,3 @@ class DenseDemFromTiles(DenseDem):
                         print("Warning filtering holes in DenseDem using _update_extents is not yet "
                               + f"supported for {polygon.geometryType()}")
             return polygon_out
-
-    def filter_lidar_extents_for_holes(self):
-        """ Remove holes below a filter size within the extents if 'area_to_drop' is '> 0'. In the case that
-        'drop_offshore_lidar' is True ensure extents are limited to the land and foreshore of the catchment
-        once filtering is complete. """
-
-        if self._extents is None:
-            # No extents exist to be filtered to remove holes
-            return
-        elif self.area_to_drop is None:
-            # Try a basic repair if not valid, but otherwise do nothing
-            if not self._extents.loc[0].geometry.is_valid:
-                if self.verbose:
-                    print("Warning LiDAR extents are not valid, trying a basic repair with buffer(0)")
-                self._extents.loc[0].geometry = self._extents.loc[0].geometry.buffer(0)
-            return
-
-        self._extents = self._filter_holes_inside_polygon(self.area_to_drop, self._extents)
-
-        # Check valid and otherwise try a basic repair
-        if not self._extents.loc[0].geometry.is_valid:
-            if self.verbose:
-                print("Warning LiDAR extents are not valid, trying a basic repair with buffer(0)")
-            self._extents.loc[0].geometry = self._extents.loc[0].geometry.buffer(0)
-
-        assert len(self._extents) == 1, "The length of the extents is expected to be one. Instead " + \
-            f"{self._extents} is length {len(self._extents)}"

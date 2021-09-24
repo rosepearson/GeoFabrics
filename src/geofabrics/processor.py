@@ -340,9 +340,6 @@ class DemGenerator(BaseProcessor):
                                     window_size=window_size, idw_power=idw_power, radius=radius)
             del self.catchment_lidar.tile_array
 
-        # Filter the LiDAR extents based on the area_to_drop
-        self.dense_dem.filter_lidar_extents_for_holes()
-
         # Load in reference DEM if any significant land/foreshore not covered by LiDAR
         area_without_lidar = \
             self.catchment_geometry.land_and_foreshore_without_lidar(self.dense_dem.extents).geometry.area.sum()
