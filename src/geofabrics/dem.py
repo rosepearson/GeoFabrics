@@ -464,7 +464,7 @@ class DenseDemFromTiles(DenseDem):
         self._dem = None
 
     def add_tile(self, tile_points: numpy.ndarray, tile_extent: geopandas.GeoDataFrame, window_size: int,
-                        idw_power: int, radius: float, method: str = 'first'):
+                 idw_power: int, radius: float, method: str = 'first'):
         """ Create the DEM tile and then update the overall DEM with the tile. Only perform IDW within the tile
         extents. """
 
