@@ -176,7 +176,7 @@ class ProcessorRemoteTilesWellingtonTest(unittest.TestCase):
         threshold = 10e-6
         self.assertTrue(len(diff_array[diff_array != 0]) < len(diff_array) / 100, f"{len(diff_array[diff_array != 0])} "
                         + f"or more than 1% of DEM values differ on Linux test run: {diff_array[diff_array != 0]}")
-        self.assertTrue(len(diff_array[numpy.abs(diff_array) > threshold]) < len(diff_array) / 500, "More than 0.2% of"
+        self.assertTrue(len(diff_array[numpy.abs(diff_array) > threshold]) < len(diff_array) / 250, "More than 0.4% of"
                         + " DEM values differ by more than {threshold} on Linux test run: " +
                         f"{diff_array[numpy.abs(diff_array) > threshold]} or " +
                         f"{len(diff_array[numpy.abs(diff_array) > threshold]) / len(diff_array.flatten()) * 100}%")
