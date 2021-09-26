@@ -350,51 +350,6 @@ class DenseDemFromTiles(DenseDem):
         dem = dem.rio.clip(catchment_geometry.catchment.geometry)
         return dem
 
-    def _set_up_pdal(self, catchment_geometry):
-        """ Create the empty dense DEM to fill and define the raster size and origin """
-
-        catchment_bounds = catchment_geometry.catchment.loc[0].geometry.bounds
-        self.raster_origin = [catchment_bounds[0],
-                              catchment_bounds[1]]
-
-        self.raster_size = [int((catchment_bounds[2] -
-                                 catchment_bounds[0]) / catchment_geometry.resolution),
-                            int((catchment_bounds[3] -
-                                 catchment_bounds[1]) / catchment_geometry.resolution)]
-
-        # Create a dummy DEM for updated origin and size
-        empty_points = numpy.zeros([1], dtype=[('X', numpy.float64), ('Y', numpy.float64), ('Z', numpy.float64)])
-        pdal_pipeline_instructions = [
-            {"type":  "writers.gdal", "resolution": catchment_geometry.resolution,
-             "gdalopts": "a_srs=EPSG:" + str(catchment_geometry.crs['horizontal']),
-             "output_type": ["idw"], "filename": str(self._temp_dem_file),
-             "origin_x": self.raster_origin[0], "origin_y": self.raster_origin[1],
-             "width": self.raster_size[0], "height": self.raster_size[1]}
-        ]
-        pdal_pipeline = pdal.Pipeline(json.dumps(pdal_pipeline_instructions), [empty_points])
-        pdal_pipeline.execute()
-        metadata = json.loads(pdal_pipeline.get_metadata())
-        assert metadata['metadata']['writers.gdal']['filename'][0] == str(self._temp_dem_file), "The specified  file" \
-            + f"file location: {self._temp_dem_file} and written file location: " + \
-            f"{metadata['metadata']['writers.gdal']['filename'][0]} do not match."
-
-        with rioxarray.rioxarray.open_rasterio(str(self._temp_dem_file), masked=True) as empty_dem:
-            empty_dem.load()
-            empty_dem.rio.set_crs(catchment_geometry.crs['horizontal'])
-
-        # Check if the raster origin has been moved by PDAL writers.gdal and update if it has
-        raster_origin = [empty_dem.x.data.min() - catchment_geometry.resolution/2,
-                         empty_dem.y.data.min() - catchment_geometry.resolution/2]
-        if self.raster_origin != raster_origin:
-            print("In process: The generated dense DEM has an origin differing from the one specified. Updating the " +
-                  f"catchment geometry raster origin from {self.raster_origin} to {raster_origin}")
-            self.raster_origin = raster_origin
-
-        # Ensure the DEM is empty - all NaN
-        empty_dem.data[0] = numpy.nan
-        empty_dem = empty_dem.rio.clip(catchment_geometry.catchment.geometry)
-        return empty_dem
-
     def _point_cloud_to_raster_idw(self, point_cloud: numpy.ndarray, xy_out, power: int, search_radius: float,
                                    smoothing: float = 0, eps: float = 0, leaf_size: int = 10):
         """ Create a DEM tile from a LiDAR tile over a specified region.
