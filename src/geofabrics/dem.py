@@ -338,8 +338,8 @@ class DenseDemFromTiles(DenseDem):
                              dtype=self.raster_type)
         dim_y = numpy.arange(catchment_bounds[3] - resolution / 2, catchment_bounds[1], -resolution,
                              dtype=self.raster_type)
-        grid_dem_z = numpy.empty((1, len(dim_x), len(dim_y)), dtype=self.raster_type)
-        dem = xarray.DataArray(grid_dem_z, coords={'band': [1], 'x': dim_x, 'y': dim_y}, dims=['band', 'y', 'x'],
+        grid_dem_z = numpy.empty((1, len(dim_y), len(dim_x)), dtype=self.raster_type)
+        dem = xarray.DataArray(grid_dem_z, coords={'band': [1], 'y': dim_y, 'x': dim_x}, dims=['band', 'y', 'x'],
                                attrs={'scale_factor': 1.0, 'add_offset': 0.0, 'long_name': 'idw'})
         dem.rio.write_crs(catchment_geometry.crs['horizontal'], inplace=True)
         dem.name = 'z'
