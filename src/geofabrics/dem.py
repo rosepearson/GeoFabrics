@@ -389,6 +389,14 @@ class DenseDemFromTiles(DenseDem):
         # Update the tile extents with the new tile, then clip tile by extents (remove bleeding outside LiDAR area)
         tile_extent = self._update_extents(tile_extent)
 
+        if tile_extent.area.sum() == 0:  # Check the tile still has an extent after filtering
+            if self.verbose:
+                print("Warning in DenseDem.add_tile the latest tile has no area after being filtered against already "
+                      "added tiles, offshore areas, and 'filter_lidar_holes_area'. Please check to ensure a sensible "
+                      "value for 'filter_lidar_holes_area' if this happens repeatably. This should not exceed a small "
+                      "proportion of a single tiles area")
+            return
+
         # Get the indicies overwhich to perform IDW
         try:
             tile = self._dense_dem.rio.clip(tile_extent.geometry)
@@ -415,9 +423,10 @@ class DenseDemFromTiles(DenseDem):
             # Ensure the dem will be recalculated as another tile has been added
             self._dem = None
         except rioxarray.exceptions.NoDataInBounds:
-            if self.verbose:
+            if self.verbose:  # Error catching when the tile_extents not overlapping any of the xarray centroids
                 print("Warning in DenseDem.add_tile the latest tile data does not overlap a DEM centroid and is being."
-                      + "ignored")
+                      "ignored. If this happens repeatedly and 'filter_lidar_holes_area' is set this could be a sign "
+                      "that this value is too large. This should not exceed a small proportion of a single tiles area")
             return
 
     def _update_extents(self, tile_extent: geopandas.GeoDataFrame) -> geopandas.GeoDataFrame:
