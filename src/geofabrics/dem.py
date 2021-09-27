@@ -390,29 +390,35 @@ class DenseDemFromTiles(DenseDem):
         tile_extent = self._update_extents(tile_extent)
 
         # Get the indicies overwhich to perform IDW
-        tile = self._dense_dem.rio.clip(tile_extent.geometry)
-        tile.data[0] = 0  # set all to zero then clip outside tile again - setting it to NaN
-        tile = tile.rio.clip(tile_extent.geometry)
+        try:
+            tile = self._dense_dem.rio.clip(tile_extent.geometry)
+            tile.data[0] = 0  # set all to zero then clip outside tile again - setting it to NaN
+            tile = tile.rio.clip(tile_extent.geometry)
 
-        grid_x, grid_y = numpy.meshgrid(tile.x, tile.y)
-        flat_z = tile.data[0].flatten()
-        mask_z = ~numpy.isnan(flat_z)
+            grid_x, grid_y = numpy.meshgrid(tile.x, tile.y)
+            flat_z = tile.data[0].flatten()
+            mask_z = ~numpy.isnan(flat_z)
 
-        xy_out = numpy.empty((mask_z.sum(), 2))
-        xy_out[:, 0] = grid_x.flatten()[mask_z]
-        xy_out[:, 1] = grid_y.flatten()[mask_z]
+            xy_out = numpy.empty((mask_z.sum(), 2))
+            xy_out[:, 0] = grid_x.flatten()[mask_z]
+            xy_out[:, 1] = grid_y.flatten()[mask_z]
 
-        # Perform IDW over the dense DEM within the extents of this point cloud tile
-        z_idw = self._point_cloud_to_raster_idw(tile_points, xy_out, idw_power, radius,
-                                                smoothing=0, eps=0, leaf_size=10)
-        flat_z[mask_z] = z_idw
-        tile.data[0] = flat_z.reshape(grid_x.shape)
+            # Perform IDW over the dense DEM within the extents of this point cloud tile
+            z_idw = self._point_cloud_to_raster_idw(tile_points, xy_out, idw_power, radius,
+                                                    smoothing=0, eps=0, leaf_size=10)
+            flat_z[mask_z] = z_idw
+            tile.data[0] = flat_z.reshape(grid_x.shape)
 
-        # Add the tile to the dense DEM
-        self._dense_dem = rioxarray.merge.merge_arrays([self._dense_dem, tile], method=method)
+            # Add the tile to the dense DEM
+            self._dense_dem = rioxarray.merge.merge_arrays([self._dense_dem, tile], method=method)
 
-        # Ensure the dem will be recalculated as another tile has been added
-        self._dem = None
+            # Ensure the dem will be recalculated as another tile has been added
+            self._dem = None
+        except rioxarray.exceptions.NoDataInBounds:
+            if self.verbose:
+                print("Warning in DenseDem.add_tile the latest tile data does not overlap a DEM centroid and is being."
+                      + "ignored")
+            return
 
     def _update_extents(self, tile_extent: geopandas.GeoDataFrame) -> geopandas.GeoDataFrame:
         """ Update the extents of all LiDAR tiles updated. If 'drop_offshore_lidar' is True ensure extents are
@@ -460,9 +466,9 @@ class DenseDemFromTiles(DenseDem):
                                      polygon_in: geopandas.GeoDataFrame) -> geopandas.GeoDataFrame:
         """ Check through the input polygon geometry and remove any holes less than the specified area. """
 
-        if area_to_filter is None and area_to_filter <= 0:
-            return polygon_in
-        else:
+        polygon_out = polygon_in
+
+        if area_to_filter is not None and area_to_filter > 0:
             # Check through the extents geometry and remove any internal holes with an area less than the 'area_to_drop'
             polygon = polygon_in.loc[0].geometry
 
@@ -488,16 +494,16 @@ class DenseDemFromTiles(DenseDem):
                 if self.verbose:
                     print("Warning filtering holes in CatchmentLidar using filter_lidar_extents_for_holes is not yet "
                           + f"supported for {polygon.geometryType()}")
-            return polygon_out
+        return polygon_out
 
     def _filter_holes_around_polygon(self, area_to_filter: float,
                                      polygon_in: geopandas.GeoDataFrame) -> geopandas.GeoDataFrame:
         """ Check around the input polygon geometry and remove any holes less than the specified area between it and the
         catchment polygon geometry. """
 
-        if area_to_filter is None and area_to_filter <= 0:
-            return polygon_in
-        else:
+        polygon_out = polygon_in
+
+        if area_to_filter is not None and area_to_filter > 0:
             # Check through the extents geometry and remove any internal holes with an area less than the 'area_to_drop'
             polygon = geopandas.overlay(self.catchment_geometry.catchment, polygon_in, how="difference")
 
@@ -521,6 +527,6 @@ class DenseDemFromTiles(DenseDem):
                             crs=self.catchment_geometry.crs['horizontal'])
                 else:
                     if self.verbose:
-                        print("Warning filtering holes in DenseDem using _update_extents is not yet "
+                        print("Warning filtering holes in DenseDem using _filter_holes_around_polygon is not yet "
                               + f"supported for {polygon.geometryType()}")
-            return polygon_out
+        return polygon_out
