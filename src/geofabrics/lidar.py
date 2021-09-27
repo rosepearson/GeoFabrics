@@ -25,7 +25,12 @@ class CatchmentLidar:
                  verbose: bool = True, tile_index_file: typing.Union[str, pathlib.Path]= None):
         """ Specify the catchment_geometry, which LiDAR files are loaded inside. All other inputs are optional.
         source_crs - specify if the CRS encoded in the LiDAR files are incorrect/only partially defined (i.e. missing
-                     vertical CRS) and need to be overwritten."""
+                     vertical CRS) and need to be overwritten.
+        drop_offshore_lidar - if True, trim any LiDAR values that are offshore as specified by the catchment_geometry
+        keep_only_ground_lidar - if True, only keep LiDAR values that are coded '2' of ground
+        verbose - if True, print out status updates
+        tile_index_file - if not None load in the specified tile_index file and use to clip all LiDAR tile data within
+                          the relevant LiDAR tiles extents as defined in the tile_index file."""
 
         self.catchment_geometry = catchment_geometry
         self.source_crs = source_crs
