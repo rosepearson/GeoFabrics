@@ -306,18 +306,13 @@ class DenseDemFromTiles(DenseDem):
           the catchment_geometry. If False keep all LiDAR values.
     """
 
-    def __init__(self, catchment_geometry: geometry.CatchmentGeometry,
-                 temp_raster_path: typing.Union[str, pathlib.Path], drop_offshore_lidar: bool = True,
+    def __init__(self, catchment_geometry: geometry.CatchmentGeometry, drop_offshore_lidar: bool = True,
                  area_to_drop: float = None, verbose: bool = True):
         """ Setup base DEM to add future tiles too """
-
-        self._temp_dem_file = pathlib.Path(temp_raster_path)
 
         self.area_to_drop = area_to_drop
         self.drop_offshore_lidar = drop_offshore_lidar
 
-        self.raster_origin = None
-        self.raster_size = None
         self.raster_type = numpy.float64
 
         empty_dem = self._set_up(catchment_geometry)
