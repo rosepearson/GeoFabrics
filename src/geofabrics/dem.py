@@ -9,8 +9,6 @@ import rioxarray.merge
 import xarray
 import numpy
 import math
-import pdal
-import json
 import typing
 import pathlib
 import geopandas

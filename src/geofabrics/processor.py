@@ -219,9 +219,16 @@ class BaseProcessor(abc.ABC):
             return None
 
     def get_lidar_file_list(self, data_service) -> dict:
-        """ Return a dictionary that contains a list of LiDAR tiles to process under the key 'file_paths' and optionally
-        the CRS of these files under the key 'crs'. The 'crs' should only be set if the CRS information is not correctly
-        encoded in the LAZ/LAS files.
+        """ Return a dictionary with three enties 'file_paths', 'crs' and 'tile_index_file'. The 'file_paths' contains a
+        list of LiDAR tiles to process.
+
+        The 'crs' is only optionally set (if unset the value is None). The 'crs' should only be set if the CRS
+        information is not correctly encoded in the LAZ/LAS files. Currently this is only supported for OpenTopography
+        LiDAR.
+
+        The 'tile_index_file' is also optional (if unset the value is None). The 'tile_index_file' should be given if a
+        tile index file exists for the LiDAR files specifying the extents of each tile. This is currently only supported
+        for OpenTopography files.
 
         If a LiDAR API is specified this is checked and all files within the catchment area are downloaded and used to
         construct the file list. If none is specified, the instruction 'data_paths' is checked for 'lidars' and these
@@ -247,10 +254,13 @@ class BaseProcessor(abc.ABC):
             lidar_dataset_info['file_paths'] = sorted(
                 pathlib.Path(self.lidar_fetcher.cache_path / dataset_prefix).glob('*.laz'))
             lidar_dataset_info['crs'] = self.get_lidar_dataset_crs(data_service, dataset_prefix)
+            lidar_dataset_info['tile_index_file'] = self.lidar_fetcher.cache_path / dataset_prefix / \
+                f"{dataset_prefix}_TileIndex.zip"
         else:
             # get the specified file paths from the instructions
             lidar_dataset_info['file_paths'] = self.get_instruction_path('lidars')
             lidar_dataset_info['crs'] = None
+            lidar_dataset_info['tile_index_file'] = None
 
         return lidar_dataset_info
 
@@ -324,7 +334,7 @@ class DemGenerator(BaseProcessor):
             self.catchment_geometry, source_crs=lidar_dataset_info['crs'],
             drop_offshore_lidar=self.get_instruction_general('drop_offshore_lidar'),
             keep_only_ground_lidar=self.get_instruction_general('keep_only_ground_lidar'),
-            verbose=self.verbose)
+            verbose=self.verbose, tile_index_file=lidar_dataset_info['tile_index_file'])
 
         # Load in LiDAR tiles
         for index, lidar_file_path in enumerate(lidar_dataset_info['file_paths']):
