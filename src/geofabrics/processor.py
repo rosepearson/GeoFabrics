@@ -341,13 +341,11 @@ class DemGenerator(BaseProcessor):
                 print(f"On LiDAR tile {index + 1} of {len(lidar_dataset_info['file_paths'])}: {lidar_file_path}")
 
             # load in LiDAR tile
-            self.catchment_lidar.load_tile(lidar_file_path)
+            tile_array, tile_extent = self.catchment_lidar.load_tile(lidar_file_path)
 
             # update the dense DEM with a patch created from the LiDAR tile
-            self.dense_dem.add_tile(tile_points=self.catchment_lidar.tile_array,
-                                    tile_extent=self.catchment_lidar.tile_extent,
+            self.dense_dem.add_tile(tile_points=tile_array, tile_extent=tile_extent,
                                     window_size=window_size, idw_power=idw_power, radius=radius)
-            del self.catchment_lidar.tile_array
 
         # Load in reference DEM if any significant land/foreshore not covered by LiDAR
         area_without_lidar = \
