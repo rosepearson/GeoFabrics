@@ -339,15 +339,14 @@ class DenseDemFromTiles(DenseDem):
         dem = dem.rio.write_nodata(numpy.nan)
 
         # Ensure the DEM is empty - all NaN - and clipped to size
-        dem.data[0] = numpy.nan
+        dem.data[:] = numpy.nan
         dem = dem.rio.clip(catchment_geometry.catchment.geometry)
         return dem
 
     def _point_cloud_to_raster_idw(self, point_cloud: numpy.ndarray, xy_out, power: int, search_radius: float,
                                    smoothing: float = 0, eps: float = 0, leaf_size: int = 10):
-        """ Create a DEM tile from a LiDAR tile over a specified region.
-        Currently PDAL writers.gdal is used and a temporary file is written out. In future another approach may be used.
-        """
+        """ Calculate DEM elevation values at the specified locations using the inverse distance weighing (IDW)
+        approach. This implementation is based on the scipy.spatial.KDTree """
         xy_in = numpy.empty((len(point_cloud), 2))
         xy_in[:, 0] = point_cloud['X']
         xy_in[:, 1] = point_cloud['Y']
@@ -363,7 +362,7 @@ class DenseDemFromTiles(DenseDem):
             else:
                 distance_vectors = point - tree.data[near_indicies]
                 smoothed_distances = numpy.sqrt(((distance_vectors**2).sum(axis=1)+smoothing**2))
-                if smoothed_distances.min() == 0:  # incase the of an exact match
+                if smoothed_distances.min() == 0:  # in the case of an exact match
                     z_out[i] = point_cloud['Z'][tree.query(point, k=1)[1]]
                 else:
                     z_out[i] = (point_cloud['Z'][near_indicies] / (smoothed_distances**power)).sum(axis=0) \
@@ -373,8 +372,8 @@ class DenseDemFromTiles(DenseDem):
 
     def add_tile(self, tile_points: numpy.ndarray, tile_extent: geopandas.GeoDataFrame, window_size: int,
                  idw_power: int, radius: float, method: str = 'first'):
-        """ Create the DEM tile and then update the overall DEM with the tile. Only perform IDW within the tile
-        extents. """
+        """ Create a DEM of the tile using inverse distance weighting (IDW) and then update the overall DEM with the
+        tile. Only perform the IDW within the tile extents. """
 
         if len(tile_points) == 0:
             if self.verbose:
@@ -503,7 +502,9 @@ class DenseDemFromTiles(DenseDem):
     def _filter_holes_around_polygon(self, area_to_filter: float,
                                      polygon_in: geopandas.GeoDataFrame) -> geopandas.GeoDataFrame:
         """ Check around the input polygon geometry and remove any holes less than the specified area between it and the
-        catchment polygon geometry. """
+        catchment polygon geometry. Practically this has little impact, but it does impact the odd pixel around the edge
+        of the catchment where there is not data at the pixel centroid, but there is data over the side of the pixel.
+        """
 
         polygon_out = polygon_in
 

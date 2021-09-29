@@ -222,9 +222,9 @@ class BaseProcessor(abc.ABC):
         """ Return a dictionary with three enties 'file_paths', 'crs' and 'tile_index_file'. The 'file_paths' contains a
         list of LiDAR tiles to process.
 
-        The 'crs' is only optionally set (if unset the value is None). The 'crs' should only be set if the CRS
-        information is not correctly encoded in the LAZ/LAS files. Currently this is only supported for OpenTopography
-        LiDAR.
+        The 'crs' (or coordinate system of the LiDAR data as defined by an EPSG code) is only optionally set (if unset
+        the value is None). The 'crs' should only be set if the CRS information is not correctly encoded in the LAZ/LAS
+        files. Currently this is only supported for OpenTopography LiDAR.
 
         The 'tile_index_file' is also optional (if unset the value is None). The 'tile_index_file' should be given if a
         tile index file exists for the LiDAR files specifying the extents of each tile. This is currently only supported

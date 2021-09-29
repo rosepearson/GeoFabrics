@@ -18,7 +18,7 @@ class CatchmentLidar:
     """ A class to manage LiDAR data in a catchment context by supporting the addition of LiDAR data tile by tile. LiDAR
     files are loaded using PDAL and the point cloud, and it's extents are returned.
     """
-    LAS_GROUND = 2
+    LAS_GROUND = 2  # As specified in the LAS/LAZ format
 
     def __init__(self, catchment_geometry: geometry.CatchmentGeometry, source_crs: dict = None,
                  drop_offshore_lidar: bool = True, keep_only_ground_lidar: bool = True,
