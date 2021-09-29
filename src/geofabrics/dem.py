@@ -9,14 +9,13 @@ import rioxarray.merge
 import xarray
 import numpy
 import math
-import pdal
-import json
 import typing
 import pathlib
 import geopandas
 import shapely
 import abc
 import scipy.interpolate
+import scipy.spatial
 from . import geometry
 
 
@@ -222,7 +221,7 @@ class DenseDem(abc.ABC):
         bathy_points = bathy_contours.sample_contours(self.catchment_geometry.resolution)
         offshore_points = numpy.concatenate([offshore_edge_points, bathy_points])
 
-        # Resample at a low8er resolution if too many offshore points
+        # Resample at a lower resolution if too many offshore points
         if len(offshore_points) > self.CACHE_SIZE:
             reduced_resolution = self.catchment_geometry.resolution * len(offshore_points) / self.CACHE_SIZE
             print("Reducing the number of 'offshore_points' used to create the RBF function by increasing the " +
@@ -307,18 +306,14 @@ class DenseDemFromTiles(DenseDem):
           the catchment_geometry. If False keep all LiDAR values.
     """
 
-    def __init__(self, catchment_geometry: geometry.CatchmentGeometry,
-                 temp_raster_path: typing.Union[str, pathlib.Path], drop_offshore_lidar: bool = True,
+    def __init__(self, catchment_geometry: geometry.CatchmentGeometry, drop_offshore_lidar: bool = True,
                  area_to_drop: float = None, verbose: bool = True):
         """ Setup base DEM to add future tiles too """
-
-        self._temp_dem_file = pathlib.Path(temp_raster_path)
 
         self.area_to_drop = area_to_drop
         self.drop_offshore_lidar = drop_offshore_lidar
 
-        self.raster_origin = None
-        self.raster_size = None
+        self.raster_type = numpy.float64
 
         empty_dem = self._set_up(catchment_geometry)
 
@@ -329,205 +324,214 @@ class DenseDemFromTiles(DenseDem):
         """ Create the empty dense DEM to fill and define the raster size and origin """
 
         catchment_bounds = catchment_geometry.catchment.loc[0].geometry.bounds
-        self.raster_origin = [catchment_bounds[0],
-                              catchment_bounds[1]]
+        resolution = catchment_geometry.resolution
 
-        self.raster_size = [int((catchment_bounds[2] -
-                                 catchment_bounds[0]) / catchment_geometry.resolution),
-                            int((catchment_bounds[3] -
-                                 catchment_bounds[1]) / catchment_geometry.resolution)]
+        # Create an empty xarray to store results in
+        dim_x = numpy.arange(catchment_bounds[0] + resolution / 2, catchment_bounds[2], resolution,
+                             dtype=self.raster_type)
+        dim_y = numpy.arange(catchment_bounds[3] - resolution / 2, catchment_bounds[1], -resolution,
+                             dtype=self.raster_type)
+        grid_dem_z = numpy.empty((1, len(dim_y), len(dim_x)), dtype=self.raster_type)
+        dem = xarray.DataArray(grid_dem_z, coords={'band': [1], 'y': dim_y, 'x': dim_x}, dims=['band', 'y', 'x'],
+                               attrs={'scale_factor': 1.0, 'add_offset': 0.0, 'long_name': 'idw'})
+        dem.rio.write_crs(catchment_geometry.crs['horizontal'], inplace=True)
+        dem.name = 'z'
+        dem = dem.rio.write_nodata(numpy.nan)
 
-        # Create a dummy DEM for updated origin and size
-        empty_points = numpy.zeros([1], dtype=[('X', numpy.float64), ('Y', numpy.float64), ('Z', numpy.float64)])
-        pdal_pipeline_instructions = [
-            {"type":  "writers.gdal", "resolution": catchment_geometry.resolution,
-             "gdalopts": "a_srs=EPSG:" + str(catchment_geometry.crs['horizontal']),
-             "output_type": ["idw"], "filename": str(self._temp_dem_file),
-             "origin_x": self.raster_origin[0], "origin_y": self.raster_origin[1],
-             "width": self.raster_size[0], "height": self.raster_size[1]}
-        ]
-        pdal_pipeline = pdal.Pipeline(json.dumps(pdal_pipeline_instructions), [empty_points])
-        pdal_pipeline.execute()
-        metadata = json.loads(pdal_pipeline.get_metadata())
-        assert metadata['metadata']['writers.gdal']['filename'][0] == str(self._temp_dem_file), "The specified  file" \
-            + f"file location: {self._temp_dem_file} and written file location: " + \
-            f"{metadata['metadata']['writers.gdal']['filename'][0]} do not match."
+        # Ensure the DEM is empty - all NaN - and clipped to size
+        dem.data[:] = numpy.nan
+        dem = dem.rio.clip(catchment_geometry.catchment.geometry)
+        return dem
 
-        with rioxarray.rioxarray.open_rasterio(str(self._temp_dem_file), masked=True) as empty_dem:
-            empty_dem.load()
-            empty_dem.rio.set_crs(catchment_geometry.crs['horizontal'])
+    def _point_cloud_to_raster_idw(self, point_cloud: numpy.ndarray, xy_out, power: int, search_radius: float,
+                                   smoothing: float = 0, eps: float = 0, leaf_size: int = 10):
+        """ Calculate DEM elevation values at the specified locations using the inverse distance weighing (IDW)
+        approach. This implementation is based on the scipy.spatial.KDTree """
+        xy_in = numpy.empty((len(point_cloud), 2))
+        xy_in[:, 0] = point_cloud['X']
+        xy_in[:, 1] = point_cloud['Y']
 
-        # Check if the raster origin has been moved by PDAL writers.gdal and update if it has
-        raster_origin = [empty_dem.x.data.min() - catchment_geometry.resolution/2,
-                         empty_dem.y.data.min() - catchment_geometry.resolution/2]
-        if self.raster_origin != raster_origin:
-            print("In process: The generated dense DEM has an origin differing from the one specified. Updating the " +
-                  f"catchment geometry raster origin from {self.raster_origin} to {raster_origin}")
-            self.raster_origin = raster_origin
+        tree = scipy.spatial.KDTree(xy_in, leafsize=leaf_size)  # build the tree
+        tree_index_list = tree.query_ball_point(xy_out, r=search_radius, eps=eps)  # , eps=0.2)
+        z_out = numpy.zeros(len(xy_out))
 
-        # Ensure the DEM is empty - all NaN
-        empty_dem.data[0] = numpy.nan
-        empty_dem = empty_dem.rio.clip(catchment_geometry.catchment.geometry)
-        return empty_dem
+        for i, (near_indicies, point) in enumerate(zip(tree_index_list, xy_out)):
 
-    def _create_dem_tile_with_pdal(self, tile_points: numpy.ndarray, window_size: int, idw_power: int, radius: float):
-        """ Create a DEM tile from a LiDAR tile over a specified region.
-        Currently PDAL writers.gdal is used and a temporary file is written out. In future another approach may be used.
-        """
+            if len(near_indicies) == 0:  # Set NaN if no values in search region
+                z_out[i] = numpy.nan
+            else:
+                distance_vectors = point - tree.data[near_indicies]
+                smoothed_distances = numpy.sqrt(((distance_vectors**2).sum(axis=1)+smoothing**2))
+                if smoothed_distances.min() == 0:  # in the case of an exact match
+                    z_out[i] = point_cloud['Z'][tree.query(point, k=1)[1]]
+                else:
+                    z_out[i] = (point_cloud['Z'][near_indicies] / (smoothed_distances**power)).sum(axis=0) \
+                        / (1 / (smoothed_distances**power)).sum(axis=0)
 
-        # Remove the previous temp DEM file
-        if self._temp_dem_file.exists():
-            self._temp_dem_file.unlink()
-
-        # Create the next tile using PDAL gdal.writers
-        pdal_pipeline_instructions = [
-            {"type":  "writers.gdal", "resolution": self.catchment_geometry.resolution,
-             "gdalopts": f"a_srs=EPSG:{self.catchment_geometry.crs['horizontal']}", "output_type": [self.DENSE_BINNING],
-             "filename": str(self._temp_dem_file),
-             "window_size": window_size, "power": idw_power, "radius": radius,
-             "origin_x": self.raster_origin[0], "origin_y": self.raster_origin[1],
-             "width": self.raster_size[0], "height": self.raster_size[1]}
-        ]
-
-        pdal_pipeline = pdal.Pipeline(json.dumps(pdal_pipeline_instructions), [tile_points])
-        pdal_pipeline.execute()
-
-        # Assert PDAL wrote the DEm tile to the temp file name
-        metadata = json.loads(pdal_pipeline.get_metadata())
-        assert str(self._temp_dem_file) == metadata['metadata']['writers.gdal']['filename'][0], "The DEM tile has " + \
-            " been written out in an unexpected location. It has been witten out to " + \
-            f"{metadata['metadata']['writers.gdal']['filename'][0]} instead of {self._temp_dem_file}"
+        return z_out
 
     def add_tile(self, tile_points: numpy.ndarray, tile_extent: geopandas.GeoDataFrame, window_size: int,
                  idw_power: int, radius: float, method: str = 'first'):
-        """ Create the DEM tile and then update the overall DEM with the tile.
-
-        Ensure the tile DEM CRS is set and also trim the tile DEM prior to adding. """
+        """ Create a DEM of the tile using inverse distance weighting (IDW) and then update the overall DEM with the
+        tile. Only perform the IDW within the tile extents. """
 
         if len(tile_points) == 0:
             if self.verbose:
                 print("Warning in DenseDem.add_tile the latest tile has no data and is being ignored.")
             return
 
-        # Use PDAL to create a DEM from the tile points
-        self._create_dem_tile_with_pdal(tile_points, window_size, idw_power, radius)
-
-        # Load generated tile
-        with rioxarray.rioxarray.open_rasterio(self._temp_dem_file, masked=True) as tile:
-            tile.load()
-        tile.rio.set_crs(self.catchment_geometry.crs['horizontal'])
-
-        # Ensure the tile is lined up with the dense DEM - i.e. that that raster origin values match
-        raster_origin = [tile.x.data.min() - self.catchment_geometry.resolution/2,
-                         tile.y.data.min() - self.catchment_geometry.resolution/2]
-        assert self.raster_origin[0] == raster_origin[0] and self.raster_origin[1] == raster_origin[1], "The " + \
-            f"generated tile is not aligned with the overall dense DEM. The DEM raster origin is {raster_origin} " + \
-            f"instead of {self.raster_origin}"
-
         # Update the tile extents with the new tile, then clip tile by extents (remove bleeding outside LiDAR area)
-        self._update_extents(tile_extent)
-        tile = tile.rio.clip(self.extents.geometry)
+        tile_extent = self._update_extents(tile_extent)
 
-        # Add the tile to the dense DEM
-        self._dense_dem = rioxarray.merge.merge_arrays([self._dense_dem, tile], method=method)
+        if tile_extent.area.sum() == 0:  # Check the tile still has an extent after filtering
+            if self.verbose:
+                print("Warning in DenseDem.add_tile the latest tile has no area after being filtered against already "
+                      "added tiles, offshore areas, and 'filter_lidar_holes_area'. Please check to ensure a sensible "
+                      "value for 'filter_lidar_holes_area' if this happens repeatably. This should not exceed a small "
+                      "proportion of a single tiles area")
+            return
 
-        # Ensure the dem will be recalculated as another tile has been added
-        self._dem = None
+        # Get the indicies overwhich to perform IDW
+        try:
+            tile = self._dense_dem.rio.clip(tile_extent.geometry)
+            tile.data[0] = 0  # set all to zero then clip outside tile again - setting it to NaN
+            tile = tile.rio.clip(tile_extent.geometry)
 
-    def _update_extents(self, tile_extent: geopandas.GeoDataFrame):
+            grid_x, grid_y = numpy.meshgrid(tile.x, tile.y)
+            flat_z = tile.data[0].flatten()
+            mask_z = ~numpy.isnan(flat_z)
+
+            xy_out = numpy.empty((mask_z.sum(), 2))
+            xy_out[:, 0] = grid_x.flatten()[mask_z]
+            xy_out[:, 1] = grid_y.flatten()[mask_z]
+
+            # Perform IDW over the dense DEM within the extents of this point cloud tile
+            z_idw = self._point_cloud_to_raster_idw(tile_points, xy_out, idw_power, radius,
+                                                    smoothing=0, eps=0, leaf_size=10)
+            flat_z[mask_z] = z_idw
+            tile.data[0] = flat_z.reshape(grid_x.shape)
+
+            # Add the tile to the dense DEM
+            self._dense_dem = rioxarray.merge.merge_arrays([self._dense_dem, tile], method=method)
+
+            # Ensure the dem will be recalculated as another tile has been added
+            self._dem = None
+        except rioxarray.exceptions.NoDataInBounds:
+            if self.verbose:  # Error catching when the tile_extents not overlapping any of the xarray centroids
+                print("Warning in DenseDem.add_tile the latest tile data does not overlap a DEM centroid and is being."
+                      "ignored. If this happens repeatedly and 'filter_lidar_holes_area' is set this could be a sign "
+                      "that this value is too large. This should not exceed a small proportion of a single tiles area")
+            return
+
+    def _update_extents(self, tile_extent: geopandas.GeoDataFrame) -> geopandas.GeoDataFrame:
         """ Update the extents of all LiDAR tiles updated. If 'drop_offshore_lidar' is True ensure extents are
         limited to the land and foreshore of the catchment. If 'area_to_drop' is True extend the extents to fill
-        any holes around the catchment boundary smaller than the specified 'area_to_drop'."""
+        any holes around the catchment boundary smaller than the specified 'area_to_drop'.
+
+        Return the updated tile_extent after filling any holes and any gaps around the edge and triming offshore."""
 
         assert len(tile_extent) == 1, "The tile_extent is expected to be contained in one shape. Instead " + \
             f"tile_extent: {tile_extent} is of length {len(tile_extent)}."
 
         if tile_extent.geometry.area.sum() > 0:  # check polygon isn't empty
+
             if self._extents is None:
-                self._extents = tile_extent
+                updated_extents = tile_extent
             else:
-                self._extents = geopandas.GeoDataFrame(
+                updated_extents = geopandas.GeoDataFrame(
                     {'geometry': [shapely.ops.cascaded_union([self._extents.loc[0].geometry,
                                                               tile_extent.loc[0].geometry])]},
                     crs=self.catchment_geometry.crs['horizontal'])
 
-            # If 'area_to_drop' fill any holes between the extents and catchment edge smaller than the area_to_drop
-            if self.area_to_drop is not None:
-                polygon = geopandas.overlay(self.catchment_geometry.catchment, self._extents, how="difference")
-                if len(polygon) > 0:
-                    assert len(polygon) == 1, f"Expected the difference polygon {polygon} to have length 1 as both " + \
-                        "extents and the catchment polygons should have length 1."
-                    polygon = polygon.loc[0].geometry
-                    if polygon.geometryType() == "MultiPolygon":
-                        # Run through each polygon element checking if smaller than the 'area_to_drop' - add if so
-                        polygon_list = [polygon_i for polygon_i in polygon if polygon_i.area < self.area_to_drop]
-                        polygon_list.append(self._extents.loc[0].geometry)
-                        self._extents = geopandas.GeoDataFrame(
-                            {'geometry': [shapely.ops.cascaded_union(polygon_list)]},
-                            crs=self.catchment_geometry.crs['horizontal'])
-                    elif polygon.geometryType() == "Polygon":
-                        if polygon.area < self.area_to_drop:
-                            # Check if the polygon is smaller than the 'area_to_drop' - add if so
-                            self._extents = geopandas.GeoDataFrame(
-                                {'geometry': [shapely.ops.cascaded_union([self._extents.loc[0].geometry, polygon])]},
-                                crs=self.catchment_geometry.crs['horizontal'])
-                    else:
-                        if self.verbose:
-                            print("Warning filtering holes in DenseDem using _update_extents is not yet "
-                                  + f"supported for {polygon.geometryType()}")
+            # Fill any holes smaller than the 'area_to_drop' internal to the extents or between it and catchment edge
+            if self.area_to_drop is not None and self.area_to_drop >= 0:
+                updated_extents = self._filter_holes_inside_polygon(self.area_to_drop, updated_extents)
+                updated_extents = self._filter_holes_around_polygon(self.area_to_drop, updated_extents)
 
             if self.drop_offshore_lidar:
-                self._extents = geopandas.clip(self.catchment_geometry.land_and_foreshore, self._extents)
+                updated_extents = geopandas.clip(self.catchment_geometry.land_and_foreshore, updated_extents)
             else:
-                self._extents = geopandas.clip(self.catchment_geometry.catchment, self._extents)
+                updated_extents = geopandas.clip(self.catchment_geometry.catchment, updated_extents)
 
-    def filter_lidar_extents_for_holes(self):
-        """ Remove holes below a filter size within the extents if 'area_to_drop' is '> 0'. In the case that
-        'drop_offshore_lidar' is True ensure extents are limited to the land and foreshore of the catchment
-        once filtering is complete. """
+            # Update the tile extents based on the updated overall cumlative tiles extents
+            if self._extents is None:
+                filtered_tile_extents = updated_extents
+            else:
+                filtered_tile_extents = geopandas.overlay(updated_extents, self._extents, how="difference")
 
-        if self._extents is None:
-            # No extents exist to be filtered to remove holes
-            return
-        elif self.area_to_drop is None:
-            # Try a basic repair if not valid, but otherwise do nothing
-            if not self._extents.loc[0].geometry.is_valid:
-                if self.verbose:
-                    print("Warning LiDAR extents are not valid, trying a basic repair with buffer(0)")
-                self._extents.loc[0].geometry = self._extents.loc[0].geometry.buffer(0)
-            return
-
-        # Check through the extents geometry and remove any internal holes with an area less than the 'area_to_drop'
-        polygon = self._extents.loc[0].geometry
-
-        # Remove any holes internal to the extents that are less than the area_to_drop
-        if polygon.geometryType() == "Polygon":
-            polygon = shapely.geometry.Polygon(
-                polygon.exterior.coords, [interior for interior in polygon.interiors if
-                                          shapely.geometry.Polygon(interior).area > self.area_to_drop])
-            self._extents = geopandas.GeoDataFrame({'geometry': [polygon]},
-                                                   crs=self.catchment_geometry.crs['horizontal'])
-            self._extents = geopandas.clip(self.catchment_geometry.catchment, self._extents)
-        elif polygon.geometryType() == "MultiPolygon":
-            polygons = []
-            for polygon_i in polygon:
-                polygons.append(shapely.geometry.Polygon(
-                    polygon_i.exterior.coords, [interior for interior in polygon_i.interiors if
-                                                shapely.geometry.Polygon(interior).area > self.area_to_drop]))
-            polygon = shapely.geometry.MultiPolygon(polygons)
-            self._extents = geopandas.GeoDataFrame({'geometry': [polygon]},
-                                                   crs=self.catchment_geometry.crs['horizontal'])
-            self._extents = geopandas.clip(self.catchment_geometry.catchment, self._extents)
+            # Update the cumlative extents
+            self._extents = updated_extents
+            return filtered_tile_extents
         else:
-            if self.verbose:
-                print("Warning filtering holes in CatchmentLidar using filter_lidar_extents_for_holes is not yet "
-                      + f"supported for {polygon.geometryType()}")
+            return tile_extent
 
-        # Check valid and otherwise try a basic repair
-        if not self._extents.loc[0].geometry.is_valid:
-            if self.verbose:
-                print("Warning LiDAR extents are not valid, trying a basic repair with buffer(0)")
-            self._extents.loc[0].geometry = self._extents.loc[0].geometry.buffer(0)
+    def _filter_holes_inside_polygon(self, area_to_filter: float,
+                                     polygon_in: geopandas.GeoDataFrame) -> geopandas.GeoDataFrame:
+        """ Check through the input polygon geometry and remove any holes less than the specified area. """
 
-        assert len(self._extents) == 1, "The length of the extents is expected to be one. Instead " + \
-            f"{self._extents} is length {len(self._extents)}"
+        polygon_out = polygon_in
+
+        if area_to_filter is not None and area_to_filter > 0:
+            # Check through the extents geometry and remove any internal holes with an area less than the 'area_to_drop'
+            polygon = polygon_in.loc[0].geometry
+
+            # Remove any holes internal to the extents that are less than the area_to_drop
+            if polygon.geometryType() == "Polygon":
+                polygon = shapely.geometry.Polygon(
+                    polygon.exterior.coords, [interior for interior in polygon.interiors if
+                                              shapely.geometry.Polygon(interior).area > area_to_filter])
+                polygon_out = geopandas.GeoDataFrame({'geometry': [polygon]},
+                                                     crs=self.catchment_geometry.crs['horizontal'])
+                polygon_out = geopandas.clip(self.catchment_geometry.catchment, polygon_out)
+            elif polygon.geometryType() == "MultiPolygon":
+                polygons = []
+                for polygon_i in polygon:
+                    polygons.append(shapely.geometry.Polygon(
+                        polygon_i.exterior.coords, [interior for interior in polygon_i.interiors if
+                                                    shapely.geometry.Polygon(interior).area > area_to_filter]))
+                polygon = shapely.geometry.MultiPolygon(polygons)
+                polygon_out = geopandas.GeoDataFrame({'geometry': [polygon]},
+                                                     crs=self.catchment_geometry.crs['horizontal'])
+                polygon_out = geopandas.clip(self.catchment_geometry.catchment, polygon_out)
+            else:
+                if self.verbose:
+                    print("Warning filtering holes in CatchmentLidar using filter_lidar_extents_for_holes is not yet "
+                          + f"supported for {polygon.geometryType()}")
+        return polygon_out
+
+    def _filter_holes_around_polygon(self, area_to_filter: float,
+                                     polygon_in: geopandas.GeoDataFrame) -> geopandas.GeoDataFrame:
+        """ Check around the input polygon geometry and remove any holes less than the specified area between it and the
+        catchment polygon geometry. Practically this has little impact, but it does impact the odd pixel around the edge
+        of the catchment where there is not data at the pixel centroid, but there is data over the side of the pixel.
+        """
+
+        polygon_out = polygon_in
+
+        if area_to_filter is not None and area_to_filter > 0:
+            # Check through the extents geometry and remove any internal holes with an area less than the 'area_to_drop'
+            polygon = geopandas.overlay(self.catchment_geometry.catchment, polygon_in, how="difference")
+
+            if len(polygon) > 0:
+                assert len(polygon) == 1, f"Expected the difference polygon {polygon} to have length 1 as both " + \
+                    "input polygon and the catchment polygons are expected to have length 1."
+                polygon = polygon.loc[0].geometry
+                if polygon.geometryType() == "MultiPolygon":
+                    # Run through each polygon element checking if smaller than the 'area_to_drop' - add if so
+                    polygon_list = [polygon_i for polygon_i in polygon if polygon_i.area < area_to_filter]
+                    polygon_list.append(polygon_in.loc[0].geometry)
+                    polygon_out = geopandas.GeoDataFrame(
+                        {'geometry': [shapely.ops.cascaded_union(polygon_list)]},
+                        crs=self.catchment_geometry.crs['horizontal'])
+
+                elif polygon.geometryType() == "Polygon":
+                    if polygon.area < area_to_filter:
+                        # Check if the polygon is smaller than the 'area_to_drop' - add if so
+                        polygon_out = geopandas.GeoDataFrame(
+                            {'geometry': [shapely.ops.cascaded_union([polygon_in.loc[0].geometry, polygon])]},
+                            crs=self.catchment_geometry.crs['horizontal'])
+                else:
+                    if self.verbose:
+                        print("Warning filtering holes in DenseDem using _filter_holes_around_polygon is not yet "
+                              + f"supported for {polygon.geometryType()}")
+        return polygon_out

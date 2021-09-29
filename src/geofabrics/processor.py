@@ -31,7 +31,7 @@ class BaseProcessor(abc.ABC):
         """ Return the file path from the instruction file, or default if there is a default value and the local cache
         is specified. Raise an error if the key is not in the instructions. """
 
-        defaults = {'temp_raster': "temp_tile_dem.tif", 'result_dem': "generated_dem.nc",
+        defaults = {'result_dem': "generated_dem.nc",
                     'dense_dem_extents': "dense_extents.geojson"}
 
         if key in self.instructions['instructions']['data_paths']:
@@ -46,7 +46,7 @@ class BaseProcessor(abc.ABC):
         """ Return True if the file path exists in the instruction file, or True if there is a default value and the
         local cache is specified. """
 
-        defaults = ['temp_raster', 'result_dem', 'dense_dem_extents']
+        defaults = ['result_dem', 'dense_dem_extents']
 
         if key in self.instructions['instructions']['data_paths']:
             return True
@@ -219,9 +219,16 @@ class BaseProcessor(abc.ABC):
             return None
 
     def get_lidar_file_list(self, data_service) -> dict:
-        """ Return a dictionary that contains a list of LiDAR tiles to process under the key 'file_paths' and optionally
-        the CRS of these files under the key 'crs'. The 'crs' should only be set if the CRS information is not correctly
-        encoded in the LAZ/LAS files.
+        """ Return a dictionary with three enties 'file_paths', 'crs' and 'tile_index_file'. The 'file_paths' contains a
+        list of LiDAR tiles to process.
+
+        The 'crs' (or coordinate system of the LiDAR data as defined by an EPSG code) is only optionally set (if unset
+        the value is None). The 'crs' should only be set if the CRS information is not correctly encoded in the LAZ/LAS
+        files. Currently this is only supported for OpenTopography LiDAR.
+
+        The 'tile_index_file' is also optional (if unset the value is None). The 'tile_index_file' should be given if a
+        tile index file exists for the LiDAR files specifying the extents of each tile. This is currently only supported
+        for OpenTopography files.
 
         If a LiDAR API is specified this is checked and all files within the catchment area are downloaded and used to
         construct the file list. If none is specified, the instruction 'data_paths' is checked for 'lidars' and these
@@ -247,10 +254,13 @@ class BaseProcessor(abc.ABC):
             lidar_dataset_info['file_paths'] = sorted(
                 pathlib.Path(self.lidar_fetcher.cache_path / dataset_prefix).glob('*.laz'))
             lidar_dataset_info['crs'] = self.get_lidar_dataset_crs(data_service, dataset_prefix)
+            lidar_dataset_info['tile_index_file'] = self.lidar_fetcher.cache_path / dataset_prefix / \
+                f"{dataset_prefix}_TileIndex.zip"
         else:
             # get the specified file paths from the instructions
             lidar_dataset_info['file_paths'] = self.get_instruction_path('lidars')
             lidar_dataset_info['crs'] = None
+            lidar_dataset_info['tile_index_file'] = None
 
         return lidar_dataset_info
 
@@ -316,7 +326,6 @@ class DemGenerator(BaseProcessor):
 
         # setup dense DEM and catchment LiDAR objects
         self.dense_dem = dem.DenseDemFromTiles(catchment_geometry=self.catchment_geometry,
-                                               temp_raster_path=self.get_instruction_path('temp_raster'),
                                                area_to_drop=self.get_instruction_general('filter_lidar_holes_area'),
                                                drop_offshore_lidar=self.get_instruction_general('drop_offshore_lidar'),
                                                verbose=self.verbose)
@@ -324,7 +333,7 @@ class DemGenerator(BaseProcessor):
             self.catchment_geometry, source_crs=lidar_dataset_info['crs'],
             drop_offshore_lidar=self.get_instruction_general('drop_offshore_lidar'),
             keep_only_ground_lidar=self.get_instruction_general('keep_only_ground_lidar'),
-            verbose=self.verbose)
+            verbose=self.verbose, tile_index_file=lidar_dataset_info['tile_index_file'])
 
         # Load in LiDAR tiles
         for index, lidar_file_path in enumerate(lidar_dataset_info['file_paths']):
@@ -332,16 +341,11 @@ class DemGenerator(BaseProcessor):
                 print(f"On LiDAR tile {index + 1} of {len(lidar_dataset_info['file_paths'])}: {lidar_file_path}")
 
             # load in LiDAR tile
-            self.catchment_lidar.load_tile(lidar_file_path)
+            tile_array, tile_extent = self.catchment_lidar.load_tile(lidar_file_path)
 
             # update the dense DEM with a patch created from the LiDAR tile
-            self.dense_dem.add_tile(tile_points=self.catchment_lidar.tile_array,
-                                    tile_extent=self.catchment_lidar.tile_extent,
+            self.dense_dem.add_tile(tile_points=tile_array, tile_extent=tile_extent,
                                     window_size=window_size, idw_power=idw_power, radius=radius)
-            del self.catchment_lidar.tile_array
-
-        # Filter the LiDAR extents based on the area_to_drop
-        self.dense_dem.filter_lidar_extents_for_holes()
 
         # Load in reference DEM if any significant land/foreshore not covered by LiDAR
         area_without_lidar = \
