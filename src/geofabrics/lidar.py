@@ -16,7 +16,7 @@ from . import geometry
 
 class CatchmentLidar:
     """ A class to manage LiDAR data in a catchment context by supporting the addition of LiDAR data tile by tile. LiDAR
-    files are loaded using PDAL.
+    files are loaded using PDAL and the point cloud, and it's extents are returned.
     """
     LAS_GROUND = 2
 
