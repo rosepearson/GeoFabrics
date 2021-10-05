@@ -131,7 +131,8 @@ class DenseDem(abc.ABC):
     CACHE_SIZE = 10000  # The max number of points to create the offshore RBF and to evaluate in the RBF at one time
 
     def __init__(self, catchment_geometry: geometry.CatchmentGeometry, extents: geopandas.GeoDataFrame,
-                 dense_dem: xarray.core.dataarray.DataArray, verbose: bool = True):
+                 dense_dem: xarray.core.dataarray.DataArray, verbose: bool,
+                 interpolate_missing_values: bool):
         """ Setup base DEM to add future tiles too """
 
         self.catchment_geometry = catchment_geometry
@@ -139,6 +140,7 @@ class DenseDem(abc.ABC):
         self._extents = extents
 
         self.verbose = verbose
+        self.interpolate_missing_values = interpolate_missing_values
 
         self._offshore_dem = None
 
@@ -166,7 +168,8 @@ class DenseDem(abc.ABC):
 
         # Ensure valid name and increasing dimension indexing for the dem
         self._dem = self._dem.rename(self.DENSE_BINNING)
-        self._dem = self._dem.rio.interpolate_na()
+        if self.interpolate_missing_values:
+            self._dem = self._dem.rio.interpolate_na(method='nearest')  # other methods are 'linear' and 'cubic'
         self._dem = self._dem.rio.clip(self.catchment_geometry.catchment.geometry)
         self._dem = self._ensure_positive_indexing(self._dem)  # Some programs require positively increasing indices
         return self._dem
@@ -274,7 +277,7 @@ class DenseDemFromFiles(DenseDem):
 
     def __init__(self, catchment_geometry: geometry.CatchmentGeometry,
                  dense_dem_path: typing.Union[str, pathlib.Path], extents_path: typing.Union[str, pathlib.Path],
-                 verbose: bool = True):
+                 verbose: bool = True, interpolate_missing_values: bool = True):
         """ Load in the extents and dense DEM. Ensure the dense DEM is clipped within the extents """
 
         extents = geopandas.read_file(pathlib.Path(extents_path))
@@ -292,7 +295,8 @@ class DenseDemFromFiles(DenseDem):
 
         # Setup the DenseDem class
         super(DenseDemFromFiles, self).__init__(catchment_geometry=catchment_geometry, dense_dem=dense_dem,
-                                                extents=extents, verbose=verbose)
+                                                extents=extents, verbose=verbose,
+                                                interpolate_missing_values=interpolate_missing_values)
 
 
 class DenseDemFromTiles(DenseDem):
@@ -307,7 +311,7 @@ class DenseDemFromTiles(DenseDem):
     """
 
     def __init__(self, catchment_geometry: geometry.CatchmentGeometry, drop_offshore_lidar: bool = True,
-                 area_to_drop: float = None, verbose: bool = True):
+                 area_to_drop: float = None, verbose: bool = True, interpolate_missing_values: bool = True):
         """ Setup base DEM to add future tiles too """
 
         self.area_to_drop = area_to_drop
@@ -318,7 +322,8 @@ class DenseDemFromTiles(DenseDem):
         empty_dem = self._set_up(catchment_geometry)
 
         super(DenseDemFromTiles, self).__init__(catchment_geometry=catchment_geometry, dense_dem=empty_dem,
-                                                extents=None, verbose=verbose)
+                                                extents=None, verbose=verbose,
+                                                interpolate_missing_values=interpolate_missing_values)
 
     def _set_up(self, catchment_geometry):
         """ Create the empty dense DEM to fill and define the raster size and origin """
