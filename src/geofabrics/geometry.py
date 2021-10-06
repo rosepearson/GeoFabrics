@@ -53,17 +53,17 @@ class CatchmentGeometry:
 
         self._land = self._land.to_crs(self.crs['horizontal'])
 
-        self._land = geopandas.clip(self._catchment, self._land)
+        self._land = self._catchment.clip(self._land)
 
-        self._foreshore_and_offshore = geopandas.overlay(self.catchment, self.land, how='difference')
+        self._foreshore_and_offshore = self.catchment.overlay(self.land, how='difference')
 
         self._land_and_foreshore = geopandas.GeoDataFrame(
             {'geometry': self.land.buffer(self.resolution * self.foreshore_buffer)}, crs=self.crs['horizontal'])
         self._land_and_foreshore = geopandas.clip(self.catchment, self._land_and_foreshore)
 
-        self._foreshore = geopandas.overlay(self.land_and_foreshore, self.land, how='difference')
+        self._foreshore = self.land_and_foreshore.overlay(self.land, how='difference')
 
-        self._offshore = geopandas.overlay(self.catchment, self.land_and_foreshore, how='difference')
+        self._offshore = self.catchment.overlay(self.land_and_foreshore, how='difference')
 
         assert len(self._catchment) == 1, "The catchment is made of multiple separate polygons it must be a single " + \
             "polygon object - a MultiPolygon is fine"
@@ -132,9 +132,9 @@ class CatchmentGeometry:
                       "is returning `land_and_foreshore`")
             return self.land_and_foreshore
 
-        land_and_foreshore_with_lidar = geopandas.clip(dense_extents, self.land_and_foreshore)
-        land_and_foreshore_without_lidar = geopandas.overlay(
-            self.land_and_foreshore, land_and_foreshore_with_lidar, how="difference")
+        land_and_foreshore_with_lidar = dense_extents.clip(self.land_and_foreshore)
+        land_and_foreshore_without_lidar = self.land_and_foreshore.overlay(
+            land_and_foreshore_with_lidar, how="difference")
 
         return land_and_foreshore_without_lidar
 
@@ -169,8 +169,7 @@ class CatchmentGeometry:
         offshore_foreshore_dense_data_extents = geopandas.GeoDataFrame(
             {'geometry': [shapely.ops.cascaded_union([self.foreshore.loc[0].geometry, dense_extents.loc[0].geometry])]},
             crs=self.crs['horizontal'])
-        offshore_foreshore_dense_data_extents = geopandas.clip(offshore_foreshore_dense_data_extents,
-                                                               self.foreshore_and_offshore)
+        offshore_foreshore_dense_data_extents = offshore_foreshore_dense_data_extents.clip(self.foreshore_and_offshore)
 
         # deflate this - this will be taken away from the offshore_foreshore_dense_data_extents to give the edge
         deflated_dense_data_extents = geopandas.GeoDataFrame(
@@ -195,10 +194,10 @@ class CatchmentGeometry:
             "`catchment` can be returned from a `CatchmentGeometry` object"
 
         # lidar extents are offshore
-        offshore_dense_data = geopandas.clip(lidar_extents, self.offshore)
+        offshore_dense_data = lidar_extents.clip(self.offshore)
 
         # get the difference between them
-        offshore_no_dense_data = geopandas.overlay(self.offshore, offshore_dense_data, how='difference')
+        offshore_no_dense_data = self.offshore.overlay(offshore_dense_data, how='difference')
 
         return offshore_no_dense_data
 
