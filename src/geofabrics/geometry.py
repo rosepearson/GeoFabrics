@@ -222,13 +222,13 @@ class BathymetryContours:
         self._contour = self._contour.to_crs(self.catchment_geometry.crs['horizontal'])
 
         if exclusion_extent is not None:
-            exclusion_extent = geopandas.clip(exclusion_extent, self.catchment_geometry.offshore)
-            self._extent = geopandas.overlay(self.catchment_geometry.offshore, exclusion_extent, how="difference")
+            exclusion_extent = exclusion_extent.clip(self.catchment_geometry.offshore)
+            self._extent = self.catchment_geometry.offshore.overlay(exclusion_extent, how="difference")
         else:
             self._extent = self.catchment_geometry.offshore
 
         # Keep only contours in the 'extents' i.e. inside the catchment and outside any exclusion_extent
-        self._contour = geopandas.clip(self._contour, self._extent)
+        self._contour = self._contour.clip(self._extent)
         self._contour = self._contour.reset_index(drop=True)
 
         # Convert any 'GeometryCollection' objects to 'MultiLineString' objects - dropping any points
@@ -284,12 +284,12 @@ class BathymetryPoints:
         self._points = self._points.to_crs(self.catchment_geometry.crs['horizontal'])
 
         if exclusion_extent is not None:
-            exclusion_extent = geopandas.clip(exclusion_extent, self.catchment_geometry.offshore)
-            self._extent = geopandas.overlay(self.catchment_geometry.offshore, exclusion_extent, how="difference")
+            exclusion_extent = exclusion_extent.clip(self.catchment_geometry.offshore)
+            self._extent = self.catchment_geometry.offshore.overlay(exclusion_extent, how="difference")
         else:
             self._extent = self.catchment_geometry.offshore
 
-        self._points = geopandas.clip(self._points, self._extent)
+        self._points = self._points.clip(self._extent)
         self._points = self._points.reset_index(drop=True)
 
     @property
