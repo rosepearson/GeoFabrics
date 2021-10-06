@@ -124,6 +124,9 @@ class DenseDem(abc.ABC):
 
     The dense DEM is made up of a dense DEM that is loaded in, and an offshore DEM that is interpolated from bathymetry
     contours offshore and outside all LiDAR tiles.
+    Logical controlling behaviour:
+        * interpolate_missing_values - If True any missing values at the end of the rasterisation process will be
+          populated using nearest neighbour interpolation.
 
     """
 
@@ -273,6 +276,9 @@ class DenseDem(abc.ABC):
 class DenseDemFromFiles(DenseDem):
     """ A class to manage loading in an already created and saved dense DEM that has yet to have an offshore DEM
     associated with it.
+    Logic controlling behaviour:
+        * interpolate_missing_values - If True any missing values at the end of the rasterisation process will be
+          populated using nearest neighbour interpolation.
     """
 
     def __init__(self, catchment_geometry: geometry.CatchmentGeometry,
@@ -308,6 +314,8 @@ class DenseDemFromTiles(DenseDem):
         * area_to_drop - If '> 0' this defines the size of any holes in the LiDAR coverage to ignore.
         * drop_offshore_lidar - If True only keep LiDAR values within the foreshore and land regions defined by
           the catchment_geometry. If False keep all LiDAR values.
+        * interpolate_missing_values - If True any missing values at the end of the rasterisation process will be
+          populated using nearest neighbour interpolation.
     """
 
     def __init__(self, catchment_geometry: geometry.CatchmentGeometry, drop_offshore_lidar: bool = True,
