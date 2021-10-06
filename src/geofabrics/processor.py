@@ -93,7 +93,8 @@ class BaseProcessor(abc.ABC):
         the instruction file. Raise an error if the key is not in the instructions and there is no default value. """
 
         defaults = {'filter_lidar_holes_area': None, 'verbose': True, 'set_dem_shoreline': True,
-                    'bathymetry_contours_z_label': None, 'drop_offshore_lidar': True, 'keep_only_ground_lidar': True}
+                    'bathymetry_contours_z_label': None, 'drop_offshore_lidar': True, 'keep_only_ground_lidar': True,
+                    'interpolate_missing_values': True}
 
         assert key in defaults or key in self.instructions['instructions']['general'], f"The key: {key} is missing " \
             + "from the general instructions, and does not have a default value"
@@ -325,10 +326,11 @@ class DemGenerator(BaseProcessor):
         lidar_dataset_info = self.get_lidar_file_list('open_topography')
 
         # setup dense DEM and catchment LiDAR objects
-        self.dense_dem = dem.DenseDemFromTiles(catchment_geometry=self.catchment_geometry,
-                                               area_to_drop=self.get_instruction_general('filter_lidar_holes_area'),
-                                               drop_offshore_lidar=self.get_instruction_general('drop_offshore_lidar'),
-                                               verbose=self.verbose)
+        self.dense_dem = dem.DenseDemFromTiles(
+            catchment_geometry=self.catchment_geometry,
+            area_to_drop=self.get_instruction_general('filter_lidar_holes_area'),
+            drop_offshore_lidar=self.get_instruction_general('drop_offshore_lidar'), verbose=self.verbose,
+            interpolate_missing_values=self.get_instruction_general('interpolate_missing_values'))
         self.catchment_lidar = lidar.CatchmentLidar(
             self.catchment_geometry, source_crs=lidar_dataset_info['crs'],
             drop_offshore_lidar=self.get_instruction_general('drop_offshore_lidar'),
