@@ -166,20 +166,24 @@ class CatchmentGeometry:
             return None
 
         # the foreshore and whatever lidar extents are offshore
-        dense_data_extents = geopandas.GeoDataFrame({'geometry':
-                                                     [shapely.ops.cascaded_union([self.foreshore.loc[0].geometry,
-                                                                                  dense_extents.loc[0].geometry])]},
-                                                    crs=self.crs['horizontal'])
-        dense_data_extents = geopandas.clip(dense_data_extents, self.foreshore_and_offshore)
+        offshore_foreshore_dense_data_extents = geopandas.GeoDataFrame(
+            {'geometry': [shapely.ops.cascaded_union([self.foreshore.loc[0].geometry, dense_extents.loc[0].geometry])]},
+            crs=self.crs['horizontal'])
+        offshore_foreshore_dense_data_extents = geopandas.clip(offshore_foreshore_dense_data_extents,
+                                                               self.foreshore_and_offshore)
 
-        # deflate this
+        # deflate this - this will be taken away from the offshore_foreshore_dense_data_extents to give the edge
         deflated_dense_data_extents = geopandas.GeoDataFrame(
-                {'geometry': dense_data_extents.buffer(self.resolution * -1 * self.foreshore_buffer)},
+                {'geometry': offshore_foreshore_dense_data_extents.buffer(self.resolution * - self.foreshore_buffer)},
                 crs=self.crs['horizontal'])
 
         # get the difference between them
-        offshore_dense_data_edge = geopandas.overlay(dense_data_extents, deflated_dense_data_extents, how='difference')
-        offshore_dense_data_edge = geopandas.clip(offshore_dense_data_edge, self.foreshore_and_offshore)
+        if deflated_dense_data_extents.area.sum() > 0:
+            offshore_dense_data_edge = offshore_foreshore_dense_data_extents.overlay(
+                deflated_dense_data_extents, how='difference')
+        else:
+            offshore_dense_data_edge = offshore_foreshore_dense_data_extents
+        offshore_dense_data_edge = offshore_dense_data_edge.clip(self.foreshore_and_offshore)
         return offshore_dense_data_edge
 
     def offshore_no_dense_data(self, lidar_extents):
