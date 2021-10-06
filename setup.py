@@ -43,10 +43,10 @@ setuptools.setup(
     install_requires=['numpy>=1.21',
                       'rioxarray>=0.4',
                       'pdal>=2.2',
-                      'geopandas>=0.9',
+                      'geopandas>=0.10',
                       'shapely>=1.7',
                       'scipy>=1.6',
-					  'python-dotenv>=0.19'],
+                      'python-dotenv>=0.19'],
     extras_require={
         'dev': ['check-manifest'],
     },
