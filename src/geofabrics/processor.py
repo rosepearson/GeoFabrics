@@ -331,23 +331,13 @@ class DemGenerator(BaseProcessor):
             area_to_drop=self.get_instruction_general('filter_lidar_holes_area'),
             drop_offshore_lidar=self.get_instruction_general('drop_offshore_lidar'), verbose=self.verbose,
             interpolate_missing_values=self.get_instruction_general('interpolate_missing_values'))
-        self.catchment_lidar = lidar.CatchmentLidar(
-            self.catchment_geometry, source_crs=lidar_dataset_info['crs'],
-            drop_offshore_lidar=self.get_instruction_general('drop_offshore_lidar'),
-            keep_only_ground_lidar=self.get_instruction_general('keep_only_ground_lidar'),
-            verbose=self.verbose, tile_index_file=lidar_dataset_info['tile_index_file'])
 
         # Load in LiDAR tiles
-        for index, lidar_file_path in enumerate(lidar_dataset_info['file_paths']):
-            if self.verbose:
-                print(f"On LiDAR tile {index + 1} of {len(lidar_dataset_info['file_paths'])}: {lidar_file_path}")
-
-            # load in LiDAR tile
-            tile_array, tile_extent = self.catchment_lidar.load_tile(lidar_file_path)
-
-            # update the dense DEM with a patch created from the LiDAR tile
-            self.dense_dem.add_tile(tile_points=tile_array, tile_extent=tile_extent,
-                                    window_size=window_size, idw_power=idw_power, radius=radius)
+        self.dense_dem.add_tiles(lidar_files=lidar_dataset_info['file_paths'], window_size=window_size,
+                                 idw_power=idw_power, radius=radius, source_crs=lidar_dataset_info['crs'],
+                                 drop_offshore_lidar=self.get_instruction_general('drop_offshore_lidar'),
+                                 keep_only_ground_lidar=self.get_instruction_general('keep_only_ground_lidar'),
+                                 tile_index_file=lidar_dataset_info['tile_index_file'])
 
         # Load in reference DEM if any significant land/foreshore not covered by LiDAR
         area_without_lidar = \
