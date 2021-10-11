@@ -332,11 +332,11 @@ class DemGenerator(BaseProcessor):
             interpolate_missing_values=self.get_instruction_general('interpolate_missing_values'))
 
         # Load in LiDAR tiles
-        self.dense_dem.add_tiles(lidar_files=lidar_dataset_info['file_paths'], window_size=window_size,
-                                 idw_power=idw_power, radius=radius, source_crs=lidar_dataset_info['crs'],
-                                 drop_offshore_lidar=self.get_instruction_general('drop_offshore_lidar'),
-                                 keep_only_ground_lidar=self.get_instruction_general('keep_only_ground_lidar'),
-                                 tile_index_file=lidar_dataset_info['tile_index_file'])
+        self.dense_dem.add_tiled_files(lidar_files=lidar_dataset_info['file_paths'], window_size=window_size,
+                                       idw_power=idw_power, radius=radius, source_crs=lidar_dataset_info['crs'],
+                                       drop_offshore_lidar=self.get_instruction_general('drop_offshore_lidar'),
+                                       keep_only_ground_lidar=self.get_instruction_general('keep_only_ground_lidar'),
+                                       tile_index_file=lidar_dataset_info['tile_index_file'])
 
         # Load in reference DEM if any significant land/foreshore not covered by LiDAR
         area_without_lidar = \
