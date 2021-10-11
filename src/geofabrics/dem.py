@@ -429,10 +429,10 @@ class DenseDemFromTiles(DenseDem):
         pdal_pipeline.execute()
         return pdal_pipeline
 
-    def add_tiles(self, lidar_files: typing.List[typing.Union[str, pathlib.Path]], window_size: int,
-                  idw_power: int, radius: float, method: str = 'first', source_crs: dict = None,
-                  tile_index_file: typing.Union[str, pathlib.Path] = None,
-                  keep_only_ground_lidar: bool = True, drop_offshore_lidar: bool = True):
+    def add_tiled_files(self, lidar_files: typing.List[typing.Union[str, pathlib.Path]], window_size: int,
+                        idw_power: int, radius: float, method: str = 'first', source_crs: dict = None,
+                        tile_index_file: typing.Union[str, pathlib.Path] = None,
+                        keep_only_ground_lidar: bool = True, drop_offshore_lidar: bool = True):
         """ Read in all LiDAR files and add to DEM.
             source_crs - specify if the CRS encoded in the LiDAR files are incorrect/only partially defined
                 (i.e. missing vertical CRS) and need to be overwritten.
