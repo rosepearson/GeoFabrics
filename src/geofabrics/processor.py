@@ -10,7 +10,6 @@ import pathlib
 import shutil
 import abc
 from . import geometry
-from . import lidar
 import geoapis.lidar
 import geoapis.vector
 from . import dem

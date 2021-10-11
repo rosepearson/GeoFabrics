@@ -360,6 +360,171 @@ class DenseDemFromTiles(DenseDem):
         dem = dem.rio.clip(catchment_geometry.catchment.geometry)
         return dem
 
+    def _tile_index_column_name(self, tile_index_file: typing.Union[str, pathlib.Path] = None):
+        """ Read in tile index file and determine the column name of the tile geometries """
+        # Check to see if a extents file was added
+        tile_index_extents = geopandas.read_file(tile_index_file) if tile_index_file is not None else None
+        tile_index_name_column = None
+
+        # If there is a tile_index_file - remove tiles outside the catchment & get the 'file name' column
+        if tile_index_extents is not None:
+            tile_index_extents = tile_index_extents.to_crs(self.catchment_geometry.crs['horizontal'])
+            tile_index_extents = geopandas.sjoin(tile_index_extents, self.catchment_geometry.catchment)
+            tile_index_extents = tile_index_extents.reset_index(drop=True)
+
+            column_names = tile_index_extents.columns
+            tile_index_name_column = column_names[["filename" == name.lower() or "file_name" == name.lower()
+                                                   for name in column_names]][0]
+        return tile_index_extents, tile_index_name_column
+
+    def _tile_extent_from_metadata(self, pdal_pipeline, lidar_file: pathlib.Path,
+                                   tile_index_extents: geopandas.GeoDataFrame,
+                                   tile_index_name_column: str) -> geopandas.GeoDataFrame:
+        # extract the catchment geometry with the LiDAR extents - note has to run on imported LAS file not point data
+        metadata = json.loads(pdal_pipeline.get_metadata())
+        tile_extents_string = metadata['metadata']['filters.hexbin']['boundary']
+
+        # Only care about horizontal extents
+        tile_extent = geopandas.GeoDataFrame({'geometry': [shapely.wkt.loads(tile_extents_string)]},
+                                             crs=self.catchment_geometry.crs['horizontal'])
+
+        if tile_index_extents is not None and tile_extent.geometry.area.sum() > 0:
+            tile_index_extent = tile_index_extents[
+                lidar_file.name == tile_index_extents[tile_index_name_column]]
+            tile_extent = geopandas.clip(tile_extent, tile_index_extent)
+        return tile_extent
+
+    def _read_in_tile_with_pdal(self, lidar_file: typing.Union[str, pathlib.Path], drop_offshore_lidar: bool,
+                                source_crs: dict = None):
+        # Define instructions for loading in LiDAR
+        pdal_pipeline_instructions = [{"type":  "readers.las", "filename": str(lidar_file)}]
+
+        # Specify reprojection - if a source_crs is specified use this to define the 'in_srs'
+        if source_crs is None:
+            pdal_pipeline_instructions.append(
+                {"type": "filters.reprojection",
+                 "out_srs": f"EPSG:{self.catchment_geometry.crs['horizontal']}+" +
+                 f"{self.catchment_geometry.crs['vertical']}"})
+        else:
+            pdal_pipeline_instructions.append(
+                {"type": "filters.reprojection",
+                 "in_srs": f"EPSG:{source_crs['horizontal']}+{source_crs['vertical']}",
+                 "out_srs": f"EPSG:{self.catchment_geometry.crs['horizontal']}+" +
+                 f"{self.catchment_geometry.crs['vertical']}"})
+
+        # Add instructions for clip within either the catchment, or the land and foreshore
+        if drop_offshore_lidar:
+            pdal_pipeline_instructions.append(
+                {"type": "filters.crop",
+                 "polygon": str(self.catchment_geometry.land_and_foreshore.loc[0].geometry)})
+        else:
+            pdal_pipeline_instructions.append(
+                {"type": "filters.crop", "polygon": str(self.catchment_geometry.catchment.loc[0].geometry)})
+
+        # Add instructions for creating a polygon extents of the remaining point cloud
+        pdal_pipeline_instructions.append({"type": "filters.hexbin"})
+
+        # Load in LiDAR and perform operations
+        pdal_pipeline = pdal.Pipeline(json.dumps(pdal_pipeline_instructions))
+        pdal_pipeline.execute()
+        return pdal_pipeline
+
+    def add_tiles(self, lidar_files: list[typing.Union[str, pathlib.Path]], window_size: int,
+                  idw_power: int, radius: float, method: str = 'first', source_crs: dict = None,
+                  tile_index_file: typing.Union[str, pathlib.Path] = None,
+                  keep_only_ground_lidar: bool = True, drop_offshore_lidar: bool = True):
+        """ Read in all LiDAR files and add to DEM.
+            source_crs - specify if the CRS encoded in the LiDAR files are incorrect/only partially defined
+                (i.e. missing vertical CRS) and need to be overwritten.
+            drop_offshore_lidar - if True, trim any LiDAR values that are offshore as specified by the
+                catchment_geometry
+            keep_only_ground_lidar - if True, only keep LiDAR values that are coded '2' of ground
+            tile_index_file - if not None load in the specified tile_index file and use to clip all LiDAR tile data
+                within the relevant LiDAR tiles extents as defined in the tile_index file. """
+
+        if source_crs is not None:
+            assert 'horizontal' in source_crs, "The horizontal component of the source CRS is not specified. " + \
+                f"Both horizontal and vertical CRS need to be defined. The source_crs specified is: {self.source_crs}"
+            assert 'vertical' in source_crs, "The vertical component of the source CRS is not specified. " + \
+                f"Both horizontal and vertical CRS need to be defined. The source_crs specified is: {self.source_crs}"
+
+        tile_index_extents, tile_index_name_column = self._tile_index_column_name(tile_index_file)
+
+        for index, lidar_file in enumerate(lidar_files):
+
+            if self.verbose:
+                print(f"On LiDAR tile {index + 1} of {len(lidar_files)}: {lidar_file}")
+
+            # Use PDAL to load in file
+            pdal_pipeline = self._read_in_tile_with_pdal(lidar_file, source_crs=source_crs,
+                                                         drop_offshore_lidar=drop_offshore_lidar)
+
+            # Load LiDAR points from pipeline
+            tile_array = pdal_pipeline.arrays[0]
+
+            # Optionally filter the points by classification code - to keep only ground coded points
+            if keep_only_ground_lidar:
+                tile_array = tile_array[tile_array['Classification'] == self.LAS_GROUND]
+
+            tile_extent = self._tile_extent_from_metadata(pdal_pipeline, pathlib.Path(lidar_file),
+                                                          tile_index_extents, tile_index_name_column)
+
+            self._rasterise_tile(tile_points=tile_array, tile_extent=tile_extent, window_size=window_size,
+                                 idw_power=idw_power, radius=radius)
+
+    def add_tile(self, tile_points: numpy.ndarray, tile_extent: geopandas.GeoDataFrame, window_size: int,
+                 idw_power: int, radius: float, method: str = 'first'):
+        """ Create a DEM of the tile using inverse distance weighting (IDW) and then update the overall DEM with the
+        tile. Only perform the IDW within the tile extents. """
+
+        if len(tile_points) == 0:
+            if self.verbose:
+                print("Warning in DenseDem.add_tile the latest tile has no data and is being ignored.")
+            return
+
+        # Update the tile extents with the new tile, then clip tile by extents (remove bleeding outside LiDAR area)
+        tile_extent = self._update_extents(tile_extent)
+
+        if tile_extent.area.sum() == 0:  # Check the tile still has an extent after filtering
+            if self.verbose:
+                print("Warning in DenseDem.add_tile the latest tile has no area after being filtered against already "
+                      "added tiles, offshore areas, and 'filter_lidar_holes_area'. Please check to ensure a sensible "
+                      "value for 'filter_lidar_holes_area' if this happens repeatably. This should not exceed a small "
+                      "proportion of a single tiles area")
+            return
+
+        # Get the indicies overwhich to perform IDW
+        try:
+            tile = self._dense_dem.rio.clip(tile_extent.geometry)
+            tile.data[0] = 0  # set all to zero then clip outside tile again - setting it to NaN
+            tile = tile.rio.clip(tile_extent.geometry)
+
+            grid_x, grid_y = numpy.meshgrid(tile.x, tile.y)
+            flat_z = tile.data[0].flatten()
+            mask_z = ~numpy.isnan(flat_z)
+
+            xy_out = numpy.empty((mask_z.sum(), 2))
+            xy_out[:, 0] = grid_x.flatten()[mask_z]
+            xy_out[:, 1] = grid_y.flatten()[mask_z]
+
+            # Perform IDW over the dense DEM within the extents of this point cloud tile
+            z_idw = self._point_cloud_to_raster_idw(tile_points, xy_out, idw_power, radius,
+                                                    smoothing=0, eps=0, leaf_size=10)
+            flat_z[mask_z] = z_idw
+            tile.data[0] = flat_z.reshape(grid_x.shape)
+
+            # Add the tile to the dense DEM
+            self._dense_dem = rioxarray.merge.merge_arrays([self._dense_dem, tile], method=method)
+
+            # Ensure the dem will be recalculated as another tile has been added
+            self._dem = None
+        except rioxarray.exceptions.NoDataInBounds:
+            if self.verbose:  # Error catching when the tile_extents not overlapping any of the xarray centroids
+                print("Warning in DenseDem.add_tile the latest tile data does not overlap a DEM centroid and is being."
+                      "ignored. If this happens repeatedly and 'filter_lidar_holes_area' is set this could be a sign "
+                      "that this value is too large. This should not exceed a small proportion of a single tiles area")
+            return
+
     def _point_cloud_to_raster_idw(self, point_cloud: numpy.ndarray, xy_out, power: int, search_radius: float,
                                    smoothing: float = 0, eps: float = 0, leaf_size: int = 10):
         """ Calculate DEM elevation values at the specified locations using the inverse distance weighing (IDW)
@@ -437,118 +602,6 @@ class DenseDemFromTiles(DenseDem):
                 print("Warning in DenseDem.add_tile the latest tile data does not overlap a DEM centroid and is being."
                       "ignored. If this happens repeatedly and 'filter_lidar_holes_area' is set this could be a sign "
                       "that this value is too large. This should not exceed a small proportion of a single tiles area")
-
-    def _read_in_with_pdal(self, lidar_file: typing.Union[str, pathlib.Path], drop_offshore_lidar: bool,
-                           source_crs: dict = None):
-        # Define instructions for loading in LiDAR
-        pdal_pipeline_instructions = [{"type":  "readers.las", "filename": str(lidar_file)}]
-
-        # Specify reprojection - if a source_crs is specified use this to define the 'in_srs'
-        if source_crs is None:
-            pdal_pipeline_instructions.append(
-                {"type": "filters.reprojection",
-                 "out_srs": f"EPSG:{self.catchment_geometry.crs['horizontal']}+" +
-                 f"{self.catchment_geometry.crs['vertical']}"})
-        else:
-            pdal_pipeline_instructions.append(
-                {"type": "filters.reprojection",
-                 "in_srs": f"EPSG:{source_crs['horizontal']}+{source_crs['vertical']}",
-                 "out_srs": f"EPSG:{self.catchment_geometry.crs['horizontal']}+" +
-                 f"{self.catchment_geometry.crs['vertical']}"})
-
-        # Add instructions for clip within either the catchment, or the land and foreshore
-        if drop_offshore_lidar:
-            pdal_pipeline_instructions.append(
-                {"type": "filters.crop",
-                 "polygon": str(self.catchment_geometry.land_and_foreshore.loc[0].geometry)})
-        else:
-            pdal_pipeline_instructions.append(
-                {"type": "filters.crop", "polygon": str(self.catchment_geometry.catchment.loc[0].geometry)})
-
-        # Add instructions for creating a polygon extents of the remaining point cloud
-        pdal_pipeline_instructions.append({"type": "filters.hexbin"})
-
-        # Load in LiDAR and perform operations
-        pdal_pipeline = pdal.Pipeline(json.dumps(pdal_pipeline_instructions))
-        pdal_pipeline.execute()
-        return pdal_pipeline
-
-    def add_tiles(self, lidar_files: list[typing.Union[str, pathlib.Path]], window_size: int,
-                  idw_power: int, radius: float, method: str = 'first', source_crs: dict = None,
-                  tile_index_file: typing.Union[str, pathlib.Path] = None,
-                  keep_only_ground_lidar: bool = True, drop_offshore_lidar: bool = True):
-        """ Read in all LiDAR files and add to DEM.
-            source_crs - specify if the CRS encoded in the LiDAR files are incorrect/only partially defined
-                (i.e. missing vertical CRS) and need to be overwritten.
-            drop_offshore_lidar - if True, trim any LiDAR values that are offshore as specified by the
-                catchment_geometry
-            keep_only_ground_lidar - if True, only keep LiDAR values that are coded '2' of ground
-            tile_index_file - if not None load in the specified tile_index file and use to clip all LiDAR tile data
-                within the relevant LiDAR tiles extents as defined in the tile_index file. """
-
-        if source_crs is not None:
-            assert 'horizontal' in source_crs, "The horizontal component of the source CRS is not specified. " + \
-                f"Both horizontal and vertical CRS need to be defined. The source_crs specified is: {self.source_crs}"
-            assert 'vertical' in source_crs, "The vertical component of the source CRS is not specified. " + \
-                f"Both horizontal and vertical CRS need to be defined. The source_crs specified is: {self.source_crs}"
-
-        tile_index_extents, tile_index_name_column = self._tile_index_column_name(tile_index_file)
-
-        for index, lidar_file in enumerate(lidar_files):
-
-            if self.verbose:
-                print(f"On LiDAR tile {index + 1} of {len(lidar_files)}: {lidar_file}")
-
-            # Use PDAL to load in file
-            pdal_pipeline = self._read_in_with_pdal(lidar_file, source_crs=source_crs,
-                                                    drop_offshore_lidar=drop_offshore_lidar)
-
-            # Load LiDAR points from pipeline
-            tile_array = pdal_pipeline.arrays[0]
-
-            # Optionally filter the points by classification code - to keep only ground coded points
-            if keep_only_ground_lidar:
-                tile_array = tile_array[tile_array['Classification'] == self.LAS_GROUND]
-
-            tile_extent = self._tile_extent_from_metadata(pdal_pipeline, pathlib.Path(lidar_file),
-                                                          tile_index_extents, tile_index_name_column)
-
-            self._rasterise_tile(tile_points=tile_array, tile_extent=tile_extent, window_size=window_size,
-                                 idw_power=idw_power, radius=radius)
-
-    def _tile_index_column_name(self, tile_index_file: typing.Union[str, pathlib.Path] = None):
-        """ Read in tile index file and determine the column name of the tile geometries """
-        # Check to see if a extents file was added
-        tile_index_extents = geopandas.read_file(tile_index_file) if tile_index_file is not None else None
-        tile_index_name_column = None
-
-        # If there is a tile_index_file - remove tiles outside the catchment & get the 'file name' column
-        if tile_index_extents is not None:
-            tile_index_extents = tile_index_extents.to_crs(self.catchment_geometry.crs['horizontal'])
-            tile_index_extents = geopandas.sjoin(tile_index_extents, self.catchment_geometry.catchment)
-            tile_index_extents = tile_index_extents.reset_index(drop=True)
-
-            column_names = tile_index_extents.columns
-            tile_index_name_column = column_names[["filename" == name.lower() or "file_name" == name.lower()
-                                                   for name in column_names]][0]
-        return tile_index_extents, tile_index_name_column
-
-    def _tile_extent_from_metadata(self, pdal_pipeline, lidar_file: pathlib.Path,
-                                   tile_index_extents: geopandas.GeoDataFrame,
-                                   tile_index_name_column: str) -> geopandas.GeoDataFrame:
-        # extract the catchment geometry with the LiDAR extents - note has to run on imported LAS file not point data
-        metadata = json.loads(pdal_pipeline.get_metadata())
-        tile_extents_string = metadata['metadata']['filters.hexbin']['boundary']
-
-        # Only care about horizontal extents
-        tile_extent = geopandas.GeoDataFrame({'geometry': [shapely.wkt.loads(tile_extents_string)]},
-                                             crs=self.catchment_geometry.crs['horizontal'])
-
-        if tile_index_extents is not None and tile_extent.geometry.area.sum() > 0:
-            tile_index_extent = tile_index_extents[
-                lidar_file.name == tile_index_extents[tile_index_name_column]]
-            tile_extent = geopandas.clip(tile_extent, tile_index_extent)
-        return tile_extent
 
     def _update_extents(self, tile_extent: geopandas.GeoDataFrame) -> geopandas.GeoDataFrame:
         """ Update the extents of all LiDAR tiles updated. If 'drop_offshore_lidar' is True ensure extents are
