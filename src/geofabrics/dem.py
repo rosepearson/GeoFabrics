@@ -394,8 +394,10 @@ class DenseDemFromTiles(DenseDem):
             tile_extent = geopandas.clip(tile_extent, tile_index_extent)
         return tile_extent
 
-    def _read_in_tile_with_pdal(self, lidar_file: typing.Union[str, pathlib.Path], drop_offshore_lidar: bool,
-                                source_crs: dict = None):
+    def _read_in_tile_with_pdal(self, lidar_file: typing.Union[str, pathlib.Path],
+                                region_to_tile: geopandas.GeoDataFrame, source_crs: dict = None):
+        """ Read a tile file in with PDAL """
+
         # Define instructions for loading in LiDAR
         pdal_pipeline_instructions = [{"type":  "readers.las", "filename": str(lidar_file)}]
 
@@ -413,13 +415,8 @@ class DenseDemFromTiles(DenseDem):
                  f"{self.catchment_geometry.crs['vertical']}"})
 
         # Add instructions for clip within either the catchment, or the land and foreshore
-        if drop_offshore_lidar:
-            pdal_pipeline_instructions.append(
-                {"type": "filters.crop",
-                 "polygon": str(self.catchment_geometry.land_and_foreshore.loc[0].geometry)})
-        else:
-            pdal_pipeline_instructions.append(
-                {"type": "filters.crop", "polygon": str(self.catchment_geometry.catchment.loc[0].geometry)})
+        pdal_pipeline_instructions.append(
+            {"type": "filters.crop", "polygon": str(region_to_tile.loc[0].geometry)})
 
         # Add instructions for creating a polygon extents of the remaining point cloud
         pdal_pipeline_instructions.append({"type": "filters.hexbin"})
@@ -450,6 +447,12 @@ class DenseDemFromTiles(DenseDem):
 
         tile_index_extents, tile_index_name_column = self._tile_index_column_name(tile_index_file)
 
+        # define the region to rasterise inside
+        if drop_offshore_lidar:
+            region_to_tile = self.catchment_geometry.land_and_foreshore
+        else:
+            region_to_tile = self.catchment_geometry.catchment
+
         for index, lidar_file in enumerate(lidar_files):
 
             if self.verbose:
@@ -457,7 +460,7 @@ class DenseDemFromTiles(DenseDem):
 
             # Use PDAL to load in file
             pdal_pipeline = self._read_in_tile_with_pdal(lidar_file, source_crs=source_crs,
-                                                         drop_offshore_lidar=drop_offshore_lidar)
+                                                         region_to_tile=region_to_tile)
 
             # Load LiDAR points from pipeline
             tile_array = pdal_pipeline.arrays[0]
