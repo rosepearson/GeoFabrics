@@ -13,6 +13,8 @@ import typing
 import pathlib
 import geopandas
 import shapely
+import dask
+import dask.array
 import pdal
 import json
 import abc
@@ -360,6 +362,26 @@ class DenseDemFromTiles(DenseDem):
         dem = dem.rio.clip(catchment_geometry.catchment.geometry)
         return dem
 
+    def _set_up_chunks(self, chunk_size: int) -> (list, list):
+        """ Define the chunked coordinates to cover the catchment """
+
+        catchment_bounds = self.catchment_geometry.catchment.loc[0].geometry.bounds
+        resolution = self.catchment_geometry.resolution
+
+        # Determine the number of chunks
+        n_chunks_x = int(numpy.ceil((catchment_bounds[2] - catchment_bounds[0]) / (chunk_size * resolution)))
+        n_chunks_y = int(numpy.ceil((catchment_bounds[3] - catchment_bounds[1]) / (chunk_size * resolution)))
+
+        # Determine x and y coordinates rounded up to the nearest chunk
+        dim_x = [numpy.arange(catchment_bounds[0] + resolution / 2 + i * chunk_size * resolution,
+                              catchment_bounds[0] + resolution / 2 + (i + 1) * chunk_size * resolution,
+                              resolution, dtype=self.raster_type) for i in range(n_chunks_x)]
+        dim_y = [numpy.arange(catchment_bounds[3] - resolution / 2 - i * chunk_size * resolution,
+                              catchment_bounds[3] - resolution / 2 - (i + 1) * chunk_size * resolution,
+                              -resolution, dtype=self.raster_type) for i in range(n_chunks_y)]
+
+        return dim_x, dim_y
+
     def _tile_index_column_name(self, tile_index_file: typing.Union[str, pathlib.Path] = None):
         """ Read in tile index file and determine the column name of the tile geometries """
         # Check to see if a extents file was added
@@ -375,6 +397,27 @@ class DenseDemFromTiles(DenseDem):
             column_names = tile_index_extents.columns
             tile_index_name_column = column_names[["filename" == name.lower() or "file_name" == name.lower()
                                                    for name in column_names]][0]
+        return tile_index_extents, tile_index_name_column
+
+    def _tile_index_column_name_clipped(self, tile_index_file: typing.Union[str, pathlib.Path],
+                                        region_to_rasterise: geopandas.GeoDataFrame):
+        """ Read in tile index file and determine the column name of the tile geometries - onte must exist """
+
+        assert tile_index_file is not None and region_to_rasterise is not None, "Tile index file and the raster " \
+            "region must have been specified"
+
+        # Check to see if a extents file was added
+        tile_index_extents = geopandas.read_file(tile_index_file) if tile_index_file is not None else None
+        tile_index_name_column = None
+
+        # Remove tiles outside the region to rasterise in the catchment & get the 'file name' column
+        tile_index_extents = tile_index_extents.to_crs(region_to_rasterise.crs['horizontal'])
+        tile_index_extents = geopandas.sjoin(tile_index_extents, region_to_rasterise)
+        tile_index_extents = tile_index_extents.reset_index(drop=True)
+
+        column_names = tile_index_extents.columns
+        tile_index_name_column = column_names[["filename" == name.lower() or "file_name" == name.lower()
+                                              for name in column_names]][0]
         return tile_index_extents, tile_index_name_column
 
     def _tile_extent_from_metadata(self, pdal_pipeline, lidar_file: pathlib.Path,
@@ -425,6 +468,134 @@ class DenseDemFromTiles(DenseDem):
         pdal_pipeline = pdal.Pipeline(json.dumps(pdal_pipeline_instructions))
         pdal_pipeline.execute()
         return pdal_pipeline
+
+    @dask.delayed
+    def _load_tiles_in_chunk(self, dim_x: numpy.ndarray, dim_y: numpy.ndarray,
+                             tile_index_extents: geopandas.GeoDataFrame, tile_index_name_column: str,
+                             lidar_files: typing.List[typing.Union[str, pathlib.Path]], source_crs: dict,
+                             region_to_rasterise: geopandas.GeoDataFrame):
+        """ Read in all LiDAR files within the chunked region """
+
+        # Define the region to tile
+        chunk_geometry = geopandas.GeoDataFrame(
+            {'geometry': [shapely.geometry.Polygon([(numpy.min(dim_x), numpy.min(dim_y)),
+                                                    (numpy.max(dim_x), numpy.min(dim_y)),
+                                                    (numpy.max(dim_x), numpy.max(dim_y)),
+                                                    (numpy.min(dim_x), numpy.max(dim_y))])]},
+            crs=self.catchment_geometry.crs['horizontal'])
+        chunk_region_to_tile = region_to_rasterise.clip(chunk_geometry)
+
+        # Clip the tile indices to only include those within the chunk region
+        chunk_tile_index_extents = tile_index_extents.drop(columns=['index_right'])
+        chunk_tile_index_extents = geopandas.sjoin(chunk_tile_index_extents, chunk_region_to_tile)
+        chunk_tile_index_extents = chunk_tile_index_extents.reset_index(drop=True)
+
+        # Initialise LiDAR points
+        lidar_points = []
+
+        # Cycle through each file loading it in an adding it to a numpy array
+        for tile_index_name in tile_index_extents[tile_index_name_column]:
+            if self.verbose:
+                print(f"\t Loading in file {tile_index_name}")
+            # get the LiDAR file with the tile_index_name
+            lidar_file = [lidar_file for lidar_file in lidar_files if lidar_file.name == tile_index_name]
+            assert len(lidar_file) == 1, f"Error no single LiDAR file matches the tile name. {lidar_file}"
+
+            # read in the LiDAR file
+            pdal_pipeline = self._read_in_tile_with_pdal(lidar_file[0], chunk_region_to_tile, source_crs)
+            lidar_points.append(pdal_pipeline.arrays[0])
+
+        if len(lidar_points) > 0:
+            lidar_points = numpy.concatenate(lidar_points)
+        return lidar_points
+
+    @dask.delayed
+    def _rasterise_over_chunk(self, dim_x: numpy.ndarray, dim_y: numpy.ndarray,
+                              tile_points: numpy.ndarray, keep_only_ground_lidar: bool,
+                              window_size: int, idw_power: int,
+                              radius: float):
+        """ Rasterise all points within a chunk """
+
+        # filter out only ground points for idw ground calculations
+        if keep_only_ground_lidar:
+            tile_points = tile_points[tile_points['Classification'] == self.LAS_GROUND]
+
+        if len(tile_points) == 0:
+            if self.verbose:
+                print("Warning in DenseDem._rasterise_over_chunk the latest chunk has no data and is being ignored.")
+            return
+
+        # Get the indicies overwhich to perform IDW
+        grid_x, grid_y = numpy.meshgrid(dim_x, dim_y)
+        xy_out = numpy.concatenate([[grid_x.flatten()], [grid_y.flatten()]], axis=0).transpose()
+
+        # Perform IDW over the dense DEM within the extents of this point cloud tile
+        z_idw = self._point_cloud_to_raster_idw(tile_points, xy_out, idw_power, radius,
+                                                smoothing=0, eps=0, leaf_size=10)
+        grid_z = z_idw.reshape(grid_x.shape)
+
+        # TODO - add roughness calculation
+
+        return grid_z
+
+    def add_tiled_files_chunked(self, lidar_files: typing.List[typing.Union[str, pathlib.Path]], window_size: int,
+                                idw_power: int, radius: float, tile_index_file: typing.Union[str, pathlib.Path],
+                                method: str = 'first', source_crs: dict = None, keep_only_ground_lidar: bool = True,
+                                drop_offshore_lidar: bool = True, chunk_size: int = 500):
+        """ Read in all LiDAR files and add to DEM.
+            source_crs - specify if the CRS encoded in the LiDAR files are incorrect/only partially defined
+                (i.e. missing vertical CRS) and need to be overwritten.
+            drop_offshore_lidar - if True, trim any LiDAR values that are offshore as specified by the
+                catchment_geometry
+            keep_only_ground_lidar - if True, only keep LiDAR values that are coded '2' of ground
+            tile_index_file - if not None load in the specified tile_index file and use to clip all LiDAR tile data
+                within the relevant LiDAR tiles extents as defined in the tile_index file. """
+
+        if source_crs is not None:
+            assert 'horizontal' in source_crs, "The horizontal component of the source CRS is not specified. " + \
+                f"Both horizontal and vertical CRS need to be defined. The source_crs specified is: {self.source_crs}"
+            assert 'vertical' in source_crs, "The vertical component of the source CRS is not specified. " + \
+                f"Both horizontal and vertical CRS need to be defined. The source_crs specified is: {self.source_crs}"
+        assert tile_index_file is not None, "A tile index file must be provided if "
+
+        if drop_offshore_lidar:
+            region_to_rasterise = self.catchment_geometry.land_and_foreshore
+        else:
+            region_to_rasterise = self.catchment_geometry.catchment
+
+        # Remove all tiles entirely outside the region to raserise
+        tile_index_extents, tile_index_name_column = self._tile_index_column_name(tile_index_file)
+
+        # get chunking information
+        chunked_dim_x, chunked_dim_y = self._set_up_chunks(chunk_size)
+
+        # cycle through index chunks - and collect in a delayed array
+        delayed_chunked_matrix = []
+        for i, dim_x in enumerate(chunked_dim_x):
+            delayed_chunked_x = []
+            for j, dim_y in enumerate(chunked_dim_y):
+                if self.verbose:
+                    print(f"Rasterising chunk {[i, j]} out of {[len(chunked_dim_x), len(chunked_dim_y)]} chunks")
+                tile_points = self._load_tiles_in_chunk(dim_x=dim_x, dim_y=dim_y, tile_index_extents=tile_index_extents,
+                                                        tile_index_name_column=tile_index_name_column,
+                                                        lidar_files=lidar_files, source_crs=source_crs,
+                                                        region_to_rasterise=region_to_rasterise)
+                delayed_chunked_x.append(dask.array.from_delayed(
+                    self._rasterise_over_chunk(dim_x=dim_x, dim_y=dim_y, tile_points=tile_points,
+                                               keep_only_ground_lidar=keep_only_ground_lidar,
+                                               window_size=window_size, idw_power=idw_power, radius=radius),
+                    shape=(chunk_size, chunk_size), dtype=numpy.float32))
+            delayed_chunked_matrix.append(delayed_chunked_x)
+        chunked_dem = xarray.DataArray(dask.array.block([delayed_chunked_matrix]),
+                                       coords={'band': [1], 'y': numpy.concatenate(chunked_dim_y),
+                                               'x': numpy.concatenate(chunked_dim_x)},
+                                       dims=['band', 'y', 'x'],
+                                       attrs={'scale_factor': 1.0, 'add_offset': 0.0, 'long_name': 'idw'})
+        chunked_dem.rio.write_crs(self.catchment_geometry.crs['horizontal'], inplace=True)
+        chunked_dem.name = 'z'
+        chunked_dem = chunked_dem.rio.write_nodata(numpy.nan)
+        chunked_dem = chunked_dem.compute()  # Note will be larger than the catchment region - could clip to catchment
+        return
 
     def add_tiled_files(self, lidar_files: typing.List[typing.Union[str, pathlib.Path]], window_size: int,
                         idw_power: int, radius: float, method: str = 'first', source_crs: dict = None,
