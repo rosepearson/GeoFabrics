@@ -571,9 +571,9 @@ class DenseDemFromTiles(DenseDem):
 
         # cycle through index chunks - and collect in a delayed array
         delayed_chunked_matrix = []
-        for i, dim_x in enumerate(chunked_dim_x):
+        for i, dim_y in enumerate(chunked_dim_y):
             delayed_chunked_x = []
-            for j, dim_y in enumerate(chunked_dim_y):
+            for j, dim_x in enumerate(chunked_dim_x):
                 if self.verbose:
                     print(f"Rasterising chunk {[i, j]} out of {[len(chunked_dim_x), len(chunked_dim_y)]} chunks")
                 tile_points = self._load_tiles_in_chunk(dim_x=dim_x, dim_y=dim_y, tile_index_extents=tile_index_extents,
