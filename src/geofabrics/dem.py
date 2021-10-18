@@ -475,7 +475,9 @@ class DenseDemFromTiles(DenseDem):
                              tile_index_extents: geopandas.GeoDataFrame, tile_index_name_column: str,
                              lidar_files: typing.List[typing.Union[str, pathlib.Path]], source_crs: dict,
                              region_to_rasterise: geopandas.GeoDataFrame, radius: float):
-        """ Read in all LiDAR files within the chunked region """
+        """ Read in all LiDAR files within the chunked region - clipped to within the region within which to rasterise.
+        In future we may want to buffer the region_to_rasterise by the radius.
+        """
 
         # Define the region to tile
         chunk_geometry = geopandas.GeoDataFrame(
@@ -515,7 +517,8 @@ class DenseDemFromTiles(DenseDem):
                               tile_points: numpy.ndarray, keep_only_ground_lidar: bool,
                               window_size: int, idw_power: int,
                               radius: float):
-        """ Rasterise all points within a chunk """
+        """ Rasterise all points within a chunk. In future we may want to use the region to rasterise to define which
+        points to rasterise. """
 
         # filter out only ground points for idw ground calculations
         if keep_only_ground_lidar:
@@ -597,7 +600,9 @@ class DenseDemFromTiles(DenseDem):
         chunked_dem.name = 'z'
         chunked_dem = chunked_dem.rio.write_nodata(numpy.nan)
         chunked_dem = chunked_dem.compute()  # Note will be larger than the catchment region - could clip to catchment
-        self._dense_dem = chunked_dem.rio.clip(region_to_rasterise.geometry)
+
+        # Clip result to within the catchment - removing NaN filled chunked areas outside the catchment
+        self._dense_dem = chunked_dem.rio.clip(self.catchment_geometry.catchment.geometry)
 
         # Create a polygon defining the region where there are LiDAR values
         lidar_extents = [shapely.geometry.shape(polygon[0]) for polygon in
