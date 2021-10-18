@@ -15,6 +15,7 @@ dependencies:
   - python-dotenv
   - matplotlib
   - dask
+  - distributed
   - ipykernel
   - ipython
   - ipython_genutils
