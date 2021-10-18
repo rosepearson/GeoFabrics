@@ -6,6 +6,7 @@ Created on Fri Jun 18 10:52:49 2021
 """
 import rioxarray
 import rioxarray.merge
+import rasterio
 import xarray
 import numpy
 import math
@@ -576,12 +577,13 @@ class DenseDemFromTiles(DenseDem):
             for j, dim_x in enumerate(chunked_dim_x):
                 if self.verbose:
                     print(f"Rasterising chunk {[i, j]} out of {[len(chunked_dim_x), len(chunked_dim_y)]} chunks")
-                tile_points = self._load_tiles_in_chunk(dim_x=dim_x, dim_y=dim_y, tile_index_extents=tile_index_extents,
-                                                        tile_index_name_column=tile_index_name_column,
-                                                        lidar_files=lidar_files, source_crs=source_crs,
-                                                        region_to_rasterise=region_to_rasterise)
+                chunk_points = self._load_tiles_in_chunk(dim_x=dim_x, dim_y=dim_y,
+                                                         tile_index_extents=tile_index_extents,
+                                                         tile_index_name_column=tile_index_name_column,
+                                                         lidar_files=lidar_files, source_crs=source_crs,
+                                                         region_to_rasterise=region_to_rasterise)
                 delayed_chunked_x.append(dask.array.from_delayed(
-                    self._rasterise_over_chunk(dim_x=dim_x, dim_y=dim_y, tile_points=tile_points,
+                    self._rasterise_over_chunk(dim_x=dim_x, dim_y=dim_y, tile_points=chunk_points,
                                                keep_only_ground_lidar=keep_only_ground_lidar,
                                                window_size=window_size, idw_power=idw_power, radius=radius),
                     shape=(chunk_size, chunk_size), dtype=numpy.float32))
@@ -595,6 +597,12 @@ class DenseDemFromTiles(DenseDem):
         chunked_dem.name = 'z'
         chunked_dem = chunked_dem.rio.write_nodata(numpy.nan)
         chunked_dem = chunked_dem.compute()  # Note will be larger than the catchment region - could clip to catchment
+
+        # Create a polygon defining the region where there are LiDAR values
+        lidar_extents = [shapely.geometry.shape(polygon[0]) for polygon in
+                         rasterio.features.shapes(numpy.uint8(numpy.isnan(chunked_dem.data)==False)) if polygon[1] == 1.0]
+        lidar_extents = geopandas.GeoDataFrame({'geometry':[shapely.ops.unary_union(lidar_extents)]},
+                                               crs=self.catchment_geometry.crs['horizontal'])
         return
 
     def add_tiled_files(self, lidar_files: typing.List[typing.Union[str, pathlib.Path]], window_size: int,
@@ -709,7 +717,7 @@ class DenseDemFromTiles(DenseDem):
 
         tree = scipy.spatial.KDTree(xy_in, leafsize=leaf_size)  # build the tree
         tree_index_list = tree.query_ball_point(xy_out, r=search_radius, eps=eps)  # , eps=0.2)
-        z_out = numpy.zeros(len(xy_out))
+        z_out = numpy.zeros(len(xy_out), dtype=self.raster_type)
 
         for i, (near_indicies, point) in enumerate(zip(tree_index_list, xy_out)):
 
