@@ -474,15 +474,15 @@ class DenseDemFromTiles(DenseDem):
     def _load_tiles_in_chunk(self, dim_x: numpy.ndarray, dim_y: numpy.ndarray,
                              tile_index_extents: geopandas.GeoDataFrame, tile_index_name_column: str,
                              lidar_files: typing.List[typing.Union[str, pathlib.Path]], source_crs: dict,
-                             region_to_rasterise: geopandas.GeoDataFrame):
+                             region_to_rasterise: geopandas.GeoDataFrame, radius: float):
         """ Read in all LiDAR files within the chunked region """
 
         # Define the region to tile
         chunk_geometry = geopandas.GeoDataFrame(
-            {'geometry': [shapely.geometry.Polygon([(numpy.min(dim_x), numpy.min(dim_y)),
-                                                    (numpy.max(dim_x), numpy.min(dim_y)),
-                                                    (numpy.max(dim_x), numpy.max(dim_y)),
-                                                    (numpy.min(dim_x), numpy.max(dim_y))])]},
+            {'geometry': [shapely.geometry.Polygon([(numpy.min(dim_x) - radius, numpy.min(dim_y) - radius),
+                                                    (numpy.max(dim_x) + radius, numpy.min(dim_y) - radius),
+                                                    (numpy.max(dim_x) + radius, numpy.max(dim_y) + radius),
+                                                    (numpy.min(dim_x) - radius, numpy.max(dim_y) + radius)])]},
             crs=self.catchment_geometry.crs['horizontal'])
         chunk_region_to_tile = region_to_rasterise.clip(chunk_geometry)
 
@@ -567,7 +567,7 @@ class DenseDemFromTiles(DenseDem):
         # Remove all tiles entirely outside the region to raserise
         tile_index_extents, tile_index_name_column = self._tile_index_column_name(tile_index_file)
 
-        # get chunking information
+        # get chunking information - if negative, 0 or None chunk_size then default to a single chunk
         chunked_dim_x, chunked_dim_y = self._set_up_chunks(chunk_size)
 
         # cycle through index chunks - and collect in a delayed array
@@ -581,7 +581,7 @@ class DenseDemFromTiles(DenseDem):
                                                          tile_index_extents=tile_index_extents,
                                                          tile_index_name_column=tile_index_name_column,
                                                          lidar_files=lidar_files, source_crs=source_crs,
-                                                         region_to_rasterise=region_to_rasterise)
+                                                         region_to_rasterise=region_to_rasterise, radius=radius)
                 delayed_chunked_x.append(dask.array.from_delayed(
                     self._rasterise_over_chunk(dim_x=dim_x, dim_y=dim_y, tile_points=chunk_points,
                                                keep_only_ground_lidar=keep_only_ground_lidar,
@@ -597,13 +597,15 @@ class DenseDemFromTiles(DenseDem):
         chunked_dem.name = 'z'
         chunked_dem = chunked_dem.rio.write_nodata(numpy.nan)
         chunked_dem = chunked_dem.compute()  # Note will be larger than the catchment region - could clip to catchment
+        self._dense_dem = chunked_dem.rio.clip(region_to_rasterise.geometry)
 
         # Create a polygon defining the region where there are LiDAR values
         lidar_extents = [shapely.geometry.shape(polygon[0]) for polygon in
-                         rasterio.features.shapes(numpy.uint8(numpy.isnan(chunked_dem.data)==False)) if polygon[1] == 1.0]
-        lidar_extents = geopandas.GeoDataFrame({'geometry':[shapely.ops.unary_union(lidar_extents)]},
+                         rasterio.features.shapes(numpy.uint8(numpy.isnan(self._dense_dem.data) == False))
+                         if polygon[1] == 1.0]
+        lidar_extents = geopandas.GeoDataFrame({'geometry': [shapely.ops.unary_union(lidar_extents)]},
                                                crs=self.catchment_geometry.crs['horizontal'])
-        return
+        self._extents = lidar_extents
 
     def add_tiled_files(self, lidar_files: typing.List[typing.Union[str, pathlib.Path]], window_size: int,
                         idw_power: int, radius: float, method: str = 'first', source_crs: dict = None,
