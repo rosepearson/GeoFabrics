@@ -317,8 +317,7 @@ class DemGenerator(BaseProcessor):
         self.catchment_geometry.land = land_dirs[0]
 
         # Define PDAL/GDAL griding parameter values
-        radius = self.catchment_geometry.resolution * numpy.sqrt(2)
-        window_size = 0
+        idw_radius = self.catchment_geometry.resolution * numpy.sqrt(2)
         idw_power = 2
 
         # Get LiDAR data file-list - this may involve downloading lidar files
@@ -329,14 +328,14 @@ class DemGenerator(BaseProcessor):
             catchment_geometry=self.catchment_geometry,
             area_to_drop=self.get_instruction_general('filter_lidar_holes_area'),
             drop_offshore_lidar=self.get_instruction_general('drop_offshore_lidar'), verbose=self.verbose,
-            interpolate_missing_values=self.get_instruction_general('interpolate_missing_values'))
+            interpolate_missing_values=self.get_instruction_general('interpolate_missing_values'),
+            idw_power=idw_power, idw_radius=idw_radius)
 
         # Load in LiDAR tiles
-        self.dense_dem.add_tiled_files(lidar_files=lidar_dataset_info['file_paths'], window_size=window_size,
-                                       idw_power=idw_power, radius=radius, source_crs=lidar_dataset_info['crs'],
-                                       drop_offshore_lidar=self.get_instruction_general('drop_offshore_lidar'),
-                                       keep_only_ground_lidar=self.get_instruction_general('keep_only_ground_lidar'),
-                                       tile_index_file=lidar_dataset_info['tile_index_file'])
+        self.dense_dem.add_lidar(lidar_files=lidar_dataset_info['file_paths'], source_crs=lidar_dataset_info['crs'],
+                                 drop_offshore_lidar=self.get_instruction_general('drop_offshore_lidar'),
+                                 keep_only_ground_lidar=self.get_instruction_general('keep_only_ground_lidar'),
+                                 tile_index_file=lidar_dataset_info['tile_index_file'], chunk_size=100)
 
         # Load in reference DEM if any significant land/foreshore not covered by LiDAR
         area_without_lidar = \
@@ -358,8 +357,8 @@ class DemGenerator(BaseProcessor):
                                                   exclusion_extent=self.dense_dem.extents)
 
             # Add the reference DEM patch where there's no LiDAR to the dense DEM without updting the extents
-            self.dense_dem.add_tile(tile_points=self.reference_dem.points, tile_extent=self.reference_dem.extents,
-                                    window_size=window_size, idw_power=idw_power, radius=radius)
+            self.dense_dem.add_reference_dem(tile_points=self.reference_dem.points,
+                                             tile_extent=self.reference_dem.extents)
 
         # Load in bathymetry and interpolate offshore if significant offshore is not covered by LiDAR
         area_without_lidar = \

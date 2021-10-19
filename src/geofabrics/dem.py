@@ -321,12 +321,15 @@ class DenseDemFromTiles(DenseDem):
           the catchment_geometry. If False keep all LiDAR values.
         * interpolate_missing_values - If True any missing values at the end of the rasterisation process will be
           populated using nearest neighbour interpolation.
+        * idw_power - the power to apply when performing IDW
+        * idw_radius - the radius to apply IDW over
     """
 
     LAS_GROUND = 2  # As specified in the LAS/LAZ format
 
-    def __init__(self, catchment_geometry: geometry.CatchmentGeometry, drop_offshore_lidar: bool = True,
-                 area_to_drop: float = None, verbose: bool = True, interpolate_missing_values: bool = True):
+    def __init__(self, catchment_geometry: geometry.CatchmentGeometry, idw_power: int, idw_radius: float,
+                 drop_offshore_lidar: bool = True, area_to_drop: float = None, verbose: bool = True,
+                 interpolate_missing_values: bool = True):
         """ Setup base DEM to add future tiles too """
 
         self.area_to_drop = area_to_drop
@@ -334,34 +337,12 @@ class DenseDemFromTiles(DenseDem):
 
         self.raster_type = numpy.float64
 
-        empty_dem = self._set_up(catchment_geometry)
+        self.idw_power = idw_power
+        self.idw_radius = idw_radius
 
-        super(DenseDemFromTiles, self).__init__(catchment_geometry=catchment_geometry, dense_dem=empty_dem,
+        super(DenseDemFromTiles, self).__init__(catchment_geometry=catchment_geometry, dense_dem=None,
                                                 extents=None, verbose=verbose,
                                                 interpolate_missing_values=interpolate_missing_values)
-
-    def _set_up(self, catchment_geometry):
-        """ Create the empty dense DEM to fill and define the raster size and origin """
-
-        catchment_bounds = catchment_geometry.catchment.loc[0].geometry.bounds
-        resolution = catchment_geometry.resolution
-
-        # Create an empty xarray to store results in
-        dim_x = numpy.arange(catchment_bounds[0] + resolution / 2, catchment_bounds[2], resolution,
-                             dtype=self.raster_type)
-        dim_y = numpy.arange(catchment_bounds[3] - resolution / 2, catchment_bounds[1], -resolution,
-                             dtype=self.raster_type)
-        grid_dem_z = numpy.empty((1, len(dim_y), len(dim_x)), dtype=self.raster_type)
-        dem = xarray.DataArray(grid_dem_z, coords={'band': [1], 'y': dim_y, 'x': dim_x}, dims=['band', 'y', 'x'],
-                               attrs={'scale_factor': 1.0, 'add_offset': 0.0, 'long_name': 'idw'})
-        dem.rio.write_crs(catchment_geometry.crs['horizontal'], inplace=True)
-        dem.name = 'z'
-        dem = dem.rio.write_nodata(numpy.nan)
-
-        # Ensure the DEM is empty - all NaN - and clipped to size
-        dem.data[:] = numpy.nan
-        dem = dem.rio.clip(catchment_geometry.catchment.geometry)
-        return dem
 
     def _set_up_chunks(self, chunk_size: int) -> (list, list):
         """ Define the chunked coordinates to cover the catchment """
@@ -370,8 +351,11 @@ class DenseDemFromTiles(DenseDem):
         resolution = self.catchment_geometry.resolution
 
         # Determine the number of chunks
-        n_chunks_x = int(numpy.ceil((catchment_bounds[2] - catchment_bounds[0]) / (chunk_size * resolution)))
-        n_chunks_y = int(numpy.ceil((catchment_bounds[3] - catchment_bounds[1]) / (chunk_size * resolution)))
+        if chunk_size is None or chunk_size <= 0:
+            n_chunks_x = n_chunks_y = 1
+        else:
+            n_chunks_x = int(numpy.ceil((catchment_bounds[2] - catchment_bounds[0]) / (chunk_size * resolution)))
+            n_chunks_y = int(numpy.ceil((catchment_bounds[3] - catchment_bounds[1]) / (chunk_size * resolution)))
 
         # Determine x and y coordinates rounded up to the nearest chunk
         dim_x = [numpy.arange(catchment_bounds[0] + resolution / 2 + i * chunk_size * resolution,
@@ -382,6 +366,22 @@ class DenseDemFromTiles(DenseDem):
                               -resolution, dtype=self.raster_type) for i in range(n_chunks_y)]
 
         return dim_x, dim_y
+
+    def _calculate_dense_extents(self):
+        """ Calculate the extents of the current dense DEM """
+        dense_extents = [shapely.geometry.shape(polygon[0]) for polygon in
+                         rasterio.features.shapes(numpy.uint8(numpy.isnan(self._dense_dem.data) == False))
+                         if polygon[1] == 1.0]
+        dense_extents = geopandas.GeoDataFrame({'geometry': [shapely.ops.unary_union(dense_extents)]},
+                                               crs=self.catchment_geometry.crs['horizontal'])
+
+        # Apply a transform so in the same space as the dense DEM
+        dense_dem_affine = self._dense_dem.rio.transform()
+        dense_extents = dense_extents.affine_transform([dense_dem_affine.a, dense_dem_affine.b,
+                                                        dense_dem_affine.d, dense_dem_affine.e,
+                                                        dense_dem_affine.xoff, dense_dem_affine.yoff])
+        dense_extents = geopandas.GeoDataFrame(geometry=dense_extents)
+        return dense_extents
 
     def _tile_index_column_name(self, tile_index_file: typing.Union[str, pathlib.Path] = None):
         """ Read in tile index file and determine the column name of the tile geometries """
@@ -400,47 +400,10 @@ class DenseDemFromTiles(DenseDem):
                                                    for name in column_names]][0]
         return tile_index_extents, tile_index_name_column
 
-    def _tile_index_column_name_clipped(self, tile_index_file: typing.Union[str, pathlib.Path],
-                                        region_to_rasterise: geopandas.GeoDataFrame):
-        """ Read in tile index file and determine the column name of the tile geometries - onte must exist """
-
-        assert tile_index_file is not None and region_to_rasterise is not None, "Tile index file and the raster " \
-            "region must have been specified"
-
-        # Check to see if a extents file was added
-        tile_index_extents = geopandas.read_file(tile_index_file) if tile_index_file is not None else None
-        tile_index_name_column = None
-
-        # Remove tiles outside the region to rasterise in the catchment & get the 'file name' column
-        tile_index_extents = tile_index_extents.to_crs(region_to_rasterise.crs['horizontal'])
-        tile_index_extents = geopandas.sjoin(tile_index_extents, region_to_rasterise)
-        tile_index_extents = tile_index_extents.reset_index(drop=True)
-
-        column_names = tile_index_extents.columns
-        tile_index_name_column = column_names[["filename" == name.lower() or "file_name" == name.lower()
-                                              for name in column_names]][0]
-        return tile_index_extents, tile_index_name_column
-
-    def _tile_extent_from_metadata(self, pdal_pipeline, lidar_file: pathlib.Path,
-                                   tile_index_extents: geopandas.GeoDataFrame,
-                                   tile_index_name_column: str) -> geopandas.GeoDataFrame:
-        # extract the catchment geometry with the LiDAR extents - note has to run on imported LAS file not point data
-        metadata = json.loads(pdal_pipeline.get_metadata())
-        tile_extents_string = metadata['metadata']['filters.hexbin']['boundary']
-
-        # Only care about horizontal extents
-        tile_extent = geopandas.GeoDataFrame({'geometry': [shapely.wkt.loads(tile_extents_string)]},
-                                             crs=self.catchment_geometry.crs['horizontal'])
-
-        if tile_index_extents is not None and tile_extent.geometry.area.sum() > 0:
-            tile_index_extent = tile_index_extents[
-                lidar_file.name == tile_index_extents[tile_index_name_column]]
-            tile_extent = geopandas.clip(tile_extent, tile_index_extent)
-        return tile_extent
-
     def _read_in_tile_with_pdal(self, lidar_file: typing.Union[str, pathlib.Path],
-                                region_to_tile: geopandas.GeoDataFrame, source_crs: dict = None):
-        """ Read a tile file in with PDAL """
+                                region_to_tile: geopandas.GeoDataFrame, source_crs: dict = None,
+                                get_extents: bool = False):
+        """ Read a tile file in using PDAL """
 
         # Define instructions for loading in LiDAR
         pdal_pipeline_instructions = [{"type":  "readers.las", "filename": str(lidar_file)}]
@@ -463,30 +426,61 @@ class DenseDemFromTiles(DenseDem):
             {"type": "filters.crop", "polygon": str(region_to_tile.loc[0].geometry)})
 
         # Add instructions for creating a polygon extents of the remaining point cloud
-        pdal_pipeline_instructions.append({"type": "filters.hexbin"})
+        if get_extents:
+            pdal_pipeline_instructions.append({"type": "filters.hexbin"})
 
         # Load in LiDAR and perform operations
         pdal_pipeline = pdal.Pipeline(json.dumps(pdal_pipeline_instructions))
         pdal_pipeline.execute()
         return pdal_pipeline
 
+    def _point_cloud_to_raster_idw(self, point_cloud: numpy.ndarray, xy_out,
+                                   smoothing: float = 0, eps: float = 0, leaf_size: int = 10):
+        """ Calculate DEM elevation values at the specified locations using the inverse distance weighing (IDW)
+        approach. This implementation is based on the scipy.spatial.KDTree """
+        xy_in = numpy.empty((len(point_cloud), 2))
+        xy_in[:, 0] = point_cloud['X']
+        xy_in[:, 1] = point_cloud['Y']
+
+        tree = scipy.spatial.KDTree(xy_in, leafsize=leaf_size)  # build the tree
+        tree_index_list = tree.query_ball_point(xy_out, r=self.idw_radius, eps=eps)  # , eps=0.2)
+        z_out = numpy.zeros(len(xy_out), dtype=self.raster_type)
+
+        for i, (near_indicies, point) in enumerate(zip(tree_index_list, xy_out)):
+
+            if len(near_indicies) == 0:  # Set NaN if no values in search region
+                z_out[i] = numpy.nan
+            else:
+                distance_vectors = point - tree.data[near_indicies]
+                smoothed_distances = numpy.sqrt(((distance_vectors**2).sum(axis=1)+smoothing**2))
+                if smoothed_distances.min() == 0:  # in the case of an exact match
+                    z_out[i] = point_cloud['Z'][tree.query(point, k=1)[1]]
+                else:
+                    z_out[i] = (point_cloud['Z'][near_indicies] / (smoothed_distances**self.idw_power)).sum(axis=0) \
+                        / (1 / (smoothed_distances**self.idw_power)).sum(axis=0)
+
+        return z_out
+
     @dask.delayed
     def _load_tiles_in_chunk(self, dim_x: numpy.ndarray, dim_y: numpy.ndarray,
                              tile_index_extents: geopandas.GeoDataFrame, tile_index_name_column: str,
                              lidar_files: typing.List[typing.Union[str, pathlib.Path]], source_crs: dict,
-                             region_to_rasterise: geopandas.GeoDataFrame, radius: float):
+                             region_to_rasterise: geopandas.GeoDataFrame):
         """ Read in all LiDAR files within the chunked region - clipped to within the region within which to rasterise.
-        In future we may want to buffer the region_to_rasterise by the radius.
         """
 
         # Define the region to tile
         chunk_geometry = geopandas.GeoDataFrame(
-            {'geometry': [shapely.geometry.Polygon([(numpy.min(dim_x) - radius, numpy.min(dim_y) - radius),
-                                                    (numpy.max(dim_x) + radius, numpy.min(dim_y) - radius),
-                                                    (numpy.max(dim_x) + radius, numpy.max(dim_y) + radius),
-                                                    (numpy.min(dim_x) - radius, numpy.max(dim_y) + radius)])]},
+            {'geometry': [shapely.geometry.Polygon(
+                [(numpy.min(dim_x) - self.idw_radius, numpy.min(dim_y) - self.idw_radius),
+                 (numpy.max(dim_x) + self.idw_radius, numpy.min(dim_y) - self.idw_radius),
+                 (numpy.max(dim_x) + self.idw_radius, numpy.max(dim_y) + self.idw_radius),
+                 (numpy.min(dim_x) - self.idw_radius, numpy.max(dim_y) + self.idw_radius)])]},
             crs=self.catchment_geometry.crs['horizontal'])
-        chunk_region_to_tile = region_to_rasterise.clip(chunk_geometry)
+
+        # Ensure edge pixels will have a full set of values to perform IDW over
+        chunk_region_to_tile = geopandas.GeoDataFrame(
+            geometry=region_to_rasterise.buffer(self.idw_radius).clip(chunk_geometry))
 
         # Clip the tile indices to only include those within the chunk region
         chunk_tile_index_extents = tile_index_extents.drop(columns=['index_right'])
@@ -505,7 +499,8 @@ class DenseDemFromTiles(DenseDem):
             assert len(lidar_file) == 1, f"Error no single LiDAR file matches the tile name. {lidar_file}"
 
             # read in the LiDAR file
-            pdal_pipeline = self._read_in_tile_with_pdal(lidar_file[0], chunk_region_to_tile, source_crs)
+            pdal_pipeline = self._read_in_tile_with_pdal(lidar_file[0], chunk_region_to_tile, source_crs,
+                                                         get_extents=False)
             lidar_points.append(pdal_pipeline.arrays[0])
 
         if len(lidar_points) > 0:
@@ -514,9 +509,7 @@ class DenseDemFromTiles(DenseDem):
 
     @dask.delayed
     def _rasterise_over_chunk(self, dim_x: numpy.ndarray, dim_y: numpy.ndarray,
-                              tile_points: numpy.ndarray, keep_only_ground_lidar: bool,
-                              window_size: int, idw_power: int,
-                              radius: float):
+                              tile_points: numpy.ndarray, keep_only_ground_lidar: bool):
         """ Rasterise all points within a chunk. In future we may want to use the region to rasterise to define which
         points to rasterise. """
 
@@ -534,38 +527,88 @@ class DenseDemFromTiles(DenseDem):
         xy_out = numpy.concatenate([[grid_x.flatten()], [grid_y.flatten()]], axis=0).transpose()
 
         # Perform IDW over the dense DEM within the extents of this point cloud tile
-        z_idw = self._point_cloud_to_raster_idw(tile_points, xy_out, idw_power, radius,
-                                                smoothing=0, eps=0, leaf_size=10)
+        z_idw = self._point_cloud_to_raster_idw(tile_points, xy_out, smoothing=0, eps=0, leaf_size=10)
         grid_z = z_idw.reshape(grid_x.shape)
 
         # TODO - add roughness calculation
 
         return grid_z
 
-    def add_tiled_files_chunked(self, lidar_files: typing.List[typing.Union[str, pathlib.Path]], window_size: int,
-                                idw_power: int, radius: float, tile_index_file: typing.Union[str, pathlib.Path],
-                                method: str = 'first', source_crs: dict = None, keep_only_ground_lidar: bool = True,
-                                drop_offshore_lidar: bool = True, chunk_size: int = 500):
-        """ Read in all LiDAR files and add to DEM.
+    def _rasterise_tile(self, dim_x: numpy.ndarray, dim_y: numpy.ndarray, tile_points: numpy.ndarray,
+                        keep_only_ground_lidar: bool):
+        """ Rasterise all points within a tile. """
+
+        # filter out only ground points for idw ground calculations
+        if keep_only_ground_lidar:
+            tile_points = tile_points[tile_points['Classification'] == self.LAS_GROUND]
+
+        if len(tile_points) == 0:
+            if self.verbose:
+                print("Warning in DenseDem._rasterise_tile the tile has no data and is being ignored.")
+            return
+
+        # Get the indicies overwhich to perform IDW
+        grid_x, grid_y = numpy.meshgrid(dim_x, dim_y)
+        xy_out = numpy.concatenate([[grid_x.flatten()], [grid_y.flatten()]], axis=0).transpose()
+
+        # Perform IDW over the dense DEM within the extents of this point cloud tile
+        z_idw = self._point_cloud_to_raster_idw(tile_points, xy_out, smoothing=0, eps=0, leaf_size=10)
+        grid_z = z_idw.reshape(grid_x.shape)
+
+        # TODO - add roughness calculation
+
+        return grid_z
+
+    def add_lidar(self, lidar_files: typing.List[typing.Union[str, pathlib.Path]],
+                  tile_index_file: typing.Union[str, pathlib.Path], method: str = 'first', source_crs: dict = None,
+                  keep_only_ground_lidar: bool = True, drop_offshore_lidar: bool = True, chunk_size: int = 500):
+        """ Read in all LiDAR files and use to create a dense DEM.
+
             source_crs - specify if the CRS encoded in the LiDAR files are incorrect/only partially defined
                 (i.e. missing vertical CRS) and need to be overwritten.
             drop_offshore_lidar - if True, trim any LiDAR values that are offshore as specified by the
                 catchment_geometry
             keep_only_ground_lidar - if True, only keep LiDAR values that are coded '2' of ground
-            tile_index_file - if not None load in the specified tile_index file and use to clip all LiDAR tile data
-                within the relevant LiDAR tiles extents as defined in the tile_index file. """
+            tile_index_file - must exist if there are many LiDAR files. This is used to determine chunking. """
 
         if source_crs is not None:
             assert 'horizontal' in source_crs, "The horizontal component of the source CRS is not specified. " + \
                 f"Both horizontal and vertical CRS need to be defined. The source_crs specified is: {self.source_crs}"
             assert 'vertical' in source_crs, "The vertical component of the source CRS is not specified. " + \
                 f"Both horizontal and vertical CRS need to be defined. The source_crs specified is: {self.source_crs}"
-        assert tile_index_file is not None, "A tile index file must be provided if "
 
         if drop_offshore_lidar:
             region_to_rasterise = self.catchment_geometry.land_and_foreshore
         else:
             region_to_rasterise = self.catchment_geometry.catchment
+
+        # Determine if adding a single file or tiles
+        if len(lidar_files) == 1:  # If one file it's ok if there is no tile_index
+            self._dense_dem = self._add_file(lidar_file=lidar_files[0], region_to_rasterise=region_to_rasterise,
+                                             source_crs=source_crs, keep_only_ground_lidar=keep_only_ground_lidar)
+        else:
+            assert tile_index_file is not None, "A tile index file is required for multiple tile files added together"
+            self._dense_dem = self._add_tiled_lidar_chunked(lidar_files=lidar_files, tile_index_file=tile_index_file,
+                                                            source_crs=source_crs,
+                                                            keep_only_ground_lidar=keep_only_ground_lidar,
+                                                            region_to_rasterise=region_to_rasterise,
+                                                            chunk_size=chunk_size)
+
+        # Set any values outside the region_to_rasterise to NaN
+        self._dense_dem = self._dense_dem.rio.clip(region_to_rasterise.geometry, drop=False)
+
+        # Create a polygon defining the region where there are dense DEM values
+        self._extents = self._calculate_dense_extents()
+
+        # Ensure the dem will be recalculated as another tile has been added
+        self._dem = None
+
+    def _add_tiled_lidar_chunked(self, lidar_files: typing.List[typing.Union[str, pathlib.Path]],
+                                 tile_index_file: typing.Union[str, pathlib.Path], source_crs: dict,
+                                 keep_only_ground_lidar: bool, region_to_rasterise: geopandas.GeoDataFrame,
+                                 chunk_size: int) -> xarray.DataArray:
+        """ Create a dense DEM from a set of tiled LiDAR files. Read these in over non-overlapping chunks and
+        then combine """
 
         # Remove all tiles entirely outside the region to raserise
         tile_index_extents, tile_index_name_column = self._tile_index_column_name(tile_index_file)
@@ -584,11 +627,10 @@ class DenseDemFromTiles(DenseDem):
                                                          tile_index_extents=tile_index_extents,
                                                          tile_index_name_column=tile_index_name_column,
                                                          lidar_files=lidar_files, source_crs=source_crs,
-                                                         region_to_rasterise=region_to_rasterise, radius=radius)
+                                                         region_to_rasterise=region_to_rasterise)
                 delayed_chunked_x.append(dask.array.from_delayed(
                     self._rasterise_over_chunk(dim_x=dim_x, dim_y=dim_y, tile_points=chunk_points,
-                                               keep_only_ground_lidar=keep_only_ground_lidar,
-                                               window_size=window_size, idw_power=idw_power, radius=radius),
+                                               keep_only_ground_lidar=keep_only_ground_lidar),
                     shape=(chunk_size, chunk_size), dtype=numpy.float32))
             delayed_chunked_matrix.append(delayed_chunked_x)
         chunked_dem = xarray.DataArray(dask.array.block([delayed_chunked_matrix]),
@@ -602,305 +644,73 @@ class DenseDemFromTiles(DenseDem):
         chunked_dem = chunked_dem.compute()  # Note will be larger than the catchment region - could clip to catchment
 
         # Clip result to within the catchment - removing NaN filled chunked areas outside the catchment
-        self._dense_dem = chunked_dem.rio.clip(self.catchment_geometry.catchment.geometry)
+        dense_dem = chunked_dem.rio.clip(self.catchment_geometry.catchment.geometry)
+        return dense_dem
 
-        # Create a polygon defining the region where there are LiDAR values
-        lidar_extents = [shapely.geometry.shape(polygon[0]) for polygon in
-                         rasterio.features.shapes(numpy.uint8(numpy.isnan(self._dense_dem.data) == False))
-                         if polygon[1] == 1.0]
-        lidar_extents = geopandas.GeoDataFrame({'geometry': [shapely.ops.unary_union(lidar_extents)]},
-                                               crs=self.catchment_geometry.crs['horizontal'])
-        self._extents = lidar_extents
+    def _add_file(self, lidar_file: typing.Union[str, pathlib.Path], region_to_rasterise: geopandas.GeoDataFrame,
+                  source_crs: dict = None, keep_only_ground_lidar: bool = True) -> xarray.DataArray:
+        """ Create the dense DEM region from a single LiDAR file. 
+        TODO - look at improving efficiency by only evaluating on land if drop_offshore_lidar is True,
+        and only within the specified tile_extents"""
 
-    def add_tiled_files(self, lidar_files: typing.List[typing.Union[str, pathlib.Path]], window_size: int,
-                        idw_power: int, radius: float, method: str = 'first', source_crs: dict = None,
-                        tile_index_file: typing.Union[str, pathlib.Path] = None,
-                        keep_only_ground_lidar: bool = True, drop_offshore_lidar: bool = True):
-        """ Read in all LiDAR files and add to DEM.
-            source_crs - specify if the CRS encoded in the LiDAR files are incorrect/only partially defined
-                (i.e. missing vertical CRS) and need to be overwritten.
-            drop_offshore_lidar - if True, trim any LiDAR values that are offshore as specified by the
-                catchment_geometry
-            keep_only_ground_lidar - if True, only keep LiDAR values that are coded '2' of ground
-            tile_index_file - if not None load in the specified tile_index file and use to clip all LiDAR tile data
-                within the relevant LiDAR tiles extents as defined in the tile_index file. """
+        if self.verbose:
+            print(f"On LiDAR tile 1 of 1: {lidar_file}")
 
-        if source_crs is not None:
-            assert 'horizontal' in source_crs, "The horizontal component of the source CRS is not specified. " + \
-                f"Both horizontal and vertical CRS need to be defined. The source_crs specified is: {self.source_crs}"
-            assert 'vertical' in source_crs, "The vertical component of the source CRS is not specified. " + \
-                f"Both horizontal and vertical CRS need to be defined. The source_crs specified is: {self.source_crs}"
+        # Use PDAL to load in file
+        pdal_pipeline = self._read_in_tile_with_pdal(lidar_file, source_crs=source_crs, 
+                                                     region_to_tile=region_to_rasterise, get_extents=True)
 
-        tile_index_extents, tile_index_name_column = self._tile_index_column_name(tile_index_file)
+        # Load LiDAR points from pipeline
+        tile_array = pdal_pipeline.arrays[0]
 
-        # define the region to rasterise inside
-        if drop_offshore_lidar:
-            region_to_tile = self.catchment_geometry.land_and_foreshore
-        else:
-            region_to_tile = self.catchment_geometry.catchment
+        # Get the raster indicies
+        dim_x, dim_y = self._set_up_chunks(chunk_size=None)
+        dim_x = dim_x[0]
+        dim_y = dim_y[0]
 
-        for index, lidar_file in enumerate(lidar_files):
+        raster_values = self._rasterise_tile(dim_x=dim_x, dim_y=dim_y, tile_points=tile_array,
+                                             keep_only_ground_lidar=keep_only_ground_lidar)
 
-            if self.verbose:
-                print(f"On LiDAR tile {index + 1} of {len(lidar_files)}: {lidar_file}")
+        # Create xarray
+        dense_dem = xarray.DataArray(raster_values.reshape((1, len(dim_x), len(dim_y))),
+                                     coords={'band': [1], 'y': dim_y, 'x': dim_x}, dims=['band', 'y', 'x'],
+                                     attrs={'scale_factor': 1.0, 'add_offset': 0.0, 'long_name': 'idw'})
+        dense_dem.rio.write_crs(self.catchment_geometry.crs['horizontal'], inplace=True)
+        dense_dem.name = 'z'
+        dense_dem = dense_dem.rio.write_nodata(numpy.nan)
 
-            # Use PDAL to load in file
-            pdal_pipeline = self._read_in_tile_with_pdal(lidar_file, source_crs=source_crs,
-                                                         region_to_tile=region_to_tile)
+        return dense_dem
 
-            # Load LiDAR points from pipeline
-            tile_array = pdal_pipeline.arrays[0]
+    def add_reference_dem(self, tile_points: numpy.ndarray, tile_extent: geopandas.GeoDataFrame):
+        """ Update gaps in dense DEM from areas with no LiDAR with the reference DEM.
+        TODO - look at improving efficiency by only evaluating on land if drop_offshore_lidar is True,
+        and only within the specified tile_extents """
 
-            # Optionally filter the points by classification code - to keep only ground coded points
-            if keep_only_ground_lidar:
-                tile_array = tile_array[tile_array['Classification'] == self.LAS_GROUND]
-
-            tile_extent = self._tile_extent_from_metadata(pdal_pipeline, pathlib.Path(lidar_file),
-                                                          tile_index_extents, tile_index_name_column)
-
-            self._rasterise_tile(tile_points=tile_array, tile_extent=tile_extent, window_size=window_size,
-                                 idw_power=idw_power, radius=radius)
-
-    def add_tile(self, tile_points: numpy.ndarray, tile_extent: geopandas.GeoDataFrame, window_size: int,
-                 idw_power: int, radius: float, method: str = 'first'):
-        """ Create a DEM of the tile using inverse distance weighting (IDW) and then update the overall DEM with the
-        tile. Only perform the IDW within the tile extents. """
+        # Areas not covered by LiDAR values
+        mask = numpy.isnan(self._dense_dem.data[0])
 
         if len(tile_points) == 0:
             if self.verbose:
                 print("Warning in DenseDem.add_tile the latest tile has no data and is being ignored.")
             return
-
-        # Update the tile extents with the new tile, then clip tile by extents (remove bleeding outside LiDAR area)
-        tile_extent = self._update_extents(tile_extent)
-
-        if tile_extent.area.sum() == 0:  # Check the tile still has an extent after filtering
+        elif sum(mask) > 0:
             if self.verbose:
-                print("Warning in DenseDem.add_tile the latest tile has no area after being filtered against already "
-                      "added tiles, offshore areas, and 'filter_lidar_holes_area'. Please check to ensure a sensible "
-                      "value for 'filter_lidar_holes_area' if this happens repeatably. This should not exceed a small "
-                      "proportion of a single tiles area")
+                print("Note in DenseDem.add_tile LiDAR covers all raster values so the reference DEM is being ignored.")
             return
 
         # Get the indicies overwhich to perform IDW
-        try:
-            tile = self._dense_dem.rio.clip(tile_extent.geometry)
-            tile.data[0] = 0  # set all to zero then clip outside tile again - setting it to NaN
-            tile = tile.rio.clip(tile_extent.geometry)
+        grid_x, grid_y = numpy.meshgrid(self._dense_dem.x, self._dense_dem.y)
 
-            grid_x, grid_y = numpy.meshgrid(tile.x, tile.y)
-            flat_z = tile.data[0].flatten()
-            mask_z = ~numpy.isnan(flat_z)
+        xy_out = numpy.empty((mask.sum(), 2))
+        xy_out[:, 0] = grid_x[mask]
+        xy_out[:, 1] = grid_y[mask]
 
-            xy_out = numpy.empty((mask_z.sum(), 2))
-            xy_out[:, 0] = grid_x.flatten()[mask_z]
-            xy_out[:, 1] = grid_y.flatten()[mask_z]
+        # Perform IDW over the dense DEM within the extents of this point cloud tile
+        z_idw = self._point_cloud_to_raster_idw(tile_points, xy_out, smoothing=0, eps=0, leaf_size=10)
+        self._dense_dem.data[0, mask] = z_idw
 
-            # Perform IDW over the dense DEM within the extents of this point cloud tile
-            z_idw = self._point_cloud_to_raster_idw(tile_points, xy_out, idw_power, radius,
-                                                    smoothing=0, eps=0, leaf_size=10)
-            flat_z[mask_z] = z_idw
-            tile.data[0] = flat_z.reshape(grid_x.shape)
+        # Update the dense DEM extents
+        self._extents = self._calculate_dense_extents()
 
-            # Add the tile to the dense DEM
-            self._dense_dem = rioxarray.merge.merge_arrays([self._dense_dem, tile], method=method)
-
-            # Ensure the dem will be recalculated as another tile has been added
-            self._dem = None
-        except rioxarray.exceptions.NoDataInBounds:
-            if self.verbose:  # Error catching when the tile_extents not overlapping any of the xarray centroids
-                print("Warning in DenseDem.add_tile the latest tile data does not overlap a DEM centroid and is being."
-                      "ignored. If this happens repeatedly and 'filter_lidar_holes_area' is set this could be a sign "
-                      "that this value is too large. This should not exceed a small proportion of a single tiles area")
-            return
-
-    def _point_cloud_to_raster_idw(self, point_cloud: numpy.ndarray, xy_out, power: int, search_radius: float,
-                                   smoothing: float = 0, eps: float = 0, leaf_size: int = 10):
-        """ Calculate DEM elevation values at the specified locations using the inverse distance weighing (IDW)
-        approach. This implementation is based on the scipy.spatial.KDTree """
-        xy_in = numpy.empty((len(point_cloud), 2))
-        xy_in[:, 0] = point_cloud['X']
-        xy_in[:, 1] = point_cloud['Y']
-
-        tree = scipy.spatial.KDTree(xy_in, leafsize=leaf_size)  # build the tree
-        tree_index_list = tree.query_ball_point(xy_out, r=search_radius, eps=eps)  # , eps=0.2)
-        z_out = numpy.zeros(len(xy_out), dtype=self.raster_type)
-
-        for i, (near_indicies, point) in enumerate(zip(tree_index_list, xy_out)):
-
-            if len(near_indicies) == 0:  # Set NaN if no values in search region
-                z_out[i] = numpy.nan
-            else:
-                distance_vectors = point - tree.data[near_indicies]
-                smoothed_distances = numpy.sqrt(((distance_vectors**2).sum(axis=1)+smoothing**2))
-                if smoothed_distances.min() == 0:  # in the case of an exact match
-                    z_out[i] = point_cloud['Z'][tree.query(point, k=1)[1]]
-                else:
-                    z_out[i] = (point_cloud['Z'][near_indicies] / (smoothed_distances**power)).sum(axis=0) \
-                        / (1 / (smoothed_distances**power)).sum(axis=0)
-
-        return z_out
-
-    def _rasterise_tile(self, tile_points: numpy.ndarray, tile_extent: geopandas.GeoDataFrame, window_size: int,
-                        idw_power: int, radius: float, method: str = 'first'):
-        """ Create a DEM of the tile using inverse distance weighting (IDW) and then update the overall DEM with the
-        tile. Only perform the IDW within the tile extents. """
-
-        if len(tile_points) == 0:
-            if self.verbose:
-                print("Warning in DenseDem.add_tile the latest tile has no data and is being ignored.")
-            return
-
-        # Update the tile extents with the new tile, then clip tile by extents (remove bleeding outside LiDAR area)
-        tile_extent = self._update_extents(tile_extent)
-
-        if tile_extent.area.sum() == 0:  # Check the tile still has an extent after filtering
-            if self.verbose:
-                print("Warning in DenseDem.add_tile the latest tile has no area after being filtered against already "
-                      "added tiles, offshore areas, and 'filter_lidar_holes_area'. Please check to ensure a sensible "
-                      "value for 'filter_lidar_holes_area' if this happens repeatably. This should not exceed a small "
-                      "proportion of a single tiles area")
-
-        # Get the indicies overwhich to perform IDW
-        try:
-            tile = self._dense_dem.rio.clip(tile_extent.geometry)
-            tile.data[0] = 0  # set all to zero then clip outside tile again - setting it to NaN
-            tile = tile.rio.clip(tile_extent.geometry)
-
-            grid_x, grid_y = numpy.meshgrid(tile.x, tile.y)
-            flat_z = tile.data[0].flatten()
-            mask_z = ~numpy.isnan(flat_z)
-
-            xy_out = numpy.empty((mask_z.sum(), 2))
-            xy_out[:, 0] = grid_x.flatten()[mask_z]
-            xy_out[:, 1] = grid_y.flatten()[mask_z]
-
-            # Perform IDW over the dense DEM within the extents of this point cloud tile
-            z_idw = self._point_cloud_to_raster_idw(tile_points, xy_out, idw_power, radius,
-                                                    smoothing=0, eps=0, leaf_size=10)
-            flat_z[mask_z] = z_idw
-            tile.data[0] = flat_z.reshape(grid_x.shape)
-
-            # Add the tile to the dense DEM
-            self._dense_dem = rioxarray.merge.merge_arrays([self._dense_dem, tile], method=method)
-
-            # Ensure the dem will be recalculated as another tile has been added
-            self._dem = None
-        except rioxarray.exceptions.NoDataInBounds:
-            if self.verbose:  # Error catching when the tile_extents not overlapping any of the xarray centroids
-                print("Warning in DenseDem.add_tile the latest tile data does not overlap a DEM centroid and is being."
-                      "ignored. If this happens repeatedly and 'filter_lidar_holes_area' is set this could be a sign "
-                      "that this value is too large. This should not exceed a small proportion of a single tiles area")
-
-    def _update_extents(self, tile_extent: geopandas.GeoDataFrame) -> geopandas.GeoDataFrame:
-        """ Update the extents of all LiDAR tiles updated. If 'drop_offshore_lidar' is True ensure extents are
-        limited to the land and foreshore of the catchment. If 'area_to_drop' is True extend the extents to fill
-        any holes around the catchment boundary smaller than the specified 'area_to_drop'.
-
-        Return the updated tile_extent after filling any holes and any gaps around the edge and triming offshore."""
-
-        assert len(tile_extent) == 1, "The tile_extent is expected to be contained in one shape. Instead " + \
-            f"tile_extent: {tile_extent} is of length {len(tile_extent)}."
-
-        if tile_extent.geometry.area.sum() > 0:  # check polygon isn't empty
-
-            if self._extents is None:
-                updated_extents = tile_extent
-            else:
-                updated_extents = geopandas.GeoDataFrame(
-                    {'geometry': [shapely.ops.cascaded_union([self._extents.loc[0].geometry,
-                                                              tile_extent.loc[0].geometry])]},
-                    crs=self.catchment_geometry.crs['horizontal'])
-
-            # Fill any holes smaller than the 'area_to_drop' internal to the extents or between it and catchment edge
-            if self.area_to_drop is not None and self.area_to_drop >= 0:
-                updated_extents = self._filter_holes_inside_polygon(self.area_to_drop, updated_extents)
-                updated_extents = self._filter_holes_around_polygon(self.area_to_drop, updated_extents)
-
-            if self.drop_offshore_lidar:
-                updated_extents = geopandas.clip(self.catchment_geometry.land_and_foreshore, updated_extents)
-            else:
-                updated_extents = geopandas.clip(self.catchment_geometry.catchment, updated_extents)
-
-            # Update the tile extents based on the updated overall cumlative tiles extents
-            if self._extents is None:
-                filtered_tile_extents = updated_extents
-            else:
-                filtered_tile_extents = geopandas.overlay(updated_extents, self._extents, how="difference")
-
-            # Update the cumlative extents
-            self._extents = updated_extents
-            return filtered_tile_extents
-        else:
-            return tile_extent
-
-    def _filter_holes_inside_polygon(self, area_to_filter: float,
-                                     polygon_in: geopandas.GeoDataFrame) -> geopandas.GeoDataFrame:
-        """ Check through the input polygon geometry and remove any holes less than the specified area. """
-
-        polygon_out = polygon_in
-
-        if area_to_filter is not None and area_to_filter > 0:
-            # Check through the extents geometry and remove any internal holes with an area less than the 'area_to_drop'
-            polygon = polygon_in.loc[0].geometry
-
-            # Remove any holes internal to the extents that are less than the area_to_drop
-            if polygon.geometryType() == "Polygon":
-                polygon = shapely.geometry.Polygon(
-                    polygon.exterior.coords, [interior for interior in polygon.interiors if
-                                              shapely.geometry.Polygon(interior).area > area_to_filter])
-                polygon_out = geopandas.GeoDataFrame({'geometry': [polygon]},
-                                                     crs=self.catchment_geometry.crs['horizontal'])
-                polygon_out = geopandas.clip(self.catchment_geometry.catchment, polygon_out)
-            elif polygon.geometryType() == "MultiPolygon":
-                polygons = []
-                for polygon_i in polygon:
-                    polygons.append(shapely.geometry.Polygon(
-                        polygon_i.exterior.coords, [interior for interior in polygon_i.interiors if
-                                                    shapely.geometry.Polygon(interior).area > area_to_filter]))
-                polygon = shapely.geometry.MultiPolygon(polygons)
-                polygon_out = geopandas.GeoDataFrame({'geometry': [polygon]},
-                                                     crs=self.catchment_geometry.crs['horizontal'])
-                polygon_out = geopandas.clip(self.catchment_geometry.catchment, polygon_out)
-            else:
-                if self.verbose:
-                    print("Warning filtering holes in CatchmentLidar using filter_lidar_extents_for_holes is not yet "
-                          + f"supported for {polygon.geometryType()}")
-        return polygon_out
-
-    def _filter_holes_around_polygon(self, area_to_filter: float,
-                                     polygon_in: geopandas.GeoDataFrame) -> geopandas.GeoDataFrame:
-        """ Check around the input polygon geometry and remove any holes less than the specified area between it and the
-        catchment polygon geometry. Practically this has little impact, but it does impact the odd pixel around the edge
-        of the catchment where there is not data at the pixel centroid, but there is data over the side of the pixel.
-        """
-
-        polygon_out = polygon_in
-
-        if area_to_filter is not None and area_to_filter > 0:
-            # Check through the extents geometry and remove any internal holes with an area less than the 'area_to_drop'
-            polygon = geopandas.overlay(self.catchment_geometry.catchment, polygon_in, how="difference")
-
-            if len(polygon) > 0:
-                assert len(polygon) == 1, f"Expected the difference polygon {polygon} to have length 1 as both " + \
-                    "input polygon and the catchment polygons are expected to have length 1."
-                polygon = polygon.loc[0].geometry
-                if polygon.geometryType() == "MultiPolygon":
-                    # Run through each polygon element checking if smaller than the 'area_to_drop' - add if so
-                    polygon_list = [polygon_i for polygon_i in polygon if polygon_i.area < area_to_filter]
-                    polygon_list.append(polygon_in.loc[0].geometry)
-                    polygon_out = geopandas.GeoDataFrame(
-                        {'geometry': [shapely.ops.cascaded_union(polygon_list)]},
-                        crs=self.catchment_geometry.crs['horizontal'])
-
-                elif polygon.geometryType() == "Polygon":
-                    if polygon.area < area_to_filter:
-                        # Check if the polygon is smaller than the 'area_to_drop' - add if so
-                        polygon_out = geopandas.GeoDataFrame(
-                            {'geometry': [shapely.ops.cascaded_union([polygon_in.loc[0].geometry, polygon])]},
-                            crs=self.catchment_geometry.crs['horizontal'])
-                else:
-                    if self.verbose:
-                        print("Warning filtering holes in DenseDem using _filter_holes_around_polygon is not yet "
-                              + f"supported for {polygon.geometryType()}")
-        return polygon_out
+        # Ensure the dem will be recalculated as another tile has been added
+        self._dem = None
