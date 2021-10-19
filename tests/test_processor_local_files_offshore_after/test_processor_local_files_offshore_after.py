@@ -21,8 +21,8 @@ from src.geofabrics import processor
 
 
 class ProcessorLocalFilesTest(unittest.TestCase):
-    """ A class to test the basic DemGenerator processor class for a simple example with land, offshore, a reference DEM and
-    LiDAR using the data specified in the test1/instruction.json
+    """ A class to test the basic DemGenerator processor class for a simple example with land, offshore, a reference DEM
+    and LiDAR using the data specified in the instruction.json
 
     Tests run include:
         1. test_result_dem  Check the generated DEM matches the benchmark DEM within a tolerance
@@ -185,7 +185,7 @@ class ProcessorLocalFilesTest(unittest.TestCase):
             test_dem.load()
 
         # Compare DEMs - load both from file as rioxarray.rioxarray.open_rasterio ignores index order
-        diff_array = test_dem.data-benchmark_dem.data
+        diff_array = test_dem.data[~numpy.isnan(test_dem.data)]-benchmark_dem.data[~numpy.isnan(benchmark_dem.data)]
         print(f"DEM array diff is: {diff_array[diff_array != 0]}")
         numpy.testing.assert_array_almost_equal(test_dem.data, benchmark_dem.data,
                                                 err_msg="The generated result_dem has different data from the " +

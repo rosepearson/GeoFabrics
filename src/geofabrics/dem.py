@@ -352,18 +352,22 @@ class DenseDemFromTiles(DenseDem):
 
         # Determine the number of chunks
         if chunk_size is None or chunk_size <= 0:
-            n_chunks_x = n_chunks_y = 1
+            # Determine x and y coordinates for no chunks
+            dim_x = [numpy.arange(catchment_bounds[0] + resolution / 2, catchment_bounds[2],
+                                  resolution, dtype=self.raster_type)]
+            dim_y = [numpy.arange(catchment_bounds[3] - resolution / 2, catchment_bounds[1],
+                                  -resolution, dtype=self.raster_type)]
         else:
             n_chunks_x = int(numpy.ceil((catchment_bounds[2] - catchment_bounds[0]) / (chunk_size * resolution)))
             n_chunks_y = int(numpy.ceil((catchment_bounds[3] - catchment_bounds[1]) / (chunk_size * resolution)))
 
-        # Determine x and y coordinates rounded up to the nearest chunk
-        dim_x = [numpy.arange(catchment_bounds[0] + resolution / 2 + i * chunk_size * resolution,
-                              catchment_bounds[0] + resolution / 2 + (i + 1) * chunk_size * resolution,
-                              resolution, dtype=self.raster_type) for i in range(n_chunks_x)]
-        dim_y = [numpy.arange(catchment_bounds[3] - resolution / 2 - i * chunk_size * resolution,
-                              catchment_bounds[3] - resolution / 2 - (i + 1) * chunk_size * resolution,
-                              -resolution, dtype=self.raster_type) for i in range(n_chunks_y)]
+            # Determine x and y coordinates rounded up to the nearest chunk
+            dim_x = [numpy.arange(catchment_bounds[0] + resolution / 2 + i * chunk_size * resolution,
+                                  catchment_bounds[0] + resolution / 2 + (i + 1) * chunk_size * resolution,
+                                  resolution, dtype=self.raster_type) for i in range(n_chunks_x)]
+            dim_y = [numpy.arange(catchment_bounds[3] - resolution / 2 - i * chunk_size * resolution,
+                                  catchment_bounds[3] - resolution / 2 - (i + 1) * chunk_size * resolution,
+                                  -resolution, dtype=self.raster_type) for i in range(n_chunks_y)]
 
         return dim_x, dim_y
 
@@ -672,7 +676,7 @@ class DenseDemFromTiles(DenseDem):
                                              keep_only_ground_lidar=keep_only_ground_lidar)
 
         # Create xarray
-        dense_dem = xarray.DataArray(raster_values.reshape((1, len(dim_x), len(dim_y))),
+        dense_dem = xarray.DataArray(raster_values.reshape((1, len(dim_y), len(dim_x))),
                                      coords={'band': [1], 'y': dim_y, 'x': dim_x}, dims=['band', 'y', 'x'],
                                      attrs={'scale_factor': 1.0, 'add_offset': 0.0, 'long_name': 'idw'})
         dense_dem.rio.write_crs(self.catchment_geometry.crs['horizontal'], inplace=True)
@@ -693,7 +697,7 @@ class DenseDemFromTiles(DenseDem):
             if self.verbose:
                 print("Warning in DenseDem.add_tile the latest tile has no data and is being ignored.")
             return
-        elif sum(mask) > 0:
+        elif mask.sum() == 0:
             if self.verbose:
                 print("Note in DenseDem.add_tile LiDAR covers all raster values so the reference DEM is being ignored.")
             return
