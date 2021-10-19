@@ -31,7 +31,8 @@
 		  "set_dem_shoreline": true,
 			"drop_offshore_lidar": false,
 			"keep_only_ground_lidar": true,
-			"interpolate_missing_values": false
+			"interpolate_missing_values": false,
+			"chunk_size": 100
 		}
 	}
 }
