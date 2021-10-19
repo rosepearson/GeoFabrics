@@ -16,6 +16,7 @@ import geopandas
 import shapely
 import dask
 import dask.array
+import distributed
 import pdal
 import json
 import abc
@@ -623,32 +624,37 @@ class DenseDemFromTiles(DenseDem):
         # get chunking information - if negative, 0 or None chunk_size then default to a single chunk
         chunked_dim_x, chunked_dim_y = self._set_up_chunks(chunk_size)
 
-        # cycle through index chunks - and collect in a delayed array
-        delayed_chunked_matrix = []
-        for i, dim_y in enumerate(chunked_dim_y):
-            delayed_chunked_x = []
-            for j, dim_x in enumerate(chunked_dim_x):
-                if self.verbose:
-                    print(f"Rasterising chunk {[i, j]} out of {[len(chunked_dim_x), len(chunked_dim_y)]} chunks")
-                chunk_points = self._load_tiles_in_chunk(dim_x=dim_x, dim_y=dim_y,
-                                                         tile_index_extents=tile_index_extents,
-                                                         tile_index_name_column=tile_index_name_column,
-                                                         lidar_files=lidar_files, source_crs=source_crs,
-                                                         region_to_rasterise=region_to_rasterise)
-                delayed_chunked_x.append(dask.array.from_delayed(
-                    self._rasterise_over_chunk(dim_x=dim_x, dim_y=dim_y, tile_points=chunk_points,
-                                               keep_only_ground_lidar=keep_only_ground_lidar),
-                    shape=(chunk_size, chunk_size), dtype=numpy.float32))
-            delayed_chunked_matrix.append(delayed_chunked_x)
-        chunked_dem = xarray.DataArray(dask.array.block([delayed_chunked_matrix]),
-                                       coords={'band': [1], 'y': numpy.concatenate(chunked_dim_y),
-                                               'x': numpy.concatenate(chunked_dim_x)},
-                                       dims=['band', 'y', 'x'],
-                                       attrs={'scale_factor': 1.0, 'add_offset': 0.0, 'long_name': 'idw'})
-        chunked_dem.rio.write_crs(self.catchment_geometry.crs['horizontal'], inplace=True)
-        chunked_dem.name = 'z'
-        chunked_dem = chunked_dem.rio.write_nodata(numpy.nan)
-        chunked_dem = chunked_dem.compute()  # Note will be larger than the catchment region - could clip to catchment
+        # Setup Dask cluster and client
+        cluster_kwargs = {'n_workers': 4, 'threads_per_worker': 1, 'processes': True}
+        with distributed.LocalCluster(**cluster_kwargs) as cluster, distributed.Client(cluster) as client:
+            print(client)
+
+            # cycle through index chunks - and collect in a delayed array
+            delayed_chunked_matrix = []
+            for i, dim_y in enumerate(chunked_dim_y):
+                delayed_chunked_x = []
+                for j, dim_x in enumerate(chunked_dim_x):
+                    if self.verbose:
+                        print(f"Rasterising chunk {[i, j]} out of {[len(chunked_dim_x), len(chunked_dim_y)]} chunks")
+                    chunk_points = self._load_tiles_in_chunk(dim_x=dim_x, dim_y=dim_y,
+                                                             tile_index_extents=tile_index_extents,
+                                                             tile_index_name_column=tile_index_name_column,
+                                                             lidar_files=lidar_files, source_crs=source_crs,
+                                                             region_to_rasterise=region_to_rasterise)
+                    delayed_chunked_x.append(dask.array.from_delayed(
+                        self._rasterise_over_chunk(dim_x=dim_x, dim_y=dim_y, tile_points=chunk_points,
+                                                   keep_only_ground_lidar=keep_only_ground_lidar),
+                        shape=(chunk_size, chunk_size), dtype=numpy.float32))
+                delayed_chunked_matrix.append(delayed_chunked_x)
+            chunked_dem = xarray.DataArray(dask.array.block([delayed_chunked_matrix]),
+                                           coords={'band': [1], 'y': numpy.concatenate(chunked_dim_y),
+                                                   'x': numpy.concatenate(chunked_dim_x)},
+                                           dims=['band', 'y', 'x'],
+                                           attrs={'scale_factor': 1.0, 'add_offset': 0.0, 'long_name': 'idw'})
+            chunked_dem.rio.write_crs(self.catchment_geometry.crs['horizontal'], inplace=True)
+            chunked_dem.name = 'z'
+            chunked_dem = chunked_dem.rio.write_nodata(numpy.nan)
+            chunked_dem = chunked_dem.compute()
 
         # Clip result to within the catchment - removing NaN filled chunked areas outside the catchment
         dense_dem = chunked_dem.rio.clip(self.catchment_geometry.catchment.geometry)
