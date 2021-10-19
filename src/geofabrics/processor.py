@@ -93,7 +93,7 @@ class BaseProcessor(abc.ABC):
 
         defaults = {'filter_lidar_holes_area': None, 'verbose': True, 'set_dem_shoreline': True,
                     'bathymetry_contours_z_label': None, 'drop_offshore_lidar': True, 'keep_only_ground_lidar': True,
-                    'interpolate_missing_values': True}
+                    'interpolate_missing_values': True, 'chunk_size': None}
 
         assert key in defaults or key in self.instructions['instructions']['general'], f"The key: {key} is missing " \
             + "from the general instructions, and does not have a default value"
@@ -335,7 +335,8 @@ class DemGenerator(BaseProcessor):
         self.dense_dem.add_lidar(lidar_files=lidar_dataset_info['file_paths'], source_crs=lidar_dataset_info['crs'],
                                  drop_offshore_lidar=self.get_instruction_general('drop_offshore_lidar'),
                                  keep_only_ground_lidar=self.get_instruction_general('keep_only_ground_lidar'),
-                                 tile_index_file=lidar_dataset_info['tile_index_file'], chunk_size=100)
+                                 tile_index_file=lidar_dataset_info['tile_index_file'],
+                                 chunk_size=self.get_instruction_general('chunk_size'))
 
         # Load in reference DEM if any significant land/foreshore not covered by LiDAR
         area_without_lidar = \

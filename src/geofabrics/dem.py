@@ -592,6 +592,9 @@ class DenseDemFromTiles(DenseDem):
                                              source_crs=source_crs, keep_only_ground_lidar=keep_only_ground_lidar)
         else:
             assert tile_index_file is not None, "A tile index file is required for multiple tile files added together"
+            assert chunk_size > 0 and chunk_size is not None, "The chunk size should be set when reading in tiled LiDAR " \
+                "files. Ideally it should include as many tiles can easily be read in by on core. You will have to equate" \
+                " The tile extents with chunk size by extents / resolution. "
             self._dense_dem = self._add_tiled_lidar_chunked(lidar_files=lidar_files, tile_index_file=tile_index_file,
                                                             source_crs=source_crs,
                                                             keep_only_ground_lidar=keep_only_ground_lidar,
