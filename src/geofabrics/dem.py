@@ -625,7 +625,7 @@ class DenseDemFromTiles(DenseDem):
         chunked_dim_x, chunked_dim_y = self._set_up_chunks(chunk_size)
 
         # Setup Dask cluster and client
-        cluster_kwargs = {'n_workers': 4, 'threads_per_worker': 1, 'processes': True}
+        cluster_kwargs = {'n_workers': 1, 'threads_per_worker': 1, 'processes': True}
         with distributed.LocalCluster(**cluster_kwargs) as cluster, distributed.Client(cluster) as client:
             print(client)
 
