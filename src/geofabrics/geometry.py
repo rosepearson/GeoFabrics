@@ -148,6 +148,8 @@ class CatchmentGeometry:
                 print("Warning dense extents are `None` so `offshore_without_lidar`" +
                       "is returning `offshore`")
             return self.offshore
+        elif self.offshore.area.sum() == 0:  # There is no offshore region - return an empty dataframe
+            return self.offshore
 
         offshore_with_lidar = geopandas.clip(dense_extents, self.offshore)
         offshore_without_lidar = geopandas.overlay(self.offshore, offshore_with_lidar, how="difference")
