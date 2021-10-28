@@ -353,50 +353,50 @@ class DemGenerator(BaseProcessor):
                                  number_of_cores=self.get_processing_instructions('number_of_cores'))
 
         # Load in reference DEM if any significant land/foreshore not covered by LiDAR
-        area_without_lidar = \
-            self.catchment_geometry.land_and_foreshore_without_lidar(self.dense_dem.extents).geometry.area.sum()
-        if (self.check_instruction_path('reference_dems') and
-                area_without_lidar > self.catchment_geometry.land_and_foreshore.area.sum() * area_threshold):
+        if self.check_instruction_path('reference_dems'):
+            area_without_lidar = \
+                self.catchment_geometry.land_and_foreshore_without_lidar(self.dense_dem.extents).geometry.area.sum()
+            if area_without_lidar > self.catchment_geometry.land_and_foreshore.area.sum() * area_threshold:
 
-            assert len(self.get_instruction_path('reference_dems')) == 1, \
-                f"{len(self.get_instruction_path('reference_dems'))} reference_dems specified, but only one supported" \
-                + f" currently. reference_dems: {self.get_instruction_path('reference_dems')}"
+                assert len(self.get_instruction_path('reference_dems')) == 1, \
+                    f"{len(self.get_instruction_path('reference_dems'))} reference_dems specified, but only one supported" \
+                    + f" currently. reference_dems: {self.get_instruction_path('reference_dems')}"
 
-            if self.verbose:
-                print(f"Incorporting background DEM: {self.get_instruction_path('reference_dems')}")
+                if self.verbose:
+                    print(f"Incorporting background DEM: {self.get_instruction_path('reference_dems')}")
 
-            # Load in background DEM - cut away within the LiDAR extents
-            self.reference_dem = dem.ReferenceDem(dem_file=self.get_instruction_path('reference_dems')[0],
-                                                  catchment_geometry=self.catchment_geometry,
-                                                  set_foreshore=self.get_instruction_general('set_dem_shoreline'),
-                                                  exclusion_extent=self.dense_dem.extents)
+                # Load in background DEM - cut away within the LiDAR extents
+                self.reference_dem = dem.ReferenceDem(dem_file=self.get_instruction_path('reference_dems')[0],
+                                                      catchment_geometry=self.catchment_geometry,
+                                                      set_foreshore=self.get_instruction_general('set_dem_shoreline'),
+                                                      exclusion_extent=self.dense_dem.extents)
 
-            # Add the reference DEM patch where there's no LiDAR to the dense DEM without updting the extents
-            self.dense_dem.add_reference_dem(tile_points=self.reference_dem.points,
-                                             tile_extent=self.reference_dem.extents)
+                # Add the reference DEM patch where there's no LiDAR to the dense DEM without updting the extents
+                self.dense_dem.add_reference_dem(tile_points=self.reference_dem.points,
+                                                 tile_extent=self.reference_dem.extents)
 
         # Load in bathymetry and interpolate offshore if significant offshore is not covered by LiDAR
-        area_without_lidar = \
-            self.catchment_geometry.offshore_without_lidar(self.dense_dem.extents).geometry.area.sum()
-        if (self.check_vector('bathymetry_contours') and
-                area_without_lidar > self.catchment_geometry.offshore.area.sum() * area_threshold):
+        if self.check_vector('bathymetry_contours'):
+            area_without_lidar = \
+                self.catchment_geometry.offshore_without_lidar(self.dense_dem.extents).geometry.area.sum()
+            if area_without_lidar > self.catchment_geometry.offshore.area.sum() * area_threshold:
 
-            # Get the bathymetry data directory
-            bathy_contour_dirs = self.get_vector_paths('bathymetry_contours')
-            assert len(bathy_contour_dirs) == 1, f"{len(bathy_contour_dirs)} bathymetry_contours's provided. " + \
-                f"Specficially {catchment_dirs}. Support has not yet been added for multiple datasets."
+                # Get the bathymetry data directory
+                bathy_contour_dirs = self.get_vector_paths('bathymetry_contours')
+                assert len(bathy_contour_dirs) == 1, f"{len(bathy_contour_dirs)} bathymetry_contours's provided. " + \
+                    f"Specficially {catchment_dirs}. Support has not yet been added for multiple datasets."
 
-            if self.verbose:
-                print(f"Incorporting Bathymetry: {bathy_contour_dirs}")
+                if self.verbose:
+                    print(f"Incorporting Bathymetry: {bathy_contour_dirs}")
 
-            # Load in bathymetry
-            self.bathy_contours = geometry.BathymetryContours(
-                bathy_contour_dirs[0], self.catchment_geometry,
-                z_label=self.get_instruction_general('bathymetry_contours_z_label'),
-                exclusion_extent=self.dense_dem.extents)
+                # Load in bathymetry
+                self.bathy_contours = geometry.BathymetryContours(
+                    bathy_contour_dirs[0], self.catchment_geometry,
+                    z_label=self.get_instruction_general('bathymetry_contours_z_label'),
+                    exclusion_extent=self.dense_dem.extents)
 
-            # interpolate
-            self.dense_dem.interpolate_offshore(self.bathy_contours)
+                # interpolate
+                self.dense_dem.interpolate_offshore(self.bathy_contours)
 
         # fill combined dem - save results
         self.dense_dem.dem.to_netcdf(self.get_instruction_path('result_dem'))
