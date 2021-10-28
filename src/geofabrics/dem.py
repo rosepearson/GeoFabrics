@@ -385,11 +385,8 @@ class DenseDemFromTiles(DenseDem):
         dense_extents = dense_extents.affine_transform([dense_dem_affine.a, dense_dem_affine.b,
                                                         dense_dem_affine.d, dense_dem_affine.e,
                                                         dense_dem_affine.xoff, dense_dem_affine.yoff])
+        dense_extents = geopandas.GeoDataFrame(geometry=dense_extents)
 
-        # Ensure only the exterior of the region is captured. This will need to revisited if supporting lakes!
-        dense_extents = geopandas.GeoDataFrame({'geometry': [shapely.geometry.Polygon(exterior) for exterior
-                                                             in dense_extents.exterior]},
-                                               crs=self.catchment_geometry.crs['horizontal'])
         return dense_extents
 
     def _tile_index_column_name(self, tile_index_file: typing.Union[str, pathlib.Path] = None):
