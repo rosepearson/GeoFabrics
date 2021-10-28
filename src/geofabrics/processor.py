@@ -102,6 +102,19 @@ class BaseProcessor(abc.ABC):
         else:
             return defaults[key]
 
+    def get_processing_instructions(self, key: str):
+        """ Return the general instruction from the instruction file or return the default value if not specified in
+        the instruction file. Raise an error if the key is not in the instructions and there is no default value. """
+
+        defaults = {'number_of_cores': 1, "chunk_size": None}
+
+        assert key in defaults or key in self.instructions['instructions']['processing'], f"The key: {key} is missing " \
+            + "from the general instructions, and does not have a default value"
+        if 'processing' in self.instructions['instructions'] and key in self.instructions['instructions']['processing']:
+            return self.instructions['instructions']['processing'][key]
+        else:
+            return defaults[key]
+
     def check_apis(self, key) -> bool:
         """ Check to see if APIs are included in the instructions and if the key is included in specified apis """
 
@@ -336,7 +349,8 @@ class DemGenerator(BaseProcessor):
                                  drop_offshore_lidar=self.get_instruction_general('drop_offshore_lidar'),
                                  keep_only_ground_lidar=self.get_instruction_general('keep_only_ground_lidar'),
                                  tile_index_file=lidar_dataset_info['tile_index_file'],
-                                 chunk_size=self.get_instruction_general('chunk_size'))
+                                 chunk_size=self.get_processing_instructions('chunk_size'),
+                                 number_of_cores=self.get_processing_instructions('number_of_cores'))
 
         # Load in reference DEM if any significant land/foreshore not covered by LiDAR
         area_without_lidar = \

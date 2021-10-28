@@ -9,6 +9,10 @@
 				"resolution": 10
 			}
 		},
+		"processing": {
+			"chunk_size": 200,
+			"number_of_cores": 1
+		},
 		"data_paths": {
 			"local_cache": "tests/test_processor_remote_all_westport/data",
 			"catchment_boundary": "tests/test_processor_remote_all_westport/data/catchment.zip",
@@ -31,8 +35,7 @@
 		"general": {
 			"drop_offshore_lidar": true,
 			"bathymetry_contours_z_label": "valdco",
-			"keep_only_ground_lidar": false,
-			"chunk_size": 200
+			"keep_only_ground_lidar": false
 		}
 	}
 }

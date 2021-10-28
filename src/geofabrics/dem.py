@@ -436,8 +436,8 @@ class DenseDemFromTiles(DenseDem):
         return grid_z
 
     def add_lidar(self, lidar_files: typing.List[typing.Union[str, pathlib.Path]],
-                  tile_index_file: typing.Union[str, pathlib.Path], method: str = 'first', source_crs: dict = None,
-                  keep_only_ground_lidar: bool = True, drop_offshore_lidar: bool = True, chunk_size: int = 500):
+                  tile_index_file: typing.Union[str, pathlib.Path], chunk_size: int, number_of_cores: int,
+                  source_crs: dict = None, keep_only_ground_lidar: bool = True, drop_offshore_lidar: bool = True):
         """ Read in all LiDAR files and use to create a dense DEM.
 
             source_crs - specify if the CRS encoded in the LiDAR files are incorrect/only partially defined
@@ -471,7 +471,7 @@ class DenseDemFromTiles(DenseDem):
                                                             source_crs=source_crs,
                                                             keep_only_ground_lidar=keep_only_ground_lidar,
                                                             region_to_rasterise=region_to_rasterise,
-                                                            chunk_size=chunk_size)
+                                                            chunk_size=chunk_size, number_of_cores=number_of_cores)
 
         # Set any values outside the region_to_rasterise to NaN
         self._dense_dem = self._dense_dem.rio.clip(region_to_rasterise.geometry, drop=False)
@@ -485,7 +485,7 @@ class DenseDemFromTiles(DenseDem):
     def _add_tiled_lidar_chunked(self, lidar_files: typing.List[typing.Union[str, pathlib.Path]],
                                  tile_index_file: typing.Union[str, pathlib.Path], source_crs: dict,
                                  keep_only_ground_lidar: bool, region_to_rasterise: geopandas.GeoDataFrame,
-                                 chunk_size: int) -> xarray.DataArray:
+                                 chunk_size: int, number_of_cores: int) -> xarray.DataArray:
         """ Create a dense DEM from a set of tiled LiDAR files. Read these in over non-overlapping chunks and
         then combine """
 
@@ -496,7 +496,7 @@ class DenseDemFromTiles(DenseDem):
         chunked_dim_x, chunked_dim_y = self._set_up_chunks(chunk_size)
 
         # Setup Dask cluster and client
-        cluster_kwargs = {'n_workers': 1, 'threads_per_worker': 1, 'processes': True}
+        cluster_kwargs = {'n_workers': number_of_cores, 'threads_per_worker': 1, 'processes': True}
         with distributed.LocalCluster(**cluster_kwargs) as cluster, distributed.Client(cluster) as client:
             print(client)
 

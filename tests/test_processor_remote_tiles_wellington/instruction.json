@@ -9,6 +9,10 @@
 				"resolution": 10
 			}
 		},
+		"processing": {
+			"chunk_size": 100,
+			"number_of_cores": 1
+		},
 		"data_paths": {
 		  "local_cache": "tests/test_processor_remote_tiles_wellington/data",
 		  "catchment_boundary": "tests/test_processor_remote_tiles_wellington/data/catchment.zip",
@@ -30,8 +34,7 @@
 		"general": {
 		  "set_dem_shoreline": true,
 			"drop_offshore_lidar": false,
-			"keep_only_ground_lidar": false,
-			"chunk_size": 100
+			"keep_only_ground_lidar": false
 		}
 	}
 }

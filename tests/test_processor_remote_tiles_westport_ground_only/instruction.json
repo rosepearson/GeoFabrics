@@ -9,6 +9,10 @@
 				"resolution": 10
 			}
 		},
+		"processing": {
+			"chunk_size": 200,
+			"number_of_cores": 1
+		},
 		"data_paths": {
 			"local_cache": "tests/test_processor_remote_tiles_westport_ground_only/data",
 			"catchment_boundary": "tests/test_processor_remote_tiles_westport_ground_only/data/catchment.zip",
@@ -23,8 +27,7 @@
 		"general": {
 			"set_dem_shoreline": true,
 			"drop_offshore_lidar": false,
-			"keep_only_ground_lidar": true,
-			"chunk_size": 200
+			"keep_only_ground_lidar": true
 		}
 	}
 }
