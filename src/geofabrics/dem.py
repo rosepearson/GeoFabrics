@@ -385,7 +385,11 @@ class DenseDemFromTiles(DenseDem):
         dense_extents = dense_extents.affine_transform([dense_dem_affine.a, dense_dem_affine.b,
                                                         dense_dem_affine.d, dense_dem_affine.e,
                                                         dense_dem_affine.xoff, dense_dem_affine.yoff])
-        dense_extents = geopandas.GeoDataFrame(geometry=dense_extents)
+
+        # Ensure only the exterior of the region is captured. This will need to revisited if supporting lakes!
+        dense_extents = geopandas.GeoDataFrame({'geometry': [shapely.geometry.Polygon(exterior) for exterior
+                                                             in dense_extents.exterior]},
+                                               crs=self.catchment_geometry.crs['horizontal'])
         return dense_extents
 
     def _tile_index_column_name(self, tile_index_file: typing.Union[str, pathlib.Path] = None):
@@ -405,140 +409,6 @@ class DenseDemFromTiles(DenseDem):
                                                    for name in column_names]][0]
         return tile_index_extents, tile_index_name_column
 
-    def _read_in_tile_with_pdal(self, lidar_file: typing.Union[str, pathlib.Path],
-                                region_to_tile: geopandas.GeoDataFrame, source_crs: dict = None,
-                                get_extents: bool = False):
-        """ Read a tile file in using PDAL """
-
-        # Define instructions for loading in LiDAR
-        pdal_pipeline_instructions = [{"type":  "readers.las", "filename": str(lidar_file)}]
-
-        # Specify reprojection - if a source_crs is specified use this to define the 'in_srs'
-        if source_crs is None:
-            pdal_pipeline_instructions.append(
-                {"type": "filters.reprojection",
-                 "out_srs": f"EPSG:{self.catchment_geometry.crs['horizontal']}+" +
-                 f"{self.catchment_geometry.crs['vertical']}"})
-        else:
-            pdal_pipeline_instructions.append(
-                {"type": "filters.reprojection",
-                 "in_srs": f"EPSG:{source_crs['horizontal']}+{source_crs['vertical']}",
-                 "out_srs": f"EPSG:{self.catchment_geometry.crs['horizontal']}+" +
-                 f"{self.catchment_geometry.crs['vertical']}"})
-
-        # Add instructions for clip within either the catchment, or the land and foreshore
-        pdal_pipeline_instructions.append(
-            {"type": "filters.crop", "polygon": str(region_to_tile.loc[0].geometry)})
-
-        # Add instructions for creating a polygon extents of the remaining point cloud
-        if get_extents:
-            pdal_pipeline_instructions.append({"type": "filters.hexbin"})
-
-        # Load in LiDAR and perform operations
-        pdal_pipeline = pdal.Pipeline(json.dumps(pdal_pipeline_instructions))
-        pdal_pipeline.execute()
-        return pdal_pipeline
-
-    def _point_cloud_to_raster_idw(self, point_cloud: numpy.ndarray, xy_out,
-                                   smoothing: float = 0, eps: float = 0, leaf_size: int = 10):
-        """ Calculate DEM elevation values at the specified locations using the inverse distance weighing (IDW)
-        approach. This implementation is based on the scipy.spatial.KDTree """
-        xy_in = numpy.empty((len(point_cloud), 2))
-        xy_in[:, 0] = point_cloud['X']
-        xy_in[:, 1] = point_cloud['Y']
-
-        tree = scipy.spatial.KDTree(xy_in, leafsize=leaf_size)  # build the tree
-        tree_index_list = tree.query_ball_point(xy_out, r=self.idw_radius, eps=eps)  # , eps=0.2)
-        z_out = numpy.zeros(len(xy_out), dtype=self.raster_type)
-
-        for i, (near_indicies, point) in enumerate(zip(tree_index_list, xy_out)):
-
-            if len(near_indicies) == 0:  # Set NaN if no values in search region
-                z_out[i] = numpy.nan
-            else:
-                distance_vectors = point - tree.data[near_indicies]
-                smoothed_distances = numpy.sqrt(((distance_vectors**2).sum(axis=1)+smoothing**2))
-                if smoothed_distances.min() == 0:  # in the case of an exact match
-                    z_out[i] = point_cloud['Z'][tree.query(point, k=1)[1]]
-                else:
-                    z_out[i] = (point_cloud['Z'][near_indicies] / (smoothed_distances**self.idw_power)).sum(axis=0) \
-                        / (1 / (smoothed_distances**self.idw_power)).sum(axis=0)
-
-        return z_out
-
-    @dask.delayed
-    def _load_tiles_in_chunk(self, dim_x: numpy.ndarray, dim_y: numpy.ndarray,
-                             tile_index_extents: geopandas.GeoDataFrame, tile_index_name_column: str,
-                             lidar_files: typing.List[typing.Union[str, pathlib.Path]], source_crs: dict,
-                             region_to_rasterise: geopandas.GeoDataFrame):
-        """ Read in all LiDAR files within the chunked region - clipped to within the region within which to rasterise.
-        """
-
-        # Define the region to tile
-        chunk_geometry = geopandas.GeoDataFrame(
-            {'geometry': [shapely.geometry.Polygon(
-                [(numpy.min(dim_x) - self.idw_radius, numpy.min(dim_y) - self.idw_radius),
-                 (numpy.max(dim_x) + self.idw_radius, numpy.min(dim_y) - self.idw_radius),
-                 (numpy.max(dim_x) + self.idw_radius, numpy.max(dim_y) + self.idw_radius),
-                 (numpy.min(dim_x) - self.idw_radius, numpy.max(dim_y) + self.idw_radius)])]},
-            crs=self.catchment_geometry.crs['horizontal'])
-
-        # Ensure edge pixels will have a full set of values to perform IDW over
-        chunk_region_to_tile = geopandas.GeoDataFrame(
-            geometry=region_to_rasterise.buffer(self.idw_radius).clip(chunk_geometry))
-
-        # Clip the tile indices to only include those within the chunk region
-        chunk_tile_index_extents = tile_index_extents.drop(columns=['index_right'])
-        chunk_tile_index_extents = geopandas.sjoin(chunk_tile_index_extents, chunk_region_to_tile)
-        chunk_tile_index_extents = chunk_tile_index_extents.reset_index(drop=True)
-
-        # Initialise LiDAR points
-        lidar_points = []
-
-        # Cycle through each file loading it in an adding it to a numpy array
-        for tile_index_name in tile_index_extents[tile_index_name_column]:
-            if self.verbose:
-                print(f"\t Loading in file {tile_index_name}")
-            # get the LiDAR file with the tile_index_name
-            lidar_file = [lidar_file for lidar_file in lidar_files if lidar_file.name == tile_index_name]
-            assert len(lidar_file) == 1, f"Error no single LiDAR file matches the tile name. {lidar_file}"
-
-            # read in the LiDAR file
-            pdal_pipeline = self._read_in_tile_with_pdal(lidar_file[0], chunk_region_to_tile, source_crs,
-                                                         get_extents=False)
-            lidar_points.append(pdal_pipeline.arrays[0])
-
-        if len(lidar_points) > 0:
-            lidar_points = numpy.concatenate(lidar_points)
-        return lidar_points
-
-    @dask.delayed
-    def _rasterise_over_chunk(self, dim_x: numpy.ndarray, dim_y: numpy.ndarray,
-                              tile_points: numpy.ndarray, keep_only_ground_lidar: bool):
-        """ Rasterise all points within a chunk. In future we may want to use the region to rasterise to define which
-        points to rasterise. """
-
-        # filter out only ground points for idw ground calculations
-        if keep_only_ground_lidar:
-            tile_points = tile_points[tile_points['Classification'] == self.LAS_GROUND]
-
-        if len(tile_points) == 0:
-            if self.verbose:
-                print("Warning in DenseDem._rasterise_over_chunk the latest chunk has no data and is being ignored.")
-            return
-
-        # Get the indicies overwhich to perform IDW
-        grid_x, grid_y = numpy.meshgrid(dim_x, dim_y)
-        xy_out = numpy.concatenate([[grid_x.flatten()], [grid_y.flatten()]], axis=0).transpose()
-
-        # Perform IDW over the dense DEM within the extents of this point cloud tile
-        z_idw = self._point_cloud_to_raster_idw(tile_points, xy_out, smoothing=0, eps=0, leaf_size=10)
-        grid_z = z_idw.reshape(grid_x.shape)
-
-        # TODO - add roughness calculation
-
-        return grid_z
-
     def _rasterise_tile(self, dim_x: numpy.ndarray, dim_y: numpy.ndarray, tile_points: numpy.ndarray,
                         keep_only_ground_lidar: bool):
         """ Rasterise all points within a tile. """
@@ -557,7 +427,8 @@ class DenseDemFromTiles(DenseDem):
         xy_out = numpy.concatenate([[grid_x.flatten()], [grid_y.flatten()]], axis=0).transpose()
 
         # Perform IDW over the dense DEM within the extents of this point cloud tile
-        z_idw = self._point_cloud_to_raster_idw(tile_points, xy_out, smoothing=0, eps=0, leaf_size=10)
+        z_idw = rasterise_with_idw(point_cloud=tile_points, xy_out=xy_out, idw_radius=self.idw_radius, idw_power=self.idw_power,
+                                   raster_type=self.raster_type, smoothing=0, eps=0, leaf_size=10)
         grid_z = z_idw.reshape(grid_x.shape)
 
         # TODO - add roughness calculation
@@ -630,20 +501,25 @@ class DenseDemFromTiles(DenseDem):
             print(client)
 
             # cycle through index chunks - and collect in a delayed array
+            if self.verbose:
+                print(f"Preparing {[len(chunked_dim_x), len(chunked_dim_y)]} chunks")
             delayed_chunked_matrix = []
             for i, dim_y in enumerate(chunked_dim_y):
                 delayed_chunked_x = []
                 for j, dim_x in enumerate(chunked_dim_x):
                     if self.verbose:
-                        print(f"Rasterising chunk {[i, j]} out of {[len(chunked_dim_x), len(chunked_dim_y)]} chunks")
-                    chunk_points = self._load_tiles_in_chunk(dim_x=dim_x, dim_y=dim_y,
-                                                             tile_index_extents=tile_index_extents,
-                                                             tile_index_name_column=tile_index_name_column,
-                                                             lidar_files=lidar_files, source_crs=source_crs,
-                                                             region_to_rasterise=region_to_rasterise)
+                        print(f"\tChunk {[i, j]}")
+                    chunk_points = load_tiles_in_chunk(dim_x=dim_x, dim_y=dim_y, tile_index_extents=tile_index_extents,
+                                                       tile_index_name_column=tile_index_name_column,
+                                                       lidar_files=lidar_files, source_crs=source_crs,
+                                                       region_to_rasterise=region_to_rasterise,
+                                                       idw_radius=self.idw_radius, verbose=self.verbose,
+                                                       catchment_geometry=self.catchment_geometry)
                     delayed_chunked_x.append(dask.array.from_delayed(
-                        self._rasterise_over_chunk(dim_x=dim_x, dim_y=dim_y, tile_points=chunk_points,
-                                                   keep_only_ground_lidar=keep_only_ground_lidar),
+                        rasterise_chunk(dim_x=dim_x, dim_y=dim_y, tile_points=chunk_points, verbose=self.verbose,
+                                        keep_only_ground_lidar=keep_only_ground_lidar, ground_code=self.LAS_GROUND,
+                                        idw_radius=self.idw_radius, idw_power=self.idw_power,
+                                        raster_type=self.raster_type),
                         shape=(chunk_size, chunk_size), dtype=numpy.float32))
                 delayed_chunked_matrix.append(delayed_chunked_x)
             chunked_dem = xarray.DataArray(dask.array.block([delayed_chunked_matrix]),
@@ -654,9 +530,13 @@ class DenseDemFromTiles(DenseDem):
             chunked_dem.rio.write_crs(self.catchment_geometry.crs['horizontal'], inplace=True)
             chunked_dem.name = 'z'
             chunked_dem = chunked_dem.rio.write_nodata(numpy.nan)
+            if self.verbose:
+                print("Computing chunks")
             chunked_dem = chunked_dem.compute()
 
         # Clip result to within the catchment - removing NaN filled chunked areas outside the catchment
+        if self.verbose:
+            print("Chunked DEM computed and ready to be cut")
         dense_dem = chunked_dem.rio.clip(self.catchment_geometry.catchment.geometry)
         return dense_dem
 
@@ -670,8 +550,8 @@ class DenseDemFromTiles(DenseDem):
             print(f"On LiDAR tile 1 of 1: {lidar_file}")
 
         # Use PDAL to load in file
-        pdal_pipeline = self._read_in_tile_with_pdal(lidar_file, source_crs=source_crs, 
-                                                     region_to_tile=region_to_rasterise, get_extents=True)
+        pdal_pipeline = read_file_with_pdal(lidar_file, source_crs=source_crs, region_to_tile=region_to_rasterise,
+                                            get_extents=True, catchment_geometry=self.catchment_geometry)
 
         # Load LiDAR points from pipeline
         tile_array = pdal_pipeline.arrays[0]
@@ -719,7 +599,8 @@ class DenseDemFromTiles(DenseDem):
         xy_out[:, 1] = grid_y[mask]
 
         # Perform IDW over the dense DEM within the extents of this point cloud tile
-        z_idw = self._point_cloud_to_raster_idw(tile_points, xy_out, smoothing=0, eps=0, leaf_size=10)
+        z_idw = rasterise_with_idw(point_cloud=tile_points, xy_out=xy_out, idw_radius=self.idw_radius, idw_power=self.idw_power,
+                                   raster_type=self.raster_type, smoothing=0, eps=0, leaf_size=10)
         self._dense_dem.data[0, mask] = z_idw
 
         # Update the dense DEM extents
@@ -727,3 +608,146 @@ class DenseDemFromTiles(DenseDem):
 
         # Ensure the dem will be recalculated as another tile has been added
         self._dem = None
+
+
+def read_file_with_pdal(lidar_file: typing.Union[str, pathlib.Path], region_to_tile: geopandas.GeoDataFrame,
+                        catchment_geometry: geometry.CatchmentGeometry, source_crs: dict = None,
+                        get_extents: bool = False):
+    """ Read a tile file in using PDAL """
+
+    # Define instructions for loading in LiDAR
+    pdal_pipeline_instructions = [{"type":  "readers.las", "filename": str(lidar_file)}]
+
+    # Specify reprojection - if a source_crs is specified use this to define the 'in_srs'
+    if source_crs is None:
+        pdal_pipeline_instructions.append(
+            {"type": "filters.reprojection",
+             "out_srs": f"EPSG:{catchment_geometry.crs['horizontal']}+" +
+             f"{catchment_geometry.crs['vertical']}"})
+    else:
+        pdal_pipeline_instructions.append(
+            {"type": "filters.reprojection",
+             "in_srs": f"EPSG:{source_crs['horizontal']}+{source_crs['vertical']}",
+             "out_srs": f"EPSG:{catchment_geometry.crs['horizontal']}+" +
+             f"{catchment_geometry.crs['vertical']}"})
+
+    # Add instructions for clip within either the catchment, or the land and foreshore
+    pdal_pipeline_instructions.append(
+        {"type": "filters.crop", "polygon": str(region_to_tile.loc[0].geometry)})
+
+    # Add instructions for creating a polygon extents of the remaining point cloud
+    if get_extents:
+        pdal_pipeline_instructions.append({"type": "filters.hexbin"})
+
+    # Load in LiDAR and perform operations
+    pdal_pipeline = pdal.Pipeline(json.dumps(pdal_pipeline_instructions))
+    pdal_pipeline.execute()
+    return pdal_pipeline
+
+
+def rasterise_with_idw(point_cloud: numpy.ndarray, xy_out, idw_radius: float, idw_power: int, raster_type,
+                       smoothing: float = 0, eps: float = 0, leaf_size: int = 10):
+    """ Calculate DEM elevation values at the specified locations using the inverse distance weighing (IDW)
+    approach. This implementation is based on the scipy.spatial.KDTree """
+    xy_in = numpy.empty((len(point_cloud), 2))
+    xy_in[:, 0] = point_cloud['X']
+    xy_in[:, 1] = point_cloud['Y']
+
+    tree = scipy.spatial.KDTree(xy_in, leafsize=leaf_size)  # build the tree
+    tree_index_list = tree.query_ball_point(xy_out, r=idw_radius, eps=eps)  # , eps=0.2)
+    z_out = numpy.zeros(len(xy_out), dtype=raster_type)
+
+    for i, (near_indicies, point) in enumerate(zip(tree_index_list, xy_out)):
+
+        if len(near_indicies) == 0:  # Set NaN if no values in search region
+            z_out[i] = numpy.nan
+        else:
+            distance_vectors = point - tree.data[near_indicies]
+            smoothed_distances = numpy.sqrt(((distance_vectors**2).sum(axis=1)+smoothing**2))
+            if smoothed_distances.min() == 0:  # in the case of an exact match
+                z_out[i] = point_cloud['Z'][tree.query(point, k=1)[1]]
+            else:
+                z_out[i] = (point_cloud['Z'][near_indicies] / (smoothed_distances**idw_power)).sum(axis=0) \
+                    / (1 / (smoothed_distances**idw_power)).sum(axis=0)
+
+    return z_out
+
+
+@dask.delayed
+def load_tiles_in_chunk(dim_x: numpy.ndarray, dim_y: numpy.ndarray, tile_index_extents: geopandas.GeoDataFrame,
+                        tile_index_name_column: str, lidar_files: typing.List[typing.Union[str, pathlib.Path]],
+                        source_crs: dict, region_to_rasterise: geopandas.GeoDataFrame, idw_radius: float,
+                        catchment_geometry: geometry.CatchmentGeometry, verbose: bool):
+    """ Read in all LiDAR files within the chunked region - clipped to within the region within which to rasterise.
+    """
+
+    # Define the region to tile
+    chunk_geometry = geopandas.GeoDataFrame(
+        {'geometry': [shapely.geometry.Polygon(
+            [(numpy.min(dim_x) - idw_radius, numpy.min(dim_y) - idw_radius),
+             (numpy.max(dim_x) + idw_radius, numpy.min(dim_y) - idw_radius),
+             (numpy.max(dim_x) + idw_radius, numpy.max(dim_y) + idw_radius),
+             (numpy.min(dim_x) - idw_radius, numpy.max(dim_y) + idw_radius)])]},
+        crs=catchment_geometry.crs['horizontal'])
+
+    # Ensure edge pixels will have a full set of values to perform IDW over
+    chunk_region_to_tile = geopandas.GeoDataFrame(
+        geometry=region_to_rasterise.buffer(idw_radius).clip(chunk_geometry))
+
+    # Clip the tile indices to only include those within the chunk region
+    chunk_tile_index_extents = tile_index_extents.drop(columns=['index_right'])
+    chunk_tile_index_extents = geopandas.sjoin(chunk_tile_index_extents, chunk_region_to_tile)
+    chunk_tile_index_extents = chunk_tile_index_extents.reset_index(drop=True)
+
+    if verbose:
+        print(f"Reading all {len(chunk_tile_index_extents[tile_index_name_column])} files in chunk.")
+
+    # Initialise LiDAR points
+    lidar_points = []
+
+    # Cycle through each file loading it in an adding it to a numpy array
+    for tile_index_name in chunk_tile_index_extents[tile_index_name_column]:
+        if verbose:
+            print(f"\t Loading in file {tile_index_name}")
+        # get the LiDAR file with the tile_index_name
+        lidar_file = [lidar_file for lidar_file in lidar_files if lidar_file.name == tile_index_name]
+        assert len(lidar_file) == 1, f"Error no single LiDAR file matches the tile name. {lidar_file}"
+
+        # read in the LiDAR file
+        pdal_pipeline = read_file_with_pdal(lidar_file=lidar_file[0], region_to_tile=chunk_region_to_tile,
+                                            source_crs=source_crs, catchment_geometry=catchment_geometry,
+                                            get_extents=False)
+        lidar_points.append(pdal_pipeline.arrays[0])
+
+    if len(lidar_points) > 0:
+        lidar_points = numpy.concatenate(lidar_points)
+    return lidar_points
+
+
+@dask.delayed
+def rasterise_chunk(dim_x: numpy.ndarray, dim_y: numpy.ndarray, tile_points: numpy.ndarray, raster_type,
+                    keep_only_ground_lidar: bool, ground_code: int, idw_radius: float, idw_power: int, verbose: bool):
+    """ Rasterise all points within a chunk. In future we may want to use the region to rasterise to define which
+    points to rasterise. """
+
+    # filter out only ground points for idw ground calculations
+    if keep_only_ground_lidar:
+        tile_points = tile_points[tile_points['Classification'] == ground_code]
+
+    if len(tile_points) == 0:
+        if verbose:
+            print("Warning in DenseDem._rasterise_over_chunk the latest chunk has no data and is being ignored.")
+        return
+
+    # Get the indicies overwhich to perform IDW
+    grid_x, grid_y = numpy.meshgrid(dim_x, dim_y)
+    xy_out = numpy.concatenate([[grid_x.flatten()], [grid_y.flatten()]], axis=0).transpose()
+
+    # Perform IDW over the dense DEM within the extents of this point cloud tile
+    z_idw = rasterise_with_idw(point_cloud=tile_points, xy_out=xy_out, idw_radius=idw_radius, idw_power=idw_power,
+                               smoothing=0, eps=0, leaf_size=10, raster_type=raster_type)
+    grid_z = z_idw.reshape(grid_x.shape)
+
+    # TODO - add roughness calculation
+
+    return grid_z
