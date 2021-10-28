@@ -373,18 +373,32 @@ class DenseDemFromTiles(DenseDem):
         return dim_x, dim_y
 
     def _calculate_dense_extents(self):
-        """ Calculate the extents of the current dense DEM """
+        """ Calculate the extents of the current dense DEM. Remove holes as these can cause self intersection
+        warnings. """
+
         dense_extents = [shapely.geometry.shape(polygon[0]) for polygon in
                          rasterio.features.shapes(numpy.uint8(numpy.isnan(self._dense_dem.data) == False))
                          if polygon[1] == 1.0]
-        dense_extents = geopandas.GeoDataFrame({'geometry': [shapely.ops.unary_union(dense_extents)]},
+        dense_extents = shapely.ops.unary_union(dense_extents)
+
+        # Remove any internal holes for select types as these may cause self intersection errors
+        if type(dense_extents) is shapely.geometry.Polygon:
+            dense_extents = shapely.geometry.Polygon(dense_extents.exterior)
+        elif type(dense_extents) is shapely.geometry.MultiPolygon:
+            dense_extents = shapely.geometry.MultiPolygon([shapely.geometry.Polygon(polygon.exterior)
+                                                           for polygon in dense_extents])
+
+        # Convert into a Geopandas dataframe
+        dense_extents = geopandas.GeoDataFrame({'geometry': [dense_extents]},
                                                crs=self.catchment_geometry.crs['horizontal'])
 
-        # Apply a transform so in the same space as the dense DEM
+        # Apply a transform so in the same space as the dense DEM - buffer(0) to reduce self intersection warnings
         dense_dem_affine = self._dense_dem.rio.transform()
         dense_extents = dense_extents.affine_transform([dense_dem_affine.a, dense_dem_affine.b,
                                                         dense_dem_affine.d, dense_dem_affine.e,
-                                                        dense_dem_affine.xoff, dense_dem_affine.yoff])
+                                                        dense_dem_affine.xoff, dense_dem_affine.yoff]).buffer(0)
+
+        # And make our GeoSeries into a GeoDataFrame
         dense_extents = geopandas.GeoDataFrame(geometry=dense_extents)
 
         return dense_extents
@@ -727,7 +741,7 @@ def rasterise_chunk(dim_x: numpy.ndarray, dim_y: numpy.ndarray, tile_points: num
     """ Rasterise all points within a chunk. In future we may want to use the region to rasterise to define which
     points to rasterise. """
 
-    # filter out only ground points for idw ground calculations
+    # use only ground points for idw ground calculations - note the code works even if for empty input tile_points
     if keep_only_ground_lidar:
         tile_points = tile_points[tile_points['Classification'] == ground_code]
 
