@@ -290,7 +290,6 @@ class DemGenerator(BaseProcessor):
 
     The `DemGenerator` class contains several important class members:
      * catchment_geometry - Defines all relevant regions in a catchment required in the generation of a DEM as polygons.
-     * catchment_lidar - Supports the addition of LiDAR data tile by tile
      * dense_dem - Defines the hydrologically conditioned DEM as a combination of tiles from LiDAR and interpolated from
        bathymetry.
      * reference_dem - This optional object defines a background DEM that may be used to fill on land gaps in the LiDAR.
@@ -304,7 +303,6 @@ class DemGenerator(BaseProcessor):
 
         super(DemGenerator, self).__init__(json_instructions=json_instructions)
 
-        self.catchment_lidar = None
         self.dense_dem = None
         self.reference_dem = None
         self.bathy_contours = None
