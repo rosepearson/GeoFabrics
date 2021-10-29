@@ -741,18 +741,25 @@ def rasterise_chunk(dim_x: numpy.ndarray, dim_y: numpy.ndarray, tile_points: num
     """ Rasterise all points within a chunk. In future we may want to use the region to rasterise to define which
     points to rasterise. """
 
+    # Get the indicies overwhich to perform IDW
+    grid_x, grid_y = numpy.meshgrid(dim_x, dim_y)
+    xy_out = numpy.concatenate([[grid_x.flatten()], [grid_y.flatten()]], axis=0).transpose()
+
+    # If no points return an array of NaN
+    if len(tile_points) == 0:
+        if verbose:
+            print("Warning in DenseDem._rasterise_over_chunk the latest chunk has no data and is being ignored.")
+        return numpy.ones(grid_x.shape) * numpy.nan
+
     # use only ground points for idw ground calculations - note the code works even if for empty input tile_points
     if keep_only_ground_lidar:
         tile_points = tile_points[tile_points['Classification'] == ground_code]
 
+    # Check again - if no points return an array of NaN
     if len(tile_points) == 0:
         if verbose:
             print("Warning in DenseDem._rasterise_over_chunk the latest chunk has no data and is being ignored.")
-        return
-
-    # Get the indicies overwhich to perform IDW
-    grid_x, grid_y = numpy.meshgrid(dim_x, dim_y)
-    xy_out = numpy.concatenate([[grid_x.flatten()], [grid_y.flatten()]], axis=0).transpose()
+        return numpy.ones(grid_x.shape) * numpy.nan
 
     # Perform IDW over the dense DEM within the extents of this point cloud tile
     z_idw = rasterise_with_idw(point_cloud=tile_points, xy_out=xy_out, idw_radius=idw_radius, idw_power=idw_power,
