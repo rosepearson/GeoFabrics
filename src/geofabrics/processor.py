@@ -9,6 +9,7 @@ import json
 import pathlib
 import shutil
 import abc
+import distributed
 from . import geometry
 import geoapis.lidar
 import geoapis.vector
@@ -343,12 +344,17 @@ class DemGenerator(BaseProcessor):
             idw_power=idw_power, idw_radius=idw_radius)
 
         # Load in LiDAR tiles
-        self.dense_dem.add_lidar(lidar_files=lidar_dataset_info['file_paths'], source_crs=lidar_dataset_info['crs'],
-                                 drop_offshore_lidar=self.get_instruction_general('drop_offshore_lidar'),
-                                 keep_only_ground_lidar=self.get_instruction_general('keep_only_ground_lidar'),
-                                 tile_index_file=lidar_dataset_info['tile_index_file'],
-                                 chunk_size=self.get_processing_instructions('chunk_size'),
-                                 number_of_cores=self.get_processing_instructions('number_of_cores'))
+        # Setup Dask cluster and client
+        cluster_kwargs = {'n_workers': self.get_processing_instructions('number_of_cores'),
+                          'threads_per_worker': 1,
+                          'processes': True}
+        with distributed.LocalCluster(**cluster_kwargs) as cluster, distributed.Client(cluster) as client:
+            print(client)
+            self.dense_dem.add_lidar(lidar_files=lidar_dataset_info['file_paths'], source_crs=lidar_dataset_info['crs'],
+                                     drop_offshore_lidar=self.get_instruction_general('drop_offshore_lidar'),
+                                     keep_only_ground_lidar=self.get_instruction_general('keep_only_ground_lidar'),
+                                     tile_index_file=lidar_dataset_info['tile_index_file'],
+                                     chunk_size=self.get_processing_instructions('chunk_size'))
 
         # Load in reference DEM if any significant land/foreshore not covered by LiDAR
         if self.check_instruction_path('reference_dems'):

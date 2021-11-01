@@ -16,7 +16,6 @@ import geopandas
 import shapely
 import dask
 import dask.array
-import distributed
 import pdal
 import json
 import abc
@@ -447,7 +446,7 @@ class DenseDemFromTiles(DenseDem):
         return grid_z
 
     def add_lidar(self, lidar_files: typing.List[typing.Union[str, pathlib.Path]],
-                  tile_index_file: typing.Union[str, pathlib.Path], chunk_size: int, number_of_cores: int,
+                  tile_index_file: typing.Union[str, pathlib.Path], chunk_size: int,
                   source_crs: dict = None, keep_only_ground_lidar: bool = True, drop_offshore_lidar: bool = True):
         """ Read in all LiDAR files and use to create a dense DEM.
 
@@ -482,7 +481,7 @@ class DenseDemFromTiles(DenseDem):
                                                             source_crs=source_crs,
                                                             keep_only_ground_lidar=keep_only_ground_lidar,
                                                             region_to_rasterise=region_to_rasterise,
-                                                            chunk_size=chunk_size, number_of_cores=number_of_cores)
+                                                            chunk_size=chunk_size)
 
         # Set any values outside the region_to_rasterise to NaN
         self._dense_dem = self._dense_dem.rio.clip(region_to_rasterise.geometry, drop=False)
@@ -496,7 +495,7 @@ class DenseDemFromTiles(DenseDem):
     def _add_tiled_lidar_chunked(self, lidar_files: typing.List[typing.Union[str, pathlib.Path]],
                                  tile_index_file: typing.Union[str, pathlib.Path], source_crs: dict,
                                  keep_only_ground_lidar: bool, region_to_rasterise: geopandas.GeoDataFrame,
-                                 chunk_size: int, number_of_cores: int) -> xarray.DataArray:
+                                 chunk_size: int) -> xarray.DataArray:
         """ Create a dense DEM from a set of tiled LiDAR files. Read these in over non-overlapping chunks and
         then combine """
 
@@ -506,57 +505,53 @@ class DenseDemFromTiles(DenseDem):
         # get chunking information - if negative, 0 or None chunk_size then default to a single chunk
         chunked_dim_x, chunked_dim_y = self._set_up_chunks(chunk_size)
 
-        # Setup Dask cluster and client
-        cluster_kwargs = {'n_workers': number_of_cores, 'threads_per_worker': 1, 'processes': True}
-        with distributed.LocalCluster(**cluster_kwargs) as cluster, distributed.Client(cluster) as client:
-            print(client)
+        # cycle through index chunks - and collect in a delayed array
+        if self.verbose:
+            print(f"Preparing {[len(chunked_dim_x), len(chunked_dim_y)]} chunks")
+        delayed_chunked_matrix = []
+        for i, dim_y in enumerate(chunked_dim_y):
+            delayed_chunked_x = []
+            for j, dim_x in enumerate(chunked_dim_x):
+                if self.verbose:
+                    print(f"\tChunk {[i, j]}")
+                # Define the region to tile
+                chunk_geometry = geopandas.GeoDataFrame(
+                     {'geometry': [shapely.geometry.Polygon(
+                         [(numpy.min(dim_x) - self.idw_radius, numpy.min(dim_y) - self.idw_radius),
+                          (numpy.max(dim_x) + self.idw_radius, numpy.min(dim_y) - self.idw_radius),
+                          (numpy.max(dim_x) + self.idw_radius, numpy.max(dim_y) + self.idw_radius),
+                          (numpy.min(dim_x) - self.idw_radius, numpy.max(dim_y) + self.idw_radius)])]},
+                     crs=self.catchment_geometry.crs['horizontal'])
 
-            # cycle through index chunks - and collect in a delayed array
-            if self.verbose:
-                print(f"Preparing {[len(chunked_dim_x), len(chunked_dim_y)]} chunks")
-            delayed_chunked_matrix = []
-            for i, dim_y in enumerate(chunked_dim_y):
-                delayed_chunked_x = []
-                for j, dim_x in enumerate(chunked_dim_x):
-                    if self.verbose:
-                        print(f"\tChunk {[i, j]}")
-                    # Define the region to tile
-                    chunk_geometry = geopandas.GeoDataFrame(
-                         {'geometry': [shapely.geometry.Polygon(
-                             [(numpy.min(dim_x) - self.idw_radius, numpy.min(dim_y) - self.idw_radius),
-                              (numpy.max(dim_x) + self.idw_radius, numpy.min(dim_y) - self.idw_radius),
-                              (numpy.max(dim_x) + self.idw_radius, numpy.max(dim_y) + self.idw_radius),
-                              (numpy.min(dim_x) - self.idw_radius, numpy.max(dim_y) + self.idw_radius)])]},
-                         crs=self.catchment_geometry.crs['horizontal'])
+                # Ensure edge pixels will have a full set of values to perform IDW over
+                chunk_region_to_tile = geopandas.GeoDataFrame(
+                     geometry=region_to_rasterise.buffer(self.idw_radius).clip(chunk_geometry))
 
-                    # Ensure edge pixels will have a full set of values to perform IDW over
-                    chunk_region_to_tile = geopandas.GeoDataFrame(
-                         geometry=region_to_rasterise.buffer(self.idw_radius).clip(chunk_geometry))
-
-                    # Load in files and rasterise
-                    chunk_points = load_tiles_in_chunk(dim_x=dim_x, dim_y=dim_y, tile_index_extents=tile_index_extents,
-                                                       tile_index_name_column=tile_index_name_column,
-                                                       lidar_files=lidar_files, source_crs=source_crs,
-                                                       chunk_region_to_tile=chunk_region_to_tile, verbose=self.verbose,
-                                                       catchment_geometry=self.catchment_geometry)
-                    delayed_chunked_x.append(dask.array.from_delayed(
-                        rasterise_chunk(dim_x=dim_x, dim_y=dim_y, tile_points=chunk_points, verbose=self.verbose,
-                                        keep_only_ground_lidar=keep_only_ground_lidar, ground_code=self.LAS_GROUND,
-                                        idw_radius=self.idw_radius, idw_power=self.idw_power,
-                                        raster_type=self.raster_type),
-                        shape=(chunk_size, chunk_size), dtype=numpy.float32))
-                delayed_chunked_matrix.append(delayed_chunked_x)
-            chunked_dem = xarray.DataArray(dask.array.block([delayed_chunked_matrix]),
-                                           coords={'band': [1], 'y': numpy.concatenate(chunked_dim_y),
-                                                   'x': numpy.concatenate(chunked_dim_x)},
-                                           dims=['band', 'y', 'x'],
-                                           attrs={'scale_factor': 1.0, 'add_offset': 0.0, 'long_name': 'idw'})
-            chunked_dem.rio.write_crs(self.catchment_geometry.crs['horizontal'], inplace=True)
-            chunked_dem.name = 'z'
-            chunked_dem = chunked_dem.rio.write_nodata(numpy.nan)
-            if self.verbose:
-                print("Computing chunks")
-            chunked_dem = chunked_dem.compute()
+                # Load in files and rasterise
+                chunk_points = load_tiles_in_chunk(dim_x=dim_x, dim_y=dim_y, tile_index_extents=tile_index_extents,
+                                                   tile_index_name_column=tile_index_name_column,
+                                                   lidar_files=lidar_files, source_crs=source_crs,
+                                                   chunk_region_to_tile=chunk_region_to_tile, verbose=self.verbose,
+                                                   catchment_geometry=self.catchment_geometry)
+                delayed_chunked_x.append(dask.array.from_delayed(
+                    rasterise_chunk(dim_x=dim_x, dim_y=dim_y, tile_points=chunk_points, verbose=self.verbose,
+                                    keep_only_ground_lidar=keep_only_ground_lidar, ground_code=self.LAS_GROUND,
+                                    idw_radius=self.idw_radius, idw_power=self.idw_power,
+                                    raster_type=self.raster_type,
+                                    chunk_region_to_raster=chunk_region_to_tile),
+                    shape=(chunk_size, chunk_size), dtype=numpy.float32))
+            delayed_chunked_matrix.append(delayed_chunked_x)
+        chunked_dem = xarray.DataArray(dask.array.block([delayed_chunked_matrix]),
+                                       coords={'band': [1], 'y': numpy.concatenate(chunked_dim_y),
+                                               'x': numpy.concatenate(chunked_dim_x)},
+                                       dims=['band', 'y', 'x'],
+                                       attrs={'scale_factor': 1.0, 'add_offset': 0.0, 'long_name': 'idw'})
+        chunked_dem.rio.write_crs(self.catchment_geometry.crs['horizontal'], inplace=True)
+        chunked_dem.name = 'z'
+        chunked_dem = chunked_dem.rio.write_nodata(numpy.nan)
+        if self.verbose:
+            print("Computing chunks")
+        chunked_dem = chunked_dem.compute()
 
         # Clip result to within the catchment - removing NaN filled chunked areas outside the catchment
         if self.verbose:
@@ -737,19 +732,21 @@ def load_tiles_in_chunk(dim_x: numpy.ndarray, dim_y: numpy.ndarray, tile_index_e
 
 @dask.delayed
 def rasterise_chunk(dim_x: numpy.ndarray, dim_y: numpy.ndarray, tile_points: numpy.ndarray, raster_type,
-                    keep_only_ground_lidar: bool, ground_code: int, idw_radius: float, idw_power: int, verbose: bool):
+                    keep_only_ground_lidar: bool, ground_code: int, idw_radius: float, idw_power: int, verbose: bool,
+                    chunk_region_to_raster: geopandas.GeoDataFrame):
     """ Rasterise all points within a chunk. In future we may want to use the region to rasterise to define which
     points to rasterise. """
 
     # Get the indicies overwhich to perform IDW
     grid_x, grid_y = numpy.meshgrid(dim_x, dim_y)
     xy_out = numpy.concatenate([[grid_x.flatten()], [grid_y.flatten()]], axis=0).transpose()
+    flat_z = numpy.ones(grid_x.shape) * numpy.nan
 
     # If no points return an array of NaN
     if len(tile_points) == 0:
         if verbose:
             print("Warning in DenseDem._rasterise_over_chunk the latest chunk has no data and is being ignored.")
-        return numpy.ones(grid_x.shape) * numpy.nan
+        return flat_z.reshape(grid_x.shape)
 
     # use only ground points for idw ground calculations - note the code works even if for empty input tile_points
     if keep_only_ground_lidar:
@@ -759,7 +756,7 @@ def rasterise_chunk(dim_x: numpy.ndarray, dim_y: numpy.ndarray, tile_points: num
     if len(tile_points) == 0:
         if verbose:
             print("Warning in DenseDem._rasterise_over_chunk the latest chunk has no data and is being ignored.")
-        return numpy.ones(grid_x.shape) * numpy.nan
+        return flat_z.reshape(grid_x.shape)
 
     # Perform IDW over the dense DEM within the extents of this point cloud tile
     z_idw = rasterise_with_idw(point_cloud=tile_points, xy_out=xy_out, idw_radius=idw_radius, idw_power=idw_power,
