@@ -520,11 +520,24 @@ class DenseDemFromTiles(DenseDem):
                 for j, dim_x in enumerate(chunked_dim_x):
                     if self.verbose:
                         print(f"\tChunk {[i, j]}")
+                    # Define the region to tile
+                    chunk_geometry = geopandas.GeoDataFrame(
+                         {'geometry': [shapely.geometry.Polygon(
+                             [(numpy.min(dim_x) - self.idw_radius, numpy.min(dim_y) - self.idw_radius),
+                              (numpy.max(dim_x) + self.idw_radius, numpy.min(dim_y) - self.idw_radius),
+                              (numpy.max(dim_x) + self.idw_radius, numpy.max(dim_y) + self.idw_radius),
+                              (numpy.min(dim_x) - self.idw_radius, numpy.max(dim_y) + self.idw_radius)])]},
+                         crs=self.catchment_geometry.crs['horizontal'])
+
+                    # Ensure edge pixels will have a full set of values to perform IDW over
+                    chunk_region_to_tile = geopandas.GeoDataFrame(
+                         geometry=region_to_rasterise.buffer(self.idw_radius).clip(chunk_geometry))
+
+                    # Load in files and rasterise
                     chunk_points = load_tiles_in_chunk(dim_x=dim_x, dim_y=dim_y, tile_index_extents=tile_index_extents,
                                                        tile_index_name_column=tile_index_name_column,
                                                        lidar_files=lidar_files, source_crs=source_crs,
-                                                       region_to_rasterise=region_to_rasterise,
-                                                       idw_radius=self.idw_radius, verbose=self.verbose,
+                                                       chunk_region_to_tile=chunk_region_to_tile, verbose=self.verbose,
                                                        catchment_geometry=self.catchment_geometry)
                     delayed_chunked_x.append(dask.array.from_delayed(
                         rasterise_chunk(dim_x=dim_x, dim_y=dim_y, tile_points=chunk_points, verbose=self.verbose,
@@ -687,23 +700,10 @@ def rasterise_with_idw(point_cloud: numpy.ndarray, xy_out, idw_radius: float, id
 @dask.delayed
 def load_tiles_in_chunk(dim_x: numpy.ndarray, dim_y: numpy.ndarray, tile_index_extents: geopandas.GeoDataFrame,
                         tile_index_name_column: str, lidar_files: typing.List[typing.Union[str, pathlib.Path]],
-                        source_crs: dict, region_to_rasterise: geopandas.GeoDataFrame, idw_radius: float,
+                        source_crs: dict, chunk_region_to_tile: geopandas.GeoDataFrame,
                         catchment_geometry: geometry.CatchmentGeometry, verbose: bool):
     """ Read in all LiDAR files within the chunked region - clipped to within the region within which to rasterise.
     """
-
-    # Define the region to tile
-    chunk_geometry = geopandas.GeoDataFrame(
-        {'geometry': [shapely.geometry.Polygon(
-            [(numpy.min(dim_x) - idw_radius, numpy.min(dim_y) - idw_radius),
-             (numpy.max(dim_x) + idw_radius, numpy.min(dim_y) - idw_radius),
-             (numpy.max(dim_x) + idw_radius, numpy.max(dim_y) + idw_radius),
-             (numpy.min(dim_x) - idw_radius, numpy.max(dim_y) + idw_radius)])]},
-        crs=catchment_geometry.crs['horizontal'])
-
-    # Ensure edge pixels will have a full set of values to perform IDW over
-    chunk_region_to_tile = geopandas.GeoDataFrame(
-        geometry=region_to_rasterise.buffer(idw_radius).clip(chunk_geometry))
 
     # Clip the tile indices to only include those within the chunk region
     chunk_tile_index_extents = tile_index_extents.drop(columns=['index_right'])
