@@ -151,7 +151,9 @@ class CatchmentGeometry:
         elif self.offshore.area.sum() == 0:  # There is no offshore region - return an empty dataframe
             return self.offshore
 
-        offshore_with_lidar = geopandas.clip(dense_extents, self.offshore)
+        # Clip to remove any offshore regions before doing a difference overlay. Drop any sub-pixel polygons.
+        offshore_with_lidar = dense_extents.clip(self.offshore, keep_geom_type=True)
+        offshore_with_lidar = offshore_with_lidar[offshore_with_lidar.area > self.resolution * self.resolution]
         offshore_without_lidar = geopandas.overlay(self.offshore, offshore_with_lidar, how="difference")
 
         return offshore_without_lidar
