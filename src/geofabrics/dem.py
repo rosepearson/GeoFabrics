@@ -765,17 +765,11 @@ def rasterise_chunk(dim_x: numpy.ndarray, dim_y: numpy.ndarray, tile_points: num
             print("Warning in DenseDem._rasterise_over_chunk the latest chunk has no data and is being ignored.")
         return grid_z
 
-    # Create a Boolean mask of only points in the region to raster
-    assert len(chunk_region_to_raster) == 1, "Need to combine the region to rasterise into a single multipolygon"
-    in_region_mask = numpy.array(
-        [chunk_region_to_raster.iloc[0].geometry.contains(shapely.geometry.Point(point)) for point in xy_out])
-
     # Perform IDW over the dense DEM within the extents of this point cloud tile
-    if in_region_mask.sum() > 0:  # but only if any pixels are in the region to rasterise
-        z_idw = rasterise_with_idw(point_cloud=tile_points, xy_out=xy_out[in_region_mask],
-                                   idw_radius=idw_radius, idw_power=idw_power,
-                                   smoothing=0, eps=0, leaf_size=10, raster_type=raster_type)
-        grid_z[in_region_mask.reshape(grid_x.shape)] = z_idw
+    z_idw = rasterise_with_idw(point_cloud=tile_points, xy_out=xy_out,
+                               idw_radius=idw_radius, idw_power=idw_power,
+                               smoothing=0, eps=0, leaf_size=10, raster_type=raster_type)
+    grid_z = z_idw.reshape(grid_x.shape)
 
     # TODO - add roughness calculation
 

@@ -343,13 +343,13 @@ class DemGenerator(BaseProcessor):
             interpolate_missing_values=self.get_instruction_general('interpolate_missing_values'),
             idw_power=idw_power, idw_radius=idw_radius)
 
-        # Load in LiDAR tiles
         # Setup Dask cluster and client
         cluster_kwargs = {'n_workers': self.get_processing_instructions('number_of_cores'),
                           'threads_per_worker': 1,
                           'processes': True}
         with distributed.LocalCluster(**cluster_kwargs) as cluster, distributed.Client(cluster) as client:
             print(client)
+            # Load in LiDAR tiles
             self.dense_dem.add_lidar(lidar_files=lidar_dataset_info['file_paths'], source_crs=lidar_dataset_info['crs'],
                                      drop_offshore_lidar=self.get_instruction_general('drop_offshore_lidar'),
                                      keep_only_ground_lidar=self.get_instruction_general('keep_only_ground_lidar'),
