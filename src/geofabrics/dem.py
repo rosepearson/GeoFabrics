@@ -701,24 +701,6 @@ def rasterise_with_idw(point_cloud: numpy.ndarray, xy_out, idw_radius: float, id
     return z_out
 
 
-@dask.delayed
-def delayed_load_tiles_in_chunk(dim_x: numpy.ndarray, dim_y: numpy.ndarray, tile_index_extents: geopandas.GeoDataFrame,
-                                tile_index_name_column: str, lidar_files: typing.List[typing.Union[str, pathlib.Path]],
-                                source_crs: dict, chunk_region_to_tile: geopandas.GeoDataFrame,
-                                catchment_geometry: geometry.CatchmentGeometry, verbose: bool):
-    """ Call load_tiles_in_chunk function but with delayed calling supported. """
-
-    return load_tiles_in_chunk(dim_x=dim_x,
-                               dim_y=dim_y,
-                               tile_index_extents=tile_index_extents,
-                               tile_index_name_column=tile_index_name_column,
-                               lidar_files=lidar_files,
-                               source_crs=source_crs,
-                               chunk_region_to_tile=chunk_region_to_tile,
-                               catchment_geometry=catchment_geometry,
-                               verbose=verbose)
-
-
 def load_tiles_in_chunk(dim_x: numpy.ndarray, dim_y: numpy.ndarray, tile_index_extents: geopandas.GeoDataFrame,
                         tile_index_name_column: str, lidar_files: typing.List[typing.Union[str, pathlib.Path]],
                         source_crs: dict, chunk_region_to_tile: geopandas.GeoDataFrame,
@@ -756,24 +738,6 @@ def load_tiles_in_chunk(dim_x: numpy.ndarray, dim_y: numpy.ndarray, tile_index_e
     return lidar_points
 
 
-@dask.delayed
-def delayed_rasterise_chunk(dim_x: numpy.ndarray, dim_y: numpy.ndarray, tile_points: numpy.ndarray, raster_type,
-                            keep_only_ground_lidar: bool, ground_code: int, idw_radius: float, idw_power: int,
-                            verbose: bool, chunk_region_to_raster: geopandas.GeoDataFrame):
-    """ Call rasterise_chunk function but with delayed calling supported. """
-
-    return rasterise_chunk(dim_x=dim_x,
-                           dim_y=dim_y,
-                           tile_points=tile_points,
-                           raster_type=raster_type,
-                           keep_only_ground_lidar=keep_only_ground_lidar,
-                           ground_code=ground_code,
-                           idw_radius=idw_radius,
-                           idw_power=idw_power,
-                           verbose=verbose,
-                           chunk_region_to_raster=chunk_region_to_raster)
-
-
 def rasterise_chunk(dim_x: numpy.ndarray, dim_y: numpy.ndarray, tile_points: numpy.ndarray, raster_type,
                     keep_only_ground_lidar: bool, ground_code: int, idw_radius: float, idw_power: int, verbose: bool,
                     chunk_region_to_raster: geopandas.GeoDataFrame):
@@ -807,11 +771,18 @@ def rasterise_chunk(dim_x: numpy.ndarray, dim_y: numpy.ndarray, tile_points: num
         [chunk_region_to_raster.iloc[0].geometry.contains(shapely.geometry.Point(point)) for point in xy_out])
 
     # Perform IDW over the dense DEM within the extents of this point cloud tile
-    z_idw = rasterise_with_idw(point_cloud=tile_points, xy_out=xy_out[in_region_mask],
-                               idw_radius=idw_radius, idw_power=idw_power,
-                               smoothing=0, eps=0, leaf_size=10, raster_type=raster_type)
-    grid_z[in_region_mask.reshape(grid_x.shape)] = z_idw
+    if in_region_mask.sum() > 0:  # but only if any pixels are in the region to rasterise
+        z_idw = rasterise_with_idw(point_cloud=tile_points, xy_out=xy_out[in_region_mask],
+                                   idw_radius=idw_radius, idw_power=idw_power,
+                                   smoothing=0, eps=0, leaf_size=10, raster_type=raster_type)
+        grid_z[in_region_mask.reshape(grid_x.shape)] = z_idw
 
     # TODO - add roughness calculation
 
     return grid_z
+
+
+delayed_rasterise_chunk = dask.delayed(rasterise_chunk)
+
+
+delayed_load_tiles_in_chunk = dask.delayed(load_tiles_in_chunk)
