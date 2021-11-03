@@ -15,6 +15,7 @@ import numpy
 import shapely
 import geopandas
 import pdal
+import logging
 
 from src.geofabrics import processor
 
@@ -35,6 +36,10 @@ class ProcessorLocalFilesTest(unittest.TestCase):
         in the tests. """
 
         test_path = pathlib.Path().cwd() / pathlib.Path("tests/test_processor_local_files")
+
+        # Setup logging
+        logging.basicConfig(filename=test_path / 'test.log', encoding='utf-8', level=logging.INFO, force=True)
+        logging.info("In test_processor_local_files.py")
 
         # Load in the test instructions
         instruction_file_path = test_path / "instruction.json"
@@ -169,7 +174,7 @@ class ProcessorLocalFilesTest(unittest.TestCase):
 
         # Compare DEMs - load both from file as rioxarray.rioxarray.open_rasterio ignores index order
         diff_array = test_dem.data-benchmark_dem.data
-        print(f"DEM array diff is: {diff_array[diff_array != 0]}")
+        logging.info(f"DEM array diff is: {diff_array[diff_array != 0]}")
         numpy.testing.assert_array_almost_equal(test_dem.data, benchmark_dem.data,
                                                 err_msg="The generated result_dem has different data from the " +
                                                 "benchmark_dem")

@@ -12,6 +12,7 @@ import numpy
 import matplotlib
 import time
 import logging
+import pathlib
 
 
 def parse_args():
@@ -28,13 +29,19 @@ def parse_args():
 def launch_processor(args):
     """ Run the pipeline over the specified instructions and compare the result to the benchmark """
 
-    logging.basicConfig(filename='geofabrics.debug', encoding='utf-8', level=logging.INFO)
-
     # load the instructions
     with open(args.instructions, 'r') as file_pointer:
         instructions = json.load(file_pointer)
 
     # run the pipeline
+    assert 'local_cache' in instructions['instructions']['data_paths'], "A local_cache must be spcified in the instruction file" \
+        "this is where the log file will be written."
+
+    # Setup logging
+    log_path = pathlib.Path(instructions['instructions']['data_paths']['local_cache'])
+    logging.basicConfig(filename=log_path / 'geofabrics.log', encoding='utf-8', level=logging.INFO, force=True)
+    print(f"Log file is located at: {log_path / 'geofabrics.log'}")
+
     start_time = time.time()
     if 'dense_dem' in instructions['instructions']['data_paths']:
         # update a dense DEM with offshore values

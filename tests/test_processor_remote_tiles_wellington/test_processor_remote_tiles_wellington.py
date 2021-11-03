@@ -15,6 +15,7 @@ import numpy
 import rioxarray
 import pytest
 import sys
+import logging
 
 from src.geofabrics import processor
 
@@ -43,6 +44,10 @@ class ProcessorRemoteTilesWellingtonTest(unittest.TestCase):
         files and produce a DEM prior to testing. """
 
         test_path = pathlib.Path().cwd() / pathlib.Path("tests/test_processor_remote_tiles_wellington")
+
+        # Setup logging
+        logging.basicConfig(filename=test_path / 'test.log', encoding='utf-8', level=logging.INFO, force=True)
+        logging.info("In test_processor_remote_tiles_wellington.py")
 
         # load in the test instructions
         instruction_file_path = test_path / "instruction.json"
@@ -150,7 +155,7 @@ class ProcessorRemoteTilesWellingtonTest(unittest.TestCase):
 
         # compare the generated and benchmark DEMs
         diff_array = test_dem.data[~numpy.isnan(test_dem.data)]-benchmark_dem.data[~numpy.isnan(benchmark_dem.data)]
-        print(f"DEM array diff is: {diff_array[diff_array != 0]}")
+        logging.info(f"DEM array diff is: {diff_array[diff_array != 0]}")
         numpy.testing.assert_array_almost_equal(test_dem.data, benchmark_dem.data,
                                                 err_msg="The generated result_dem has different data from the " +
                                                 "benchmark_dem")
@@ -171,7 +176,7 @@ class ProcessorRemoteTilesWellingtonTest(unittest.TestCase):
 
         # compare the generated and benchmark DEMs
         diff_array = test_dem.data[~numpy.isnan(test_dem.data)]-benchmark_dem.data[~numpy.isnan(benchmark_dem.data)]
-        print(f"DEM array diff is: {diff_array[diff_array != 0]}")
+        logging.info(f"DEM array diff is: {diff_array[diff_array != 0]}")
 
         threshold = 10e-6
         self.assertTrue(len(diff_array[diff_array != 0]) < len(diff_array) / 100, f"{len(diff_array[diff_array != 0])} "
