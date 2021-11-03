@@ -9,6 +9,7 @@ import shapely
 import numpy
 import pathlib
 import typing
+import logging
 
 
 class CatchmentGeometry:
@@ -31,12 +32,11 @@ class CatchmentGeometry:
     foreshore, etc) can be accessed. """
 
     def __init__(self, catchment_file: typing.Union[str, pathlib.Path], crs: dict, resolution: float,
-                 foreshore_buffer: int = 2, verbose: bool = True):
+                 foreshore_buffer: int = 2):
         self._catchment = geopandas.read_file(catchment_file)
         self.crs = crs
         self.resolution = resolution
         self.foreshore_buffer = foreshore_buffer
-        self.verbose = True
 
         # set catchment CRS
         self._catchment = self._catchment.to_crs(self.crs['horizontal'])
@@ -127,9 +127,8 @@ class CatchmentGeometry:
         self._assert_land_set()
 
         if dense_extents is None:
-            if self.verbose:
-                print("Warning dense extents are `None` so `land_and_foreshore_without_lidar`" +
-                      "is returning `land_and_foreshore`")
+            logging.warning("In CatchmentGeometry dense extents are `None` so `land_and_foreshore_without_lidar`" +
+                            "is returning `land_and_foreshore`")
             return self.land_and_foreshore
 
         # Clip to remove any offshore regions before doing a difference overlay. Drop any sub-pixel polygons.
@@ -147,9 +146,8 @@ class CatchmentGeometry:
         self._assert_land_set()
 
         if dense_extents is None:
-            if self.verbose:
-                print("Warning dense extents are `None` so `offshore_without_lidar`" +
-                      "is returning `offshore`")
+            logging.warning("In CatchmentGeometry dense extents are `None` so `offshore_without_lidar`" +
+                            "is returning `offshore`")
             return self.offshore
         elif self.offshore.area.sum() == 0:  # There is no offshore region - return an empty dataframe
             return self.offshore
@@ -167,9 +165,8 @@ class CatchmentGeometry:
         self._assert_land_set()
 
         if dense_extents is None:
-            if self.verbose:
-                print("Warning dense extents are `None` so `offshore_dense_data_edge`" +
-                      "is returning `None`")
+            logging.warning("In CatchmentGeometry dense extents are `None` so `offshore_dense_data_edge`" +
+                            "is returning `None`")
             return None
 
         # the foreshore and whatever lidar extents are offshore

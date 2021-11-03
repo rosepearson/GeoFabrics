@@ -19,6 +19,7 @@ import dask.array
 import pdal
 import json
 import abc
+import logging
 import scipy.interpolate
 import scipy.spatial
 from . import geometry
@@ -139,15 +140,13 @@ class DenseDem(abc.ABC):
     CACHE_SIZE = 10000  # The max number of points to create the offshore RBF and to evaluate in the RBF at one time
 
     def __init__(self, catchment_geometry: geometry.CatchmentGeometry, extents: geopandas.GeoDataFrame,
-                 dense_dem: xarray.core.dataarray.DataArray, verbose: bool,
-                 interpolate_missing_values: bool):
+                 dense_dem: xarray.core.dataarray.DataArray, interpolate_missing_values: bool):
         """ Setup base DEM to add future tiles too """
 
         self.catchment_geometry = catchment_geometry
         self._dense_dem = dense_dem
         self._extents = extents
 
-        self.verbose = verbose
         self.interpolate_missing_values = interpolate_missing_values
 
         self._offshore_dem = None
@@ -158,8 +157,8 @@ class DenseDem(abc.ABC):
     def extents(self):
         """ The combined extents for all added LiDAR tiles """
 
-        if self.verbose and self._extents is None:
-            print("Warning in DenseDem.extents: No tiles with extents have been added yet")
+        if self._extents is None:
+            logging.warning("Warning in DenseDem.extents: No tiles with extents have been added yet")
 
         return self._extents
 
@@ -235,15 +234,14 @@ class DenseDem(abc.ABC):
         # Resample at a lower resolution if too many offshore points
         if len(offshore_points) > self.CACHE_SIZE:
             reduced_resolution = self.catchment_geometry.resolution * len(offshore_points) / self.CACHE_SIZE
-            print("Reducing the number of 'offshore_points' used to create the RBF function by increasing the " +
-                  f"resolution from {self.catchment_geometry.resolution} to {reduced_resolution}")
+            logging.info("Reducing the number of 'offshore_points' used to create the RBF function by increasing the "
+                         f"resolution from {self.catchment_geometry.resolution} to {reduced_resolution}")
             offshore_edge_points = self._sample_offshore_edge(reduced_resolution)
             bathy_points = bathy_contours.sample_contours(reduced_resolution)
             offshore_points = numpy.concatenate([offshore_edge_points, bathy_points])
 
         # Set up the interpolation function
-        if self.verbose:
-            print("Creating offshore interpolant")
+        logging.info("Creating offshore interpolant")
         rbf_function = scipy.interpolate.Rbf(offshore_points['X'], offshore_points['Y'], offshore_points['Z'],
                                              function='linear')
 
@@ -264,8 +262,7 @@ class DenseDem(abc.ABC):
         # Tile offshore area - this limits the maximum memory required at any one time
         number_offshore_tiles = math.ceil(len(flat_x_masked)/self.CACHE_SIZE)
         for i in range(number_offshore_tiles):
-            if self.verbose:
-                print(f"Offshore intepolant tile {i+1} of {number_offshore_tiles}")
+            logging.info(f"Offshore intepolant tile {i+1} of {number_offshore_tiles}")
             start_index = int(i*self.CACHE_SIZE)
             end_index = int((i+1)*self.CACHE_SIZE) if i + 1 != number_offshore_tiles else len(flat_x_masked)
 
@@ -288,7 +285,7 @@ class DenseDemFromFiles(DenseDem):
 
     def __init__(self, catchment_geometry: geometry.CatchmentGeometry,
                  dense_dem_path: typing.Union[str, pathlib.Path], extents_path: typing.Union[str, pathlib.Path],
-                 verbose: bool = True, interpolate_missing_values: bool = True):
+                 interpolate_missing_values: bool = True):
         """ Load in the extents and dense DEM. Ensure the dense DEM is clipped within the extents """
 
         extents = geopandas.read_file(pathlib.Path(extents_path))
@@ -306,8 +303,7 @@ class DenseDemFromFiles(DenseDem):
 
         # Setup the DenseDem class
         super(DenseDemFromFiles, self).__init__(catchment_geometry=catchment_geometry, dense_dem=dense_dem,
-                                                extents=extents, verbose=verbose,
-                                                interpolate_missing_values=interpolate_missing_values)
+                                                extents=extents, interpolate_missing_values=interpolate_missing_values)
 
 
 class DenseDemFromTiles(DenseDem):
@@ -328,7 +324,7 @@ class DenseDemFromTiles(DenseDem):
     LAS_GROUND = 2  # As specified in the LAS/LAZ format
 
     def __init__(self, catchment_geometry: geometry.CatchmentGeometry, idw_power: int, idw_radius: float,
-                 drop_offshore_lidar: bool = True, area_to_drop: float = None, verbose: bool = True,
+                 drop_offshore_lidar: bool = True, area_to_drop: float = None,
                  interpolate_missing_values: bool = True):
         """ Setup base DEM to add future tiles too """
 
@@ -341,8 +337,7 @@ class DenseDemFromTiles(DenseDem):
         self.idw_radius = idw_radius
 
         super(DenseDemFromTiles, self).__init__(catchment_geometry=catchment_geometry, dense_dem=None,
-                                                extents=None, verbose=verbose,
-                                                interpolate_missing_values=interpolate_missing_values)
+                                                extents=None, interpolate_missing_values=interpolate_missing_values)
 
     def _set_up_chunks(self, chunk_size: int) -> (list, list):
         """ Define the chunked coordinates to cover the catchment """
@@ -428,8 +423,7 @@ class DenseDemFromTiles(DenseDem):
             tile_points = tile_points[tile_points['Classification'] == self.LAS_GROUND]
 
         if len(tile_points) == 0:
-            if self.verbose:
-                print("Warning in DenseDem._rasterise_tile the tile has no data and is being ignored.")
+            logging.warning("In DenseDem._rasterise_tile the tile has no data and is being ignored.")
             return
 
         # Get the indicies overwhich to perform IDW
@@ -437,8 +431,9 @@ class DenseDemFromTiles(DenseDem):
         xy_out = numpy.concatenate([[grid_x.flatten()], [grid_y.flatten()]], axis=0).transpose()
 
         # Perform IDW over the dense DEM within the extents of this point cloud tile
-        z_idw = rasterise_with_idw(point_cloud=tile_points, xy_out=xy_out, idw_radius=self.idw_radius, idw_power=self.idw_power,
-                                   raster_type=self.raster_type, smoothing=0, eps=0, leaf_size=10)
+        z_idw = rasterise_with_idw(point_cloud=tile_points, xy_out=xy_out, idw_radius=self.idw_radius,
+                                   idw_power=self.idw_power, raster_type=self.raster_type, smoothing=0,
+                                   eps=0, leaf_size=10)
         grid_z = z_idw.reshape(grid_x.shape)
 
         # TODO - add roughness calculation
@@ -506,14 +501,12 @@ class DenseDemFromTiles(DenseDem):
         chunked_dim_x, chunked_dim_y = self._set_up_chunks(chunk_size)
 
         # cycle through index chunks - and collect in a delayed array
-        if self.verbose:
-            print(f"Preparing {[len(chunked_dim_x), len(chunked_dim_y)]} chunks")
+        logging.info(f"Preparing {[len(chunked_dim_x), len(chunked_dim_y)]} chunks")
         delayed_chunked_matrix = []
         for i, dim_y in enumerate(chunked_dim_y):
             delayed_chunked_x = []
             for j, dim_x in enumerate(chunked_dim_x):
-                if self.verbose:
-                    print(f"\tChunk {[i, j]}")
+                logging.info(f"\tChunk {[i, j]}")
                 # Define the region to tile
                 chunk_geometry = geopandas.GeoDataFrame(
                      {'geometry': [shapely.geometry.Polygon(
@@ -535,13 +528,11 @@ class DenseDemFromTiles(DenseDem):
                                                            lidar_files=lidar_files,
                                                            source_crs=source_crs,
                                                            chunk_region_to_tile=chunk_region_to_tile,
-                                                           verbose=self.verbose,
                                                            catchment_geometry=self.catchment_geometry)
                 delayed_chunked_x.append(dask.array.from_delayed(
                     delayed_rasterise_chunk(dim_x=dim_x,
                                             dim_y=dim_y,
                                             tile_points=chunk_points,
-                                            verbose=self.verbose,
                                             keep_only_ground_lidar=keep_only_ground_lidar,
                                             ground_code=self.LAS_GROUND,
                                             idw_radius=self.idw_radius,
@@ -558,13 +549,11 @@ class DenseDemFromTiles(DenseDem):
         chunked_dem.rio.write_crs(self.catchment_geometry.crs['horizontal'], inplace=True)
         chunked_dem.name = 'z'
         chunked_dem = chunked_dem.rio.write_nodata(numpy.nan)
-        if self.verbose:
-            print("Computing chunks")
+        logging.info("Computing chunks")
         chunked_dem = chunked_dem.compute()
 
         # Clip result to within the catchment - removing NaN filled chunked areas outside the catchment
-        if self.verbose:
-            print("Chunked DEM computed and ready to be cut")
+        logging.debug("Chunked DEM computed and ready to be cut")
         dense_dem = chunked_dem.rio.clip(self.catchment_geometry.catchment.geometry)
         return dense_dem
 
@@ -574,8 +563,7 @@ class DenseDemFromTiles(DenseDem):
         TODO - look at improving efficiency by only evaluating on land if drop_offshore_lidar is True,
         and only within the specified tile_extents"""
 
-        if self.verbose:
-            print(f"On LiDAR tile 1 of 1: {lidar_file}")
+        logging.info(f"On LiDAR tile 1 of 1: {lidar_file}")
 
         # Use PDAL to load in file
         pdal_pipeline = read_file_with_pdal(lidar_file, source_crs=source_crs, region_to_tile=region_to_rasterise,
@@ -611,12 +599,10 @@ class DenseDemFromTiles(DenseDem):
         mask = numpy.isnan(self._dense_dem.data[0])
 
         if len(tile_points) == 0:
-            if self.verbose:
-                print("Warning in DenseDem.add_tile the latest tile has no data and is being ignored.")
+            logging.warning("In DenseDem.add_tile the latest tile has no data and is being ignored.")
             return
         elif mask.sum() == 0:
-            if self.verbose:
-                print("Note in DenseDem.add_tile LiDAR covers all raster values so the reference DEM is being ignored.")
+            logging.warning("In DenseDem.add_tile LiDAR covers all raster values so the reference DEM is being ignored.")
             return
 
         # Get the indicies overwhich to perform IDW
@@ -704,7 +690,7 @@ def rasterise_with_idw(point_cloud: numpy.ndarray, xy_out, idw_radius: float, id
 def load_tiles_in_chunk(dim_x: numpy.ndarray, dim_y: numpy.ndarray, tile_index_extents: geopandas.GeoDataFrame,
                         tile_index_name_column: str, lidar_files: typing.List[typing.Union[str, pathlib.Path]],
                         source_crs: dict, chunk_region_to_tile: geopandas.GeoDataFrame,
-                        catchment_geometry: geometry.CatchmentGeometry, verbose: bool):
+                        catchment_geometry: geometry.CatchmentGeometry):
     """ Read in all LiDAR files within the chunked region - clipped to within the region within which to rasterise.
     """
 
@@ -713,16 +699,14 @@ def load_tiles_in_chunk(dim_x: numpy.ndarray, dim_y: numpy.ndarray, tile_index_e
     chunk_tile_index_extents = geopandas.sjoin(chunk_tile_index_extents, chunk_region_to_tile)
     chunk_tile_index_extents = chunk_tile_index_extents.reset_index(drop=True)
 
-    if verbose:
-        print(f"Reading all {len(chunk_tile_index_extents[tile_index_name_column])} files in chunk.")
+    logging.info(f"Reading all {len(chunk_tile_index_extents[tile_index_name_column])} files in chunk.")
 
     # Initialise LiDAR points
     lidar_points = []
 
     # Cycle through each file loading it in an adding it to a numpy array
     for tile_index_name in chunk_tile_index_extents[tile_index_name_column]:
-        if verbose:
-            print(f"\t Loading in file {tile_index_name}")
+        logging.info(f"\t Loading in file {tile_index_name}")
         # get the LiDAR file with the tile_index_name
         lidar_file = [lidar_file for lidar_file in lidar_files if lidar_file.name == tile_index_name]
         assert len(lidar_file) == 1, f"Error no single LiDAR file matches the tile name. {lidar_file}"
@@ -739,7 +723,7 @@ def load_tiles_in_chunk(dim_x: numpy.ndarray, dim_y: numpy.ndarray, tile_index_e
 
 
 def rasterise_chunk(dim_x: numpy.ndarray, dim_y: numpy.ndarray, tile_points: numpy.ndarray, raster_type,
-                    keep_only_ground_lidar: bool, ground_code: int, idw_radius: float, idw_power: int, verbose: bool,
+                    keep_only_ground_lidar: bool, ground_code: int, idw_radius: float, idw_power: int,
                     chunk_region_to_raster: geopandas.GeoDataFrame):
     """ Rasterise all points within a chunk. In future we may want to use the region to rasterise to define which
     points to rasterise. """
@@ -751,8 +735,7 @@ def rasterise_chunk(dim_x: numpy.ndarray, dim_y: numpy.ndarray, tile_points: num
 
     # If no points return an array of NaN
     if len(tile_points) == 0:
-        if verbose:
-            print("Warning in DenseDem._rasterise_over_chunk the latest chunk has no data and is being ignored.")
+        logging.warning("In dem.rasterise_chunk the latest chunk has no data and is being ignored.")
         return grid_z
 
     # use only ground points for idw ground calculations - note the code works even if for empty input tile_points
@@ -761,8 +744,6 @@ def rasterise_chunk(dim_x: numpy.ndarray, dim_y: numpy.ndarray, tile_points: num
 
     # Check again - if no points return an array of NaN
     if len(tile_points) == 0:
-        if verbose:
-            print("Warning in DenseDem._rasterise_over_chunk the latest chunk has no data and is being ignored.")
         return grid_z
 
     # Perform IDW over the dense DEM within the extents of this point cloud tile

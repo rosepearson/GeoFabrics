@@ -11,6 +11,7 @@ import rioxarray
 import numpy
 import matplotlib
 import time
+import logging
 
 
 def parse_args():
@@ -26,6 +27,8 @@ def parse_args():
 
 def launch_processor(args):
     """ Run the pipeline over the specified instructions and compare the result to the benchmark """
+
+    logging.basicConfig(filename='geofabrics.debug', encoding='utf-8', level=logging.INFO)
 
     # load the instructions
     with open(args.instructions, 'r') as file_pointer:
@@ -52,9 +55,9 @@ def launch_processor(args):
         with rioxarray.rioxarray.open_rasterio(instructions['instructions']['data_paths']['benchmark_dem'],
                                                masked=True) as benchmark_dem:
             benchmark_dem.load()
-        print(f"Comparing the generated DEM saved at {instructions['instructions']['data_paths']['result_dem']} " +
-              f"against the benchmark DEM stored {instructions['instructions']['data_paths']['benchmark_dem']}\n Any " +
-              "difference will be reported.")
+        logging.info(f"Comparing the generated DEM saved at {instructions['instructions']['data_paths']['result_dem']} "
+                     f"against the benchmark DEM stored {instructions['instructions']['data_paths']['benchmark_dem']} "
+                     "\nAny difference will be reported.")
         # compare the generated and benchmark DEMs - plot
         diff = benchmark_dem.copy()
         diff.data = runner.result_dem.data - benchmark_dem.data
