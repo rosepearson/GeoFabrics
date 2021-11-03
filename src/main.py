@@ -29,11 +29,10 @@ def parse_args():
 def launch_processor(args):
     """ Run the pipeline over the specified instructions and compare the result to the benchmark """
 
-    # load the instructions
+    # Load the instructions
     with open(args.instructions, 'r') as file_pointer:
         instructions = json.load(file_pointer)
 
-    # run the pipeline
     assert 'local_cache' in instructions['instructions']['data_paths'], "A local_cache must be spcified in the instruction file" \
         "this is where the log file will be written."
 
@@ -42,14 +41,15 @@ def launch_processor(args):
     logging.basicConfig(filename=log_path / 'geofabrics.log', encoding='utf-8', level=logging.INFO, force=True)
     print(f"Log file is located at: {log_path / 'geofabrics.log'}")
 
+    # Run the pipeline
     start_time = time.time()
     if 'dense_dem' in instructions['instructions']['data_paths']:
-        # update a dense DEM with offshore values
+        # Update a dense DEM with offshore values
         print("Run processor.OffshoreDemGenerator")
         runner = processor.OffshoreDemGenerator(instructions)
         runner.run()
     else:
-        # create a DEM from dense data (LiDAR, reference DEM) and bathymetry if specified
+        # Create a DEM from dense data (LiDAR, reference DEM) and bathymetry if specified
         print("Run processor.DemGenerator")
         runner = processor.DemGenerator(instructions)
         runner.run()
@@ -57,7 +57,7 @@ def launch_processor(args):
 
     print(f"Execution time is {end_time - start_time}")
 
-    # load in benchmark DEM and compare - if specified in the instructions
+    # Load in benchmark DEM and compare - if specified in the instructions
     if 'benchmark_dem' in instructions['instructions']['data_paths']:
         with rioxarray.rioxarray.open_rasterio(instructions['instructions']['data_paths']['benchmark_dem'],
                                                masked=True) as benchmark_dem:
@@ -65,7 +65,7 @@ def launch_processor(args):
         logging.info(f"Comparing the generated DEM saved at {instructions['instructions']['data_paths']['result_dem']} "
                      f"against the benchmark DEM stored {instructions['instructions']['data_paths']['benchmark_dem']} "
                      "\nAny difference will be reported.")
-        # compare the generated and benchmark DEMs - plot
+        # Compare the generated and benchmark DEMs - plot
         diff = benchmark_dem.copy()
         diff.data = runner.result_dem.data - benchmark_dem.data
 
