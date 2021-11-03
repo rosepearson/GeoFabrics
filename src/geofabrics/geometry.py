@@ -20,10 +20,10 @@ class CatchmentGeometry:
     Specifically, this defines polygon regions like 'land', 'foreshore', 'offshore', and ensures all regions are
     defined in the same CRS.
 
-    The land, foreshore and offshore regions are clipped within the catchment, but do not overlap. The land is
-    polygon is defined by a specified polygon which is clipped within the catchment. The foreshore is defined
-    as a 'foreshore_buffer' x 'resolution' outward buffer from the land and within the catchment extents. The offshore
-    region is any remaining region within the catchment region and outside the land and foreshore polygons.
+    The 'land', 'foreshore' and 'offshore' regions are clipped within the 'catchment', but do not overlap. The 'land' is
+    polygon is defined by a specified polygon which is clipped within the 'catchment'. The 'foreshore' is defined
+    as a 'foreshore_buffer' x 'resolution' outward buffer from the 'land' and within the 'catchment' extents. The
+    'offshore' region is any remaining region within the 'catchment' and outside the 'land' and 'foreshore' polygons.
 
     It also supports functions for determining how much of a region is outside an exclusion zone. I.E. is outside
     `lidar_extents` see class method land_and_foreshore_without_lidar for an example.
@@ -69,6 +69,7 @@ class CatchmentGeometry:
             "polygon object - a MultiPolygon is fine"
 
     def _assert_land_set(self):
+        """ Check to make sure the 'land' has been set. """
         assert self._land is not None, "Land has not been set yet. This must be set before anything other than the " + \
             "`catchment` can be returned from a `CatchmentGeometry` object"
 

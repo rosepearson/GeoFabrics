@@ -103,8 +103,8 @@ class BaseProcessor(abc.ABC):
             return defaults[key]
 
     def get_processing_instructions(self, key: str):
-        """ Return the general instruction from the instruction file or return the default value if not specified in
-        the instruction file. Raise an error if the key is not in the instructions and there is no default value. """
+        """ Return the processing instruction from the instruction file or return the default value if not specified in
+        the instruction file. """
 
         defaults = {'number_of_cores': 1, "chunk_size": None}
 
@@ -307,7 +307,8 @@ class DemGenerator(BaseProcessor):
     def run(self):
         """ This method executes the geofabrics generation pipeline to produce geofabric derivatives.
 
-        Note it currently only considers one LiDAR dataset. See 'get_lidar_file_list' for where to change this. """
+        Note it currently only considers one LiDAR dataset that can have many tiles.
+        See 'get_lidar_file_list' for where to change this. """
 
         # Only include data in addition to LiDAR if the area_threshold is not covered
         area_threshold = 10.0/100  # Used to decide if a background DEM or bathymetry should be included
@@ -423,7 +424,8 @@ class OffshoreDemGenerator(BaseProcessor):
     def run(self):
         """ This method executes the geofabrics generation pipeline to produce geofabric derivatives.
 
-        Note it currently only considers one LiDAR dataset. See 'get_lidar_file_list' for where to change this. """
+        Note it currently only considers one LiDAR dataset that may have many tiles.
+        See 'get_lidar_file_list' for where to change this. """
 
         # Only include data in addition to LiDAR if the area_threshold is not covered
         area_threshold = 10.0/100  # Used to decide if bathymetry should be included

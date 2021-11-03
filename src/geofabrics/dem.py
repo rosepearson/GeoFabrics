@@ -323,8 +323,7 @@ class DenseDemFromTiles(DenseDem):
     LAS_GROUND = 2  # As specified in the LAS/LAZ format
 
     def __init__(self, catchment_geometry: geometry.CatchmentGeometry, idw_power: int, idw_radius: float,
-                 drop_offshore_lidar: bool = True,
-                 interpolate_missing_values: bool = True):
+                 drop_offshore_lidar: bool = True, interpolate_missing_values: bool = True):
         """ Setup base DEM to add future tiles too """
 
         self.drop_offshore_lidar = drop_offshore_lidar
@@ -535,8 +534,7 @@ class DenseDemFromTiles(DenseDem):
                                             ground_code=self.LAS_GROUND,
                                             idw_radius=self.idw_radius,
                                             idw_power=self.idw_power,
-                                            raster_type=self.raster_type,
-                                            chunk_region_to_raster=chunk_region_to_tile),
+                                            raster_type=self.raster_type),
                     shape=(chunk_size, chunk_size), dtype=numpy.float32))
             delayed_chunked_matrix.append(delayed_chunked_x)
         chunked_dem = xarray.DataArray(dask.array.block([delayed_chunked_matrix]),
@@ -557,9 +555,7 @@ class DenseDemFromTiles(DenseDem):
 
     def _add_file(self, lidar_file: typing.Union[str, pathlib.Path], region_to_rasterise: geopandas.GeoDataFrame,
                   source_crs: dict = None, keep_only_ground_lidar: bool = True) -> xarray.DataArray:
-        """ Create the dense DEM region from a single LiDAR file. 
-        TODO - look at improving efficiency by only evaluating on land if drop_offshore_lidar is True,
-        and only within the specified tile_extents"""
+        """ Create the dense DEM region from a single LiDAR file. """
 
         logging.info(f"On LiDAR tile 1 of 1: {lidar_file}")
 
@@ -589,18 +585,16 @@ class DenseDemFromTiles(DenseDem):
         return dense_dem
 
     def add_reference_dem(self, tile_points: numpy.ndarray, tile_extent: geopandas.GeoDataFrame):
-        """ Update gaps in dense DEM from areas with no LiDAR with the reference DEM.
-        TODO - look at improving efficiency by only evaluating on land if drop_offshore_lidar is True,
-        and only within the specified tile_extents """
+        """ Update gaps in dense DEM from areas with no LiDAR with the reference DEM. """
 
         # Areas not covered by LiDAR values
         mask = numpy.isnan(self._dense_dem.data[0])
 
         if len(tile_points) == 0:
-            logging.warning("In DenseDem.add_tile the latest tile has no data and is being ignored.")
+            logging.warning("DenseDem.add_tile: the latest reference DEM has no data and is being ignored.")
             return
         elif mask.sum() == 0:
-            logging.warning("In DenseDem.add_tile LiDAR covers all raster values so the reference DEM is being ignored.")
+            logging.warning("DenseDem.add_tile: LiDAR covers all raster values so the reference DEM is being ignored.")
             return
 
         # Get the indicies overwhich to perform IDW
@@ -611,7 +605,8 @@ class DenseDemFromTiles(DenseDem):
         xy_out[:, 1] = grid_y[mask]
 
         # Perform IDW over the dense DEM within the extents of this point cloud tile
-        z_idw = rasterise_with_idw(point_cloud=tile_points, xy_out=xy_out, idw_radius=self.idw_radius, idw_power=self.idw_power,
+        z_idw = rasterise_with_idw(point_cloud=tile_points, xy_out=xy_out, idw_radius=self.idw_radius,
+                                   idw_power=self.idw_power,
                                    raster_type=self.raster_type, smoothing=0, eps=0, leaf_size=10)
         self._dense_dem.data[0, mask] = z_idw
 
@@ -721,10 +716,8 @@ def load_tiles_in_chunk(dim_x: numpy.ndarray, dim_y: numpy.ndarray, tile_index_e
 
 
 def rasterise_chunk(dim_x: numpy.ndarray, dim_y: numpy.ndarray, tile_points: numpy.ndarray, raster_type,
-                    keep_only_ground_lidar: bool, ground_code: int, idw_radius: float, idw_power: int,
-                    chunk_region_to_raster: geopandas.GeoDataFrame):
-    """ Rasterise all points within a chunk. In future we may want to use the region to rasterise to define which
-    points to rasterise. """
+                    keep_only_ground_lidar: bool, ground_code: int, idw_radius: float, idw_power: int):
+    """ Rasterise all points within a chunk. """
 
     # Get the indicies overwhich to perform IDW
     grid_x, grid_y = numpy.meshgrid(dim_x, dim_y)
@@ -755,7 +748,9 @@ def rasterise_chunk(dim_x: numpy.ndarray, dim_y: numpy.ndarray, tile_points: num
     return grid_z
 
 
+""" Wrap the `rasterise_chunk` routine in dask.delayed """
 delayed_rasterise_chunk = dask.delayed(rasterise_chunk)
 
 
+""" Wrap the `load_tiles_in_chunk` routine in dask.delayed """
 delayed_load_tiles_in_chunk = dask.delayed(load_tiles_in_chunk)

@@ -27,7 +27,8 @@ def parse_args():
 
 
 def launch_processor(args):
-    """ Run the pipeline over the specified instructions and compare the result to the benchmark """
+    """ Run the DEM generation pipeline given the specified instructions.
+    If a benchmark is specified compare the result to the benchmark """
 
     # Load the instructions
     with open(args.instructions, 'r') as file_pointer:
@@ -91,6 +92,7 @@ def launch_processor(args):
 
 
 def main():
+    """ The entry point to geofabrics. """
     args = parse_args()
     launch_processor(args)
 
