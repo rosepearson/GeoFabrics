@@ -312,7 +312,6 @@ class DenseDemFromTiles(DenseDem):
     The dense DEM is made up of tiles created from dense point data - Either LiDAR point clouds, or a reference DEM
 
     DenseDemFromTiles logic can be controlled by the constructor inputs:
-        * area_to_drop - If '> 0' this defines the size of any holes in the LiDAR coverage to ignore.
         * drop_offshore_lidar - If True only keep LiDAR values within the foreshore and land regions defined by
           the catchment_geometry. If False keep all LiDAR values.
         * interpolate_missing_values - If True any missing values at the end of the rasterisation process will be
@@ -324,11 +323,10 @@ class DenseDemFromTiles(DenseDem):
     LAS_GROUND = 2  # As specified in the LAS/LAZ format
 
     def __init__(self, catchment_geometry: geometry.CatchmentGeometry, idw_power: int, idw_radius: float,
-                 drop_offshore_lidar: bool = True, area_to_drop: float = None,
+                 drop_offshore_lidar: bool = True,
                  interpolate_missing_values: bool = True):
         """ Setup base DEM to add future tiles too """
 
-        self.area_to_drop = area_to_drop
         self.drop_offshore_lidar = drop_offshore_lidar
 
         self.raster_type = numpy.float64

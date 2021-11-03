@@ -91,7 +91,7 @@ class BaseProcessor(abc.ABC):
         """ Return the general instruction from the instruction file or return the default value if not specified in
         the instruction file. Raise an error if the key is not in the instructions and there is no default value. """
 
-        defaults = {'filter_lidar_holes_area': None, 'set_dem_shoreline': True,
+        defaults = {'set_dem_shoreline': True,
                     'bathymetry_contours_z_label': None, 'drop_offshore_lidar': True, 'keep_only_ground_lidar': True,
                     'interpolate_missing_values': True, 'chunk_size': None}
 
@@ -333,7 +333,6 @@ class DemGenerator(BaseProcessor):
         # setup dense DEM and catchment LiDAR objects
         self.dense_dem = dem.DenseDemFromTiles(
             catchment_geometry=self.catchment_geometry,
-            area_to_drop=self.get_instruction_general('filter_lidar_holes_area'),
             drop_offshore_lidar=self.get_instruction_general('drop_offshore_lidar'),
             interpolate_missing_values=self.get_instruction_general('interpolate_missing_values'),
             idw_power=idw_power, idw_radius=idw_radius)
