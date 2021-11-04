@@ -361,7 +361,7 @@ class DemGenerator(BaseProcessor):
                     f"{len(self.get_instruction_path('reference_dems'))} reference_dems specified, but only one supported" \
                     + f" currently. reference_dems: {self.get_instruction_path('reference_dems')}"
 
-                logging.info(f"Incorporting background DEM: {self.get_instruction_path('reference_dems')}")
+                logging.info(f"Incorporating background DEM: {self.get_instruction_path('reference_dems')}")
 
                 # Load in background DEM - cut away within the LiDAR extents
                 self.reference_dem = dem.ReferenceDem(dem_file=self.get_instruction_path('reference_dems')[0],
@@ -384,7 +384,7 @@ class DemGenerator(BaseProcessor):
                 assert len(bathy_contour_dirs) == 1, f"{len(bathy_contour_dirs)} bathymetry_contours's provided. " + \
                     f"Specficially {catchment_dirs}. Support has not yet been added for multiple datasets."
 
-                logging.info(f"Incorporting Bathymetry: {bathy_contour_dirs}")
+                logging.info(f"Incorporating Bathymetry: {bathy_contour_dirs}")
 
                 # Load in bathymetry
                 self.bathy_contours = geometry.BathymetryContours(
@@ -457,7 +457,7 @@ class OffshoreDemGenerator(BaseProcessor):
             assert len(bathy_contour_dirs) == 1, f"{len(bathy_contour_dirs)} bathymetry_contours's provided. " + \
                 f"Specficially {catchment_dirs}. Support has not yet been added for multiple datasets."
 
-            logging.info(f"Incorporting Bathymetry: {bathy_contour_dirs}")
+            logging.info(f"Incorporating Bathymetry: {bathy_contour_dirs}")
 
             # Load in bathymetry
             self.bathy_contours = geometry.BathymetryContours(
