@@ -9,11 +9,14 @@
 				"resolution": 10
 			}
 		},
+		"processing": {
+			"chunk_size": 100,
+			"number_of_cores": 2
+		},
 		"data_paths": {
 			"local_cache": "tests/test_processor_remote_tiles_westport/data",
 			"catchment_boundary": "tests/test_processor_remote_tiles_westport/data/catchment.zip",
 			"land": "tests/test_processor_remote_tiles_westport/data/catchment.zip",
-			"temp_raster": "tests/test_processor_remote_tiles_westport/data/temp_dense_dem.tif",
 			"result_dem": "tests/test_processor_remote_tiles_westport/data/test_dem.nc",
 			"dense_dem_extents": "tests/test_processor_remote_tiles_westport/data/extents.geojson",
 			"benchmark_dem": "tests/test_processor_remote_tiles_westport/data/benchmark_dem.nc"
@@ -24,8 +27,7 @@
 		"general": {
 			"set_dem_shoreline": true,
 			"drop_offshore_lidar": false,
-			"keep_only_ground_lidar": false,
-			"interpolate_missing_values": false
+			"keep_only_ground_lidar": false
 		}
 	}
 }

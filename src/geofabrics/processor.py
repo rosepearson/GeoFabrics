@@ -9,6 +9,8 @@ import json
 import pathlib
 import shutil
 import abc
+import logging
+import distributed
 from . import geometry
 import geoapis.lidar
 import geoapis.vector
@@ -22,7 +24,6 @@ class BaseProcessor(abc.ABC):
 
     def __init__(self, json_instructions: json):
         self.instructions = json_instructions
-        self.verbose = self.get_instruction_general('verbose')
 
         self.catchment_geometry = None
 
@@ -30,7 +31,7 @@ class BaseProcessor(abc.ABC):
         """ Return the file path from the instruction file, or default if there is a default value and the local cache
         is specified. Raise an error if the key is not in the instructions. """
 
-        defaults = {'result_dem': "generated_dem.nc",
+        defaults = {'result_dem': "generated_dem.nc", 'dense_dem': "dense_dem.nc",
                     'dense_dem_extents': "dense_extents.geojson"}
 
         if key in self.instructions['instructions']['data_paths']:
@@ -45,7 +46,7 @@ class BaseProcessor(abc.ABC):
         """ Return True if the file path exists in the instruction file, or True if there is a default value and the
         local cache is specified. """
 
-        defaults = ['result_dem', 'dense_dem_extents']
+        defaults = ['result_dem', 'dense_dem_extents', 'dense_dem']
 
         if key in self.instructions['instructions']['data_paths']:
             return True
@@ -72,8 +73,8 @@ class BaseProcessor(abc.ABC):
             "should exist and is where the resolution and optionally the CRS of the output DEM is defined."
 
         if 'crs' not in self.instructions['instructions']['output']:
-            print("Warning: No output the coordinate system EPSG values specified. We will instead be using the " +
-                  f"defaults: {defaults}.")
+            logging.warning("No output the coordinate system EPSG values specified. We will instead be using the " +
+                            f"defaults: {defaults}.")
             return defaults
         else:
             crs_instruction = self.instructions['instructions']['output']['crs']
@@ -82,23 +83,35 @@ class BaseProcessor(abc.ABC):
                 defaults['horizontal']
             crs_dict['vertical'] = crs_instruction['vertical'] if 'vertical' in crs_instruction else \
                 defaults['vertical']
-            if self.verbose:
-                print(f"The output the coordinate system EPSG values of {crs_dict} will be used. If these are not as " +
-                      "expected. Check both the 'horizontal' and 'vertical' values are specified.")
+            logging.info(f"The output the coordinate system EPSG values of {crs_dict} will be used. If these are not "
+                         "as expected. Check both the 'horizontal' and 'vertical' values are specified.")
             return crs_dict
 
     def get_instruction_general(self, key: str):
         """ Return the general instruction from the instruction file or return the default value if not specified in
         the instruction file. Raise an error if the key is not in the instructions and there is no default value. """
 
-        defaults = {'filter_lidar_holes_area': None, 'verbose': True, 'set_dem_shoreline': True,
+        defaults = {'set_dem_shoreline': True,
                     'bathymetry_contours_z_label': None, 'drop_offshore_lidar': True, 'keep_only_ground_lidar': True,
-                    'interpolate_missing_values': True}
+                    'interpolate_missing_values': True, 'chunk_size': None}
 
         assert key in defaults or key in self.instructions['instructions']['general'], f"The key: {key} is missing " \
             + "from the general instructions, and does not have a default value"
         if 'general' in self.instructions['instructions'] and key in self.instructions['instructions']['general']:
             return self.instructions['instructions']['general'][key]
+        else:
+            return defaults[key]
+
+    def get_processing_instructions(self, key: str):
+        """ Return the processing instruction from the instruction file or return the default value if not specified in
+        the instruction file. """
+
+        defaults = {'number_of_cores': 1, "chunk_size": None}
+
+        assert key in defaults or key in self.instructions['instructions']['processing'], f"The key: {key} is missing " \
+            + "from the general instructions, and does not have a default value"
+        if 'processing' in self.instructions['instructions'] and key in self.instructions['instructions']['processing']:
+            return self.instructions['instructions']['processing'][key]
         else:
             return defaults[key]
 
@@ -167,14 +180,13 @@ class BaseProcessor(abc.ABC):
                 # Instantiate the geoapis object for downloading vectors from the data service.
                 vector_fetcher = data_services[data_service](api_key,
                                                              bounding_polygon=self.catchment_geometry.catchment,
-                                                             verbose=self.verbose)
+                                                             verbose=True)
 
                 vector_instruction = self.instructions['instructions']['apis'][data_service][key]
                 geometry_type = vector_instruction['geometry_name '] if 'geometry_name ' in vector_instruction else None
 
-                if self.verbose:
-                    print(f"Downloading vector layers {vector_instruction['layers']} from the {data_service} data" +
-                          "service")
+                logging.info(f"Downloading vector layers {vector_instruction['layers']} from the {data_service} data" +
+                             "service")
 
                 # Cycle through all layers specified - save each and add to the path list
                 for layer in vector_instruction['layers']:
@@ -204,18 +216,16 @@ class BaseProcessor(abc.ABC):
                     'vertical' in dataset_instruction['crs']:
                 dataset_crs = {'horizontal': dataset_instruction['crs']['horizontal'],
                                'vertical': dataset_instruction['crs']['vertical']}
-                if self.verbose:
-                    print(f"The LiDAR dataset {dataset_name} is assumed to have the source coordinate system EPSG: " +
-                          f"{dataset_crs} as defined in the instruction file")
+                logging.info(f"The LiDAR dataset {dataset_name} is assumed to have the source coordinate system EPSG: "
+                             f"{dataset_crs} as defined in the instruction file")
                 return dataset_crs
             else:
-                if self.verbose:
-                    print(f"The LiDAR dataset {dataset_name} will use the source the coordinate system EPSG defined" +
-                          " in its LAZ files")
+                logging.info(f"The LiDAR dataset {dataset_name} will use the source the coordinate system EPSG defined"
+                             " in its LAZ files")
                 return None
         else:
-            if self.verbose:
-                print(f"The LiDAR dataset {dataset_name} will use the source coordinate system EPSG from its LAZ files")
+            logging.info(f"The LiDAR dataset {dataset_name} will use the source coordinate system EPSG from its LAZ "
+                         "files")
             return None
 
     def get_lidar_file_list(self, data_service) -> dict:
@@ -248,7 +258,7 @@ class BaseProcessor(abc.ABC):
             # download from OpenTopography - then get the local file path
             self.lidar_fetcher = geoapis.lidar.OpenTopography(cache_path=self.get_instruction_path('local_cache'),
                                                               search_polygon=self.catchment_geometry.catchment,
-                                                              verbose=self.verbose)
+                                                              verbose=True)
             self.lidar_fetcher.run()
             dataset_prefix = self.lidar_fetcher.dataset_prefixes[lidar_dataset_index]
             lidar_dataset_info['file_paths'] = sorted(
@@ -277,7 +287,6 @@ class DemGenerator(BaseProcessor):
 
     The `DemGenerator` class contains several important class members:
      * catchment_geometry - Defines all relevant regions in a catchment required in the generation of a DEM as polygons.
-     * catchment_lidar - Supports the addition of LiDAR data tile by tile
      * dense_dem - Defines the hydrologically conditioned DEM as a combination of tiles from LiDAR and interpolated from
        bathymetry.
      * reference_dem - This optional object defines a background DEM that may be used to fill on land gaps in the LiDAR.
@@ -291,7 +300,6 @@ class DemGenerator(BaseProcessor):
 
         super(DemGenerator, self).__init__(json_instructions=json_instructions)
 
-        self.catchment_lidar = None
         self.dense_dem = None
         self.reference_dem = None
         self.bathy_contours = None
@@ -299,7 +307,8 @@ class DemGenerator(BaseProcessor):
     def run(self):
         """ This method executes the geofabrics generation pipeline to produce geofabric derivatives.
 
-        Note it currently only considers one LiDAR dataset. See 'get_lidar_file_list' for where to change this. """
+        Note it currently only considers one LiDAR dataset that can have many tiles.
+        See 'get_lidar_file_list' for where to change this. """
 
         # Only include data in addition to LiDAR if the area_threshold is not covered
         area_threshold = 10.0/100  # Used to decide if a background DEM or bathymetry should be included
@@ -309,16 +318,14 @@ class DemGenerator(BaseProcessor):
         assert type(catchment_dirs) is not list, f"A list of catchment_boundary's is provided: {catchment_dirs}, " + \
             "where only one is supported."
         self.catchment_geometry = geometry.CatchmentGeometry(catchment_dirs, self.get_crs(),
-                                                             self.get_resolution(), foreshore_buffer=2,
-                                                             verbose=self.verbose)
+                                                             self.get_resolution(), foreshore_buffer=2)
         land_dirs = self.get_vector_paths('land')
         assert len(land_dirs) == 1, f"{len(land_dirs)} catchment_boundary's provided, where only one is supported." + \
             f" Specficially land_dirs = {land_dirs}."
         self.catchment_geometry.land = land_dirs[0]
 
         # Define PDAL/GDAL griding parameter values
-        radius = self.catchment_geometry.resolution * numpy.sqrt(2)
-        window_size = 0
+        idw_radius = self.catchment_geometry.resolution * numpy.sqrt(2)
         idw_power = 2
 
         # Get LiDAR data file-list - this may involve downloading lidar files
@@ -327,66 +334,77 @@ class DemGenerator(BaseProcessor):
         # setup dense DEM and catchment LiDAR objects
         self.dense_dem = dem.DenseDemFromTiles(
             catchment_geometry=self.catchment_geometry,
-            area_to_drop=self.get_instruction_general('filter_lidar_holes_area'),
-            drop_offshore_lidar=self.get_instruction_general('drop_offshore_lidar'), verbose=self.verbose,
-            interpolate_missing_values=self.get_instruction_general('interpolate_missing_values'))
+            drop_offshore_lidar=self.get_instruction_general('drop_offshore_lidar'),
+            interpolate_missing_values=self.get_instruction_general('interpolate_missing_values'),
+            idw_power=idw_power, idw_radius=idw_radius)
 
-        # Load in LiDAR tiles
-        self.dense_dem.add_tiled_files(lidar_files=lidar_dataset_info['file_paths'], window_size=window_size,
-                                       idw_power=idw_power, radius=radius, source_crs=lidar_dataset_info['crs'],
-                                       drop_offshore_lidar=self.get_instruction_general('drop_offshore_lidar'),
-                                       keep_only_ground_lidar=self.get_instruction_general('keep_only_ground_lidar'),
-                                       tile_index_file=lidar_dataset_info['tile_index_file'])
+        # Setup Dask cluster and client
+        cluster_kwargs = {'n_workers': self.get_processing_instructions('number_of_cores'),
+                          'threads_per_worker': 1,
+                          'processes': True}
+        with distributed.LocalCluster(**cluster_kwargs) as cluster, distributed.Client(cluster) as client:
+            print(client)
+            # Load in LiDAR tiles
+            self.dense_dem.add_lidar(lidar_files=lidar_dataset_info['file_paths'], source_crs=lidar_dataset_info['crs'],
+                                     drop_offshore_lidar=self.get_instruction_general('drop_offshore_lidar'),
+                                     keep_only_ground_lidar=self.get_instruction_general('keep_only_ground_lidar'),
+                                     tile_index_file=lidar_dataset_info['tile_index_file'],
+                                     chunk_size=self.get_processing_instructions('chunk_size'))
+
+        # save dense DEM results
+        self.dense_dem.dense_dem.to_netcdf(self.get_instruction_path('dense_dem'))
 
         # Load in reference DEM if any significant land/foreshore not covered by LiDAR
-        area_without_lidar = \
-            self.catchment_geometry.land_and_foreshore_without_lidar(self.dense_dem.extents).geometry.area.sum()
-        if (self.check_instruction_path('reference_dems') and
-                area_without_lidar > self.catchment_geometry.land_and_foreshore.area.sum() * area_threshold):
+        if self.check_instruction_path('reference_dems'):
+            area_without_lidar = \
+                self.catchment_geometry.land_and_foreshore_without_lidar(self.dense_dem.extents).geometry.area.sum()
+            if area_without_lidar > self.catchment_geometry.land_and_foreshore.area.sum() * area_threshold:
 
-            assert len(self.get_instruction_path('reference_dems')) == 1, \
-                f"{len(self.get_instruction_path('reference_dems'))} reference_dems specified, but only one supported" \
-                + f" currently. reference_dems: {self.get_instruction_path('reference_dems')}"
+                assert len(self.get_instruction_path('reference_dems')) == 1, \
+                    f"{len(self.get_instruction_path('reference_dems'))} reference_dems specified, but only one supported" \
+                    + f" currently. reference_dems: {self.get_instruction_path('reference_dems')}"
 
-            if self.verbose:
-                print(f"Incorporting background DEM: {self.get_instruction_path('reference_dems')}")
+                logging.info(f"Incorporating background DEM: {self.get_instruction_path('reference_dems')}")
 
-            # Load in background DEM - cut away within the LiDAR extents
-            self.reference_dem = dem.ReferenceDem(dem_file=self.get_instruction_path('reference_dems')[0],
-                                                  catchment_geometry=self.catchment_geometry,
-                                                  set_foreshore=self.get_instruction_general('set_dem_shoreline'),
-                                                  exclusion_extent=self.dense_dem.extents)
+                # Load in background DEM - cut away within the LiDAR extents
+                self.reference_dem = dem.ReferenceDem(dem_file=self.get_instruction_path('reference_dems')[0],
+                                                      catchment_geometry=self.catchment_geometry,
+                                                      set_foreshore=self.get_instruction_general('set_dem_shoreline'),
+                                                      exclusion_extent=self.dense_dem.extents)
 
-            # Add the reference DEM patch where there's no LiDAR to the dense DEM without updting the extents
-            self.dense_dem.add_tile(tile_points=self.reference_dem.points, tile_extent=self.reference_dem.extents,
-                                    window_size=window_size, idw_power=idw_power, radius=radius)
+                # Add the reference DEM patch where there's no LiDAR to the dense DEM without updting the extents
+                self.dense_dem.add_reference_dem(tile_points=self.reference_dem.points,
+                                                 tile_extent=self.reference_dem.extents)
+
+        if self.dense_dem.extents is not None:  # Save ou the extents of the LiDAR - before reference DEM
+            self.dense_dem.extents.to_file(self.get_instruction_path('dense_dem_extents'))
+        else:
+            logging.warning("In processor.DemGenerator - no LiDAR extents exist so no extents file written")
 
         # Load in bathymetry and interpolate offshore if significant offshore is not covered by LiDAR
-        area_without_lidar = \
-            self.catchment_geometry.offshore_without_lidar(self.dense_dem.extents).geometry.area.sum()
-        if (self.check_vector('bathymetry_contours') and
-                area_without_lidar > self.catchment_geometry.offshore.area.sum() * area_threshold):
+        if self.check_vector('bathymetry_contours'):
+            area_without_lidar = \
+                self.catchment_geometry.offshore_without_lidar(self.dense_dem.extents).geometry.area.sum()
+            if area_without_lidar > self.catchment_geometry.offshore.area.sum() * area_threshold:
 
-            # Get the bathymetry data directory
-            bathy_contour_dirs = self.get_vector_paths('bathymetry_contours')
-            assert len(bathy_contour_dirs) == 1, f"{len(bathy_contour_dirs)} bathymetry_contours's provided. " + \
-                f"Specficially {catchment_dirs}. Support has not yet been added for multiple datasets."
+                # Get the bathymetry data directory
+                bathy_contour_dirs = self.get_vector_paths('bathymetry_contours')
+                assert len(bathy_contour_dirs) == 1, f"{len(bathy_contour_dirs)} bathymetry_contours's provided. " + \
+                    f"Specficially {catchment_dirs}. Support has not yet been added for multiple datasets."
 
-            if self.verbose:
-                print(f"Incorporting Bathymetry: {bathy_contour_dirs}")
+                logging.info(f"Incorporating Bathymetry: {bathy_contour_dirs}")
 
-            # Load in bathymetry
-            self.bathy_contours = geometry.BathymetryContours(
-                bathy_contour_dirs[0], self.catchment_geometry,
-                z_label=self.get_instruction_general('bathymetry_contours_z_label'),
-                exclusion_extent=self.dense_dem.extents)
+                # Load in bathymetry
+                self.bathy_contours = geometry.BathymetryContours(
+                    bathy_contour_dirs[0], self.catchment_geometry,
+                    z_label=self.get_instruction_general('bathymetry_contours_z_label'),
+                    exclusion_extent=self.dense_dem.extents)
 
-            # interpolate
-            self.dense_dem.interpolate_offshore(self.bathy_contours)
+                # interpolate
+                self.dense_dem.interpolate_offshore(self.bathy_contours)
 
         # fill combined dem - save results
         self.dense_dem.dem.to_netcdf(self.get_instruction_path('result_dem'))
-        self.dense_dem.extents.to_file(self.get_instruction_path('dense_dem_extents'))
 
 
 class OffshoreDemGenerator(BaseProcessor):
@@ -413,7 +431,8 @@ class OffshoreDemGenerator(BaseProcessor):
     def run(self):
         """ This method executes the geofabrics generation pipeline to produce geofabric derivatives.
 
-        Note it currently only considers one LiDAR dataset. See 'get_lidar_file_list' for where to change this. """
+        Note it currently only considers one LiDAR dataset that may have many tiles.
+        See 'get_lidar_file_list' for where to change this. """
 
         # Only include data in addition to LiDAR if the area_threshold is not covered
         area_threshold = 10.0/100  # Used to decide if bathymetry should be included
@@ -423,8 +442,7 @@ class OffshoreDemGenerator(BaseProcessor):
         assert type(catchment_dirs) is not list, f"A list of catchment_boundary's is provided: {catchment_dirs}, " + \
             "where only one is supported."
         self.catchment_geometry = geometry.CatchmentGeometry(catchment_dirs, self.get_crs(),
-                                                             self.get_resolution(), foreshore_buffer=2,
-                                                             verbose=self.verbose)
+                                                             self.get_resolution(), foreshore_buffer=2)
         land_dirs = self.get_vector_paths('land')
         assert len(land_dirs) == 1, f"{len(land_dirs)} catchment_boundary's provided, where only one is supported." + \
             f" Specficially land_dirs = {land_dirs}."
@@ -433,8 +451,7 @@ class OffshoreDemGenerator(BaseProcessor):
         # setup dense DEM and catchment LiDAR objects
         self.dense_dem = dem.DenseDemFromFiles(catchment_geometry=self.catchment_geometry,
                                                dense_dem_path=self.get_instruction_path('dense_dem'),
-                                               extents_path=self.get_instruction_path('dense_dem_extents'),
-                                               verbose=self.verbose)
+                                               extents_path=self.get_instruction_path('dense_dem_extents'))
 
         # Load in bathymetry and interpolate offshore if significant offshore is not covered by LiDAR
         area_without_lidar = \
@@ -447,8 +464,7 @@ class OffshoreDemGenerator(BaseProcessor):
             assert len(bathy_contour_dirs) == 1, f"{len(bathy_contour_dirs)} bathymetry_contours's provided. " + \
                 f"Specficially {catchment_dirs}. Support has not yet been added for multiple datasets."
 
-            if self.verbose:
-                print(f"Incorporting Bathymetry: {bathy_contour_dirs}")
+            logging.info(f"Incorporating Bathymetry: {bathy_contour_dirs}")
 
             # Load in bathymetry
             self.bathy_contours = geometry.BathymetryContours(

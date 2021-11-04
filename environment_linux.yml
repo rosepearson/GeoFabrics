@@ -10,6 +10,8 @@ dependencies:
   - geopandas
   - rioxarray
   - pdal
+  - dask
+  - distributed
   - python-pdal
   - python-dotenv
   - pytest

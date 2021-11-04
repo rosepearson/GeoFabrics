@@ -9,6 +9,10 @@
 				"resolution": 10
 			}
 		},
+		"processing": {
+			"chunk_size": 200,
+			"number_of_cores": 2
+		},
 		"data_paths": {
 			"local_cache": "tests/test_processor_remote_all_westport_ground_only/data",
 			"catchment_boundary": "tests/test_processor_remote_all_westport_ground_only/data/catchment.zip",

@@ -46,6 +46,8 @@ setuptools.setup(
                       'geopandas>=0.10',
                       'shapely>=1.7',
                       'scipy>=1.6',
+                      'dask>=2021.9',
+                      'distributed>=2021.9',
                       'python-dotenv>=0.19'],
     extras_require={
         'dev': ['check-manifest'],

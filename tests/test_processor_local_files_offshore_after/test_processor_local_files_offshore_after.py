@@ -16,13 +16,14 @@ import shapely
 import geopandas
 import pdal
 import copy
+import logging
 
 from src.geofabrics import processor
 
 
 class ProcessorLocalFilesTest(unittest.TestCase):
-    """ A class to test the basic DemGenerator processor class for a simple example with land, offshore, a reference DEM and
-    LiDAR using the data specified in the test1/instruction.json
+    """ A class to test the basic DemGenerator processor class for a simple example with land, offshore, a reference DEM
+    and LiDAR using the data specified in the instruction.json
 
     Tests run include:
         1. test_result_dem  Check the generated DEM matches the benchmark DEM within a tolerance
@@ -36,6 +37,10 @@ class ProcessorLocalFilesTest(unittest.TestCase):
         in the tests. """
 
         test_path = pathlib.Path().cwd() / pathlib.Path("tests/test_processor_local_files_offshore_after")
+
+        # Setup logging
+        logging.basicConfig(filename=test_path / 'test.log', encoding='utf-8', level=logging.INFO, force=True)
+        logging.info("In test_processor_local_files_offshore_after.py")
 
         # Load in the test instructions
         instruction_file_path = test_path / "instruction.json"
@@ -169,7 +174,6 @@ class ProcessorLocalFilesTest(unittest.TestCase):
             self.instructions['instructions']['data_paths']['final_result_dem']
         self.instructions['instructions']['data_paths'].pop('lidars')
         self.instructions['instructions']['data_paths'].pop('reference_dems')
-        self.instructions['instructions']['data_paths'].pop('temp_raster')
         self.instructions['instructions']['data_paths'].pop('final_result_dem')
         runner = processor.OffshoreDemGenerator(self.instructions)
         runner.run()
@@ -185,8 +189,8 @@ class ProcessorLocalFilesTest(unittest.TestCase):
             test_dem.load()
 
         # Compare DEMs - load both from file as rioxarray.rioxarray.open_rasterio ignores index order
-        diff_array = test_dem.data-benchmark_dem.data
-        print(f"DEM array diff is: {diff_array[diff_array != 0]}")
+        diff_array = test_dem.data[~numpy.isnan(test_dem.data)]-benchmark_dem.data[~numpy.isnan(benchmark_dem.data)]
+        logging.info(f"DEM array diff is: {diff_array[diff_array != 0]}")
         numpy.testing.assert_array_almost_equal(test_dem.data, benchmark_dem.data,
                                                 err_msg="The generated result_dem has different data from the " +
                                                 "benchmark_dem")

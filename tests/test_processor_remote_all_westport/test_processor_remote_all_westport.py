@@ -17,6 +17,7 @@ import pytest
 import sys
 import dotenv
 import os
+import logging
 
 from src.geofabrics import processor
 
@@ -47,6 +48,10 @@ class ProcessorRemoteAllWestportTest(unittest.TestCase):
         files and produce a DEM prior to testing. """
 
         test_path = pathlib.Path().cwd() / pathlib.Path("tests/test_processor_remote_all_westport")
+
+        # Setup logging
+        logging.basicConfig(filename=test_path / 'test.log', encoding='utf-8', level=logging.INFO, force=True)
+        logging.info("In test_processor_remote_all_westport.py")
 
         # Load in the test instructions
         instruction_file_path = test_path / "instruction.json"
@@ -165,7 +170,7 @@ class ProcessorRemoteAllWestportTest(unittest.TestCase):
 
         # Compare DEMs - load both from file as rioxarray.rioxarray.open_rasterio ignores index order
         diff_array = test_dem.data[~numpy.isnan(test_dem.data)]-benchmark_dem.data[~numpy.isnan(benchmark_dem.data)]
-        print(f"DEM array diff is: {diff_array[diff_array != 0]}")
+        logging.info(f"DEM array diff is: {diff_array[diff_array != 0]}")
         numpy.testing.assert_array_almost_equal(test_dem.data[~numpy.isnan(test_dem.data)],
                                                 benchmark_dem.data[~numpy.isnan(benchmark_dem.data)],
                                                 err_msg="The generated result_dem has different data from the " +
@@ -187,7 +192,7 @@ class ProcessorRemoteAllWestportTest(unittest.TestCase):
 
         # Compare the generated and benchmark DEMs
         diff_array = test_dem.data[~numpy.isnan(test_dem.data)]-benchmark_dem.data[~numpy.isnan(benchmark_dem.data)]
-        print(f"DEM array diff is: {diff_array[diff_array != 0]}")
+        logging.info(f"DEM array diff is: {diff_array[diff_array != 0]}")
 
         threshold = 10e-2
         allowable_number_above = 2
