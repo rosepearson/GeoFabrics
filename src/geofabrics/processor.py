@@ -31,7 +31,7 @@ class BaseProcessor(abc.ABC):
         """ Return the file path from the instruction file, or default if there is a default value and the local cache
         is specified. Raise an error if the key is not in the instructions. """
 
-        defaults = {'result_dem': "generated_dem.nc",
+        defaults = {'result_dem': "generated_dem.nc", 'dense_dem': "dense_dem.nc",
                     'dense_dem_extents': "dense_extents.geojson"}
 
         if key in self.instructions['instructions']['data_paths']:
@@ -46,7 +46,7 @@ class BaseProcessor(abc.ABC):
         """ Return True if the file path exists in the instruction file, or True if there is a default value and the
         local cache is specified. """
 
-        defaults = ['result_dem', 'dense_dem_extents']
+        defaults = ['result_dem', 'dense_dem_extents', 'dense_dem']
 
         if key in self.instructions['instructions']['data_paths']:
             return True
@@ -351,6 +351,13 @@ class DemGenerator(BaseProcessor):
                                      tile_index_file=lidar_dataset_info['tile_index_file'],
                                      chunk_size=self.get_processing_instructions('chunk_size'))
 
+        # save dense DEM results
+        self.dense_dem.dense_dem.to_netcdf(self.get_instruction_path('dense_dem'))
+        if self.dense_dem.extents is not None:  # Save ou the extents of the LiDAR - before reference DEM
+            self.dense_dem.extents.to_file(self.get_instruction_path('dense_dem_extents'))
+        else:
+            logging.warning("In processor.DemGenerator - no LiDAR extents exist so no extents file written")
+
         # Load in reference DEM if any significant land/foreshore not covered by LiDAR
         if self.check_instruction_path('reference_dems'):
             area_without_lidar = \
@@ -397,7 +404,6 @@ class DemGenerator(BaseProcessor):
 
         # fill combined dem - save results
         self.dense_dem.dem.to_netcdf(self.get_instruction_path('result_dem'))
-        self.dense_dem.extents.to_file(self.get_instruction_path('dense_dem_extents'))
 
 
 class OffshoreDemGenerator(BaseProcessor):

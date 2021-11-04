@@ -163,6 +163,11 @@ class DenseDem(abc.ABC):
         return self._extents
 
     @property
+    def dense_dem(self):
+        """ Return the dense DEM from tiles and any interpolated offshore values """
+        return self._dense_dem
+
+    @property
     def dem(self):
         """ Return the combined DEM from tiles and any interpolated offshore values """
 
