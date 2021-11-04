@@ -368,6 +368,24 @@ class DenseDemFromTiles(DenseDem):
 
         return dim_x, dim_y
 
+    def _define_chunk_region(self, region_to_rasterise: geopandas.GeoDataFrame, dim_x: numpy.ndarray,
+                             dim_y: numpy.ndarray):
+        """ Define the region to rasterise within a single chunk. """
+        # Define the region to tile
+        chunk_geometry = geopandas.GeoDataFrame(
+             {'geometry': [shapely.geometry.Polygon(
+                 [(numpy.min(dim_x) - self.idw_radius, numpy.min(dim_y) - self.idw_radius),
+                  (numpy.max(dim_x) + self.idw_radius, numpy.min(dim_y) - self.idw_radius),
+                  (numpy.max(dim_x) + self.idw_radius, numpy.max(dim_y) + self.idw_radius),
+                  (numpy.min(dim_x) - self.idw_radius, numpy.max(dim_y) + self.idw_radius)])]},
+             crs=self.catchment_geometry.crs['horizontal'])
+
+        # Ensure edge pixels will have a full set of values to perform IDW over
+        chunk_region_to_tile = geopandas.GeoDataFrame(
+             geometry=region_to_rasterise.buffer(self.idw_radius).clip(chunk_geometry, keep_geom_type=True))
+
+        return chunk_region_to_tile
+
     def _calculate_dense_extents(self):
         """ Calculate the extents of the current dense DEM. Remove holes as these can cause self intersection
         warnings. """
@@ -509,18 +527,10 @@ class DenseDemFromTiles(DenseDem):
             delayed_chunked_x = []
             for j, dim_x in enumerate(chunked_dim_x):
                 logging.info(f"\tChunk {[i, j]}")
-                # Define the region to tile
-                chunk_geometry = geopandas.GeoDataFrame(
-                     {'geometry': [shapely.geometry.Polygon(
-                         [(numpy.min(dim_x) - self.idw_radius, numpy.min(dim_y) - self.idw_radius),
-                          (numpy.max(dim_x) + self.idw_radius, numpy.min(dim_y) - self.idw_radius),
-                          (numpy.max(dim_x) + self.idw_radius, numpy.max(dim_y) + self.idw_radius),
-                          (numpy.min(dim_x) - self.idw_radius, numpy.max(dim_y) + self.idw_radius)])]},
-                     crs=self.catchment_geometry.crs['horizontal'])
 
-                # Ensure edge pixels will have a full set of values to perform IDW over
-                chunk_region_to_tile = geopandas.GeoDataFrame(
-                     geometry=region_to_rasterise.buffer(self.idw_radius).clip(chunk_geometry))
+                # Define the region to tile
+                chunk_region_to_tile = self._define_chunk_region(region_to_rasterise=region_to_rasterise, dim_x=dim_x,
+                                                                 dim_y=dim_y)
 
                 # Load in files and rasterise
                 chunk_points = delayed_load_tiles_in_chunk(dim_x=dim_x,
