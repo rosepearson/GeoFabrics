@@ -353,10 +353,6 @@ class DemGenerator(BaseProcessor):
 
         # save dense DEM results
         self.dense_dem.dense_dem.to_netcdf(self.get_instruction_path('dense_dem'))
-        if self.dense_dem.extents is not None:  # Save ou the extents of the LiDAR - before reference DEM
-            self.dense_dem.extents.to_file(self.get_instruction_path('dense_dem_extents'))
-        else:
-            logging.warning("In processor.DemGenerator - no LiDAR extents exist so no extents file written")
 
         # Load in reference DEM if any significant land/foreshore not covered by LiDAR
         if self.check_instruction_path('reference_dems'):
@@ -379,6 +375,11 @@ class DemGenerator(BaseProcessor):
                 # Add the reference DEM patch where there's no LiDAR to the dense DEM without updting the extents
                 self.dense_dem.add_reference_dem(tile_points=self.reference_dem.points,
                                                  tile_extent=self.reference_dem.extents)
+
+        if self.dense_dem.extents is not None:  # Save ou the extents of the LiDAR - before reference DEM
+            self.dense_dem.extents.to_file(self.get_instruction_path('dense_dem_extents'))
+        else:
+            logging.warning("In processor.DemGenerator - no LiDAR extents exist so no extents file written")
 
         # Load in bathymetry and interpolate offshore if significant offshore is not covered by LiDAR
         if self.check_vector('bathymetry_contours'):
