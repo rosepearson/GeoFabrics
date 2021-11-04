@@ -53,13 +53,18 @@ class CatchmentGeometry:
 
         self._land = self._land.to_crs(self.crs['horizontal'])
 
+        # Clip and remove any sub pixel regions
         self._land = self._catchment.clip(self._land, keep_geom_type=True)
+        self._land = self._land[self._land.area > self.resolution * self.resolution]
 
         self._foreshore_and_offshore = self.catchment.overlay(self.land, how='difference')
 
+        # Buffer and clip and remove any sub pixel regions
         self._land_and_foreshore = geopandas.GeoDataFrame(
             {'geometry': self.land.buffer(self.resolution * self.foreshore_buffer)}, crs=self.crs['horizontal'])
         self._land_and_foreshore = self._catchment.clip(self._land_and_foreshore, keep_geom_type=True)
+        self._land_and_foreshore = self._land_and_foreshore[self._land_and_foreshore.area
+                                                            > self.resolution * self.resolution]
 
         self._foreshore = self.land_and_foreshore.overlay(self.land, how='difference')
 

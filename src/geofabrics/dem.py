@@ -53,7 +53,11 @@ class ReferenceDem:
         self._dem.rio.set_crs(self.catchment_geometry.crs['horizontal'])
 
         if exclusion_extent is not None:
-            exclusion_extent = geopandas.clip(exclusion_extent, self.catchment_geometry.land_and_foreshore)
+            # Clip within land & foreshore and remove any sub-pixel polygons
+            exclusion_extent = exclusion_extent.clip(self.catchment_geometry.land_and_foreshore, keep_geom_type=True)
+            exclusion_extent = exclusion_extent[exclusion_extent.area
+                                                > self.catchment_geometry.resolution
+                                                * self.catchment_geometry.resolution]
             self._extents = geopandas.overlay(self.catchment_geometry.land_and_foreshore,
                                               exclusion_extent, how="difference")
         else:
@@ -380,9 +384,12 @@ class DenseDemFromTiles(DenseDem):
                   (numpy.min(dim_x) - self.idw_radius, numpy.max(dim_y) + self.idw_radius)])]},
              crs=self.catchment_geometry.crs['horizontal'])
 
-        # Ensure edge pixels will have a full set of values to perform IDW over
+        # Define region to rasterise inside the chunk area - remove any subpixel polygons
         chunk_region_to_tile = geopandas.GeoDataFrame(
              geometry=region_to_rasterise.buffer(self.idw_radius).clip(chunk_geometry, keep_geom_type=True))
+        chunk_region_to_tile = chunk_region_to_tile[chunk_region_to_tile.area
+                                                    > self.catchment_geometry.resolution
+                                                    * self.catchment_geometry.resolution]
 
         return chunk_region_to_tile
 
