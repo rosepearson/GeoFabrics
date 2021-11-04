@@ -174,7 +174,6 @@ class ProcessorLocalFilesTest(unittest.TestCase):
             self.instructions['instructions']['data_paths']['final_result_dem']
         self.instructions['instructions']['data_paths'].pop('lidars')
         self.instructions['instructions']['data_paths'].pop('reference_dems')
-        self.instructions['instructions']['data_paths'].pop('temp_raster')
         self.instructions['instructions']['data_paths'].pop('final_result_dem')
         runner = processor.OffshoreDemGenerator(self.instructions)
         runner.run()
