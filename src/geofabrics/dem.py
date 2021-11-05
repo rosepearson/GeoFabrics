@@ -134,10 +134,19 @@ class DenseDem(abc.ABC):
 
     The dense DEM is made up of a dense DEM that is loaded in, and an offshore DEM that is interpolated from bathymetry
     contours offshore and outside all LiDAR tiles.
-    Logical controlling behaviour:
-        * interpolate_missing_values - If True any missing values at the end of the rasterisation process will be
-          populated using nearest neighbour interpolation.
 
+    Parameters
+    ----------
+
+    catchment_geometry
+        Defines the spatial extents of the catchment, land, foreshore, and offshore regions
+    extents
+        Defines the extents of any dense (LiDAR or refernence DEM) values already added.
+    dense_dem
+        The dense portion of the DEM
+    interpolate_missing_values
+        If True any missing values at the end of the rasterisation process will be populated using nearest neighbour
+        interpolation.
     """
 
     DENSE_BINNING = "idw"
@@ -287,9 +296,13 @@ class DenseDem(abc.ABC):
 class DenseDemFromFiles(DenseDem):
     """ A class to manage loading in an already created and saved dense DEM that has yet to have an offshore DEM
     associated with it.
-    Logic controlling behaviour:
-        * interpolate_missing_values - If True any missing values at the end of the rasterisation process will be
-          populated using nearest neighbour interpolation.
+
+    Parameters
+    ----------
+
+    Logic controlling behaviour
+        Interpolate_missing_values - If True any missing values at the end of the rasterisation process will be
+        populated using nearest neighbour interpolation.
     """
 
     def __init__(self, catchment_geometry: geometry.CatchmentGeometry,
@@ -318,15 +331,23 @@ class DenseDemFromFiles(DenseDem):
 class DenseDemFromTiles(DenseDem):
     """ A class to manage the population of the DenseDem's dense_dem from LiDAR tiles, and/or a reference DEM.
 
-    The dense DEM is made up of tiles created from dense point data - Either LiDAR point clouds, or a reference DEM
+    The dense DEM is made up of tiles created from dense point data - Either LiDAR point clouds, or a reference DEM.
 
-    DenseDemFromTiles logic can be controlled by the constructor inputs:
-        * drop_offshore_lidar - If True only keep LiDAR values within the foreshore and land regions defined by
-          the catchment_geometry. If False keep all LiDAR values.
-        * interpolate_missing_values - If True any missing values at the end of the rasterisation process will be
-          populated using nearest neighbour interpolation.
-        * idw_power - the power to apply when performing IDW
-        * idw_radius - the radius to apply IDW over
+    DenseDemFromTiles logic can be controlled by the constructor inputs.
+
+    Parameters
+    ----------
+
+    drop_offshore_lidar
+        If True only keep LiDAR values within the foreshore and land regions defined by the catchment_geometry.
+        If False keep all LiDAR values.
+    interpolate_missing_values
+        If True any missing values at the end of the rasterisation process will be populated using nearest neighbour
+        interpolation.
+    idw_power
+        The power to apply when performing IDW
+    idw_radius
+        The radius to apply IDW over
     """
 
     LAS_GROUND = 2  # As specified in the LAS/LAZ format
@@ -472,12 +493,19 @@ class DenseDemFromTiles(DenseDem):
                   source_crs: dict = None, keep_only_ground_lidar: bool = True, drop_offshore_lidar: bool = True):
         """ Read in all LiDAR files and use to create a dense DEM.
 
-            source_crs - specify if the CRS encoded in the LiDAR files are incorrect/only partially defined
+            Parameters
+            ----------
+
+            source_crs
+                Specify if the CRS encoded in the LiDAR files are incorrect/only partially defined
                 (i.e. missing vertical CRS) and need to be overwritten.
-            drop_offshore_lidar - if True, trim any LiDAR values that are offshore as specified by the
-                catchment_geometry
-            keep_only_ground_lidar - if True, only keep LiDAR values that are coded '2' of ground
-            tile_index_file - must exist if there are many LiDAR files. This is used to determine chunking. """
+            drop_offshore_lidar
+                If True, trim any LiDAR values that are offshore as specified by the catchment_geometry
+            keep_only_ground_lidar
+                If True, only keep LiDAR values that are coded '2' of ground
+            tile_index_file
+                Must exist if there are many LiDAR files. This is used to determine chunking. 
+        """
 
         if source_crs is not None:
             assert 'horizontal' in source_crs, "The horizontal component of the source CRS is not specified. " + \
