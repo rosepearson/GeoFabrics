@@ -3,7 +3,7 @@ name: Pages
 on:
   push:
     branches:
-    - master
+    - main
     - 45-documentation-sphinx
 jobs:
   build:
