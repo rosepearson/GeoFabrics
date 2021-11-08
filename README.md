@@ -12,11 +12,12 @@ The `geofabrics` package includes routines and classes for combining point (i.e.
 
 ![image](https://user-images.githubusercontent.com/22883860/128109715-80738b70-b5d9-480e-811e-1c045c27105f.png)
 
+## Wiki and documentation
 ### Wiki
+For detailed instructions on installation, usage, and testing please check out the repo [wiki](https://github.com/rosepearson/GeoFabrics/wiki). For 'install instructions' see [Package Install Instructions](https://github.com/rosepearson/GeoFabrics/wiki/Package-Install-Instructions)
 
-For detailed instructions on installation, usage, and testing please check out the repo [wiki](https://github.com/rosepearson/GeoFabrics/wiki). 
-
-For 'install instructions' see [Package Install Instructions](https://github.com/rosepearson/GeoFabrics/wiki/Package-Install-Instructions)
+### Documentation
+Sphinx combined with GitHub Pages is used to create web-hosted documentation from the embedded docstrings in the source code at [https://rosepearson.github.io/GeoFabrics/](https://rosepearson.github.io/GeoFabrics/)
 
 ## Related material
 Scripts used as part of the development of this project are included in a separate repo. See https://github.com/rosepearson/Hydrologic-DEMs-scripts for an example.
