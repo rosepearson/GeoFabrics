@@ -1,7 +1,5 @@
 # GeoFabrics
 
-## Build Status
-
 ![Linux](https://github.com/rosepearson/GeoFabrics/actions/workflows/linux-test.yml/badge.svg)
 
 ## Introduction
