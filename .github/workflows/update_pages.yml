@@ -15,11 +15,6 @@ jobs:
       with:
         fetch-depth: 0 # otherwise, you will failed to push refs to dest repo
 
-    - name: Install package dependencies
-      run: |
-        # $CONDA is an environment variable pointing to the root of the miniconda directory
-        $CONDA/bin/conda env update --file environment_linux.yml --name base
-
     - name: Build and Commit
       uses: sphinx-notes/pages@master
       with:
