@@ -51,7 +51,8 @@ exclude_patterns = ['_build', 'Thumbs.db', '.DS_Store']
 autodoc_mock_imports = ['numpy', 'json', 'argparse', 'rioxarray', 'matplotlib',
                         'time', 'logging', 'pathlib', 'shutil', 'abc',
                         'distributed', 'geopandas', 'shapely', 'typing',
-                        'rasterio', 'xarray', 'math', 'dask', 'pdal']
+                        'rasterio', 'xarray', 'math', 'dask', 'pdal',
+                        'geoapis', 'scipy']
 
 
 # -- Options for HTML output -------------------------------------------------
