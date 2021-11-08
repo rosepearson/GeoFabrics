@@ -4,18 +4,47 @@ on:
   push:
     branches:
     - main
+    - 45-documentation-sphinx
 jobs:
   build:
     runs-on: ubuntu-latest
     steps:
+
     - name: Checkout
       uses: actions/checkout@v2
       with:
         fetch-depth: 0 # otherwise, you will failed to push refs to dest repo
+
+    - name: Cache conda
+      uses: actions/cache@v2
+      env:
+        cache-name: cache-conda-env
+      with:
+        path: ~/conda_pkgs_dir
+        key: ${{ runner.os }}-conda-${{ env.cache-name }}-${{ hashFiles('linux_environment.yml') }}
+
+    - name: Install package dependencies with setup-miniconda@v2
+      uses: conda-incubator/setup-miniconda@v2
+      with:
+        activate-environment: geofabrics
+        environment-file: environment_linux.yml
+        auto-activate-base: false
+        channels: conda-forge
+        channel-priority: strict
+        use-only-tar-bz2: true # IMPORTANT: This needs to be set for caching to work properly!
+        python-version: ${{ matrix.python-version }}
+        mamba-version: "*"
+    - run: |
+        conda info
+        conda list
+        conda config --show-sources
+        conda config --show
+
     - name: Build and Commit
       uses: sphinx-notes/pages@master
       with:
         documentation_path: docs
+
     - name: Push changes
       uses: ad-m/github-push-action@master
       with:
