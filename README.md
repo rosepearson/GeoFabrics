@@ -1,6 +1,6 @@
 # GeoFabrics
 
-![Linux](https://github.com/rosepearson/GeoFabrics/actions/workflows/linux-test.yml/badge.svg) ![Docs](https://github.com/rosepearson/GeoFabrics/actions/workflows/update-pages.yml/badge.svg?branch=45-documentation-sphinx)
+![Linux](https://github.com/rosepearson/GeoFabrics/actions/workflows/linux-test.yml/badge.svg)  ![Docs](https://github.com/rosepearson/GeoFabrics/actions/workflows/update-pages.yml/badge.svg)
 
 ## Introduction
 
