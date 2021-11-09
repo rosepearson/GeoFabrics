@@ -21,7 +21,9 @@
 			"dense_dem_extents": "tests/test_processor_remote_all_westport_ground_only/data/extents.geojson"
 		},
 		"apis": {
-			"open_topography": true,
+			"open_topography": {
+				"NZ20_Westport": true
+			},
 			"linz": {
 				"land": {
 					"layers": [51153]

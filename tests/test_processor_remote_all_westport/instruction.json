@@ -22,7 +22,9 @@
 			
 		},
 		"apis": {
-			"open_topography": true,
+			"open_topography": {
+				"NZ20_Westport": true
+			},
 			"linz": {
 				"land": {
 					"layers": [51153]

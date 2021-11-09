@@ -22,7 +22,9 @@
 			"benchmark_dem": "tests/test_processor_remote_tiles_westport/data/benchmark_dem.nc"
 		},
 		"apis": {
-			"open_topography": true
+			"open_topography": {
+				"NZ20_Westport": true
+			},
 		},
 		"general": {
 			"set_dem_shoreline": true,
