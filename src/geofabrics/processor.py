@@ -261,6 +261,7 @@ class BaseProcessor(abc.ABC):
                                                               verbose=True)
             # Loop through each specified dataset and download it
             for dataset_name in self.instructions['instructions']['apis'][data_service].keys():
+                logging.info(f"Fetching dataset: {dataset_name}")
                 self.lidar_fetcher.run(dataset_name)
             assert len(self.lidar_fetcher.dataset_prefixes) == 1, "geofabrics currently only supports creating a DEM" \
                 "from only one LiDAR dataset at a time. Please create an issue if you want support for mutliple " \
