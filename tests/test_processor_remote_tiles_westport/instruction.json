@@ -24,7 +24,7 @@
 		"apis": {
 			"open_topography": {
 				"NZ20_Westport": true
-			},
+			}
 		},
 		"general": {
 			"set_dem_shoreline": true,
