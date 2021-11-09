@@ -209,7 +209,8 @@ class BaseProcessor(abc.ABC):
         """
 
         if self.check_apis(data_service) and type(self.instructions['instructions']['apis'][data_service]) is dict \
-                and dataset_name in self.instructions['instructions']['apis'][data_service]:
+                and dataset_name in self.instructions['instructions']['apis'][data_service] \
+                and type(self.instructions['instructions']['apis'][data_service][dataset_name]) is dict:
             dataset_instruction = self.instructions['instructions']['apis'][data_service][dataset_name]
 
             if 'crs' in dataset_instruction and 'horizontal' in dataset_instruction['crs'] and \
