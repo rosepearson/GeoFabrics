@@ -249,17 +249,19 @@ class BaseProcessor(abc.ABC):
 
         lidar_dataset_info = {}
 
-        # See if OpenTopography has been specified as an area to look first
+        # See if 'OpenTopography' or another data_service has been specified as an area to look first
         if self.check_apis(data_service):
 
             assert self.check_instruction_path('local_cache'), "A 'local_cache' must be specified under the " + \
                 "'file_paths' in the instruction file if you are going to use an API - like 'open_topography'"
 
-            # download from OpenTopography - then get the local file path
+            # download the specified datasets from the data service - then get the local file path
             self.lidar_fetcher = geoapis.lidar.OpenTopography(cache_path=self.get_instruction_path('local_cache'),
                                                               search_polygon=self.catchment_geometry.catchment,
                                                               verbose=True)
-            self.lidar_fetcher.run()
+            # Loop through each specified dataset and download it
+            for dataset_name in self.instructions['instructions']['apis'][data_service].keys():
+                self.lidar_fetcher.run(dataset_name)
             dataset_prefix = self.lidar_fetcher.dataset_prefixes[lidar_dataset_index]
             lidar_dataset_info['file_paths'] = sorted(
                 pathlib.Path(self.lidar_fetcher.cache_path / dataset_prefix).glob('*.laz'))
