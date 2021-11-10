@@ -21,7 +21,7 @@ import logging
 from src.geofabrics import processor
 
 
-class ProcessorLocalFilesTest(unittest.TestCase):
+class ProcessorLocalFilesOffshoreResTest(unittest.TestCase):
     """ A class to test the basic DemGenerator processor class for a simple example with land, offshore bathymetry, and
     LiDAR using the data generated in the set-up routine and referenced in the instruction.json
 

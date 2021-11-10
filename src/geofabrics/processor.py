@@ -209,7 +209,8 @@ class BaseProcessor(abc.ABC):
         """
 
         if self.check_apis(data_service) and type(self.instructions['instructions']['apis'][data_service]) is dict \
-                and dataset_name in self.instructions['instructions']['apis'][data_service]:
+                and dataset_name in self.instructions['instructions']['apis'][data_service] \
+                and type(self.instructions['instructions']['apis'][data_service][dataset_name]) is dict:
             dataset_instruction = self.instructions['instructions']['apis'][data_service][dataset_name]
 
             if 'crs' in dataset_instruction and 'horizontal' in dataset_instruction['crs'] and \
@@ -249,17 +250,23 @@ class BaseProcessor(abc.ABC):
 
         lidar_dataset_info = {}
 
-        # See if OpenTopography has been specified as an area to look first
+        # See if 'OpenTopography' or another data_service has been specified as an area to look first
         if self.check_apis(data_service):
 
             assert self.check_instruction_path('local_cache'), "A 'local_cache' must be specified under the " + \
                 "'file_paths' in the instruction file if you are going to use an API - like 'open_topography'"
 
-            # download from OpenTopography - then get the local file path
+            # download the specified datasets from the data service - then get the local file path
             self.lidar_fetcher = geoapis.lidar.OpenTopography(cache_path=self.get_instruction_path('local_cache'),
                                                               search_polygon=self.catchment_geometry.catchment,
                                                               verbose=True)
-            self.lidar_fetcher.run()
+            # Loop through each specified dataset and download it
+            for dataset_name in self.instructions['instructions']['apis'][data_service].keys():
+                logging.info(f"Fetching dataset: {dataset_name}")
+                self.lidar_fetcher.run(dataset_name)
+            assert len(self.lidar_fetcher.dataset_prefixes) == 1, "geofabrics currently only supports creating a DEM" \
+                "from only one LiDAR dataset at a time. Please create an issue if you want support for mutliple " \
+                f"datasets. Error as the following datasets were specifie: {self.lidar_fetcher.dataset_prefixes}"
             dataset_prefix = self.lidar_fetcher.dataset_prefixes[lidar_dataset_index]
             lidar_dataset_info['file_paths'] = sorted(
                 pathlib.Path(self.lidar_fetcher.cache_path / dataset_prefix).glob('*.laz'))

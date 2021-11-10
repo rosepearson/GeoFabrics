@@ -185,7 +185,7 @@ class DenseDem(abc.ABC):
         # Ensure valid name and increasing dimension indexing for the dem
         self._dem = self._dem.rename(self.DENSE_BINNING)
         if self.interpolate_missing_values:
-            self._dem = self._dem.rio.interpolate_na(method='nearest')  # other methods are 'linear' and 'cubic'
+            self._dem = self._dem.rio.interpolate_na(method='linear')  # methods are 'nearest', 'linear' and 'cubic'
         self._dem = self._dem.rio.clip(self.catchment_geometry.catchment.geometry)
         self._dem = self._ensure_positive_indexing(self._dem)  # Some programs require positively increasing indices
         return self._dem

@@ -22,12 +22,15 @@
 			"benchmark_dem": "tests/test_processor_remote_tiles_westport_ground_only/data/benchmark_dem.nc"
 		},
 		"apis": {
-			"open_topography": true
+			"open_topography": {
+				"NZ20_Westport": true
+			}
 		},
 		"general": {
 			"set_dem_shoreline": true,
 			"drop_offshore_lidar": false,
-			"keep_only_ground_lidar": true
+			"keep_only_ground_lidar": true,
+			"interpolate_missing_values": false
 		}
 	}
 }
