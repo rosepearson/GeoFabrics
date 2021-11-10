@@ -7,7 +7,6 @@ Created on Fri Jun 18 10:52:49 2021
 from geofabrics import processor
 import json
 import argparse
-import rioxarray
 import numpy
 import matplotlib
 import time
@@ -26,9 +25,10 @@ def parse_args():
     return parser.parse_args()
 
 
-def launch_processor(args):
-    """ Run the DEM generation pipeline given the specified instructions.
-    If a benchmark is specified compare the result to the benchmark """
+def benchmark_processing(args):
+    """ Run the DEM generation pipeline given the specified instructions for a range of different 'number_of_cores'
+    and 'chunk_sizes' specified in the instructions. Optionally save each DEM exparately. Plot the execution times of
+    all differnet processing configurations at the end."""
 
     # Load the instructions
     with open(args.instructions, 'r') as file_pointer:
@@ -44,14 +44,15 @@ def launch_processor(args):
     print(f"Log file is located at: {log_path / 'geofabrics.log'}")
     print("Run processor.DemGenerator")
 
+    resolution = instructions['instructions']['output']['grid_params']['resolution']
+    cache_path = pathlib.Path(instructions['instructions']['data_paths']['local_cache'])
+
     # Cycle through different chunk sizes and number for cores
     results = {'execution_time': [], 'number_of_cores': [], 'chunk_sizes': []}
-    result_name_stub = instructions['instructions']['general']['name_stub']
-    core_range = list(range(1, 5, 1))
-    for chunk_size in range(75, 226, 25):
-        for number_of_cores in core_range:
-            instructions['instructions']['data_paths']['result_dem'] = instructions['instructions']['data_paths']['local_cache'] \
-                 + result_name_stub + f"_{number_of_cores}cores_{chunk_size}chunk"
+    for chunk_size in instructions['instructions']['benchmarking']['chunk_sizes']:
+        for number_of_cores in instructions['instructions']['benchmarking']['numbers_of_cores']:
+            instructions['instructions']['data_paths']['result_dem'] = cache_path / \
+                f"benchmarking_{resolution}res_{number_of_cores}cores_{chunk_size}chunk"
             instructions['instructions']['processing']['chunk_size'] = chunk_size
             instructions['instructions']['processing']['number_of_cores'] = number_of_cores
             # Run the pipeline
@@ -60,6 +61,8 @@ def launch_processor(args):
             runner = processor.DemGenerator(instructions)
             runner.run()
             end_time = time.time()
+            if instructions['instructions']['benchmarking']['delete_dems']:
+                pathlib.unlink(pathlib.Path(instructions['instructions']['data_paths']['result_dem']))
 
             # record results
             results['execution_time'].append(end_time - start_time)
@@ -68,22 +71,24 @@ def launch_processor(args):
             print(f"Time: {end_time - start_time}, Cores: {number_of_cores}, Chunk size: {chunk_size}")
 
     print(results)
+    logging.info(results)
 
     times = numpy.asarray(results['execution_time'])
     cores = numpy.asarray(results['number_of_cores'])
     chunks = numpy.asarray(results['chunk_sizes'])
-    for i in range(1, len(core_range) + 1, 1):
+    for i in instructions['instructions']['benchmarking']['numbers_of_cores']:
         matplotlib.pyplot.plot(chunks[cores == i], times[cores == i], label=f'{i} cores')
     matplotlib.pyplot.legend()
     matplotlib.pyplot.xlabel('Chunk size in pixels')
     matplotlib.pyplot.ylabel('Execution time')
-    matplotlib.pyplot.title('10m resolution test2 catchment Wellington_2013 LiDAR')
+    matplotlib.pyplot.title(instructions['instructions']['benchmarking']['title'] + f"\nResolution = {resolution}")
+    matplotlib.pyplot.savefig(cache_path / f"benchmarking_plot_{resolution}res.png")
 
 
 def main():
     """ The entry point to geofabrics. """
     args = parse_args()
-    launch_processor(args)
+    benchmark_processing(args)
 
 
 if __name__ == "__main__":
