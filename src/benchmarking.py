@@ -42,7 +42,9 @@ def benchmark_processing(args):
     log_path.mkdir(parents=True, exist_ok=True)
     logging.basicConfig(filename=log_path / 'geofabrics.log', encoding='utf-8', level=logging.INFO, force=True)
     print(f"Log file is located at: {log_path / 'geofabrics.log'}")
-    print("Run processor.DemGenerator")
+    print("Benchmarking processor.DemGenerator for chunk_sizes: "
+          f"{instructions['instructions']['benchmarking']['chunk_sizes']} and numbers_of_cores: "
+          f"{instructions['instructions']['benchmarking']['numbers_of_cores']}")
 
     resolution = instructions['instructions']['output']['grid_params']['resolution']
     cache_path = pathlib.Path(instructions['instructions']['data_paths']['local_cache'])
