@@ -17,7 +17,7 @@ sys.path.insert(0, os.path.abspath('../src'))
 
 # -- Project information -----------------------------------------------------
 
-project = 'geofabrics'
+project = 'Geofabrics'
 copyright = '2021, Rose Pearson'
 author = 'Rose Pearson'
 
@@ -31,11 +31,11 @@ release = '0.7.6'
 # extensions coming with Sphinx (named 'sphinx.ext.*') or your custom
 # ones.
 extensions = [
-    'sphinx.ext.autodoc',
     'sphinx.ext.mathjax',
     'sphinx.ext.githubpages',
     'sphinx.ext.coverage',
-    'sphinx.ext.napoleon'
+    'sphinx.ext.napoleon',
+    'autoapi.extension'
 ]
 
 # Add any paths that contain templates here, relative to this directory.
@@ -60,7 +60,7 @@ autodoc_mock_imports = ['numpy', 'json', 'argparse', 'rioxarray', 'matplotlib',
 # The theme to use for HTML and HTML Help pages.  See the documentation for
 # a list of builtin themes.
 #
-html_theme = 'alabaster'
+html_theme = 'sphinx_rtd_theme'
 
 # Add any paths that contain custom static files (such as style sheets) here,
 # relative to this directory. They are copied after the builtin static files,
@@ -69,3 +69,6 @@ html_static_path = ['_static']
 
 
 # -- Extension configuration -------------------------------------------------
+autoapi_dirs = ['../src']
+autoapi_options =  ['members', 'show-inheritance', 'show-module-summary', 'special-members', 'imported-members']
+autodoc_typehints = 'description'
