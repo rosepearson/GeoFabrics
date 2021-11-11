@@ -1,0 +1,182 @@
+:py:mod:`geofabrics.dem`
+========================
+
+.. py:module:: geofabrics.dem
+
+.. autoapi-nested-parse::
+
+   Created on Fri Jun 18 10:52:49 2021
+
+   @author: pearsonra
+
+
+
+Module Contents
+---------------
+
+Classes
+~~~~~~~
+
+.. autoapisummary::
+
+   geofabrics.dem.ReferenceDem
+   geofabrics.dem.DenseDem
+   geofabrics.dem.DenseDemFromFiles
+   geofabrics.dem.DenseDemFromTiles
+
+
+
+Functions
+~~~~~~~~~
+
+.. autoapisummary::
+
+   geofabrics.dem.read_file_with_pdal
+   geofabrics.dem.rasterise_with_idw
+   geofabrics.dem.load_tiles_in_chunk
+   geofabrics.dem.rasterise_chunk
+
+
+
+Attributes
+~~~~~~~~~~
+
+.. autoapisummary::
+
+   geofabrics.dem.delayed_rasterise_chunk
+
+
+.. py:class:: ReferenceDem(dem_file, catchment_geometry, set_foreshore = True, exclusion_extent = None)
+
+   A class to manage the reference DEM in a catchment context
+
+   Specifically, clip within the catchment land and foreshore. There is the option to clip outside any LiDAR using the
+   optional 'exclusion_extent' input.
+
+   If set_foreshore is True all positive DEM values in the foreshore are set to zero.
+
+   .. py:method:: points(self)
+      :property:
+
+      The reference DEM points after any extent or foreshore value
+      filtering.
+
+
+   .. py:method:: extents(self)
+      :property:
+
+      The extents for the reference DEM
+
+
+
+.. py:class:: DenseDem(catchment_geometry, extents, dense_dem, interpolate_missing_values)
+
+   Bases: :py:obj:`abc.ABC`
+
+   An abstract class class to manage the dense DEM in a catchment context.
+
+   The dense DEM is made up of a dense DEM that is loaded in, and an offshore DEM that is interpolated from bathymetry
+   contours offshore and outside all LiDAR tiles.
+
+   :param catchment_geometry: Defines the spatial extents of the catchment, land, foreshore, and offshore regions
+   :param extents: Defines the extents of any dense (LiDAR or refernence DEM) values already added.
+   :param dense_dem: The dense portion of the DEM
+   :param interpolate_missing_values: If True any missing values at the end of the rasterisation process will be populated using nearest neighbour
+                                      interpolation.
+
+   .. py:method:: extents(self)
+      :property:
+
+      The combined extents for all added LiDAR tiles
+
+
+   .. py:method:: dense_dem(self)
+      :property:
+
+      Return the dense DEM from tiles and any interpolated offshore values
+
+
+   .. py:method:: dem(self)
+      :property:
+
+      Return the combined DEM from tiles and any interpolated offshore values
+
+
+   .. py:method:: interpolate_offshore(self, bathy_contours)
+
+      Performs interpolation offshore outside LiDAR extents using the SciPy RBF function.
+
+
+
+.. py:class:: DenseDemFromFiles(catchment_geometry, dense_dem_path, extents_path, interpolate_missing_values = True)
+
+   Bases: :py:obj:`DenseDem`
+
+   A class to manage loading in an already created and saved dense DEM that has yet to have an offshore DEM
+   associated with it.
+
+   :param Logic controlling behaviour: Interpolate_missing_values - If True any missing values at the end of the rasterisation process will be
+                                       populated using nearest neighbour interpolation.
+
+
+.. py:class:: DenseDemFromTiles(catchment_geometry, idw_power, idw_radius, drop_offshore_lidar = True, interpolate_missing_values = True)
+
+   Bases: :py:obj:`DenseDem`
+
+   A class to manage the population of the DenseDem's dense_dem from LiDAR tiles, and/or a reference DEM.
+
+   The dense DEM is made up of tiles created from dense point data - Either LiDAR point clouds, or a reference DEM.
+
+   DenseDemFromTiles logic can be controlled by the constructor inputs.
+
+   :param drop_offshore_lidar: If True only keep LiDAR values within the foreshore and land regions defined by the catchment_geometry.
+                               If False keep all LiDAR values.
+   :param interpolate_missing_values: If True any missing values at the end of the rasterisation process will be populated using nearest neighbour
+                                      interpolation.
+   :param idw_power: The power to apply when performing IDW
+   :param idw_radius: The radius to apply IDW over
+
+   .. py:method:: add_lidar(self, lidar_files, tile_index_file, chunk_size, source_crs = None, keep_only_ground_lidar = True, drop_offshore_lidar = True)
+
+      Read in all LiDAR files and use to create a dense DEM.
+
+      :param source_crs: Specify if the CRS encoded in the LiDAR files are incorrect/only partially defined
+                         (i.e. missing vertical CRS) and need to be overwritten.
+      :param drop_offshore_lidar: If True, trim any LiDAR values that are offshore as specified by the catchment_geometry
+      :param keep_only_ground_lidar: If True, only keep LiDAR values that are coded '2' of ground
+      :param tile_index_file: Must exist if there are many LiDAR files. This is used to determine chunking.
+
+
+   .. py:method:: add_reference_dem(self, tile_points, tile_extent)
+
+      Update gaps in dense DEM from areas with no LiDAR with the reference DEM.
+
+
+
+.. py:function:: read_file_with_pdal(lidar_file, region_to_tile, catchment_geometry, source_crs = None, get_extents = False)
+
+   Read a tile file in using PDAL
+
+
+.. py:function:: rasterise_with_idw(point_cloud, xy_out, idw_radius, idw_power, raster_type, smoothing = 0, eps = 0, leaf_size = 10)
+
+   Calculate DEM elevation values at the specified locations using the inverse distance weighing (IDW)
+   approach. This implementation is based on the scipy.spatial.KDTree
+
+
+.. py:function:: load_tiles_in_chunk(dim_x, dim_y, tile_index_extents, tile_index_name_column, lidar_files, source_crs, chunk_region_to_tile, catchment_geometry)
+
+   Read in all LiDAR files within the chunked region - clipped to within the region within which to rasterise.
+
+
+
+.. py:function:: rasterise_chunk(dim_x, dim_y, tile_points, raster_type, keep_only_ground_lidar, ground_code, idw_radius, idw_power)
+
+   Rasterise all points within a chunk.
+
+
+.. py:data:: delayed_rasterise_chunk
+   
+
+   Wrap the `load_tiles_in_chunk` routine in dask.delayed
+

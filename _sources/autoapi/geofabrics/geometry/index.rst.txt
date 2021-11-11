@@ -1,0 +1,158 @@
+:py:mod:`geofabrics.geometry`
+=============================
+
+.. py:module:: geofabrics.geometry
+
+.. autoapi-nested-parse::
+
+   Created on Fri Jun 18 10:52:49 2021
+
+   @author: pearsonra
+
+
+
+Module Contents
+---------------
+
+Classes
+~~~~~~~
+
+.. autoapisummary::
+
+   geofabrics.geometry.CatchmentGeometry
+   geofabrics.geometry.BathymetryContours
+   geofabrics.geometry.BathymetryPoints
+   geofabrics.geometry.TileInfo
+
+
+
+
+.. py:class:: CatchmentGeometry(catchment_file, crs, resolution, foreshore_buffer = 2)
+
+   A class defining all relevant regions as defined by polygons in a catchment.
+
+   The CRS is a dictionary containing the EPSG code for a 'horizontal' and 'vertical' datum.
+
+   Specifically, this defines polygon regions like 'land', 'foreshore', 'offshore', and ensures all regions are
+   defined in the same CRS.
+
+   The 'land', 'foreshore' and 'offshore' regions are clipped within the 'catchment', but do not overlap. The 'land' is
+   polygon is defined by a specified polygon which is clipped within the 'catchment'. The 'foreshore' is defined
+   as a 'foreshore_buffer' x 'resolution' outward buffer from the 'land' and within the 'catchment' extents. The
+   'offshore' region is any remaining region within the 'catchment' and outside the 'land' and 'foreshore' polygons.
+
+   It also supports functions for determining how much of a region is outside an exclusion zone. I.E. is outside
+   `lidar_extents` see class method land_and_foreshore_without_lidar for an example.
+
+   It is initalised with the catchment. The land must be added before the other regions (i.e. land, offshore,
+   foreshore, etc) can be accessed.
+
+   .. py:method:: catchment(self)
+      :property:
+
+      Return the catchment region
+
+
+   .. py:method:: land(self)
+      :property:
+
+      Return the catchment land region
+
+
+   .. py:method:: foreshore(self)
+      :property:
+
+      Return the catchment foreshore region
+
+
+   .. py:method:: land_and_foreshore(self)
+      :property:
+
+      Return the catchment land and foreshore region
+
+
+   .. py:method:: foreshore_and_offshore(self)
+      :property:
+
+      Return the catchment foreshore and offshore region
+
+
+   .. py:method:: offshore(self)
+      :property:
+
+      Return the catchment offshore region
+
+
+   .. py:method:: land_and_foreshore_without_lidar(self, dense_extents)
+
+      Return the land and foreshore region without LiDAR
+
+
+   .. py:method:: offshore_without_lidar(self, dense_extents)
+
+      Return the offshore region without LiDAR
+
+
+   .. py:method:: offshore_dense_data_edge(self, dense_extents)
+
+      Return the offshore edge of where there is 'dense data' i.e. LiDAR or reference DEM
+
+
+   .. py:method:: offshore_no_dense_data(self, lidar_extents)
+
+      Return the offshore area where there is no 'dense data' i.e. LiDAR
+
+
+
+.. py:class:: BathymetryContours(contour_file, catchment_geometry, z_label=None, exclusion_extent=None)
+
+   A class working with bathymetry contours.
+
+   Assumes contours to be sampled to the catchment_geometry resolution
+
+   .. py:method:: sample_contours(self, resolution)
+
+      Sample the contours at the specified resolution.
+
+
+
+.. py:class:: BathymetryPoints(points_file, catchment_geometry, exclusion_extent=None)
+
+   A class working with bathymetry points
+
+   .. py:method:: points(self)
+      :property:
+
+      Return the points
+
+
+   .. py:method:: x(self)
+      :property:
+
+      The x values
+
+
+   .. py:method:: y(self)
+      :property:
+
+      The y values
+
+
+   .. py:method:: z(self)
+      :property:
+
+      The z values
+
+
+
+.. py:class:: TileInfo(tile_file, catchment_geometry)
+
+   A class for working with tiling information
+
+   .. py:method:: tile_names(self)
+      :property:
+
+      Return the names of all tiles within the catchment
+
+
+

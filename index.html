@@ -1,511 +1,83 @@
-
 <!DOCTYPE html>
+<html class="writer-html5" lang="en" >
+<head>
+  <meta charset="utf-8" /><meta name="generator" content="Docutils 0.17.1: http://docutils.sourceforge.net/" />
 
-<html>
-  <head>
-    <meta charset="utf-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0" /><meta name="generator" content="Docutils 0.17.1: http://docutils.sourceforge.net/" />
-
-    <title>Welcome to geofabrics’s documentation! &#8212; geofabrics 0.7.6 documentation</title>
-    <link rel="stylesheet" type="text/css" href="_static/pygments.css" />
-    <link rel="stylesheet" type="text/css" href="_static/alabaster.css" />
-    <script data-url_root="./" id="documentation_options" src="_static/documentation_options.js"></script>
-    <script src="_static/jquery.js"></script>
-    <script src="_static/underscore.js"></script>
-    <script src="_static/doctools.js"></script>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Welcome to Geofabrics’s documentation! &mdash; Geofabrics 0.7.6 documentation</title>
+      <link rel="stylesheet" href="_static/pygments.css" type="text/css" />
+      <link rel="stylesheet" href="_static/css/theme.css" type="text/css" />
+      <link rel="stylesheet" href="_static/graphviz.css" type="text/css" />
+  <!--[if lt IE 9]>
+    <script src="_static/js/html5shiv.min.js"></script>
+  <![endif]-->
+  
+        <script data-url_root="./" id="documentation_options" src="_static/documentation_options.js"></script>
+        <script src="_static/jquery.js"></script>
+        <script src="_static/underscore.js"></script>
+        <script src="_static/doctools.js"></script>
+    <script src="_static/js/theme.js"></script>
     <link rel="index" title="Index" href="genindex.html" />
-    <link rel="search" title="Search" href="search.html" />
-   
-  <link rel="stylesheet" href="_static/custom.css" type="text/css" />
-  
-  
-  <meta name="viewport" content="width=device-width, initial-scale=0.9, maximum-scale=0.9" />
+    <link rel="search" title="Search" href="search.html" /> 
+</head>
 
-  </head><body>
-  
-
-    <div class="document">
-      <div class="documentwrapper">
-        <div class="bodywrapper">
-          
-
-          <div class="body" role="main">
-            
-  <section id="module-main">
-<span id="welcome-to-geofabrics-s-documentation"></span><h1>Welcome to geofabrics’s documentation!<a class="headerlink" href="#module-main" title="Permalink to this headline">¶</a></h1>
-<p>Created on Fri Jun 18 10:52:49 2021</p>
-<p>&#64;author: pearsonra</p>
-<dl class="py function">
-<dt class="sig sig-object py" id="main.launch_processor">
-<span class="sig-prename descclassname"><span class="pre">main.</span></span><span class="sig-name descname"><span class="pre">launch_processor</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">args</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#main.launch_processor" title="Permalink to this definition">¶</a></dt>
-<dd><p>Run the DEM generation pipeline given the specified instructions.
-If a benchmark is specified compare the result to the benchmark</p>
-</dd></dl>
-
-<dl class="py function">
-<dt class="sig sig-object py" id="main.main">
-<span class="sig-prename descclassname"><span class="pre">main.</span></span><span class="sig-name descname"><span class="pre">main</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="headerlink" href="#main.main" title="Permalink to this definition">¶</a></dt>
-<dd><p>The entry point to geofabrics.</p>
-</dd></dl>
-
-<dl class="py function">
-<dt class="sig sig-object py" id="main.parse_args">
-<span class="sig-prename descclassname"><span class="pre">main.</span></span><span class="sig-name descname"><span class="pre">parse_args</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="headerlink" href="#main.parse_args" title="Permalink to this definition">¶</a></dt>
-<dd><p>Expect a command line argument of the form ‘–instructions path/to/json/instruction/file’</p>
-</dd></dl>
-
-<span class="target" id="module-geofabrics.processor"></span><p>Created on Fri Jun 18 10:52:49 2021</p>
-<p>&#64;author: pearsonra</p>
-<dl class="py class">
-<dt class="sig sig-object py" id="geofabrics.processor.BaseProcessor">
-<em class="property"><span class="pre">class</span> </em><span class="sig-prename descclassname"><span class="pre">geofabrics.processor.</span></span><span class="sig-name descname"><span class="pre">BaseProcessor</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="pre">json_instructions:</span> <span class="pre">&lt;module</span> <span class="pre">'json'</span> <span class="pre">from</span> <span class="pre">'/usr/lib/python3.8/json/__init__.py'&gt;</span></em><span class="sig-paren">)</span><a class="headerlink" href="#geofabrics.processor.BaseProcessor" title="Permalink to this definition">¶</a></dt>
-<dd><p>An abstract class with general methods for accessing elements in instruction files including populating default
-values. Also contains functions for downloading remote data using geopais, and constructing data file lists.</p>
-<dl class="py method">
-<dt class="sig sig-object py" id="geofabrics.processor.BaseProcessor.check_apis">
-<span class="sig-name descname"><span class="pre">check_apis</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">key</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">bool</span></span></span><a class="headerlink" href="#geofabrics.processor.BaseProcessor.check_apis" title="Permalink to this definition">¶</a></dt>
-<dd><p>Check to see if APIs are included in the instructions and if the key is included in specified apis</p>
-</dd></dl>
-
-<dl class="py method">
-<dt class="sig sig-object py" id="geofabrics.processor.BaseProcessor.check_instruction_path">
-<span class="sig-name descname"><span class="pre">check_instruction_path</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">key</span></span><span class="p"><span class="pre">:</span></span> <span class="n"><span class="pre">str</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">bool</span></span></span><a class="headerlink" href="#geofabrics.processor.BaseProcessor.check_instruction_path" title="Permalink to this definition">¶</a></dt>
-<dd><p>Return True if the file path exists in the instruction file, or True if there is a default value and the
-local cache is specified.</p>
-</dd></dl>
-
-<dl class="py method">
-<dt class="sig sig-object py" id="geofabrics.processor.BaseProcessor.check_vector">
-<span class="sig-name descname"><span class="pre">check_vector</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">key</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">bool</span></span></span><a class="headerlink" href="#geofabrics.processor.BaseProcessor.check_vector" title="Permalink to this definition">¶</a></dt>
-<dd><p>Check to see if vector key (i.e. land, bathymetry_contours, etc) is included either as a file path, or
-within any of the vector API’s (i.e. LINZ or LRIS).</p>
-</dd></dl>
-
-<dl class="py method">
-<dt class="sig sig-object py" id="geofabrics.processor.BaseProcessor.get_crs">
-<span class="sig-name descname"><span class="pre">get_crs</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">dict</span></span></span><a class="headerlink" href="#geofabrics.processor.BaseProcessor.get_crs" title="Permalink to this definition">¶</a></dt>
-<dd><p>Return the CRS projection information (horiztonal and vertical) from the instruction file. Raise an error
-if ‘output’ is not in the instructions. If no ‘crs’ or ‘horizontal’ or ‘vertical’ values are specified then use
-the default value for each one missing from the instructions.</p>
-</dd></dl>
-
-<dl class="py method">
-<dt class="sig sig-object py" id="geofabrics.processor.BaseProcessor.get_instruction_general">
-<span class="sig-name descname"><span class="pre">get_instruction_general</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">key</span></span><span class="p"><span class="pre">:</span></span> <span class="n"><span class="pre">str</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#geofabrics.processor.BaseProcessor.get_instruction_general" title="Permalink to this definition">¶</a></dt>
-<dd><p>Return the general instruction from the instruction file or return the default value if not specified in
-the instruction file. Raise an error if the key is not in the instructions and there is no default value.</p>
-</dd></dl>
-
-<dl class="py method">
-<dt class="sig sig-object py" id="geofabrics.processor.BaseProcessor.get_instruction_path">
-<span class="sig-name descname"><span class="pre">get_instruction_path</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">key</span></span><span class="p"><span class="pre">:</span></span> <span class="n"><span class="pre">str</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">str</span></span></span><a class="headerlink" href="#geofabrics.processor.BaseProcessor.get_instruction_path" title="Permalink to this definition">¶</a></dt>
-<dd><p>Return the file path from the instruction file, or default if there is a default value and the local cache
-is specified. Raise an error if the key is not in the instructions.</p>
-</dd></dl>
-
-<dl class="py method">
-<dt class="sig sig-object py" id="geofabrics.processor.BaseProcessor.get_lidar_dataset_crs">
-<span class="sig-name descname"><span class="pre">get_lidar_dataset_crs</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">data_service</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">dataset_name</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">dict</span></span></span><a class="headerlink" href="#geofabrics.processor.BaseProcessor.get_lidar_dataset_crs" title="Permalink to this definition">¶</a></dt>
-<dd><p>Checks to see if source CRS of an associated LiDAR datasets has be specified in the instruction file. If it
-has been specified, this CRS is returned, and will later be used to override the CRS encoded in the LAS files.</p>
-</dd></dl>
-
-<dl class="py method">
-<dt class="sig sig-object py" id="geofabrics.processor.BaseProcessor.get_lidar_file_list">
-<span class="sig-name descname"><span class="pre">get_lidar_file_list</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">data_service</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">dict</span></span></span><a class="headerlink" href="#geofabrics.processor.BaseProcessor.get_lidar_file_list" title="Permalink to this definition">¶</a></dt>
-<dd><p>Return a dictionary with three enties ‘file_paths’, ‘crs’ and ‘tile_index_file’. The ‘file_paths’ contains a
-list of LiDAR tiles to process.</p>
-<p>The ‘crs’ (or coordinate system of the LiDAR data as defined by an EPSG code) is only optionally set (if unset
-the value is None). The ‘crs’ should only be set if the CRS information is not correctly encoded in the LAZ/LAS
-files. Currently this is only supported for OpenTopography LiDAR.</p>
-<p>The ‘tile_index_file’ is also optional (if unset the value is None). The ‘tile_index_file’ should be given if a
-tile index file exists for the LiDAR files specifying the extents of each tile. This is currently only supported
-for OpenTopography files.</p>
-<p>If a LiDAR API is specified this is checked and all files within the catchment area are downloaded and used to
-construct the file list. If none is specified, the instruction ‘data_paths’ is checked for ‘lidars’ and these
-are returned.</p>
-</dd></dl>
-
-<dl class="py method">
-<dt class="sig sig-object py" id="geofabrics.processor.BaseProcessor.get_processing_instructions">
-<span class="sig-name descname"><span class="pre">get_processing_instructions</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">key</span></span><span class="p"><span class="pre">:</span></span> <span class="n"><span class="pre">str</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#geofabrics.processor.BaseProcessor.get_processing_instructions" title="Permalink to this definition">¶</a></dt>
-<dd><p>Return the processing instruction from the instruction file or return the default value if not specified in
-the instruction file.</p>
-</dd></dl>
-
-<dl class="py method">
-<dt class="sig sig-object py" id="geofabrics.processor.BaseProcessor.get_resolution">
-<span class="sig-name descname"><span class="pre">get_resolution</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">float</span></span></span><a class="headerlink" href="#geofabrics.processor.BaseProcessor.get_resolution" title="Permalink to this definition">¶</a></dt>
-<dd><p>Return the resolution from the instruction file. Raise an error if not in the instructions.</p>
-</dd></dl>
-
-<dl class="py method">
-<dt class="sig sig-object py" id="geofabrics.processor.BaseProcessor.get_vector_paths">
-<span class="sig-name descname"><span class="pre">get_vector_paths</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">key</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">list</span></span></span><a class="headerlink" href="#geofabrics.processor.BaseProcessor.get_vector_paths" title="Permalink to this definition">¶</a></dt>
-<dd><p>Get the path to the vector key data included either as a file path or as a LINZ API. Return all paths
-where the vector key is specified. In the case that an API is specified ensure the data is fetched as well.</p>
-</dd></dl>
-
-<dl class="py method">
-<dt class="sig sig-object py" id="geofabrics.processor.BaseProcessor.run">
-<em class="property"><span class="pre">abstract</span> </em><span class="sig-name descname"><span class="pre">run</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="headerlink" href="#geofabrics.processor.BaseProcessor.run" title="Permalink to this definition">¶</a></dt>
-<dd><p>This method controls the processor execution and code-flow.</p>
-</dd></dl>
-
-</dd></dl>
-
-<dl class="py class">
-<dt class="sig sig-object py" id="geofabrics.processor.DemGenerator">
-<em class="property"><span class="pre">class</span> </em><span class="sig-prename descclassname"><span class="pre">geofabrics.processor.</span></span><span class="sig-name descname"><span class="pre">DemGenerator</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="pre">json_instructions:</span> <span class="pre">&lt;module</span> <span class="pre">'json'</span> <span class="pre">from</span> <span class="pre">'/usr/lib/python3.8/json/__init__.py'&gt;</span></em><span class="sig-paren">)</span><a class="headerlink" href="#geofabrics.processor.DemGenerator" title="Permalink to this definition">¶</a></dt>
-<dd><p>DemGenerator executes a pipeline for creating a hydrologically conditioned DEM from LiDAR and optionally a
-reference DEM and/or bathymetry contours. The data and pipeline logic is defined in the json_instructions file.</p>
-<dl class="simple">
-<dt>The <cite>DemGenerator</cite> class contains several important class members:</dt><dd><ul class="simple">
-<li><p>catchment_geometry - Defines all relevant regions in a catchment required in the generation of a DEM as polygons.</p></li>
-<li><p>dense_dem - Defines the hydrologically conditioned DEM as a combination of tiles from LiDAR and interpolated from
-bathymetry.</p></li>
-<li><p>reference_dem - This optional object defines a background DEM that may be used to fill on land gaps in the LiDAR.</p></li>
-<li><p>bathy_contours - This optional object defines the bathymetry vectors used by the dense_dem to define the DEM
-offshore.</p></li>
+<body class="wy-body-for-nav"> 
+  <div class="wy-grid-for-nav">
+    <nav data-toggle="wy-nav-shift" class="wy-nav-side">
+      <div class="wy-side-scroll">
+        <div class="wy-side-nav-search" >
+            <a href="#" class="icon icon-home"> Geofabrics
+          </a>
+<div role="search">
+  <form id="rtd-search-form" class="wy-form" action="search.html" method="get">
+    <input type="text" name="q" placeholder="Search docs" />
+    <input type="hidden" name="check_keywords" value="yes" />
+    <input type="hidden" name="area" value="default" />
+  </form>
+</div>
+        </div><div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="Navigation menu">
+              <ul>
+<li class="toctree-l1"><a class="reference internal" href="autoapi/index.html">API Reference</a></li>
 </ul>
-</dd>
-</dl>
-<p>See the README.md for usage examples or GeoFabrics/tests/ for examples of usage and an instruction file</p>
-<dl class="py method">
-<dt class="sig sig-object py" id="geofabrics.processor.DemGenerator.run">
-<span class="sig-name descname"><span class="pre">run</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="headerlink" href="#geofabrics.processor.DemGenerator.run" title="Permalink to this definition">¶</a></dt>
-<dd><p>This method executes the geofabrics generation pipeline to produce geofabric derivatives.</p>
-<p>Note it currently only considers one LiDAR dataset that can have many tiles.
-See ‘get_lidar_file_list’ for where to change this.</p>
-</dd></dl>
 
-</dd></dl>
+        </div>
+      </div>
+    </nav>
 
-<dl class="py class">
-<dt class="sig sig-object py" id="geofabrics.processor.OffshoreDemGenerator">
-<em class="property"><span class="pre">class</span> </em><span class="sig-prename descclassname"><span class="pre">geofabrics.processor.</span></span><span class="sig-name descname"><span class="pre">OffshoreDemGenerator</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="pre">json_instructions:</span> <span class="pre">&lt;module</span> <span class="pre">'json'</span> <span class="pre">from</span> <span class="pre">'/usr/lib/python3.8/json/__init__.py'&gt;</span></em><span class="sig-paren">)</span><a class="headerlink" href="#geofabrics.processor.OffshoreDemGenerator" title="Permalink to this definition">¶</a></dt>
-<dd><p>OffshoreDemGenerator executes a pipeline for loading in a Dense DEM and extents before interpolating offshore
-DEM values. The data and pipeline logic is defined in the json_instructions file.</p>
-<dl class="simple">
-<dt>The <cite>DemGenerator</cite> class contains several important class members:</dt><dd><ul class="simple">
-<li><p>catchment_geometry - Defines all relevant regions in a catchment required in the generation of a DEM as polygons.</p></li>
-<li><p>dense_dem - Defines the hydrologically conditioned DEM as a combination of tiles from LiDAR and interpolated from
-bathymetry.</p></li>
-<li><p>bathy_contours - This object defines the bathymetry vectors used by the dense_dem to define the DEM
-offshore.</p></li>
-</ul>
-</dd>
-</dl>
-<p>See the README.md for usage examples or GeoFabrics/tests/ for examples of usage and an instruction file</p>
-<dl class="py method">
-<dt class="sig sig-object py" id="geofabrics.processor.OffshoreDemGenerator.run">
-<span class="sig-name descname"><span class="pre">run</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="headerlink" href="#geofabrics.processor.OffshoreDemGenerator.run" title="Permalink to this definition">¶</a></dt>
-<dd><p>This method executes the geofabrics generation pipeline to produce geofabric derivatives.</p>
-<p>Note it currently only considers one LiDAR dataset that may have many tiles.
-See ‘get_lidar_file_list’ for where to change this.</p>
-</dd></dl>
+    <section data-toggle="wy-nav-shift" class="wy-nav-content-wrap"><nav class="wy-nav-top" aria-label="Mobile navigation menu" >
+          <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
+          <a href="#">Geofabrics</a>
+      </nav>
 
-</dd></dl>
-
-<span class="target" id="module-geofabrics.dem"></span><p>Created on Fri Jun 18 10:52:49 2021</p>
-<p>&#64;author: pearsonra</p>
-<dl class="py class">
-<dt class="sig sig-object py" id="geofabrics.dem.DenseDem">
-<em class="property"><span class="pre">class</span> </em><span class="sig-prename descclassname"><span class="pre">geofabrics.dem.</span></span><span class="sig-name descname"><span class="pre">DenseDem</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">catchment_geometry</span></span><span class="p"><span class="pre">:</span></span> <span class="n"><a class="reference internal" href="#geofabrics.geometry.CatchmentGeometry" title="geofabrics.geometry.CatchmentGeometry"><span class="pre">geofabrics.geometry.CatchmentGeometry</span></a></span></em>, <em class="sig-param"><span class="n"><span class="pre">extents</span></span><span class="p"><span class="pre">:</span></span> <span class="n"><span class="pre">geopandas.GeoDataFrame</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">dense_dem</span></span><span class="p"><span class="pre">:</span></span> <span class="n"><span class="pre">xarray.core.dataarray.DataArray</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">interpolate_missing_values</span></span><span class="p"><span class="pre">:</span></span> <span class="n"><span class="pre">bool</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#geofabrics.dem.DenseDem" title="Permalink to this definition">¶</a></dt>
-<dd><p>An abstract class class to manage the dense DEM in a catchment context.</p>
-<p>The dense DEM is made up of a dense DEM that is loaded in, and an offshore DEM that is interpolated from bathymetry
-contours offshore and outside all LiDAR tiles.</p>
-<dl class="field-list simple">
-<dt class="field-odd">Parameters</dt>
-<dd class="field-odd"><ul class="simple">
-<li><p><strong>catchment_geometry</strong> – Defines the spatial extents of the catchment, land, foreshore, and offshore regions</p></li>
-<li><p><strong>extents</strong> – Defines the extents of any dense (LiDAR or refernence DEM) values already added.</p></li>
-<li><p><strong>dense_dem</strong> – The dense portion of the DEM</p></li>
-<li><p><strong>interpolate_missing_values</strong> – If True any missing values at the end of the rasterisation process will be populated using nearest neighbour
-interpolation.</p></li>
-</ul>
-</dd>
-</dl>
-<dl class="py property">
-<dt class="sig sig-object py" id="geofabrics.dem.DenseDem.dem">
-<em class="property"><span class="pre">property</span> </em><span class="sig-name descname"><span class="pre">dem</span></span><a class="headerlink" href="#geofabrics.dem.DenseDem.dem" title="Permalink to this definition">¶</a></dt>
-<dd><p>Return the combined DEM from tiles and any interpolated offshore values</p>
-</dd></dl>
-
-<dl class="py property">
-<dt class="sig sig-object py" id="geofabrics.dem.DenseDem.dense_dem">
-<em class="property"><span class="pre">property</span> </em><span class="sig-name descname"><span class="pre">dense_dem</span></span><a class="headerlink" href="#geofabrics.dem.DenseDem.dense_dem" title="Permalink to this definition">¶</a></dt>
-<dd><p>Return the dense DEM from tiles and any interpolated offshore values</p>
-</dd></dl>
-
-<dl class="py property">
-<dt class="sig sig-object py" id="geofabrics.dem.DenseDem.extents">
-<em class="property"><span class="pre">property</span> </em><span class="sig-name descname"><span class="pre">extents</span></span><a class="headerlink" href="#geofabrics.dem.DenseDem.extents" title="Permalink to this definition">¶</a></dt>
-<dd><p>The combined extents for all added LiDAR tiles</p>
-</dd></dl>
-
-<dl class="py method">
-<dt class="sig sig-object py" id="geofabrics.dem.DenseDem.interpolate_offshore">
-<span class="sig-name descname"><span class="pre">interpolate_offshore</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">bathy_contours</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#geofabrics.dem.DenseDem.interpolate_offshore" title="Permalink to this definition">¶</a></dt>
-<dd><p>Performs interpolation offshore outside LiDAR extents using the SciPy RBF function.</p>
-</dd></dl>
-
-</dd></dl>
-
-<dl class="py class">
-<dt class="sig sig-object py" id="geofabrics.dem.DenseDemFromFiles">
-<em class="property"><span class="pre">class</span> </em><span class="sig-prename descclassname"><span class="pre">geofabrics.dem.</span></span><span class="sig-name descname"><span class="pre">DenseDemFromFiles</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">catchment_geometry</span></span><span class="p"><span class="pre">:</span></span> <span class="n"><a class="reference internal" href="#geofabrics.geometry.CatchmentGeometry" title="geofabrics.geometry.CatchmentGeometry"><span class="pre">geofabrics.geometry.CatchmentGeometry</span></a></span></em>, <em class="sig-param"><span class="n"><span class="pre">dense_dem_path</span></span><span class="p"><span class="pre">:</span></span> <span class="n"><span class="pre">Union</span><span class="p"><span class="pre">[</span></span><span class="pre">str</span><span class="p"><span class="pre">,</span> </span><span class="pre">pathlib.Path</span><span class="p"><span class="pre">]</span></span></span></em>, <em class="sig-param"><span class="n"><span class="pre">extents_path</span></span><span class="p"><span class="pre">:</span></span> <span class="n"><span class="pre">Union</span><span class="p"><span class="pre">[</span></span><span class="pre">str</span><span class="p"><span class="pre">,</span> </span><span class="pre">pathlib.Path</span><span class="p"><span class="pre">]</span></span></span></em>, <em class="sig-param"><span class="n"><span class="pre">interpolate_missing_values</span></span><span class="p"><span class="pre">:</span></span> <span class="n"><span class="pre">bool</span></span> <span class="o"><span class="pre">=</span></span> <span class="default_value"><span class="pre">True</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#geofabrics.dem.DenseDemFromFiles" title="Permalink to this definition">¶</a></dt>
-<dd><p>A class to manage loading in an already created and saved dense DEM that has yet to have an offshore DEM
-associated with it.</p>
-<dl class="field-list simple">
-<dt class="field-odd">Parameters</dt>
-<dd class="field-odd"><p><strong>behaviour</strong> (<em>Logic controlling</em>) – Interpolate_missing_values - If True any missing values at the end of the rasterisation process will be
-populated using nearest neighbour interpolation.</p>
-</dd>
-</dl>
-</dd></dl>
-
-<dl class="py class">
-<dt class="sig sig-object py" id="geofabrics.dem.DenseDemFromTiles">
-<em class="property"><span class="pre">class</span> </em><span class="sig-prename descclassname"><span class="pre">geofabrics.dem.</span></span><span class="sig-name descname"><span class="pre">DenseDemFromTiles</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">catchment_geometry</span></span><span class="p"><span class="pre">:</span></span> <span class="n"><a class="reference internal" href="#geofabrics.geometry.CatchmentGeometry" title="geofabrics.geometry.CatchmentGeometry"><span class="pre">geofabrics.geometry.CatchmentGeometry</span></a></span></em>, <em class="sig-param"><span class="n"><span class="pre">idw_power</span></span><span class="p"><span class="pre">:</span></span> <span class="n"><span class="pre">int</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">idw_radius</span></span><span class="p"><span class="pre">:</span></span> <span class="n"><span class="pre">float</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">drop_offshore_lidar</span></span><span class="p"><span class="pre">:</span></span> <span class="n"><span class="pre">bool</span></span> <span class="o"><span class="pre">=</span></span> <span class="default_value"><span class="pre">True</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">interpolate_missing_values</span></span><span class="p"><span class="pre">:</span></span> <span class="n"><span class="pre">bool</span></span> <span class="o"><span class="pre">=</span></span> <span class="default_value"><span class="pre">True</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#geofabrics.dem.DenseDemFromTiles" title="Permalink to this definition">¶</a></dt>
-<dd><p>A class to manage the population of the DenseDem’s dense_dem from LiDAR tiles, and/or a reference DEM.</p>
-<p>The dense DEM is made up of tiles created from dense point data - Either LiDAR point clouds, or a reference DEM.</p>
-<p>DenseDemFromTiles logic can be controlled by the constructor inputs.</p>
-<dl class="field-list simple">
-<dt class="field-odd">Parameters</dt>
-<dd class="field-odd"><ul class="simple">
-<li><p><strong>drop_offshore_lidar</strong> – If True only keep LiDAR values within the foreshore and land regions defined by the catchment_geometry.
-If False keep all LiDAR values.</p></li>
-<li><p><strong>interpolate_missing_values</strong> – If True any missing values at the end of the rasterisation process will be populated using nearest neighbour
-interpolation.</p></li>
-<li><p><strong>idw_power</strong> – The power to apply when performing IDW</p></li>
-<li><p><strong>idw_radius</strong> – The radius to apply IDW over</p></li>
-</ul>
-</dd>
-</dl>
-<dl class="py method">
-<dt class="sig sig-object py" id="geofabrics.dem.DenseDemFromTiles.add_lidar">
-<span class="sig-name descname"><span class="pre">add_lidar</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">lidar_files</span></span><span class="p"><span class="pre">:</span></span> <span class="n"><span class="pre">List</span><span class="p"><span class="pre">[</span></span><span class="pre">Union</span><span class="p"><span class="pre">[</span></span><span class="pre">str</span><span class="p"><span class="pre">,</span> </span><span class="pre">pathlib.Path</span><span class="p"><span class="pre">]</span></span><span class="p"><span class="pre">]</span></span></span></em>, <em class="sig-param"><span class="n"><span class="pre">tile_index_file</span></span><span class="p"><span class="pre">:</span></span> <span class="n"><span class="pre">Union</span><span class="p"><span class="pre">[</span></span><span class="pre">str</span><span class="p"><span class="pre">,</span> </span><span class="pre">pathlib.Path</span><span class="p"><span class="pre">]</span></span></span></em>, <em class="sig-param"><span class="n"><span class="pre">chunk_size</span></span><span class="p"><span class="pre">:</span></span> <span class="n"><span class="pre">int</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">source_crs</span></span><span class="p"><span class="pre">:</span></span> <span class="n"><span class="pre">Optional</span><span class="p"><span class="pre">[</span></span><span class="pre">dict</span><span class="p"><span class="pre">]</span></span></span> <span class="o"><span class="pre">=</span></span> <span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">keep_only_ground_lidar</span></span><span class="p"><span class="pre">:</span></span> <span class="n"><span class="pre">bool</span></span> <span class="o"><span class="pre">=</span></span> <span class="default_value"><span class="pre">True</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">drop_offshore_lidar</span></span><span class="p"><span class="pre">:</span></span> <span class="n"><span class="pre">bool</span></span> <span class="o"><span class="pre">=</span></span> <span class="default_value"><span class="pre">True</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#geofabrics.dem.DenseDemFromTiles.add_lidar" title="Permalink to this definition">¶</a></dt>
-<dd><p>Read in all LiDAR files and use to create a dense DEM.</p>
-<dl class="field-list simple">
-<dt class="field-odd">Parameters</dt>
-<dd class="field-odd"><ul class="simple">
-<li><p><strong>source_crs</strong> – Specify if the CRS encoded in the LiDAR files are incorrect/only partially defined
-(i.e. missing vertical CRS) and need to be overwritten.</p></li>
-<li><p><strong>drop_offshore_lidar</strong> – If True, trim any LiDAR values that are offshore as specified by the catchment_geometry</p></li>
-<li><p><strong>keep_only_ground_lidar</strong> – If True, only keep LiDAR values that are coded ‘2’ of ground</p></li>
-<li><p><strong>tile_index_file</strong> – Must exist if there are many LiDAR files. This is used to determine chunking.</p></li>
-</ul>
-</dd>
-</dl>
-</dd></dl>
-
-<dl class="py method">
-<dt class="sig sig-object py" id="geofabrics.dem.DenseDemFromTiles.add_reference_dem">
-<span class="sig-name descname"><span class="pre">add_reference_dem</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">tile_points</span></span><span class="p"><span class="pre">:</span></span> <span class="n"><span class="pre">numpy.ndarray</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">tile_extent</span></span><span class="p"><span class="pre">:</span></span> <span class="n"><span class="pre">geopandas.GeoDataFrame</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#geofabrics.dem.DenseDemFromTiles.add_reference_dem" title="Permalink to this definition">¶</a></dt>
-<dd><p>Update gaps in dense DEM from areas with no LiDAR with the reference DEM.</p>
-</dd></dl>
-
-</dd></dl>
-
-<dl class="py class">
-<dt class="sig sig-object py" id="geofabrics.dem.ReferenceDem">
-<em class="property"><span class="pre">class</span> </em><span class="sig-prename descclassname"><span class="pre">geofabrics.dem.</span></span><span class="sig-name descname"><span class="pre">ReferenceDem</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">dem_file</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">catchment_geometry</span></span><span class="p"><span class="pre">:</span></span> <span class="n"><a class="reference internal" href="#geofabrics.geometry.CatchmentGeometry" title="geofabrics.geometry.CatchmentGeometry"><span class="pre">geofabrics.geometry.CatchmentGeometry</span></a></span></em>, <em class="sig-param"><span class="n"><span class="pre">set_foreshore</span></span><span class="p"><span class="pre">:</span></span> <span class="n"><span class="pre">bool</span></span> <span class="o"><span class="pre">=</span></span> <span class="default_value"><span class="pre">True</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">exclusion_extent</span></span><span class="p"><span class="pre">:</span></span> <span class="n"><span class="pre">Optional</span><span class="p"><span class="pre">[</span></span><span class="pre">geopandas.GeoDataFrame</span><span class="p"><span class="pre">]</span></span></span> <span class="o"><span class="pre">=</span></span> <span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#geofabrics.dem.ReferenceDem" title="Permalink to this definition">¶</a></dt>
-<dd><p>A class to manage the reference DEM in a catchment context</p>
-<p>Specifically, clip within the catchment land and foreshore. There is the option to clip outside any LiDAR using the
-optional ‘exclusion_extent’ input.</p>
-<p>If set_foreshore is True all positive DEM values in the foreshore are set to zero.</p>
-<dl class="py property">
-<dt class="sig sig-object py" id="geofabrics.dem.ReferenceDem.extents">
-<em class="property"><span class="pre">property</span> </em><span class="sig-name descname"><span class="pre">extents</span></span><em class="property"><span class="pre">:</span> <span class="pre">geopandas.GeoDataFrame</span></em><a class="headerlink" href="#geofabrics.dem.ReferenceDem.extents" title="Permalink to this definition">¶</a></dt>
-<dd><p>The extents for the reference DEM</p>
-</dd></dl>
-
-<dl class="py property">
-<dt class="sig sig-object py" id="geofabrics.dem.ReferenceDem.points">
-<em class="property"><span class="pre">property</span> </em><span class="sig-name descname"><span class="pre">points</span></span><em class="property"><span class="pre">:</span> <span class="pre">numpy.ndarray</span></em><a class="headerlink" href="#geofabrics.dem.ReferenceDem.points" title="Permalink to this definition">¶</a></dt>
-<dd><p>The reference DEM points after any extent or foreshore value
-filtering.</p>
-</dd></dl>
-
-</dd></dl>
-
-<dl class="py function">
-<dt class="sig sig-object py" id="geofabrics.dem.delayed_load_tiles_in_chunk">
-<span class="sig-prename descclassname"><span class="pre">geofabrics.dem.</span></span><span class="sig-name descname"><span class="pre">delayed_load_tiles_in_chunk</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">dim_x</span></span><span class="p"><span class="pre">:</span></span> <span class="n"><span class="pre">numpy.ndarray</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">dim_y</span></span><span class="p"><span class="pre">:</span></span> <span class="n"><span class="pre">numpy.ndarray</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">tile_index_extents</span></span><span class="p"><span class="pre">:</span></span> <span class="n"><span class="pre">geopandas.GeoDataFrame</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">tile_index_name_column</span></span><span class="p"><span class="pre">:</span></span> <span class="n"><span class="pre">str</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">lidar_files</span></span><span class="p"><span class="pre">:</span></span> <span class="n"><span class="pre">List</span><span class="p"><span class="pre">[</span></span><span class="pre">Union</span><span class="p"><span class="pre">[</span></span><span class="pre">str</span><span class="p"><span class="pre">,</span> </span><span class="pre">pathlib.Path</span><span class="p"><span class="pre">]</span></span><span class="p"><span class="pre">]</span></span></span></em>, <em class="sig-param"><span class="n"><span class="pre">source_crs</span></span><span class="p"><span class="pre">:</span></span> <span class="n"><span class="pre">dict</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">chunk_region_to_tile</span></span><span class="p"><span class="pre">:</span></span> <span class="n"><span class="pre">geopandas.GeoDataFrame</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">catchment_geometry</span></span><span class="p"><span class="pre">:</span></span> <span class="n"><a class="reference internal" href="#geofabrics.geometry.CatchmentGeometry" title="geofabrics.geometry.CatchmentGeometry"><span class="pre">geofabrics.geometry.CatchmentGeometry</span></a></span></em><span class="sig-paren">)</span><a class="headerlink" href="#geofabrics.dem.delayed_load_tiles_in_chunk" title="Permalink to this definition">¶</a></dt>
-<dd><p>Read in all LiDAR files within the chunked region - clipped to within the region within which to rasterise.</p>
-</dd></dl>
-
-<dl class="py function">
-<dt class="sig sig-object py" id="geofabrics.dem.delayed_rasterise_chunk">
-<span class="sig-prename descclassname"><span class="pre">geofabrics.dem.</span></span><span class="sig-name descname"><span class="pre">delayed_rasterise_chunk</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">dim_x</span></span><span class="p"><span class="pre">:</span></span> <span class="n"><span class="pre">numpy.ndarray</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">dim_y</span></span><span class="p"><span class="pre">:</span></span> <span class="n"><span class="pre">numpy.ndarray</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">tile_points</span></span><span class="p"><span class="pre">:</span></span> <span class="n"><span class="pre">numpy.ndarray</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">raster_type</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">keep_only_ground_lidar</span></span><span class="p"><span class="pre">:</span></span> <span class="n"><span class="pre">bool</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">ground_code</span></span><span class="p"><span class="pre">:</span></span> <span class="n"><span class="pre">int</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">idw_radius</span></span><span class="p"><span class="pre">:</span></span> <span class="n"><span class="pre">float</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">idw_power</span></span><span class="p"><span class="pre">:</span></span> <span class="n"><span class="pre">int</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#geofabrics.dem.delayed_rasterise_chunk" title="Permalink to this definition">¶</a></dt>
-<dd><p>Wrap the <cite>load_tiles_in_chunk</cite> routine in dask.delayed</p>
-</dd></dl>
-
-<dl class="py function">
-<dt class="sig sig-object py" id="geofabrics.dem.load_tiles_in_chunk">
-<span class="sig-prename descclassname"><span class="pre">geofabrics.dem.</span></span><span class="sig-name descname"><span class="pre">load_tiles_in_chunk</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">dim_x</span></span><span class="p"><span class="pre">:</span></span> <span class="n"><span class="pre">numpy.ndarray</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">dim_y</span></span><span class="p"><span class="pre">:</span></span> <span class="n"><span class="pre">numpy.ndarray</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">tile_index_extents</span></span><span class="p"><span class="pre">:</span></span> <span class="n"><span class="pre">geopandas.GeoDataFrame</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">tile_index_name_column</span></span><span class="p"><span class="pre">:</span></span> <span class="n"><span class="pre">str</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">lidar_files</span></span><span class="p"><span class="pre">:</span></span> <span class="n"><span class="pre">List</span><span class="p"><span class="pre">[</span></span><span class="pre">Union</span><span class="p"><span class="pre">[</span></span><span class="pre">str</span><span class="p"><span class="pre">,</span> </span><span class="pre">pathlib.Path</span><span class="p"><span class="pre">]</span></span><span class="p"><span class="pre">]</span></span></span></em>, <em class="sig-param"><span class="n"><span class="pre">source_crs</span></span><span class="p"><span class="pre">:</span></span> <span class="n"><span class="pre">dict</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">chunk_region_to_tile</span></span><span class="p"><span class="pre">:</span></span> <span class="n"><span class="pre">geopandas.GeoDataFrame</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">catchment_geometry</span></span><span class="p"><span class="pre">:</span></span> <span class="n"><a class="reference internal" href="#geofabrics.geometry.CatchmentGeometry" title="geofabrics.geometry.CatchmentGeometry"><span class="pre">geofabrics.geometry.CatchmentGeometry</span></a></span></em><span class="sig-paren">)</span><a class="headerlink" href="#geofabrics.dem.load_tiles_in_chunk" title="Permalink to this definition">¶</a></dt>
-<dd><p>Read in all LiDAR files within the chunked region - clipped to within the region within which to rasterise.</p>
-</dd></dl>
-
-<dl class="py function">
-<dt class="sig sig-object py" id="geofabrics.dem.rasterise_chunk">
-<span class="sig-prename descclassname"><span class="pre">geofabrics.dem.</span></span><span class="sig-name descname"><span class="pre">rasterise_chunk</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">dim_x</span></span><span class="p"><span class="pre">:</span></span> <span class="n"><span class="pre">numpy.ndarray</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">dim_y</span></span><span class="p"><span class="pre">:</span></span> <span class="n"><span class="pre">numpy.ndarray</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">tile_points</span></span><span class="p"><span class="pre">:</span></span> <span class="n"><span class="pre">numpy.ndarray</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">raster_type</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">keep_only_ground_lidar</span></span><span class="p"><span class="pre">:</span></span> <span class="n"><span class="pre">bool</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">ground_code</span></span><span class="p"><span class="pre">:</span></span> <span class="n"><span class="pre">int</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">idw_radius</span></span><span class="p"><span class="pre">:</span></span> <span class="n"><span class="pre">float</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">idw_power</span></span><span class="p"><span class="pre">:</span></span> <span class="n"><span class="pre">int</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#geofabrics.dem.rasterise_chunk" title="Permalink to this definition">¶</a></dt>
-<dd><p>Rasterise all points within a chunk.</p>
-</dd></dl>
-
-<dl class="py function">
-<dt class="sig sig-object py" id="geofabrics.dem.rasterise_with_idw">
-<span class="sig-prename descclassname"><span class="pre">geofabrics.dem.</span></span><span class="sig-name descname"><span class="pre">rasterise_with_idw</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">point_cloud</span></span><span class="p"><span class="pre">:</span></span> <span class="n"><span class="pre">numpy.ndarray</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">xy_out</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">idw_radius</span></span><span class="p"><span class="pre">:</span></span> <span class="n"><span class="pre">float</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">idw_power</span></span><span class="p"><span class="pre">:</span></span> <span class="n"><span class="pre">int</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">raster_type</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">smoothing</span></span><span class="p"><span class="pre">:</span></span> <span class="n"><span class="pre">float</span></span> <span class="o"><span class="pre">=</span></span> <span class="default_value"><span class="pre">0</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">eps</span></span><span class="p"><span class="pre">:</span></span> <span class="n"><span class="pre">float</span></span> <span class="o"><span class="pre">=</span></span> <span class="default_value"><span class="pre">0</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">leaf_size</span></span><span class="p"><span class="pre">:</span></span> <span class="n"><span class="pre">int</span></span> <span class="o"><span class="pre">=</span></span> <span class="default_value"><span class="pre">10</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#geofabrics.dem.rasterise_with_idw" title="Permalink to this definition">¶</a></dt>
-<dd><p>Calculate DEM elevation values at the specified locations using the inverse distance weighing (IDW)
-approach. This implementation is based on the scipy.spatial.KDTree</p>
-</dd></dl>
-
-<dl class="py function">
-<dt class="sig sig-object py" id="geofabrics.dem.read_file_with_pdal">
-<span class="sig-prename descclassname"><span class="pre">geofabrics.dem.</span></span><span class="sig-name descname"><span class="pre">read_file_with_pdal</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">lidar_file</span></span><span class="p"><span class="pre">:</span></span> <span class="n"><span class="pre">Union</span><span class="p"><span class="pre">[</span></span><span class="pre">str</span><span class="p"><span class="pre">,</span> </span><span class="pre">pathlib.Path</span><span class="p"><span class="pre">]</span></span></span></em>, <em class="sig-param"><span class="n"><span class="pre">region_to_tile</span></span><span class="p"><span class="pre">:</span></span> <span class="n"><span class="pre">geopandas.GeoDataFrame</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">catchment_geometry</span></span><span class="p"><span class="pre">:</span></span> <span class="n"><a class="reference internal" href="#geofabrics.geometry.CatchmentGeometry" title="geofabrics.geometry.CatchmentGeometry"><span class="pre">geofabrics.geometry.CatchmentGeometry</span></a></span></em>, <em class="sig-param"><span class="n"><span class="pre">source_crs</span></span><span class="p"><span class="pre">:</span></span> <span class="n"><span class="pre">Optional</span><span class="p"><span class="pre">[</span></span><span class="pre">dict</span><span class="p"><span class="pre">]</span></span></span> <span class="o"><span class="pre">=</span></span> <span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">get_extents</span></span><span class="p"><span class="pre">:</span></span> <span class="n"><span class="pre">bool</span></span> <span class="o"><span class="pre">=</span></span> <span class="default_value"><span class="pre">False</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#geofabrics.dem.read_file_with_pdal" title="Permalink to this definition">¶</a></dt>
-<dd><p>Read a tile file in using PDAL</p>
-</dd></dl>
-
-<span class="target" id="module-geofabrics.geometry"></span><p>Created on Fri Jun 18 10:52:49 2021</p>
-<p>&#64;author: pearsonra</p>
-<dl class="py class">
-<dt class="sig sig-object py" id="geofabrics.geometry.BathymetryContours">
-<em class="property"><span class="pre">class</span> </em><span class="sig-prename descclassname"><span class="pre">geofabrics.geometry.</span></span><span class="sig-name descname"><span class="pre">BathymetryContours</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">contour_file</span></span><span class="p"><span class="pre">:</span></span> <span class="n"><span class="pre">str</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">catchment_geometry</span></span><span class="p"><span class="pre">:</span></span> <span class="n"><a class="reference internal" href="#geofabrics.geometry.CatchmentGeometry" title="geofabrics.geometry.CatchmentGeometry"><span class="pre">geofabrics.geometry.CatchmentGeometry</span></a></span></em>, <em class="sig-param"><span class="n"><span class="pre">z_label</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">exclusion_extent</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#geofabrics.geometry.BathymetryContours" title="Permalink to this definition">¶</a></dt>
-<dd><p>A class working with bathymetry contours.</p>
-<p>Assumes contours to be sampled to the catchment_geometry resolution</p>
-<dl class="py method">
-<dt class="sig sig-object py" id="geofabrics.geometry.BathymetryContours.sample_contours">
-<span class="sig-name descname"><span class="pre">sample_contours</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">resolution</span></span><span class="p"><span class="pre">:</span></span> <span class="n"><span class="pre">float</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">numpy.ndarray</span></span></span><a class="headerlink" href="#geofabrics.geometry.BathymetryContours.sample_contours" title="Permalink to this definition">¶</a></dt>
-<dd><p>Sample the contours at the specified resolution.</p>
-</dd></dl>
-
-</dd></dl>
-
-<dl class="py class">
-<dt class="sig sig-object py" id="geofabrics.geometry.BathymetryPoints">
-<em class="property"><span class="pre">class</span> </em><span class="sig-prename descclassname"><span class="pre">geofabrics.geometry.</span></span><span class="sig-name descname"><span class="pre">BathymetryPoints</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">points_file</span></span><span class="p"><span class="pre">:</span></span> <span class="n"><span class="pre">str</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">catchment_geometry</span></span><span class="p"><span class="pre">:</span></span> <span class="n"><a class="reference internal" href="#geofabrics.geometry.CatchmentGeometry" title="geofabrics.geometry.CatchmentGeometry"><span class="pre">geofabrics.geometry.CatchmentGeometry</span></a></span></em>, <em class="sig-param"><span class="n"><span class="pre">exclusion_extent</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#geofabrics.geometry.BathymetryPoints" title="Permalink to this definition">¶</a></dt>
-<dd><p>A class working with bathymetry points</p>
-<dl class="py property">
-<dt class="sig sig-object py" id="geofabrics.geometry.BathymetryPoints.points">
-<em class="property"><span class="pre">property</span> </em><span class="sig-name descname"><span class="pre">points</span></span><a class="headerlink" href="#geofabrics.geometry.BathymetryPoints.points" title="Permalink to this definition">¶</a></dt>
-<dd><p>Return the points</p>
-</dd></dl>
-
-<dl class="py property">
-<dt class="sig sig-object py" id="geofabrics.geometry.BathymetryPoints.x">
-<em class="property"><span class="pre">property</span> </em><span class="sig-name descname"><span class="pre">x</span></span><a class="headerlink" href="#geofabrics.geometry.BathymetryPoints.x" title="Permalink to this definition">¶</a></dt>
-<dd><p>The x values</p>
-</dd></dl>
-
-<dl class="py property">
-<dt class="sig sig-object py" id="geofabrics.geometry.BathymetryPoints.y">
-<em class="property"><span class="pre">property</span> </em><span class="sig-name descname"><span class="pre">y</span></span><a class="headerlink" href="#geofabrics.geometry.BathymetryPoints.y" title="Permalink to this definition">¶</a></dt>
-<dd><p>The y values</p>
-</dd></dl>
-
-<dl class="py property">
-<dt class="sig sig-object py" id="geofabrics.geometry.BathymetryPoints.z">
-<em class="property"><span class="pre">property</span> </em><span class="sig-name descname"><span class="pre">z</span></span><a class="headerlink" href="#geofabrics.geometry.BathymetryPoints.z" title="Permalink to this definition">¶</a></dt>
-<dd><p>The z values</p>
-</dd></dl>
-
-</dd></dl>
-
-<dl class="py class">
-<dt class="sig sig-object py" id="geofabrics.geometry.CatchmentGeometry">
-<em class="property"><span class="pre">class</span> </em><span class="sig-prename descclassname"><span class="pre">geofabrics.geometry.</span></span><span class="sig-name descname"><span class="pre">CatchmentGeometry</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">catchment_file</span></span><span class="p"><span class="pre">:</span></span> <span class="n"><span class="pre">Union</span><span class="p"><span class="pre">[</span></span><span class="pre">str</span><span class="p"><span class="pre">,</span> </span><span class="pre">pathlib.Path</span><span class="p"><span class="pre">]</span></span></span></em>, <em class="sig-param"><span class="n"><span class="pre">crs</span></span><span class="p"><span class="pre">:</span></span> <span class="n"><span class="pre">dict</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">resolution</span></span><span class="p"><span class="pre">:</span></span> <span class="n"><span class="pre">float</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">foreshore_buffer</span></span><span class="p"><span class="pre">:</span></span> <span class="n"><span class="pre">int</span></span> <span class="o"><span class="pre">=</span></span> <span class="default_value"><span class="pre">2</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#geofabrics.geometry.CatchmentGeometry" title="Permalink to this definition">¶</a></dt>
-<dd><p>A class defining all relevant regions as defined by polygons in a catchment.</p>
-<p>The CRS is a dictionary containing the EPSG code for a ‘horizontal’ and ‘vertical’ datum.</p>
-<p>Specifically, this defines polygon regions like ‘land’, ‘foreshore’, ‘offshore’, and ensures all regions are
-defined in the same CRS.</p>
-<p>The ‘land’, ‘foreshore’ and ‘offshore’ regions are clipped within the ‘catchment’, but do not overlap. The ‘land’ is
-polygon is defined by a specified polygon which is clipped within the ‘catchment’. The ‘foreshore’ is defined
-as a ‘foreshore_buffer’ x ‘resolution’ outward buffer from the ‘land’ and within the ‘catchment’ extents. The
-‘offshore’ region is any remaining region within the ‘catchment’ and outside the ‘land’ and ‘foreshore’ polygons.</p>
-<p>It also supports functions for determining how much of a region is outside an exclusion zone. I.E. is outside
-<cite>lidar_extents</cite> see class method land_and_foreshore_without_lidar for an example.</p>
-<p>It is initalised with the catchment. The land must be added before the other regions (i.e. land, offshore,
-foreshore, etc) can be accessed.</p>
-<dl class="py property">
-<dt class="sig sig-object py" id="geofabrics.geometry.CatchmentGeometry.catchment">
-<em class="property"><span class="pre">property</span> </em><span class="sig-name descname"><span class="pre">catchment</span></span><a class="headerlink" href="#geofabrics.geometry.CatchmentGeometry.catchment" title="Permalink to this definition">¶</a></dt>
-<dd><p>Return the catchment region</p>
-</dd></dl>
-
-<dl class="py property">
-<dt class="sig sig-object py" id="geofabrics.geometry.CatchmentGeometry.foreshore">
-<em class="property"><span class="pre">property</span> </em><span class="sig-name descname"><span class="pre">foreshore</span></span><a class="headerlink" href="#geofabrics.geometry.CatchmentGeometry.foreshore" title="Permalink to this definition">¶</a></dt>
-<dd><p>Return the catchment foreshore region</p>
-</dd></dl>
-
-<dl class="py property">
-<dt class="sig sig-object py" id="geofabrics.geometry.CatchmentGeometry.foreshore_and_offshore">
-<em class="property"><span class="pre">property</span> </em><span class="sig-name descname"><span class="pre">foreshore_and_offshore</span></span><a class="headerlink" href="#geofabrics.geometry.CatchmentGeometry.foreshore_and_offshore" title="Permalink to this definition">¶</a></dt>
-<dd><p>Return the catchment foreshore and offshore region</p>
-</dd></dl>
-
-<dl class="py property">
-<dt class="sig sig-object py" id="geofabrics.geometry.CatchmentGeometry.land">
-<em class="property"><span class="pre">property</span> </em><span class="sig-name descname"><span class="pre">land</span></span><a class="headerlink" href="#geofabrics.geometry.CatchmentGeometry.land" title="Permalink to this definition">¶</a></dt>
-<dd><p>Return the catchment land region</p>
-</dd></dl>
-
-<dl class="py property">
-<dt class="sig sig-object py" id="geofabrics.geometry.CatchmentGeometry.land_and_foreshore">
-<em class="property"><span class="pre">property</span> </em><span class="sig-name descname"><span class="pre">land_and_foreshore</span></span><a class="headerlink" href="#geofabrics.geometry.CatchmentGeometry.land_and_foreshore" title="Permalink to this definition">¶</a></dt>
-<dd><p>Return the catchment land and foreshore region</p>
-</dd></dl>
-
-<dl class="py method">
-<dt class="sig sig-object py" id="geofabrics.geometry.CatchmentGeometry.land_and_foreshore_without_lidar">
-<span class="sig-name descname"><span class="pre">land_and_foreshore_without_lidar</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">dense_extents</span></span><span class="p"><span class="pre">:</span></span> <span class="n"><span class="pre">geopandas.GeoDataFrame</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#geofabrics.geometry.CatchmentGeometry.land_and_foreshore_without_lidar" title="Permalink to this definition">¶</a></dt>
-<dd><p>Return the land and foreshore region without LiDAR</p>
-</dd></dl>
-
-<dl class="py property">
-<dt class="sig sig-object py" id="geofabrics.geometry.CatchmentGeometry.offshore">
-<em class="property"><span class="pre">property</span> </em><span class="sig-name descname"><span class="pre">offshore</span></span><a class="headerlink" href="#geofabrics.geometry.CatchmentGeometry.offshore" title="Permalink to this definition">¶</a></dt>
-<dd><p>Return the catchment offshore region</p>
-</dd></dl>
-
-<dl class="py method">
-<dt class="sig sig-object py" id="geofabrics.geometry.CatchmentGeometry.offshore_dense_data_edge">
-<span class="sig-name descname"><span class="pre">offshore_dense_data_edge</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">dense_extents</span></span><span class="p"><span class="pre">:</span></span> <span class="n"><span class="pre">geopandas.GeoDataFrame</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#geofabrics.geometry.CatchmentGeometry.offshore_dense_data_edge" title="Permalink to this definition">¶</a></dt>
-<dd><p>Return the offshore edge of where there is ‘dense data’ i.e. LiDAR or reference DEM</p>
-</dd></dl>
-
-<dl class="py method">
-<dt class="sig sig-object py" id="geofabrics.geometry.CatchmentGeometry.offshore_no_dense_data">
-<span class="sig-name descname"><span class="pre">offshore_no_dense_data</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">lidar_extents</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#geofabrics.geometry.CatchmentGeometry.offshore_no_dense_data" title="Permalink to this definition">¶</a></dt>
-<dd><p>Return the offshore area where there is no ‘dense data’ i.e. LiDAR</p>
-</dd></dl>
-
-<dl class="py method">
-<dt class="sig sig-object py" id="geofabrics.geometry.CatchmentGeometry.offshore_without_lidar">
-<span class="sig-name descname"><span class="pre">offshore_without_lidar</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">dense_extents</span></span><span class="p"><span class="pre">:</span></span> <span class="n"><span class="pre">geopandas.GeoDataFrame</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#geofabrics.geometry.CatchmentGeometry.offshore_without_lidar" title="Permalink to this definition">¶</a></dt>
-<dd><p>Return the offshore region without LiDAR</p>
-</dd></dl>
-
-</dd></dl>
-
-<dl class="py class">
-<dt class="sig sig-object py" id="geofabrics.geometry.TileInfo">
-<em class="property"><span class="pre">class</span> </em><span class="sig-prename descclassname"><span class="pre">geofabrics.geometry.</span></span><span class="sig-name descname"><span class="pre">TileInfo</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">tile_file</span></span><span class="p"><span class="pre">:</span></span> <span class="n"><span class="pre">str</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">catchment_geometry</span></span><span class="p"><span class="pre">:</span></span> <span class="n"><a class="reference internal" href="#geofabrics.geometry.CatchmentGeometry" title="geofabrics.geometry.CatchmentGeometry"><span class="pre">geofabrics.geometry.CatchmentGeometry</span></a></span></em><span class="sig-paren">)</span><a class="headerlink" href="#geofabrics.geometry.TileInfo" title="Permalink to this definition">¶</a></dt>
-<dd><p>A class for working with tiling information</p>
-<dl class="py property">
-<dt class="sig sig-object py" id="geofabrics.geometry.TileInfo.tile_names">
-<em class="property"><span class="pre">property</span> </em><span class="sig-name descname"><span class="pre">tile_names</span></span><a class="headerlink" href="#geofabrics.geometry.TileInfo.tile_names" title="Permalink to this definition">¶</a></dt>
-<dd><p>Return the names of all tiles within the catchment</p>
-</dd></dl>
-
-</dd></dl>
-
+      <div class="wy-nav-content">
+        <div class="rst-content">
+          <div role="navigation" aria-label="Page navigation">
+  <ul class="wy-breadcrumbs">
+      <li><a href="#" class="icon icon-home"></a> &raquo;</li>
+      <li>Welcome to Geofabrics’s documentation!</li>
+      <li class="wy-breadcrumbs-aside">
+            <a href="_sources/index.rst.txt" rel="nofollow"> View page source</a>
+      </li>
+  </ul>
+  <hr/>
+</div>
+          <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
+           <div itemprop="articleBody">
+             
+  <section id="welcome-to-geofabrics-s-documentation">
+<h1>Welcome to Geofabrics’s documentation!<a class="headerlink" href="#welcome-to-geofabrics-s-documentation" title="Permalink to this headline"></a></h1>
 <div class="toctree-wrapper compound">
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="autoapi/index.html">API Reference</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="autoapi/main/index.html"><code class="xref py py-mod docutils literal notranslate"><span class="pre">main</span></code></a></li>
+<li class="toctree-l2"><a class="reference internal" href="autoapi/geofabrics/index.html"><code class="xref py py-mod docutils literal notranslate"><span class="pre">geofabrics</span></code></a></li>
+</ul>
+</li>
+</ul>
 </div>
 </section>
 <section id="indices-and-tables">
-<h1>Indices and tables<a class="headerlink" href="#indices-and-tables" title="Permalink to this headline">¶</a></h1>
+<h1>Indices and tables<a class="headerlink" href="#indices-and-tables" title="Permalink to this headline"></a></h1>
 <ul class="simple">
 <li><p><a class="reference internal" href="genindex.html"><span class="std std-ref">Index</span></a></p></li>
 <li><p><a class="reference internal" href="py-modindex.html"><span class="std std-ref">Module Index</span></a></p></li>
@@ -514,66 +86,31 @@ foreshore, etc) can be accessed.</p>
 </section>
 
 
+           </div>
           </div>
-          
+          <footer>
+
+  <hr/>
+
+  <div role="contentinfo">
+    <p>&#169; Copyright 2021, Rose Pearson.</p>
+  </div>
+
+  Built with <a href="https://www.sphinx-doc.org/">Sphinx</a> using a
+    <a href="https://github.com/readthedocs/sphinx_rtd_theme">theme</a>
+    provided by <a href="https://readthedocs.org">Read the Docs</a>.
+   
+
+</footer>
         </div>
       </div>
-      <div class="sphinxsidebar" role="navigation" aria-label="main navigation">
-        <div class="sphinxsidebarwrapper">
-<h1 class="logo"><a href="#">geofabrics</a></h1>
+    </section>
+  </div>
+  <script>
+      jQuery(function () {
+          SphinxRtdTheme.Navigation.enable(true);
+      });
+  </script> 
 
-
-
-
-
-
-
-
-<h3>Navigation</h3>
-
-<div class="relations">
-<h3>Related Topics</h3>
-<ul>
-  <li><a href="#">Documentation overview</a><ul>
-  </ul></li>
-</ul>
-</div>
-<div id="searchbox" style="display: none" role="search">
-  <h3 id="searchlabel">Quick search</h3>
-    <div class="searchformwrapper">
-    <form class="search" action="search.html" method="get">
-      <input type="text" name="q" aria-labelledby="searchlabel" autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false"/>
-      <input type="submit" value="Go" />
-    </form>
-    </div>
-</div>
-<script>$('#searchbox').show(0);</script>
-
-
-
-
-
-
-
-
-        </div>
-      </div>
-      <div class="clearer"></div>
-    </div>
-    <div class="footer">
-      &copy;2021, Rose Pearson.
-      
-      |
-      Powered by <a href="http://sphinx-doc.org/">Sphinx 4.2.0</a>
-      &amp; <a href="https://github.com/bitprophet/alabaster">Alabaster 0.7.12</a>
-      
-      |
-      <a href="_sources/index.rst.txt"
-          rel="nofollow">Page source</a>
-    </div>
-
-    
-
-    
-  </body>
+</body>
 </html>

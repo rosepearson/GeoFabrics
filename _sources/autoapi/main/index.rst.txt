@@ -1,0 +1,44 @@
+:py:mod:`main`
+==============
+
+.. py:module:: main
+
+.. autoapi-nested-parse::
+
+   Created on Fri Jun 18 10:52:49 2021
+
+   @author: pearsonra
+
+
+
+Module Contents
+---------------
+
+
+Functions
+~~~~~~~~~
+
+.. autoapisummary::
+
+   main.parse_args
+   main.launch_processor
+   main.main
+
+
+
+.. py:function:: parse_args()
+
+   Expect a command line argument of the form '--instructions path/to/json/instruction/file'
+
+
+.. py:function:: launch_processor(args)
+
+   Run the DEM generation pipeline given the specified instructions.
+   If a benchmark is specified compare the result to the benchmark
+
+
+.. py:function:: main()
+
+   The entry point to geofabrics.
+
+

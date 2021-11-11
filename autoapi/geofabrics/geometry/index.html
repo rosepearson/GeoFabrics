@@ -1,0 +1,316 @@
+<!DOCTYPE html>
+<html class="writer-html5" lang="en" >
+<head>
+  <meta charset="utf-8" /><meta name="generator" content="Docutils 0.17.1: http://docutils.sourceforge.net/" />
+
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>geofabrics.geometry &mdash; Geofabrics 0.7.6 documentation</title>
+      <link rel="stylesheet" href="../../../_static/pygments.css" type="text/css" />
+      <link rel="stylesheet" href="../../../_static/css/theme.css" type="text/css" />
+      <link rel="stylesheet" href="../../../_static/graphviz.css" type="text/css" />
+  <!--[if lt IE 9]>
+    <script src="../../../_static/js/html5shiv.min.js"></script>
+  <![endif]-->
+  
+        <script data-url_root="../../../" id="documentation_options" src="../../../_static/documentation_options.js"></script>
+        <script src="../../../_static/jquery.js"></script>
+        <script src="../../../_static/underscore.js"></script>
+        <script src="../../../_static/doctools.js"></script>
+    <script src="../../../_static/js/theme.js"></script>
+    <link rel="index" title="Index" href="../../../genindex.html" />
+    <link rel="search" title="Search" href="../../../search.html" /> 
+</head>
+
+<body class="wy-body-for-nav"> 
+  <div class="wy-grid-for-nav">
+    <nav data-toggle="wy-nav-shift" class="wy-nav-side">
+      <div class="wy-side-scroll">
+        <div class="wy-side-nav-search" >
+            <a href="../../../index.html" class="icon icon-home"> Geofabrics
+          </a>
+<div role="search">
+  <form id="rtd-search-form" class="wy-form" action="../../../search.html" method="get">
+    <input type="text" name="q" placeholder="Search docs" />
+    <input type="hidden" name="check_keywords" value="yes" />
+    <input type="hidden" name="area" value="default" />
+  </form>
+</div>
+        </div><div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="Navigation menu">
+              <ul>
+<li class="toctree-l1"><a class="reference internal" href="../../index.html">API Reference</a></li>
+</ul>
+
+        </div>
+      </div>
+    </nav>
+
+    <section data-toggle="wy-nav-shift" class="wy-nav-content-wrap"><nav class="wy-nav-top" aria-label="Mobile navigation menu" >
+          <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
+          <a href="../../../index.html">Geofabrics</a>
+      </nav>
+
+      <div class="wy-nav-content">
+        <div class="rst-content">
+          <div role="navigation" aria-label="Page navigation">
+  <ul class="wy-breadcrumbs">
+      <li><a href="../../../index.html" class="icon icon-home"></a> &raquo;</li>
+      <li><code class="xref py py-mod docutils literal notranslate"><span class="pre">geofabrics.geometry</span></code></li>
+      <li class="wy-breadcrumbs-aside">
+            <a href="../../../_sources/autoapi/geofabrics/geometry/index.rst.txt" rel="nofollow"> View page source</a>
+      </li>
+  </ul>
+  <hr/>
+</div>
+          <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
+           <div itemprop="articleBody">
+             
+  <section id="module-geofabrics.geometry">
+<span id="geofabrics-geometry"></span><h1><a class="reference internal" href="#module-geofabrics.geometry" title="geofabrics.geometry"><code class="xref py py-mod docutils literal notranslate"><span class="pre">geofabrics.geometry</span></code></a><a class="headerlink" href="#module-geofabrics.geometry" title="Permalink to this headline"></a></h1>
+<p>Created on Fri Jun 18 10:52:49 2021</p>
+<p>&#64;author: pearsonra</p>
+<section id="module-contents">
+<h2>Module Contents<a class="headerlink" href="#module-contents" title="Permalink to this headline"></a></h2>
+<section id="classes">
+<h3>Classes<a class="headerlink" href="#classes" title="Permalink to this headline"></a></h3>
+<table class="longtable docutils align-default">
+<colgroup>
+<col style="width: 10%" />
+<col style="width: 90%" />
+</colgroup>
+<tbody>
+<tr class="row-odd"><td><p><a class="reference internal" href="#geofabrics.geometry.CatchmentGeometry" title="geofabrics.geometry.CatchmentGeometry"><code class="xref py py-obj docutils literal notranslate"><span class="pre">CatchmentGeometry</span></code></a></p></td>
+<td><p>A class defining all relevant regions as defined by polygons in a catchment.</p></td>
+</tr>
+<tr class="row-even"><td><p><a class="reference internal" href="#geofabrics.geometry.BathymetryContours" title="geofabrics.geometry.BathymetryContours"><code class="xref py py-obj docutils literal notranslate"><span class="pre">BathymetryContours</span></code></a></p></td>
+<td><p>A class working with bathymetry contours.</p></td>
+</tr>
+<tr class="row-odd"><td><p><a class="reference internal" href="#geofabrics.geometry.BathymetryPoints" title="geofabrics.geometry.BathymetryPoints"><code class="xref py py-obj docutils literal notranslate"><span class="pre">BathymetryPoints</span></code></a></p></td>
+<td><p>A class working with bathymetry points</p></td>
+</tr>
+<tr class="row-even"><td><p><a class="reference internal" href="#geofabrics.geometry.TileInfo" title="geofabrics.geometry.TileInfo"><code class="xref py py-obj docutils literal notranslate"><span class="pre">TileInfo</span></code></a></p></td>
+<td><p>A class for working with tiling information</p></td>
+</tr>
+</tbody>
+</table>
+<dl class="py class">
+<dt class="sig sig-object py" id="geofabrics.geometry.CatchmentGeometry">
+<em class="property"><span class="pre">class</span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">geofabrics.geometry.</span></span><span class="sig-name descname"><span class="pre">CatchmentGeometry</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">catchment_file</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">crs</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">resolution</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">foreshore_buffer</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">2</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#geofabrics.geometry.CatchmentGeometry" title="Permalink to this definition"></a></dt>
+<dd><p>A class defining all relevant regions as defined by polygons in a catchment.</p>
+<p>The CRS is a dictionary containing the EPSG code for a ‘horizontal’ and ‘vertical’ datum.</p>
+<p>Specifically, this defines polygon regions like ‘land’, ‘foreshore’, ‘offshore’, and ensures all regions are
+defined in the same CRS.</p>
+<p>The ‘land’, ‘foreshore’ and ‘offshore’ regions are clipped within the ‘catchment’, but do not overlap. The ‘land’ is
+polygon is defined by a specified polygon which is clipped within the ‘catchment’. The ‘foreshore’ is defined
+as a ‘foreshore_buffer’ x ‘resolution’ outward buffer from the ‘land’ and within the ‘catchment’ extents. The
+‘offshore’ region is any remaining region within the ‘catchment’ and outside the ‘land’ and ‘foreshore’ polygons.</p>
+<p>It also supports functions for determining how much of a region is outside an exclusion zone. I.E. is outside
+<cite>lidar_extents</cite> see class method land_and_foreshore_without_lidar for an example.</p>
+<p>It is initalised with the catchment. The land must be added before the other regions (i.e. land, offshore,
+foreshore, etc) can be accessed.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters</dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>catchment_file</strong> (<em>Union</em><em>[</em><em>str</em><em>, </em><em>pathlib.Path</em><em>]</em>) – </p></li>
+<li><p><strong>crs</strong> (<em>dict</em>) – </p></li>
+<li><p><strong>resolution</strong> (<em>float</em>) – </p></li>
+<li><p><strong>foreshore_buffer</strong> (<em>int</em>) – </p></li>
+</ul>
+</dd>
+</dl>
+<dl class="py method">
+<dt class="sig sig-object py" id="geofabrics.geometry.CatchmentGeometry.catchment">
+<em class="property"><span class="pre">property</span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">catchment</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">self</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#geofabrics.geometry.CatchmentGeometry.catchment" title="Permalink to this definition"></a></dt>
+<dd><p>Return the catchment region</p>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="geofabrics.geometry.CatchmentGeometry.land">
+<em class="property"><span class="pre">property</span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">land</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">self</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#geofabrics.geometry.CatchmentGeometry.land" title="Permalink to this definition"></a></dt>
+<dd><p>Return the catchment land region</p>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="geofabrics.geometry.CatchmentGeometry.foreshore">
+<em class="property"><span class="pre">property</span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">foreshore</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">self</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#geofabrics.geometry.CatchmentGeometry.foreshore" title="Permalink to this definition"></a></dt>
+<dd><p>Return the catchment foreshore region</p>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="geofabrics.geometry.CatchmentGeometry.land_and_foreshore">
+<em class="property"><span class="pre">property</span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">land_and_foreshore</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">self</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#geofabrics.geometry.CatchmentGeometry.land_and_foreshore" title="Permalink to this definition"></a></dt>
+<dd><p>Return the catchment land and foreshore region</p>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="geofabrics.geometry.CatchmentGeometry.foreshore_and_offshore">
+<em class="property"><span class="pre">property</span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">foreshore_and_offshore</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">self</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#geofabrics.geometry.CatchmentGeometry.foreshore_and_offshore" title="Permalink to this definition"></a></dt>
+<dd><p>Return the catchment foreshore and offshore region</p>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="geofabrics.geometry.CatchmentGeometry.offshore">
+<em class="property"><span class="pre">property</span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">offshore</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">self</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#geofabrics.geometry.CatchmentGeometry.offshore" title="Permalink to this definition"></a></dt>
+<dd><p>Return the catchment offshore region</p>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="geofabrics.geometry.CatchmentGeometry.land_and_foreshore_without_lidar">
+<span class="sig-name descname"><span class="pre">land_and_foreshore_without_lidar</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">self</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">dense_extents</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#geofabrics.geometry.CatchmentGeometry.land_and_foreshore_without_lidar" title="Permalink to this definition"></a></dt>
+<dd><p>Return the land and foreshore region without LiDAR</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters</dt>
+<dd class="field-odd"><p><strong>dense_extents</strong> (<em>geopandas.GeoDataFrame</em>) – </p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="geofabrics.geometry.CatchmentGeometry.offshore_without_lidar">
+<span class="sig-name descname"><span class="pre">offshore_without_lidar</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">self</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">dense_extents</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#geofabrics.geometry.CatchmentGeometry.offshore_without_lidar" title="Permalink to this definition"></a></dt>
+<dd><p>Return the offshore region without LiDAR</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters</dt>
+<dd class="field-odd"><p><strong>dense_extents</strong> (<em>geopandas.GeoDataFrame</em>) – </p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="geofabrics.geometry.CatchmentGeometry.offshore_dense_data_edge">
+<span class="sig-name descname"><span class="pre">offshore_dense_data_edge</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">self</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">dense_extents</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#geofabrics.geometry.CatchmentGeometry.offshore_dense_data_edge" title="Permalink to this definition"></a></dt>
+<dd><p>Return the offshore edge of where there is ‘dense data’ i.e. LiDAR or reference DEM</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters</dt>
+<dd class="field-odd"><p><strong>dense_extents</strong> (<em>geopandas.GeoDataFrame</em>) – </p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="geofabrics.geometry.CatchmentGeometry.offshore_no_dense_data">
+<span class="sig-name descname"><span class="pre">offshore_no_dense_data</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">self</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">lidar_extents</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#geofabrics.geometry.CatchmentGeometry.offshore_no_dense_data" title="Permalink to this definition"></a></dt>
+<dd><p>Return the offshore area where there is no ‘dense data’ i.e. LiDAR</p>
+</dd></dl>
+
+</dd></dl>
+
+<dl class="py class">
+<dt class="sig sig-object py" id="geofabrics.geometry.BathymetryContours">
+<em class="property"><span class="pre">class</span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">geofabrics.geometry.</span></span><span class="sig-name descname"><span class="pre">BathymetryContours</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">contour_file</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">catchment_geometry</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">z_label</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">exclusion_extent</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#geofabrics.geometry.BathymetryContours" title="Permalink to this definition"></a></dt>
+<dd><p>A class working with bathymetry contours.</p>
+<p>Assumes contours to be sampled to the catchment_geometry resolution</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters</dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>contour_file</strong> (<em>str</em>) – </p></li>
+<li><p><strong>catchment_geometry</strong> (<a class="reference internal" href="#geofabrics.geometry.CatchmentGeometry" title="geofabrics.geometry.CatchmentGeometry"><em>CatchmentGeometry</em></a>) – </p></li>
+</ul>
+</dd>
+</dl>
+<dl class="py method">
+<dt class="sig sig-object py" id="geofabrics.geometry.BathymetryContours.sample_contours">
+<span class="sig-name descname"><span class="pre">sample_contours</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">self</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">resolution</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#geofabrics.geometry.BathymetryContours.sample_contours" title="Permalink to this definition"></a></dt>
+<dd><p>Sample the contours at the specified resolution.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters</dt>
+<dd class="field-odd"><p><strong>resolution</strong> (<em>float</em>) – </p>
+</dd>
+<dt class="field-even">Return type</dt>
+<dd class="field-even"><p>numpy.ndarray</p>
+</dd>
+</dl>
+</dd></dl>
+
+</dd></dl>
+
+<dl class="py class">
+<dt class="sig sig-object py" id="geofabrics.geometry.BathymetryPoints">
+<em class="property"><span class="pre">class</span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">geofabrics.geometry.</span></span><span class="sig-name descname"><span class="pre">BathymetryPoints</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">points_file</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">catchment_geometry</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">exclusion_extent</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#geofabrics.geometry.BathymetryPoints" title="Permalink to this definition"></a></dt>
+<dd><p>A class working with bathymetry points</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters</dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>points_file</strong> (<em>str</em>) – </p></li>
+<li><p><strong>catchment_geometry</strong> (<a class="reference internal" href="#geofabrics.geometry.CatchmentGeometry" title="geofabrics.geometry.CatchmentGeometry"><em>CatchmentGeometry</em></a>) – </p></li>
+</ul>
+</dd>
+</dl>
+<dl class="py method">
+<dt class="sig sig-object py" id="geofabrics.geometry.BathymetryPoints.points">
+<em class="property"><span class="pre">property</span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">points</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">self</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#geofabrics.geometry.BathymetryPoints.points" title="Permalink to this definition"></a></dt>
+<dd><p>Return the points</p>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="geofabrics.geometry.BathymetryPoints.x">
+<em class="property"><span class="pre">property</span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">x</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">self</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#geofabrics.geometry.BathymetryPoints.x" title="Permalink to this definition"></a></dt>
+<dd><p>The x values</p>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="geofabrics.geometry.BathymetryPoints.y">
+<em class="property"><span class="pre">property</span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">y</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">self</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#geofabrics.geometry.BathymetryPoints.y" title="Permalink to this definition"></a></dt>
+<dd><p>The y values</p>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="geofabrics.geometry.BathymetryPoints.z">
+<em class="property"><span class="pre">property</span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">z</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">self</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#geofabrics.geometry.BathymetryPoints.z" title="Permalink to this definition"></a></dt>
+<dd><p>The z values</p>
+</dd></dl>
+
+</dd></dl>
+
+<dl class="py class">
+<dt class="sig sig-object py" id="geofabrics.geometry.TileInfo">
+<em class="property"><span class="pre">class</span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">geofabrics.geometry.</span></span><span class="sig-name descname"><span class="pre">TileInfo</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">tile_file</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">catchment_geometry</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#geofabrics.geometry.TileInfo" title="Permalink to this definition"></a></dt>
+<dd><p>A class for working with tiling information</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters</dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>tile_file</strong> (<em>str</em>) – </p></li>
+<li><p><strong>catchment_geometry</strong> (<a class="reference internal" href="#geofabrics.geometry.CatchmentGeometry" title="geofabrics.geometry.CatchmentGeometry"><em>CatchmentGeometry</em></a>) – </p></li>
+</ul>
+</dd>
+</dl>
+<dl class="py method">
+<dt class="sig sig-object py" id="geofabrics.geometry.TileInfo.tile_names">
+<em class="property"><span class="pre">property</span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">tile_names</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">self</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#geofabrics.geometry.TileInfo.tile_names" title="Permalink to this definition"></a></dt>
+<dd><p>Return the names of all tiles within the catchment</p>
+</dd></dl>
+
+</dd></dl>
+
+</section>
+</section>
+</section>
+
+
+           </div>
+          </div>
+          <footer>
+
+  <hr/>
+
+  <div role="contentinfo">
+    <p>&#169; Copyright 2021, Rose Pearson.</p>
+  </div>
+
+  Built with <a href="https://www.sphinx-doc.org/">Sphinx</a> using a
+    <a href="https://github.com/readthedocs/sphinx_rtd_theme">theme</a>
+    provided by <a href="https://readthedocs.org">Read the Docs</a>.
+   
+
+</footer>
+        </div>
+      </div>
+    </section>
+  </div>
+  <script>
+      jQuery(function () {
+          SphinxRtdTheme.Navigation.enable(true);
+      });
+  </script> 
+
+</body>
+</html>
