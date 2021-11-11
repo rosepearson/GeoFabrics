@@ -46,15 +46,6 @@ templates_path = ['_templates']
 # This pattern also affects html_static_path and html_extra_path.
 exclude_patterns = ['_build', 'Thumbs.db', '.DS_Store']
 
-# Mock imports for python modules used by the modules with autodocs being
-# created for them.
-autodoc_mock_imports = ['numpy', 'json', 'argparse', 'rioxarray', 'matplotlib',
-                        'time', 'logging', 'pathlib', 'shutil', 'abc',
-                        'distributed', 'geopandas', 'shapely', 'typing',
-                        'rasterio', 'xarray', 'math', 'dask', 'pdal',
-                        'geoapis', 'scipy']
-
-
 # -- Options for HTML output -------------------------------------------------
 
 # The theme to use for HTML and HTML Help pages.  See the documentation for
