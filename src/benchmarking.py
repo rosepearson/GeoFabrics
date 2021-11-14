@@ -27,7 +27,7 @@ def parse_args():
 
 def benchmark_processing(args):
     """ Run the DEM generation pipeline given the specified instructions for a range of different 'number_of_cores'
-    and 'chunk_sizes' specified in the instructions. Optionally save each DEM exparately. Plot the execution times of
+    and 'chunk_sizes' specified in the instructions. Optionally save each DEM separately. Plot the execution times of
     all differnet processing configurations at the end."""
 
     # Load the instructions
