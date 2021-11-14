@@ -6,16 +6,16 @@ This module contains classes associated with reading in DEMs, generating DEMs, a
 The module contains the following classes.
     * ReferenceDem - A class for reading in a DEM to be added where LiDAR data doesn't exist.
     * DenseDem - An abstract class for generating a DEM from LiDAR and data on
-    land and bathymetry contour data off shore
+      land and bathymetry contour data off shore
     * DenseDemFromFiles - Inherits from DenseDem and supports adding bathymetry information
-    to a DEM defined on land.
+      to a DEM defined on land.
     * DenseDemFromTiles - Inherits from DenseDem and implements code for rasterising LiDAR.
 
 And, the following functions:
     * read_file_with_pdal - A function for reading in a single LiDAR LAS or LAZ file.
     * rasterise_with_idw - A function for performing inverse distance weighting on LiDAR points.
     * load_tiles_in_chunk - A function for loading in the contents of all files within a
-    rectangular region.
+      rectangular region.
     * rasterise_chunk - A function for rasterising LiDAR points into a regular grid.
     * delayed_rasterise_chunk - rasterise_chunk wrapped by dask.delayed
     * delayed_load_tiles_in_chunk - load_tiles_in_chunk wrapped by dask.delayed
