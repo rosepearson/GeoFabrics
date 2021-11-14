@@ -265,8 +265,8 @@ class BaseProcessor(abc.ABC):
                 logging.info(f"Fetching dataset: {dataset_name}")
                 self.lidar_fetcher.run(dataset_name)
             assert len(self.lidar_fetcher.dataset_prefixes) == 1, "geofabrics currently only supports creating a DEM" \
-                "from only one LiDAR dataset at a time. Please create an issue if you want support for mutliple " \
-                f"datasets. Error as the following datasets were specifie: {self.lidar_fetcher.dataset_prefixes}"
+                " from only one LiDAR dataset at a time. Please create an issue if you want support for mutliple " \
+                f"datasets. Error as the following datasets were specified: {self.lidar_fetcher.dataset_prefixes}"
             dataset_prefix = self.lidar_fetcher.dataset_prefixes[lidar_dataset_index]
             lidar_dataset_info['file_paths'] = sorted(
                 pathlib.Path(self.lidar_fetcher.cache_path / dataset_prefix).glob('*.laz'))

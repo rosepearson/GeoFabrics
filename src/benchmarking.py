@@ -54,7 +54,8 @@ def benchmark_processing(args):
     for chunk_size in instructions['instructions']['benchmarking']['chunk_sizes']:
         for number_of_cores in instructions['instructions']['benchmarking']['numbers_of_cores']:
             instructions['instructions']['data_paths']['result_dem'] = cache_path / \
-                f"benchmarking_{resolution}res_{number_of_cores}cores_{chunk_size}chunk"
+                f"benchmarking_{resolution}res_{number_of_cores}cores_{chunk_size}chunk.nc"
+            print(f"result path {instructions['instructions']['data_paths']['result_dem']}")
             instructions['instructions']['processing']['chunk_size'] = chunk_size
             instructions['instructions']['processing']['number_of_cores'] = number_of_cores
             # Run the pipeline
@@ -84,7 +85,9 @@ def benchmark_processing(args):
     matplotlib.pyplot.xlabel('Chunk size in pixels')
     matplotlib.pyplot.ylabel('Execution time')
     matplotlib.pyplot.title(instructions['instructions']['benchmarking']['title'] + f"\nResolution = {resolution}")
-    matplotlib.pyplot.savefig(cache_path / f"benchmarking_plot_{resolution}res.png")
+    plot_path = cache_path / f"benchmarking_plot_{resolution}res.png"
+    matplotlib.pyplot.savefig(plot_path)
+    print(f"Saving figure to {plot_path}")
 
 
 def main():
