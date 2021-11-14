@@ -67,25 +67,25 @@
   <section id="module-geofabrics.dem">
 <span id="geofabrics-dem"></span><h1><a class="reference internal" href="#module-geofabrics.dem" title="geofabrics.dem"><code class="xref py py-mod docutils literal notranslate"><span class="pre">geofabrics.dem</span></code></a><a class="headerlink" href="#module-geofabrics.dem" title="Permalink to this headline"></a></h1>
 <p>This module contains classes associated with reading in DEMs, generating DEMs, and combining DEMs.</p>
-<dl>
+<dl class="simple">
 <dt>The module contains the following classes.</dt><dd><ul class="simple">
 <li><p>ReferenceDem - A class for reading in a DEM to be added where LiDAR data doesn’t exist.</p></li>
-<li><p>DenseDem - An abstract class for generating a DEM from LiDAR and data on</p></li>
+<li><p>DenseDem - An abstract class for generating a DEM from LiDAR and data on
+land and bathymetry contour data off shore</p></li>
+<li><p>DenseDemFromFiles - Inherits from DenseDem and supports adding bathymetry information
+to a DEM defined on land.</p></li>
+<li><p>DenseDemFromTiles - Inherits from DenseDem and implements code for rasterising LiDAR.</p></li>
 </ul>
-<p>land and bathymetry contour data off shore
-* DenseDemFromFiles - Inherits from DenseDem and supports adding bathymetry information
-to a DEM defined on land.
-* DenseDemFromTiles - Inherits from DenseDem and implements code for rasterising LiDAR.</p>
 </dd>
 <dt>And, the following functions:</dt><dd><ul class="simple">
 <li><p>read_file_with_pdal - A function for reading in a single LiDAR LAS or LAZ file.</p></li>
 <li><p>rasterise_with_idw - A function for performing inverse distance weighting on LiDAR points.</p></li>
-<li><p>load_tiles_in_chunk - A function for loading in the contents of all files within a</p></li>
+<li><p>load_tiles_in_chunk - A function for loading in the contents of all files within a
+rectangular region.</p></li>
+<li><p>rasterise_chunk - A function for rasterising LiDAR points into a regular grid.</p></li>
+<li><p>delayed_rasterise_chunk - rasterise_chunk wrapped by dask.delayed</p></li>
+<li><p>delayed_load_tiles_in_chunk - load_tiles_in_chunk wrapped by dask.delayed</p></li>
 </ul>
-<p>rectangular region.
-* rasterise_chunk - A function for rasterising LiDAR points into a regular grid.
-* delayed_rasterise_chunk - rasterise_chunk wrapped by dask.delayed
-* delayed_load_tiles_in_chunk - load_tiles_in_chunk wrapped by dask.delayed</p>
 </dd>
 </dl>
 <section id="module-contents">
