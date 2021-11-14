@@ -1,8 +1,7 @@
 # -*- coding: utf-8 -*-
 """
-Created on Fri Jun 18 10:52:49 2021
-
-@author: pearsonra
+This module contains classes associated with generating hydrologically conditioned DEMs from
+LiDAR and bathymetry contours based on the instructions contained in a JSON file.
 """
 import numpy
 import json

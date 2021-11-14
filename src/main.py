@@ -1,8 +1,6 @@
 # -*- coding: utf-8 -*-
 """
-Created on Fri Jun 18 10:52:49 2021
-
-@author: pearsonra
+A convenience script for running the DEM generation pipelines contained in the processor module of geofabrics.
 """
 from geofabrics import processor
 import json
