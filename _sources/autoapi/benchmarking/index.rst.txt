@@ -1,0 +1,45 @@
+:py:mod:`benchmarking`
+======================
+
+.. py:module:: benchmarking
+
+.. autoapi-nested-parse::
+
+   A convenience script for running many combinations of chunk_sizes and numbers_of_cores for a small sub-set of a
+   catchment to help with the selection of an appropiate chink_size and number_of_cores before processing an entire
+   catchment.
+
+
+
+Module Contents
+---------------
+
+
+Functions
+~~~~~~~~~
+
+.. autoapisummary::
+
+   benchmarking.parse_args
+   benchmarking.benchmark_processing
+   benchmarking.main
+
+
+
+.. py:function:: parse_args()
+
+   Expect a command line argument of the form '--instructions path/to/json/instruction/file'
+
+
+.. py:function:: benchmark_processing(args)
+
+   Run the DEM generation pipeline given the specified instructions for a range of different 'number_of_cores'
+   and 'chunk_sizes' specified in the instructions. Optionally save each DEM separately. Plot the execution times of
+   all differnet processing configurations at the end.
+
+
+.. py:function:: main()
+
+   The entry point to geofabrics.
+
+
