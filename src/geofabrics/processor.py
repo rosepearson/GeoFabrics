@@ -2,14 +2,6 @@
 """
 This module contains classes associated with generating hydrologically conditioned DEMs from
 LiDAR and bathymetry contours based on the instructions contained in a JSON file.
-
-The module contains the following classes:
-    * BaseProcessor - An abstract class containing methods for interpreting an instruction file
-      and downloading any specified LiDAR or GIS data.
-    * DemGenerator - A class for generating a hydrologically conditioned DEM both on land (from LiDAR),
-      and offshore (from Bathymetry contours).
-    * OffshoreDemGenerator - A class for adding offshore values (from bathymetry contours) to a hydrologically
-      conditioned DEM that has previously been generated only on Land.
 """
 import numpy
 import json

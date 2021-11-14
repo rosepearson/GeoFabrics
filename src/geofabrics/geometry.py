@@ -1,12 +1,6 @@
 # -*- coding: utf-8 -*-
 """
 This module contains classes associated with manipulating vector data.
-
-The module contains the following classes:
-    * CatchmentGeometry - A class defining all relevant regions as defined by polygons in a catchment.
-    * BathymetryContours - A class working with bathymetry contours.
-    * BathymetryPoints - A class working with bathymetry points.
-    * TileInfo - A class for working with LiDAR tiling information.
 """
 import geopandas
 import shapely

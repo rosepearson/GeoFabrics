@@ -1,11 +1,6 @@
 # -*- coding: utf-8 -*-
 """
 A convenience script for running the DEM generation pipelines contained in the processor module of geofabrics.
-
-The script contains the following function:
-    * parse_args - Check for any command line arguments. Expect '--instructions path/to/json/instruction/file'
-    * launch_processor - Run the relevant DEM generation pipeline given the specified instructions.
-    * main - The entry point to the script.
 """
 from geofabrics import processor
 import json
