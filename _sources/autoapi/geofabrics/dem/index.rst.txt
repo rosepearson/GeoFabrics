@@ -7,8 +7,7 @@
 
    This module contains classes associated with reading in DEMs, generating DEMs, and combining DEMs.
 
-
-   The module contains the following classes.
+   The module contains the following classes:
        * ReferenceDem - A class for reading in a DEM to be added where LiDAR data doesn't exist.
        * DenseDem - An abstract class for generating a DEM from LiDAR and data on
          land and bathymetry contour data off shore
