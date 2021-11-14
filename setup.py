@@ -51,6 +51,7 @@ setuptools.setup(
                       'python-dotenv>=0.19'],
     extras_require={
         'dev': ['check-manifest'],
+        'doc': ['Sphinx', 'sphinx-autoapi', 'sphinx-rtd-theme']
     },
 
 )
