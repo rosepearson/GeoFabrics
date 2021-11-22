@@ -91,8 +91,8 @@ class BaseProcessor(abc.ABC):
         the instruction file. Raise an error if the key is not in the instructions and there is no default value. """
 
         defaults = {'set_dem_shoreline': True,
-                    'bathymetry_contours_z_label': None, 'drop_offshore_lidar': True, 'keep_only_ground_lidar': True,
-                    'interpolate_missing_values': True, 'chunk_size': None}
+                    'bathymetry_contours_z_label': None, 'drop_offshore_lidar': True,
+                    'lidar_classifications_to_keep': [2], 'interpolate_missing_values': True}
 
         assert key in defaults or key in self.instructions['instructions']['general'], f"The key: {key} is missing " \
             + "from the general instructions, and does not have a default value"
@@ -353,7 +353,7 @@ class DemGenerator(BaseProcessor):
             # Load in LiDAR tiles
             self.dense_dem.add_lidar(lidar_files=lidar_dataset_info['file_paths'], source_crs=lidar_dataset_info['crs'],
                                      drop_offshore_lidar=self.get_instruction_general('drop_offshore_lidar'),
-                                     keep_only_ground_lidar=self.get_instruction_general('keep_only_ground_lidar'),
+                                     lidar_classifications_to_keep=self.get_instruction_general('lidar_classifications_to_keep'),
                                      tile_index_file=lidar_dataset_info['tile_index_file'],
                                      chunk_size=self.get_processing_instructions('chunk_size'))
 

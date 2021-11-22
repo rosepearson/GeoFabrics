@@ -23,7 +23,7 @@
 		"general": {
 			"set_dem_shoreline": true,
 			"drop_offshore_lidar": false,
-			"keep_only_ground_lidar": true
+			"lidar_classifications_to_keep": [2]
 		}
 	}
 }

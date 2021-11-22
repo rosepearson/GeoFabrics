@@ -348,8 +348,6 @@ class DenseDemFromTiles(DenseDem):
         The radius to apply IDW over
     """
 
-    LAS_GROUND = 2  # As specified in the LAS/LAZ format
-
     def __init__(self, catchment_geometry: geometry.CatchmentGeometry, idw_power: int, idw_radius: float,
                  drop_offshore_lidar: bool = True, interpolate_missing_values: bool = True):
         """ Setup base DEM to add future tiles too """
@@ -461,12 +459,14 @@ class DenseDemFromTiles(DenseDem):
         return tile_index_extents, tile_index_name_column
 
     def _rasterise_tile(self, dim_x: numpy.ndarray, dim_y: numpy.ndarray, tile_points: numpy.ndarray,
-                        keep_only_ground_lidar: bool):
+                        lidar_classifications_to_keep: list):
         """ Rasterise all points within a tile. """
 
-        # filter out only ground points for idw ground calculations
-        if keep_only_ground_lidar:
-            tile_points = tile_points[tile_points['Classification'] == self.LAS_GROUND]
+        # keep only the selected classification points for idw calculations
+        classification_mask = numpy.zeros_like(tile_points['Classification'], dtype=bool)
+        for classification in lidar_classifications_to_keep:
+            classification_mask[tile_points['Classification'] == classification] = True
+        tile_points = tile_points[classification_mask]
 
         if len(tile_points) == 0:
             logging.warning("In DenseDem._rasterise_tile the tile has no data and is being ignored.")
@@ -488,7 +488,7 @@ class DenseDemFromTiles(DenseDem):
 
     def add_lidar(self, lidar_files: typing.List[typing.Union[str, pathlib.Path]],
                   tile_index_file: typing.Union[str, pathlib.Path], chunk_size: int,
-                  source_crs: dict = None, keep_only_ground_lidar: bool = True, drop_offshore_lidar: bool = True):
+                  lidar_classifications_to_keep: list, source_crs: dict = None, drop_offshore_lidar: bool = True):
         """ Read in all LiDAR files and use to create a dense DEM.
 
             Parameters
@@ -499,10 +499,11 @@ class DenseDemFromTiles(DenseDem):
                 (i.e. missing vertical CRS) and need to be overwritten.
             drop_offshore_lidar
                 If True, trim any LiDAR values that are offshore as specified by the catchment_geometry
-            keep_only_ground_lidar
-                If True, only keep LiDAR values that are coded '2' of ground
+            lidar_classifications_to_keep
+                A list of LiDAR classifications to keep - '2' for ground, '9' for water. See
+                https://www.asprs.org/wp-content/uploads/2010/12/LAS_1_4_r13.pdf for standard list
             tile_index_file
-                Must exist if there are many LiDAR files. This is used to determine chunking. 
+                Must exist if there are many LiDAR files. This is used to determine chunking.
         """
 
         if source_crs is not None:
@@ -519,7 +520,8 @@ class DenseDemFromTiles(DenseDem):
         # Determine if adding a single file or tiles
         if len(lidar_files) == 1:  # If one file it's ok if there is no tile_index
             self._dense_dem = self._add_file(lidar_file=lidar_files[0], region_to_rasterise=region_to_rasterise,
-                                             source_crs=source_crs, keep_only_ground_lidar=keep_only_ground_lidar)
+                                             source_crs=source_crs,
+                                             lidar_classifications_to_keep=lidar_classifications_to_keep)
         else:
             assert tile_index_file is not None, "A tile index file is required for multiple tile files added together"
             assert chunk_size > 0 and chunk_size is not None, "The chunk size should be set when reading in tiled LiDAR " \
@@ -527,7 +529,7 @@ class DenseDemFromTiles(DenseDem):
                 " The tile extents with chunk size by extents / resolution. "
             self._dense_dem = self._add_tiled_lidar_chunked(lidar_files=lidar_files, tile_index_file=tile_index_file,
                                                             source_crs=source_crs,
-                                                            keep_only_ground_lidar=keep_only_ground_lidar,
+                                                            lidar_classifications_to_keep=lidar_classifications_to_keep,
                                                             region_to_rasterise=region_to_rasterise,
                                                             chunk_size=chunk_size)
 
@@ -542,7 +544,7 @@ class DenseDemFromTiles(DenseDem):
 
     def _add_tiled_lidar_chunked(self, lidar_files: typing.List[typing.Union[str, pathlib.Path]],
                                  tile_index_file: typing.Union[str, pathlib.Path], source_crs: dict,
-                                 keep_only_ground_lidar: bool, region_to_rasterise: geopandas.GeoDataFrame,
+                                 lidar_classifications_to_keep: list, region_to_rasterise: geopandas.GeoDataFrame,
                                  chunk_size: int) -> xarray.DataArray:
         """ Create a dense DEM from a set of tiled LiDAR files. Read these in over non-overlapping chunks and
         then combine """
@@ -578,8 +580,7 @@ class DenseDemFromTiles(DenseDem):
                     delayed_rasterise_chunk(dim_x=dim_x,
                                             dim_y=dim_y,
                                             tile_points=chunk_points,
-                                            keep_only_ground_lidar=keep_only_ground_lidar,
-                                            ground_code=self.LAS_GROUND,
+                                            lidar_classifications_to_keep=lidar_classifications_to_keep,
                                             idw_radius=self.idw_radius,
                                             idw_power=self.idw_power,
                                             raster_type=self.raster_type),
@@ -602,7 +603,7 @@ class DenseDemFromTiles(DenseDem):
         return dense_dem
 
     def _add_file(self, lidar_file: typing.Union[str, pathlib.Path], region_to_rasterise: geopandas.GeoDataFrame,
-                  source_crs: dict = None, keep_only_ground_lidar: bool = True) -> xarray.DataArray:
+                  lidar_classifications_to_keep: list, source_crs: dict = None) -> xarray.DataArray:
         """ Create the dense DEM region from a single LiDAR file. """
 
         logging.info(f"On LiDAR tile 1 of 1: {lidar_file}")
@@ -620,7 +621,7 @@ class DenseDemFromTiles(DenseDem):
         dim_y = dim_y[0]
 
         raster_values = self._rasterise_tile(dim_x=dim_x, dim_y=dim_y, tile_points=tile_array,
-                                             keep_only_ground_lidar=keep_only_ground_lidar)
+                                             lidar_classifications_to_keep=lidar_classifications_to_keep)
 
         # Create xarray
         dense_dem = xarray.DataArray(raster_values.reshape((1, len(dim_y), len(dim_x))),
@@ -764,7 +765,7 @@ def load_tiles_in_chunk(dim_x: numpy.ndarray, dim_y: numpy.ndarray, tile_index_e
 
 
 def rasterise_chunk(dim_x: numpy.ndarray, dim_y: numpy.ndarray, tile_points: numpy.ndarray, raster_type,
-                    keep_only_ground_lidar: bool, ground_code: int, idw_radius: float, idw_power: int):
+                    lidar_classifications_to_keep: list, idw_radius: float, idw_power: int):
     """ Rasterise all points within a chunk. """
 
     # Get the indicies overwhich to perform IDW
@@ -777,9 +778,11 @@ def rasterise_chunk(dim_x: numpy.ndarray, dim_y: numpy.ndarray, tile_points: num
         logging.warning("In dem.rasterise_chunk the latest chunk has no data and is being ignored.")
         return grid_z
 
-    # use only ground points for idw ground calculations - note the code works even if for empty input tile_points
-    if keep_only_ground_lidar:
-        tile_points = tile_points[tile_points['Classification'] == ground_code]
+    # keep only the selected classification points for idw calculations
+    classification_mask = numpy.zeros_like(tile_points['Classification'], dtype=bool)
+    for classification in lidar_classifications_to_keep:
+        classification_mask[tile_points['Classification'] == classification] = True
+    tile_points = tile_points[classification_mask]
 
     # Check again - if no points return an array of NaN
     if len(tile_points) == 0:
