@@ -37,7 +37,7 @@
 		"general": {
 			"drop_offshore_lidar": true,
 			"bathymetry_contours_z_label": "valdco",
-			"keep_only_ground_lidar": false
+			"lidar_classifications_to_keep": [1, 2, 3, 4, 5, 6, 7, 9, 18]
 		}
 	}
 }
