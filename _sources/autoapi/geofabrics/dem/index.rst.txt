@@ -134,14 +134,15 @@ Attributes
    :param idw_power: The power to apply when performing IDW
    :param idw_radius: The radius to apply IDW over
 
-   .. py:method:: add_lidar(self, lidar_files, tile_index_file, chunk_size, source_crs = None, keep_only_ground_lidar = True, drop_offshore_lidar = True)
+   .. py:method:: add_lidar(self, lidar_files, tile_index_file, chunk_size, lidar_classifications_to_keep, source_crs = None, drop_offshore_lidar = True)
 
       Read in all LiDAR files and use to create a dense DEM.
 
       :param source_crs: Specify if the CRS encoded in the LiDAR files are incorrect/only partially defined
                          (i.e. missing vertical CRS) and need to be overwritten.
       :param drop_offshore_lidar: If True, trim any LiDAR values that are offshore as specified by the catchment_geometry
-      :param keep_only_ground_lidar: If True, only keep LiDAR values that are coded '2' of ground
+      :param lidar_classifications_to_keep: A list of LiDAR classifications to keep - '2' for ground, '9' for water. See
+                                            https://www.asprs.org/wp-content/uploads/2010/12/LAS_1_4_r13.pdf for standard list
       :param tile_index_file: Must exist if there are many LiDAR files. This is used to determine chunking.
 
 
@@ -168,7 +169,7 @@ Attributes
 
 
 
-.. py:function:: rasterise_chunk(dim_x, dim_y, tile_points, raster_type, keep_only_ground_lidar, ground_code, idw_radius, idw_power)
+.. py:function:: rasterise_chunk(dim_x, dim_y, tile_points, raster_type, lidar_classifications_to_keep, idw_radius, idw_power)
 
    Rasterise all points within a chunk.
 
