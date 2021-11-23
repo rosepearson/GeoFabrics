@@ -483,3 +483,46 @@ class OffshoreDemGenerator(BaseProcessor):
 
         # fill combined dem - save results
         self.dense_dem.dem.to_netcdf(self.get_instruction_path('result_dem'))
+
+
+class RiverbathymetryGenerator():
+    """ RiverbathymetryGenerator executes a pipeline to estimate river
+    bathymetry depths from flows, slopes, friction and widths along a main
+    channel. This is dones by first creating a hydrologically conditioned DEM
+    of the channel. A json_instructions file defines the pipeline logic and
+    data.
+
+    Attributes:
+        channel_polyline  The main channel along which to estimate depth. This
+            is a polyline.
+        channel_dem  The DEM generated along the main channel. This is a
+            raster.
+        aligned_channel_polyline  The main channel after its alignment has been
+            updated based on the DEM. Width and slope are estimated on this.
+        transects  Transect polylines perpindicular to the aligned channel with
+            samples of the DEM values
+    """
+
+    def __init__(self, json_instructions: json):
+
+        self.channel_polyline = None
+        self.channel_dem = None
+        self.aligned_channel_plyline = None
+        self.transects = None
+
+    def run(self):
+        """ This method extracts a main channel then executes the DemGeneration
+        pipeline to produce a DEM before sampling this to extimate width, slope
+        and eventually depth. """
+
+        # Identify the main channel and create a polygon catchment
+
+        # Generate the DEM
+
+        # Sample the DEM
+
+        # Estimate slope from the samples
+
+        # Estimate the width from the samples
+
+        # Regularise and save out the estimates
