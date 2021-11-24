@@ -506,6 +506,8 @@ class RiverBathymetryGenerator():
 
     def __init__(self, json_instructions: json):
 
+        self.instructions = json_instructions
+
         self.channel_polyline = None
         self.channel_dem = None
         self.aligned_channel_plyline = None
@@ -526,8 +528,9 @@ class RiverBathymetryGenerator():
         channel_corridor_radius = self.instructions['instructions']['channel_bathymetry']['channel_corridor_radius']
 
         # Identify the main channel and create a polygon catchment
-        channel, = bathymetry_estimation.get_up_stream_reaches(rec_network=rec,
-                                                               reach_id=channel_rec_id)
+        channel, iteration = bathymetry_estimation.get_up_stream_reaches(
+            rec_network=rec,
+            reach_id=channel_rec_id)
         channel, channel_polygon = bathymetry_estimation.threshold_channel(
             reaches=channel,
             area_threshold=area_threshold,
@@ -535,6 +538,7 @@ class RiverBathymetryGenerator():
         channel_polygon.to_file(self.instructions['instructions']['data_paths']['catchment_boundary'])
 
         # Generate the DEM
+        print(channel)
 
         # Sample the DEM
 
