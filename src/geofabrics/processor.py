@@ -532,7 +532,7 @@ class RiverBathymetryGenerator():
             reaches=channel,
             area_threshold=area_threshold,
             channel_corridor_radius=channel_corridor_radius)
-        channel_polygon.to_file((self.instructions['instructions']['data_paths']['catchment_boundary'])
+        channel_polygon.to_file(self.instructions['instructions']['data_paths']['catchment_boundary'])
 
         # Generate the DEM
 
