@@ -11,6 +11,7 @@ import abc
 import logging
 import distributed
 from . import geometry
+from . import bathymetry_estimation
 import geoapis.lidar
 import geoapis.vector
 from . import dem
@@ -485,7 +486,7 @@ class OffshoreDemGenerator(BaseProcessor):
         self.dense_dem.dem.to_netcdf(self.get_instruction_path('result_dem'))
 
 
-class RiverbathymetryGenerator():
+class RiverBathymetryGenerator():
     """ RiverbathymetryGenerator executes a pipeline to estimate river
     bathymetry depths from flows, slopes, friction and widths along a main
     channel. This is dones by first creating a hydrologically conditioned DEM
@@ -515,7 +516,23 @@ class RiverbathymetryGenerator():
         pipeline to produce a DEM before sampling this to extimate width, slope
         and eventually depth. """
 
+        # Function to trace out upstream catchment
+        import geopandas
+
+        # Read in rec file
+        rec = geopandas.read_file(self.instructions['instructions']['channel_bathymetry']['rec_file'])
+        channel_rec_id = self.instructions['instructions']['channel_bathymetry']['channel_rec_id']
+        area_threshold = self.instructions['instructions']['channel_bathymetry']['channel_area_threshold']
+        channel_corridor_radius = self.instructions['instructions']['channel_bathymetry']['channel_corridor_radius']
+
         # Identify the main channel and create a polygon catchment
+        channel, = bathymetry_estimation.get_up_stream_reaches(rec_network=rec,
+                                                               reach_id=channel_rec_id)
+        channel, channel_polygon = bathymetry_estimation.threshold_channel(
+            reaches=channel,
+            area_threshold=area_threshold,
+            channel_corridor_radius=channel_corridor_radius)
+        channel_polygon.to_file((self.instructions['instructions']['data_paths']['catchment_boundary'])
 
         # Generate the DEM
 
