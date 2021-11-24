@@ -16,7 +16,8 @@
 		"data_paths": {
 			"local_cache": "tests/test_river_bathymetry/data",
 			"catchment_boundary": "tests/test_river_bathymetry/data/channel_catchment_100000000.geojson",
-			"result_dem": "tests/test_river_bathymetry/data/channel_dem_100000000.nc"
+			"result_dem": "tests/test_river_bathymetry/data/channel_dem_100000000.nc",
+			"benchmark_dem": "tests/test_river_bathymetry/data/benchmark_dem.nc"
 		},
 		"apis": {
 			"open_topography": {
@@ -39,7 +40,7 @@
 			"bathymetry_contours_z_label": "valdco",
 			"drop_offshore_lidar": true,
 			"keep_only_ground_lidar": [2, 9],
-			"interpolate_missing_values": true
+			"interpolate_missing_values": false
 		},
 		"channel_bathymetry": {
 			"channel_corridor_radius": 150,

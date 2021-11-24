@@ -508,7 +508,6 @@ class RiverBathymetryGenerator():
 
         self.instructions = json_instructions
 
-        self.channel_polyline = None
         self.channel_dem = None
         self.aligned_channel_plyline = None
         self.transects = None
@@ -538,9 +537,12 @@ class RiverBathymetryGenerator():
         channel_polygon.to_file(self.instructions['instructions']['data_paths']['catchment_boundary'])
 
         # Generate the DEM
-        print(channel)
+        runner = DemGenerator(self.instructions)
+        runner.run()
+        self.channel_dem = runner.dense_dem.dem
 
         # Sample the DEM
+        print(channel)
 
         # Estimate slope from the samples
 

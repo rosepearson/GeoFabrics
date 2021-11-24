@@ -101,6 +101,29 @@ class ProcessorRiverBathymetryTest(unittest.TestCase):
                          f" {self.CATCHMENT['length']},but is "
                          f"{catchment.length.sum()}")
 
+    @pytest.mark.skipif(sys.platform != 'win32', reason="Windows test - this is strict")
+    def test_dem_windows(self):
+        """ A basic comparison between the generated and benchmark DEM """
+
+        # load in benchmark DEM
+        with rioxarray.rioxarray.open_rasterio(self.instructions['instructions']['data_paths']['benchmark_dem'],
+                                               masked=True) as benchmark_dem:
+            benchmark_dem.load()
+
+        # load in test DEM
+        with rioxarray.rioxarray.open_rasterio(self.instructions['instructions']['data_paths']['result_dem'],
+                                               masked=True) as test_dem:
+            test_dem.load()
+
+        # compare the generated and benchmark DEMs
+        diff_array = test_dem.data[~numpy.isnan(test_dem.data)]-benchmark_dem.data[~numpy.isnan(benchmark_dem.data)]
+        logging.info(f"DEM array diff is: {diff_array[diff_array != 0]}")
+        numpy.testing.assert_array_almost_equal(test_dem.data[~numpy.isnan(test_dem.data)],
+                                                benchmark_dem.data[~numpy.isnan(benchmark_dem.data)],
+                                                err_msg="The generated result_dem has different data from the " +
+                                                "benchmark_dem")
+
+
     '''def test_transects(self):
         """ A test to see if all expected dataset files are downloaded """
 
@@ -126,28 +149,6 @@ class ProcessorRiverBathymetryTest(unittest.TestCase):
                                    downloaded_file in downloaded_files]), "There is a miss-match between the size" +
                         f" of the downloaded files {[file.stat().st_size for file in downloaded_files]}" +
                         f" and the expected sizes of {self.FILE_SIZES.values()}")
-
-    @pytest.mark.skipif(sys.platform != 'win32', reason="Windows test - this is strict")
-    def test_dem_windows(self):
-        """ A basic comparison between the generated and benchmark DEM """
-
-        # load in benchmark DEM
-        with rioxarray.rioxarray.open_rasterio(self.instructions['instructions']['data_paths']['benchmark_dem'],
-                                               masked=True) as benchmark_dem:
-            benchmark_dem.load()
-
-        # load in test DEM
-        with rioxarray.rioxarray.open_rasterio(self.instructions['instructions']['data_paths']['result_dem'],
-                                               masked=True) as test_dem:
-            test_dem.load()
-
-        # compare the generated and benchmark DEMs
-        diff_array = test_dem.data[~numpy.isnan(test_dem.data)]-benchmark_dem.data[~numpy.isnan(benchmark_dem.data)]
-        logging.info(f"DEM array diff is: {diff_array[diff_array != 0]}")
-        numpy.testing.assert_array_almost_equal(test_dem.data[~numpy.isnan(test_dem.data)],
-                                                benchmark_dem.data[~numpy.isnan(benchmark_dem.data)],
-                                                err_msg="The generated result_dem has different data from the " +
-                                                "benchmark_dem")
 
     @pytest.mark.skipif(sys.platform != 'linux', reason="Linux test - this is less strict")
     def test_dem_linux(self):
