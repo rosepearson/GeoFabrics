@@ -508,6 +508,7 @@ class RiverBathymetryGenerator():
 
         self.instructions = json_instructions
 
+        self.channel_bathymetry = None
         self.channel_dem = None
         self.aligned_channel_plyline = None
         self.transects = None
@@ -544,7 +545,18 @@ class RiverBathymetryGenerator():
         runner.run()
         self.channel_dem = runner.dense_dem.dem
 
-        # Create transects
+        # Create channel bathymetry estimator
+        self.channel_bathymetry = bathymetry_estimation.ChannelBathymetry(
+            channel=channel,
+            dem=runner.dense_dem.dem,
+            transect_spacing=transect_spacing,
+            resolution=resolution,
+            transect_radius=channel_corridor_radius)
+
+        # Align channel
+        self.channel_bathymetry.align_channel(bank_threshold)
+
+        '''# Create transects
         sampled_channel = bathymetry_estimation.subsample_channels(channel, transect_spacing)
 
         transects = bathymetry_estimation.transects_along_reaches_at_midpoint(
@@ -594,7 +606,7 @@ class RiverBathymetryGenerator():
         transect_wdith_df.plot(color='red', linewidth=2, ax=ax)
         ax.set(title="Raster Layer with Vector Overlay")
         ax.axis('off')
-        matplotlib.pyplot.show()
+        matplotlib.pyplot.show()'''
 
         # Sample the DEM
         print(channel)
