@@ -8,7 +8,6 @@ Created on Wed Jun 30 11:11:25 2021
 import unittest
 import json
 import pathlib
-import shapely
 import geopandas
 import shutil
 import numpy

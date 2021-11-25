@@ -39,7 +39,7 @@
 			"set_dem_shoreline": true,
 			"bathymetry_contours_z_label": "valdco",
 			"drop_offshore_lidar": true,
-			"keep_only_ground_lidar": [2, 9],
+			"lidar_classifications_to_keep": [2, 9],
 			"interpolate_missing_values": false
 		},
 		"channel_bathymetry": {
