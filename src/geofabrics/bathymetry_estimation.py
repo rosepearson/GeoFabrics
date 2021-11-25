@@ -407,10 +407,10 @@ class ChannelBathymetry:
 
                 # work forward checking height
                 if transect_samples['elevations'][j][i] - transects.loc[j]['min_z'] > threshold:
-                    stop_i = i
+                    stop_i = len(transect_samples['elevations'][j]) - i - 1
                 # work backward checking height
                 if transect_samples['elevations'][j][-i] - transects.loc[j]['min_z'] > threshold:
-                    start_i = len(transect_samples['elevations'][j]) - i - 1
+                    start_i = i
 
             widths['first_widths'].append((centre_index-start_i)*resolution)
             widths['last_widths'].append((stop_i-centre_index)*resolution)
