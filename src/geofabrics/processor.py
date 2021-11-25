@@ -525,6 +525,9 @@ class RiverBathymetryGenerator():
         channel_rec_id = self.instructions['instructions']['channel_bathymetry']['channel_rec_id']
         area_threshold = self.instructions['instructions']['channel_bathymetry']['channel_area_threshold']
         channel_corridor_radius = self.instructions['instructions']['channel_bathymetry']['channel_corridor_radius']
+        resolution = self.instructions['instructions']['output']['grid_params']['resolution']
+        transect_spacing = 10
+        bank_threshold = 1
 
         # Identify the main channel and create a polygon catchment
         channel, iteration = bathymetry_estimation.get_up_stream_reaches(
@@ -540,6 +543,58 @@ class RiverBathymetryGenerator():
         runner = DemGenerator(self.instructions)
         runner.run()
         self.channel_dem = runner.dense_dem.dem
+
+        # Create transects
+        sampled_channel = bathymetry_estimation.subsample_channels(channel, transect_spacing)
+
+        transects = bathymetry_estimation.transects_along_reaches_at_midpoint(
+            channel_polylines=sampled_channel,
+            transect_radius=channel_corridor_radius)
+
+        # Sample DEM
+        transect_samples = bathymetry_estimation.sample_from_transects(
+            transects=transects,
+            dem=self.channel_dem,
+            resolution=resolution)
+
+        # Estimate width and slope
+        transects['min_z'] = transect_samples['min_z']
+        transect_widths = bathymetry_estimation.transect_widths_by_threshold(
+            transects=transects,
+            transect_samples=transect_samples,
+            threshold=bank_threshold,
+            resolution=resolution)
+
+        # set widths to plot
+        def apply_bank_width(midpoint, nx, ny, first_widths, last_widths):
+            import shapely
+            return shapely.geometry.LineString([
+                [midpoint.x - first_widths * nx,
+                 midpoint.y - first_widths * ny],
+                midpoint,
+                [midpoint.x + last_widths * nx,
+                 midpoint.y + last_widths * ny]])
+        transects['width'] = transect_widths['widths']
+        transects['first_widths'] = transect_widths['first_widths']
+        transects['last_widths'] = transect_widths['last_widths']
+        transects['width_line'] = transects.apply(lambda x:
+                                                  apply_bank_width(x['midpoint'],
+                                                                   x['nx'],
+                                                                   x['ny'],
+                                                                   x['first_widths'],
+                                                                   x['last_widths']), axis=1)
+        transect_wdith_df = transects.set_geometry('width_line')
+
+        # plot
+        import matplotlib
+        f, ax = matplotlib.pyplot.subplots(figsize=(11, 4))
+        self.channel_dem.plot(ax=ax)
+        channel.plot(color='green', linewidth=3, ax=ax)
+        transects.plot(color='blue', linewidth=1, ax=ax)
+        transect_wdith_df.plot(color='red', linewidth=2, ax=ax)
+        ax.set(title="Raster Layer with Vector Overlay")
+        ax.axis('off')
+        matplotlib.pyplot.show()
 
         # Sample the DEM
         print(channel)
