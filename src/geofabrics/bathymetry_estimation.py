@@ -306,14 +306,8 @@ class ChannelBathymetry:
         for index, row in transects.iterrows():
 
             # Calculate xx, and yy points to sample at
-            if row['nx'] == 0:
-                xx = row.midpoint.x + numpy.zeros(number_of_samples)
-            else:
-                xx = row.midpoint.x + sample_index_array * resolution * row['nx']
-            if row['ny'] == 0:
-                yy = row.midpoint.y + numpy.zeros(number_of_samples)
-            else:
-                yy = row.midpoint.y + sample_index_array * resolution * row['ny']
+            xx = row.midpoint.x + sample_index_array * resolution * row['nx']
+            yy = row.midpoint.y + sample_index_array * resolution * row['ny']
 
             # Sample the elevations at along the transect
             xy_points = numpy.concatenate([[xx], [yy]], axis=0).transpose()
