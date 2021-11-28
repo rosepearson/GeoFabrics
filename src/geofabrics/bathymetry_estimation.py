@@ -110,9 +110,11 @@ class ChannelBathymetry:
 
         sampled_polylines = []
         for index, row in channel_polylines.iterrows():
+            number_segment_samples = int(numpy.ceil(row.geometry.length / sampling_resolution))
+            segment_resolution = row.geometry.length / number_segment_samples
             sampled_polylines.append(shapely.geometry.LineString(
-                [row.geometry.interpolate(i * sampling_resolution) for i in
-                 range(int(numpy.ceil(row.geometry.length / sampling_resolution)))]))
+                [row.geometry.interpolate(i * segment_resolution) for i in
+                 range(number_segment_samples + 1)]))
 
         sampled_channel_polylines = channel_polylines.set_geometry(sampled_polylines)
         return sampled_channel_polylines
