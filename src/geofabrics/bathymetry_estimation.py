@@ -289,7 +289,7 @@ class ChannelBathymetry:
 
         # The number of transect samples - ensure odd - defined from the first
         number_of_samples = int(numpy.floor(transects.iloc[0].geometry.length
-                                            / resolution) * 2 - 1)
+                                            / resolution) - 1)
         sample_index_array = numpy.arange(-numpy.floor(number_of_samples / 2),
                                           numpy.floor(number_of_samples / 2) + 1,
                                           1)
