@@ -475,13 +475,23 @@ class ChannelBathymetry:
             return shapely.geometry.Point(
                 [midpoint.x + (last_widths - first_widths) / 2 * resolution * nx,
                  midpoint.y + (last_widths - first_widths) / 2 * resolution * ny])
-        transects['aligned_centre_point'] = transects.apply(lambda x:
-                                                  estimate_centrepoint(x['midpoint'],
-                                                                       x['nx'],
-                                                                       x['ny'],
-                                                                       x['first_widths'],
-                                                                       x['last_widths'],
-                                                                       self.resolution), axis=1)
+        transects['aligned_centre_point'] = transects.apply(
+            lambda row: estimate_centrepoint(row['midpoint'],
+                                             row['nx'],
+                                             row['ny'],
+                                             row['first_widths'],
+                                             row['last_widths'],
+                                             self.resolution), axis=1)
+
+        # Create channel polygon with erosion and dilation to reduce sensitivity to poor width measurements
+        channel_polygon = []
+        for index, row in transects.iterrows():
+            channel_polygon.append([row['midpoint'].x - row['first_widths'] * self.resolution * row['nx'],
+                                    row['midpoint'].y - row['first_widths'] * self.resolution * row['ny']])
+            channel_polygon.insert(0, [row['midpoint'].x + row['last_widths'] * self.resolution * row['nx'],
+                                       row['midpoint'].y + row['last_widths'] * self.resolution * row['ny']])
+        channel_polygon = shapely.geometry.Polygon(channel_polygon)
+        channel_polygon = channel_polygon.buffer(-self.transect_spacing * 2).buffer(self.transect_spacing * 3)
         transects['width_line'] = transects.apply(lambda x:
                                                   apply_bank_width(x['midpoint'],
                                                                    x['nx'],
