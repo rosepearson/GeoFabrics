@@ -425,6 +425,37 @@ class ChannelBathymetry:
 
         return widths
 
+    def _channel_polygon_from_widths(self, transects: geopandas.GeoDataFrame,
+                                     erosion_factor: float = -2,
+                                     dilation_factor: float = 3):
+        """ Create a polygon representing the channel from transect width
+        measurements. Use erosion and dilation to reduce the impact of poor
+        width estimates.
+
+        Parameters
+        ----------
+
+        transects
+            The transects with geometry defined as polylines with width
+            estimates.
+        erosion_factor
+            The number of times the transect spacing to erode the polygon by.
+        dilation_factor
+            The number of times the transect spacing to dilate the polygon by.
+        """
+
+        channel_polygon = []
+        for index, row in transects.iterrows():
+            channel_polygon.append([row['midpoint'].x - row['first_widths'] * self.resolution * row['nx'],
+                                    row['midpoint'].y - row['first_widths'] * self.resolution * row['ny']])
+            channel_polygon.insert(0, [row['midpoint'].x + row['last_widths'] * self.resolution * row['nx'],
+                                       row['midpoint'].y + row['last_widths'] * self.resolution * row['ny']])
+        channel_polygon = shapely.geometry.Polygon(channel_polygon)
+        channel_polygon = channel_polygon.buffer(
+            self.transect_spacing * erosion_factor).buffer(self.transect_spacing * dilation_factor)
+
+        return channel_polygon
+
     def align_channel(self, threshold: float):
         """ Estimate the channel centre from transect samples
 
@@ -458,10 +489,10 @@ class ChannelBathymetry:
         # Add water level information to the transects
         transects['min_z'] = transect_samples['min_z']
 
-        # bank estimates - outside in
+        # Bank estimates - outside in
         widths = self.transect_widths_by_threshold_inwards(transects=transects,
                                                            transect_samples=transect_samples,
-                                                           threshold = threshold,
+                                                           threshold=threshold,
                                                            resolution=self.resolution)
 
         # set widths
@@ -484,14 +515,7 @@ class ChannelBathymetry:
                                              self.resolution), axis=1)
 
         # Create channel polygon with erosion and dilation to reduce sensitivity to poor width measurements
-        channel_polygon = []
-        for index, row in transects.iterrows():
-            channel_polygon.append([row['midpoint'].x - row['first_widths'] * self.resolution * row['nx'],
-                                    row['midpoint'].y - row['first_widths'] * self.resolution * row['ny']])
-            channel_polygon.insert(0, [row['midpoint'].x + row['last_widths'] * self.resolution * row['nx'],
-                                       row['midpoint'].y + row['last_widths'] * self.resolution * row['ny']])
-        channel_polygon = shapely.geometry.Polygon(channel_polygon)
-        channel_polygon = channel_polygon.buffer(-self.transect_spacing * 2).buffer(self.transect_spacing * 3)
+        channel_polygon = self._channel_polygon_from_widths(transects)
         transects['width_line'] = transects.apply(lambda x:
                                                   apply_bank_width(x['midpoint'],
                                                                    x['nx'],
