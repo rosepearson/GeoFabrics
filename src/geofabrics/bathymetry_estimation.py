@@ -406,8 +406,8 @@ class ChannelBathymetry:
                 # work forward checking height
                 elevation_over_minimum = transect_samples['elevations'][j][i] - transects.loc[j]['min_z']
                 if elevation_over_minimum > threshold:
-                    stop_i = i
-                elif not numpy.isnan(stop_i) and not numpy.isnan(elevation_over_minimum):
+                    start_i = i
+                elif not numpy.isnan(start_i) and not numpy.isnan(elevation_over_minimum):
                     break
 
             for i in numpy.arange(number_of_samples - 1, centre_index - 1, -1):
@@ -415,8 +415,8 @@ class ChannelBathymetry:
                 # work backward checking height
                 elevation_over_minimum = transect_samples['elevations'][j][i] - transects.loc[j]['min_z']
                 if elevation_over_minimum > threshold:
-                    start_i = i
-                elif not numpy.isnan(start_i) and not numpy.isnan(elevation_over_minimum):
+                    stop_i = i
+                elif not numpy.isnan(stop_i) and not numpy.isnan(elevation_over_minimum):
                     break
 
             widths['first_widths'].append((centre_index - start_i) * resolution)
