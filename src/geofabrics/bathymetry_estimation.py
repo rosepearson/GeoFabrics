@@ -88,7 +88,19 @@ class ChannelBathymetry:
                  transect_spacing: float,
                  resolution: float,
                  transect_radius: float):
-        """ Load in the reference DEM, clip and extract points """
+        """ Load in the reference DEM, clip and extract points transects
+
+        channel
+            The channel to estimate bathymetry along defined as a polyline.
+        dem
+            The DEM along the channel
+        transect_samples
+            The sampled values along the transects.
+        threshold
+            The height above the water level to detect as a bank.
+        resolution
+            The resolution to sample at.
+        """
 
         self.channel = channel
         self.dem = dem
