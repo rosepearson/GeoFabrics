@@ -464,18 +464,24 @@ class ChannelBathymetry:
                                                            threshold = threshold,
                                                            resolution=self.resolution)
 
-        # set widths to plot
-        def apply_bank_width(midpoint, nx, ny, first_widths, last_widths):
-            import shapely
-            return shapely.geometry.LineString([
-                [midpoint.x - first_widths * nx,
-                 midpoint.y - first_widths * ny],
-                midpoint,
-                [midpoint.x + last_widths * nx,
-                 midpoint.y + last_widths * ny]])
+        # set widths
         transects['width'] = widths['widths']
         transects['first_widths'] = widths['first_widths']
         transects['last_widths'] = widths['last_widths']
+
+        # Estimate centreline from width centres
+        def estimate_centrepoint(midpoint, nx, ny, first_widths, last_widths, resolution):
+            import shapely
+            return shapely.geometry.Point(
+                [midpoint.x + (last_widths - first_widths) / 2 * resolution * nx,
+                 midpoint.y + (last_widths - first_widths) / 2 * resolution * ny])
+        transects['aligned_centre_point'] = transects.apply(lambda x:
+                                                  estimate_centrepoint(x['midpoint'],
+                                                                       x['nx'],
+                                                                       x['ny'],
+                                                                       x['first_widths'],
+                                                                       x['last_widths'],
+                                                                       self.resolution), axis=1)
         transects['width_line'] = transects.apply(lambda x:
                                                   apply_bank_width(x['midpoint'],
                                                                    x['nx'],
