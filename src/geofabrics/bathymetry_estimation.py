@@ -97,7 +97,8 @@ class ChannelBathymetry:
         self.transect_radius = transect_radius
 
     def subsample_channels(self, channel_polylines: geopandas.GeoDataFrame, sampling_resolution: float):
-        """ Subsample along all polylines at the sampling resolution.
+        """ Subsample along all polylines at the sampling resolution. Note
+        subsample in the upstream direction instead of the downstream direction.
 
         Parameters
         ----------
@@ -114,7 +115,7 @@ class ChannelBathymetry:
             segment_resolution = row.geometry.length / number_segment_samples
             sampled_polylines.append(shapely.geometry.LineString(
                 [row.geometry.interpolate(i * segment_resolution) for i in
-                 range(number_segment_samples + 1)]))
+                 numpy.arange(number_segment_samples, -1, -1)]))
 
         sampled_channel_polylines = channel_polylines.set_geometry(sampled_polylines)
         return sampled_channel_polylines
