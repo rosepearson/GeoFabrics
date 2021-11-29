@@ -144,6 +144,7 @@ class ChannelBathymetry:
     def transects_along_reaches_at_node(self, channel_polylines: geopandas.GeoDataFrame,
                                         transect_radius: float):
         """ Calculate transects along a channel at the midpoint of each segment.
+        Segments in Rec2 are defined upstream down 
 
         Parameters
         ----------
@@ -168,9 +169,9 @@ class ChannelBathymetry:
             for i in range(len(x_array)):
 
                 # Recorde the NZ segment
-                transects_dict['nzsegment'] = nzsegment
+                transects_dict['nzsegment'].append(nzsegment)
 
-                # calculate midpoint
+                # define transect midpoint - point on channel reach
                 midpoint = shapely.geometry.Point([x_array[i], y_array[i]])
 
                 # caclulate slope along segment
@@ -392,25 +393,34 @@ class ChannelBathymetry:
         widths = {'widths': [], 'first_widths': [], 'last_widths': []}
 
         for j in range(len(transect_samples['elevations'])):
-
-            assert numpy.floor(len(transect_samples['elevations'][j]) / 2) \
-                != len(transect_samples['elevations'][j])/2, "Expect an odd length"
+            number_of_samples = len(transect_samples['elevations'][j])
+            assert numpy.floor(number_of_samples / 2) \
+                != number_of_samples / 2, "Expect an odd length"
             start_i = numpy.nan
             stop_i = numpy.nan
-            centre_index = int(numpy.floor(len(transect_samples['elevations'][j])/2))
+            centre_index = int(numpy.floor(number_of_samples / 2))
 
-            for i in numpy.arange(0, centre_index, 1):
+            for i in numpy.arange(0, centre_index + 1, 1):
 
                 # work forward checking height
-                if transect_samples['elevations'][j][i] - transects.loc[j]['min_z'] > threshold:
+                elevation_over_minimum = transect_samples['elevations'][j][i] - transects.loc[j]['min_z']
+                if elevation_over_minimum > threshold:
                     stop_i = i
-                # work backward checking height
-                if transect_samples['elevations'][j][-i] - transects.loc[j]['min_z'] > threshold:
-                    start_i = len(transect_samples['elevations'][j]) - i - 1
+                elif not numpy.isnan(stop_i) and not numpy.isnan(elevation_over_minimum):
+                    break
 
-            widths['first_widths'].append((centre_index-start_i)*resolution)
-            widths['last_widths'].append((stop_i-centre_index)*resolution)
-            widths['widths'].append((stop_i - start_i)*resolution)
+            for i in numpy.arange(number_of_samples - 1, centre_index - 1, -1):
+
+                # work backward checking height
+                elevation_over_minimum = transect_samples['elevations'][j][i] - transects.loc[j]['min_z']
+                if elevation_over_minimum > threshold:
+                    start_i = i
+                elif not numpy.isnan(start_i) and not numpy.isnan(elevation_over_minimum):
+                    break
+
+            widths['first_widths'].append((centre_index - start_i) * resolution)
+            widths['last_widths'].append((stop_i - centre_index) * resolution)
+            widths['widths'].append((stop_i - start_i) * resolution)
 
         return widths
 
