@@ -334,7 +334,8 @@ class ChannelBathymetry:
                                               threshold: float,
                                               resolution: float):
         """ Estimate width based on a thresbold of bank height above water level.
-        Start in the centre and work out. Requires good alignment.
+        Start in the centre and work out. Doesn't detect banks until a value
+        less than the threshold has been detected.
 
         Parameters
         ----------
@@ -353,28 +354,36 @@ class ChannelBathymetry:
 
         for j in range(len(transect_samples['elevations'])):
 
-            assert numpy.floor(len(transect_samples['elevations'][j]) / 2) \
-                != len(transect_samples['elevations'][j])/2, "Expect an odd length"
+            number_of_samples = len(transect_samples['elevations'][j])
+            assert numpy.floor(number_of_samples / 2) \
+                != number_of_samples / 2, "Expect an odd length"
+
+            sub_threshold_detected = False
             start_i = numpy.nan
             stop_i = numpy.nan
-            centre_index = int(numpy.floor(len(transect_samples['elevations'][j])/2))
+            centre_index = int(numpy.floor(number_of_samples / 2))
 
-            for i in numpy.arange(0, centre_index, 1):
+            for i in numpy.arange(0, centre_index + 1, 1):
 
                 # work forward checking height
-                if transect_samples['elevations'][j][centre_index + i] \
-                    - transects.loc[j]['min_z'] > threshold \
-                        and numpy.isnan(stop_i):
+                elevation_over_minimum = transect_samples['elevations'][j][centre_index + i] - transects.loc[j]['min_z']
+                if sub_threshold_detected and numpy.isnan(stop_i) \
+                        and elevation_over_minimum > threshold:
                     stop_i = centre_index + i
-                # work backward checking height
-                if transect_samples['elevations'][j][centre_index - i] \
-                    - transects.loc[j]['min_z'] > threshold \
-                        and numpy.isnan(start_i):
-                    start_i = centre_index - i
+                elif elevation_over_minimum < threshold:
+                    sub_threshold_detected = True
 
-            widths['first_widths'].append((centre_index-start_i)*resolution)
-            widths['last_widths'].append((stop_i-centre_index)*resolution)
-            widths['widths'].append((stop_i - start_i)*resolution)
+                # work backward checking height
+                elevation_over_minimum = transect_samples['elevations'][j][centre_index - i] - transects.loc[j]['min_z']
+                if sub_threshold_detected and numpy.isnan(start_i) \
+                        and elevation_over_minimum > threshold:
+                    start_i = centre_index - i
+                elif elevation_over_minimum < threshold:
+                    sub_threshold_detected = True
+
+            widths['first_widths'].append((centre_index - start_i) * resolution)
+            widths['last_widths'].append((stop_i - centre_index) * resolution)
+            widths['widths'].append((stop_i - start_i) * resolution)
 
         return widths
 
