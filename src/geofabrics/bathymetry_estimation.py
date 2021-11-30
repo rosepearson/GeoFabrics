@@ -410,6 +410,7 @@ class ChannelBathymetry:
         widths = {'widths': [], 'first_widths': [], 'last_widths': []}
 
         for j in range(len(transect_samples['elevations'])):
+
             number_of_samples = len(transect_samples['elevations'][j])
             assert numpy.floor(number_of_samples / 2) \
                 != number_of_samples / 2, "Expect an odd length"
@@ -468,10 +469,11 @@ class ChannelBathymetry:
         # Create channel polygon
         channel_polygon = []
         for index, row in transects.iterrows():
-            channel_polygon.append([row['midpoint'].x - row['first_widths'] * self.resolution * row['nx'],
-                                    row['midpoint'].y - row['first_widths'] * self.resolution * row['ny']])
-            channel_polygon.insert(0, [row['midpoint'].x + row['last_widths'] * self.resolution * row['nx'],
-                                       row['midpoint'].y + row['last_widths'] * self.resolution * row['ny']])
+            if not numpy.isnan(row['first_widths']) and not numpy.isnan(row['last_widths']):
+                channel_polygon.append([row['midpoint'].x - row['first_widths'] * self.resolution * row['nx'],
+                                        row['midpoint'].y - row['first_widths'] * self.resolution * row['ny']])
+                channel_polygon.insert(0, [row['midpoint'].x + row['last_widths'] * self.resolution * row['nx'],
+                                           row['midpoint'].y + row['last_widths'] * self.resolution * row['ny']])
         channel_polygon = shapely.geometry.Polygon(channel_polygon)
         channel_polygon = channel_polygon.buffer(
             self.transect_spacing * dilation_factor).buffer(self.transect_spacing * erosion_factor)
@@ -479,7 +481,9 @@ class ChannelBathymetry:
         # Find intersections of channel_polygon and transects
         centre_points = []
         for index, row in transects.iloc[::simplification_factor, :].iterrows():
-            centre_points.append(channel_polygon.intersection(row.geometry).centroid)
+            centre_point = channel_polygon.intersection(row.geometry).centroid
+            if not centre_point.is_empty:
+                centre_points.append(centre_point)
 
         # Create a simplified polyline from these points
         aligned_channel = shapely.geometry.LineString(centre_points)
