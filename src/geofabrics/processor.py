@@ -10,6 +10,7 @@ import shutil
 import abc
 import logging
 import distributed
+import rioxarray
 from . import geometry
 from . import bathymetry_estimation
 import geoapis.lidar
@@ -541,14 +542,20 @@ class RiverBathymetryGenerator():
         channel_polygon.to_file(self.instructions['instructions']['data_paths']['catchment_boundary'])
 
         # Generate the DEM
-        runner = DemGenerator(self.instructions)
-        runner.run()
-        self.channel_dem = runner.dense_dem.dem
+        dem_file = pathlib.Path(self.instructions['instructions']['data_paths']['result_dem'])
+        if not dem_file.is_file():
+            runner = DemGenerator(self.instructions)
+            runner.run()
+            self.channel_dem = runner.dense_dem.dem
+        else:
+            with rioxarray.rioxarray.open_rasterio(dem_file, masked=True) as dem:
+                dem.load()
+            self.channel_dem = dem.copy(deep=True)
 
         # Create channel bathymetry estimator
         self.channel_bathymetry = bathymetry_estimation.ChannelBathymetry(
             channel=channel,
-            dem=runner.dense_dem.dem,
+            dem=self.channel_dem,
             transect_spacing=transect_spacing,
             resolution=resolution,
             transect_radius=channel_corridor_radius)

@@ -475,8 +475,7 @@ class ChannelBathymetry:
         # Create a simplified polyline from these points
         aligned_channel = shapely.geometry.LineString(centre_points)
         aligned_channel = geopandas.GeoDataFrame({'geometry': [aligned_channel]})
-        aligned_channel = self.subsample_channels(geopandas.GeoDataFrame(geometry=aligned_channel),
-                                                  self.transect_spacing)
+        aligned_channel = self.subsample_channels(aligned_channel, self.transect_spacing)
         return aligned_channel, channel_polygon, geopandas.GeoDataFrame({'geometry': centre_points})
 
     def align_channel(self, threshold: float):
