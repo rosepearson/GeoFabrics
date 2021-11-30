@@ -287,9 +287,7 @@ class ChannelBathymetry:
                                            crs=channel_polylines.crs)
         return transects
 
-    def sample_from_transects(self, transects: geopandas.GeoDataFrame,
-                              dem: xarray.core.dataarray.DataArray,
-                              resolution: float):
+    def sample_from_transects(self, transects: geopandas.GeoDataFrame):
         """ Sample at the sampling resolution along transects
 
         Parameters
@@ -297,15 +295,12 @@ class ChannelBathymetry:
 
         transects
             The transects with geometry defined as polylines.
-        dem
-            The DEM raster to sample from.
-        resolution
-            The resolution to sample at
+
         """
 
         # The number of transect samples - ensure odd - defined from the first
         number_of_samples = int(numpy.floor(transects.iloc[0].geometry.length
-                                            / resolution) - 1)
+                                            / self.resolution) - 1)
         sample_index_array = numpy.arange(-numpy.floor(number_of_samples / 2),
                                           numpy.floor(number_of_samples / 2) + 1,
                                           1)
@@ -313,7 +308,7 @@ class ChannelBathymetry:
         transect_samples = {'elevations': [], 'xx': [], 'yy': [], 'min_z': []}
 
         # create tree to sample from
-        grid_x, grid_y = numpy.meshgrid(dem.x, dem.y)
+        grid_x, grid_y = numpy.meshgrid(self.dem.x, self.dem.y)
         xy_in = numpy.concatenate([[grid_x.flatten()],
                                    [grid_y.flatten()]], axis=0).transpose()
         tree = scipy.spatial.KDTree(xy_in)
@@ -322,13 +317,13 @@ class ChannelBathymetry:
         for index, row in transects.iterrows():
 
             # Calculate xx, and yy points to sample at
-            xx = row.midpoint.x + sample_index_array * resolution * row['nx']
-            yy = row.midpoint.y + sample_index_array * resolution * row['ny']
+            xx = row.midpoint.x + sample_index_array * self.resolution * row['nx']
+            yy = row.midpoint.y + sample_index_array * self.resolution * row['ny']
 
             # Sample the elevations at along the transect
             xy_points = numpy.concatenate([[xx], [yy]], axis=0).transpose()
             distances, indices = tree.query(xy_points)
-            elevations = dem.data.flatten()[indices]
+            elevations = self.dem.data.flatten()[indices]
             transect_samples['elevations'].append(elevations)
             transect_samples['min_z'].append(numpy.nanmin(elevations))
 
@@ -470,17 +465,16 @@ class ChannelBathymetry:
                                        row['midpoint'].y + row['last_widths'] * self.resolution * row['ny']])
         channel_polygon = shapely.geometry.Polygon(channel_polygon)
         channel_polygon = channel_polygon.buffer(
-            self.transect_spacing * erosion_factor).buffer(self.transect_spacing * dilation_factor)
+            self.transect_spacing * dilation_factor).buffer(self.transect_spacing * erosion_factor)
 
         # Find intersections of channel_polygon and transects
         centre_points = []
-        for index, row in transects.iterrows():
+        for index, row in transects.iloc[::simplification_factor, :].iterrows():
             centre_points.append(channel_polygon.intersection(row.geometry).centroid)
 
         # Create a simplified polyline from these points
         aligned_channel = shapely.geometry.LineString(centre_points)
-        aligned_channel = geopandas.GeoDataFrame({'geometry': [aligned_channel]}).simplify(self.transect_spacing
-                                                                                           * simplification_factor)
+        aligned_channel = geopandas.GeoDataFrame({'geometry': [aligned_channel]})
         aligned_channel = self.subsample_channels(geopandas.GeoDataFrame(geometry=aligned_channel),
                                                   self.transect_spacing)
         return aligned_channel, channel_polygon, geopandas.GeoDataFrame({'geometry': centre_points})
@@ -510,10 +504,7 @@ class ChannelBathymetry:
                     transect_radius=self.transect_radius)
 
         # Sample along transects
-        transect_samples = self.sample_from_transects(
-            transects=transects,
-            dem=self.dem,
-            resolution=self.resolution)
+        transect_samples = self.sample_from_transects(transects=transects)
 
         # Add water level information to the transects
         transects['min_z'] = transect_samples['min_z']
