@@ -15,8 +15,6 @@
 		},
 		"data_paths": {
 			"local_cache": "tests/test_river_bathymetry/data",
-			"catchment_boundary": "tests/test_river_bathymetry/data/channel_catchment_100000000.geojson",
-			"result_dem": "tests/test_river_bathymetry/data/channel_dem_100000000.nc",
 			"benchmark_dem": "tests/test_river_bathymetry/data/benchmark_dem.nc"
 		},
 		"apis": {
