@@ -207,7 +207,7 @@ class ChannelBathymetry:
                     # slope of the length weighted mean of both sgments
                     dx_prev, dy_prev, l_prev = self._segment_slope(x_array,
                                                                    y_array,
-                                                                   i - 1)
+                                                                   i)
                     dx_next, dy_next, l_next = self._segment_slope(x_array,
                                                                    y_array,
                                                                    i - 1)
