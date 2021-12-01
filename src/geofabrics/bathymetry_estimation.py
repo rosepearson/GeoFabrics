@@ -685,6 +685,16 @@ class ChannelBathymetry:
         transect_samples = self.sample_from_transects(transects=transects)
 
         # Estimate slopes
+        transects['min_z'] = transect_samples['min_z']
+        transects['mean_min_z'] = transects['min_z'].rolling(5, center=True).mean()
+        transects.loc[numpy.isnan(transects['mean_min_z']),
+                      ('mean_min_z')] = transects['min_z'][numpy.isnan(transects['mean_min_z'])]
+        min_z = transects['mean_min_z']
+        upstream_min_z = numpy.zeros(len(min_z))
+        upstream_min_z[-1] = min_z[len(min_z) - 1]
+        for i in range(len(min_z) - 2, -1, -1):  # range [len-1, len-2, len-3, ..., 2, 1, 0]
+            upstream_min_z[i] = min_z[i] if min_z[i] < upstream_min_z[i + 1] else upstream_min_z[i + 1]
+        transects['upstream_min_z'] = upstream_min_z
 
         # Estimate widths
         widths = self.aligned_transect_widths_by_threshold_outwards(transects=transects,
