@@ -305,7 +305,8 @@ class ChannelBathymetry:
                                           numpy.floor(number_of_samples / 2) + 1,
                                           1)
 
-        transect_samples = {'elevations': [], 'xx': [], 'yy': [], 'min_z': []}
+        transect_samples = {'elevations': [], 'xx': [], 'yy': [], 'min_z': [],
+                            'min_i': []}
 
         # create tree to sample from
         grid_x, grid_y = numpy.meshgrid(self.dem.x, self.dem.y)
@@ -325,7 +326,9 @@ class ChannelBathymetry:
             distances, indices = tree.query(xy_points)
             elevations = self.dem.data.flatten()[indices]
             transect_samples['elevations'].append(elevations)
-            transect_samples['min_z'].append(numpy.nanmin(elevations))
+            min_index = numpy.nanargmin(elevations)
+            transect_samples['min_z'].append(elevations[min_index])
+            transect_samples['min_i'].append(min_index)
 
         return transect_samples
 
@@ -358,28 +361,24 @@ class ChannelBathymetry:
             assert numpy.floor(number_of_samples / 2) \
                 != number_of_samples / 2, "Expect an odd length"
 
-            sub_threshold_detected = False
             start_i = numpy.nan
             stop_i = numpy.nan
+            start_index = transect_samples['min_i'][j]
             centre_index = int(numpy.floor(number_of_samples / 2))
 
-            for i in numpy.arange(0, centre_index + 1, 1):
+            for i in numpy.arange(start_index, number_of_samples, 1):
 
                 # work forward checking height
-                elevation_over_minimum = transect_samples['elevations'][j][centre_index + i] - transects.loc[j]['min_z']
-                if sub_threshold_detected and numpy.isnan(stop_i) \
-                        and elevation_over_minimum > threshold:
-                    stop_i = centre_index + i
-                elif elevation_over_minimum < threshold:
-                    sub_threshold_detected = True
+                elevation_over_minimum = transect_samples['elevations'][j][i] - transects.loc[j]['min_z']
+                if numpy.isnan(stop_i) and elevation_over_minimum > threshold:
+                    stop_i = i
+
+            for i in numpy.arange(start_index, -1, -1):
 
                 # work backward checking height
-                elevation_over_minimum = transect_samples['elevations'][j][centre_index - i] - transects.loc[j]['min_z']
-                if sub_threshold_detected and numpy.isnan(start_i) \
-                        and elevation_over_minimum > threshold:
-                    start_i = centre_index - i
-                elif elevation_over_minimum < threshold:
-                    sub_threshold_detected = True
+                elevation_over_minimum = transect_samples['elevations'][j][i] - transects.loc[j]['min_z']
+                if numpy.isnan(start_i) and elevation_over_minimum > threshold:
+                    start_i = i
 
             widths['first_widths'].append((centre_index - start_i) * resolution)
             widths['last_widths'].append((stop_i - centre_index) * resolution)
@@ -522,10 +521,10 @@ class ChannelBathymetry:
         transects['min_z'] = transect_samples['min_z']
 
         # Bank estimates - outside in
-        widths = self.transect_widths_by_threshold_inwards(transects=transects,
-                                                           transect_samples=transect_samples,
-                                                           threshold=threshold,
-                                                           resolution=self.resolution)
+        widths = self.transect_widths_by_threshold_outwards(transects=transects,
+                                                            transect_samples=transect_samples,
+                                                            threshold=threshold,
+                                                            resolution=self.resolution)
 
         # Set widths
         transects['width'] = widths['widths']
@@ -555,7 +554,6 @@ class ChannelBathymetry:
             return shapely.geometry.LineString([
                 [midpoint.x - first_widths * resolution * nx,
                  midpoint.y - first_widths * resolution * ny],
-                midpoint,
                 [midpoint.x + last_widths * resolution * nx,
                  midpoint.y + last_widths * resolution * ny]])
         transects['width_line'] = transects.apply(lambda x:
