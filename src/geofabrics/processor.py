@@ -530,16 +530,18 @@ class RiverBathymetryGenerator():
         resolution = self.instructions['instructions']['output']['grid_params']['resolution']
 
         # Define paths for generated files
-        dem_file = pathlib.Path(self.instructions['instructions']['data_paths']['local_cache']) / f"channel_dem_{area_threshold}.nc"
+        dem_file = pathlib.Path(self.instructions['instructions']['data_paths']['local_cache']) \
+            / f"channel_dem_{area_threshold}.nc"
         self.instructions['instructions']['data_paths']['result_dem'] = dem_file
         catchment_file = pathlib.Path(self.instructions['instructions']['data_paths']['local_cache']) \
             / f"channel_catchment_{area_threshold}.geojson"
         self.instructions['instructions']['data_paths']['catchment_boundary'] = catchment_file
+        aligned_channel_file = pathlib.Path(self.instructions['instructions']['data_paths']['local_cache']) \
+            / f"aligned_channel_{area_threshold}.geojson"
 
         # Other values not yet defined in the file
         transect_spacing = 10
-        bank_threshold = 0.25
-
+        bank_threshold = 0.5
 
         # Identify the main channel and create a polygon catchment
         channel, iteration = bathymetry_estimation.get_up_stream_reaches(
@@ -571,8 +573,11 @@ class RiverBathymetryGenerator():
             transect_radius=channel_corridor_radius)
 
         # Align channel
-        self.channel_bathymetry.align_channel(bank_threshold)
-        self.channel_bathymetry.aligned_channel.to_file(aligned_channel_file)
+        if not aligned_channel_file.is_file():
+            self.channel_bathymetry.align_channel(bank_threshold)
+            self.channel_bathymetry.aligned_channel.to_file(aligned_channel_file)
+        else:
+            self.channel_bathymetry.aligned_channel = geopandas.read_file(aligned_channel_file)
 
 
         # Estimate slope from the samples
