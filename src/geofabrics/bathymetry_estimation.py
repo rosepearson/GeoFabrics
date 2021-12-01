@@ -509,6 +509,76 @@ class ChannelBathymetry:
         for key in widths.keys():
             transects[key] = widths[key]
 
+    def _plot_results(self, transects: geopandas.GeoDataFrame,
+                      transect_samples: dict,
+                      threshold: float,
+                      channel_polygon=None):
+        """ Function used for debugging or interactively to visualised the
+        samples and widths
+
+        Parameters
+        ----------
+
+        transects
+            The transects with geometry defined as polylines with width
+            estimates.
+        transect_samples
+            The sampled transect values.
+        threshold
+            The bank detection threshold.
+        channel_polygon
+            The channel polygon as estimated from the widths. Optional.
+        """
+
+        import matplotlib
+
+        f, ax = matplotlib.pyplot.subplots(figsize=(11, 4))
+        for elevations, min_z in zip(transect_samples['elevations'], transect_samples['min_z']):
+            matplotlib.pyplot.plot(elevations - min_z)
+        ax.set(title=f"Sampled transects. Thresh {threshold}")
+        i = 38
+        f, ax = matplotlib.pyplot.subplots(figsize=(11, 4))
+        matplotlib.pyplot.plot(transect_samples['elevations'][i] - transect_samples['min_z'][i], label="Transects")
+        matplotlib.pyplot.plot([0, 300], [0.25, 0.25], label="0.25 Thresh")
+        matplotlib.pyplot.plot([0, 300], [0.5, 0.5], label="0.75 Thresh")
+        matplotlib.pyplot.plot([0, 300], [0.75, 0.75], label="0.5 Thresh")
+        matplotlib.pyplot.plot([0, 300], [1, 1], label="1.0 Thresh")
+        matplotlib.pyplot.legend()
+        ax.set(title=f"Sampled transects. Thresh {threshold}, segment {i + 1}")
+
+        # Create width lines for plotting
+        def apply_bank_width(midpoint, nx, ny, first_widths, last_widths, resolution):
+            import shapely
+            return shapely.geometry.LineString([
+                [midpoint.x - first_widths * resolution * nx,
+                 midpoint.y - first_widths * resolution * ny],
+                [midpoint.x + last_widths * resolution * nx,
+                 midpoint.y + last_widths * resolution * ny]])
+        transects['width_line'] = transects.apply(lambda x:
+                                                  apply_bank_width(x['midpoint'],
+                                                                   x['nx'],
+                                                                   x['ny'],
+                                                                   x['first_widths'],
+                                                                   x['last_widths'],
+                                                                   self.resolution), axis=1)
+        transect_width_df = transects.set_geometry('width_line')
+
+        f, ax = matplotlib.pyplot.subplots(figsize=(20, 10))
+        self.dem.plot(ax=ax, label='DEM')
+        transects.plot(ax=ax, color='blue', linewidth=2, label='transects')
+        transect_width_df.plot(ax=ax, color='red', linewidth=4, label='widths')
+        if channel_polygon is not None and type(channel_polygon) is shapely.geometry.MultiPolygon:
+            for i, channel_polygon_i in enumerate(channel_polygon):
+                matplotlib.pyplot.plot(*channel_polygon_i.exterior.xy, label=f'channel polygon {i}')
+        elif channel_polygon is not None and type(channel_polygon) is shapely.geometry.Polygon:
+            matplotlib.pyplot.plot(*channel_polygon.exterior.xy, label='channel polygon')
+        self.channel.plot(ax=ax, color='black', linewidth=4, linestyle='--', label='original channel')
+        self.aligned_channel.plot(ax=ax, linewidth=6, color='green', zorder=4, label='aligned channel')
+        ax.set(title=f"Raster Layer with Vector Overlay. Thresh {threshold}")
+        ax.axis('off')
+        matplotlib.pyplot.legend()
+        matplotlib.pyplot.show()
+
     def _estimate_centreline_using_polygon(self, transects: geopandas.GeoDataFrame,
                                            erosion_factor: float = -2,
                                            dilation_factor: float = 3,
@@ -605,67 +675,12 @@ class ChannelBathymetry:
                                                    threshold=threshold,
                                                    resolution=self.resolution)
 
-        # Estimate centreline from width centres
-        def estimate_centrepoint(midpoint, nx, ny, first_widths, last_widths, resolution):
-            import shapely
-            return shapely.geometry.Point(
-                [midpoint.x + (last_widths - first_widths) / 2 * resolution * nx,
-                 midpoint.y + (last_widths - first_widths) / 2 * resolution * ny])
-        transects['aligned_centre_point'] = transects.apply(
-            lambda row: estimate_centrepoint(row['midpoint'],
-                                             row['nx'],
-                                             row['ny'],
-                                             row['first_widths'],
-                                             row['last_widths'],
-                                             self.resolution), axis=1)
-
         # Create channel polygon with erosion and dilation to reduce sensitivity to poor width measurements
         self.aligned_channel, channel_polygon = self._estimate_centreline_using_polygon(transects)
 
-        # Create width lines for plotting
-        def apply_bank_width(midpoint, nx, ny, first_widths, last_widths, resolution):
-            import shapely
-            return shapely.geometry.LineString([
-                [midpoint.x - first_widths * resolution * nx,
-                 midpoint.y - first_widths * resolution * ny],
-                [midpoint.x + last_widths * resolution * nx,
-                 midpoint.y + last_widths * resolution * ny]])
-        transects['width_line'] = transects.apply(lambda x:
-                                                  apply_bank_width(x['midpoint'],
-                                                                   x['nx'],
-                                                                   x['ny'],
-                                                                   x['first_widths'],
-                                                                   x['last_widths'],
-                                                                   self.resolution), axis=1)
-        transect_width_df = transects.set_geometry('width_line')
-
         # Plot results
-        import matplotlib
-        '''f, ax = matplotlib.pyplot.subplots(figsize=(11, 4))
-        for elevations, min_z in zip(transect_samples['elevations'], transect_samples['min_z']):
-            matplotlib.pyplot.plot(elevations - min_z)
-        ax.set(title=f"Sampled transects. Thresh {threshold}")'''
-        '''i = 38
-        f, ax = matplotlib.pyplot.subplots(figsize=(11, 4))
-        matplotlib.pyplot.plot(transect_samples['elevations'][i] - transect_samples['min_z'][i], label="Transects")
-        matplotlib.pyplot.plot([0, 300], [0.25, 0.25], label="0.25 Thresh")
-        matplotlib.pyplot.plot([0, 300], [0.5, 0.5], label="0.75 Thresh")
-        matplotlib.pyplot.plot([0, 300], [0.75, 0.75], label="0.5 Thresh")
-        matplotlib.pyplot.plot([0, 300], [1, 1], label="1.0 Thresh")
-        matplotlib.pyplot.legend()
-        ax.set(title=f"Sampled transects. Thresh {threshold}, segment {i}")'''
-
-        f, ax = matplotlib.pyplot.subplots(figsize=(20, 10))
-        self.dem.plot(ax=ax, label='DEM')
-        transects.plot(ax=ax, color='blue', linewidth=2, label='transects')
-        transect_width_df.plot(ax=ax, color='red', linewidth=4, label='widths')
-        matplotlib.pyplot.plot(*channel_polygon.exterior.xy, label='channel polygon')
-        self.channel.plot(ax=ax, color='black', linewidth=4, linestyle='--', label='original channel')
-        self.aligned_channel.plot(ax=ax, linewidth=6, color='green', zorder=4, label='aligned channel')
-        ax.set(title=f"Raster Layer with Vector Overlay. Thresh {threshold}")
-        ax.axis('off')
-        matplotlib.pyplot.legend()
-        matplotlib.pyplot.show()
+        self._plot_results(transects, transect_samples, threshold,
+                           channel_polygon)
 
     def estimate_width_and_slope(self, threshold: float):
         """ Estimate the channel centre from transect samples
@@ -698,11 +713,12 @@ class ChannelBathymetry:
         transects['upstream_min_z'] = upstream_min_z
 
         # Estimate widths
-        widths = self.aligned_transect_widths_by_threshold_outwards(transects=transects,
-                                                                    transect_samples=transect_samples,
-                                                                    threshold=threshold,
-                                                                    resolution=self.resolution)
+        self.aligned_transect_widths_by_threshold_outwards(transects=transects,
+                                                           transect_samples=transect_samples,
+                                                           threshold=threshold,
+                                                           resolution=self.resolution)
 
         # Smooth slope and width estimates
 
-        return
+        # Plot results
+        self._plot_results(transects, transect_samples, threshold)
