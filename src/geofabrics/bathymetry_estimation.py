@@ -438,7 +438,8 @@ class ChannelBathymetry:
             for i in numpy.arange(0, start_index + 1, 1):
 
                 # work backward checking height
-                elevation_over_minimum = transect_samples['elevations'][j][start_index - i] - transect_samples['min_z'][j]
+                elevation_over_minimum = transect_samples['elevations'][j][start_index - i] \
+                    - transect_samples['min_z'][j]
                 if sub_threshold_detected and numpy.isnan(start_i) \
                         and elevation_over_minimum > threshold:
                     start_i = start_index - i
