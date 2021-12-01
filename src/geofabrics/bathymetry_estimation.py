@@ -386,6 +386,66 @@ class ChannelBathymetry:
 
         return widths
 
+def aligned_transect_widths_by_threshold_outwards(self, transects: geopandas.GeoDataFrame,
+                                                  transect_samples: dict,
+                                                  threshold: float,
+                                                  resolution: float):
+    """ Estimate width based on a thresbold of bank height above water level.
+    Start in the centre and work out. Doesn't detect banks until a value
+    less than the threshold has been detected.
+
+    Parameters
+    ----------
+
+    transects
+        The transects with geometry defined as polylines.
+    transect_samples
+        The sampled values along the transects.
+    threshold
+        The height above the water level to detect as a bank.
+    resolution
+        The resolution to sample at.
+    """
+
+    widths = {'widths': [], 'first_widths': [], 'last_widths': []}
+
+    for j in range(len(transect_samples['elevations'])):
+
+        number_of_samples = len(transect_samples['elevations'][j])
+        assert numpy.floor(number_of_samples / 2) \
+            != number_of_samples / 2, "Expect an odd length"
+
+        sub_threshold_detected = False
+        start_i = numpy.nan
+        stop_i = numpy.nan
+        start_index = int(numpy.floor(number_of_samples / 2))
+
+        for i in numpy.arange(0, start_index + 1, 1):
+
+            # work forward checking height
+            elevation_over_minimum = transect_samples['elevations'][j][start_index + i] - transects.loc[j]['min_z']
+            if sub_threshold_detected and numpy.isnan(stop_i) \
+                    and elevation_over_minimum > threshold:
+                stop_i = start_index + i
+            elif elevation_over_minimum < threshold:
+                sub_threshold_detected = True
+
+        for i in numpy.arange(0, start_index + 1, 1):
+
+            # work backward checking height
+            elevation_over_minimum = transect_samples['elevations'][j][start_index - i] - transects.loc[j]['min_z']
+            if sub_threshold_detected and numpy.isnan(start_i) \
+                    and elevation_over_minimum > threshold:
+                start_i = start_index - i
+            elif elevation_over_minimum < threshold:
+                sub_threshold_detected = True
+
+        widths['first_widths'].append((start_index - start_i) * resolution)
+        widths['last_widths'].append((stop_i - start_index) * resolution)
+        widths['widths'].append((stop_i - start_i) * resolution)
+
+    return widths
+
     def transect_widths_by_threshold_inwards(self, transects: geopandas.GeoDataFrame,
                                              transect_samples: dict,
                                              threshold: float,
