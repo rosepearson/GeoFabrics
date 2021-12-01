@@ -373,14 +373,14 @@ class ChannelBathymetry:
             for i in numpy.arange(start_index, number_of_samples, 1):
 
                 # work forward checking height
-                elevation_over_minimum = transect_samples['elevations'][j][i] - transects.loc[j]['min_z']
+                elevation_over_minimum = transect_samples['elevations'][j][i] - transect_samples['min_z'][j]
                 if numpy.isnan(stop_i) and elevation_over_minimum > threshold:
                     stop_i = i
 
             for i in numpy.arange(start_index, -1, -1):
 
                 # work backward checking height
-                elevation_over_minimum = transect_samples['elevations'][j][i] - transects.loc[j]['min_z']
+                elevation_over_minimum = transect_samples['elevations'][j][i] - transect_samples['min_z'][j]
                 if numpy.isnan(start_i) and elevation_over_minimum > threshold:
                     start_i = i
 
@@ -428,7 +428,7 @@ class ChannelBathymetry:
             for i in numpy.arange(0, start_index + 1, 1):
 
                 # work forward checking height
-                elevation_over_minimum = transect_samples['elevations'][j][start_index + i] - transects.loc[j]['min_z']
+                elevation_over_minimum = transect_samples['elevations'][j][start_index + i] - transect_samples['min_z'][j]
                 if sub_threshold_detected and numpy.isnan(stop_i) \
                         and elevation_over_minimum > threshold:
                     stop_i = start_index + i
@@ -438,7 +438,7 @@ class ChannelBathymetry:
             for i in numpy.arange(0, start_index + 1, 1):
 
                 # work backward checking height
-                elevation_over_minimum = transect_samples['elevations'][j][start_index - i] - transects.loc[j]['min_z']
+                elevation_over_minimum = transect_samples['elevations'][j][start_index - i] - transect_samples['min_z'][j]
                 if sub_threshold_detected and numpy.isnan(start_i) \
                         and elevation_over_minimum > threshold:
                     start_i = start_index - i
@@ -486,7 +486,7 @@ class ChannelBathymetry:
             for i in numpy.arange(0, centre_index + 1, 1):
 
                 # work forward checking height
-                elevation_over_minimum = transect_samples['elevations'][j][i] - transects.loc[j]['min_z']
+                elevation_over_minimum = transect_samples['elevations'][j][i] - transect_samples['min_z'][j]
                 if elevation_over_minimum > threshold:
                     start_i = i
                 elif not numpy.isnan(start_i) and not numpy.isnan(elevation_over_minimum):
@@ -495,7 +495,7 @@ class ChannelBathymetry:
             for i in numpy.arange(number_of_samples - 1, centre_index - 1, -1):
 
                 # work backward checking height
-                elevation_over_minimum = transect_samples['elevations'][j][i] - transects.loc[j]['min_z']
+                elevation_over_minimum = transect_samples['elevations'][j][i] - transect_samples['min_z'][j]
                 if elevation_over_minimum > threshold:
                     stop_i = i
                 elif not numpy.isnan(stop_i) and not numpy.isnan(elevation_over_minimum):
@@ -598,9 +598,6 @@ class ChannelBathymetry:
         # Sample along transects
         transect_samples = self.sample_from_transects(transects=transects)
 
-        # Add water level information to the transects
-        transects['min_z'] = transect_samples['min_z']
-
         # Bank estimates - outside in
         self.transect_widths_by_threshold_outwards(transects=transects,
                                                    transect_samples=transect_samples,
@@ -643,10 +640,19 @@ class ChannelBathymetry:
 
         # Plot results
         import matplotlib
-        f, ax = matplotlib.pyplot.subplots(figsize=(11, 4))
+        '''f, ax = matplotlib.pyplot.subplots(figsize=(11, 4))
         for elevations, min_z in zip(transect_samples['elevations'], transect_samples['min_z']):
             matplotlib.pyplot.plot(elevations - min_z)
-        ax.set(title=f"Sampled transects. Thresh {threshold}")
+        ax.set(title=f"Sampled transects. Thresh {threshold}")'''
+        '''i = 38
+        f, ax = matplotlib.pyplot.subplots(figsize=(11, 4))
+        matplotlib.pyplot.plot(transect_samples['elevations'][i] - transect_samples['min_z'][i], label="Transects")
+        matplotlib.pyplot.plot([0, 300], [0.25, 0.25], label="0.25 Thresh")
+        matplotlib.pyplot.plot([0, 300], [0.5, 0.5], label="0.75 Thresh")
+        matplotlib.pyplot.plot([0, 300], [0.75, 0.75], label="0.5 Thresh")
+        matplotlib.pyplot.plot([0, 300], [1, 1], label="1.0 Thresh")
+        matplotlib.pyplot.legend()
+        ax.set(title=f"Sampled transects. Thresh {threshold}, segment {i}")'''
 
         f, ax = matplotlib.pyplot.subplots(figsize=(20, 10))
         self.dem.plot(ax=ax, label='DEM')
@@ -659,3 +665,33 @@ class ChannelBathymetry:
         ax.axis('off')
         matplotlib.pyplot.legend()
         matplotlib.pyplot.show()
+
+    def estimate_width_and_slope(self, threshold: float):
+        """ Estimate the channel centre from transect samples
+
+        Parameters
+        ----------
+
+        threshold
+            The height above the water level to detect as a bank.
+        """
+
+        # Define transects
+        transects = self.transects_along_reaches_at_node(
+                    channel_polylines=self.aligned_channel,
+                    transect_radius=self.transect_radius)
+
+        # Sample along transects
+        transect_samples = self.sample_from_transects(transects=transects)
+
+        # Estimate slopes
+
+        # Estimate widths
+        widths = self.aligned_transect_widths_by_threshold_outwards(transects=transects,
+                                                                    transect_samples=transect_samples,
+                                                                    threshold=threshold,
+                                                                    resolution=self.resolution)
+
+        # Smooth slope and width estimates
+
+        return

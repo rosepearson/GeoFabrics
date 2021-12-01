@@ -579,6 +579,8 @@ class RiverBathymetryGenerator():
         else:
             self.channel_bathymetry.aligned_channel = geopandas.read_file(aligned_channel_file)
 
+        # Estimate width and slope of channel
+        self.channel_bathymetry.estimate_width_and_slope(bank_threshold)
 
         # Estimate slope from the samples
 
