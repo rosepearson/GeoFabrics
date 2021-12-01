@@ -572,6 +572,7 @@ class RiverBathymetryGenerator():
 
         # Align channel
         self.channel_bathymetry.align_channel(bank_threshold)
+        self.channel_bathymetry.aligned_channel.to_file(aligned_channel_file)
 
 
         # Estimate slope from the samples

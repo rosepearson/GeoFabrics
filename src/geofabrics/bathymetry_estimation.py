@@ -108,6 +108,7 @@ class ChannelBathymetry:
         self.resolution = resolution
         self.transect_radius = transect_radius
 
+        self.aligned_channel = None
     def subsample_channels(self, channel_polylines: geopandas.GeoDataFrame, sampling_resolution: float):
         """ Subsample along all polylines at the sampling resolution. Note
         subsample in the upstream direction instead of the downstream direction.
@@ -386,65 +387,65 @@ class ChannelBathymetry:
 
         return widths
 
-def aligned_transect_widths_by_threshold_outwards(self, transects: geopandas.GeoDataFrame,
-                                                  transect_samples: dict,
-                                                  threshold: float,
-                                                  resolution: float):
-    """ Estimate width based on a thresbold of bank height above water level.
-    Start in the centre and work out. Doesn't detect banks until a value
-    less than the threshold has been detected.
+    def aligned_transect_widths_by_threshold_outwards(self, transects: geopandas.GeoDataFrame,
+                                                      transect_samples: dict,
+                                                      threshold: float,
+                                                      resolution: float):
+        """ Estimate width based on a thresbold of bank height above water level.
+        Start in the centre and work out. Doesn't detect banks until a value
+        less than the threshold has been detected.
 
-    Parameters
-    ----------
+        Parameters
+        ----------
 
-    transects
-        The transects with geometry defined as polylines.
-    transect_samples
-        The sampled values along the transects.
-    threshold
-        The height above the water level to detect as a bank.
-    resolution
-        The resolution to sample at.
-    """
+        transects
+            The transects with geometry defined as polylines.
+        transect_samples
+            The sampled values along the transects.
+        threshold
+            The height above the water level to detect as a bank.
+        resolution
+            The resolution to sample at.
+        """
 
-    widths = {'widths': [], 'first_widths': [], 'last_widths': []}
+        widths = {'widths': [], 'first_widths': [], 'last_widths': []}
 
-    for j in range(len(transect_samples['elevations'])):
+        for j in range(len(transect_samples['elevations'])):
 
-        number_of_samples = len(transect_samples['elevations'][j])
-        assert numpy.floor(number_of_samples / 2) \
-            != number_of_samples / 2, "Expect an odd length"
+            number_of_samples = len(transect_samples['elevations'][j])
+            assert numpy.floor(number_of_samples / 2) \
+                != number_of_samples / 2, "Expect an odd length"
 
-        sub_threshold_detected = False
-        start_i = numpy.nan
-        stop_i = numpy.nan
-        start_index = int(numpy.floor(number_of_samples / 2))
+            sub_threshold_detected = False
+            start_i = numpy.nan
+            stop_i = numpy.nan
+            start_index = int(numpy.floor(number_of_samples / 2))
 
-        for i in numpy.arange(0, start_index + 1, 1):
+            for i in numpy.arange(0, start_index + 1, 1):
 
-            # work forward checking height
-            elevation_over_minimum = transect_samples['elevations'][j][start_index + i] - transects.loc[j]['min_z']
-            if sub_threshold_detected and numpy.isnan(stop_i) \
-                    and elevation_over_minimum > threshold:
-                stop_i = start_index + i
-            elif elevation_over_minimum < threshold:
-                sub_threshold_detected = True
+                # work forward checking height
+                elevation_over_minimum = transect_samples['elevations'][j][start_index + i] - transects.loc[j]['min_z']
+                if sub_threshold_detected and numpy.isnan(stop_i) \
+                        and elevation_over_minimum > threshold:
+                    stop_i = start_index + i
+                elif elevation_over_minimum < threshold:
+                    sub_threshold_detected = True
 
-        for i in numpy.arange(0, start_index + 1, 1):
+            for i in numpy.arange(0, start_index + 1, 1):
 
-            # work backward checking height
-            elevation_over_minimum = transect_samples['elevations'][j][start_index - i] - transects.loc[j]['min_z']
-            if sub_threshold_detected and numpy.isnan(start_i) \
-                    and elevation_over_minimum > threshold:
-                start_i = start_index - i
-            elif elevation_over_minimum < threshold:
-                sub_threshold_detected = True
+                # work backward checking height
+                elevation_over_minimum = transect_samples['elevations'][j][start_index - i] - transects.loc[j]['min_z']
+                if sub_threshold_detected and numpy.isnan(start_i) \
+                        and elevation_over_minimum > threshold:
+                    start_i = start_index - i
+                elif elevation_over_minimum < threshold:
+                    sub_threshold_detected = True
 
-        widths['first_widths'].append((start_index - start_i) * resolution)
-        widths['last_widths'].append((stop_i - start_index) * resolution)
-        widths['widths'].append((stop_i - start_i) * resolution)
+            widths['first_widths'].append((start_index - start_i) * resolution)
+            widths['last_widths'].append((stop_i - start_index) * resolution)
+            widths['widths'].append((stop_i - start_i) * resolution)
 
-    return widths
+        return widths
 
     def transect_widths_by_threshold_inwards(self, transects: geopandas.GeoDataFrame,
                                              transect_samples: dict,
@@ -606,7 +607,7 @@ def aligned_transect_widths_by_threshold_outwards(self, transects: geopandas.Geo
                                              self.resolution), axis=1)
 
         # Create channel polygon with erosion and dilation to reduce sensitivity to poor width measurements
-        aligned_channel, channel_polygon, centre_points = self._estimate_centreline_using_polygon(transects)
+        self.aligned_channel, channel_polygon, centre_points = self._estimate_centreline_using_polygon(transects)
 
         # Create width lines for plotting
         def apply_bank_width(midpoint, nx, ny, first_widths, last_widths, resolution):
@@ -639,7 +640,7 @@ def aligned_transect_widths_by_threshold_outwards(self, transects: geopandas.Geo
         matplotlib.pyplot.plot(*channel_polygon.exterior.xy, label='channel polygon')
         self.channel.plot(ax=ax, color='black', linewidth=4, linestyle='--', label='original channel')
         centre_points.plot(ax=ax, marker='x', markersize=100, zorder=6, color='magenta', label='centre points')
-        aligned_channel.plot(ax=ax, linewidth=6, color='green', zorder=4, label='aligned channel')
+        self.aligned_channel.plot(ax=ax, linewidth=6, color='green', zorder=4, label='aligned channel')
         ax.set(title=f"Raster Layer with Vector Overlay. Thresh {threshold}")
         ax.axis('off')
         matplotlib.pyplot.legend()
