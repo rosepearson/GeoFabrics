@@ -112,9 +112,9 @@ class ChannelBathymetry:
 
         self.aligned_channel = None
 
-    def subsample_channels(self, channel_polylines: geopandas.GeoDataFrame, sampling_resolution: float):
-        """ Subsample along all polylines at the sampling resolution. Note
-        subsample in the upstream direction instead of the downstream direction.
+    def subsample_channels(self, channel_polylines: geopandas.GeoDataFrame, sampling_resolution: float, upstream: bool):
+        """ Subsample along all polylines at the sampling resolution. Note the
+        subsampling is done in the upstream direction.
 
         Parameters
         ----------
@@ -123,15 +123,20 @@ class ChannelBathymetry:
             The channel reaches with reache geometry defined as polylines.
         sampling_resolution
             The resolution to subsample at.
+        upstream
+            True if the channel polyline is defined upstream, False if it is defined downstream
         """
 
         sampled_polylines = []
         for index, row in channel_polylines.iterrows():
             number_segment_samples = int(numpy.ceil(row.geometry.length / sampling_resolution))
             segment_resolution = row.geometry.length / number_segment_samples
+            if upstream:
+                indices = numpy.arange(0, number_segment_samples + 1, 1)
+            else:
+                indices = numpy.arange(number_segment_samples, -1, -1)
             sampled_polylines.append(shapely.geometry.LineString(
-                [row.geometry.interpolate(i * segment_resolution) for i in
-                 numpy.arange(number_segment_samples, -1, -1)]))
+                [row.geometry.interpolate(i * segment_resolution) for i in indices]))
 
         sampled_channel_polylines = channel_polylines.set_geometry(sampled_polylines)
         return sampled_channel_polylines
@@ -539,7 +544,7 @@ class ChannelBathymetry:
         ax.set(title=f"Sampled transects. Thresh {threshold}")
 
         # Plot a specific transect alongside various threshold values
-        i = 38
+        i = 10
         f, ax = matplotlib.pyplot.subplots(figsize=(11, 4))
         matplotlib.pyplot.plot(transect_samples['elevations'][i] - transect_samples['min_z'][i], label="Transects")
         matplotlib.pyplot.plot([0, 300], [0.25, 0.25], label="0.25 Thresh")
@@ -588,6 +593,9 @@ class ChannelBathymetry:
         min_z_columns = [column_name for column_name in transects.columns if 'min_z' in column_name]
         if len(min_z_columns) > 0:
             transects[min_z_columns].plot()
+
+        # Plot the widths
+        transects[['widths']].plot()
 
     def _estimate_centreline_using_polygon(self, transects: geopandas.GeoDataFrame,
                                            erosion_factor: float = -2,
@@ -649,7 +657,7 @@ class ChannelBathymetry:
 
         # Create a aligned channel dataframe
         aligned_channel = geopandas.GeoDataFrame(aligned_channel, crs=transects.crs)
-        aligned_channel = self.subsample_channels(aligned_channel, self.transect_spacing)
+        aligned_channel = self.subsample_channels(aligned_channel, self.transect_spacing, upstream=False)
         return aligned_channel, channel_polygon
 
     def align_channel(self, threshold: float):
@@ -669,7 +677,7 @@ class ChannelBathymetry:
         """
 
         # Sample channel
-        sampled_channel = self.subsample_channels(self.channel, self.transect_spacing)
+        sampled_channel = self.subsample_channels(self.channel, self.transect_spacing, upstream=False)
 
         # Create transects
         transects = self.transects_along_reaches_at_node(
