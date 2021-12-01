@@ -108,7 +108,10 @@ class ChannelBathymetry:
         self.resolution = resolution
         self.transect_radius = transect_radius
 
+        self._id = 'nzsegment'
+
         self.aligned_channel = None
+
     def subsample_channels(self, channel_polylines: geopandas.GeoDataFrame, sampling_resolution: float):
         """ Subsample along all polylines at the sampling resolution. Note
         subsample in the upstream direction instead of the downstream direction.
@@ -170,7 +173,7 @@ class ChannelBathymetry:
         """
 
         transects_dict = {'geometry': [],
-                          'nzsegment': [],
+                          self._id: [],
                           'nx': [],
                           'ny': [],
                           'midpoint': [],
@@ -179,11 +182,11 @@ class ChannelBathymetry:
         for index, row in channel_polylines.iterrows():
 
             (x_array, y_array) = row.geometry.xy
-            nzsegment = row['nzsegment']
+            nzsegment = row[self._id]
             for i in range(len(x_array)):
 
                 # Recorde the NZ segment
-                transects_dict['nzsegment'].append(nzsegment)
+                transects_dict[self._id].append(nzsegment)
 
                 # define transect midpoint - point on channel reach
                 midpoint = shapely.geometry.Point([x_array[i], y_array[i]])
@@ -385,7 +388,8 @@ class ChannelBathymetry:
             widths['last_widths'].append((stop_i - centre_index) * resolution)
             widths['widths'].append((stop_i - start_i) * resolution)
 
-        return widths
+        for key in widths.keys():
+            transects[key] = widths[key]
 
     def aligned_transect_widths_by_threshold_outwards(self, transects: geopandas.GeoDataFrame,
                                                       transect_samples: dict,
@@ -445,7 +449,8 @@ class ChannelBathymetry:
             widths['last_widths'].append((stop_i - start_index) * resolution)
             widths['widths'].append((stop_i - start_i) * resolution)
 
-        return widths
+        for key in widths.keys():
+            transects[key] = widths[key]
 
     def transect_widths_by_threshold_inwards(self, transects: geopandas.GeoDataFrame,
                                              transect_samples: dict,
@@ -500,7 +505,8 @@ class ChannelBathymetry:
             widths['last_widths'].append((stop_i - centre_index) * resolution)
             widths['widths'].append((stop_i - start_i) * resolution)
 
-        return widths
+        for key in widths.keys():
+            transects[key] = widths[key]
 
     def _estimate_centreline_using_polygon(self, transects: geopandas.GeoDataFrame,
                                            erosion_factor: float = -2,
@@ -538,18 +544,32 @@ class ChannelBathymetry:
         channel_polygon = channel_polygon.buffer(
             self.transect_spacing * dilation_factor).buffer(self.transect_spacing * erosion_factor)
 
-        # Find intersections of channel_polygon and transects
+        # Estimate channel midpoints from the intersections of channel_polygon and transects
+        aligned_channel = {'geometry': [], self._id: []}
+        reach_id = transects.iloc[0][self._id]
         centre_points = []
         for index, row in transects.iloc[::simplification_factor, :].iterrows():
             centre_point = channel_polygon.intersection(row.geometry).centroid
             if not centre_point.is_empty:
                 centre_points.append(centre_point)
 
-        # Create a simplified polyline from these points
-        aligned_channel = shapely.geometry.LineString(centre_points)
-        aligned_channel = geopandas.GeoDataFrame({'geometry': [aligned_channel]})
+            # check if moved to a new reach
+            if reach_id != row[self._id] and len(centre_points) > 0:  # New reach
+                # Add to dictionary
+                aligned_channel['geometry'].append(shapely.geometry.LineString(centre_points))
+                aligned_channel[self._id].append(reach_id)
+                # Reset for the next reach
+                reach_id = row[self._id]
+                centre_points = [centre_point]
+
+        if len(centre_points) > 0:  # Store the final reach
+            aligned_channel['geometry'].append(shapely.geometry.LineString(centre_points))
+            aligned_channel[self._id].append(reach_id)
+
+        # Create a aligned channel dataframe
+        aligned_channel = geopandas.GeoDataFrame(aligned_channel, crs=self.channel.crs)
         aligned_channel = self.subsample_channels(aligned_channel, self.transect_spacing)
-        return aligned_channel, channel_polygon, geopandas.GeoDataFrame({'geometry': centre_points})
+        return aligned_channel, channel_polygon
 
     def align_channel(self, threshold: float):
         """ Estimate the channel centre from transect samples
@@ -582,15 +602,10 @@ class ChannelBathymetry:
         transects['min_z'] = transect_samples['min_z']
 
         # Bank estimates - outside in
-        widths = self.transect_widths_by_threshold_outwards(transects=transects,
-                                                            transect_samples=transect_samples,
-                                                            threshold=threshold,
-                                                            resolution=self.resolution)
-
-        # Set widths
-        transects['width'] = widths['widths']
-        transects['first_widths'] = widths['first_widths']
-        transects['last_widths'] = widths['last_widths']
+        self.transect_widths_by_threshold_outwards(transects=transects,
+                                                   transect_samples=transect_samples,
+                                                   threshold=threshold,
+                                                   resolution=self.resolution)
 
         # Estimate centreline from width centres
         def estimate_centrepoint(midpoint, nx, ny, first_widths, last_widths, resolution):
@@ -607,7 +622,7 @@ class ChannelBathymetry:
                                              self.resolution), axis=1)
 
         # Create channel polygon with erosion and dilation to reduce sensitivity to poor width measurements
-        self.aligned_channel, channel_polygon, centre_points = self._estimate_centreline_using_polygon(transects)
+        self.aligned_channel, channel_polygon = self._estimate_centreline_using_polygon(transects)
 
         # Create width lines for plotting
         def apply_bank_width(midpoint, nx, ny, first_widths, last_widths, resolution):
@@ -639,7 +654,6 @@ class ChannelBathymetry:
         transect_width_df.plot(ax=ax, color='red', linewidth=4, label='widths')
         matplotlib.pyplot.plot(*channel_polygon.exterior.xy, label='channel polygon')
         self.channel.plot(ax=ax, color='black', linewidth=4, linestyle='--', label='original channel')
-        centre_points.plot(ax=ax, marker='x', markersize=100, zorder=6, color='magenta', label='centre points')
         self.aligned_channel.plot(ax=ax, linewidth=6, color='green', zorder=4, label='aligned channel')
         ax.set(title=f"Raster Layer with Vector Overlay. Thresh {threshold}")
         ax.axis('off')
