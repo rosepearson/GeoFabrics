@@ -532,10 +532,13 @@ class ChannelBathymetry:
 
         import matplotlib
 
+        # Plot all sampled transect values
         f, ax = matplotlib.pyplot.subplots(figsize=(11, 4))
         for elevations, min_z in zip(transect_samples['elevations'], transect_samples['min_z']):
             matplotlib.pyplot.plot(elevations - min_z)
         ax.set(title=f"Sampled transects. Thresh {threshold}")
+
+        # Plot a specific transect alongside various threshold values
         i = 38
         f, ax = matplotlib.pyplot.subplots(figsize=(11, 4))
         matplotlib.pyplot.plot(transect_samples['elevations'][i] - transect_samples['min_z'][i], label="Transects")
@@ -563,6 +566,7 @@ class ChannelBathymetry:
                                                                    self.resolution), axis=1)
         transect_width_df = transects.set_geometry('width_line')
 
+        # Plot transects, widths, and centrelines on the DEM
         f, ax = matplotlib.pyplot.subplots(figsize=(20, 10))
         self.dem.plot(ax=ax, label='DEM')
         transects.plot(ax=ax, color='blue', linewidth=2, label='transects')
@@ -578,6 +582,11 @@ class ChannelBathymetry:
         ax.axis('off')
         matplotlib.pyplot.legend()
         matplotlib.pyplot.show()
+
+        # Plot the various min_z values if they have been added to the transects
+        min_z_columns = [column_name for column_name in transects.columns if 'min_z' in column_name]
+        if len(min_z_columns) > 0:
+            transects[min_z_columns].plot()
 
     def _estimate_centreline_using_polygon(self, transects: geopandas.GeoDataFrame,
                                            erosion_factor: float = -2,
