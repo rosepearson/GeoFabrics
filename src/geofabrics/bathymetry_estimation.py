@@ -512,7 +512,7 @@ class ChannelBathymetry:
     def _plot_results(self, transects: geopandas.GeoDataFrame,
                       transect_samples: dict,
                       threshold: float,
-                      channel_polygon=None):
+                      channel_polygon=None, include_transects: bool = False):
         """ Function used for debugging or interactively to visualised the
         samples and widths
 
@@ -569,15 +569,16 @@ class ChannelBathymetry:
         # Plot transects, widths, and centrelines on the DEM
         f, ax = matplotlib.pyplot.subplots(figsize=(20, 10))
         self.dem.plot(ax=ax, label='DEM')
-        transects.plot(ax=ax, color='blue', linewidth=2, label='transects')
-        transect_width_df.plot(ax=ax, color='red', linewidth=4, label='widths')
+        if include_transects:
+            transects.plot(ax=ax, color='blue', linewidth=1, label='transects')
+        transect_width_df.plot(ax=ax, color='red', linewidth=1.5, label='widths')
         if channel_polygon is not None and type(channel_polygon) is shapely.geometry.MultiPolygon:
             for i, channel_polygon_i in enumerate(channel_polygon):
                 matplotlib.pyplot.plot(*channel_polygon_i.exterior.xy, label=f'channel polygon {i}')
         elif channel_polygon is not None and type(channel_polygon) is shapely.geometry.Polygon:
             matplotlib.pyplot.plot(*channel_polygon.exterior.xy, label='channel polygon')
-        self.channel.plot(ax=ax, color='black', linewidth=4, linestyle='--', label='original channel')
-        self.aligned_channel.plot(ax=ax, linewidth=6, color='green', zorder=4, label='aligned channel')
+        self.channel.plot(ax=ax, color='black', linewidth=1.5, linestyle='--', label='original channel')
+        self.aligned_channel.plot(ax=ax, linewidth=2, color='green', zorder=4, label='aligned channel')
         ax.set(title=f"Raster Layer with Vector Overlay. Thresh {threshold}")
         ax.axis('off')
         matplotlib.pyplot.legend()
