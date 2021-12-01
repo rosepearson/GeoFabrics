@@ -567,7 +567,7 @@ class ChannelBathymetry:
             aligned_channel[self._id].append(reach_id)
 
         # Create a aligned channel dataframe
-        aligned_channel = geopandas.GeoDataFrame(aligned_channel, crs=self.channel.crs)
+        aligned_channel = geopandas.GeoDataFrame(aligned_channel, crs=transects.crs)
         aligned_channel = self.subsample_channels(aligned_channel, self.transect_spacing)
         return aligned_channel, channel_polygon
 
