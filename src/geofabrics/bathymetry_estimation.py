@@ -657,7 +657,6 @@ class ChannelBathymetry:
 
         # Create a aligned channel dataframe
         aligned_channel = geopandas.GeoDataFrame(aligned_channel, crs=transects.crs)
-        aligned_channel = self.subsample_channels(aligned_channel, self.transect_spacing, upstream=False)
         return aligned_channel, channel_polygon
 
     def align_channel(self, threshold: float):
@@ -710,9 +709,12 @@ class ChannelBathymetry:
             The height above the water level to detect as a bank.
         """
 
+        # Subsample transects
+        sampled_aligned_channel = self.subsample_channels(self.aligned_channel, self.transect_spacing, upstream=False)
+
         # Define transects
         transects = self.transects_along_reaches_at_node(
-                    channel_polylines=self.aligned_channel,
+                    channel_polylines=sampled_aligned_channel,
                     transect_radius=self.transect_radius)
 
         # Sample along transects
