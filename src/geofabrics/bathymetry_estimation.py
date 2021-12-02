@@ -335,9 +335,13 @@ class ChannelBathymetry:
             distances, indices = tree.query(xy_points)
             elevations = self.dem.data.flatten()[indices]
             transect_samples['elevations'].append(elevations)
-            min_index = numpy.nanargmin(elevations)
-            transect_samples['min_z'].append(elevations[min_index])
-            transect_samples['min_i'].append(min_index)
+            if len(elevations) - numpy.sum(numpy.isnan(elevations)) > 0:
+                min_index = numpy.nanargmin(elevations)
+                transect_samples['min_z'].append(elevations[min_index])
+                transect_samples['min_i'].append(min_index)
+            else:
+                transect_samples['min_z'].append(numpy.nan)
+                transect_samples['min_i'].append(numpy.nan)
 
         return transect_samples
 
