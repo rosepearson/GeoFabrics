@@ -425,34 +425,33 @@ class ChannelBathymetry:
             assert numpy.floor(number_of_samples / 2) \
                 != number_of_samples / 2, "Expect an odd length"
 
-            sub_threshold_detected = False
+            sub_threshold_detected = False  # True when detected in either direction
             start_i = numpy.nan
             stop_i = numpy.nan
-            start_index = int(numpy.floor(number_of_samples / 2))
+            centre_index = int(numpy.floor(number_of_samples / 2))
 
-            for i in numpy.arange(0, start_index + 1, 1):
+            for i in numpy.arange(0, centre_index + 1, 1):
 
                 # work forward checking height
-                elevation_over_minimum = transect_samples['elevations'][j][start_index + i] - transect_samples['min_z'][j]
+                elevation_over_minimum = transect_samples['elevations'][j][centre_index + i] \
+                    - transect_samples['min_z'][j]
                 if sub_threshold_detected and numpy.isnan(stop_i) \
                         and elevation_over_minimum > threshold:
-                    stop_i = start_index + i
+                    stop_i = centre_index + i
                 elif elevation_over_minimum < threshold:
                     sub_threshold_detected = True
 
-            for i in numpy.arange(0, start_index + 1, 1):
-
                 # work backward checking height
-                elevation_over_minimum = transect_samples['elevations'][j][start_index - i] \
+                elevation_over_minimum = transect_samples['elevations'][j][centre_index - i] \
                     - transect_samples['min_z'][j]
                 if sub_threshold_detected and numpy.isnan(start_i) \
                         and elevation_over_minimum > threshold:
-                    start_i = start_index - i
+                    start_i = centre_index - i
                 elif elevation_over_minimum < threshold:
                     sub_threshold_detected = True
 
-            widths['first_widths'].append((start_index - start_i) * resolution)
-            widths['last_widths'].append((stop_i - start_index) * resolution)
+            widths['first_widths'].append((centre_index - start_i) * resolution)
+            widths['last_widths'].append((stop_i - centre_index) * resolution)
             widths['widths'].append((stop_i - start_i) * resolution)
 
         for key in widths.keys():
@@ -517,7 +516,7 @@ class ChannelBathymetry:
     def _plot_results(self, transects: geopandas.GeoDataFrame,
                       transect_samples: dict,
                       threshold: float,
-                      channel_polygon=None, include_transects: bool = False):
+                      channel_polygon=None, include_transects: bool = True):
         """ Function used for debugging or interactively to visualised the
         samples and widths
 
@@ -696,8 +695,7 @@ class ChannelBathymetry:
         self.aligned_channel, channel_polygon = self._estimate_centreline_using_polygon(transects)
 
         # Plot results
-        self._plot_results(transects, transect_samples, threshold,
-                           channel_polygon)
+        self._plot_results(transects, transect_samples, threshold, channel_polygon)
 
     def estimate_width_and_slope(self, threshold: float):
         """ Estimate the channel centre from transect samples
@@ -710,7 +708,7 @@ class ChannelBathymetry:
         """
 
         # Subsample transects
-        sampled_aligned_channel = self.subsample_channels(self.aligned_channel, self.transect_spacing, upstream=False)
+        sampled_aligned_channel = self.subsample_channels(self.aligned_channel, self.transect_spacing, upstream=True)
 
         # Define transects
         transects = self.transects_along_reaches_at_node(
