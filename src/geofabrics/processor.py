@@ -530,14 +530,13 @@ class RiverBathymetryGenerator():
         resolution = self.instructions['instructions']['output']['grid_params']['resolution']
 
         # Define paths for generated files
-        dem_file = pathlib.Path(self.instructions['instructions']['data_paths']['local_cache']) \
-            / f"channel_dem_{area_threshold}.nc"
+        local_cache = pathlib.Path(self.instructions['instructions']['data_paths']['local_cache'])
+        dem_file = local_cache / f"channel_dem_{area_threshold}.nc"
         self.instructions['instructions']['data_paths']['result_dem'] = dem_file
-        catchment_file = pathlib.Path(self.instructions['instructions']['data_paths']['local_cache']) \
-            / f"channel_catchment_{area_threshold}.geojson"
+        catchment_file = local_cache / f"channel_catchment_{area_threshold}.geojson"
         self.instructions['instructions']['data_paths']['catchment_boundary'] = catchment_file
-        aligned_channel_file = pathlib.Path(self.instructions['instructions']['data_paths']['local_cache']) \
-            / f"aligned_channel_{area_threshold}.geojson"
+        aligned_channel_file = local_cache / f"aligned_channel_{area_threshold}.geojson"
+        manual_channel_file = local_cache / f"manual_aligned_channel_{area_threshold}.geojson"
 
         # Other values not yet defined in the file
         transect_spacing = 10
@@ -580,7 +579,14 @@ class RiverBathymetryGenerator():
             self.channel_bathymetry.aligned_channel = geopandas.read_file(aligned_channel_file)
 
         # Estimate width and slope of channel
-        self.channel_bathymetry.estimate_width_and_slope(bank_threshold)
+        if manual_channel_file.is_file():
+            manual_channel = geopandas.read_file(manual_channel_file)
+            transects = self.channel_bathymetry.estimate_width_and_slope(manual_channel, bank_threshold+0.5)
+            #transects.to_file(local_cache / f"aligned_transects{area_threshold}.csv")
+        else:
+            print("Please review the aligned channel and save as "
+                  f"'manual_aligned_channel_{area_threshold}.geojson' before"
+                  "the width and slopes will be estimated")
 
         # Estimate slope from the samples
 

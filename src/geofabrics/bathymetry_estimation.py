@@ -701,7 +701,7 @@ class ChannelBathymetry:
         # Plot results
         self._plot_results(transects, transect_samples, threshold, channel_polygon)
 
-    def estimate_width_and_slope(self, threshold: float):
+    def estimate_width_and_slope(self, manual_aligned_channel: geopandas.GeoDataFrame, threshold: float):
         """ Estimate the channel centre from transect samples
 
         Parameters
@@ -712,7 +712,7 @@ class ChannelBathymetry:
         """
 
         # Subsample transects
-        sampled_aligned_channel = self.subsample_channels(self.aligned_channel, self.transect_spacing, upstream=True)
+        sampled_aligned_channel = self.subsample_channels(manual_aligned_channel, self.transect_spacing, upstream=True)
 
         # Define transects
         transects = self.transects_along_reaches_at_node(
@@ -722,7 +722,22 @@ class ChannelBathymetry:
         # Sample along transects
         transect_samples = self.sample_from_transects(transects=transects)
 
-        # Estimate slopes
+        # Estimate widths
+        self.aligned_transect_widths_by_threshold_outwards(transects=transects,
+                                                           transect_samples=transect_samples,
+                                                           threshold=threshold,
+                                                           resolution=self.resolution)
+
+        # Smooth slope and width estimates
+        # Create channel polygon with erosion and dilation to reduce sensitivity to poor width measurements
+        aligned_channel_2, channel_polygon = self._estimate_centreline_using_polygon(transects)
+
+        # Estimate width: Repeat process a second time
+        # 1. transects, 2. transect samples, 3. aligned widths outwards
+
+        # Width smoothing - either from polygon if good enough, or function fit to aligned_widths_outward
+
+        # Estimate slopes - smoothing!
         transects['min_z'] = transect_samples['min_z']
         transects['mean_min_z'] = transects['min_z'].rolling(5, center=True).mean()
         transects.loc[numpy.isnan(transects['mean_min_z']),
@@ -734,13 +749,34 @@ class ChannelBathymetry:
             upstream_min_z[i] = min_z[i] if min_z[i] < upstream_min_z[i + 1] else upstream_min_z[i + 1]
         transects['upstream_min_z'] = upstream_min_z
 
-        # Estimate widths
-        self.aligned_transect_widths_by_threshold_outwards(transects=transects,
-                                                           transect_samples=transect_samples,
-                                                           threshold=threshold,
-                                                           resolution=self.resolution)
+        # Monotonically increasing cublic splines - https://stats.stackexchange.com/questions/467126/monotonic-splines-in-python
+        y = transects['min_z']; x = numpy.arange(len(y))
 
-        # Smooth slope and width estimates
+        # Prepare bases (Imat) and penalty
+        dd = 3; la = 100; kp = 10000000
+        E  = numpy.eye(len(x))
+        D3 = numpy.diff(E, n = dd, axis=0)
+        D1 = numpy.diff(E, n = 1, axis=0)
+
+        # Monotone smoothing
+        ws = numpy.zeros(len(x) - 1)
+        for it in range(30):
+            Ws      = numpy.diag(ws * kp)
+            mon_cof = numpy.linalg.solve(E + la * D3.T @ D3 + D1.T @ Ws @ D1, y)
+            ws_new  = (D1 @ mon_cof < 0.0) * 1
+            dw      = numpy.sum(ws != ws_new)
+            ws      = ws_new
+            if(dw == 0): break  
+            print(dw)
+
+        # Monotonic and non monotonic fits
+        z  = mon_cof
+        z2 = numpy.linalg.solve(E + la * D3.T @ D3, y)
+        transects['min_z_poly'] = z
+        transects['min_z_poly_constrained'] = z2
 
         # Plot results
-        self._plot_results(transects, transect_samples, threshold)
+        self._plot_results(transects, transect_samples, threshold, channel_polygon)
+
+        # Return results for now
+        return transects
