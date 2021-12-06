@@ -642,7 +642,7 @@ class ChannelBathymetry:
         aligned_channel = {'geometry': [], self._id: []}
         reach_id = transects.iloc[0][self._id]
         centre_points = []
-        for index, row in transects.iloc[::simplification_factor, :].iterrows():
+        for index, row in transects.iterrows():
             centre_point = channel_polygon.intersection(row.geometry).centroid
             if not centre_point.is_empty:
                 centre_points.append(centre_point)
@@ -650,14 +650,16 @@ class ChannelBathymetry:
             # check if moved to a new reach
             if reach_id != row[self._id] and len(centre_points) > 0:  # New reach
                 # Add to dictionary
-                aligned_channel['geometry'].append(shapely.geometry.LineString(centre_points))
+                aligned_channel['geometry'].append(
+                    shapely.geometry.LineString(centre_points).simplify(self.transect_spacing * simplification_factor))
                 aligned_channel[self._id].append(reach_id)
                 # Reset for the next reach
                 reach_id = row[self._id]
                 centre_points = [centre_point]
 
         if len(centre_points) > 0:  # Store the final reach
-            aligned_channel['geometry'].append(shapely.geometry.LineString(centre_points))
+            aligned_channel['geometry'].append(
+                shapely.geometry.LineString(centre_points).simplify(self.transect_spacing * simplification_factor))
             aligned_channel[self._id].append(reach_id)
 
         # Create a aligned channel dataframe
