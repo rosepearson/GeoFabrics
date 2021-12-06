@@ -366,7 +366,7 @@ class ChannelBathymetry:
             The resolution to sample at.
         """
 
-        widths = {'widths': [], 'first_widths': [], 'last_widths': []}
+        widths = {'widths': [], 'first_bank': [], 'last_bank': []}
 
         for j in range(len(transect_samples['elevations'])):
 
@@ -393,8 +393,8 @@ class ChannelBathymetry:
                 if numpy.isnan(start_i) and elevation_over_minimum > threshold:
                     start_i = i
 
-            widths['first_widths'].append((centre_index - start_i) * resolution)
-            widths['last_widths'].append((stop_i - centre_index) * resolution)
+            widths['first_bank'].append((centre_index - start_i) * resolution)
+            widths['last_bank'].append((stop_i - centre_index) * resolution)
             widths['widths'].append((stop_i - start_i) * resolution)
 
         for key in widths.keys():
@@ -421,7 +421,7 @@ class ChannelBathymetry:
             The resolution to sample at.
         """
 
-        widths = {'widths': [], 'first_widths': [], 'last_widths': []}
+        widths = {'widths': [], 'first_bank': [], 'last_bank': []}
 
         for j in range(len(transect_samples['elevations'])):
 
@@ -454,8 +454,8 @@ class ChannelBathymetry:
                 elif elevation_over_minimum < threshold:
                     sub_threshold_detected = True
 
-            widths['first_widths'].append((centre_index - start_i) * resolution)
-            widths['last_widths'].append((stop_i - centre_index) * resolution)
+            widths['first_bank'].append((centre_index - start_i) * resolution)
+            widths['last_bank'].append((stop_i - centre_index) * resolution)
             widths['widths'].append((stop_i - start_i) * resolution)
 
         for key in widths.keys():
@@ -481,7 +481,7 @@ class ChannelBathymetry:
             The resolution to sample at.
         """
 
-        widths = {'widths': [], 'first_widths': [], 'last_widths': []}
+        widths = {'widths': [], 'first_bank': [], 'last_bank': []}
 
         for j in range(len(transect_samples['elevations'])):
 
@@ -510,8 +510,8 @@ class ChannelBathymetry:
                 elif not numpy.isnan(stop_i) and not numpy.isnan(elevation_over_minimum):
                     break
 
-            widths['first_widths'].append((centre_index - start_i) * resolution)
-            widths['last_widths'].append((stop_i - centre_index) * resolution)
+            widths['first_bank'].append((centre_index - start_i) * resolution)
+            widths['last_bank'].append((stop_i - centre_index) * resolution)
             widths['widths'].append((stop_i - start_i) * resolution)
 
         for key in widths.keys():
@@ -558,19 +558,19 @@ class ChannelBathymetry:
         ax.set(title=f"Sampled transects. Thresh {threshold}, segment {i + 1}")
 
         # Create width lines for plotting
-        def apply_bank_width(midpoint, nx, ny, first_widths, last_widths, resolution):
+        def apply_bank_width(midpoint, nx, ny, first_bank, last_bank, resolution):
             import shapely
             return shapely.geometry.LineString([
-                [midpoint.x - first_widths * resolution * nx,
-                 midpoint.y - first_widths * resolution * ny],
-                [midpoint.x + last_widths * resolution * nx,
-                 midpoint.y + last_widths * resolution * ny]])
+                [midpoint.x - first_bank * resolution * nx,
+                 midpoint.y - first_bank * resolution * ny],
+                [midpoint.x + last_bank * resolution * nx,
+                 midpoint.y + last_bank * resolution * ny]])
         transects['width_line'] = transects.apply(lambda x:
                                                   apply_bank_width(x['midpoint'],
                                                                    x['nx'],
                                                                    x['ny'],
-                                                                   x['first_widths'],
-                                                                   x['last_widths'],
+                                                                   x['first_bank'],
+                                                                   x['last_bank'],
                                                                    self.resolution), axis=1)
         transect_width_df = transects.set_geometry('width_line')
 
@@ -598,7 +598,9 @@ class ChannelBathymetry:
             transects[min_z_columns].plot()
 
         # Plot the widths
-        transects[['widths']].plot()
+        width_columns = [column_name for column_name in transects.columns if 'widths' in column_name]
+        if len(width_columns) > 0:
+            transects[width_columns].plot()
 
     def _estimate_centreline_using_polygon(self, transects: geopandas.GeoDataFrame,
                                            erosion_factor: float = -2,
@@ -627,11 +629,11 @@ class ChannelBathymetry:
         # Create channel polygon
         channel_polygon = []
         for index, row in transects.iterrows():
-            if not numpy.isnan(row['first_widths']) and not numpy.isnan(row['last_widths']):
-                channel_polygon.append([row['midpoint'].x - row['first_widths'] * self.resolution * row['nx'],
-                                        row['midpoint'].y - row['first_widths'] * self.resolution * row['ny']])
-                channel_polygon.insert(0, [row['midpoint'].x + row['last_widths'] * self.resolution * row['nx'],
-                                           row['midpoint'].y + row['last_widths'] * self.resolution * row['ny']])
+            if not numpy.isnan(row['first_bank']) and not numpy.isnan(row['last_bank']):
+                channel_polygon.append([row['midpoint'].x - row['first_bank'] * self.resolution * row['nx'],
+                                        row['midpoint'].y - row['first_bank'] * self.resolution * row['ny']])
+                channel_polygon.insert(0, [row['midpoint'].x + row['last_bank'] * self.resolution * row['nx'],
+                                           row['midpoint'].y + row['last_bank'] * self.resolution * row['ny']])
         channel_polygon = shapely.geometry.Polygon(channel_polygon)
         channel_polygon = channel_polygon.buffer(
             self.transect_spacing * dilation_factor).buffer(self.transect_spacing * erosion_factor)
@@ -661,6 +663,46 @@ class ChannelBathymetry:
         # Create a aligned channel dataframe
         aligned_channel = geopandas.GeoDataFrame(aligned_channel, crs=transects.crs)
         return aligned_channel, channel_polygon
+
+    def _monotonically_increasing_cubic_spline(self, y: numpy.ndarray):
+        """ Fit a monotonically increasing cublic spline to the data.
+
+        Monotonically increasing cublic splines
+        - https://stats.stackexchange.com/questions/467126/monotonic-splines-in-python
+
+        Parameters
+        ----------
+
+        y
+            A 1D array of data to fit a monotonically increasing polynomial fit to.
+        """
+
+        x = numpy.arange(len(y))
+
+        # Prepare bases (Imat) and penalty
+        dd = 3
+        la = 100
+        kp = 10000000
+        E  = numpy.eye(len(x))
+        D3 = numpy.diff(E, n = dd, axis=0)
+        D1 = numpy.diff(E, n = 1, axis=0)
+
+        # Monotone smoothing
+        ws = numpy.zeros(len(x) - 1)
+        for it in range(30):
+            Ws = numpy.diag(ws * kp)
+            mon_cof = numpy.linalg.solve(E + la * D3.T @ D3 + D1.T @ Ws @ D1, y)  # Polynomial fit, not monotonically constrained
+            ws_new = (D1 @ mon_cof < 0.0) * 1
+            dw = numpy.sum(ws != ws_new)
+            ws = ws_new
+            if(dw == 0):
+                break
+            #print(dw)
+
+        # Monotonic and non monotonic fits
+        unconstrained_polynomial_fit = numpy.linalg.solve(E + la * D3.T @ D3, y)
+
+        return mon_cof
 
     def align_channel(self, threshold: float):
         """ Estimate the channel centre from transect samples
@@ -736,12 +778,12 @@ class ChannelBathymetry:
         # 1. transects, 2. transect samples, 3. aligned widths outwards
 
         # Width smoothing - either from polygon if good enough, or function fit to aligned_widths_outward
+        transects['widths_mean'] = transects['widths'].rolling(5, min_periods=1, center=True).mean()
+        transects['widths_median'] = transects['widths'].rolling(5, min_periods=1, center=True).median()
 
         # Estimate slopes - smoothing!
         transects['min_z'] = transect_samples['min_z']
-        transects['mean_min_z'] = transects['min_z'].rolling(5, center=True).mean()
-        transects.loc[numpy.isnan(transects['mean_min_z']),
-                      ('mean_min_z')] = transects['min_z'][numpy.isnan(transects['mean_min_z'])]
+        transects['mean_min_z'] = transects['min_z'].rolling(5, min_periods=1, center=True).mean()
         min_z = transects['mean_min_z']
         upstream_min_z = numpy.zeros(len(min_z))
         upstream_min_z[-1] = min_z[len(min_z) - 1]
@@ -749,31 +791,8 @@ class ChannelBathymetry:
             upstream_min_z[i] = min_z[i] if min_z[i] < upstream_min_z[i + 1] else upstream_min_z[i + 1]
         transects['upstream_min_z'] = upstream_min_z
 
-        # Monotonically increasing cublic splines - https://stats.stackexchange.com/questions/467126/monotonic-splines-in-python
-        y = transects['min_z']; x = numpy.arange(len(y))
-
-        # Prepare bases (Imat) and penalty
-        dd = 3; la = 100; kp = 10000000
-        E  = numpy.eye(len(x))
-        D3 = numpy.diff(E, n = dd, axis=0)
-        D1 = numpy.diff(E, n = 1, axis=0)
-
-        # Monotone smoothing
-        ws = numpy.zeros(len(x) - 1)
-        for it in range(30):
-            Ws      = numpy.diag(ws * kp)
-            mon_cof = numpy.linalg.solve(E + la * D3.T @ D3 + D1.T @ Ws @ D1, y)
-            ws_new  = (D1 @ mon_cof < 0.0) * 1
-            dw      = numpy.sum(ws != ws_new)
-            ws      = ws_new
-            if(dw == 0): break  
-            print(dw)
-
-        # Monotonic and non monotonic fits
-        z  = mon_cof
-        z2 = numpy.linalg.solve(E + la * D3.T @ D3, y)
-        transects['min_z_poly'] = z
-        transects['min_z_poly_constrained'] = z2
+        # Monotonically increasing splines fit
+        transects['min_z_poly_constrained'] = self._monotonically_increasing_cubic_spline(transects['min_z'])
 
         # Plot results
         self._plot_results(transects, transect_samples, threshold, channel_polygon)
