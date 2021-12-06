@@ -43,7 +43,12 @@ def launch_processor(args):
 
     # Run the pipeline
     start_time = time.time()
-    if 'dense_dem' in instructions['instructions']['data_paths']:
+    if 'channel_bathymetry' in instructions['instructions']:
+        # Update a dense DEM with offshore values
+        print("Run processor.RiverBathymetryGenerator")
+        runner = processor.RiverBathymetryGenerator(instructions)
+        runner.run()
+    elif 'dense_dem' in instructions['instructions']['data_paths']:
         # Update a dense DEM with offshore values
         print("Run processor.OffshoreDemGenerator")
         runner = processor.OffshoreDemGenerator(instructions)
