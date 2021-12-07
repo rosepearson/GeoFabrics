@@ -575,7 +575,7 @@ class ChannelBathymetry:
         transect_width_df = transects.set_geometry('width_line')
 
         # Plot transects, widths, and centrelines on the DEM
-        f, ax = matplotlib.pyplot.subplots(figsize=(20, 10))
+        f, ax = matplotlib.pyplot.subplots(figsize=(40, 20))
         self.dem.plot(ax=ax, label='DEM')
         if include_transects:
             transects.plot(ax=ax, color='blue', linewidth=1, label='transects')
@@ -593,14 +593,16 @@ class ChannelBathymetry:
         matplotlib.pyplot.show()
 
         # Plot the various min_z values if they have been added to the transects
+        f, ax = matplotlib.pyplot.subplots(figsize=(20, 10))
         min_z_columns = [column_name for column_name in transects.columns if 'min_z' in column_name]
         if len(min_z_columns) > 0:
-            transects[min_z_columns].plot()
+            transects[min_z_columns].plot(ax=ax)
 
         # Plot the widths
+        f, ax = matplotlib.pyplot.subplots(figsize=(20, 10))
         width_columns = [column_name for column_name in transects.columns if 'widths' in column_name]
         if len(width_columns) > 0:
-            transects[width_columns].plot()
+            transects[width_columns].plot(ax=ax)
 
     def _estimate_centreline_using_polygon(self, transects: geopandas.GeoDataFrame,
                                            erosion_factor: float = -2,
