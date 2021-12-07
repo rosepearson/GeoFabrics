@@ -665,6 +665,8 @@ class ChannelBathymetry:
                 # Reset for the next reach
                 reach_id = row[self._id]
                 centre_points = [centre_point]
+            elif reach_id != row[self._id]:  # New reach but no section in previous - update reach id
+                reach_id = row[self._id]
 
         if len(centre_points) > 0:  # Store the final reach
             aligned_channel['geometry'].append(
