@@ -604,6 +604,13 @@ class ChannelBathymetry:
         if len(width_columns) > 0:
             transects[width_columns].plot(ax=ax)
 
+        # Plot the slopes
+        f, ax = matplotlib.pyplot.subplots(figsize=(20, 10))
+        slope_columns = [column_name for column_name in transects.columns if 'slope' in column_name]
+        if len(slope_columns) > 0:
+            transects[slope_columns].plot(ax=ax)
+        matplotlib.pyplot.ylim((0, None))
+
     def _estimate_centreline_using_polygon(self, transects: geopandas.GeoDataFrame,
                                            erosion_factor: float = -2,
                                            dilation_factor: float = 3,
