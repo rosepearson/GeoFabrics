@@ -668,11 +668,12 @@ class ChannelBathymetry:
         aligned_channel = geopandas.GeoDataFrame(aligned_channel, crs=transects.crs)
         return aligned_channel, channel_polygon
 
-    def _monotonically_increasing_cubic_spline(self, y: numpy.ndarray):
+    def _unimodal_smoothing(self, y: numpy.ndarray):
         """ Fit a monotonically increasing cublic spline to the data.
 
         Monotonically increasing cublic splines
         - https://stats.stackexchange.com/questions/467126/monotonic-splines-in-python
+        -- https://analyticalsciencejournals.onlinelibrary.wiley.com/doi/epdf/10.1002/cem.935
 
         Parameters
         ----------
