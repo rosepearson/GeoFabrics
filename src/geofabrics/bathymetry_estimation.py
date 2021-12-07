@@ -799,7 +799,7 @@ class ChannelBathymetry:
             / self.transect_spacing
 
         # Set the water z value to use for width thresholding
-        transects['water_z'] = transects['slope_unimodal_{smoothing_distance/1000}km_rolling_mean']
+        transects['water_z'] = transects[f'min_z_unimodal_{smoothing_distance/1000}km_rolling_mean']
 
         # Estimate widths
         self.aligned_transect_widths_by_threshold_outwards(transects=transects,
