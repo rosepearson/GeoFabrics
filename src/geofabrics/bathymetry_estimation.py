@@ -650,7 +650,7 @@ class ChannelBathymetry:
                 centre_points.append(centre_point)
 
             # check if moved to a new reach
-            if reach_id != row[self._id] and len(centre_points) > 0:  # New reach
+            if reach_id != row[self._id] and len(centre_points) > 1:  # New reach
                 # Add to dictionary
                 aligned_channel['geometry'].append(
                     shapely.geometry.LineString(centre_points).simplify(self.transect_spacing * simplification_factor))
