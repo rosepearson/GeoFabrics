@@ -799,7 +799,7 @@ class ChannelBathymetry:
         transects['min_z_poly_constrained'] = self._monotonically_increasing_cubic_spline(transects['min_z'])
 
         # Plot results
-        self._plot_results(transects, transect_samples, threshold, channel_polygon)
+        self._plot_results(transects, transect_samples, threshold, channel_polygon, include_transects=False)
 
         # Return results for now
         return transects
