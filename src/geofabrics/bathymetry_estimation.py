@@ -792,8 +792,10 @@ class ChannelBathymetry:
         # Slope
         transects['slope'] = transects['min_z'].diff()/self.transect_spacing
         transects['slope_unimodal'] = transects['min_z_unimodal'].diff()/self.transect_spacing
-        transects['slope_mean'] = transects['mean_min_z'].diff()/self.transect_spacing
-        transects['slope_unimodal_smooth'] = transects['min_z_unimodal_smooth'].diff()/self.transect_spacing
+        transects['slope_mean'] = transects[f'min_z_{smoothing_distance/1000}km_rolling_mean'].diff() \
+            / self.transect_spacing
+        transects['slope_unimodal_smooth'] = transects[f'min_z_unimodal_{smoothing_distance/1000}km_rolling_mean'].diff() \
+            / self.transect_spacing
 
         # Set the water z value to use for width thresholding
         transects['water_z'] = transects['slope_unimodal_smooth']
