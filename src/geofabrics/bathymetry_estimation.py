@@ -668,7 +668,7 @@ class ChannelBathymetry:
             elif reach_id != row[self._id]:  # New reach but no section in previous - update reach id
                 reach_id = row[self._id]
 
-        if len(centre_points) > 0:  # Store the final reach
+        if len(centre_points) > 1:  # Store the final reach
             aligned_channel['geometry'].append(
                 shapely.geometry.LineString(centre_points).simplify(self.transect_spacing * simplification_factor))
             aligned_channel[self._id].append(reach_id)
@@ -745,6 +745,7 @@ class ChannelBathymetry:
         # Sample along transects
         transect_samples = self.sample_from_transects(transects=transects)
         transects['water_z'] = transect_samples['min_z']
+
         # Bank estimates - outside in
         self.transect_widths_by_threshold_outwards(transects=transects,
                                                    transect_samples=transect_samples,
