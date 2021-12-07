@@ -767,6 +767,8 @@ class ChannelBathymetry:
             The height above the water level to detect as a bank.
         """
 
+        smoothing_distance = 1000  # Distance to slooth upstream over 1km
+
         # Subsample transects
         sampled_aligned_channel = self.subsample_channels(manual_aligned_channel, self.transect_spacing, upstream=True)
 
@@ -778,35 +780,48 @@ class ChannelBathymetry:
         # Sample along transects
         transect_samples = self.sample_from_transects(transects=transects)
 
+        # Estimate water surface level and slope
+        # water surface - including monotonically increasing splines fit
+        transects['min_z'] = transect_samples['min_z']
+        transects['min_z_unimodal'] = self._unimodal_smoothing(transects['min_z'])
+        transects[f'min_z_{smoothing_distance/1000}km_rolling_mean'] = transects['min_z'].rolling(
+            int(numpy.ceil(smoothing_distance/self.transect_spacing)), min_periods=1, center=True).mean()
+        transects[f'min_z_unimodal_{smoothing_distance/1000}km_rolling_mean'] = transects['min_z'].rolling(
+            int(numpy.ceil(smoothing_distance/self.transect_spacing)), min_periods=1, center=True).mean()
+
+        # Slope
+        transects['slope'] = transects['min_z'].diff()/self.transect_spacing
+        transects['slope_unimodal'] = transects['min_z_unimodal'].diff()/self.transect_spacing
+        transects['slope_mean'] = transects['mean_min_z'].diff()/self.transect_spacing
+        transects['slope_unimodal_smooth'] = transects['min_z_unimodal_smooth'].diff()/self.transect_spacing
+
         # Estimate widths
         self.aligned_transect_widths_by_threshold_outwards(transects=transects,
                                                            transect_samples=transect_samples,
                                                            threshold=threshold,
                                                            resolution=self.resolution)
 
-        # Smooth slope and width estimates
-        # Create channel polygon with erosion and dilation to reduce sensitivity to poor width measurements
+        # Iteration 2
+        # Iterate on alignment
         aligned_channel_2, channel_polygon = self._estimate_centreline_using_polygon(transects)
 
-        # Estimate width: Repeat process a second time
+        '''# Estimate width: Repeat process a second time
         # 1. transects, 2. transect samples, 3. aligned widths outwards
+        sampled_aligned_channel_2 = self.subsample_channels(aligned_channel_2, self.transect_spacing, upstream=True)
+        transects_2 = self.transects_along_reaches_at_node(
+                    channel_polylines=sampled_aligned_channel_2,
+                    transect_radius=self.transect_radius)
+        transect_samples_2 = self.sample_from_transects(transects=transects_2)
+        self.aligned_transect_widths_by_threshold_outwards(transects=transects_2,
+                                                           transect_samples=transect_samples_2,
+                                                           threshold=threshold,
+                                                           resolution=self.resolution)'''
 
         # Width smoothing - either from polygon if good enough, or function fit to aligned_widths_outward
-        transects['widths_mean'] = transects['widths'].rolling(5, min_periods=1, center=True).mean()
-        transects['widths_median'] = transects['widths'].rolling(5, min_periods=1, center=True).median()
-
-        # Estimate slopes - smoothing!
-        transects['min_z'] = transect_samples['min_z']
-        transects['mean_min_z'] = transects['min_z'].rolling(5, min_periods=1, center=True).mean()
-        min_z = transects['mean_min_z']
-        upstream_min_z = numpy.zeros(len(min_z))
-        upstream_min_z[-1] = min_z[len(min_z) - 1]
-        for i in range(len(min_z) - 2, -1, -1):  # range [len-1, len-2, len-3, ..., 2, 1, 0]
-            upstream_min_z[i] = min_z[i] if min_z[i] < upstream_min_z[i + 1] else upstream_min_z[i + 1]
-        transects['upstream_min_z'] = upstream_min_z
-
-        # Monotonically increasing splines fit
-        transects['min_z_poly_constrained'] = self._monotonically_increasing_cubic_spline(transects['min_z'])
+        transects['widths_mean'] = transects['widths'].rolling(5,
+                                                               min_periods=1, center=True).mean()
+        transects['widths_median'] = transects['widths'].rolling(5,
+                                                                 min_periods=1, center=True).median()
 
         # Plot results
         self._plot_results(transects, transect_samples, threshold, channel_polygon, include_transects=False)
