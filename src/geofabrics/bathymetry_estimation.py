@@ -786,7 +786,7 @@ class ChannelBathymetry:
         transects['min_z_unimodal'] = self._unimodal_smoothing(transects['min_z'])
         transects[f'min_z_{smoothing_distance/1000}km_rolling_mean'] = transects['min_z'].rolling(
             int(numpy.ceil(smoothing_distance/self.transect_spacing)), min_periods=1, center=True).mean()
-        transects[f'min_z_unimodal_{smoothing_distance/1000}km_rolling_mean'] = transects['min_z'].rolling(
+        transects[f'min_z_unimodal_{smoothing_distance/1000}km_rolling_mean'] = transects['min_z_unimodal'].rolling(
             int(numpy.ceil(smoothing_distance/self.transect_spacing)), min_periods=1, center=True).mean()
 
         # Slope
