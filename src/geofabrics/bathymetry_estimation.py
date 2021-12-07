@@ -382,14 +382,14 @@ class ChannelBathymetry:
             for i in numpy.arange(start_index, number_of_samples, 1):
 
                 # work forward checking height
-                elevation_over_minimum = transect_samples['elevations'][j][i] - transect_samples['min_z'][j]
+                elevation_over_minimum = transect_samples['elevations'][j][i] - transect_samples['water_z'][j]
                 if numpy.isnan(stop_i) and elevation_over_minimum > threshold:
                     stop_i = i
 
             for i in numpy.arange(start_index, -1, -1):
 
                 # work backward checking height
-                elevation_over_minimum = transect_samples['elevations'][j][i] - transect_samples['min_z'][j]
+                elevation_over_minimum = transect_samples['elevations'][j][i] - transect_samples['water_z'][j]
                 if numpy.isnan(start_i) and elevation_over_minimum > threshold:
                     start_i = i
 
@@ -438,7 +438,7 @@ class ChannelBathymetry:
 
                 # work forward checking height
                 elevation_over_minimum = transect_samples['elevations'][j][centre_index + i] \
-                    - transect_samples['min_z'][j]
+                    - transect_samples['water_z'][j]
                 if sub_threshold_detected and numpy.isnan(stop_i) \
                         and elevation_over_minimum > threshold:
                     stop_i = centre_index + i
@@ -447,7 +447,7 @@ class ChannelBathymetry:
 
                 # work backward checking height
                 elevation_over_minimum = transect_samples['elevations'][j][centre_index - i] \
-                    - transect_samples['min_z'][j]
+                    - transect_samples['water_z'][j]
                 if sub_threshold_detected and numpy.isnan(start_i) \
                         and elevation_over_minimum > threshold:
                     start_i = centre_index - i
@@ -495,7 +495,7 @@ class ChannelBathymetry:
             for i in numpy.arange(0, centre_index + 1, 1):
 
                 # work forward checking height
-                elevation_over_minimum = transect_samples['elevations'][j][i] - transect_samples['min_z'][j]
+                elevation_over_minimum = transect_samples['elevations'][j][i] - transect_samples['water_z'][j]
                 if elevation_over_minimum > threshold:
                     start_i = i
                 elif not numpy.isnan(start_i) and not numpy.isnan(elevation_over_minimum):
@@ -504,7 +504,7 @@ class ChannelBathymetry:
             for i in numpy.arange(number_of_samples - 1, centre_index - 1, -1):
 
                 # work backward checking height
-                elevation_over_minimum = transect_samples['elevations'][j][i] - transect_samples['min_z'][j]
+                elevation_over_minimum = transect_samples['elevations'][j][i] - transect_samples['water_z'][j]
                 if elevation_over_minimum > threshold:
                     stop_i = i
                 elif not numpy.isnan(stop_i) and not numpy.isnan(elevation_over_minimum):
@@ -794,6 +794,9 @@ class ChannelBathymetry:
         transects['slope_unimodal'] = transects['min_z_unimodal'].diff()/self.transect_spacing
         transects['slope_mean'] = transects['mean_min_z'].diff()/self.transect_spacing
         transects['slope_unimodal_smooth'] = transects['min_z_unimodal_smooth'].diff()/self.transect_spacing
+
+        # Set the water z value to use for width thresholding
+        transects['water_z'] = transects['slope_unimodal_smooth']
 
         # Estimate widths
         self.aligned_transect_widths_by_threshold_outwards(transects=transects,
