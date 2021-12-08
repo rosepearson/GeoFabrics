@@ -376,7 +376,8 @@ class ChannelBathymetry:
             The resolution to sample at.
         """
 
-        widths = {'widths': [], 'first_bank': [], 'last_bank': []}
+        widths = {'widths': [], 'first_bank': [], 'last_bank': [],
+                  'first_bank_i': [], 'last_bank_i': []}
 
         for j in range(len(transect_samples['elevations'])):
 
@@ -529,7 +530,9 @@ class ChannelBathymetry:
     def _plot_results(self, transects: geopandas.GeoDataFrame,
                       transect_samples: dict,
                       threshold: float,
-                      channel_polygon=None, include_transects: bool = True):
+                      channel: geopandas.GeoDataFrame = None,
+                      channel_polygon: shapely.geometry.Polygon = None,
+                      include_transects: bool = True):
         """ Function used for debugging or interactively to visualised the
         samples and widths
 
@@ -549,14 +552,14 @@ class ChannelBathymetry:
 
         import matplotlib
 
-        # Plot all sampled transect values
+        '''# Plot all sampled transect values
         f, ax = matplotlib.pyplot.subplots(figsize=(11, 4))
         for elevations, min_z in zip(transect_samples['elevations'], transect_samples['min_z']):
             matplotlib.pyplot.plot(elevations - min_z)
-        ax.set(title=f"Sampled transects. Thresh {threshold}")
+        ax.set(title=f"Sampled transects. Thresh {threshold}")'''
 
         # Plot a specific transect alongside various threshold values
-        i = 10
+        '''i = 10
         f, ax = matplotlib.pyplot.subplots(figsize=(11, 4))
         matplotlib.pyplot.plot(transect_samples['elevations'][i] - transect_samples['min_z'][i], label="Transects")
         matplotlib.pyplot.plot([0, 300], [0.25, 0.25], label="0.25 Thresh")
@@ -564,7 +567,7 @@ class ChannelBathymetry:
         matplotlib.pyplot.plot([0, 300], [0.75, 0.75], label="0.5 Thresh")
         matplotlib.pyplot.plot([0, 300], [1, 1], label="1.0 Thresh")
         matplotlib.pyplot.legend()
-        ax.set(title=f"Sampled transects. Thresh {threshold}, segment {i + 1}")
+        ax.set(title=f"Sampled transects. Thresh {threshold}, segment {i + 1}")'''
 
         # Create width lines for plotting
         def apply_bank_width(midpoint, nx, ny, first_bank, last_bank, resolution):
@@ -588,14 +591,18 @@ class ChannelBathymetry:
         self.dem.plot(ax=ax, label='DEM')
         if include_transects:
             transects.plot(ax=ax, color='blue', linewidth=1, label='transects')
-        transect_width_df.plot(ax=ax, color='red', linewidth=1.5, label='widths')
+        transects.set_geometry('width_line').plot(ax=ax, color='red', linewidth=1.5, label='widths')
         if channel_polygon is not None and type(channel_polygon) is shapely.geometry.MultiPolygon:
             for i, channel_polygon_i in enumerate(channel_polygon):
                 matplotlib.pyplot.plot(*channel_polygon_i.exterior.xy, label=f'channel polygon {i}')
         elif channel_polygon is not None and type(channel_polygon) is shapely.geometry.Polygon:
             matplotlib.pyplot.plot(*channel_polygon.exterior.xy, label='channel polygon')
         self.channel.plot(ax=ax, color='black', linewidth=1.5, linestyle='--', label='original channel')
-        self.aligned_channel.plot(ax=ax, linewidth=2, color='green', zorder=4, label='aligned channel')
+        if channel is not None:
+            channel.plot(ax=ax, linewidth=2, color='green', zorder=4, label='Sampled channel')
+        if 'perturbed_midpoints' in transects.columns:
+            transects.set_geometry('perturbed_midpoints').plot(ax=ax, color='aqua', zorder=5,
+                                                               markersize=5, label='Perturbed midpoints')
         ax.set(title=f"Raster Layer with Vector Overlay. Thresh {threshold}")
         ax.axis('off')
         matplotlib.pyplot.legend()
@@ -879,7 +886,11 @@ class ChannelBathymetry:
                                                                  min_periods=1, center=True).median()
 
         # Plot results
-        self._plot_results(transects, transect_samples, threshold, channel_polygon, include_transects=False)
+        self._plot_results(transects=transects,
+                           transect_samples=transect_samples,
+                           threshold=threshold,
+                           channel=manual_aligned_channel,
+                           include_transects=False)
 
         # Return results for now
         return transects
