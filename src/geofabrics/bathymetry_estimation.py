@@ -143,7 +143,7 @@ class ChannelBathymetry:
 
         sampled_polylines = []
         for index, row in channel_polylines.iterrows():
-            number_segment_samples = int(numpy.ceil(row.geometry.length / sampling_resolution))
+            number_segment_samples = round(row.geometry.length / sampling_resolution)
             segment_resolution = row.geometry.length / number_segment_samples
             if upstream:
                 indices = numpy.arange(0, number_segment_samples + 1, 1)
@@ -719,15 +719,20 @@ class ChannelBathymetry:
 
         # Perterb by smoothed distance
         perturbed_midpoints = []
+        perturbed_midpoints_list = []
         for index, row in transects.iterrows():
             midpoint = row['midpoint']
 
             # Perturb by smoothed offset distance
-            perturbed_midpoints.append(shapely.geometry.Point(
-                [midpoint.x + smoothed_offset_distance[index] * row['nx'],
-                 midpoint.y + smoothed_offset_distance[index] * row['ny']]))
+            perturbed_midpoint = [midpoint.x + smoothed_offset_distance[index] * row['nx'],
+                                  midpoint.y + smoothed_offset_distance[index] * row['ny']]
+            perturbed_midpoints.append(shapely.geometry.Point(perturbed_midpoint))
+            perturbed_midpoints_list.append(perturbed_midpoint)
 
         transects['perturbed_midpoints'] = perturbed_midpoints
+        perturbed_channel_centreline = geopandas.GeoDataFrame({"geometry": [shapely.geometry.LineString(perturbed_midpoints_list)],
+                                                               self._id: [transects.iloc[0][self._id]]}, crs=transects.crs)
+        return perturbed_channel_centreline
 
     def _unimodal_smoothing(self, y: numpy.ndarray):
         """ Fit a monotonically increasing cublic spline to the data.
@@ -804,11 +809,12 @@ class ChannelBathymetry:
                                                    resolution=self.resolution)
 
         # Create channel polygon with erosion and dilation to reduce sensitivity to poor width measurements
-        self.aligned_channel, channel_polygon = self._estimate_centreline_using_polygon(transects)
+        aligned_channel = self._perturb_centreline_from_width(transects, smoothing_distance=500)
+        aligned_channel = aligned_channel.simplify(10)
 
         # Plot results
-        #self._plot_results(transects, transect_samples, threshold, channel_polygon)
-        return geopandas.GeoDataFrame({'geometry': [channel_polygon]}, crs=self.channel.crs)
+        self._plot_results(transects, transect_samples, threshold, include_transects=False)
+        return aligned_channel
 
     def estimate_width_and_slope(self, manual_aligned_channel: geopandas.GeoDataFrame, threshold: float):
         """ Estimate the channel centre from transect samples
