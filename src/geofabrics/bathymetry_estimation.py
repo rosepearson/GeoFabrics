@@ -863,10 +863,8 @@ class ChannelBathymetry:
                                                            threshold=threshold,
                                                            resolution=self.resolution)
 
-        # Iteration 2
-        # Iterate on alignment
-        #aligned_channel_2, channel_polygon = self._estimate_centreline_using_polygon(transects)
-        self._perturb_centreline_from_width(transects, sampled_aligned_channel)
+        # Update centreline estimation from widths
+        self._perturb_centreline_from_width(transects)
 
         '''# Estimate width: Repeat process a second time
         # 1. transects, 2. transect samples, 3. aligned widths outwards
