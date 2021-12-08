@@ -112,6 +112,19 @@ class ChannelBathymetry:
 
         self.aligned_channel = None
 
+    @property
+    def number_of_samples(self) -> int:
+        """ Return the number of samples to take along transects. This should
+        be an odd number. Subtract 1 instead of adding to ensure within the
+        generated DEM. """
+
+        return int(self.transect_radius / self.resolution) * 2 - 1
+
+    @property
+    def centre_index(self) -> int:
+        """ Return the centre index for samples taken along a transect. """
+        return int(numpy.floor(self.number_of_samples / 2))
+
     def subsample_channels(self, channel_polylines: geopandas.GeoDataFrame, sampling_resolution: float, upstream: bool):
         """ Subsample along all polylines at the sampling resolution. Note the
         subsampling is done in the upstream direction.
@@ -124,7 +137,8 @@ class ChannelBathymetry:
         sampling_resolution
             The resolution to subsample at.
         upstream
-            True if the channel polyline is defined upstream, False if it is defined downstream
+            True if the channel polyline to sample from is already defined
+            upstream, False if it is defined downstream
         """
 
         sampled_polylines = []
@@ -163,8 +177,7 @@ class ChannelBathymetry:
             / length
         return dx, dy, length
 
-    def transects_along_reaches_at_node(self, channel_polylines: geopandas.GeoDataFrame,
-                                        transect_radius: float):
+    def transects_along_reaches_at_node(self, channel_polylines: geopandas.GeoDataFrame):
         """ Calculate transects along a channel at the midpoint of each segment.
         Segments in Rec2 are defined upstream down 
 
@@ -224,11 +237,11 @@ class ChannelBathymetry:
 
                 # calculate transect - using effectively nx and ny
                 transects_dict['geometry'].append(shapely.geometry.LineString([
-                    [midpoint.x - transect_radius * normal_x,
-                     midpoint.y - transect_radius * normal_y],
+                    [midpoint.x - self.transect_radius * normal_x,
+                     midpoint.y - self.transect_radius * normal_y],
                     midpoint,
-                    [midpoint.x + transect_radius * normal_x,
-                     midpoint.y + transect_radius * normal_y]]))
+                    [midpoint.x + self.transect_radius * normal_x,
+                     midpoint.y + self.transect_radius * normal_y]]))
                 transects_dict['midpoint'].append(midpoint)
 
                 # record the length of the line segment
@@ -238,8 +251,7 @@ class ChannelBathymetry:
                                            crs=channel_polylines.crs)
         return transects
 
-    def transects_along_reaches_at_midpoint(self, channel_polylines: geopandas.GeoDataFrame,
-                                            transect_radius: float):
+    def transects_along_reaches_at_midpoint(self, channel_polylines: geopandas.GeoDataFrame):
         """ Calculate transects along a channel at the midpoint of each segment.
 
         Parameters
@@ -282,11 +294,11 @@ class ChannelBathymetry:
 
                 # calculate transect - using effectively nx and ny
                 transects_dict['geometry'].append(shapely.geometry.LineString([
-                    [midpoint[0] - transect_radius * normal_x,
-                     midpoint[1] - transect_radius * normal_y],
+                    [midpoint[0] - self.transect_radius * normal_x,
+                     midpoint[1] - self.transect_radius * normal_y],
                     midpoint,
-                    [midpoint[0] + transect_radius * normal_x,
-                     midpoint[1] + transect_radius * normal_y]]))
+                    [midpoint[0] + self.transect_radius * normal_x,
+                     midpoint[1] + self.transect_radius * normal_y]]))
                 transects_dict['midpoint'].append(shapely.geometry.Point(midpoint))
 
                 # record the length of the line segment
@@ -308,10 +320,8 @@ class ChannelBathymetry:
         """
 
         # The number of transect samples - ensure odd - defined from the first
-        number_of_samples = int(numpy.floor(transects.iloc[0].geometry.length
-                                            / self.resolution) - 1)
-        sample_index_array = numpy.arange(-numpy.floor(number_of_samples / 2),
-                                          numpy.floor(number_of_samples / 2) + 1,
+        sample_index_array = numpy.arange(-numpy.floor(self.number_of_samples / 2),
+                                          numpy.floor(self.number_of_samples / 2) + 1,
                                           1)
 
         transect_samples = {'elevations': [], 'xx': [], 'yy': [], 'min_z': [],
@@ -370,16 +380,13 @@ class ChannelBathymetry:
 
         for j in range(len(transect_samples['elevations'])):
 
-            number_of_samples = len(transect_samples['elevations'][j])
-            assert numpy.floor(number_of_samples / 2) \
-                != number_of_samples / 2, "Expect an odd length"
+            assert len(transect_samples['elevations'][j]) == self.number_of_samples, "Expect fixed length"
 
             start_i = numpy.nan
             stop_i = numpy.nan
             start_index = transect_samples['min_i'][j]
-            centre_index = int(numpy.floor(number_of_samples / 2))
 
-            for i in numpy.arange(start_index, number_of_samples, 1):
+            for i in numpy.arange(start_index, self.number_of_samples, 1):
 
                 # work forward checking height
                 elevation_over_minimum = transect_samples['elevations'][j][i] - transects.iloc[j]['water_z']
@@ -393,8 +400,8 @@ class ChannelBathymetry:
                 if numpy.isnan(start_i) and elevation_over_minimum > threshold:
                     start_i = i
 
-            widths['first_bank'].append((centre_index - start_i) * resolution)
-            widths['last_bank'].append((stop_i - centre_index) * resolution)
+            widths['first_bank'].append((self.centre_index - start_i) * resolution)
+            widths['last_bank'].append((stop_i - self.centre_index) * resolution)
             widths['widths'].append((stop_i - start_i) * resolution)
 
         for key in widths.keys():
@@ -425,37 +432,34 @@ class ChannelBathymetry:
 
         for j in range(len(transect_samples['elevations'])):
 
-            number_of_samples = len(transect_samples['elevations'][j])
-            assert numpy.floor(number_of_samples / 2) \
-                != number_of_samples / 2, "Expect an odd length"
+            assert len(transect_samples['elevations'][j]) == self.number_of_samples, "Expect fixed length"
 
             sub_threshold_detected = False  # True when detected in either direction
             start_i = numpy.nan
             stop_i = numpy.nan
-            centre_index = int(numpy.floor(number_of_samples / 2))
 
-            for i in numpy.arange(0, centre_index + 1, 1):
+            for i in numpy.arange(0, self.centre_index + 1, 1):
 
                 # work forward checking height
-                elevation_over_minimum = transect_samples['elevations'][j][centre_index + i] \
+                elevation_over_minimum = transect_samples['elevations'][j][self.centre_index + i] \
                     - transects.iloc[j]['water_z']
                 if sub_threshold_detected and numpy.isnan(stop_i) \
                         and elevation_over_minimum > threshold:
-                    stop_i = centre_index + i
+                    stop_i = self.centre_index + i
                 elif elevation_over_minimum < threshold:
                     sub_threshold_detected = True
 
                 # work backward checking height
-                elevation_over_minimum = transect_samples['elevations'][j][centre_index - i] \
+                elevation_over_minimum = transect_samples['elevations'][j][self.centre_index - i] \
                     - transects.iloc[j]['water_z']
                 if sub_threshold_detected and numpy.isnan(start_i) \
                         and elevation_over_minimum > threshold:
-                    start_i = centre_index - i
+                    start_i = self.centre_index - i
                 elif elevation_over_minimum < threshold:
                     sub_threshold_detected = True
 
-            widths['first_bank'].append((centre_index - start_i) * resolution)
-            widths['last_bank'].append((stop_i - centre_index) * resolution)
+            widths['first_bank'].append((self.centre_index - start_i) * resolution)
+            widths['last_bank'].append((stop_i - self.centre_index) * resolution)
             widths['widths'].append((stop_i - start_i) * resolution)
 
         for key in widths.keys():
@@ -485,14 +489,11 @@ class ChannelBathymetry:
 
         for j in range(len(transect_samples['elevations'])):
 
-            number_of_samples = len(transect_samples['elevations'][j])
-            assert numpy.floor(number_of_samples / 2) \
-                != number_of_samples / 2, "Expect an odd length"
+            assert len(transect_samples['elevations'][j]) == self.number_of_samples, "Expect fixed length"
             start_i = numpy.nan
             stop_i = numpy.nan
-            centre_index = int(numpy.floor(number_of_samples / 2))
 
-            for i in numpy.arange(0, centre_index + 1, 1):
+            for i in numpy.arange(0, self.centre_index + 1, 1):
 
                 # work forward checking height
                 elevation_over_minimum = transect_samples['elevations'][j][i] - transects.iloc[j]['water_z']
@@ -501,7 +502,7 @@ class ChannelBathymetry:
                 elif not numpy.isnan(start_i) and not numpy.isnan(elevation_over_minimum):
                     break
 
-            for i in numpy.arange(number_of_samples - 1, centre_index - 1, -1):
+            for i in numpy.arange(self.number_of_samples - 1, self.centre_index - 1, -1):
 
                 # work backward checking height
                 elevation_over_minimum = transect_samples['elevations'][j][i] - transects.iloc[j]['water_z']
@@ -510,8 +511,8 @@ class ChannelBathymetry:
                 elif not numpy.isnan(stop_i) and not numpy.isnan(elevation_over_minimum):
                     break
 
-            widths['first_bank'].append((centre_index - start_i) * resolution)
-            widths['last_bank'].append((stop_i - centre_index) * resolution)
+            widths['first_bank'].append((self.centre_index - start_i) * resolution)
+            widths['last_bank'].append((stop_i - self.centre_index) * resolution)
             widths['widths'].append((stop_i - start_i) * resolution)
 
         for key in widths.keys():
@@ -739,8 +740,7 @@ class ChannelBathymetry:
 
         # Create transects
         transects = self.transects_along_reaches_at_node(
-                    channel_polylines=sampled_channel,
-                    transect_radius=self.transect_radius)
+                    channel_polylines=sampled_channel)
 
         # Sample along transects
         transect_samples = self.sample_from_transects(transects=transects)
@@ -756,7 +756,8 @@ class ChannelBathymetry:
         self.aligned_channel, channel_polygon = self._estimate_centreline_using_polygon(transects)
 
         # Plot results
-        self._plot_results(transects, transect_samples, threshold, channel_polygon)
+        #self._plot_results(transects, transect_samples, threshold, channel_polygon)
+        return geopandas.GeoDataFrame({'geometry': [channel_polygon]}, crs=self.channel.crs)
 
     def estimate_width_and_slope(self, manual_aligned_channel: geopandas.GeoDataFrame, threshold: float):
         """ Estimate the channel centre from transect samples
@@ -775,8 +776,7 @@ class ChannelBathymetry:
 
         # Define transects
         transects = self.transects_along_reaches_at_node(
-                    channel_polylines=sampled_aligned_channel,
-                    transect_radius=self.transect_radius)
+                    channel_polylines=sampled_aligned_channel)
 
         # Sample along transects
         transect_samples = self.sample_from_transects(transects=transects)
@@ -815,8 +815,7 @@ class ChannelBathymetry:
         # 1. transects, 2. transect samples, 3. aligned widths outwards
         sampled_aligned_channel_2 = self.subsample_channels(aligned_channel_2, self.transect_spacing, upstream=True)
         transects_2 = self.transects_along_reaches_at_node(
-                    channel_polylines=sampled_aligned_channel_2,
-                    transect_radius=self.transect_radius)
+                    channel_polylines=sampled_aligned_channel_2)
         transect_samples_2 = self.sample_from_transects(transects=transects_2)
         self.aligned_transect_widths_by_threshold_outwards(transects=transects_2,
                                                            transect_samples=transect_samples_2,
