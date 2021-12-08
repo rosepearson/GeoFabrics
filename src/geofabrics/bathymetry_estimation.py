@@ -834,7 +834,7 @@ class ChannelBathymetry:
             The height above the water level to detect as a bank.
         """
 
-        smoothing_distance = 1000  # Distance to slooth upstream over 1km
+        slope_smoothing_distance = 1000  # Smooth slope upstream over 1km
 
         # Subsample transects
         sampled_aligned_channel = self.subsample_channels(manual_aligned_channel, self.transect_spacing, upstream=True)
@@ -850,21 +850,22 @@ class ChannelBathymetry:
         # water surface - including monotonically increasing splines fit
         transects['min_z'] = transect_samples['min_z']
         transects['min_z_unimodal'] = self._unimodal_smoothing(transects['min_z'])
-        transects[f'min_z_{smoothing_distance/1000}km_rolling_mean'] = transects['min_z'].rolling(
-            int(numpy.ceil(smoothing_distance/self.transect_spacing)), min_periods=1, center=True).mean()
-        transects[f'min_z_unimodal_{smoothing_distance/1000}km_rolling_mean'] = transects['min_z_unimodal'].rolling(
-            int(numpy.ceil(smoothing_distance/self.transect_spacing)), min_periods=1, center=True).mean()
+        transects[f'min_z_{slope_smoothing_distance/1000}km_rolling_mean'] = transects['min_z'].rolling(
+            int(numpy.ceil(slope_smoothing_distance/self.transect_spacing)), min_periods=1, center=True).mean()
+        transects[f'min_z_unimodal_{slope_smoothing_distance/1000}km_rolling_mean'] = \
+            transects['min_z_unimodal'].rolling(
+            int(numpy.ceil(slope_smoothing_distance/self.transect_spacing)), min_periods=1, center=True).mean()
 
         # Slope
         transects['slope'] = transects['min_z'].diff()/self.transect_spacing
         transects['slope_unimodal'] = transects['min_z_unimodal'].diff()/self.transect_spacing
-        transects['slope_{smoothing_distance/1000}km_rolling_mean'] = transects[f'min_z_{smoothing_distance/1000}km_rolling_mean'].diff() \
+        transects['slope_{slope_smoothing_distance/1000}km_rolling_mean'] = transects[f'min_z_{slope_smoothing_distance/1000}km_rolling_mean'].diff() \
             / self.transect_spacing
-        transects['slope_unimodal_{smoothing_distance/1000}km_rolling_mean'] = transects[f'min_z_unimodal_{smoothing_distance/1000}km_rolling_mean'].diff() \
+        transects['slope_unimodal_{slope_smoothing_distance/1000}km_rolling_mean'] = transects[f'min_z_unimodal_{slope_smoothing_distance/1000}km_rolling_mean'].diff() \
             / self.transect_spacing
 
         # Set the water z value to use for width thresholding
-        transects['water_z'] = transects[f'min_z_unimodal_{smoothing_distance/1000}km_rolling_mean']
+        transects['water_z'] = transects[f'min_z_unimodal_{slope_smoothing_distance/1000}km_rolling_mean']
 
         # Estimate widths
         self.aligned_transect_widths_by_threshold_outwards(transects=transects,
