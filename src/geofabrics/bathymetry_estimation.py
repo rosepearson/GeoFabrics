@@ -402,6 +402,8 @@ class ChannelBathymetry:
 
             widths['first_bank'].append((self.centre_index - start_i) * resolution)
             widths['last_bank'].append((stop_i - self.centre_index) * resolution)
+            widths['first_bank_i'].append(start_i)
+            widths['last_bank_i'].append(stop_i)
             widths['widths'].append((stop_i - start_i) * resolution)
 
         for key in widths.keys():
@@ -428,7 +430,8 @@ class ChannelBathymetry:
             The resolution to sample at.
         """
 
-        widths = {'widths': [], 'first_bank': [], 'last_bank': []}
+        widths = {'widths': [], 'first_bank': [], 'last_bank': [],
+                  'first_bank_i': [], 'last_bank_i': []}
 
         for j in range(len(transect_samples['elevations'])):
 
@@ -460,6 +463,8 @@ class ChannelBathymetry:
 
             widths['first_bank'].append((self.centre_index - start_i) * resolution)
             widths['last_bank'].append((stop_i - self.centre_index) * resolution)
+            widths['first_bank_i'].append(start_i)
+            widths['last_bank_i'].append(stop_i)
             widths['widths'].append((stop_i - start_i) * resolution)
 
         for key in widths.keys():
@@ -485,7 +490,8 @@ class ChannelBathymetry:
             The resolution to sample at.
         """
 
-        widths = {'widths': [], 'first_bank': [], 'last_bank': []}
+        widths = {'widths': [], 'first_bank': [], 'last_bank': [],
+                  'first_bank_i': [], 'last_bank_i': []}
 
         for j in range(len(transect_samples['elevations'])):
 
@@ -513,6 +519,8 @@ class ChannelBathymetry:
 
             widths['first_bank'].append((self.centre_index - start_i) * resolution)
             widths['last_bank'].append((stop_i - self.centre_index) * resolution)
+            widths['first_bank_i'].append(start_i)
+            widths['last_bank_i'].append(stop_i)
             widths['widths'].append((stop_i - start_i) * resolution)
 
         for key in widths.keys():
@@ -678,6 +686,47 @@ class ChannelBathymetry:
         aligned_channel = geopandas.GeoDataFrame(aligned_channel, crs=transects.crs)
         return aligned_channel, channel_polygon
 
+
+    def _perturb_centreline_from_width(self, transects: geopandas.GeoDataFrame,
+                                       smoothing_distance: float = 100):
+        """ Offset the transect centre points along the transect based on the
+        centre of the estimated width. Note that the width centres are smoothed
+        based on the smoothing distance before offsetting. .
+
+        Parameters
+        ----------
+
+        transects
+            The transects with geometry defined as polylines with width
+            estimates.
+        smoothing_distance
+            The metres along the channel to smooth the widths by.
+        """
+
+        # Calculate the offset distance between the transect and width centres
+        offset_distance = ((transects['last_bank_i'] + transects['first_bank_i']) / 2
+                           - self.centre_index) * self.resolution
+
+        # Smooth the offset distances
+        #smoothed_offset_distance = offset_distance
+        #smoothed_offset_distance = offset_distance.interpolate('index')
+        #smoothed_offset_distance = offset_distance.rolling(25, min_periods=1, center=True).mean()
+        #smoothed_offset_distance = scipy.signal.savgol_filter(offset_distance.interpolate('index'), 51, 3)
+        smoothed_offset_distance = offset_distance.interpolate('index').rolling(
+            int(smoothing_distance / self.resolution), min_periods=1, center=True).mean()
+
+        # Perterb by smoothed distance
+        perturbed_midpoints = []
+        for index, row in transects.iterrows():
+            midpoint = row['midpoint']
+
+            # Perturb by smoothed offset distance
+            perturbed_midpoints.append(shapely.geometry.Point(
+                [midpoint.x + smoothed_offset_distance[index] * row['nx'],
+                 midpoint.y + smoothed_offset_distance[index] * row['ny']]))
+
+        transects['perturbed_midpoints'] = perturbed_midpoints
+
     def _unimodal_smoothing(self, y: numpy.ndarray):
         """ Fit a monotonically increasing cublic spline to the data.
 
@@ -809,7 +858,8 @@ class ChannelBathymetry:
 
         # Iteration 2
         # Iterate on alignment
-        aligned_channel_2, channel_polygon = self._estimate_centreline_using_polygon(transects)
+        #aligned_channel_2, channel_polygon = self._estimate_centreline_using_polygon(transects)
+        self._perturb_centreline_from_width(transects, sampled_aligned_channel)
 
         '''# Estimate width: Repeat process a second time
         # 1. transects, 2. transect samples, 3. aligned widths outwards
