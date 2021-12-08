@@ -110,8 +110,6 @@ class ChannelBathymetry:
 
         self._id = 'nzsegment'
 
-        self.aligned_channel = None
-
     @property
     def number_of_samples(self) -> int:
         """ Return the number of samples to take along transects. This should
@@ -810,7 +808,6 @@ class ChannelBathymetry:
 
         # Create channel polygon with erosion and dilation to reduce sensitivity to poor width measurements
         aligned_channel = self._perturb_centreline_from_width(transects, smoothing_distance=500)
-        aligned_channel = aligned_channel.simplify(10)
 
         # Plot results
         self._plot_results(transects, transect_samples, threshold, include_transects=False)
