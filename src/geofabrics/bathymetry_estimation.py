@@ -693,7 +693,6 @@ class ChannelBathymetry:
         aligned_channel = geopandas.GeoDataFrame(aligned_channel, crs=transects.crs)
         return aligned_channel, channel_polygon
 
-
     def _perturb_centreline_from_width(self, transects: geopandas.GeoDataFrame,
                                        smoothing_distance: float = 100):
         """ Offset the transect centre points along the transect based on the
@@ -715,10 +714,6 @@ class ChannelBathymetry:
                            - self.centre_index) * self.resolution
 
         # Smooth the offset distances
-        #smoothed_offset_distance = offset_distance
-        #smoothed_offset_distance = offset_distance.interpolate('index')
-        #smoothed_offset_distance = offset_distance.rolling(25, min_periods=1, center=True).mean()
-        #smoothed_offset_distance = scipy.signal.savgol_filter(offset_distance.interpolate('index'), 51, 3)
         smoothed_offset_distance = offset_distance.interpolate('index').rolling(
             int(smoothing_distance / self.transect_spacing), min_periods=1, center=True).mean()
         import matplotlib
@@ -850,17 +845,11 @@ class ChannelBathymetry:
         # water surface - including monotonically increasing splines fit
         transects['min_z'] = transect_samples['min_z']
         transects['min_z_unimodal'] = self._unimodal_smoothing(transects['min_z'])
-        transects[f'min_z_{slope_smoothing_distance/1000}km_rolling_mean'] = transects['min_z'].rolling(
-            int(numpy.ceil(slope_smoothing_distance/self.transect_spacing)), min_periods=1, center=True).mean()
         transects[f'min_z_unimodal_{slope_smoothing_distance/1000}km_rolling_mean'] = \
             transects['min_z_unimodal'].rolling(
             int(numpy.ceil(slope_smoothing_distance/self.transect_spacing)), min_periods=1, center=True).mean()
 
         # Slope
-        transects['slope'] = transects['min_z'].diff()/self.transect_spacing
-        transects['slope_unimodal'] = transects['min_z_unimodal'].diff()/self.transect_spacing
-        transects['slope_{slope_smoothing_distance/1000}km_rolling_mean'] = transects[f'min_z_{slope_smoothing_distance/1000}km_rolling_mean'].diff() \
-            / self.transect_spacing
         transects['slope_unimodal_{slope_smoothing_distance/1000}km_rolling_mean'] = transects[f'min_z_unimodal_{slope_smoothing_distance/1000}km_rolling_mean'].diff() \
             / self.transect_spacing
 
@@ -876,16 +865,7 @@ class ChannelBathymetry:
         # Update centreline estimation from widths
         self._perturb_centreline_from_width(transects)
 
-        '''# Estimate width: Repeat process a second time
-        # 1. transects, 2. transect samples, 3. aligned widths outwards
-        sampled_aligned_channel_2 = self.subsample_channels(aligned_channel_2, self.transect_spacing, upstream=True)
-        transects_2 = self.transects_along_reaches_at_node(
-                    channel_polylines=sampled_aligned_channel_2)
-        transect_samples_2 = self.sample_from_transects(transects=transects_2)
-        self.aligned_transect_widths_by_threshold_outwards(transects=transects_2,
-                                                           transect_samples=transect_samples_2,
-                                                           threshold=threshold,
-                                                           resolution=self.resolution)'''
+        # Repeat width estimate with the realigned centreline?
 
         # Width smoothing - either from polygon if good enough, or function fit to aligned_widths_outward
         transects['widths_mean'] = transects['widths'].rolling(5,
