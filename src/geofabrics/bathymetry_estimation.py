@@ -716,15 +716,6 @@ class ChannelBathymetry:
         # Smooth the offset distances
         smoothed_offset_distance = offset_distance.interpolate('index').rolling(
             int(smoothing_distance / self.transect_spacing), min_periods=1, center=True).mean()
-        import matplotlib
-        f, ax = matplotlib.pyplot.subplots(figsize=(40, 20))
-        offset_distance.plot(linewidth=3, label='Raw offset distance values')
-        smoothed_offset_distance.plot(linewidth=3, linestyle='--',
-                                      label='Linear interpoilation then rolling '
-                                      '{smoothing_distance/self.transect_spacing}m average')
-        ax.set(title="Distance between the channel midpoint and the detected transect width midpoint")
-        matplotlib.pyplot.legend()
-        matplotlib.pyplot.show()
 
         # Perterb by smoothed distance
         perturbed_midpoints = []
