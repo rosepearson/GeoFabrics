@@ -742,8 +742,10 @@ class ChannelBathymetry:
                            - self.centre_index) * self.resolution
 
         # Smooth the offset distances
-        smoothed_offset_distance = offset_distance.interpolate('index').rolling(
-            int(smoothing_distance / self.transect_spacing), min_periods=1, center=True).mean()
+        smoothed_offset_distance = scipy.signal.savgol_filter(
+            offset_distance.interpolate('index'),
+            int(smoothing_distance / self.transect_spacing / 2) * 2 + 1,  # Must be odd - number of samples to include
+            3)  # Polynomial order
 
         # Perterb by smoothed distance
         perturbed_midpoints = []
@@ -758,8 +760,9 @@ class ChannelBathymetry:
             perturbed_midpoints_list.append(perturbed_midpoint)
 
         transects['perturbed_midpoints'] = perturbed_midpoints
-        perturbed_channel_centreline = geopandas.GeoDataFrame({"geometry": [shapely.geometry.LineString(perturbed_midpoints_list)],
-                                                               self._id: [transects.iloc[0][self._id]]}, crs=transects.crs)
+        perturbed_channel_centreline = geopandas.GeoDataFrame(
+            {"geometry": [shapely.geometry.LineString(perturbed_midpoints_list)],
+             self._id: [transects.iloc[0][self._id]]}, crs=transects.crs)
         return perturbed_channel_centreline
 
     def _unimodal_smoothing(self, y: numpy.ndarray):
