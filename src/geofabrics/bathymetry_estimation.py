@@ -8,6 +8,7 @@ import shapely
 import numpy
 import xarray
 import scipy
+import scipy.signal
 
 
 def get_up_stream_reaches(rec_network: geopandas.GeoDataFrame,
@@ -863,8 +864,8 @@ class ChannelBathymetry:
             The height above the water level to detect as a bank.
         """
 
-        slope_smoothing_distance = 1000  # Smooth slope upstream over 1km
-
+        z_smoothing_distance = 500  # Smooth water surface upstream over 1km
+        width_smoothing_distance = 100  # Smooth slope upstream over 1km
         # Subsample transects
         sampled_aligned_channel = self.subsample_channels(manual_aligned_channel, self.transect_spacing, upstream=True)
 
@@ -887,15 +888,28 @@ class ChannelBathymetry:
                                                            resolution=self.resolution)
 
         # Update centreline estimation from widths
-        self._perturb_centreline_from_width(transects)
+        sampled_aligned_channel = self._perturb_centreline_from_width(transects)
 
         # Repeat width estimate with the realigned centreline?
+        transects = self.transects_along_reaches_at_node(channel_polylines=sampled_aligned_channel)
+        transect_samples = self.sample_from_transects(transects=transects)
+        self._estimate_water_level_and_slope(transects=transects,
+                                             transect_samples=transect_samples,
+                                             slope_smoothing_distance=z_smoothing_distance)
+        self.aligned_transect_widths_by_threshold_outwards(transects=transects,
+                                                           transect_samples=transect_samples,
+                                                           threshold=threshold,
+                                                           resolution=self.resolution)
 
         # Width smoothing - either from polygon if good enough, or function fit to aligned_widths_outward
         transects['widths_mean'] = transects['widths'].rolling(5,
                                                                min_periods=1, center=True).mean()
         transects['widths_median'] = transects['widths'].rolling(5,
                                                                  min_periods=1, center=True).median()
+        transects['widths_Savgol'] = scipy.signal.savgol_filter(
+            transects['widths'].interpolate('index'),
+            int(width_smoothing_distance / self.transect_spacing / 2) * 2 + 1,  # Must be odd - number of samples to include
+            3)  # Polynomial order
 
         # Plot results
         self._plot_results(transects=transects,
@@ -905,4 +919,4 @@ class ChannelBathymetry:
                            include_transects=False)
 
         # Return results for now
-        return transects
+        return transects, sampled_aligned_channel

@@ -536,8 +536,8 @@ class RiverBathymetryGenerator():
         catchment_file = local_cache / f"channel_catchment_{area_threshold}.geojson"
         self.instructions['instructions']['data_paths']['catchment_boundary'] = catchment_file
         aligned_channel_file = local_cache / f"aligned_channel_{area_threshold}.geojson"
-        channel_polygon_file = local_cache / f"channel_polygon_{area_threshold}.geojson"
         manual_channel_file = local_cache / f"manual_aligned_channel_{area_threshold}.geojson"
+        channel_file = local_cache / "rec_main_channel.geojson"
 
         # Other values not yet defined in the file
         transect_spacing = 10
@@ -552,6 +552,7 @@ class RiverBathymetryGenerator():
             area_threshold=area_threshold,
             channel_corridor_radius=channel_corridor_radius)
         channel_catchment.to_file(self.instructions['instructions']['data_paths']['catchment_boundary'])
+        channel.to_file(channel_file)
 
         # Generate the DEM
         dem_file = pathlib.Path(self.instructions['instructions']['data_paths']['result_dem'])
@@ -582,11 +583,12 @@ class RiverBathymetryGenerator():
         # Estimate width and slope of channel
         if manual_channel_file.is_file():
             manual_channel = geopandas.read_file(manual_channel_file)
-            transects = self.channel_bathymetry.estimate_width_and_slope(manual_channel, bank_threshold+0.5)
+            transects, aligned_manual_channel = self.channel_bathymetry.estimate_width_and_slope(manual_channel, bank_threshold+0.5)
             columns = ['geometry']
             columns.extend([column_name for column_name in transects.columns
                             if 'slope' in column_name or 'widths' in column_name or 'min_z' in column_name])
             transects[columns].to_file(local_cache / f"final_transects_{area_threshold}.geojson")
+            aligned_manual_channel.to_file(local_cache / "aligned_manual_channel.geojson")
         else:
             print("Please review the aligned channel and save as "
                   f"'manual_aligned_channel_{area_threshold}.geojson' before"
