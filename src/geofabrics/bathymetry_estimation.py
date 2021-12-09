@@ -306,6 +306,36 @@ class ChannelBathymetry:
                                            crs=channel_polylines.crs)
         return transects
 
+    def _estimate_water_level_and_slope(self, transects: geopandas.GeoDataFrame,
+                                        transect_samples: dict,
+                                        slope_smoothing_distance: float = 1000):
+        """ Estimate the water level and slope from the minimumz heights along
+        the sampled transects after applying appropiate smoothing and
+        constraints to ensure it is monotonically increasing. Values are stored
+        in the transects.
+
+        Parameters
+        ----------
+
+        transects
+            The transects with geometry defined as polylines.
+        transect_samples
+            The sampled values along each transect
+        """
+
+        # water surface - including monotonically increasing splines fit
+        transects['min_z'] = transect_samples['min_z']
+        transects['min_z_unimodal'] = self._unimodal_smoothing(transects['min_z'])
+        transects[f'min_z_unimodal_{slope_smoothing_distance/1000}km_rolling_mean'] = \
+            transects['min_z_unimodal'].rolling(
+            int(numpy.ceil(slope_smoothing_distance/self.transect_spacing)), min_periods=1, center=True).mean()
+
+        # Set the water z value to use for width thresholding
+        transects['water_z'] = transects[f'min_z_unimodal_{slope_smoothing_distance/1000}km_rolling_mean']
+
+        # Slope - from the water z
+        transects['slope'] = transects['water_z'].diff() / self.transect_spacing
+
     def sample_from_transects(self, transects: geopandas.GeoDataFrame):
         """ Sample at the sampling resolution along transects
 
@@ -789,6 +819,8 @@ class ChannelBathymetry:
             The resolution to sample at.
         """
 
+        slope_smoothing_distance = 1000  # Smooth slope upstream over 1km
+
         # Sample channel
         sampled_channel = self.subsample_channels(self.channel, self.transect_spacing, upstream=False)
 
@@ -798,7 +830,12 @@ class ChannelBathymetry:
 
         # Sample along transects
         transect_samples = self.sample_from_transects(transects=transects)
-        transects['water_z'] = transect_samples['min_z']
+
+        # Estimate water surface level and slope
+        self._estimate_water_level_and_slope(transects=transects,
+                                             transect_samples=transect_samples,
+                                             slope_smoothing_distance=slope_smoothing_distance)
+        transects['water_z'] = transects['min_z_unimodal']
 
         # Bank estimates - outside in
         self.transect_widths_by_threshold_outwards(transects=transects,
@@ -836,19 +873,9 @@ class ChannelBathymetry:
         transect_samples = self.sample_from_transects(transects=transects)
 
         # Estimate water surface level and slope
-        # water surface - including monotonically increasing splines fit
-        transects['min_z'] = transect_samples['min_z']
-        transects['min_z_unimodal'] = self._unimodal_smoothing(transects['min_z'])
-        transects[f'min_z_unimodal_{slope_smoothing_distance/1000}km_rolling_mean'] = \
-            transects['min_z_unimodal'].rolling(
-            int(numpy.ceil(slope_smoothing_distance/self.transect_spacing)), min_periods=1, center=True).mean()
-
-        # Slope
-        transects['slope_unimodal_{slope_smoothing_distance/1000}km_rolling_mean'] = transects[f'min_z_unimodal_{slope_smoothing_distance/1000}km_rolling_mean'].diff() \
-            / self.transect_spacing
-
-        # Set the water z value to use for width thresholding
-        transects['water_z'] = transects[f'min_z_unimodal_{slope_smoothing_distance/1000}km_rolling_mean']
+        self._estimate_water_level_and_slope(transects=transects,
+                                             transect_samples=transect_samples,
+                                             slope_smoothing_distance=slope_smoothing_distance)
 
         # Estimate widths
         self.aligned_transect_widths_by_threshold_outwards(transects=transects,
