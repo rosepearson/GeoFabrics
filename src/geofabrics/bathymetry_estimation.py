@@ -384,6 +384,13 @@ class ChannelBathymetry:
 
         return transect_samples
 
+    def spline_to_channel(self, transects: geopandas.GeoDataFrame):
+        x = transects.x; y = transects.y; xy, indices=numpy.unique(numpy.array([x,y]), axis=1, return_index=True); indices.sort();
+        s = len(indices);#-numpy.sqrt(2*len(indices))
+        tck, u = scipy.interpolate.splprep([x[indices], y[indices]], s=s); out = scipy.interpolate.splev(numpy.arange(0, 1.01, 0.01), tck)
+        import matplotlib.pyplot; f, ax = matplotlib.pyplot.subplots(figsize=(10, 40)); 
+        matplotlib.pyplot.plot(x, y, 'bo', markersize=1, label='points'); matplotlib.pyplot.plot(x[indices], y[indices], 'go', markersize=1, label='points'); matplotlib.pyplot.plot(out[0], out[1], label='spline'); matplotlib.pyplot.legend()
+
     def transect_widths_by_threshold_outwards(self, transects: geopandas.GeoDataFrame,
                                               transect_samples: dict,
                                               threshold: float,
@@ -744,7 +751,7 @@ class ChannelBathymetry:
 
         # Smooth the offset distances
         smoothed_offset_distance = scipy.signal.savgol_filter(
-            offset_distance.interpolate('index'),
+            offset_distance.interpolate('index', limit_direction='both'),
             int(smoothing_distance / self.transect_spacing / 2) * 2 + 1,  # Must be odd - number of samples to include
             3)  # Polynomial order
 
@@ -879,7 +886,8 @@ class ChannelBathymetry:
         # Estimate water surface level and slope
         self._estimate_water_level_and_slope(transects=transects,
                                              transect_samples=transect_samples,
-                                             slope_smoothing_distance=slope_smoothing_distance)
+                                             slope_smoothing_distance=z_smoothing_distance)
+        transects['water_z'] = transects['min_z_unimodal']
 
         # Estimate widths
         self.aligned_transect_widths_by_threshold_outwards(transects=transects,
@@ -907,7 +915,7 @@ class ChannelBathymetry:
         transects['widths_median'] = transects['widths'].rolling(5,
                                                                  min_periods=1, center=True).median()
         transects['widths_Savgol'] = scipy.signal.savgol_filter(
-            transects['widths'].interpolate('index'),
+            transects['widths'].interpolate('index', limit_direction='both'),
             int(width_smoothing_distance / self.transect_spacing / 2) * 2 + 1,  # Must be odd - number of samples to include
             3)  # Polynomial order
 
