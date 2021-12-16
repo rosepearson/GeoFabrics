@@ -861,7 +861,8 @@ class ChannelBathymetry:
                 matplotlib.pyplot.plot(*channel_polygon_i.exterior.xy, label=f'channel polygon {i}')
         elif channel_polygon is not None and type(channel_polygon) is shapely.geometry.Polygon:
             matplotlib.pyplot.plot(*channel_polygon.exterior.xy, label='channel polygon')
-        self.channel.plot(ax=ax, color='black', linewidth=1.5, linestyle='--', label='original channel')
+        self.channel.original_channel.plot(ax=ax, color='black', linewidth=1.5, linestyle='--',
+                                           label='original channel')
         if channel is not None:
             channel.plot(ax=ax, linewidth=2, color='green', zorder=4, label='Sampled channel')
         if 'perturbed_midpoints' in transects.columns:
