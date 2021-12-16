@@ -155,7 +155,7 @@ class Channel:
         xy = xy[:, indices]
         return xy
 
-    def _get_corner_points(self, channel, sample_direction: int = -1) -> numpy.ndarray:
+    def _get_corner_points(self, channel, sampling_direction: int = -1) -> numpy.ndarray:
         """ Extract the corner points from the provided polyline.
 
         Parameters
@@ -170,8 +170,8 @@ class Channel:
         y = []
         for line_string in channel.geometry:
             xy = line_string.xy
-            x.extend(xy[0][::sample_direction])
-            y.extend(xy[1][::sample_direction])
+            x.extend(xy[0][::sampling_direction])
+            y.extend(xy[1][::sampling_direction])
 
         xy = numpy.array([x, y])
         xy = self._remove_duplicate_points(xy)
@@ -179,7 +179,7 @@ class Channel:
 
     def get_spaced_points(self, channel,
                           spacing,
-                          sample_direction: int = -1) -> numpy.ndarray:
+                          sampling_direction: int = -1) -> numpy.ndarray:
         """  Sample at the specified spacing along the entire line.
 
         Parameters
@@ -193,7 +193,7 @@ class Channel:
         """
 
         # Combine the channel centreline into a single geometry
-        xy_corner_points = self._get_corner_points(channel, sample_direction)
+        xy_corner_points = self._get_corner_points(channel, sampling_direction)
         line_string = shapely.geometry.LineString(xy_corner_points.T)
 
         # Calculate the number of segments to break the line into.
@@ -212,7 +212,7 @@ class Channel:
 
     def get_spaced_points_with_corners(self, channel,
                                        spacing,
-                                       sample_direction: int = -1) -> numpy.ndarray:
+                                       sampling_direction: int = -1) -> numpy.ndarray:
         """ Sample at the specified spacing along each straight segment.
 
         Parameters
@@ -226,7 +226,7 @@ class Channel:
         """
 
         # Combine the channel centreline into a single geometry
-        xy_corner_points = self._get_corner_points(channel, sample_direction)
+        xy_corner_points = self._get_corner_points(channel, sampling_direction)
         line_string = shapely.geometry.LineString(xy_corner_points.T)
 
         xy_segment = line_string.xy
@@ -268,7 +268,7 @@ class Channel:
 
         # Sample every roughly res along the spine
         line_length = shapely.geometry.LineString(xy.T).length
-        sample_step_u = 1 / round(line_length / self.spacing)
+        sample_step_u = 1 / round(line_length / self._spacing)
         u_sampled = numpy.arange(0, 1 + sample_step_u, sample_step_u)
         xy_sampled = scipy.interpolate.splev(u_sampled, tck_tuple)
         xy_sampled = numpy.array(xy_sampled)
@@ -297,7 +297,7 @@ class Channel:
 
         # get number of points to sample spline at
         line_length = shapely.geometry.LineString(xy.T).length
-        number_of_samples = round(line_length / self.spacing)
+        number_of_samples = round(line_length / self._spacing)
 
         u_sampled = numpy.linspace(0, len(xy[0]) - 1, number_of_samples)
         x_sampled = splineX(u_sampled)
@@ -310,7 +310,7 @@ class Channel:
         resolution.
         """
 
-        xy = self.fit_spline_to_aligned_centreline(self._aligned_centreline, 5 * self.spacing)
+        xy = self.fit_spline_to_aligned_centreline(self._aligned_centreline, 5 * self._spacing)
 
         return xy
 
@@ -339,7 +339,7 @@ class ChannelBathymetry:
             The resolution to sample at.
         """
 
-        self.channel = channel
+        self.channel = Channel(channel, transect_spacing)
         self.dem = dem
         self.transect_spacing = transect_spacing
         self.resolution = resolution
@@ -620,13 +620,6 @@ class ChannelBathymetry:
 
         return transect_samples
 
-    def spline_to_channel(self, transects: geopandas.GeoDataFrame):
-        x = transects.x; y = transects.y; xy, indices=numpy.unique(numpy.array([x,y]), axis=1, return_index=True); indices.sort();
-        s = len(indices);#-numpy.sqrt(2*len(indices))
-        tck, u = scipy.interpolate.splprep([x[indices], y[indices]], s=s); out = scipy.interpolate.splev(numpy.arange(0, 1.01, 0.01), tck)
-        import matplotlib.pyplot; f, ax = matplotlib.pyplot.subplots(figsize=(10, 40)); 
-        matplotlib.pyplot.plot(x, y, 'bo', markersize=1, label='points'); matplotlib.pyplot.plot(x[indices], y[indices], 'go', markersize=1, label='points'); matplotlib.pyplot.plot(out[0], out[1], label='spline'); matplotlib.pyplot.legend()
-
     def transect_widths_by_threshold_outwards(self, transects: geopandas.GeoDataFrame,
                                               transect_samples: dict,
                                               threshold: float,
@@ -856,7 +849,6 @@ class ChannelBathymetry:
                                                                    x['first_bank'],
                                                                    x['last_bank'],
                                                                    self.resolution), axis=1)
-        transect_width_df = transects.set_geometry('width_line')
 
         # Plot transects, widths, and centrelines on the DEM
         f, ax = matplotlib.pyplot.subplots(figsize=(40, 20))
@@ -1069,7 +1061,12 @@ class ChannelBathymetry:
         slope_smoothing_distance = 1000  # Smooth slope upstream over 1km
 
         # Sample channel
-        sampled_channel = self.subsample_channels(self.channel, self.transect_spacing, upstream=False)
+        xy = self.channel.sampled_smoothed_centreline()
+        sampled_channel = geopandas.GeoDataFrame(
+            {'geometry': [shapely.geometry.LineString(xy.T)],
+             self._id: ['id_not_polpulated']},
+            crs=self.channel.original_channel.crs)
+        #sampled_channel = self.subsample_channels(self.channel, self.transect_spacing, upstream=False)
 
         # Create transects
         transects = self.transects_along_reaches_at_node(
@@ -1094,7 +1091,11 @@ class ChannelBathymetry:
         aligned_channel = self._perturb_centreline_from_width(transects, smoothing_distance=500)
 
         # Plot results
-        self._plot_results(transects, transect_samples, threshold, include_transects=False)
+        self._plot_results(transects=transects,
+                           transect_samples=transect_samples,
+                           threshold=threshold,
+                           include_transects=False,
+                           channel=aligned_channel)
         return aligned_channel
 
     def estimate_width_and_slope(self, manual_aligned_channel: geopandas.GeoDataFrame, threshold: float):
