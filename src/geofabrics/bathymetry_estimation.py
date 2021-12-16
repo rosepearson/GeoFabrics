@@ -9,6 +9,7 @@ import numpy
 import xarray
 import scipy
 import scipy.signal
+import scipy.interpolate
 
 
 def get_up_stream_reaches(rec_network: geopandas.GeoDataFrame,
@@ -77,6 +78,241 @@ def threshold_channel(reaches: geopandas.GeoDataFrame,
     main_channel_polygon['label'] = 1
     main_channel_polygon = main_channel_polygon.dissolve(by='label')
     return main_channel, main_channel_polygon
+
+
+class Channel:
+    """ A class to trace the channel centre line. """
+
+    def __init__(self,
+                 channel: geopandas.GeoDataFrame,
+                 spacing: float,
+                 reach_id: str = 'nzsegment',
+                 aligned_centreline: numpy.ndarray = None,
+                 sampling_direction: int = -1):
+        """ Track the reference of various aligned channel centre lines to the
+        REC metadata.
+
+        Parameters
+        ----------
+
+        channel
+            The channel to estimate bathymetry along defined as a polyline.
+        resolution
+            The resolution to sample at.
+        reach_id
+            The name of the reach ID in the REC channel.
+        aligned_centreline
+            An optionally provided channel centreline as an [x, y] array.
+        """
+
+        self._channel = channel
+        self._spacing = spacing
+        self._reach_id = reach_id
+        if aligned_centreline is not None:
+            self._aligned_centreline = aligned_centreline
+        else:
+            self._aligned_centreline = self.get_spaced_points(
+                channel=channel,
+                spacing=5 * spacing,
+                sampling_direction=sampling_direction)
+
+    @property
+    def original_channel(self) -> geopandas.GeoDataFrame:
+        """ Return the REC channel along with all properties. """
+
+        return self._channel
+
+    @property
+    def aligned_centreline(self) -> numpy.ndarray:
+        """ Return the latest aligned centreline. """
+
+        return self._aligned_centreline
+
+    @aligned_centreline.setter
+    def aligned_centreline(self, aligned_centreline: numpy.ndarray):
+        """ Update the latest aligned centreline.
+
+        Parameters
+        ----------
+
+        aligned_centreline
+            A paired nx2 array of x, y points.
+        """
+
+        self._aligned_centreline = aligned_centreline
+
+    def _remove_duplicate_points(self, xy):
+        """ Remove duplicate xy pairs in a list of xy points.
+
+        Parameters
+        ----------
+
+        xy
+            A paired nx2 array of x, y points.
+        """
+        xy_unique, indices = numpy.unique(xy, axis=1, return_index=True)
+        indices.sort()
+        xy = xy[:, indices]
+        return xy
+
+    def _get_corner_points(self, channel, sample_direction: int = -1) -> numpy.ndarray:
+        """ Extract the corner points from the provided polyline.
+
+        Parameters
+        ----------
+
+        sample_direction
+            Are the reaches sampled in the same direction they are ordered.
+            1 if in the same direction, -1 if in the opposite direction.
+        """
+
+        x = []
+        y = []
+        for line_string in channel.geometry:
+            xy = line_string.xy
+            x.extend(xy[0][::sample_direction])
+            y.extend(xy[1][::sample_direction])
+
+        xy = numpy.array([x, y])
+        xy = self._remove_duplicate_points(xy)
+        return xy
+
+    def get_spaced_points(self, channel,
+                          spacing,
+                          sample_direction: int = -1) -> numpy.ndarray:
+        """  Sample at the specified spacing along the entire line.
+
+        Parameters
+        ----------
+
+        spacing
+            The spacing between sampled points along straight segments
+        sample_direction
+            Are the reaches sampled in the same direction they are ordered.
+            1 if in the same direction, -1 if in the opposite direction.
+        """
+
+        # Combine the channel centreline into a single geometry
+        xy_corner_points = self._get_corner_points(channel, sample_direction)
+        line_string = shapely.geometry.LineString(xy_corner_points.T)
+
+        # Calculate the number of segments to break the line into.
+        number_segment_samples = max(numpy.round(line_string.length / spacing), 2)
+        segment_resolution = line_string.length / (number_segment_samples - 1)
+
+        # Equally space points along the entire line string
+        xy_spaced = [line_string.interpolate(i * segment_resolution) for i in
+                     numpy.arange(number_segment_samples - 1, -1, -1)]
+
+        # Check for and remove duplicate points
+        xy = numpy.array(shapely.geometry.LineString(xy_spaced).xy)
+        xy = self._remove_duplicate_points(xy)
+
+        return xy
+
+    def get_spaced_points_with_corners(self, channel,
+                                       spacing,
+                                       sample_direction: int = -1) -> numpy.ndarray:
+        """ Sample at the specified spacing along each straight segment.
+
+        Parameters
+        ----------
+
+        spacing
+            The spacing between sampled points along straight segments
+        sample_direction
+            Are the reaches sampled in the same direction they are ordered.
+            1 if in the same direction, -1 if in the opposite direction.
+        """
+
+        # Combine the channel centreline into a single geometry
+        xy_corner_points = self._get_corner_points(channel, sample_direction)
+        line_string = shapely.geometry.LineString(xy_corner_points.T)
+
+        xy_segment = line_string.xy
+        x = xy_segment[0]
+        y = xy_segment[1]
+        xy_spaced = []
+
+        # Cycle through each segment sampling along it
+        for i in numpy.arange(len(x) - 1, 0, -1):
+            line_segment = shapely.geometry.LineString([[x[i], y[i]],
+                                                        [x[i - 1], y[i - 1]]])
+
+            number_segment_samples = max(numpy.round(line_segment.length / spacing), 2)
+            segment_resolution = line_segment.length / (number_segment_samples - 1)
+
+            xy_spaced.extend([line_segment.interpolate(i * segment_resolution)
+                              for i in numpy.arange(0, number_segment_samples)])
+
+        # Check for and remove duplicate points
+        xy = numpy.array(shapely.geometry.LineString(xy_spaced).xy)
+        xy = self._remove_duplicate_points(xy)
+
+        return xy
+
+    def fit_spline_to_aligned_centreline(self, xy, smoothing_multiplier: int = 50) -> numpy.ndarray:
+        """ Fit a spline to the aligned centreline points and sampled at the resolution.
+
+        Parameters
+        ----------
+
+        smoothing_multiplier
+            This is multiplied by the number of aligned_centreline points and
+            passed into the scipy.interpolate.splprep.
+        """
+
+        smoothing_factor = smoothing_multiplier * len(xy[0])
+
+        tck_tuple, u_input = scipy.interpolate.splprep(xy, s=smoothing_factor)
+
+        # Sample every roughly res along the spine
+        line_length = shapely.geometry.LineString(xy.T).length
+        sample_step_u = 1 / round(line_length / self.spacing)
+        u_sampled = numpy.arange(0, 1 + sample_step_u, sample_step_u)
+        xy_sampled = scipy.interpolate.splev(u_sampled, tck_tuple)
+        xy_sampled = numpy.array(xy_sampled)
+
+        return xy_sampled
+
+    def fit_spline_to_points_from_knots(self, xy, k=3) -> numpy.ndarray:
+        """ Fit a spline to the aligned centreline points and sampled at the resolution.
+
+        Parameters
+        ----------
+
+        k
+            The polynomial degree. Should be off. 1<= k <= 5.
+        """
+
+        knotspace = range(len(xy[0]))
+        knots = scipy.interpolate.InterpolatedUnivariateSpline(knotspace, knotspace, k=k).get_knots()
+        knots_full = numpy.concatenate(([knots[0]] * k, knots, [knots[-1]] * k))
+
+        tckX = knots_full, xy[0], k
+        tckY = knots_full, xy[1], k
+
+        splineX = scipy.interpolate.UnivariateSpline._from_tck(tckX)
+        splineY = scipy.interpolate.UnivariateSpline._from_tck(tckY)
+
+        # get number of points to sample spline at
+        line_length = shapely.geometry.LineString(xy.T).length
+        number_of_samples = round(line_length / self.spacing)
+
+        u_sampled = numpy.linspace(0, len(xy[0]) - 1, number_of_samples)
+        x_sampled = splineX(u_sampled)
+        y_sampled = splineY(u_sampled)
+
+        return numpy.array([x_sampled, y_sampled])
+
+    def sampled_smoothed_centreline(self) -> numpy.ndarray:
+        """ Return the spline smoothed aligned_centreline sampled at the
+        resolution.
+        """
+
+        xy = self.fit_spline_to_aligned_centreline(self._aligned_centreline, 5 * self.spacing)
+
+        return xy
 
 
 class ChannelBathymetry:
