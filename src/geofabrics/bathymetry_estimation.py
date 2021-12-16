@@ -155,7 +155,7 @@ class Channel:
         xy = xy[:, indices]
         return xy
 
-    def _get_corner_points(self, channel, sampling_direction: int = -1) -> numpy.ndarray:
+    def _get_corner_points(self, channel, sampling_direction: int) -> numpy.ndarray:
         """ Extract the corner points from the provided polyline.
 
         Parameters
@@ -179,7 +179,7 @@ class Channel:
 
     def get_spaced_points(self, channel,
                           spacing,
-                          sampling_direction: int = -1) -> numpy.ndarray:
+                          sampling_direction: int) -> numpy.ndarray:
         """  Sample at the specified spacing along the entire line.
 
         Parameters
@@ -202,7 +202,7 @@ class Channel:
 
         # Equally space points along the entire line string
         xy_spaced = [line_string.interpolate(i * segment_resolution) for i in
-                     numpy.arange(number_segment_samples - 1, -1, -1)]
+                     numpy.arange(0, number_segment_samples, 1)]
 
         # Check for and remove duplicate points
         xy = numpy.array(shapely.geometry.LineString(xy_spaced).xy)
@@ -212,7 +212,7 @@ class Channel:
 
     def get_spaced_points_with_corners(self, channel,
                                        spacing,
-                                       sampling_direction: int = -1) -> numpy.ndarray:
+                                       sampling_direction: int) -> numpy.ndarray:
         """ Sample at the specified spacing along each straight segment.
 
         Parameters
