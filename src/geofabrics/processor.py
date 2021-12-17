@@ -579,7 +579,7 @@ class RiverBathymetryGenerator():
             aligned_polyline = self.channel_bathymetry.align_channel(bank_threshold+0.5)
             aligned_polyline.to_file(aligned_channel_file)
         else:
-            print("Channle alreadyed aligned and loaded in.")
+            print("Channel already aligned and loaded in.")
             aligned_channel = geopandas.read_file(aligned_channel_file)
 
         # Estimate width and slope of channel

@@ -561,11 +561,16 @@ class ChannelBathymetry:
         """
 
         # water surface - including monotonically increasing splines fit
+        slope_smoothing_samples = int(numpy.ceil(slope_smoothing_distance/self.transect_spacing))
         transects['min_z'] = transect_samples['min_z']
         transects['min_z_unimodal'] = self._unimodal_smoothing(transects['min_z'])
         transects[f'min_z_unimodal_{slope_smoothing_distance/1000}km_rolling_mean'] = \
             transects['min_z_unimodal'].rolling(
-            int(numpy.ceil(slope_smoothing_distance/self.transect_spacing)), min_periods=1, center=True).mean()
+            slope_smoothing_samples, min_periods=1, center=True).mean()
+        transects['min_z_savgol'] = scipy.signal.savgol_filter(
+            transect_samples['min_z'].interpolate('index', limit_direction='both'),
+            int(slope_smoothing_samples / 2) * 2 + 1,  # Must be odd - number of samples to include
+            3)
 
         # Set the water z value to use for width thresholding
         transects['water_z'] = transects[f'min_z_unimodal_{slope_smoothing_distance/1000}km_rolling_mean']
@@ -1030,7 +1035,7 @@ class ChannelBathymetry:
         ws = numpy.zeros(len(x) - 1)
         for it in range(30):
             Ws = numpy.diag(ws * kp)
-            mon_cof = numpy.linalg.solve(E + la * D3.T @ D3 + D1.T @ Ws @ D1, y)  # Polynomial fit, not monotonically constrained
+            mon_cof = numpy.linalg.solve(E + la * D3.T @ D3 + D1.T @ Ws @ D1, y)  # Polynomial fit, monotonically constrained
             ws_new = (D1 @ mon_cof < 0.0) * 1
             dw = numpy.sum(ws != ws_new)
             ws = ws_new
@@ -1067,7 +1072,6 @@ class ChannelBathymetry:
             {'geometry': [shapely.geometry.LineString(xy.T)],
              self._id: ['id_not_polpulated']},
             crs=self.channel.original_channel.crs)
-        #sampled_channel = self.subsample_channels(self.channel, self.transect_spacing, upstream=False)
 
         # Create transects
         transects = self.transects_along_reaches_at_node(
