@@ -983,6 +983,9 @@ class ChannelBathymetry:
         # Calculate the offset distance between the transect and width centres
         offset_distance = ((transects['last_bank_i'] + transects['first_bank_i']) / 2
                            - self.centre_index) * self.resolution
+        offset_distance = self._despike(offset_distance,
+                                        smoothing_distance=smoothing_distance,
+                                        threshold = 50)
 
         # Smooth the offset distances
         smoothed_offset_distance = scipy.signal.savgol_filter(
@@ -1007,6 +1010,40 @@ class ChannelBathymetry:
             {"geometry": [shapely.geometry.LineString(perturbed_midpoints_list)],
              self._id: [transects.iloc[0][self._id]]}, crs=transects.crs)
         return perturbed_channel_centreline
+
+    def _despike(self, spiky_values: geopandas.GeoSeries,
+                 threshold: float,
+                 smoothing_distance: float) -> geopandas.GeoSeries:
+        """ A function to remove and linearly interpolate over values that are
+        deemed a spike.
+
+        Parameters
+        ----------
+
+        spiky_values
+            The value to run spike detection over.
+        threshold
+            The threshold for a blip to be deemed a spike.
+        smoothing_distance
+            The distance down river to smooth along
+        """
+
+        # Must be odd - number of samples to include
+        samples_to_filter_with = int(smoothing_distance / self.transect_spacing / 2) * 2 + 1
+
+        smoothed_values = scipy.signal.savgol_filter(
+            spiky_values.interpolate('index', limit_direction='both'),
+            samples_to_filter_with,
+            3)
+
+        # Spikes
+        spikes = (spiky_values - smoothed_values).abs()
+
+        # despiking
+        despiked_values = spiky_values.copy(deep=True)
+        despiked_values[spikes > threshold] == numpy.nan
+        despiked_values = despiked_values.interpolate('index', limit_direction='both')
+        return despiked_values
 
     def _unimodal_smoothing(self, y: numpy.ndarray):
         """ Fit a monotonically increasing cublic spline to the data.
