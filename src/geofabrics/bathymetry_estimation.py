@@ -545,7 +545,7 @@ class ChannelBathymetry:
 
     def _estimate_water_level_and_slope(self, transects: geopandas.GeoDataFrame,
                                         transect_samples: dict,
-                                        slope_smoothing_distance: float = 1000):
+                                        smoothing_distance: float = 1000):
         """ Estimate the water level and slope from the minimumz heights along
         the sampled transects after applying appropiate smoothing and
         constraints to ensure it is monotonically increasing. Values are stored
@@ -560,20 +560,21 @@ class ChannelBathymetry:
             The sampled values along each transect
         """
 
+        smoothing_samples = int(numpy.ceil(smoothing_distance/self.transect_spacing))
+
         # water surface - including monotonically increasing splines fit
-        slope_smoothing_samples = int(numpy.ceil(slope_smoothing_distance/self.transect_spacing))
         transects['min_z'] = transect_samples['min_z']
         transects['min_z_unimodal'] = self._unimodal_smoothing(transects['min_z'])
-        transects[f'min_z_unimodal_{slope_smoothing_distance/1000}km_rolling_mean'] = \
+        transects[f'min_z_unimodal_{smoothing_distance/1000}km_rolling_mean'] = \
             transects['min_z_unimodal'].rolling(
-            slope_smoothing_samples, min_periods=1, center=True).mean()
+            smoothing_samples, min_periods=1, center=True).mean()
         transects['min_z_savgol'] = scipy.signal.savgol_filter(
-            transect_samples['min_z'].interpolate('index', limit_direction='both'),
-            int(slope_smoothing_samples / 2) * 2 + 1,  # Must be odd - number of samples to include
+            transects['min_z'].interpolate('index', limit_direction='both'),
+            int(smoothing_samples / 2) * 2 + 1,  # Must be odd - number of samples to include
             3)
 
         # Set the water z value to use for width thresholding
-        transects['water_z'] = transects[f'min_z_unimodal_{slope_smoothing_distance/1000}km_rolling_mean']
+        transects['water_z'] = transects[f'min_z_unimodal_{smoothing_distance/1000}km_rolling_mean']
 
         # Slope - from the water z
         transects['slope'] = transects['water_z'].diff() / self.transect_spacing
