@@ -544,7 +544,7 @@ class RiverBathymetryGenerator():
         # Identify the main channel, fit a spline
         channel = bathymetry_estimation.Channel.from_rec(rec_network=rec,
                                                          reach_id=channel_rec_id,
-                                                         resolution=resolution,
+                                                         resolution=transect_spacing,
                                                          area_threshold=area_threshold)
         if not channel_file.is_file():
             channel.channel.to_file(channel_file)
