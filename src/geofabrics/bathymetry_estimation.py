@@ -965,7 +965,7 @@ class ChannelBathymetry:
         return aligned_channel, channel_polygon
 
     def _perturb_centreline_from_width(self, transects: geopandas.GeoDataFrame,
-                                       smoothing_distance: float = 100):
+                                       smoothing_distance):
         """ Offset the transect centre points along the transect based on the
         centre of the estimated width. Note that the width centres are smoothed
         based on the smoothing distance before offsetting. .
@@ -984,7 +984,7 @@ class ChannelBathymetry:
         offset_distance = ((transects['last_bank_i'] + transects['first_bank_i']) / 2
                            - self.centre_index) * self.resolution
         offset_distance = self._despike(offset_distance,
-                                        smoothing_distance=smoothing_distance,
+                                        smoothing_distance=100,
                                         threshold = 50)
 
         # Smooth the offset distances
@@ -1121,7 +1121,7 @@ class ChannelBathymetry:
         # Estimate water surface level and slope
         self._estimate_water_level_and_slope(transects=transects,
                                              transect_samples=transect_samples,
-                                             slope_smoothing_distance=slope_smoothing_distance)
+                                             smoothing_distance=slope_smoothing_distance)
         transects['water_z'] = transects['min_z_unimodal']
 
         # Bank estimates - outside in
