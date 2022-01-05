@@ -541,20 +541,23 @@ class RiverBathymetryGenerator():
         manual_channel_file = local_cache / f"manual_aligned_channel_{area_threshold}.geojson"
         channel_file = local_cache / "rec_main_channel.geojson"
 
-        # Identify the main channel and create a polygon catchment
-        channel, iteration = bathymetry_estimation.get_up_stream_reaches(
-            rec_network=rec,
-            reach_id=channel_rec_id)
-        channel, channel_catchment = bathymetry_estimation.threshold_channel(
-            reaches=channel,
-            area_threshold=area_threshold,
-            channel_corridor_radius=channel_corridor_radius)
-        channel_catchment.to_file(self.instructions['instructions']['data_paths']['catchment_boundary'])
-        channel.to_file(channel_file)
+        # Identify the main channel, fit a spline
+        channel = bathymetry_estimation.Channel.from_rec(rec_network=rec,
+                                                         reach_id=channel_rec_id,
+                                                         resolution=resolution,
+                                                         area_threshold=area_threshold)
+        if not channel_file.is_file():
+            channel.channel.to_file(channel_file)
+        if not (local_cache / "smoothed_main_channel.geojson").is_file():
+            channel.get_sampled_spline_fit().to_file(local_cache / "smoothed_main_channel.geojson")
 
         # Generate the DEM
         dem_file = pathlib.Path(self.instructions['instructions']['data_paths']['result_dem'])
         if not dem_file.is_file():
+            # Create the catchment file if this has not be created yet!
+            if not pathlib.Path(self.instructions['instructions']['data_paths']['catchment_boundary']).is_file():
+                channel_catchment = channel.get_channel_catchment(corridor_radius=channel_corridor_radius)
+                channel_catchment.to_file(self.instructions['instructions']['data_paths']['catchment_boundary'])
             runner = DemGenerator(self.instructions)
             runner.run()
             self.channel_dem = runner.dense_dem.dem

@@ -12,75 +12,327 @@ import scipy.signal
 import scipy.interpolate
 
 
-def get_up_stream_reaches(rec_network: geopandas.GeoDataFrame,
-                          reach_id: int,
-                          reaches: geopandas.GeoDataFrame = None,
-                          max_iterations: int = 10000,
-                          iteration: int = 0):
-    """ A recurive function to trace all up reaches from the reach_id.
-    The default values for reaches and iteration are set for the
-    initial call to the recursive function.
-
-    Parameters
-    ----------
-
-    rec_network
-        Contains association information between upstream and
-        downstream reaches.
-    reach_id
-        The `nzsegment` id of the reach to trace upstream from.
-    reaches
-        The already traced downstream reaches to append to.
-    max_iterations
-        The maximum number of iterations along a single strand to trace
-        upstream.
-    iteration
-        The number of iterations traveled upstream.
-    """
-    if reaches is None:
-        reaches = rec_network[rec_network['nzsegment'] == reach_id]
-    if iteration > max_iterations:
-        print(f"Reached recursion limit at: {iteration}")
-        return reaches, iteration
-    iteration += 1
-    up_stream_reaches = rec_network[rec_network['NextDownID']
-                                    == reach_id]
-    reaches = reaches.append(up_stream_reaches)
-    for index, up_stream_reach in up_stream_reaches.iterrows():
-        if not up_stream_reach['Headwater']:
-            reaches, iteration = get_up_stream_reaches(
-                rec_network=rec_network,
-                reach_id=up_stream_reach['nzsegment'],
-                reaches=reaches,
-                iteration=iteration)
-
-    return reaches, iteration
-
-
-def threshold_channel(reaches: geopandas.GeoDataFrame,
-                      area_threshold: float,
-                      channel_corridor_radius: float):
-    """ Drop all channel reaches less than the specified area_threshold.
-
-    Parameters
-    ----------
-
-    reaches
-        The channel reaches
-    area_threshold
-        The area threshold in metres squared below which to ignore a reach.
-    channel_corridor_radius
-        The radius of hte channel corridor. This will determine the width of
-        the channel catchment.
-    """
-    main_channel = reaches[reaches['CUM_AREA'] > area_threshold]
-    main_channel_polygon = geopandas.GeoDataFrame(geometry=main_channel.buffer(channel_corridor_radius))
-    main_channel_polygon['label'] = 1
-    main_channel_polygon = main_channel_polygon.dissolve(by='label')
-    return main_channel, main_channel_polygon
-
-
 class Channel:
+    """ A class to define a channel centre line. """
+
+    def __init__(self,
+                 channel: geopandas.GeoDataFrame,
+                 resolution: float,
+                 sampling_direction: int = 1):
+        """ A channel centreline and functions to support sampling or smoothing
+        the centreline.
+
+        Parameters
+        ----------
+
+        channel
+            The channel to estimate bathymetry along defined as a polyline.
+        resolution
+            The resolution to sample at.
+        sampling_direction
+            The ordering of the points in the polylines.
+        """
+
+        self.channel = channel
+        self.resolution = resolution
+        self.sampling_direction = sampling_direction
+
+    @classmethod
+    def from_rec(cls,
+                 rec_network: geopandas.GeoDataFrame,
+                 reach_id: int,
+                 resolution: float,
+                 area_threshold: float,
+                 max_iterations: int = 10000):
+        """ Create a channel object from a REC file.
+
+        Parameters
+        ----------
+
+        rec_network
+            Contains association information between upstream and
+            downstream reaches.
+        reach_id
+            The name of the reach ID in the REC channel.
+        area_threshold
+            The area threshold in metres squared below which to ignore a reach.
+        max_iterations
+            The maximum number of iterations along a single strand to trace
+            upstream.
+        iteration
+            The number of iterations traveled upstream.
+        """
+        reaches, iteration = cls._get_up_stream_reaches(rec_network=rec_network,
+                                                        reach_id=reach_id,
+                                                        reaches=None,
+                                                        max_iterations=max_iterations,
+                                                        iteration=0)
+        reaches = reaches[reaches['CUM_AREA'] > area_threshold]
+        sampling_direction = -1
+        channel = cls(channel=reaches,
+                      resolution=resolution,
+                      sampling_direction=sampling_direction)
+        return channel
+
+    @classmethod
+    def _get_up_stream_reaches(cls,
+                               rec_network: geopandas.GeoDataFrame,
+                               reach_id: int,
+                               reaches: geopandas.GeoDataFrame,
+                               max_iterations: int,
+                               iteration: int):
+        """ A recurive function to trace all up reaches from the reach_id.
+        The default values for reaches and iteration are set for the
+        initial call to the recursive function.
+
+        Parameters
+        ----------
+
+        rec_network
+            Contains association information between upstream and
+            downstream reaches.
+        reach_id
+            The `nzsegment` id of the reach to trace upstream from.
+        reaches
+            The already traced downstream reaches to append to.
+        max_iterations
+            The maximum number of iterations along a single strand to trace
+            upstream.
+        iteration
+            The number of iterations traveled upstream.
+        """
+        if reaches is None:
+            reaches = rec_network[rec_network['nzsegment'] == reach_id]
+        if iteration > max_iterations:
+            print(f"Reached recursion limit at: {iteration}")
+            return reaches, iteration
+        iteration += 1
+        up_stream_reaches = rec_network[rec_network['NextDownID']
+                                        == reach_id]
+        reaches = reaches.append(up_stream_reaches)
+        for index, up_stream_reach in up_stream_reaches.iterrows():
+            if not up_stream_reach['Headwater']:
+                reaches, iteration = cls._get_up_stream_reaches(
+                    rec_network=rec_network,
+                    reach_id=up_stream_reach['nzsegment'],
+                    reaches=reaches,
+                    max_iterations=max_iterations,
+                    iteration=iteration)
+
+        return reaches, iteration
+
+    def get_sampled_spline_fit(self):
+        """ Return the smoothed channel sampled at the resolution after it has
+        been fit with a spline between corner points.
+
+        Parameters
+        ----------
+
+        catchment_corridor_radius
+            The radius of the channel corridor. This will determine the width of
+            the channel catchment.
+        """
+
+        xy = self._get_corner_points(channel=self.channel,
+                                     sampling_direction=self.sampling_direction)
+        xy = self._fit_spline_between_xy(xy)
+        smooth_channel = shapely.geometry.LineString(xy.T)
+        smooth_channel = geopandas.GeoDataFrame(geometry=[smooth_channel],
+                                                crs=self.channel.crs)
+        return smooth_channel
+
+    def get_channel_catchment(self,
+                              corridor_radius: float):
+        """ Create a catchment from the smooth channel and the specified
+        radius.
+
+        Parameters
+        ----------
+
+        corridor_radius
+            The radius of the channel corridor. This will determine the width of
+            the channel catchment.
+        """
+
+        smooth_channel = self.get_sampled_spline_fit()
+        channel_catchment = geopandas.GeoDataFrame(geometry=smooth_channel.buffer(corridor_radius))
+        return channel_catchment
+
+    def _remove_duplicate_points(cls, xy):
+        """ Remove duplicate xy pairs in a list of xy points.
+
+        Parameters
+        ----------
+
+        xy
+            A paired nx2 array of x, y points.
+        """
+        xy_unique, indices = numpy.unique(xy, axis=1, return_index=True)
+        indices.sort()
+        xy = xy[:, indices]
+        return xy
+
+    def _get_corner_points(cls, channel, sampling_direction: int) -> numpy.ndarray:
+        """ Extract the corner points from the provided polyline.
+
+        Parameters
+        ----------
+
+        sample_direction
+            Are the reaches sampled in the same direction they are ordered.
+            1 if in the same direction, -1 if in the opposite direction.
+        """
+
+        x = []
+        y = []
+        for line_string in channel.geometry:
+            xy = line_string.xy
+            x.extend(xy[0][::sampling_direction])
+            y.extend(xy[1][::sampling_direction])
+
+        xy = numpy.array([x, y])
+        xy = cls._remove_duplicate_points(xy)
+        return xy
+
+    def get_spaced_points(self, channel,
+                          spacing,
+                          sampling_direction: int) -> numpy.ndarray:
+        """  Sample at the specified spacing along the entire line.
+
+        Parameters
+        ----------
+
+        spacing
+            The spacing between sampled points along straight segments
+        sample_direction
+            Are the reaches sampled in the same direction they are ordered.
+            1 if in the same direction, -1 if in the opposite direction.
+        """
+
+        # Combine the channel centreline into a single geometry
+        xy_corner_points = self._get_corner_points(channel, sampling_direction)
+        line_string = shapely.geometry.LineString(xy_corner_points.T)
+
+        # Calculate the number of segments to break the line into.
+        number_segment_samples = max(numpy.round(line_string.length / spacing), 2)
+        segment_resolution = line_string.length / (number_segment_samples - 1)
+
+        # Equally space points along the entire line string
+        xy_spaced = [line_string.interpolate(i * segment_resolution) for i in
+                     numpy.arange(0, number_segment_samples, 1)]
+
+        # Check for and remove duplicate points
+        xy = numpy.array(shapely.geometry.LineString(xy_spaced).xy)
+        xy = self._remove_duplicate_points(xy)
+
+        return xy
+
+    def get_spaced_points_with_corners(self, channel,
+                                       spacing,
+                                       sampling_direction: int) -> numpy.ndarray:
+        """ Sample at the specified spacing along each straight segment.
+
+        Parameters
+        ----------
+
+        spacing
+            The spacing between sampled points along straight segments
+        sample_direction
+            Are the reaches sampled in the same direction they are ordered.
+            1 if in the same direction, -1 if in the opposite direction.
+        """
+
+        # Combine the channel centreline into a single geometry
+        xy_corner_points = self._get_corner_points(channel, sampling_direction)
+        line_string = shapely.geometry.LineString(xy_corner_points.T)
+
+        xy_segment = line_string.xy
+        x = xy_segment[0]
+        y = xy_segment[1]
+        xy_spaced = []
+
+        # Cycle through each segment sampling along it
+        for i in numpy.arange(len(x) - 1, 0, -1):
+            line_segment = shapely.geometry.LineString([[x[i], y[i]],
+                                                        [x[i - 1], y[i - 1]]])
+
+            number_segment_samples = max(numpy.round(line_segment.length / spacing), 2)
+            segment_resolution = line_segment.length / (number_segment_samples - 1)
+
+            xy_spaced.extend([line_segment.interpolate(i * segment_resolution)
+                              for i in numpy.arange(0, number_segment_samples)])
+
+        # Check for and remove duplicate points
+        xy = numpy.array(shapely.geometry.LineString(xy_spaced).xy)
+        xy = self._remove_duplicate_points(xy)
+
+        return xy
+
+    def _fit_spline_through_xy(self, xy, smoothing_multiplier: int = 50) -> numpy.ndarray:
+        """ Fit a spline to the aligned centreline points and sampled at the resolution.
+
+        Parameters
+        ----------
+
+        smoothing_multiplier
+            This is multiplied by the number of aligned_centreline points and
+            passed into the scipy.interpolate.splprep.
+        """
+
+        smoothing_factor = smoothing_multiplier * len(xy[0])
+
+        tck_tuple, u_input = scipy.interpolate.splprep(xy, s=smoothing_factor)
+
+        # Sample every roughly res along the spine
+        line_length = shapely.geometry.LineString(xy.T).length
+        sample_step_u = 1 / round(line_length / self.resolution)
+        u_sampled = numpy.arange(0, 1 + sample_step_u, sample_step_u)
+        xy_sampled = scipy.interpolate.splev(u_sampled, tck_tuple)
+        xy_sampled = numpy.array(xy_sampled)
+
+        return xy_sampled
+
+    def _fit_spline_between_xy(self, xy, k=3) -> numpy.ndarray:
+        """ Fit a spline to the aligned centreline points and sampled at the resolution.
+
+        Parameters
+        ----------
+
+        k
+            The polynomial degree. Should be off. 1<= k <= 5.
+        """
+
+        knotspace = range(len(xy[0]))
+        knots = scipy.interpolate.InterpolatedUnivariateSpline(knotspace, knotspace, k=k).get_knots()
+        knots_full = numpy.concatenate(([knots[0]] * k, knots, [knots[-1]] * k))
+
+        tckX = knots_full, xy[0], k
+        tckY = knots_full, xy[1], k
+
+        splineX = scipy.interpolate.UnivariateSpline._from_tck(tckX)
+        splineY = scipy.interpolate.UnivariateSpline._from_tck(tckY)
+
+        # get number of points to sample spline at
+        line_length = shapely.geometry.LineString(xy.T).length
+        number_of_samples = round(line_length / self.resolution)
+
+        u_sampled = numpy.linspace(0, len(xy[0]) - 1, number_of_samples)
+        x_sampled = splineX(u_sampled)
+        y_sampled = splineY(u_sampled)
+
+        return numpy.array([x_sampled, y_sampled])
+
+    def sampled_smoothed_centreline(self) -> numpy.ndarray:
+        """ Return the spline smoothed aligned_centreline sampled at the
+        resolution.
+        """
+
+        xy = self._get_corner_points(self.get_sampled_spline_fit(), sampling_direction=1)
+        xy = self._fit_spline_through_xy(xy, 5 * self.resolution)
+
+        return xy
+
+class ChannelOld:
     """ A class to trace the channel centre line. """
 
     def __init__(self,
