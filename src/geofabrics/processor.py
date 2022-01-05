@@ -528,6 +528,8 @@ class RiverBathymetryGenerator():
         area_threshold = self.instructions['instructions']['channel_bathymetry']['channel_area_threshold']
         channel_corridor_radius = self.instructions['instructions']['channel_bathymetry']['channel_corridor_radius']
         resolution = self.instructions['instructions']['output']['grid_params']['resolution']
+        transect_spacing = self.instructions['instructions']['channel_bathymetry']['transect_spacing']
+        bank_threshold = self.instructions['instructions']['channel_bathymetry']['bank_threshold']
 
         # Define paths for generated files
         local_cache = pathlib.Path(self.instructions['instructions']['data_paths']['local_cache'])
@@ -538,10 +540,6 @@ class RiverBathymetryGenerator():
         aligned_channel_file = local_cache / f"aligned_channel_{area_threshold}.geojson"
         manual_channel_file = local_cache / f"manual_aligned_channel_{area_threshold}.geojson"
         channel_file = local_cache / "rec_main_channel.geojson"
-
-        # Other values not yet defined in the file
-        transect_spacing = 10
-        bank_threshold = 0.5
 
         # Identify the main channel and create a polygon catchment
         channel, iteration = bathymetry_estimation.get_up_stream_reaches(
