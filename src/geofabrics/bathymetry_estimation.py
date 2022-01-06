@@ -846,10 +846,10 @@ class ChannelBathymetry:
 
         return transect_samples
 
-    def transect_widths_by_threshold_outwards(self, transects: geopandas.GeoDataFrame,
-                                              transect_samples: dict,
-                                              threshold: float,
-                                              resolution: float):
+    def thresholded_widths_outwards_from_min(self, transects: geopandas.GeoDataFrame,
+                                             transect_samples: dict,
+                                             threshold: float,
+                                             resolution: float):
         """ Estimate width based on a thresbold of bank height above water level.
         Start in the centre and work out. Doesn't detect banks until a value
         less than the threshold has been detected.
@@ -881,14 +881,14 @@ class ChannelBathymetry:
             for i in numpy.arange(start_index, self.number_of_samples, 1):
 
                 # work forward checking height
-                elevation_over_minimum = transect_samples['elevations'][j][i] - transects.iloc[j]['water_z']
+                elevation_over_minimum = transect_samples['elevations'][j][i] - transects.iloc[j]['min_z_water']
                 if numpy.isnan(stop_i) and elevation_over_minimum > threshold:
                     stop_i = i
 
             for i in numpy.arange(start_index, -1, -1):
 
                 # work backward checking height
-                elevation_over_minimum = transect_samples['elevations'][j][i] - transects.iloc[j]['water_z']
+                elevation_over_minimum = transect_samples['elevations'][j][i] - transects.iloc[j]['min_z_water']
                 if numpy.isnan(start_i) and elevation_over_minimum > threshold:
                     start_i = i
 
@@ -1389,13 +1389,17 @@ class ChannelBathymetry:
         self._estimate_water_level_and_slope(transects=transects,
                                              transect_samples=transect_samples,
                                              smoothing_distance=1000)
-        transects['min_z_water'] = transects['min_z_unimodal']
+        transects['min_z_water'] = transects['min_z_savgol']
 
         # Bank estimates - outside in
-        self.transect_widths_by_threshold_outwards(transects=transects,
-                                                   transect_samples=transect_samples,
-                                                   threshold=threshold,
-                                                   resolution=self.resolution)
+        self.thresholded_widths_outwards_from_centre(transects=transects,
+                                                     transect_samples=transect_samples,
+                                                     threshold=threshold,
+                                                     resolution=self.resolution)
+        '''self.thresholded_widths_outwards_from_min(transects=transects,
+                                                     transect_samples=transect_samples,
+                                                     threshold=threshold,
+                                                     resolution=self.resolution)'''
 
         # Create channel polygon with erosion and dilation to reduce sensitivity to poor width measurements
         aligned_channel = self._perturb_centreline_from_width(transects, smoothing_distance=100)
