@@ -1392,10 +1392,14 @@ class ChannelBathymetry:
         transects['min_z_water'] = transects['min_z_savgol']
 
         # Bank estimates - outside in
-        self.thresholded_widths_outwards_from_centre(transects=transects,
+        '''self.thresholded_widths_outwards_from_centre(transects=transects,
                                                      transect_samples=transect_samples,
                                                      threshold=threshold,
-                                                     resolution=self.resolution)
+                                                     resolution=self.resolution)'''
+        self.thresholded_widths_outwards_directional(transects=transects,
+                                                        transect_samples=transect_samples,
+                                                        threshold=threshold,
+                                                        resolution=self.resolution)
         '''self.thresholded_widths_outwards_from_min(transects=transects,
                                                      transect_samples=transect_samples,
                                                      threshold=threshold,
