@@ -572,7 +572,7 @@ class ChannelBathymetry:
     a detailed DEM and a river network. """
 
     def __init__(self,
-                 channel: geopandas.GeoDataFrame,
+                 channel: Channel,
                  dem: xarray.core.dataarray.DataArray,
                  transect_spacing: float,
                  resolution: float,
@@ -591,13 +591,12 @@ class ChannelBathymetry:
             The resolution to sample at.
         """
 
-        self.channel = Channel(channel, transect_spacing)
+        self.channel = channel
+        self.aligned_channel = None
         self.dem = dem
         self.transect_spacing = transect_spacing
         self.resolution = resolution
         self.transect_radius = transect_radius
-
-        self._id = 'nzsegment'
 
     @property
     def number_of_samples(self) -> int:
@@ -611,36 +610,6 @@ class ChannelBathymetry:
     def centre_index(self) -> int:
         """ Return the centre index for samples taken along a transect. """
         return int(numpy.floor(self.number_of_samples / 2))
-
-    def subsample_channels(self, channel_polylines: geopandas.GeoDataFrame, sampling_resolution: float, upstream: bool):
-        """ Subsample along all polylines at the sampling resolution. Note the
-        subsampling is done in the upstream direction.
-
-        Parameters
-        ----------
-
-        channel_polylines
-            The channel reaches with reache geometry defined as polylines.
-        sampling_resolution
-            The resolution to subsample at.
-        upstream
-            True if the channel polyline to sample from is already defined
-            upstream, False if it is defined downstream
-        """
-
-        sampled_polylines = []
-        for index, row in channel_polylines.iterrows():
-            number_segment_samples = round(row.geometry.length / sampling_resolution)
-            segment_resolution = row.geometry.length / number_segment_samples
-            if upstream:
-                indices = numpy.arange(0, number_segment_samples + 1, 1)
-            else:
-                indices = numpy.arange(number_segment_samples, -1, -1)
-            sampled_polylines.append(shapely.geometry.LineString(
-                [row.geometry.interpolate(i * segment_resolution) for i in indices]))
-
-        sampled_channel_polylines = channel_polylines.set_geometry(sampled_polylines)
-        return sampled_channel_polylines
 
     def _segment_slope(self, x_array, y_array, index):
         """ Return the slope and length characteristics of a line segment.
@@ -664,135 +633,127 @@ class ChannelBathymetry:
             / length
         return dx, dy, length
 
-    def transects_along_reaches_at_node(self, channel_polylines: geopandas.GeoDataFrame):
+    def transects_along_reaches_at_node(self, sampled_channel: geopandas.GeoDataFrame):
         """ Calculate transects along a channel at the midpoint of each segment.
-        Segments in Rec2 are defined upstream down 
 
         Parameters
         ----------
 
-        channel_polylines
-            The channel reaches with reach geometry defined as polylines.
+        sampled_channel
+            The sampled channel defined as a single polyline. Any branches described
+            separately.
         transect_length
             The radius of the transect (or half length).
         """
 
         transects_dict = {'geometry': [],
-                          self._id: [],
                           'nx': [],
                           'ny': [],
                           'midpoint': [],
                           'length': []}
 
-        for index, row in channel_polylines.iterrows():
+        assert len(sampled_channel) == 1, "Expect only one polyline " \
+            "geometry per channel. Instead got {len(channel_polyline)}"
 
-            (x_array, y_array) = row.geometry.xy
-            nzsegment = row[self._id]
-            for i in range(len(x_array)):
+        (x_array, y_array) = sampled_channel.iloc[0].geometry.xy
+        for i in range(len(x_array)):
 
-                # Recorde the NZ segment
-                transects_dict[self._id].append(nzsegment)
+            # define transect midpoint - point on channel reach
+            midpoint = shapely.geometry.Point([x_array[i], y_array[i]])
 
-                # define transect midpoint - point on channel reach
-                midpoint = shapely.geometry.Point([x_array[i], y_array[i]])
+            # caclulate slope along segment
+            if i == 0:
+                # first segment - slope of next segment
+                dx, dy, length = self._segment_slope(x_array, y_array, i)
+            elif i == len(x_array) - 1:
+                # last segment - slope of previous segment
+                dx, dy, length = self._segment_slope(x_array, y_array, i - 1)
+            else:
+                # slope of the length weighted mean of both sgments
+                dx_prev, dy_prev, l_prev = self._segment_slope(x_array,
+                                                               y_array,
+                                                               i)
+                dx_next, dy_next, l_next = self._segment_slope(x_array,
+                                                               y_array,
+                                                               i - 1)
+                dx = (dx_prev * l_prev + dx_next * l_next) / (l_prev + l_next)
+                dy = (dy_prev * l_prev + dy_next * l_next) / (l_prev + l_next)
+                length = (l_prev + l_next) / 2
 
-                # caclulate slope along segment
-                if i == 0:
-                    # first segment - slope of next segment
-                    dx, dy, length = self._segment_slope(x_array, y_array, i)
-                elif i == len(x_array) - 1:
-                    # last segment - slope of previous segment
-                    dx, dy, length = self._segment_slope(x_array, y_array, i - 1)
-                else:
-                    # slope of the length weighted mean of both sgments
-                    dx_prev, dy_prev, l_prev = self._segment_slope(x_array,
-                                                                   y_array,
-                                                                   i)
-                    dx_next, dy_next, l_next = self._segment_slope(x_array,
-                                                                   y_array,
-                                                                   i - 1)
-                    dx = (dx_prev * l_prev + dx_next * l_next) / (l_prev + l_next)
-                    dy = (dy_prev * l_prev + dy_next * l_next) / (l_prev + l_next)
-                    length = (l_prev + l_next) / 2
+            normal_x = -dy
+            normal_y = dx
 
-                normal_x = -dy
-                normal_y = dx
+            # record normal to a segment nx and ny
+            transects_dict['nx'].append(normal_x)
+            transects_dict['ny'].append(normal_y)
 
-                # record normal to a segment nx and ny
-                transects_dict['nx'].append(normal_x)
-                transects_dict['ny'].append(normal_y)
+            # calculate transect - using effectively nx and ny
+            transects_dict['geometry'].append(shapely.geometry.LineString([
+                [midpoint.x - self.transect_radius * normal_x,
+                 midpoint.y - self.transect_radius * normal_y],
+                midpoint,
+                [midpoint.x + self.transect_radius * normal_x,
+                 midpoint.y + self.transect_radius * normal_y]]))
+            transects_dict['midpoint'].append(midpoint)
 
-                # calculate transect - using effectively nx and ny
-                transects_dict['geometry'].append(shapely.geometry.LineString([
-                    [midpoint.x - self.transect_radius * normal_x,
-                     midpoint.y - self.transect_radius * normal_y],
-                    midpoint,
-                    [midpoint.x + self.transect_radius * normal_x,
-                     midpoint.y + self.transect_radius * normal_y]]))
-                transects_dict['midpoint'].append(midpoint)
-
-                # record the length of the line segment
-                transects_dict['length'].append(length)
+            # record the length of the line segment
+            transects_dict['length'].append(length)
 
         transects = geopandas.GeoDataFrame(transects_dict,
-                                           crs=channel_polylines.crs)
+                                           crs=sampled_channel.crs)
         return transects
 
-    def transects_along_reaches_at_midpoint(self, channel_polylines: geopandas.GeoDataFrame):
+    def transects_along_reaches_at_midpoint(self, sampled_channel: geopandas.GeoDataFrame):
         """ Calculate transects along a channel at the midpoint of each segment.
 
         Parameters
         ----------
 
-        channel_polylines
-            The channel reaches with reach geometry defined as polylines.
+        sampled_channel
+            The sampled channel defined as a single polyline.
         transect_length
             The radius of the transect (or half length).
         """
 
         transects_dict = {'geometry': [],
-                          'nzsegment': [],
                           'nx': [],
                           'ny': [],
                           'midpoint': [],
                           'length': []}
 
-        for index, row in channel_polylines.iterrows():
+        assert len(sampled_channel) == 1, "Expect only one polyline " \
+            "geometry per channel. Instead got {len(channel_polyline)}"
 
-            (x_array, y_array) = row.geometry.xy
-            nzsegment = row['nzsegment']
-            for i in range(len(x_array) - 1):
+        (x_array, y_array) = sampled_channel.iloc[0].geometry.xy
+        for i in range(len(x_array) - 1):
 
-                # Recorde the NZ segment
-                transects_dict['nzsegment'] = nzsegment
+            # calculate midpoint
+            midpoint = [(x_array[i] + x_array[i+1])/2,
+                        (y_array[i] + y_array[i+1])/2]
 
-                # calculate midpoint
-                midpoint = [(x_array[i] + x_array[i+1])/2,
-                            (y_array[i] + y_array[i+1])/2]
+            # caclulate slope and normal for the segment
+            dx, dy, length = self._segment_slope(x_array, y_array, i)
+            normal_x = -dy
+            normal_y = dx
 
-                # caclulate slope and normal for the segment
-                dx, dy, length = self._segment_slope(x_array, y_array, i)
-                normal_x = -dy
-                normal_y = dx
+            # record normal to a segment nx and ny
+            transects_dict['nx'].append(normal_x)
+            transects_dict['ny'].append(normal_y)
 
-                # record normal to a segment nx and ny
-                transects_dict['nx'].append(normal_x)
-                transects_dict['ny'].append(normal_y)
+            # calculate transect - using effectively nx and ny
+            transects_dict['geometry'].append(shapely.geometry.LineString([
+                [midpoint[0] - self.transect_radius * normal_x,
+                 midpoint[1] - self.transect_radius * normal_y],
+                midpoint,
+                [midpoint[0] + self.transect_radius * normal_x,
+                 midpoint[1] + self.transect_radius * normal_y]]))
+            transects_dict['midpoint'].append(shapely.geometry.Point(midpoint))
 
-                # calculate transect - using effectively nx and ny
-                transects_dict['geometry'].append(shapely.geometry.LineString([
-                    [midpoint[0] - self.transect_radius * normal_x,
-                     midpoint[1] - self.transect_radius * normal_y],
-                    midpoint,
-                    [midpoint[0] + self.transect_radius * normal_x,
-                     midpoint[1] + self.transect_radius * normal_y]]))
-                transects_dict['midpoint'].append(shapely.geometry.Point(midpoint))
-
-                # record the length of the line segment
-                transects_dict['length'].append(length)
+            # record the length of the line segment
+            transects_dict['length'].append(length)
 
         transects = geopandas.GeoDataFrame(transects_dict,
-                                           crs=channel_polylines.crs)
+                                           crs=sampled_channel.crs)
         return transects
 
     def _estimate_water_level_and_slope(self, transects: geopandas.GeoDataFrame,
@@ -848,7 +809,7 @@ class ChannelBathymetry:
                                           1)
 
         transect_samples = {'elevations': [], 'xx': [], 'yy': [], 'min_z': [],
-                            'min_i': []}
+                            'min_i': [], 'min_xy': []}
 
         # create tree to sample from
         grid_x, grid_y = numpy.meshgrid(self.dem.x, self.dem.y)
@@ -872,9 +833,12 @@ class ChannelBathymetry:
                 min_index = numpy.nanargmin(elevations)
                 transect_samples['min_z'].append(elevations[min_index])
                 transect_samples['min_i'].append(min_index)
+                transect_samples['min_xy'].append(shapely.geometry.Point(xy_points[min_index]))
             else:
                 transect_samples['min_z'].append(numpy.nan)
                 transect_samples['min_i'].append(numpy.nan)
+                transect_samples['min_xy'].append(shapely.geometry.Point([numpy.nan,
+                                                                          numpy.nan]))
 
         return transect_samples
 
@@ -1053,8 +1017,7 @@ class ChannelBathymetry:
     def _plot_results(self, transects: geopandas.GeoDataFrame,
                       transect_samples: dict,
                       threshold: float,
-                      channel: geopandas.GeoDataFrame = None,
-                      channel_polygon: shapely.geometry.Polygon = None,
+                      aligned_channel: geopandas.GeoDataFrame = None,
                       include_transects: bool = True):
         """ Function used for debugging or interactively to visualised the
         samples and widths
@@ -1069,8 +1032,8 @@ class ChannelBathymetry:
             The sampled transect values.
         threshold
             The bank detection threshold.
-        channel_polygon
-            The channel polygon as estimated from the widths. Optional.
+        aligned_channel
+            The aligned channel generated from the transects
         """
 
         import matplotlib
@@ -1114,15 +1077,10 @@ class ChannelBathymetry:
         if include_transects:
             transects.plot(ax=ax, color='blue', linewidth=1, label='transects')
         transects.set_geometry('width_line').plot(ax=ax, color='red', linewidth=1.5, label='widths')
-        if channel_polygon is not None and type(channel_polygon) is shapely.geometry.MultiPolygon:
-            for i, channel_polygon_i in enumerate(channel_polygon):
-                matplotlib.pyplot.plot(*channel_polygon_i.exterior.xy, label=f'channel polygon {i}')
-        elif channel_polygon is not None and type(channel_polygon) is shapely.geometry.Polygon:
-            matplotlib.pyplot.plot(*channel_polygon.exterior.xy, label='channel polygon')
-        self.channel.original_channel.plot(ax=ax, color='black', linewidth=1.5, linestyle='--',
-                                           label='original channel')
-        if channel is not None:
-            channel.plot(ax=ax, linewidth=2, color='green', zorder=4, label='Sampled channel')
+        self.channel.get_sampled_spline_fit().plot(ax=ax, color='black', linewidth=1.5, linestyle='--',
+                                                   label='sampled channel')
+        if aligned_channel is not None:
+            aligned_channel.plot(ax=ax, linewidth=2, color='green', zorder=4, label='Aligned channel')
         if 'perturbed_midpoints' in transects.columns:
             transects.set_geometry('perturbed_midpoints').plot(ax=ax, color='aqua', zorder=5,
                                                                markersize=5, label='Perturbed midpoints')
@@ -1187,33 +1145,16 @@ class ChannelBathymetry:
             self.transect_spacing * dilation_factor).buffer(self.transect_spacing * erosion_factor)
 
         # Estimate channel midpoints from the intersections of channel_polygon and transects
-        aligned_channel = {'geometry': [], self._id: []}
-        reach_id = transects.iloc[0][self._id]
-        centre_points = []
+        aligned_channel = []
         for index, row in transects.iterrows():
             centre_point = channel_polygon.intersection(row.geometry).centroid
-            if not centre_point.is_empty:
-                centre_points.append(centre_point)
+            aligned_channel.append(centre_point)
 
-            # check if moved to a new reach
-            if reach_id != row[self._id] and len(centre_points) > 1:  # New reach
-                # Add to dictionary
-                aligned_channel['geometry'].append(
-                    shapely.geometry.LineString(centre_points).simplify(self.transect_spacing * simplification_factor))
-                aligned_channel[self._id].append(reach_id)
-                # Reset for the next reach
-                reach_id = row[self._id]
-                centre_points = [centre_point]
-            elif reach_id != row[self._id]:  # New reach but no section in previous - update reach id
-                reach_id = row[self._id]
+        if len(aligned_channel) > 0:  # Store the final reach
+            aligned_channel = shapely.geometry.LineString(aligned_channel)
+            aligned_channel = geopandas.GeoDataFrame(geometry=[aligned_channel],
+                                                     crs=transects.crs)
 
-        if len(centre_points) > 1:  # Store the final reach
-            aligned_channel['geometry'].append(
-                shapely.geometry.LineString(centre_points).simplify(self.transect_spacing * simplification_factor))
-            aligned_channel[self._id].append(reach_id)
-
-        # Create a aligned channel dataframe
-        aligned_channel = geopandas.GeoDataFrame(aligned_channel, crs=transects.crs)
         return aligned_channel, channel_polygon
 
     def _perturb_centreline_from_width(self, transects: geopandas.GeoDataFrame,
@@ -1259,8 +1200,8 @@ class ChannelBathymetry:
 
         transects['perturbed_midpoints'] = perturbed_midpoints
         perturbed_channel_centreline = geopandas.GeoDataFrame(
-            {"geometry": [shapely.geometry.LineString(perturbed_midpoints_list)],
-             self._id: [transects.iloc[0][self._id]]}, crs=transects.crs)
+            geometry=[shapely.geometry.LineString(perturbed_midpoints_list)],
+            crs=transects.crs)
         return perturbed_channel_centreline
 
     def _despike(self, spiky_values: geopandas.GeoSeries,
@@ -1293,8 +1234,8 @@ class ChannelBathymetry:
 
         # despiking
         despiked_values = spiky_values.copy(deep=True)
-        despiked_values[spikes > threshold] == numpy.nan
-        despiked_values = despiked_values.interpolate('index', limit_direction='both')
+        despiked_values[spikes > threshold] = numpy.nan
+        #despiked_values = despiked_values.interpolate('index', limit_direction='both')
         return despiked_values
 
     def _unimodal_smoothing(self, y: numpy.ndarray):
@@ -1354,13 +1295,47 @@ class ChannelBathymetry:
             The resolution to sample at.
         """
 
-        slope_smoothing_distance = 1000  # Smooth slope upstream over 1km
-
         # Sample channel
+        sampled_channel = self.channel.get_sampled_spline_fit()
+
+        # Create transects
+        transects = self.transects_along_reaches_at_node(
+                    sampled_channel=sampled_channel)
+
+        # Sample along transects
+        transect_samples = self.sample_from_transects(transects=transects)
+
+        # record min_i and min_xy
+        transects['min_i'] = transect_samples['min_i']
+        transects['min_xy'] = transect_samples['min_xy']
+
+        # Estimate water surface level and slope - Smooth slope upstream over 1km
+        self._estimate_water_level_and_slope(transects=transects,
+                                             transect_samples=transect_samples,
+                                             smoothing_distance=1000)
+        transects['water_z'] = transects['min_z_unimodal']
+
+        # Bank estimates - outside in
+        self.transect_widths_by_threshold_outwards(transects=transects,
+                                                   transect_samples=transect_samples,
+                                                   threshold=threshold,
+                                                   resolution=self.resolution)
+
+        # Create channel polygon with erosion and dilation to reduce sensitivity to poor width measurements
+        aligned_channel = self._perturb_centreline_from_width(transects, smoothing_distance=100)
+
+        # Plot results
+        self._plot_results(transects=transects,
+                           transect_samples=transect_samples,
+                           threshold=threshold,
+                           include_transects=False,
+                           aligned_channel=aligned_channel)
+
+        # Second alignment step
+        '''self.channel.aligned_centreline = numpy.array(aligned_channel.iloc[0].geometry.xy)
         xy = self.channel.sampled_smoothed_centreline()
         sampled_channel = geopandas.GeoDataFrame(
-            {'geometry': [shapely.geometry.LineString(xy.T)],
-             self._id: ['id_not_polpulated']},
+            geometry=[shapely.geometry.LineString(xy.T)],
             crs=self.channel.original_channel.crs)
 
         # Create transects
@@ -1390,8 +1365,8 @@ class ChannelBathymetry:
                            transect_samples=transect_samples,
                            threshold=threshold,
                            include_transects=False,
-                           channel=aligned_channel)
-        return aligned_channel
+                           channel=aligned_channel)'''
+        return aligned_channel, transects
 
     def estimate_width_and_slope(self, manual_aligned_channel: geopandas.GeoDataFrame, threshold: float):
         """ Estimate the channel centre from transect samples
@@ -1402,6 +1377,35 @@ class ChannelBathymetry:
         threshold
             The height above the water level to detect as a bank.
         """
+        def subsample_channels(self, channel_polylines: geopandas.GeoDataFrame, sampling_resolution: float, upstream: bool):
+            """ Subsample along all polylines at the sampling resolution. Note the
+            subsampling is done in the upstream direction.
+
+            Parameters
+            ----------
+
+            channel_polylines
+                The channel reaches with reache geometry defined as polylines.
+            sampling_resolution
+                The resolution to subsample at.
+            upstream
+                True if the channel polyline to sample from is already defined
+                upstream, False if it is defined downstream
+            """
+
+            sampled_polylines = []
+            for index, row in channel_polylines.iterrows():
+                number_segment_samples = round(row.geometry.length / sampling_resolution)
+                segment_resolution = row.geometry.length / number_segment_samples
+                if upstream:
+                    indices = numpy.arange(0, number_segment_samples + 1, 1)
+                else:
+                    indices = numpy.arange(number_segment_samples, -1, -1)
+                sampled_polylines.append(shapely.geometry.LineString(
+                    [row.geometry.interpolate(i * segment_resolution) for i in indices]))
+
+            sampled_channel_polylines = channel_polylines.set_geometry(sampled_polylines)
+            return sampled_channel_polylines
 
         z_smoothing_distance = 500  # Smooth water surface upstream over 1km
         width_smoothing_distance = 100  # Smooth slope upstream over 1km
@@ -1418,7 +1422,7 @@ class ChannelBathymetry:
         # Estimate water surface level and slope
         self._estimate_water_level_and_slope(transects=transects,
                                              transect_samples=transect_samples,
-                                             slope_smoothing_distance=z_smoothing_distance)
+                                             smoothing_distance=z_smoothing_distance)
         transects['water_z'] = transects['min_z_unimodal']
 
         # Estimate widths
@@ -1435,7 +1439,7 @@ class ChannelBathymetry:
         transect_samples = self.sample_from_transects(transects=transects)
         self._estimate_water_level_and_slope(transects=transects,
                                              transect_samples=transect_samples,
-                                             slope_smoothing_distance=z_smoothing_distance)
+                                             smoothing_distance=z_smoothing_distance)
         self.aligned_transect_widths_by_threshold_outwards(transects=transects,
                                                            transect_samples=transect_samples,
                                                            threshold=threshold,
