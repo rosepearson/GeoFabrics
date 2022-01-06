@@ -791,10 +791,10 @@ class ChannelBathymetry:
             3)
 
         # Set the water z value to use for width thresholding
-        transects['water_z'] = transects[f'min_z_unimodal_{smoothing_distance/1000}km_rolling_mean']
+        transects['min_z_water'] = transects[f'min_z_unimodal_{smoothing_distance/1000}km_rolling_mean']
 
         # Slope - from the water z
-        transects['slope'] = transects['water_z'].diff() / self.transect_spacing
+        transects['slope'] = transects['min_z_water'].diff() / self.transect_spacing
 
     def sample_from_transects(self, transects: geopandas.GeoDataFrame):
         """ Sample at the sampling resolution along transects
@@ -901,10 +901,10 @@ class ChannelBathymetry:
         for key in widths.keys():
             transects[key] = widths[key]
 
-    def aligned_transect_widths_by_threshold_outwards(self, transects: geopandas.GeoDataFrame,
-                                                      transect_samples: dict,
-                                                      threshold: float,
-                                                      resolution: float):
+    def thresholded_widths_outwards_from_centre(self, transects: geopandas.GeoDataFrame,
+                                                transect_samples: dict,
+                                                threshold: float,
+                                                resolution: float):
         """ Estimate width based on a thresbold of bank height above water level.
         Start in the centre and work out. Doesn't detect banks until a value
         less than the threshold has been detected.
@@ -937,7 +937,7 @@ class ChannelBathymetry:
 
                 # work forward checking height
                 elevation_over_minimum = transect_samples['elevations'][j][self.centre_index + i] \
-                    - transects.iloc[j]['water_z']
+                    - transects.iloc[j]['min_z_water']
                 if sub_threshold_detected and numpy.isnan(stop_i) \
                         and elevation_over_minimum > threshold:
                     stop_i = self.centre_index + i
@@ -946,12 +946,84 @@ class ChannelBathymetry:
 
                 # work backward checking height
                 elevation_over_minimum = transect_samples['elevations'][j][self.centre_index - i] \
-                    - transects.iloc[j]['water_z']
+                    - transects.iloc[j]['min_z_water']
                 if sub_threshold_detected and numpy.isnan(start_i) \
                         and elevation_over_minimum > threshold:
                     start_i = self.centre_index - i
                 elif elevation_over_minimum < threshold:
                     sub_threshold_detected = True
+
+            widths['first_bank'].append((self.centre_index - start_i) * resolution)
+            widths['last_bank'].append((stop_i - self.centre_index) * resolution)
+            widths['first_bank_i'].append(start_i)
+            widths['last_bank_i'].append(stop_i)
+            widths['widths'].append((stop_i - start_i) * resolution)
+
+        for key in widths.keys():
+            transects[key] = widths[key]
+
+    def thresholded_widths_outwards_directional(self, transects: geopandas.GeoDataFrame,
+                                                transect_samples: dict,
+                                                threshold: float,
+                                                resolution: float):
+        """ Estimate width based on a thresbold of bank height above water level.
+        Start in the centre and work out. Doesn't detect banks until a value
+        less than the threshold has been detected. Takes nearest channel to
+        centre, but channel doesn't need to include the centre.'
+
+        Parameters
+        ----------
+
+        transects
+            The transects with geometry defined as polylines.
+        transect_samples
+            The sampled values along the transects.
+        threshold
+            The height above the water level to detect as a bank.
+        resolution
+            The resolution to sample at.
+        """
+
+        widths = {'widths': [], 'first_bank': [], 'last_bank': [],
+                  'first_bank_i': [], 'last_bank_i': []}
+
+        for j in range(len(transect_samples['elevations'])):
+
+            assert len(transect_samples['elevations'][j]) == self.number_of_samples, "Expect fixed length"
+
+            start_i = numpy.nan
+            stop_i = numpy.nan
+            centre_sub_threshold = transect_samples['elevations'][j][self.centre_index] \
+                - transects.iloc[j]['min_z_water'] < threshold
+            forward_sub_threshold = False
+            backward_sub_threshold = False
+
+            for i in numpy.arange(0, self.centre_index + 1, 1):
+
+                # work forward checking height
+                elevation_over_minimum = transect_samples['elevations'][j][self.centre_index + i] \
+                    - transects.iloc[j]['min_z_water']
+                if (centre_sub_threshold or forward_sub_threshold) \
+                        and numpy.isnan(stop_i) and elevation_over_minimum > threshold:
+                    # Leaving the channel
+                    stop_i = self.centre_index + i
+                elif elevation_over_minimum < threshold and not forward_sub_threshold \
+                        and not backward_sub_threshold and not centre_sub_threshold:
+                    # only just made it forward to the start of the channel
+                    forward_sub_threshold = True
+                    start_i = self.centre_index + i - 1
+
+                # work backward checking height
+                elevation_over_minimum = transect_samples['elevations'][j][self.centre_index - i] \
+                    - transects.iloc[j]['min_z_water']
+                if (centre_sub_threshold or backward_sub_threshold) \
+                        and numpy.isnan(start_i) and elevation_over_minimum > threshold:
+                    start_i = self.centre_index - i
+                elif elevation_over_minimum < threshold and not forward_sub_threshold \
+                        and not backward_sub_threshold and not centre_sub_threshold:
+                    # only just made it backward to the end of the channel
+                    backward_sub_threshold = True
+                    stop_i = self.centre_index - i + 1
 
             widths['first_bank'].append((self.centre_index - start_i) * resolution)
             widths['last_bank'].append((stop_i - self.centre_index) * resolution)
@@ -994,7 +1066,7 @@ class ChannelBathymetry:
             for i in numpy.arange(0, self.centre_index + 1, 1):
 
                 # work forward checking height
-                elevation_over_minimum = transect_samples['elevations'][j][i] - transects.iloc[j]['water_z']
+                elevation_over_minimum = transect_samples['elevations'][j][i] - transects.iloc[j]['min_z_water']
                 if elevation_over_minimum > threshold:
                     start_i = i
                 elif not numpy.isnan(start_i) and not numpy.isnan(elevation_over_minimum):
@@ -1003,7 +1075,7 @@ class ChannelBathymetry:
             for i in numpy.arange(self.number_of_samples - 1, self.centre_index - 1, -1):
 
                 # work backward checking height
-                elevation_over_minimum = transect_samples['elevations'][j][i] - transects.iloc[j]['water_z']
+                elevation_over_minimum = transect_samples['elevations'][j][i] - transects.iloc[j]['min_z_water']
                 if elevation_over_minimum > threshold:
                     stop_i = i
                 elif not numpy.isnan(stop_i) and not numpy.isnan(elevation_over_minimum):
@@ -1317,7 +1389,7 @@ class ChannelBathymetry:
         self._estimate_water_level_and_slope(transects=transects,
                                              transect_samples=transect_samples,
                                              smoothing_distance=1000)
-        transects['water_z'] = transects['min_z_unimodal']
+        transects['min_z_water'] = transects['min_z_unimodal']
 
         # Bank estimates - outside in
         self.transect_widths_by_threshold_outwards(transects=transects,
@@ -1353,7 +1425,7 @@ class ChannelBathymetry:
         self._estimate_water_level_and_slope(transects=transects,
                                              transect_samples=transect_samples,
                                              smoothing_distance=slope_smoothing_distance)
-        transects['water_z'] = transects['min_z_unimodal']
+        transects['min_z_water'] = transects['min_z_unimodal']
 
         # Bank estimates - outside in
         self.transect_widths_by_threshold_outwards(transects=transects,
@@ -1427,13 +1499,13 @@ class ChannelBathymetry:
         self._estimate_water_level_and_slope(transects=transects,
                                              transect_samples=transect_samples,
                                              smoothing_distance=z_smoothing_distance)
-        transects['water_z'] = transects['min_z_unimodal']
+        transects['min_z_water'] = transects['min_z_unimodal']
 
         # Estimate widths
-        self.aligned_transect_widths_by_threshold_outwards(transects=transects,
-                                                           transect_samples=transect_samples,
-                                                           threshold=threshold,
-                                                           resolution=self.resolution)
+        self.transect_widths_by_threshold_outwards_from_centre(transects=transects,
+                                                               transect_samples=transect_samples,
+                                                               threshold=threshold,
+                                                               resolution=self.resolution)
 
         # Update centreline estimation from widths
         sampled_aligned_channel = self._perturb_centreline_from_width(transects)
@@ -1444,10 +1516,10 @@ class ChannelBathymetry:
         self._estimate_water_level_and_slope(transects=transects,
                                              transect_samples=transect_samples,
                                              smoothing_distance=z_smoothing_distance)
-        self.aligned_transect_widths_by_threshold_outwards(transects=transects,
-                                                           transect_samples=transect_samples,
-                                                           threshold=threshold,
-                                                           resolution=self.resolution)
+        self.transect_widths_by_threshold_outwards_from_centre(transects=transects,
+                                                               transect_samples=transect_samples,
+                                                               threshold=threshold,
+                                                               resolution=self.resolution)
 
         # Width smoothing - either from polygon if good enough, or function fit to aligned_widths_outward
         transects['widths_mean'] = transects['widths'].rolling(5,
