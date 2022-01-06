@@ -790,6 +790,13 @@ class ChannelBathymetry:
             int(smoothing_samples / 2) * 2 + 1,  # Must be odd - number of samples to include
             3)
 
+        transects['min_z_centre'] = transect_samples['min_z_centre']
+        transects['min_z_centre_unimodal'] = self._unimodal_smoothing(transects['min_z_centre'])
+        transects['min_z_centre_savgol'] = scipy.signal.savgol_filter(
+            transects['min_z_centre'].interpolate('index', limit_direction='both'),
+            int(smoothing_samples / 2) * 2 + 1,  # Must be odd - number of samples to include
+            3)
+
         # Set the water z value to use for width thresholding
         transects['min_z_water'] = transects[f'min_z_unimodal_{smoothing_distance/1000}km_rolling_mean']
 
@@ -813,7 +820,8 @@ class ChannelBathymetry:
                                           1)
 
         transect_samples = {'elevations': [], 'xx': [], 'yy': [], 'min_z': [],
-                            'min_i': [], 'min_xy': []}
+                            'min_i': [], 'min_xy': [], 'min_z_centre': [],
+                            'min_i_centre': [], 'min_xy_centre': []}
 
         # create tree to sample from
         grid_x, grid_y = numpy.meshgrid(self.dem.x, self.dem.y)
@@ -843,6 +851,19 @@ class ChannelBathymetry:
                 transect_samples['min_i'].append(numpy.nan)
                 transect_samples['min_xy'].append(shapely.geometry.Point([numpy.nan,
                                                                           numpy.nan]))
+
+            # Find the min of just the centre 1/3 of samples
+            start_i = 99
+            stop_i = 199
+            if len(elevations[start_i:stop_i]) - numpy.sum(numpy.isnan(elevations[start_i:stop_i])) > 0:
+                min_index = numpy.nanargmin(elevations[start_i:stop_i])
+                transect_samples['min_z_centre'].append(elevations[start_i + min_index])
+                transect_samples['min_i_centre'].append(start_i + min_index)
+                transect_samples['min_xy_centre'].append(shapely.geometry.Point(xy_points[start_i + min_index]))
+            else:
+                transect_samples['min_z_centre'].append(numpy.nan)
+                transect_samples['min_i_centre'].append(numpy.nan)
+                transect_samples['min_xy_centre'].append(shapely.geometry.Point([numpy.nan, numpy.nan]))
 
         return transect_samples
 
@@ -1166,7 +1187,7 @@ class ChannelBathymetry:
         matplotlib.pyplot.show()
 
         # Plot the various min_z values if they have been added to the transects
-        f, ax = matplotlib.pyplot.subplots(figsize=(20, 10))
+        f, ax = matplotlib.pyplot.subplots(figsize=(40, 20))
         min_z_columns = [column_name for column_name in transects.columns if 'min_z' in column_name]
         if len(min_z_columns) > 0:
             transects[min_z_columns].plot(ax=ax)
@@ -1384,12 +1405,14 @@ class ChannelBathymetry:
         # record min_i and min_xy
         transects['min_i'] = transect_samples['min_i']
         transects['min_xy'] = transect_samples['min_xy']
+        transects['min_i_centre'] = transect_samples['min_i_centre']
+        transects['min_xy_centre'] = transect_samples['min_xy_centre']
 
         # Estimate water surface level and slope - Smooth slope upstream over 1km
         self._estimate_water_level_and_slope(transects=transects,
                                              transect_samples=transect_samples,
                                              smoothing_distance=1000)
-        transects['min_z_water'] = transects['min_z_savgol']
+        transects['min_z_water'] = transects['min_z_centre_unimodal']
 
         # Bank estimates - outside in
         '''self.thresholded_widths_outwards_from_centre(transects=transects,
