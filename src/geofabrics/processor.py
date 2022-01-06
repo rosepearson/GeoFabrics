@@ -577,8 +577,13 @@ class RiverBathymetryGenerator():
         # Align channel
         if not aligned_channel_file.is_file():
             print("No aligned channel provided. Aligning the channel.")
-            aligned_polyline = self.channel_bathymetry.align_channel(bank_threshold+0.5)
+            aligned_polyline, transects = self.channel_bathymetry.align_channel(bank_threshold+0.5)
             aligned_polyline.to_file(aligned_channel_file)
+            transect_widths = geopandas.GeoDataFrame(geometry=transects['width_line'], crs=transects.crs)
+            transect_widths.to_file(local_cache / "intial_widths.geojson")
+            min_xy = geopandas.GeoDataFrame(geometry=transects['min_xy'], crs=transects.crs)
+            min_xy.to_file(local_cache / "min_xy.geojson")
+            transects[['geometry']].to_file(local_cache / "transects.geojson")
         else:
             print("Channel already aligned and loaded in.")
             aligned_channel = geopandas.read_file(aligned_channel_file)
