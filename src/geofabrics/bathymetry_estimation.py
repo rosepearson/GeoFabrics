@@ -133,8 +133,12 @@ class Channel:
             the channel catchment.
         """
 
-        xy = self._get_corner_points(channel=self.channel,
-                                     sampling_direction=self.sampling_direction)
+        # Use spaced points as the insures consistent distance between sampled points along the spline
+        xy = self.get_spaced_points(channel=self.channel,
+                                    sampling_direction=self.sampling_direction,
+                                    spacing=self.resolution * 10)
+        '''xy = self._get_corner_points(channel=self.channel,
+                                     sampling_direction=self.sampling_direction)'''
         xy = self._fit_spline_between_xy(xy)
         smooth_channel = shapely.geometry.LineString(xy.T)
         smooth_channel = geopandas.GeoDataFrame(geometry=[smooth_channel],
