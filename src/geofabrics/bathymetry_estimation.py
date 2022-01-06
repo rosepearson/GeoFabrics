@@ -1075,10 +1075,10 @@ class ChannelBathymetry:
         for key in widths.keys():
             transects[key] = widths[key]
 
-    def transect_widths_by_threshold_inwards(self, transects: geopandas.GeoDataFrame,
-                                             transect_samples: dict,
-                                             threshold: float,
-                                             resolution: float):
+    def thresholded_widths_inwards(self, transects: geopandas.GeoDataFrame,
+                                   transect_samples: dict,
+                                   threshold: float,
+                                   resolution: float):
         """ Estimate width based on a thresbold of bank height above water level.
         Start at the end of the transect and work in.
 
