@@ -526,7 +526,8 @@ class RiverBathymetryGenerator():
         rec = geopandas.read_file(self.instructions['instructions']['channel_bathymetry']['rec_file'])
         channel_rec_id = self.instructions['instructions']['channel_bathymetry']['channel_rec_id']
         area_threshold = self.instructions['instructions']['channel_bathymetry']['channel_area_threshold']
-        channel_corridor_radius = self.instructions['instructions']['channel_bathymetry']['channel_corridor_radius']
+        channel_corridor_radius = self.instructions['instructions']['channel_bathymetry']['dem_corridor_radius']
+        min_z_corridor_radius = self.instructions['instructions']['channel_bathymetry']['min_z_corridor_radius']
         resolution = self.instructions['instructions']['output']['grid_params']['resolution']
         transect_spacing = self.instructions['instructions']['channel_bathymetry']['transect_spacing']
         bank_threshold = self.instructions['instructions']['channel_bathymetry']['bank_threshold']
@@ -572,7 +573,8 @@ class RiverBathymetryGenerator():
             dem=self.channel_dem,
             transect_spacing=transect_spacing,
             resolution=resolution,
-            transect_radius=channel_corridor_radius)
+            transect_radius=channel_corridor_radius,
+            min_z_radius=min_z_corridor_radius)
 
         # Align channel
         if not aligned_channel_file.is_file():
@@ -583,6 +585,8 @@ class RiverBathymetryGenerator():
             transect_widths.to_file(local_cache / "intial_widths.geojson")
             min_xy = geopandas.GeoDataFrame(geometry=transects['min_xy'], crs=transects.crs)
             min_xy.to_file(local_cache / "min_xy.geojson")
+            min_xy_centre = geopandas.GeoDataFrame(geometry=transects['min_xy_centre'], crs=transects.crs)
+            min_xy_centre.to_file(local_cache / "min_xy_centre.geojson")
             transects[['geometry']].to_file(local_cache / "transects.geojson")
         else:
             print("Channel already aligned and loaded in.")

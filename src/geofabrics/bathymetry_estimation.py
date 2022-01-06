@@ -580,7 +580,8 @@ class ChannelBathymetry:
                  dem: xarray.core.dataarray.DataArray,
                  transect_spacing: float,
                  resolution: float,
-                 transect_radius: float):
+                 transect_radius: float,
+                 min_z_radius: float):
         """ Load in the reference DEM, clip and extract points transects
 
         channel
@@ -601,6 +602,9 @@ class ChannelBathymetry:
         self.transect_spacing = transect_spacing
         self.resolution = resolution
         self.transect_radius = transect_radius
+        self.min_z_radius = min_z_radius
+
+        assert transect_radius >= min_z_radius, "The transect radius must be >= the min_z_radius"
 
     @property
     def number_of_samples(self) -> int:
@@ -609,6 +613,22 @@ class ChannelBathymetry:
         generated DEM. """
 
         return int(self.transect_radius / self.resolution) * 2 - 1
+
+    @property
+    def min_z_start_i(self) -> int:
+        """ Return the starting index of samples along each transect to begin
+        looking for the minimu z. """
+
+        number_min_z_samples = int(self.min_z_radius / self.resolution) * 2 - 1
+
+        return int((self.number_of_samples - number_min_z_samples) / 2)
+
+    @property
+    def min_z_stop_i(self) -> int:
+        """ Return the stopping index of samples along each transect to begin
+        looking for the minimu z. """
+
+        return int(self.number_of_samples - self.min_z_start_i)
 
     @property
     def centre_index(self) -> int:
@@ -853,13 +873,13 @@ class ChannelBathymetry:
                                                                           numpy.nan]))
 
             # Find the min of just the centre 1/3 of samples
-            start_i = 99
-            stop_i = 199
-            if len(elevations[start_i:stop_i]) - numpy.sum(numpy.isnan(elevations[start_i:stop_i])) > 0:
-                min_index = numpy.nanargmin(elevations[start_i:stop_i])
-                transect_samples['min_z_centre'].append(elevations[start_i + min_index])
-                transect_samples['min_i_centre'].append(start_i + min_index)
-                transect_samples['min_xy_centre'].append(shapely.geometry.Point(xy_points[start_i + min_index]))
+            if len(elevations[self.min_z_start_i:self.min_z_stop_i]) \
+                    - numpy.sum(numpy.isnan(elevations[self.min_z_start_i:self.min_z_stop_i])) > 0:
+                min_index = numpy.nanargmin(elevations[self.min_z_start_i:self.min_z_stop_i])
+                transect_samples['min_z_centre'].append(elevations[self.min_z_start_i + min_index])
+                transect_samples['min_i_centre'].append(self.min_z_start_i + min_index)
+                transect_samples['min_xy_centre'].append(shapely.geometry.Point(xy_points[self.min_z_start_i
+                                                                                          + min_index]))
             else:
                 transect_samples['min_z_centre'].append(numpy.nan)
                 transect_samples['min_i_centre'].append(numpy.nan)
