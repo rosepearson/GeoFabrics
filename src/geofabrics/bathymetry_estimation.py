@@ -444,7 +444,9 @@ class ChannelBathymetry:
                           'nx': [],
                           'ny': [],
                           'midpoint': [],
-                          'length': []}
+                          'length': [],
+                          'mid_x': [],
+                          'mid_y': []}
 
         assert len(sampled_channel) == 1, "Expect only one polyline " \
             "geometry per channel. Instead got {len(channel_polyline)}"
@@ -489,6 +491,8 @@ class ChannelBathymetry:
                 [midpoint.x + self.transect_radius * normal_x,
                  midpoint.y + self.transect_radius * normal_y]]))
             transects_dict['midpoint'].append(midpoint)
+            transects_dict['mid_x'].append(midpoint.x)
+            transects_dict['mid_y'].append(midpoint.y)
 
             # record the length of the line segment
             transects_dict['length'].append(length)
@@ -513,7 +517,9 @@ class ChannelBathymetry:
                           'nx': [],
                           'ny': [],
                           'midpoint': [],
-                          'length': []}
+                          'length': [],
+                          'mid_x': [],
+                          'mid_y': []}
 
         assert len(sampled_channel) == 1, "Expect only one polyline " \
             "geometry per channel. Instead got {len(channel_polyline)}"
@@ -542,6 +548,8 @@ class ChannelBathymetry:
                 [midpoint[0] + self.transect_radius * normal_x,
                  midpoint[1] + self.transect_radius * normal_y]]))
             transects_dict['midpoint'].append(shapely.geometry.Point(midpoint))
+            transects_dict['mid_x'].append(midpoint.x)
+            transects_dict['mid_y'].append(midpoint.y)
 
             # record the length of the line segment
             transects_dict['length'].append(length)
@@ -946,10 +954,10 @@ class ChannelBathymetry:
         def apply_bank_width(midpoint, nx, ny, first_bank, last_bank, resolution):
             import shapely
             return shapely.geometry.LineString([
-                [midpoint.x - first_bank * resolution * nx,
-                 midpoint.y - first_bank * resolution * ny],
-                [midpoint.x + last_bank * resolution * nx,
-                 midpoint.y + last_bank * resolution * ny]])
+                [midpoint.x - first_bank * nx,
+                 midpoint.y - first_bank * ny],
+                [midpoint.x + last_bank * nx,
+                 midpoint.y + last_bank * ny]])
         transects['width_line'] = transects.apply(lambda x:
                                                   apply_bank_width(x['midpoint'],
                                                                    x['nx'],
@@ -995,7 +1003,7 @@ class ChannelBathymetry:
             transects[slope_columns].plot(ax=ax)
         matplotlib.pyplot.ylim((0, None))
 
-    def _estimate_centreline_using_polygon(self, transects: geopandas.GeoDataFrame,
+    def _centreline_from_polygon(self, transects: geopandas.GeoDataFrame,
                                            erosion_factor: float = -2,
                                            dilation_factor: float = 3,
                                            simplification_factor: float = 5):
@@ -1044,8 +1052,8 @@ class ChannelBathymetry:
 
         return aligned_channel, channel_polygon
 
-    def _perturb_centreline_from_width(self, transects: geopandas.GeoDataFrame,
-                                       smoothing_distance):
+    def _centreline_from_perturbed_width(self, transects: geopandas.GeoDataFrame,
+                                         smoothing_distance):
         """ Offset the transect centre points along the transect based on the
         centre of the estimated width. Note that the width centres are smoothed
         based on the smoothing distance before offsetting. .
@@ -1065,7 +1073,7 @@ class ChannelBathymetry:
                            - self.centre_index) * self.resolution
         offset_distance = self._despike(offset_distance,
                                         smoothing_distance=100,
-                                        threshold = 50)
+                                        threshold=50)
 
         # Smooth the offset distances
         smoothed_offset_distance = scipy.signal.savgol_filter(
@@ -1090,6 +1098,32 @@ class ChannelBathymetry:
             geometry=[shapely.geometry.LineString(perturbed_midpoints_list)],
             crs=transects.crs)
         return perturbed_channel_centreline
+
+    def _centreline_from_width_spline(self, transects: geopandas.GeoDataFrame,
+                                      smoothing_multiplier):
+        """ Fit a spline through the width centres with a healthy dose of
+        smoothing.
+
+        Parameters
+        ----------
+
+        transects
+            The transects with geometry defined as polylines with width
+            estimates.
+        smoothing_multiplier
+            The smoothing multiplier to apply to the spline fit.
+        """
+
+        # Calculate the offset distance between the transect and width centres
+        widths_centre_offset = self.resolution * ((transects['first_bank_i'] + transects['last_bank_i']) / 2 - self.centre_index)
+        widths_centre_xy = numpy.vstack([(transects['mid_x'] + widths_centre_offset * transects['nx']).array,
+                                              (transects['mid_y'] + widths_centre_offset * transects['ny']).array]).T
+        widths_centre_line = geopandas.GeoDataFrame(geometry=[shapely.geometry.LineString(widths_centre_xy)],
+                                                    crs=transects.crs)
+        widths_centre_line = Channel(widths_centre_line, resolution=self.transect_spacing)
+
+        aligned_spline = widths_centre_line.get_smoothed_spline_fit(smoothing_multiplier)
+        return aligned_spline
 
     def _despike(self, spiky_values: geopandas.GeoSeries,
                  threshold: float,
@@ -1219,7 +1253,7 @@ class ChannelBathymetry:
                                                      resolution=self.resolution)'''
 
         # Create channel polygon with erosion and dilation to reduce sensitivity to poor width measurements
-        aligned_channel = self._perturb_centreline_from_width(transects, smoothing_distance=100)
+        aligned_channel = self._centreline_from_perturbed_width(transects, smoothing_distance=100)
 
         # Plot results
         self._plot_results(transects=transects,
