@@ -619,7 +619,8 @@ class ChannelBathymetry:
 
         transect_samples = {'elevations': [], 'xx': [], 'yy': [], 'min_z': [],
                             'min_i': [], 'min_xy': [], 'min_z_centre': [],
-                            'min_i_centre': [], 'min_xy_centre': []}
+                            'min_i_centre': [], 'min_xy_centre': [],
+                            'min_x_centre': [], 'min_y_centre': []}
 
         # create tree to sample from
         grid_x, grid_y = numpy.meshgrid(self.dem.x, self.dem.y)
@@ -658,17 +659,22 @@ class ChannelBathymetry:
                 transect_samples['min_i_centre'].append(self.min_z_start_i + min_index)
                 transect_samples['min_xy_centre'].append(shapely.geometry.Point(xy_points[self.min_z_start_i
                                                                                           + min_index]))
+                transect_samples['min_x_centre'].append(xy_points[self.min_z_start_i + min_index, 0])
+                transect_samples['min_y_centre'].append(xy_points[self.min_z_start_i + min_index, 1])
             else:
                 transect_samples['min_z_centre'].append(numpy.nan)
                 transect_samples['min_i_centre'].append(numpy.nan)
                 transect_samples['min_xy_centre'].append(shapely.geometry.Point([numpy.nan, numpy.nan]))
+                transect_samples['min_x_centre'].append(numpy.nan)
+                transect_samples['min_y_centre'].append(numpy.nan)
 
         return transect_samples
 
     def thresholded_widths_outwards_from_min(self, transects: geopandas.GeoDataFrame,
                                              transect_samples: dict,
                                              threshold: float,
-                                             resolution: float):
+                                             resolution: float,
+                                             min_name: str = 'min_i'):
         """ Estimate width based on a thresbold of bank height above water level.
         Start in the centre and work out. Doesn't detect banks until a value
         less than the threshold has been detected.
@@ -695,16 +701,18 @@ class ChannelBathymetry:
 
             start_i = numpy.nan
             stop_i = numpy.nan
-            start_index = transect_samples['min_i'][j]
+            start_index = transect_samples[min_name][j]
+            if numpy.isnan(start_index):
+                start_index = transect_samples['min_i'][j]
 
-            for i in numpy.arange(start_index, self.number_of_samples, 1):
+            for i in numpy.arange(int(start_index), self.number_of_samples, 1):
 
                 # work forward checking height
                 elevation_over_minimum = transect_samples['elevations'][j][i] - transects.iloc[j]['min_z_water']
                 if numpy.isnan(stop_i) and elevation_over_minimum > threshold:
                     stop_i = i
 
-            for i in numpy.arange(start_index, -1, -1):
+            for i in numpy.arange(int(start_index), -1, -1):
 
                 # work backward checking height
                 elevation_over_minimum = transect_samples['elevations'][j][i] - transects.iloc[j]['min_z_water']
@@ -781,10 +789,10 @@ class ChannelBathymetry:
         for key in widths.keys():
             transects[key] = widths[key]
 
-    def thresholded_widths_outwards_directional(self, transects: geopandas.GeoDataFrame,
-                                                transect_samples: dict,
-                                                threshold: float,
-                                                resolution: float):
+    def thresholded_widths_outwards_directional_from_centre(self, transects: geopandas.GeoDataFrame,
+                                                            transect_samples: dict,
+                                                            threshold: float,
+                                                            resolution: float):
         """ Estimate width based on a thresbold of bank height above water level.
         Start in the centre and work out. Doesn't detect banks until a value
         less than the threshold has been detected. Takes nearest channel to
@@ -1125,6 +1133,98 @@ class ChannelBathymetry:
         aligned_spline = widths_centre_line.get_smoothed_spline_fit(smoothing_multiplier)
         return aligned_spline
 
+    def _centreline_from_min_z(self, transects: geopandas.GeoDataFrame,
+                               smoothing_multiplier: float):
+        """ Fit a spline through the near min z along the transect with a healthy dose of
+        smoothing.
+
+        Parameters
+        ----------
+
+        transects
+            The transects with geometry defined as polylines with width
+            estimates.
+        smoothing_multiplier
+            The smoothing multiplier to apply to the spline fit.
+        """
+
+        # Calculate the offset distance between the transect and width centres
+        min_centre_xy = numpy.vstack([transects['min_x_centre'].array, transects['min_y_centre'].array]).T
+        min_centre_line = geopandas.GeoDataFrame(geometry=[shapely.geometry.LineString(min_centre_xy)],
+                                                 crs=transects.crs)
+        min_centre_line = Channel(min_centre_line, resolution=self.transect_spacing)
+
+        min_centre_spline = min_centre_line.get_smoothed_spline_fit(smoothing_multiplier)
+        return min_centre_spline
+
+    def _transect_and_spline_intersection(self, transects: geopandas.GeoDataFrame,
+                                          spline: geopandas.GeoDataFrame,
+                                          entry_name: str):
+        """ Find the nearest index of intersection between each transect
+        profile and the spline. Save the index values in transect.
+
+        Parameters
+        ----------
+
+        transects
+            The transects with geometry defined as polylines with width
+            estimates.
+        spline
+            The spline line.
+        entry_name
+            The name to save the intersection index under
+        """
+        assert len(spline) == 1, "Expect only one spline entry"
+        spline_line = spline.geometry.iloc[0]
+
+        def spline_transect_intersection_index(spline_line,
+                                               transect,
+                                               midpoint,
+                                               nx,
+                                               ny,
+                                               centre_index,
+                                               resolution):
+            """ Calculate the intersection index of a spline and the transect.
+            """
+            if spline_line.intersects(transect):
+                # find where the spline intersects the transect line
+                intersection_point = spline_line.intersection(transect)
+                if type(intersection_point) == shapely.geometry.MultiPoint:
+                    # Take the point nearest to the centre if their are multiple intesections
+                    offset_distance = numpy.inf
+                    offset = []
+                    for point in intersection_point:
+                        point_offset = [point.x - midpoint.x,
+                                        point.y - midpoint.y]
+                        point_distance = numpy.sqrt(point_offset[0] ** 2 + point_offset[1] ** 2)
+                        if point_distance < offset_distance:
+                            offset = point_offset
+                            offset_distance = point_distance
+                else:
+                    # Otherswise do the same calculations
+                    offset = [intersection_point.x - midpoint.x,
+                              intersection_point.y - midpoint.y]
+                    offset_distance = numpy.sqrt(offset[0] ** 2 + offset[1] ** 2)
+
+                # decide if counting up or down
+                if (numpy.sign(nx) == numpy.sign(offset[0]) and nx != 0) \
+                        or (numpy.sign(ny) == numpy.sign(offset[1]) and ny != 0):
+                    direction = +1
+                else:
+                    direction = -1
+                index = centre_index + direction * round(offset_distance / resolution)
+            else:
+                index = numpy.nan
+            return index
+        transects[entry_name] = transects.apply(lambda row:
+                                                spline_transect_intersection_index(spline_line,
+                                                                                   row['geometry'],
+                                                                                   row['midpoint'],
+                                                                                   row['nx'],
+                                                                                   row['ny'],
+                                                                                   self.centre_index,
+                                                                                   self.resolution), axis=1)
+
     def _despike(self, spiky_values: geopandas.GeoSeries,
                  threshold: float,
                  smoothing_distance: float) -> geopandas.GeoSeries:
@@ -1232,6 +1332,13 @@ class ChannelBathymetry:
         transects['min_i_centre'] = transect_samples['min_i_centre']
         transects['min_xy_centre'] = transect_samples['min_xy_centre']
 
+        # Create a new centreline estimate from a spline through the near min z
+        transects['min_x_centre'] = transect_samples['min_x_centre']
+        transects['min_y_centre'] = transect_samples['min_y_centre']
+        min_centre_spline = self._centreline_from_min_z(transects=transects, smoothing_multiplier=200)
+        self._transect_and_spline_intersection(transects=transects, spline=min_centre_spline, entry_name='min_spline_i')
+        transect_samples['min_spline_i'] = transects['min_spline_i']
+
         # Estimate water surface level and slope - Smooth slope upstream over 1km
         self._estimate_water_level_and_slope(transects=transects,
                                              transect_samples=transect_samples,
@@ -1243,17 +1350,18 @@ class ChannelBathymetry:
                                                      transect_samples=transect_samples,
                                                      threshold=threshold,
                                                      resolution=self.resolution)'''
-        self.thresholded_widths_outwards_directional(transects=transects,
-                                                        transect_samples=transect_samples,
-                                                        threshold=threshold,
-                                                        resolution=self.resolution)
-        '''self.thresholded_widths_outwards_from_min(transects=transects,
+        '''self.thresholded_widths_outwards_directional_from_centre(transects=transects,
                                                      transect_samples=transect_samples,
                                                      threshold=threshold,
                                                      resolution=self.resolution)'''
+        self.thresholded_widths_outwards_from_min(transects=transects,
+                                                  transect_samples=transect_samples,
+                                                  threshold=threshold,
+                                                  resolution=self.resolution,
+                                                  min_name='min_spline_i')
 
         # Create channel polygon with erosion and dilation to reduce sensitivity to poor width measurements
-        #aligned_channel = self._centreline_from_perturbed_width(transects, smoothing_distance=100)
+        # aligned_channel = self._centreline_from_perturbed_width(transects, smoothing_distance=100)
         aligned_channel = self._centreline_from_width_spline(transects, smoothing_multiplier=200)
 
         # Plot results
@@ -1298,7 +1406,7 @@ class ChannelBathymetry:
                            threshold=threshold,
                            include_transects=False,
                            channel=aligned_channel)'''
-        return aligned_channel, transects
+        return aligned_channel, transects, min_centre_spline
 
     def estimate_width_and_slope(self, manual_aligned_channel: geopandas.GeoDataFrame, threshold: float):
         """ Estimate the channel centre from transect samples
