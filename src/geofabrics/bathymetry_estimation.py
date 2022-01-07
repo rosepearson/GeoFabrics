@@ -861,6 +861,88 @@ class ChannelBathymetry:
         for key in widths.keys():
             transects[key] = widths[key]
 
+    def thresholded_widths_outwards_directional_from_min(self, transects: geopandas.GeoDataFrame,
+                                                         transect_samples: dict,
+                                                         threshold: float,
+                                                         resolution: float,
+                                                         min_name: str = 'min_i'):
+        """ Estimate width based on a thresbold of bank height above water level.
+        Start in the centre and work out. Doesn't detect banks until a value
+        less than the threshold has been detected. Takes nearest channel to
+        centre, but channel doesn't need to include the centre.'
+
+        Parameters
+        ----------
+
+        transects
+            The transects with geometry defined as polylines.
+        transect_samples
+            The sampled values along the transects.
+        threshold
+            The height above the water level to detect as a bank.
+        resolution
+            The resolution to sample at.
+        """
+
+        widths = {'widths': [], 'first_bank': [], 'last_bank': [],
+                  'first_bank_i': [], 'last_bank_i': []}
+
+        for j in range(len(transect_samples['elevations'])):
+
+            assert len(transect_samples['elevations'][j]) == self.number_of_samples, "Expect fixed length"
+
+            start_i = numpy.nan
+            stop_i = numpy.nan
+            centre_sub_threshold = transect_samples['elevations'][j][self.centre_index] \
+                - transects.iloc[j]['min_z_water'] < threshold
+            forward_sub_threshold = False
+            backward_sub_threshold = False
+
+            start_index = transect_samples[min_name][j]
+            if numpy.isnan(start_index):
+                start_index = transect_samples['min_i'][j]
+
+            for i in numpy.arange(0, self.number_of_samples, 1):
+                forward_index = start_index + i
+                backward_index = start_index - i
+
+                if forward_index >= self.number_of_samples and backward_index < 0:
+                    break
+                elif forward_index < self.number_of_samples:
+                    # working forward checking height
+                    elevation_over_minimum = transect_samples['elevations'][j][forward_index] \
+                        - transects.iloc[j]['min_z_water']
+                    if (centre_sub_threshold or forward_sub_threshold) \
+                            and numpy.isnan(stop_i) and elevation_over_minimum > threshold:
+                        # Leaving the channel
+                        stop_i = self.centre_index + i
+                    elif elevation_over_minimum < threshold and not forward_sub_threshold \
+                            and not backward_sub_threshold and not centre_sub_threshold:
+                        # only just made it forward to the start of the channel
+                        forward_sub_threshold = True
+                        start_i = self.centre_index + i - 1
+                elif backward_index >= 0:
+                    # working backward checking height
+                    elevation_over_minimum = transect_samples['elevations'][j][backward_index] \
+                        - transects.iloc[j]['min_z_water']
+                    if (centre_sub_threshold or backward_sub_threshold) \
+                            and numpy.isnan(start_i) and elevation_over_minimum > threshold:
+                        start_i = self.centre_index - i
+                    elif elevation_over_minimum < threshold and not forward_sub_threshold \
+                            and not backward_sub_threshold and not centre_sub_threshold:
+                        # only just made it backward to the end of the channel
+                        backward_sub_threshold = True
+                        stop_i = self.centre_index - i + 1
+
+            widths['first_bank'].append((self.centre_index - start_i) * resolution)
+            widths['last_bank'].append((stop_i - self.centre_index) * resolution)
+            widths['first_bank_i'].append(start_i)
+            widths['last_bank_i'].append(stop_i)
+            widths['widths'].append((stop_i - start_i) * resolution)
+
+        for key in widths.keys():
+            transects[key] = widths[key]
+
     def thresholded_widths_inwards(self, transects: geopandas.GeoDataFrame,
                                    transect_samples: dict,
                                    threshold: float,
