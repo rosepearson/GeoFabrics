@@ -1253,7 +1253,8 @@ class ChannelBathymetry:
                                                      resolution=self.resolution)'''
 
         # Create channel polygon with erosion and dilation to reduce sensitivity to poor width measurements
-        aligned_channel = self._centreline_from_perturbed_width(transects, smoothing_distance=100)
+        #aligned_channel = self._centreline_from_perturbed_width(transects, smoothing_distance=100)
+        aligned_channel = self._centreline_from_width_spline(transects, smoothing_multiplier=200)
 
         # Plot results
         self._plot_results(transects=transects,
