@@ -903,13 +903,13 @@ class ChannelBathymetry:
                 start_index = transect_samples['min_i'][j]
 
             for i in numpy.arange(0, self.number_of_samples, 1):
-                forward_index = start_index + i
-                backward_index = start_index - i
+                forward_index = int(start_index + i)
+                backward_index = int(start_index - i)
 
                 if forward_index >= self.number_of_samples and backward_index < 0:
                     break
-                elif forward_index < self.number_of_samples:
-                    # working forward checking height
+                # working forward checking height
+                if forward_index < self.number_of_samples:
                     elevation_over_minimum = transect_samples['elevations'][j][forward_index] \
                         - transects.iloc[j]['min_z_water']
                     if (centre_sub_threshold or forward_sub_threshold) \
@@ -921,8 +921,8 @@ class ChannelBathymetry:
                         # only just made it forward to the start of the channel
                         forward_sub_threshold = True
                         start_i = self.centre_index + i - 1
-                elif backward_index >= 0:
-                    # working backward checking height
+                # working backward checking height
+                if backward_index >= 0:
                     elevation_over_minimum = transect_samples['elevations'][j][backward_index] \
                         - transects.iloc[j]['min_z_water']
                     if (centre_sub_threshold or backward_sub_threshold) \
