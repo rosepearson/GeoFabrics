@@ -893,14 +893,15 @@ class ChannelBathymetry:
 
             start_i = numpy.nan
             stop_i = numpy.nan
-            centre_sub_threshold = transect_samples['elevations'][j][self.centre_index] \
-                - transects.iloc[j]['min_z_water'] < threshold
-            forward_sub_threshold = False
-            backward_sub_threshold = False
 
             start_index = transect_samples[min_name][j]
             if numpy.isnan(start_index):
                 start_index = transect_samples['min_i'][j]
+
+            centre_sub_threshold = transect_samples['elevations'][j][int(start_index)] \
+                - transects.iloc[j]['min_z_water'] < threshold
+            forward_sub_threshold = False
+            backward_sub_threshold = False
 
             for i in numpy.arange(0, self.number_of_samples, 1):
                 forward_index = int(start_index + i)
@@ -915,24 +916,24 @@ class ChannelBathymetry:
                     if (centre_sub_threshold or forward_sub_threshold) \
                             and numpy.isnan(stop_i) and elevation_over_minimum > threshold:
                         # Leaving the channel
-                        stop_i = self.centre_index + i
+                        stop_i = start_index + i
                     elif elevation_over_minimum < threshold and not forward_sub_threshold \
                             and not backward_sub_threshold and not centre_sub_threshold:
                         # only just made it forward to the start of the channel
                         forward_sub_threshold = True
-                        start_i = self.centre_index + i - 1
+                        start_i = start_index + i - 1
                 # working backward checking height
                 if backward_index >= 0:
                     elevation_over_minimum = transect_samples['elevations'][j][backward_index] \
                         - transects.iloc[j]['min_z_water']
                     if (centre_sub_threshold or backward_sub_threshold) \
                             and numpy.isnan(start_i) and elevation_over_minimum > threshold:
-                        start_i = self.centre_index - i
+                        start_i = start_index - i
                     elif elevation_over_minimum < threshold and not forward_sub_threshold \
                             and not backward_sub_threshold and not centre_sub_threshold:
                         # only just made it backward to the end of the channel
                         backward_sub_threshold = True
-                        stop_i = self.centre_index - i + 1
+                        stop_i = start_index - i + 1
 
             widths['first_bank'].append((self.centre_index - start_i) * resolution)
             widths['last_bank'].append((stop_i - self.centre_index) * resolution)
@@ -1061,14 +1062,14 @@ class ChannelBathymetry:
         f, ax = matplotlib.pyplot.subplots(figsize=(40, 20))
         self.dem.plot(ax=ax, label='DEM')
         if include_transects:
-            transects.plot(ax=ax, color='blue', linewidth=1, label='transects')
+            transects.plot(ax=ax, color='aqua', linewidth=1, label='transects')
         transects.set_geometry('width_line').plot(ax=ax, color='red', linewidth=1.5, label='widths')
         self.channel.get_sampled_spline_fit().plot(ax=ax, color='black', linewidth=1.5, linestyle='--',
                                                    label='sampled channel')
         if aligned_channel is not None:
             aligned_channel.plot(ax=ax, linewidth=2, color='green', zorder=4, label='Aligned channel')
         if initial_spline is not None:
-            initial_spline.plot(ax=ax, linewidth=2, color='green', zorder=3, label='Min Z splne')
+            initial_spline.plot(ax=ax, linewidth=2, color='blue', zorder=3, label='Min Z splne')
         if 'perturbed_midpoints' in transects.columns:
             transects.set_geometry('perturbed_midpoints').plot(ax=ax, color='aqua', zorder=5,
                                                                markersize=5, label='Perturbed midpoints')
@@ -1439,11 +1440,16 @@ class ChannelBathymetry:
                                                      transect_samples=transect_samples,
                                                      threshold=threshold,
                                                      resolution=self.resolution)'''
-        self.thresholded_widths_outwards_from_min(transects=transects,
+        '''self.thresholded_widths_outwards_from_min(transects=transects,
                                                   transect_samples=transect_samples,
                                                   threshold=threshold,
                                                   resolution=self.resolution,
-                                                  min_name='min_spline_i')
+                                                  min_name='min_spline_i')'''
+        self.thresholded_widths_outwards_directional_from_min(transects=transects,
+                                                              transect_samples=transect_samples,
+                                                              threshold=threshold,
+                                                              resolution=self.resolution,
+                                                              min_name='min_spline_i')
 
         # Create channel polygon with erosion and dilation to reduce sensitivity to poor width measurements
         # aligned_channel = self._centreline_from_perturbed_width(transects, smoothing_distance=100)
