@@ -1003,6 +1003,7 @@ class ChannelBathymetry:
                       transect_samples: dict,
                       threshold: float,
                       aligned_channel: geopandas.GeoDataFrame = None,
+                      initial_spline: geopandas.GeoDataFrame = None,
                       include_transects: bool = True):
         """ Function used for debugging or interactively to visualised the
         samples and widths
@@ -1066,6 +1067,8 @@ class ChannelBathymetry:
                                                    label='sampled channel')
         if aligned_channel is not None:
             aligned_channel.plot(ax=ax, linewidth=2, color='green', zorder=4, label='Aligned channel')
+        if initial_spline is not None:
+            initial_spline.plot(ax=ax, linewidth=2, color='green', zorder=3, label='Min Z splne')
         if 'perturbed_midpoints' in transects.columns:
             transects.set_geometry('perturbed_midpoints').plot(ax=ax, color='aqua', zorder=5,
                                                                markersize=5, label='Perturbed midpoints')
@@ -1444,14 +1447,15 @@ class ChannelBathymetry:
 
         # Create channel polygon with erosion and dilation to reduce sensitivity to poor width measurements
         # aligned_channel = self._centreline_from_perturbed_width(transects, smoothing_distance=100)
-        aligned_channel = self._centreline_from_width_spline(transects, smoothing_multiplier=200)
+        aligned_channel = self._centreline_from_width_spline(transects, smoothing_multiplier=100)
 
         # Plot results
         self._plot_results(transects=transects,
                            transect_samples=transect_samples,
                            threshold=threshold,
                            include_transects=False,
-                           aligned_channel=aligned_channel)
+                           aligned_channel=aligned_channel,
+                           initial_spline=min_centre_spline)
 
         # Second alignment step
         '''self.channel.aligned_centreline = numpy.array(aligned_channel.iloc[0].geometry.xy)
