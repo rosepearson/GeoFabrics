@@ -531,6 +531,7 @@ class RiverBathymetryGenerator():
         resolution = self.instructions['instructions']['output']['grid_params']['resolution']
         transect_spacing = self.instructions['instructions']['channel_bathymetry']['transect_spacing']
         bank_threshold = self.instructions['instructions']['channel_bathymetry']['bank_threshold']
+        smoothing_multiplier = self.instructions['instructions']['channel_bathymetry']['smoothing_multiplier']
 
         # Define paths for generated files
         local_cache = pathlib.Path(self.instructions['instructions']['data_paths']['local_cache'])
@@ -579,7 +580,8 @@ class RiverBathymetryGenerator():
         # Align channel
         if not aligned_channel_file.is_file():
             print("No aligned channel provided. Aligning the channel.")
-            aligned_polyline, transects = self.channel_bathymetry.align_channel(bank_threshold+0.5)
+            aligned_polyline, transects, min_centre_spline = self.channel_bathymetry.align_channel(
+                bank_threshold, smoothing_multiplier=smoothing_multiplier)
             aligned_polyline.to_file(aligned_channel_file)
             transect_widths = geopandas.GeoDataFrame(geometry=transects['width_line'], crs=transects.crs)
             transect_widths.to_file(local_cache / "intial_widths.geojson")
