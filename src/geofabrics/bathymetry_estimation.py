@@ -916,24 +916,24 @@ class ChannelBathymetry:
                     if (centre_sub_threshold or forward_sub_threshold) \
                             and numpy.isnan(stop_i) and elevation_over_minimum > threshold:
                         # Leaving the channel
-                        stop_i = start_index + i
+                        stop_i = forward_index
                     elif elevation_over_minimum < threshold and not forward_sub_threshold \
                             and not backward_sub_threshold and not centre_sub_threshold:
                         # only just made it forward to the start of the channel
                         forward_sub_threshold = True
-                        start_i = start_index + i - 1
+                        start_i = forward_index - 1
                 # working backward checking height
                 if backward_index >= 0:
                     elevation_over_minimum = transect_samples['elevations'][j][backward_index] \
                         - transects.iloc[j]['min_z_water']
                     if (centre_sub_threshold or backward_sub_threshold) \
                             and numpy.isnan(start_i) and elevation_over_minimum > threshold:
-                        start_i = start_index - i
+                        start_i = backward_index
                     elif elevation_over_minimum < threshold and not forward_sub_threshold \
                             and not backward_sub_threshold and not centre_sub_threshold:
                         # only just made it backward to the end of the channel
                         backward_sub_threshold = True
-                        stop_i = start_index - i + 1
+                        stop_i = backward_index + 1
 
             widths['first_bank'].append((self.centre_index - start_i) * resolution)
             widths['last_bank'].append((stop_i - self.centre_index) * resolution)
@@ -1463,41 +1463,6 @@ class ChannelBathymetry:
                            aligned_channel=aligned_channel,
                            initial_spline=min_centre_spline)
 
-        # Second alignment step
-        '''self.channel.aligned_centreline = numpy.array(aligned_channel.iloc[0].geometry.xy)
-        xy = self.channel.sampled_smoothed_centreline()
-        sampled_channel = geopandas.GeoDataFrame(
-            geometry=[shapely.geometry.LineString(xy.T)],
-            crs=self.channel.original_channel.crs)
-
-        # Create transects
-        transects = self.transects_along_reaches_at_node(
-                    channel_polylines=sampled_channel)
-
-        # Sample along transects
-        transect_samples = self.sample_from_transects(transects=transects)
-
-        # Estimate water surface level and slope
-        self._estimate_water_level_and_slope(transects=transects,
-                                             transect_samples=transect_samples,
-                                             smoothing_distance=slope_smoothing_distance)
-        transects['min_z_water'] = transects['min_z_unimodal']
-
-        # Bank estimates - outside in
-        self.transect_widths_by_threshold_outwards(transects=transects,
-                                                   transect_samples=transect_samples,
-                                                   threshold=threshold,
-                                                   resolution=self.resolution)
-
-        # Create channel polygon with erosion and dilation to reduce sensitivity to poor width measurements
-        aligned_channel = self._perturb_centreline_from_width(transects, smoothing_distance=500)
-
-        # Plot results
-        self._plot_results(transects=transects,
-                           transect_samples=transect_samples,
-                           threshold=threshold,
-                           include_transects=False,
-                           channel=aligned_channel)'''
         return aligned_channel, transects, min_centre_spline
 
     def estimate_width_and_slope(self, manual_aligned_channel: geopandas.GeoDataFrame, threshold: float):
