@@ -531,7 +531,8 @@ class RiverBathymetryGenerator():
         resolution = self.instructions['instructions']['output']['grid_params']['resolution']
         transect_spacing = self.instructions['instructions']['channel_bathymetry']['transect_spacing']
         bank_threshold = self.instructions['instructions']['channel_bathymetry']['bank_threshold']
-        smoothing_multiplier = self.instructions['instructions']['channel_bathymetry']['smoothing_multiplier']
+        min_z_smoothing_multiplier = self.instructions['instructions']['channel_bathymetry']['min_z_smoothing']
+        width_centre_smoothing_multiplier = self.instructions['instructions']['channel_bathymetry']['width_centre_smoothing']
 
         # Define paths for generated files
         local_cache = pathlib.Path(self.instructions['instructions']['data_paths']['local_cache'])
@@ -557,6 +558,7 @@ class RiverBathymetryGenerator():
         dem_file = pathlib.Path(self.instructions['instructions']['data_paths']['result_dem'])
         if not dem_file.is_file():
             # Create the catchment file if this has not be created yet!
+            print("No DEM along the channel. Generating a DEM.")
             if not pathlib.Path(self.instructions['instructions']['data_paths']['catchment_boundary']).is_file():
                 channel_catchment = channel.get_channel_catchment(corridor_radius=channel_corridor_radius)
                 channel_catchment.to_file(self.instructions['instructions']['data_paths']['catchment_boundary'])
@@ -564,6 +566,7 @@ class RiverBathymetryGenerator():
             runner.run()
             self.channel_dem = runner.dense_dem.dem
         else:
+            print("DEM along the channel exists. Loading the DEM.")
             with rioxarray.rioxarray.open_rasterio(dem_file, masked=True) as dem:
                 dem.load()
             self.channel_dem = dem.copy(deep=True)
@@ -577,12 +580,15 @@ class RiverBathymetryGenerator():
             transect_radius=channel_corridor_radius,
             min_z_radius=min_z_corridor_radius)
 
-        # Align channel
+        # Get/Generate aligned channel
         if not aligned_channel_file.is_file():
             print("No aligned channel provided. Aligning the channel.")
             aligned_polyline, transects, min_centre_spline = self.channel_bathymetry.align_channel(
-                bank_threshold, smoothing_multiplier=smoothing_multiplier)
+                threshold=bank_threshold,
+                min_z_smoothing_multiplier=min_z_smoothing_multiplier,
+                width_centre_smoothing_multiplier=width_centre_smoothing_multiplier)
             aligned_polyline.to_file(aligned_channel_file)
+            min_centre_spline.to_file(local_cache / f"min_z_spline_{area_threshold}.geojson")
             transect_widths = geopandas.GeoDataFrame(geometry=transects['width_line'], crs=transects.crs)
             transect_widths.to_file(local_cache / "intial_widths.geojson")
             min_xy = geopandas.GeoDataFrame(geometry=transects['min_xy'], crs=transects.crs)
@@ -597,7 +603,7 @@ class RiverBathymetryGenerator():
         # Estimate width and slope of channel
         if manual_channel_file.is_file():
             manual_channel = geopandas.read_file(manual_channel_file)
-            transects, aligned_manual_channel = self.channel_bathymetry.estimate_width_and_slope(manual_channel, bank_threshold+0.5)
+            transects, aligned_manual_channel = self.channel_bathymetry.estimate_width_and_slope(manual_channel, bank_threshold)
             columns = ['geometry']
             columns.extend([column_name for column_name in transects.columns
                             if 'slope' in column_name or 'widths' in column_name or 'min_z' in column_name])

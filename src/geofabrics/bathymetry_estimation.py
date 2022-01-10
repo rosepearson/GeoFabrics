@@ -1056,22 +1056,6 @@ class ChannelBathymetry:
         matplotlib.pyplot.legend()
         ax.set(title=f"Sampled transects. Thresh {threshold}, segment {i + 1}")'''
 
-        # Create width lines for plotting
-        def apply_bank_width(midpoint, nx, ny, first_bank, last_bank, resolution):
-            import shapely
-            return shapely.geometry.LineString([
-                [midpoint.x - first_bank * nx,
-                 midpoint.y - first_bank * ny],
-                [midpoint.x + last_bank * nx,
-                 midpoint.y + last_bank * ny]])
-        transects['width_line'] = transects.apply(lambda x:
-                                                  apply_bank_width(x['midpoint'],
-                                                                   x['nx'],
-                                                                   x['ny'],
-                                                                   x['first_bank'],
-                                                                   x['last_bank'],
-                                                                   self.resolution), axis=1)
-
         # Plot transects, widths, and centrelines on the DEM
         f, ax = matplotlib.pyplot.subplots(figsize=(40, 20))
         self.dem.plot(ax=ax, label='DEM')
@@ -1405,7 +1389,8 @@ class ChannelBathymetry:
 
     def align_channel(self,
                       threshold: float,
-                      smoothing_multiplier: float):
+                      min_z_smoothing_multiplier: float,
+                      width_centre_smoothing_multiplier: float):
         """ Estimate the channel centre from transect samples
 
         Parameters
@@ -1436,7 +1421,7 @@ class ChannelBathymetry:
         # Create a new centreline estimate from a spline through the near min z
         transects['min_x_centre'] = transect_samples['min_x_centre']
         transects['min_y_centre'] = transect_samples['min_y_centre']
-        min_centre_spline = self._centreline_from_min_z(transects=transects, smoothing_multiplier=smoothing_multiplier * 2)
+        min_centre_spline = self._centreline_from_min_z(transects=transects, smoothing_multiplier=min_z_smoothing_multiplier)
         self._transect_and_spline_intersection(transects=transects, spline=min_centre_spline, entry_name='min_spline_i')
         transect_samples['min_spline_i'] = transects['min_spline_i']
 
@@ -1466,17 +1451,34 @@ class ChannelBathymetry:
                                                               resolution=self.resolution,
                                                               min_name='min_spline_i')
 
+        # Add width linestring to the transects
+        def apply_bank_width(midpoint, nx, ny, first_bank, last_bank, resolution):
+            import shapely
+            return shapely.geometry.LineString([
+                [midpoint.x - first_bank * nx,
+                 midpoint.y - first_bank * ny],
+                [midpoint.x + last_bank * nx,
+                 midpoint.y + last_bank * ny]])
+        transects['width_line'] = transects.apply(lambda x:
+                                                  apply_bank_width(x['midpoint'],
+                                                                   x['nx'],
+                                                                   x['ny'],
+                                                                   x['first_bank'],
+                                                                   x['last_bank'],
+                                                                   self.resolution), axis=1)
+
         # Create channel polygon with erosion and dilation to reduce sensitivity to poor width measurements
         # aligned_channel = self._centreline_from_perturbed_width(transects, smoothing_distance=100)
-        aligned_channel = self._centreline_from_width_spline(transects, smoothing_multiplier=smoothing_multiplier)
+        aligned_channel = self._centreline_from_width_spline(transects,
+                                                             smoothing_multiplier=width_centre_smoothing_multiplier)
 
         # Plot results
-        self._plot_results(transects=transects,
+        '''self._plot_results(transects=transects,
                            transect_samples=transect_samples,
                            threshold=threshold,
                            include_transects=False,
                            aligned_channel=aligned_channel,
-                           initial_spline=min_centre_spline)
+                           initial_spline=min_centre_spline)'''
 
         return aligned_channel, transects, min_centre_spline
 
