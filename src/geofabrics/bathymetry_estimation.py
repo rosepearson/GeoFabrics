@@ -1209,9 +1209,11 @@ class ChannelBathymetry:
         """
 
         # Calculate the offset distance between the transect and width centres
-        widths_centre_offset = self.resolution * ((transects['first_bank_i'] + transects['last_bank_i']) / 2 - self.centre_index)
+        widths_centre_offset = self.resolution * ((transects['first_bank_i']
+                                                   + transects['last_bank_i']) / 2 - self.centre_index)
         widths_centre_xy = numpy.vstack([(transects['mid_x'] + widths_centre_offset * transects['nx']).array,
-                                              (transects['mid_y'] + widths_centre_offset * transects['ny']).array]).T
+                                         (transects['mid_y'] + widths_centre_offset * transects['ny']).array]).T
+        widths_centre_xy = widths_centre_xy[numpy.isnan(widths_centre_xy).any(axis=1) == False]
         widths_centre_line = geopandas.GeoDataFrame(geometry=[shapely.geometry.LineString(widths_centre_xy)],
                                                     crs=transects.crs)
         widths_centre_line = Channel(widths_centre_line, resolution=self.transect_spacing)
@@ -1236,6 +1238,7 @@ class ChannelBathymetry:
 
         # Calculate the offset distance between the transect and width centres
         min_centre_xy = numpy.vstack([transects['min_x_centre'].array, transects['min_y_centre'].array]).T
+        min_centre_xy = min_centre_xy[numpy.isnan(min_centre_xy).any(axis=1) == False]
         min_centre_line = geopandas.GeoDataFrame(geometry=[shapely.geometry.LineString(min_centre_xy)],
                                                  crs=transects.crs)
         min_centre_line = Channel(min_centre_line, resolution=self.transect_spacing)
@@ -1386,20 +1389,18 @@ class ChannelBathymetry:
 
         return mon_cof
 
-    def align_channel(self, threshold: float):
+    def align_channel(self,
+                      threshold: float,
+                      smoothing_multiplier: float):
         """ Estimate the channel centre from transect samples
 
         Parameters
         ----------
 
-        transects
-            The transects with geometry defined as polylines.
-        transect_samples
-            The sampled values along the transects.
         threshold
             The height above the water level to detect as a bank.
-        resolution
-            The resolution to sample at.
+        smoothing_multiplier
+            The number of transects to include in the downstream spline smoothing.
         """
 
         # Sample channel
@@ -1421,7 +1422,7 @@ class ChannelBathymetry:
         # Create a new centreline estimate from a spline through the near min z
         transects['min_x_centre'] = transect_samples['min_x_centre']
         transects['min_y_centre'] = transect_samples['min_y_centre']
-        min_centre_spline = self._centreline_from_min_z(transects=transects, smoothing_multiplier=200)
+        min_centre_spline = self._centreline_from_min_z(transects=transects, smoothing_multiplier=smoothing_multiplier * 2)
         self._transect_and_spline_intersection(transects=transects, spline=min_centre_spline, entry_name='min_spline_i')
         transect_samples['min_spline_i'] = transects['min_spline_i']
 
@@ -1453,7 +1454,7 @@ class ChannelBathymetry:
 
         # Create channel polygon with erosion and dilation to reduce sensitivity to poor width measurements
         # aligned_channel = self._centreline_from_perturbed_width(transects, smoothing_distance=100)
-        aligned_channel = self._centreline_from_width_spline(transects, smoothing_multiplier=100)
+        aligned_channel = self._centreline_from_width_spline(transects, smoothing_multiplier=smoothing_multiplier)
 
         # Plot results
         self._plot_results(transects=transects,
