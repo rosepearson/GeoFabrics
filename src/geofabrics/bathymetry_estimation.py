@@ -899,7 +899,8 @@ class ChannelBathymetry:
                 start_index = transect_samples['min_i'][j]
 
             centre_sub_threshold = transect_samples['elevations'][j][int(start_index)] \
-                - transects.iloc[j]['min_z_water'] < threshold
+                - transects.iloc[j]['min_z_water'] < threshold \
+                or numpy.isnan(transect_samples['elevations'][j][int(start_index)])
             forward_sub_threshold = False
             backward_sub_threshold = False
 
