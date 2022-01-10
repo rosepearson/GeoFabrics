@@ -899,8 +899,8 @@ class ChannelBathymetry:
                 start_index = transect_samples['min_i'][j]
 
             centre_sub_threshold = transect_samples['elevations'][j][int(start_index)] \
-                - transects.iloc[j]['min_z_water'] < threshold \
-                or numpy.isnan(transect_samples['elevations'][j][int(start_index)])
+                - transects.iloc[j]['min_z_water'] < threshold
+            all_nan_so_far = numpy.isnan(transect_samples['elevations'][j][int(start_index)])
             forward_sub_threshold = False
             backward_sub_threshold = False
 
@@ -910,10 +910,17 @@ class ChannelBathymetry:
 
                 if forward_index >= self.number_of_samples and backward_index < 0:
                     break
+
                 # working forward checking height
                 if forward_index < self.number_of_samples:
                     elevation_over_minimum = transect_samples['elevations'][j][forward_index] \
                         - transects.iloc[j]['min_z_water']
+
+                    # Update the centre_sub_threshold if first non-nan values
+                    if all_nan_so_far and not numpy.isnan(elevation_over_minimum):
+                        centre_sub_threshold = elevation_over_minimum < threshold
+                        all_nan_so_far = False
+
                     if (centre_sub_threshold or forward_sub_threshold) \
                             and numpy.isnan(stop_i) and elevation_over_minimum > threshold:
                         # Leaving the channel
@@ -927,6 +934,12 @@ class ChannelBathymetry:
                 if backward_index >= 0:
                     elevation_over_minimum = transect_samples['elevations'][j][backward_index] \
                         - transects.iloc[j]['min_z_water']
+
+                    # Update the centre_sub_threshold if first non-nan values
+                    if all_nan_so_far and not numpy.isnan(elevation_over_minimum):
+                        centre_sub_threshold = elevation_over_minimum < threshold
+                        all_nan_so_far = False
+
                     if (centre_sub_threshold or backward_sub_threshold) \
                             and numpy.isnan(start_i) and elevation_over_minimum > threshold:
                         start_i = backward_index
