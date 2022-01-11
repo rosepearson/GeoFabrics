@@ -1387,6 +1387,29 @@ class ChannelBathymetry:
 
         return mon_cof
 
+    def _apply_bank_width(self, midpoint, nx, ny, first_bank, last_bank):
+        """ Generate a line for each width for visualisation.
+
+        Parameters
+        ----------
+
+        midpoint
+            The centre of the transect.
+        nx
+            Transect normal x-component.
+        ny
+            Transect normal y-component.
+        first_bank
+            The signed distance between the first bank and the transect centre.
+        last_bank
+            The signed distance between the last bank and the transect centre.
+        """
+        return shapely.geometry.LineString([
+            [midpoint.x - first_bank * nx,
+             midpoint.y - first_bank * ny],
+            [midpoint.x + last_bank * nx,
+             midpoint.y + last_bank * ny]])
+
     def align_channel(self,
                       threshold: float,
                       min_z_smoothing_multiplier: float,
@@ -1452,20 +1475,12 @@ class ChannelBathymetry:
                                                               min_name='min_spline_i')
 
         # Add width linestring to the transects
-        def apply_bank_width(midpoint, nx, ny, first_bank, last_bank, resolution):
-            import shapely
-            return shapely.geometry.LineString([
-                [midpoint.x - first_bank * nx,
-                 midpoint.y - first_bank * ny],
-                [midpoint.x + last_bank * nx,
-                 midpoint.y + last_bank * ny]])
-        transects['width_line'] = transects.apply(lambda x:
-                                                  apply_bank_width(x['midpoint'],
-                                                                   x['nx'],
-                                                                   x['ny'],
-                                                                   x['first_bank'],
-                                                                   x['last_bank'],
-                                                                   self.resolution), axis=1)
+        transects['width_line'] = transects.apply(
+            lambda x: self._apply_bank_width(x['midpoint'],
+                                             x['nx'],
+                                             x['ny'],
+                                             x['first_bank'],
+                                             x['last_bank']), axis=1)
 
         # Create channel polygon with erosion and dilation to reduce sensitivity to poor width measurements
         # aligned_channel = self._centreline_from_perturbed_width(transects, smoothing_distance=100)
@@ -1568,6 +1583,13 @@ class ChannelBathymetry:
             transects['widths'].interpolate('index', limit_direction='both'),
             int(width_smoothing_distance / self.transect_spacing / 2) * 2 + 1,  # Must be odd - number of samples to include
             3)  # Polynomial order
+
+        transects['width_line'] = transects.apply(
+            lambda x: self._apply_bank_width(x['midpoint'],
+                                             x['nx'],
+                                             x['ny'],
+                                             x['first_bank'],
+                                             x['last_bank']), axis=1)
 
         # Plot results
         self._plot_results(transects=transects,
