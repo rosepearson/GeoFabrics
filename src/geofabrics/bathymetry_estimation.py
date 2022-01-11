@@ -578,8 +578,8 @@ class ChannelBathymetry:
         smoothing_samples = int(numpy.ceil(smoothing_distance/self.transect_spacing))
 
         # water surface - including monotonically increasing splines fit
-        transects['min_z'] = transect_samples['min_z']
-        '''transects['min_z_unimodal'] = self._unimodal_smoothing(transects['min_z'])
+        '''transects['min_z'] = transect_samples['min_z']
+        transects['min_z_unimodal'] = self._unimodal_smoothing(transects['min_z'])
         transects['min_z_savgol'] = scipy.signal.savgol_filter(
             transects['min_z'].interpolate('index', limit_direction='both'),
             int(smoothing_samples / 2) * 2 + 1,  # Must be odd - number of samples to include
@@ -596,7 +596,7 @@ class ChannelBathymetry:
             smoothing_samples, min_periods=1, center=True).mean()
 
         # Set the water z value to use for width thresholding
-        transects['min_z_water'] = transects[f'min_z_centre_unimodal']
+        transects['min_z_water'] = transects[f'min_z_centre_unimodal_{smoothing_distance/1000}km_rolling_mean']
 
         # Slope - from the water z
         transects['slope'] = transects['min_z_water'].diff() / self.transect_spacing
