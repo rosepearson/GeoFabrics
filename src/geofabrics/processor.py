@@ -601,18 +601,18 @@ class RiverBathymetryGenerator():
             aligned_channel = geopandas.read_file(aligned_channel_file)
 
         # Estimate width and slope of channel
-        if manual_channel_file.is_file():
-            manual_channel = geopandas.read_file(manual_channel_file)
-            transects, aligned_manual_channel = self.channel_bathymetry.estimate_width_and_slope(manual_channel, bank_threshold)
+        if not (local_cache / f"final_transects_{area_threshold}.geojson").is_file():
+            print("Calculating the final widths.")
+            transects = self.channel_bathymetry.estimate_width_and_slope(aligned_channel, bank_threshold)
+            transect_widths = geopandas.GeoDataFrame(geometry=transects['width_line'], crs=transects.crs)
+            transect_widths.to_file(local_cache / "final_widths.geojson")
+            transects[['geometry']].to_file(local_cache / "final_transects.geojson")
             columns = ['geometry']
             columns.extend([column_name for column_name in transects.columns
                             if 'slope' in column_name or 'widths' in column_name or 'min_z' in column_name])
             transects[columns].to_file(local_cache / f"final_transects_{area_threshold}.geojson")
-            aligned_manual_channel.to_file(local_cache / "aligned_manual_channel.geojson")
         else:
-            print("Please review the aligned channel and save as "
-                  f"'manual_aligned_channel_{area_threshold}.geojson' before"
-                  "the width and slopes will be estimated")
+            print("The final widths have already been generated")
 
         # Estimate slope from the samples
 

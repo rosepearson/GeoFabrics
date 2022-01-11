@@ -1497,7 +1497,9 @@ class ChannelBathymetry:
 
         return aligned_channel, transects, min_centre_spline
 
-    def estimate_width_and_slope(self, manual_aligned_channel: geopandas.GeoDataFrame, threshold: float):
+    def estimate_width_and_slope(self,
+                                 aligned_channel: geopandas.GeoDataFrame, 
+                                 threshold: float):
         """ Estimate the channel centre from transect samples
 
         Parameters
@@ -1506,44 +1508,12 @@ class ChannelBathymetry:
         threshold
             The height above the water level to detect as a bank.
         """
-        def subsample_channels(self, channel_polylines: geopandas.GeoDataFrame, sampling_resolution: float, upstream: bool):
-            """ Subsample along all polylines at the sampling resolution. Note the
-            subsampling is done in the upstream direction.
-
-            Parameters
-            ----------
-
-            channel_polylines
-                The channel reaches with reache geometry defined as polylines.
-            sampling_resolution
-                The resolution to subsample at.
-            upstream
-                True if the channel polyline to sample from is already defined
-                upstream, False if it is defined downstream
-            """
-
-            sampled_polylines = []
-            for index, row in channel_polylines.iterrows():
-                number_segment_samples = round(row.geometry.length / sampling_resolution)
-                segment_resolution = row.geometry.length / number_segment_samples
-                if upstream:
-                    indices = numpy.arange(0, number_segment_samples + 1, 1)
-                else:
-                    indices = numpy.arange(number_segment_samples, -1, -1)
-                sampled_polylines.append(shapely.geometry.LineString(
-                    [row.geometry.interpolate(i * segment_resolution) for i in indices]))
-
-            sampled_channel_polylines = channel_polylines.set_geometry(sampled_polylines)
-            return sampled_channel_polylines
 
         z_smoothing_distance = 500  # Smooth water surface upstream over 1km
         width_smoothing_distance = 100  # Smooth slope upstream over 1km
-        # Subsample transects
-        sampled_aligned_channel = self.subsample_channels(manual_aligned_channel, self.transect_spacing, upstream=True)
 
-        # Define transects
-        transects = self.transects_along_reaches_at_node(
-                    channel_polylines=sampled_aligned_channel)
+        # Create transects
+        transects = self.transects_along_reaches_at_node(sampled_channel=aligned_channel)
 
         # Sample along transects
         transect_samples = self.sample_from_transects(transects=transects)
@@ -1552,36 +1522,21 @@ class ChannelBathymetry:
         self._estimate_water_level_and_slope(transects=transects,
                                              transect_samples=transect_samples,
                                              smoothing_distance=z_smoothing_distance)
-        transects['min_z_water'] = transects['min_z_unimodal']
+        transects['min_z_water'] = transects['min_z_centre_unimodal']
 
         # Estimate widths
-        self.transect_widths_by_threshold_outwards_from_centre(transects=transects,
-                                                               transect_samples=transect_samples,
-                                                               threshold=threshold,
-                                                               resolution=self.resolution)
-
-        # Update centreline estimation from widths
-        sampled_aligned_channel = self._perturb_centreline_from_width(transects)
-
-        # Repeat width estimate with the realigned centreline?
-        transects = self.transects_along_reaches_at_node(channel_polylines=sampled_aligned_channel)
-        transect_samples = self.sample_from_transects(transects=transects)
-        self._estimate_water_level_and_slope(transects=transects,
-                                             transect_samples=transect_samples,
-                                             smoothing_distance=z_smoothing_distance)
-        self.transect_widths_by_threshold_outwards_from_centre(transects=transects,
-                                                               transect_samples=transect_samples,
-                                                               threshold=threshold,
-                                                               resolution=self.resolution)
+        self.thresholded_widths_outwards_directional_from_centre(
+            transects=transects,
+            transect_samples=transect_samples,
+            threshold=threshold,
+            resolution=self.resolution)
 
         # Width smoothing - either from polygon if good enough, or function fit to aligned_widths_outward
-        transects['widths_mean'] = transects['widths'].rolling(5,
-                                                               min_periods=1, center=True).mean()
-        transects['widths_median'] = transects['widths'].rolling(5,
-                                                                 min_periods=1, center=True).median()
+        transects['widths_mean'] = transects['widths'].rolling(5, min_periods=1, center=True).mean()
+        transects['widths_median'] = transects['widths'].rolling(5, min_periods=1, center=True).median()
         transects['widths_Savgol'] = scipy.signal.savgol_filter(
             transects['widths'].interpolate('index', limit_direction='both'),
-            int(width_smoothing_distance / self.transect_spacing / 2) * 2 + 1,  # Must be odd - number of samples to include
+            int(width_smoothing_distance / self.transect_spacing / 2) * 2 + 1,  # Ensure odd. number of samples included
             3)  # Polynomial order
 
         transects['width_line'] = transects.apply(
@@ -1595,8 +1550,8 @@ class ChannelBathymetry:
         self._plot_results(transects=transects,
                            transect_samples=transect_samples,
                            threshold=threshold,
-                           channel=manual_aligned_channel,
+                           aligned_channel=aligned_channel,
                            include_transects=False)
 
         # Return results for now
-        return transects, sampled_aligned_channel
+        return transects
