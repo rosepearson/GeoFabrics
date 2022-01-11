@@ -1508,8 +1508,8 @@ class ChannelBathymetry:
             The height above the water level to detect as a bank.
         """
 
-        z_smoothing_distance = 500  # Smooth water surface upstream over 1km
-        width_smoothing_distance = 100  # Smooth slope upstream over 1km
+        z_smoothing_distance = 500  # Smooth slope upstream over this many metres
+        width_smoothing_distance = 100  # Smooth width upstream over this many metres
 
         # Create transects
         transects = self.transects_along_reaches_at_node(sampled_channel=aligned_channel)
