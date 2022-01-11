@@ -579,14 +579,11 @@ class ChannelBathymetry:
 
         # water surface - including monotonically increasing splines fit
         transects['min_z'] = transect_samples['min_z']
-        transects['min_z_unimodal'] = self._unimodal_smoothing(transects['min_z'])
-        transects[f'min_z_unimodal_{smoothing_distance/1000}km_rolling_mean'] = \
-            transects['min_z_unimodal'].rolling(
-            smoothing_samples, min_periods=1, center=True).mean()
+        '''transects['min_z_unimodal'] = self._unimodal_smoothing(transects['min_z'])
         transects['min_z_savgol'] = scipy.signal.savgol_filter(
             transects['min_z'].interpolate('index', limit_direction='both'),
             int(smoothing_samples / 2) * 2 + 1,  # Must be odd - number of samples to include
-            3)
+            3)'''
 
         transects['min_z_centre'] = transect_samples['min_z_centre']
         transects['min_z_centre_unimodal'] = self._unimodal_smoothing(transects['min_z_centre'])
@@ -594,9 +591,12 @@ class ChannelBathymetry:
             transects['min_z_centre'].interpolate('index', limit_direction='both'),
             int(smoothing_samples / 2) * 2 + 1,  # Must be odd - number of samples to include
             3)
+        transects[f'min_z_centre_unimodal_{smoothing_distance/1000}km_rolling_mean'] = \
+            transects['min_z_centre_unimodal'].rolling(
+            smoothing_samples, min_periods=1, center=True).mean()
 
         # Set the water z value to use for width thresholding
-        transects['min_z_water'] = transects[f'min_z_unimodal_{smoothing_distance/1000}km_rolling_mean']
+        transects['min_z_water'] = transects[f'min_z_centre_unimodal']
 
         # Slope - from the water z
         transects['slope'] = transects['min_z_water'].diff() / self.transect_spacing
@@ -1452,7 +1452,6 @@ class ChannelBathymetry:
         self._estimate_water_level_and_slope(transects=transects,
                                              transect_samples=transect_samples,
                                              smoothing_distance=1000)
-        transects['min_z_water'] = transects['min_z_centre_unimodal']
 
         # Bank estimates - outside in
         '''self.thresholded_widths_outwards_from_centre(transects=transects,
@@ -1522,7 +1521,6 @@ class ChannelBathymetry:
         self._estimate_water_level_and_slope(transects=transects,
                                              transect_samples=transect_samples,
                                              smoothing_distance=z_smoothing_distance)
-        transects['min_z_water'] = transects['min_z_centre_unimodal']
 
         # Estimate widths
         self.thresholded_widths_outwards_directional_from_centre(
