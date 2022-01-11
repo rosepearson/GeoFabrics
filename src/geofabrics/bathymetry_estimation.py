@@ -596,10 +596,10 @@ class ChannelBathymetry:
             smoothing_samples, min_periods=1, center=True).mean()
 
         # Set the water z value to use for width thresholding
-        transects['min_z_water'] = transects[f'min_z_centre_unimodal_{smoothing_distance/1000}km_rolling_mean']
+        transects['min_z_water'] = transects['min_z_centre_unimodal']
 
         # Slope - from the water z
-        transects['slope'] = transects['min_z_water'].diff() / self.transect_spacing
+        transects['slope'] = transects[f'min_z_centre_unimodal_{smoothing_distance/1000}km_rolling_mean'].diff() / self.transect_spacing
 
     def sample_from_transects(self, transects: geopandas.GeoDataFrame):
         """ Sample at the sampling resolution along transects
