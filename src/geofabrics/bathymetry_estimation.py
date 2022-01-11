@@ -820,8 +820,10 @@ class ChannelBathymetry:
 
             start_i = numpy.nan
             stop_i = numpy.nan
+
             centre_sub_threshold = transect_samples['elevations'][j][self.centre_index] \
                 - transects.iloc[j]['min_z_water'] < threshold
+            all_nan_so_far = numpy.isnan(transect_samples['elevations'][j][self.centre_index])
             forward_sub_threshold = False
             backward_sub_threshold = False
 
@@ -830,6 +832,11 @@ class ChannelBathymetry:
                 # work forward checking height
                 elevation_over_minimum = transect_samples['elevations'][j][self.centre_index + i] \
                     - transects.iloc[j]['min_z_water']
+                # Update the centre_sub_threshold if first non-nan values
+                if all_nan_so_far and not numpy.isnan(elevation_over_minimum):
+                    centre_sub_threshold = elevation_over_minimum < threshold
+                    all_nan_so_far = False
+                # Detect banks
                 if (centre_sub_threshold or forward_sub_threshold) \
                         and numpy.isnan(stop_i) and elevation_over_minimum > threshold:
                     # Leaving the channel
@@ -843,8 +850,14 @@ class ChannelBathymetry:
                 # work backward checking height
                 elevation_over_minimum = transect_samples['elevations'][j][self.centre_index - i] \
                     - transects.iloc[j]['min_z_water']
+                # Update the centre_sub_threshold if first non-nan values
+                if all_nan_so_far and not numpy.isnan(elevation_over_minimum):
+                    centre_sub_threshold = elevation_over_minimum < threshold
+                    all_nan_so_far = False
+                # Detect bank
                 if (centre_sub_threshold or backward_sub_threshold) \
                         and numpy.isnan(start_i) and elevation_over_minimum > threshold:
+                    # Leaving the channel
                     start_i = self.centre_index - i
                 elif elevation_over_minimum < threshold and not forward_sub_threshold \
                         and not backward_sub_threshold and not centre_sub_threshold:
