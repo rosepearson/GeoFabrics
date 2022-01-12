@@ -1500,12 +1500,12 @@ class ChannelBathymetry:
                                                              smoothing_multiplier=width_centre_smoothing_multiplier)
 
         # Plot results
-        '''self._plot_results(transects=transects,
+        self._plot_results(transects=transects,
                            transect_samples=transect_samples,
                            threshold=threshold,
                            include_transects=False,
                            aligned_channel=aligned_channel,
-                           initial_spline=min_centre_spline)'''
+                           initial_spline=min_centre_spline)
 
         return aligned_channel, transects, min_centre_spline
 
