@@ -583,8 +583,10 @@ class ChannelBathymetry:
             int(smoothing_samples / 2) * 2 + 1,  # Must be odd - number of samples to include
             3)'''
 
-        # Min z values as the water surface. Unimodal enforaces monotonically increasing
+        # Min z values as the water surface. Ensure no NaN
         transects['min_z_centre'] = transect_samples['min_z_centre']
+        transects['min_z_centre'] = transects['min_z_centre'].interpolate('index', limit_direction='both')
+        # Unimodal enforaces monotonically increasing
         transects['min_z_centre_unimodal'] = self._unimodal_smoothing(transects['min_z_centre'])
 
         # Set the water z value to use for width thresholding
@@ -595,14 +597,14 @@ class ChannelBathymetry:
         transects['slope'] = transects['slope'].interpolate('index', limit_direction='both')
 
         # Slopes for a range of smoothings
-        for smoothing_distance in [250, 500, 1000, 1500, 2000]:
+        for smoothing_distance in [500, 1000, 2000, 3000]:
             # ensure odd number of samples so array length preserved
             smoothing_samples = int(numpy.ceil(smoothing_distance / self.transect_spacing))
             smoothing_samples = int(smoothing_samples / 2) * 2 + 1
             label = f'{smoothing_distance/1000}km'
 
             # Slope - from the water z
-            transects[f'slope_{label}_smoothing'] = self._rolling_mean_with_padding(transects['slope'],
+            transects[f'slope_mean_{label}'] = self._rolling_mean_with_padding(transects['slope'],
                                                                                     smoothing_samples)
 
     def _rolling_mean_with_padding(self, data: geopandas.GeoSeries, number_of_samples: int) -> numpy.ndarray:
@@ -619,7 +621,7 @@ class ChannelBathymetry:
         """
         assert number_of_samples > 0 and type(number_of_samples) == int, "Must be more than 0 and an int"
         rolling_mean = numpy.convolve(
-            numpy.pad(data, int(number_of_samples/2), 'edge'),
+            numpy.pad(data, int(number_of_samples/2), 'symmetric'),
             numpy.ones(number_of_samples), 'valid') / number_of_samples
         return rolling_mean
 
@@ -1539,6 +1541,8 @@ class ChannelBathymetry:
         Parameters
         ----------
 
+        aligned_channel
+            The channel centre line. Should be in the channel bed.
         threshold
             The height above the water level to detect as a bank.
         """
@@ -1565,19 +1569,20 @@ class ChannelBathymetry:
             resolution=self.resolution)
 
         # Width smoothing - either from polygon if good enough, or function fit to aligned_widths_outward
-        for smoothing_distance in [50, 100, 250, 500, 1000]:
+        widths_no_nan = transects['widths'].interpolate('index', limit_direction='both')
+        for smoothing_distance in [150, 200, 250]:
             # ensure odd number of samples so array length preserved
             smoothing_samples = int(numpy.ceil(smoothing_distance / self.transect_spacing))
             smoothing_samples = int(smoothing_samples / 2) * 2 + 1
-            label = f"{smoothing_samples}km"
+            label = f"{smoothing_distance/1000}km"
             # try a variety of smoothing approaches
-            transects[f'widths_mean_{label}'] = self._rolling_mean_with_padding(transects['widths'], smoothing_samples)
-            transects[f'widths_median_{label}'] = transects['widths'].rolling(smoothing_samples,
+            transects[f'widths_mean_{label}'] = self._rolling_mean_with_padding(widths_no_nan, smoothing_samples)
+            '''transects[f'widths_median_{label}'] = transects['widths'].rolling(smoothing_samples,
                                                                               min_periods=1, center=True).median()
             transects[f'widths_Savgol_{label}'] = scipy.signal.savgol_filter(
                 transects['widths'].interpolate('index', limit_direction='both'),
                 smoothing_samples,  # Ensure odd. number of samples included
-                3)  # Polynomial order
+                3)  # Polynomial order'''
 
         transects['width_line'] = transects.apply(
             lambda x: self._apply_bank_width(x['midpoint'],
