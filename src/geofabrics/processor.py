@@ -528,6 +528,7 @@ class RiverBathymetryGenerator():
         area_threshold = self.instructions['instructions']['channel_bathymetry']['channel_area_threshold']
         channel_corridor_radius = self.instructions['instructions']['channel_bathymetry']['dem_corridor_radius']
         min_z_corridor_radius = self.instructions['instructions']['channel_bathymetry']['min_z_corridor_radius']
+        aligned_min_z_corridor_radius = self.instructions['instructions']['channel_bathymetry']['min_z_aligned_corridor_radius']
         resolution = self.instructions['instructions']['output']['grid_params']['resolution']
         transect_spacing = self.instructions['instructions']['channel_bathymetry']['transect_spacing']
         bank_threshold = self.instructions['instructions']['channel_bathymetry']['bank_threshold']
@@ -603,7 +604,9 @@ class RiverBathymetryGenerator():
         # Estimate width and slope of channel
         if not (local_cache / f"final_transects_{area_threshold}.geojson").is_file():
             print("Calculating the final widths.")
-            transects = self.channel_bathymetry.estimate_width_and_slope(aligned_channel, bank_threshold)
+            self.channel_bathymetry.min_z_radius = aligned_min_z_corridor_radius
+            transects = self.channel_bathymetry.estimate_width_and_slope(aligned_channel,
+                                                                         bank_threshold)
             transect_widths = geopandas.GeoDataFrame(geometry=transects['width_line'], crs=transects.crs)
             transect_widths.to_file(local_cache / "final_widths.geojson")
             transects[['geometry']].to_file(local_cache / "final_transects.geojson")
