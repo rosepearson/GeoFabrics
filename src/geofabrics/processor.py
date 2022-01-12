@@ -583,11 +583,11 @@ class RiverBathymetryGenerator():
         # Get/Generate aligned channel
         if not aligned_channel_file.is_file():
             print("No aligned channel provided. Aligning the channel.")
-            aligned_polyline, transects, min_centre_spline = self.channel_bathymetry.align_channel(
+            aligned_channel, transects, min_centre_spline = self.channel_bathymetry.align_channel(
                 threshold=bank_threshold,
                 min_z_smoothing_multiplier=min_z_smoothing_multiplier,
                 width_centre_smoothing_multiplier=width_centre_smoothing_multiplier)
-            aligned_polyline.to_file(aligned_channel_file)
+            aligned_channel.to_file(aligned_channel_file)
             min_centre_spline.to_file(local_cache / f"min_z_spline_{area_threshold}.geojson")
             transect_widths = geopandas.GeoDataFrame(geometry=transects['width_line'], crs=transects.crs)
             transect_widths.to_file(local_cache / "intial_widths.geojson")
@@ -610,7 +610,7 @@ class RiverBathymetryGenerator():
             columns = ['geometry']
             columns.extend([column_name for column_name in transects.columns
                             if 'slope' in column_name or 'widths' in column_name or 'min_z' in column_name])
-            transects[columns].to_file(local_cache / f"final_transects_{area_threshold}.geojson")
+            transects[columns].to_file(local_cache / f"final_transect_values.geojson")
         else:
             print("The final widths have already been generated")
 
