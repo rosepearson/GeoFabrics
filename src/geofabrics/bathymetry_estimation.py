@@ -603,9 +603,14 @@ class ChannelBathymetry:
             smoothing_samples = int(smoothing_samples / 2) * 2 + 1
             label = f'{smoothing_distance/1000}km'
 
-            # Slope - from the water z
+            # Smoothed min_z_centre_unimodal
+            transects[f'min_z_centre_unimodal_mean_{label}'] \
+                = self._rolling_mean_with_padding(transects['min_z_centre_unimodal'],
+                                                  smoothing_samples)
+
+            # Smoothed slope
             transects[f'slope_mean_{label}'] = self._rolling_mean_with_padding(transects['slope'],
-                                                                                    smoothing_samples)
+                                                                               smoothing_samples)
 
     def _rolling_mean_with_padding(self, data: geopandas.GeoSeries, number_of_samples: int) -> numpy.ndarray:
         """ Calculate the rolling mean of an array after padding the array with
@@ -1570,7 +1575,7 @@ class ChannelBathymetry:
 
         # Width smoothing - either from polygon if good enough, or function fit to aligned_widths_outward
         widths_no_nan = transects['widths'].interpolate('index', limit_direction='both')
-        for smoothing_distance in [150, 200, 250]:
+        for smoothing_distance in [150, 200, 250, 2000, 3000]:
             # ensure odd number of samples so array length preserved
             smoothing_samples = int(numpy.ceil(smoothing_distance / self.transect_spacing))
             smoothing_samples = int(smoothing_samples / 2) * 2 + 1
