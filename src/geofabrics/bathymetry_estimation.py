@@ -1133,9 +1133,9 @@ class ChannelBathymetry:
         matplotlib.pyplot.ylim((0, None))
 
     def _centreline_from_polygon(self, transects: geopandas.GeoDataFrame,
-                                           erosion_factor: float = -2,
-                                           dilation_factor: float = 3,
-                                           simplification_factor: float = 5):
+                                 erosion_factor: float = -2,
+                                 dilation_factor: float = 3,
+                                 simplification_factor: float = 5):
         """ Create a polygon representing the channel from transect width
         measurements. Use erosion and dilation to reduce the impact of poor
         width estimates. Estimate a centreline using the transect intersections
