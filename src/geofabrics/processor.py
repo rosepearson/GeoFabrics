@@ -514,7 +514,7 @@ class RiverBathymetryGenerator():
         self.aligned_channel_plyline = None
         self.transects = None
 
-    def run(self):
+    def run(self, instruction_parameters):
         """ This method extracts a main channel then executes the DemGeneration
         pipeline to produce a DEM before sampling this to extimate width, slope
         and eventually depth. """
@@ -538,9 +538,9 @@ class RiverBathymetryGenerator():
         # Define paths for generated files
         local_cache = pathlib.Path(self.instructions['instructions']['data_paths']['local_cache'])
         dem_file = local_cache / f"channel_dem_{area_threshold}.nc"
-        self.instructions['instructions']['data_paths']['result_dem'] = dem_file
+        self.instructions['instructions']['data_paths']['result_dem'] = str(dem_file)
         catchment_file = local_cache / f"channel_catchment_{area_threshold}.geojson"
-        self.instructions['instructions']['data_paths']['catchment_boundary'] = catchment_file
+        self.instructions['instructions']['data_paths']['catchment_boundary'] = str(catchment_file)
         aligned_channel_file = local_cache / f"aligned_channel_{area_threshold}.geojson"
         manual_channel_file = local_cache / f"manual_aligned_channel_{area_threshold}.geojson"
         channel_file = local_cache / "rec_main_channel.geojson"
@@ -602,7 +602,7 @@ class RiverBathymetryGenerator():
             aligned_channel = geopandas.read_file(aligned_channel_file)
 
         # Estimate width and slope of channel
-        if not (local_cache / f"final_transects_{area_threshold}.geojson").is_file():
+        if not (local_cache / f"final_widths.geojson").is_file():
             print("Calculating the final widths.")
             self.channel_bathymetry.min_z_radius = aligned_min_z_corridor_radius
             transects = self.channel_bathymetry.estimate_width_and_slope(aligned_channel,
@@ -616,6 +616,10 @@ class RiverBathymetryGenerator():
             transects[columns].to_file(local_cache / f"final_transect_values.geojson")
         else:
             print("The final widths have already been generated")
+
+        # Update parameter file - in time only update the bits that have been re-run
+        with open(instruction_parameters, 'w') as file_pointer:
+            json.dump(self.instructions, file_pointer)
 
         # Estimate slope from the samples
 
