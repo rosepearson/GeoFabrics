@@ -301,7 +301,7 @@ class Channel:
 
         tck_tuple, u_input = scipy.interpolate.splprep(xy, s=smoothing_factor)
 
-        # Sample every roughly res along the spine
+        # Sample every roughly res along the spine with rough line length estimate
         line_length = shapely.geometry.LineString(xy.T).length
         sample_step_u = 1 / round(line_length / self.resolution)
         u_sampled = numpy.arange(0, 1 + sample_step_u, sample_step_u)
