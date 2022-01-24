@@ -1487,6 +1487,8 @@ class ChannelBathymetry:
         transects['min_x_centre'] = transect_samples['min_x_centre']
         transects['min_y_centre'] = transect_samples['min_y_centre']
         min_centre_spline = self._centreline_from_min_z(transects=transects, smoothing_multiplier=min_z_smoothing_multiplier)
+
+        # Get spline and transect intersection
         self._transect_and_spline_intersection(transects=transects, spline=min_centre_spline, entry_name='min_spline_i')
         transect_samples['min_spline_i'] = transects['min_spline_i']
 
