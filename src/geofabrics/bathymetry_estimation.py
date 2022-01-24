@@ -1137,102 +1137,6 @@ class ChannelBathymetry:
             transects[slope_columns].plot(ax=ax)
         matplotlib.pyplot.ylim((0, None))
 
-    def _centreline_from_polygon(self, transects: geopandas.GeoDataFrame,
-                                 erosion_factor: float = -2,
-                                 dilation_factor: float = 3,
-                                 simplification_factor: float = 5):
-        """ Create a polygon representing the channel from transect width
-        measurements. Use erosion and dilation to reduce the impact of poor
-        width estimates. Estimate a centreline using the transect intersections
-        with the polygon.
-
-        Parameters
-        ----------
-
-        transects
-            The transects with geometry defined as polylines with width
-            estimates.
-        erosion_factor
-            The number of times the transect spacing to erode the polygon by.
-        dilation_factor
-            The number of times the transect spacing to dilate the polygon by.
-        simplification_factor
-            The number of times the transect spacing to simplify the centreline
-            by.
-        """
-
-        # Create channel polygon
-        channel_polygon = []
-        for index, row in transects.iterrows():
-            if not numpy.isnan(row['first_bank']) and not numpy.isnan(row['last_bank']):
-                channel_polygon.append([row['midpoint'].x - row['first_bank'] * self.resolution * row['nx'],
-                                        row['midpoint'].y - row['first_bank'] * self.resolution * row['ny']])
-                channel_polygon.insert(0, [row['midpoint'].x + row['last_bank'] * self.resolution * row['nx'],
-                                           row['midpoint'].y + row['last_bank'] * self.resolution * row['ny']])
-        channel_polygon = shapely.geometry.Polygon(channel_polygon)
-        channel_polygon = channel_polygon.buffer(
-            self.transect_spacing * dilation_factor).buffer(self.transect_spacing * erosion_factor)
-
-        # Estimate channel midpoints from the intersections of channel_polygon and transects
-        aligned_channel = []
-        for index, row in transects.iterrows():
-            centre_point = channel_polygon.intersection(row.geometry).centroid
-            aligned_channel.append(centre_point)
-
-        if len(aligned_channel) > 0:  # Store the final reach
-            aligned_channel = shapely.geometry.LineString(aligned_channel)
-            aligned_channel = geopandas.GeoDataFrame(geometry=[aligned_channel],
-                                                     crs=transects.crs)
-
-        return aligned_channel, channel_polygon
-
-    def _centreline_from_perturbed_width(self, transects: geopandas.GeoDataFrame,
-                                         smoothing_distance):
-        """ Offset the transect centre points along the transect based on the
-        centre of the estimated width. Note that the width centres are smoothed
-        based on the smoothing distance before offsetting. .
-
-        Parameters
-        ----------
-
-        transects
-            The transects with geometry defined as polylines with width
-            estimates.
-        smoothing_distance
-            The metres along the channel to smooth the widths by.
-        """
-
-        # Calculate the offset distance between the transect and width centres
-        offset_distance = ((transects['last_bank_i'] + transects['first_bank_i']) / 2
-                           - self.centre_index) * self.resolution
-        offset_distance = self._despike(offset_distance,
-                                        smoothing_distance=100,
-                                        threshold=50)
-
-        # Smooth the offset distances
-        smoothed_offset_distance = scipy.signal.savgol_filter(
-            offset_distance.interpolate('index', limit_direction='both'),
-            int(smoothing_distance / self.transect_spacing / 2) * 2 + 1,  # Must be odd - number of samples to include
-            3)  # Polynomial order
-
-        # Perterb by smoothed distance
-        perturbed_midpoints = []
-        perturbed_midpoints_list = []
-        for index, row in transects.iterrows():
-            midpoint = row['midpoint']
-
-            # Perturb by smoothed offset distance
-            perturbed_midpoint = [midpoint.x + smoothed_offset_distance[index] * row['nx'],
-                                  midpoint.y + smoothed_offset_distance[index] * row['ny']]
-            perturbed_midpoints.append(shapely.geometry.Point(perturbed_midpoint))
-            perturbed_midpoints_list.append(perturbed_midpoint)
-
-        transects['perturbed_midpoints'] = perturbed_midpoints
-        perturbed_channel_centreline = geopandas.GeoDataFrame(
-            geometry=[shapely.geometry.LineString(perturbed_midpoints_list)],
-            crs=transects.crs)
-        return perturbed_channel_centreline
-
     def _centreline_from_width_spline(self, transects: geopandas.GeoDataFrame,
                                       smoothing_multiplier):
         """ Fit a spline through the width centres with a healthy dose of
@@ -1353,40 +1257,6 @@ class ChannelBathymetry:
                                                                                    row['ny'],
                                                                                    self.centre_index,
                                                                                    self.resolution), axis=1)
-
-    def _despike(self, spiky_values: geopandas.GeoSeries,
-                 threshold: float,
-                 smoothing_distance: float) -> geopandas.GeoSeries:
-        """ A function to remove and linearly interpolate over values that are
-        deemed a spike.
-
-        Parameters
-        ----------
-
-        spiky_values
-            The value to run spike detection over.
-        threshold
-            The threshold for a blip to be deemed a spike.
-        smoothing_distance
-            The distance down river to smooth along
-        """
-
-        # Must be odd - number of samples to include
-        samples_to_filter_with = int(smoothing_distance / self.transect_spacing / 2) * 2 + 1
-
-        smoothed_values = scipy.signal.savgol_filter(
-            spiky_values.interpolate('index', limit_direction='both'),
-            samples_to_filter_with,
-            3)
-
-        # Spikes
-        spikes = (spiky_values - smoothed_values).abs()
-
-        # despiking
-        despiked_values = spiky_values.copy(deep=True)
-        despiked_values[spikes > threshold] = numpy.nan
-        #despiked_values = despiked_values.interpolate('index', limit_direction='both')
-        return despiked_values
 
     def _unimodal_smoothing(self, y: numpy.ndarray):
         """ Fit a monotonically increasing cublic spline to the data.
@@ -1526,7 +1396,6 @@ class ChannelBathymetry:
                                              x['last_bank']), axis=1)
 
         # Create channel polygon with erosion and dilation to reduce sensitivity to poor width measurements
-        # aligned_channel = self._centreline_from_perturbed_width(transects, smoothing_distance=100)
         aligned_channel = self._centreline_from_width_spline(transects,
                                                              smoothing_multiplier=width_centre_smoothing_multiplier)
 
