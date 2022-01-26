@@ -1456,9 +1456,7 @@ class ChannelBathymetry:
             label = f"{smoothing_distance/1000}km"
             # try a variety of smoothing approaches
             transects[f'widths_mean_{label}'] = self._rolling_mean_with_padding(widths_no_nan, smoothing_samples)
-            '''transects[f'widths_median_{label}'] = transects['widths'].rolling(smoothing_samples,
-                                                                              min_periods=1, center=True).median()
-            transects[f'widths_Savgol_{label}'] = scipy.signal.savgol_filter(
+            '''transects[f'widths_Savgol_{label}'] = scipy.signal.savgol_filter(
                 transects['widths'].interpolate('index', limit_direction='both'),
                 smoothing_samples,  # Ensure odd. number of samples included
                 3)  # Polynomial order'''
