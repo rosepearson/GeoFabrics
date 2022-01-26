@@ -795,16 +795,20 @@ class ChannelBathymetry:
                                                          search_radius_index=search_radius_index)
 
             # Iterate out from the fixed threshold width until the banks go down, or the max threshold is reached
-            if not numpy.isnan(start_i) and not numpy.isnan(stop_i):
+            maximum_z = z_water + maximum_threshold
+            if numpy.isnan(start_i) or numpy.isnan(stop_i):
+                dz_bankfull = threshold
+            else:
                 start_i_bf = start_i
                 stop_i_bf = stop_i
-                max_z = max(samples[start_i_bf], samples[stop_i_bf])
+                z_bankfull = max(samples[start_i_bf], samples[stop_i_bf])
                 while start_i_bf > 0 and stop_i_bf < self.number_of_samples - 1 \
-                        and max_z - z_water < maximum_threshold:
-                    # check if going down
-                    if samples[start_i_bf - 1] < max_z:
+                        and z_bankfull < maximum_z:
+
+                    # brreak if going down
+                    if samples[start_i_bf - 1] < z_bankfull:
                         break
-                    if samples[stop_i_bf + 1] < max_z:
+                    if samples[stop_i_bf + 1] < z_bankfull:
                         break
 
                     # if not, extend whichever bank is lower
@@ -822,17 +826,20 @@ class ChannelBathymetry:
                     if numpy.isnan(samples[stop_i_bf + 1]):
                         stop_i_bf += 1
 
-                    # update maximum value so far
-                    if samples[start_i_bf] > max_z:
-                        max_z = samples[start_i_bf]
-                    if samples[stop_i_bf] > max_z:
-                        max_z = samples[stop_i_bf]
+                    # break if the threshold has been meet before updating maz_z
+                    if samples[start_i_bf] > z_water + maximum_threshold \
+                            or samples[stop_i_bf] > z_water + maximum_threshold:
+                        break
 
-                bank_full_height = max_z - z_water
+                    # update maximum value so far
+                    if samples[start_i_bf] > z_bankfull:
+                        z_bankfull = samples[start_i_bf]
+                    if samples[stop_i_bf] > z_bankfull:
+                        z_bankfull = samples[stop_i_bf]
+
+                dz_bankfull = z_bankfull - z_water
                 start_i = start_i_bf
                 stop_i = stop_i_bf
-            else:
-                bank_full_height = threshold
 
             # assign the longest width
             widths['first_bank'].append((start_index - start_i) * resolution)
@@ -840,7 +847,7 @@ class ChannelBathymetry:
             widths['first_bank_i'].append(start_i)
             widths['last_bank_i'].append(stop_i)
             widths['widths'].append((stop_i - start_i) * resolution)
-            widths['threshold'].append(bank_full_height)
+            widths['threshold'].append(dz_bankfull)
 
         for key in widths.keys():
             transects[key] = widths[key]
