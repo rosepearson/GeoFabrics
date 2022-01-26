@@ -349,9 +349,7 @@ class ChannelBathymetry:
                  channel: Channel,
                  dem: xarray.core.dataarray.DataArray,
                  transect_spacing: float,
-                 resolution: float,
-                 transect_radius: float,
-                 min_z_radius: float):
+                 resolution: float):
         """ Load in the reference DEM, clip and extract points transects
 
         channel
@@ -371,10 +369,7 @@ class ChannelBathymetry:
         self.dem = dem
         self.transect_spacing = transect_spacing
         self.resolution = resolution
-        self.transect_radius = transect_radius
-        self.min_z_radius = min_z_radius
-
-        assert transect_radius >= min_z_radius, "The transect radius must be >= the min_z_radius"
+        self.transect_radius = None
 
     @property
     def number_of_samples(self) -> int:
@@ -382,23 +377,22 @@ class ChannelBathymetry:
         be an odd number. Subtract 1 instead of adding to ensure within the
         generated DEM. """
 
+        assert self.transect_radius is not None, "Transect radius must be set before this is called"
         return int(self.transect_radius / self.resolution) * 2 - 1
 
-    @property
-    def min_z_start_i(self) -> int:
+    def calculate_min_z_start_i(self, min_z_search_radius) -> int:
         """ Return the starting index of samples along each transect to begin
         looking for the minimu z. """
 
-        number_min_z_samples = int(self.min_z_radius / self.resolution) * 2 - 1
+        number_min_z_samples = int(min_z_search_radius / self.resolution) * 2 - 1
 
         return int((self.number_of_samples - number_min_z_samples) / 2)
 
-    @property
-    def min_z_stop_i(self) -> int:
+    def calculate_min_z_stop_i(self, min_z_search_radius) -> int:
         """ Return the stopping index of samples along each transect to begin
         looking for the minimu z. """
 
-        return int(self.number_of_samples - self.min_z_start_i)
+        return int(self.number_of_samples - self.calculate_min_z_start_i(min_z_search_radius))
 
     @property
     def centre_index(self) -> int:
@@ -576,8 +570,8 @@ class ChannelBathymetry:
         """
 
         # water surface - including monotonically increasing splines fit
-        '''transects['min_z'] = transect_samples['min_z']
-        transects['min_z_unimodal'] = self._unimodal_smoothing(transects['min_z'])
+        transects['min_z'] = transect_samples['min_z']
+        '''transects['min_z_unimodal'] = self._unimodal_smoothing(transects['min_z'])
         transects['min_z_savgol'] = scipy.signal.savgol_filter(
             transects['min_z'].interpolate('index', limit_direction='both'),
             int(smoothing_samples / 2) * 2 + 1,  # Must be odd - number of samples to include
@@ -630,7 +624,9 @@ class ChannelBathymetry:
             numpy.ones(number_of_samples), 'valid') / number_of_samples
         return rolling_mean
 
-    def sample_from_transects(self, transects: geopandas.GeoDataFrame):
+    def sample_from_transects(self,
+                              transects: geopandas.GeoDataFrame,
+                              min_z_search_radius: float):
         """ Sample at the sampling resolution along transects
 
         Parameters
@@ -645,6 +641,9 @@ class ChannelBathymetry:
         sample_index_array = numpy.arange(-numpy.floor(self.number_of_samples / 2),
                                           numpy.floor(self.number_of_samples / 2) + 1,
                                           1)
+
+        min_z_start_i = self.calculate_min_z_start_i(min_z_search_radius)
+        min_z_stop_i = self.calculate_min_z_stop_i(min_z_search_radius)
 
         transect_samples = {'elevations': [], 'xx': [], 'yy': [], 'min_z': [],
                             'min_i': [], 'min_xy': [], 'min_z_centre': [],
@@ -681,15 +680,15 @@ class ChannelBathymetry:
                                                                           numpy.nan]))
 
             # Find the min of just the centre 1/3 of samples
-            if len(elevations[self.min_z_start_i:self.min_z_stop_i]) \
-                    - numpy.sum(numpy.isnan(elevations[self.min_z_start_i:self.min_z_stop_i])) > 0:
-                min_index = numpy.nanargmin(elevations[self.min_z_start_i:self.min_z_stop_i])
-                transect_samples['min_z_centre'].append(elevations[self.min_z_start_i + min_index])
-                transect_samples['min_i_centre'].append(self.min_z_start_i + min_index)
-                transect_samples['min_xy_centre'].append(shapely.geometry.Point(xy_points[self.min_z_start_i
+            if len(elevations[min_z_start_i:min_z_stop_i]) \
+                    - numpy.sum(numpy.isnan(elevations[min_z_start_i:min_z_stop_i])) > 0:
+                min_index = numpy.nanargmin(elevations[min_z_start_i:min_z_stop_i])
+                transect_samples['min_z_centre'].append(elevations[min_z_start_i + min_index])
+                transect_samples['min_i_centre'].append(min_z_start_i + min_index)
+                transect_samples['min_xy_centre'].append(shapely.geometry.Point(xy_points[min_z_start_i
                                                                                           + min_index]))
-                transect_samples['min_x_centre'].append(xy_points[self.min_z_start_i + min_index, 0])
-                transect_samples['min_y_centre'].append(xy_points[self.min_z_start_i + min_index, 1])
+                transect_samples['min_x_centre'].append(xy_points[min_z_start_i + min_index, 0])
+                transect_samples['min_y_centre'].append(xy_points[min_z_start_i + min_index, 1])
             else:
                 transect_samples['min_z_centre'].append(numpy.nan)
                 transect_samples['min_i_centre'].append(numpy.nan)
@@ -833,7 +832,7 @@ class ChannelBathymetry:
                         break
 
                     # update maximum value so far - z_water to avoid warning if other two are nan
-                    if numpy.nanmin([samples[start_i_bf], samples[stop_i_bf], z_water]) > z_bankfull:
+                    if numpy.nanmin([samples[start_i_bf], samples[stop_i_bf]]) > z_bankfull:
                         z_bankfull = numpy.nanmin([samples[start_i_bf], samples[stop_i_bf]])
 
                 # set to nan if either end of the cross section has been reached
@@ -1349,7 +1348,9 @@ class ChannelBathymetry:
     def align_channel(self,
                       threshold: float,
                       min_z_smoothing_multiplier: float,
-                      width_centre_smoothing_multiplier: float):
+                      min_z_search_radius: float,
+                      width_centre_smoothing_multiplier: float,
+                      transect_radius: float):
         """ Estimate the channel centre from transect samples
 
         Parameters
@@ -1361,6 +1362,9 @@ class ChannelBathymetry:
             The number of transects to include in the downstream spline smoothing.
         """
 
+        assert transect_radius >= min_z_search_radius, "The transect radius must be >= the min_z_radius"
+        self.transect_radius = transect_radius
+
         # Sample channel
         sampled_channel = self.channel.get_sampled_spline_fit()
 
@@ -1369,7 +1373,8 @@ class ChannelBathymetry:
                     sampled_channel=sampled_channel)
 
         # Sample along transects
-        transect_samples = self.sample_from_transects(transects=transects)
+        transect_samples = self.sample_from_transects(transects=transects,
+                                                      min_z_search_radius=min_z_search_radius)
 
         # record min_i and min_xy
         transects['min_i'] = transect_samples['min_i']
@@ -1380,7 +1385,8 @@ class ChannelBathymetry:
         # Create a new centreline estimate from a spline through the near min z
         transects['min_x_centre'] = transect_samples['min_x_centre']
         transects['min_y_centre'] = transect_samples['min_y_centre']
-        min_centre_spline = self._centreline_from_min_z(transects=transects, smoothing_multiplier=min_z_smoothing_multiplier)
+        min_centre_spline = self._centreline_from_min_z(transects=transects,
+                                                        smoothing_multiplier=min_z_smoothing_multiplier)
 
         # Get spline and transect intersection
         self._transect_and_spline_intersection(transects=transects, spline=min_centre_spline, entry_name='min_spline_i')
@@ -1422,8 +1428,10 @@ class ChannelBathymetry:
         return aligned_channel, transects, min_centre_spline
 
     def estimate_width_and_slope(self,
-                                 aligned_channel: geopandas.GeoDataFrame, 
-                                 threshold: float):
+                                 aligned_channel: geopandas.GeoDataFrame,
+                                 threshold: float,
+                                 transect_radius: float,
+                                 min_z_search_radius: float):
         """ Estimate the channel centre from transect samples
 
         Parameters
@@ -1435,14 +1443,17 @@ class ChannelBathymetry:
             The height above the water level to detect as a bank.
         """
 
+        assert transect_radius >= min_z_search_radius, "The transect radius must be >= the min_z_radius"
+        self.transect_radius = transect_radius
+
         slope_smoothing_distance = 500  # Smooth slope upstream over this many metres
-        width_smoothing_distance = 100  # Smooth width upstream over this many metres
 
         # Create transects
         transects = self.transects_along_reaches_at_node(sampled_channel=aligned_channel)
 
         # Sample along transects
-        transect_samples = self.sample_from_transects(transects=transects)
+        transect_samples = self.sample_from_transects(transects=transects,
+                                                      min_z_search_radius=min_z_search_radius)
 
         # Estimate water surface level and slope
         self._estimate_water_level_and_slope(transects=transects,
