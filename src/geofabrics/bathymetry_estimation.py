@@ -831,8 +831,9 @@ class ChannelBathymetry:
                             or samples[stop_i_bf] > z_water + maximum_threshold:
                         break
 
-                    # update maximum value so far - z_water to avoid warning if other two are nan
-                    if numpy.nanmin([samples[start_i_bf], samples[stop_i_bf]]) > z_bankfull:
+                    # update maximum value so far
+                    if not numpy.isnan([samples[start_i_bf], samples[stop_i_bf]]).all() \
+                            and numpy.nanmin([samples[start_i_bf], samples[stop_i_bf]]) > z_bankfull:
                         z_bankfull = numpy.nanmin([samples[start_i_bf], samples[stop_i_bf]])
 
                 # set to nan if either end of the cross section has been reached
