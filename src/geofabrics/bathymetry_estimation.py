@@ -801,7 +801,8 @@ class ChannelBathymetry:
             else:
                 start_i_bf = start_i
                 stop_i_bf = stop_i
-                z_bankfull = max(samples[start_i_bf], samples[stop_i_bf])
+                z_bankfull = numpy.nanmin([samples[start_i_bf], samples[stop_i_bf]])
+
                 while start_i_bf > 0 and stop_i_bf < self.number_of_samples - 1 \
                         and z_bankfull < maximum_z:
 
@@ -819,27 +820,31 @@ class ChannelBathymetry:
                     elif samples[start_i_bf - 1] == samples[stop_i_bf + 1]:
                         start_i_bf -= 1
                         stop_i_bf += 1
-
-                    # extend if value is nan
-                    if numpy.isnan(samples[start_i_bf - 1]):
-                        start_i_bf -= 1
-                    if numpy.isnan(samples[stop_i_bf + 1]):
-                        stop_i_bf += 1
+                    else:
+                        # extend if value is nan
+                        if numpy.isnan(samples[start_i_bf - 1]):
+                            start_i_bf -= 1
+                        if numpy.isnan(samples[stop_i_bf + 1]):
+                            stop_i_bf += 1
 
                     # break if the threshold has been meet before updating maz_z
                     if samples[start_i_bf] > z_water + maximum_threshold \
                             or samples[stop_i_bf] > z_water + maximum_threshold:
                         break
 
-                    # update maximum value so far
-                    if samples[start_i_bf] > z_bankfull:
-                        z_bankfull = samples[start_i_bf]
-                    if samples[stop_i_bf] > z_bankfull:
-                        z_bankfull = samples[stop_i_bf]
+                    # update maximum value so far - z_water to avoid warning if other two are nan
+                    if numpy.nanmin([samples[start_i_bf], samples[stop_i_bf], z_water]) > z_bankfull:
+                        z_bankfull = numpy.nanmin([samples[start_i_bf], samples[stop_i_bf]])
 
-                dz_bankfull = z_bankfull - z_water
-                start_i = start_i_bf
-                stop_i = stop_i_bf
+                # set to nan if either end of the cross section has been reached
+                if start_i_bf <= 0 or stop_i >= self.number_of_samples - 1:
+                    dz_bankfull = threshold
+                    start_i = numpy.nan
+                    stop_i = numpy.nan
+                else:
+                    dz_bankfull = z_bankfull - z_water
+                    start_i = start_i_bf
+                    stop_i = stop_i_bf
 
             # assign the longest width
             widths['first_bank'].append((start_index - start_i) * resolution)
