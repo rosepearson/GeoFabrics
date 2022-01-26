@@ -699,11 +699,11 @@ class ChannelBathymetry:
 
         return transect_samples
 
-    def thresholded_widths_outwards_from_centre_within_radius(self, transects: geopandas.GeoDataFrame,
-                                                              transect_samples: dict,
-                                                              threshold: float,
-                                                              resolution: float,
-                                                              search_radius: float):
+    def fixed_thresholded_widths_from_centre_within_radius(self, transects: geopandas.GeoDataFrame,
+                                                           transect_samples: dict,
+                                                           threshold: float,
+                                                           resolution: float,
+                                                           search_radius: float):
         """ Estimate width based on a thresbold of bank height above water level.
         Start in the centre and work out. Doesn't detect banks until a value
         less than the threshold has been detected. Takes the widest channel within
@@ -722,7 +722,7 @@ class ChannelBathymetry:
             The resolution to sample at.
         """
 
-        search_radius_index = self.min_z_radius / self.resolution
+        search_radius_index = int(search_radius / self.resolution)
         widths = {'widths': [], 'first_bank': [], 'last_bank': [],
                   'first_bank_i': [], 'last_bank_i': []}
 
@@ -730,62 +730,15 @@ class ChannelBathymetry:
 
             assert len(transect_samples['elevations'][j]) == self.number_of_samples, "Expect fixed length"
 
-            start_i_list = []
-            stop_i_list = []
-
             samples = transect_samples['elevations'][j]
             start_index = self.centre_index
             z_water = transects.iloc[j]['min_z_water']
 
-            forwards_index = start_index
-            backwards_index = start_index
-
-            # check outwards
-            start_i, stop_i = self.fixed_threshold_width_outwards(samples=samples,
-                                                                  start_index=start_index,
-                                                                  z_water=z_water,
-                                                                  threshold=threshold)
-            if not numpy.isnan(start_i) and not numpy.isnan(stop_i):
-                start_i_list.append(start_i)
-                stop_i_list.append(stop_i)
-                forwards_index = stop_i + 1
-                backwards_index = start_i - 1
-
-            # check forewards
-            while forwards_index < start_index + search_radius_index:
-                start_i, stop_i = self.fixed_threshold_width_forewards(samples=samples,
-                                                                       start_index=forwards_index,
-                                                                       z_water=z_water,
-                                                                       threshold=threshold)
-                if not numpy.isnan(start_i) and not numpy.isnan(stop_i):
-                    start_i_list.append(start_i)
-                    stop_i_list.append(stop_i)
-                    forwards_index = stop_i + 1
-                else:
-                    break
-
-            # check backwards
-            while backwards_index > start_index - search_radius_index:
-                start_i, stop_i = self.fixed_threshold_width_backwards(samples=samples,
-                                                                       start_index=backwards_index,
-                                                                       z_water=z_water,
-                                                                       threshold=threshold)
-                if not numpy.isnan(start_i) and not numpy.isnan(stop_i):
-                    start_i_list.append(start_i)
-                    stop_i_list.append(stop_i)
-                    backwards_index = start_i - 1
-                else:
-                    break
-
-            # cycle through getting the longest width
-            start_i = numpy.nan
-            stop_i = numpy.nan
-            longest_width = 0
-            for i in range(len(start_i_list)):
-                if stop_i_list[i] - start_i_list[i] > longest_width:
-                    longest_width = stop_i_list[i] - start_i_list[i]
-                    start_i = start_i_list[i]
-                    stop_i = stop_i_list[i]
+            start_i, stop_i = self.fixed_threshold_width(samples=samples,
+                                                         start_index=start_index,
+                                                         z_water=z_water,
+                                                         threshold=threshold,
+                                                         search_radius_index=search_radius_index)
 
             # assign the longest width
             widths['first_bank'].append((start_index - start_i) * resolution)
@@ -796,6 +749,184 @@ class ChannelBathymetry:
 
         for key in widths.keys():
             transects[key] = widths[key]
+
+    def variable_thresholded_widths_from_centre_within_radius(self, transects: geopandas.GeoDataFrame,
+                                                              transect_samples: dict,
+                                                              threshold: float,
+                                                              resolution: float,
+                                                              search_radius: float,
+                                                              maximum_threshold: float):
+        """ Estimate width based on a thresbold of bank height above water level.
+        Start in the centre and work out. Doesn't detect banks until a value
+        less than the threshold has been detected. Takes the widest channel within
+        the radius.'
+
+        Parameters
+        ----------
+
+        transects
+            The transects with geometry defined as polylines.
+        transect_samples
+            The sampled values along the transects.
+        threshold
+            The height above the water level to detect as a bank.
+        resolution
+            The resolution to sample at.
+        """
+
+        search_radius_index = int(search_radius / self.resolution)
+        print(f'search radius index = {search_radius_index}')
+        widths = {'widths': [], 'first_bank': [], 'last_bank': [],
+                  'first_bank_i': [], 'last_bank_i': [], 'threshold': []}
+
+        for j in range(len(transect_samples['elevations'])):
+
+            assert len(transect_samples['elevations'][j]) == self.number_of_samples, "Expect fixed length"
+
+            samples = transect_samples['elevations'][j]
+            start_index = self.centre_index
+            z_water = transects.iloc[j]['min_z_water']
+
+            # Get width based on fixed threshold
+            start_i, stop_i = self.fixed_threshold_width(samples=samples,
+                                                         start_index=start_index,
+                                                         z_water=z_water,
+                                                         threshold=threshold,
+                                                         search_radius_index=search_radius_index)
+
+            # Iterate out from the fixed threshold width until the banks go down, or the max threshold is reached
+            if not numpy.isnan(start_i) and not numpy.isnan(stop_i):
+                start_i_bf = start_i
+                stop_i_bf = stop_i
+                max_z = max(samples[start_i_bf], samples[stop_i_bf])
+                while start_i_bf > 0 and stop_i_bf < self.number_of_samples - 1 \
+                        and max_z - z_water < maximum_threshold:
+                    # check if going down
+                    if samples[start_i_bf - 1] < max_z:
+                        break
+                    if samples[stop_i_bf + 1] < max_z:
+                        break
+
+                    # if not, extend whichever bank is lower
+                    if samples[start_i_bf - 1] > samples[stop_i_bf + 1]:
+                        stop_i_bf += 1
+                    elif samples[start_i_bf - 1] < samples[stop_i_bf + 1]:
+                        start_i_bf -= 1
+                    elif samples[start_i_bf - 1] == samples[stop_i_bf + 1]:
+                        start_i_bf -= 1
+                        stop_i_bf += 1
+
+                    # extend if value is nan
+                    if numpy.isnan(samples[start_i_bf - 1]):
+                        start_i_bf -= 1
+                    if numpy.isnan(samples[stop_i_bf + 1]):
+                        stop_i_bf += 1
+
+                    # update maximum value so far
+                    if samples[start_i_bf] > max_z:
+                        max_z = samples[start_i_bf]
+                    if samples[stop_i_bf] > max_z:
+                        max_z = samples[stop_i_bf]
+
+                bank_full_height = max_z - z_water
+                start_i = start_i_bf
+                stop_i = stop_i_bf
+            else:
+                bank_full_height = threshold
+
+            # assign the longest width
+            widths['first_bank'].append((start_index - start_i) * resolution)
+            widths['last_bank'].append((stop_i - start_index) * resolution)
+            widths['first_bank_i'].append(start_i)
+            widths['last_bank_i'].append(stop_i)
+            widths['widths'].append((stop_i - start_i) * resolution)
+            widths['threshold'].append(bank_full_height)
+
+        for key in widths.keys():
+            transects[key] = widths[key]
+
+    def fixed_threshold_width(self,
+                              samples: numpy.ndarray,
+                              start_index: int,
+                              z_water: float,
+                              threshold: float,
+                              search_radius_index: int):
+        """ Calculate the maximum width for a cross section given a fixed
+        threshold - checking outwards, forewards and backwards within the
+        search radius.
+
+        Parameters
+        ----------
+
+        samples
+            The elevations for a single cross section.
+        start_index
+            The index to start the outward search from.
+        threshold
+            The height above the water level to detect as a bank.
+        z_water
+            The elevation of the water.
+        search_radius_index
+            The distance in indices to search for the start of a channel away
+            from the start_index
+        """
+
+        start_i_list = []
+        stop_i_list = []
+
+        forwards_index = start_index
+        backwards_index = start_index
+
+        # check outwards
+        start_i, stop_i = self.fixed_threshold_width_outwards(samples=samples,
+                                                              start_index=start_index,
+                                                              z_water=z_water,
+                                                              threshold=threshold)
+        if not numpy.isnan(start_i) and not numpy.isnan(stop_i):
+            start_i_list.append(start_i)
+            stop_i_list.append(stop_i)
+            forwards_index = stop_i + 1
+            backwards_index = start_i - 1
+
+        # check forewards
+        while forwards_index - start_index < search_radius_index:
+            start_i, stop_i = self.fixed_threshold_width_forewards(samples=samples,
+                                                                   start_index=forwards_index,
+                                                                   z_water=z_water,
+                                                                   threshold=threshold,
+                                                                   search_range=search_radius_index)
+            if not numpy.isnan(start_i) and not numpy.isnan(stop_i):
+                start_i_list.append(start_i)
+                stop_i_list.append(stop_i)
+                forwards_index = stop_i + 1
+            else:
+                break
+
+        # check backwards
+        while start_index - backwards_index < search_radius_index:
+            start_i, stop_i = self.fixed_threshold_width_backwards(samples=samples,
+                                                                   start_index=backwards_index,
+                                                                   z_water=z_water,
+                                                                   threshold=threshold,
+                                                                   search_range=search_radius_index)
+            if not numpy.isnan(start_i) and not numpy.isnan(stop_i):
+                start_i_list.append(start_i)
+                stop_i_list.append(stop_i)
+                backwards_index = start_i - 1
+            else:
+                break
+
+        # cycle through getting the longest width
+        start_i = numpy.nan
+        stop_i = numpy.nan
+        longest_width = 0
+        for i in range(len(start_i_list)):
+            if stop_i_list[i] - start_i_list[i] > longest_width:
+                longest_width = stop_i_list[i] - start_i_list[i]
+                start_i = start_i_list[i]
+                stop_i = stop_i_list[i]
+
+        return start_i, stop_i
 
     def fixed_threshold_width_outwards(self, samples, start_index, z_water, threshold):
         """ If the start_index is nan or less than the threshold, then cycle
@@ -843,7 +974,12 @@ class ChannelBathymetry:
 
         return start_i, stop_i
 
-    def fixed_threshold_width_forewards(self, samples, start_index, z_water, threshold):
+    def fixed_threshold_width_forewards(self,
+                                        samples: numpy.ndarray,
+                                        start_index: int,
+                                        z_water: float,
+                                        threshold: float,
+                                        search_range: int):
         """ Check for channels approaching foreward.
 
         Parameters
@@ -879,10 +1015,18 @@ class ChannelBathymetry:
             # break if both edges detected
             if not numpy.isnan(start_i) and not numpy.isnan(stop_i):
                 break
+            # break if the first edge is not detected in the search range
+            if numpy.isnan(start_i) and i > start_index + search_range:
+                break
 
         return start_i, stop_i
 
-    def fixed_threshold_width_backwards(self, samples, start_index, z_water, threshold):
+    def fixed_threshold_width_backwards(self,
+                                        samples: numpy.ndarray,
+                                        start_index: int,
+                                        z_water: float,
+                                        threshold: float,
+                                        search_range: int):
         """ Check for channels approaching foreward.
 
         Parameters
@@ -917,6 +1061,9 @@ class ChannelBathymetry:
 
             # break if both edges detected
             if not numpy.isnan(start_i) and not numpy.isnan(stop_i):
+                break
+            # break if the first edge is not detected in the search range
+            if numpy.isnan(stop_i) and i < start_index - search_range:
                 break
 
         return start_i, stop_i
@@ -1233,24 +1380,12 @@ class ChannelBathymetry:
                                              smoothing_distance=1000)
 
         # Bank estimates - outside in
-        '''self.thresholded_widths_outwards_from_centre(transects=transects,
-                                                     transect_samples=transect_samples,
-                                                     threshold=threshold,
-                                                     resolution=self.resolution)'''
-        '''self.thresholded_widths_outwards_directional_from_centre(transects=transects,
-                                                     transect_samples=transect_samples,
-                                                     threshold=threshold,
-                                                     resolution=self.resolution)'''
-        '''self.thresholded_widths_outwards_from_min(transects=transects,
-                                                  transect_samples=transect_samples,
-                                                  threshold=threshold,
-                                                  resolution=self.resolution,
-                                                  min_name='min_spline_i')'''
-        self.thresholded_widths_outwards_directional_from_min(transects=transects,
-                                                              transect_samples=transect_samples,
-                                                              threshold=threshold,
-                                                              resolution=self.resolution,
-                                                              min_name='min_spline_i')
+        self.fixed_thresholded_widths_from_centre_within_radius(
+            transects=transects,
+            transect_samples=transect_samples,
+            threshold=threshold,
+            search_radius=min_z_search_radius,
+            resolution=self.resolution)
 
         # Add width linestring to the transects
         transects['width_line'] = transects.apply(
@@ -1303,16 +1438,14 @@ class ChannelBathymetry:
                                              smoothing_distance=slope_smoothing_distance)
 
         # Estimate widths
-        '''self.thresholded_widths_outwards_directional_from_centre(
+        #self.fixed_thresholded_widths_from_centre_within_radius(
+        self.variable_thresholded_widths_from_centre_within_radius(
             transects=transects,
             transect_samples=transect_samples,
             threshold=threshold,
-            resolution=self.resolution)'''
-        self.thresholded_widths_outwards_directional_from_centre_in_radius(
-            transects=transects,
-            transect_samples=transect_samples,
-            threshold=threshold,
-            resolution=self.resolution)
+            resolution=self.resolution,
+            search_radius=min_z_search_radius/10,
+            maximum_threshold=7*threshold)
 
         # Width smoothing - either from polygon if good enough, or function fit to aligned_widths_outward
         widths_no_nan = transects['widths'].interpolate('index', limit_direction='both')
