@@ -1064,11 +1064,11 @@ class ChannelBathymetry:
             # Detect banks
             if numpy.isnan(start_i) and \
                 (gnd_elevation_over_minimum < threshold or veg_elevation_over_minimum < threshold
-                 or (numpy.isnan(gnd_samples[i]) and numpy.isnan(gnd_samples[i]))):
+                 or (numpy.isnan(gnd_samples[i]) and numpy.isnan(veg_samples[i]))):
                 # Entering the channel
                 start_i = i - 1
             if numpy.isnan(stop_i) and not numpy.isnan(start_i) and \
-                    (gnd_elevation_over_minimum > threshold or (numpy.isnan(gnd_elevation_over_minimum)
+                    (gnd_elevation_over_minimum > threshold or (numpy.isnan(gnd_samples[i])
                                                                 and veg_elevation_over_minimum > threshold)):
                 # Leaving the channel
                 stop_i = i
@@ -1118,11 +1118,11 @@ class ChannelBathymetry:
             # Detect banks
             if numpy.isnan(stop_i) and \
                 (gnd_elevation_over_minimum < threshold or veg_elevation_over_minimum < threshold
-                 or (numpy.isnan(gnd_samples[i]) and numpy.isnan(gnd_samples[i]))):
+                 or (numpy.isnan(gnd_samples[i]) and numpy.isnan(veg_samples[i]))):
                 # Entering the channel backwards
                 stop_i = i + 1
             if numpy.isnan(start_i) and not numpy.isnan(stop_i) and \
-                    (gnd_elevation_over_minimum > threshold or (numpy.isnan(gnd_elevation_over_minimum)
+                    (gnd_elevation_over_minimum > threshold or (numpy.isnan(gnd_samples[i])
                                                                 and veg_elevation_over_minimum > threshold)):
                 # Leaving the channel backwards
                 start_i = i
