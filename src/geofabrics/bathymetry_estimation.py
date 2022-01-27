@@ -348,6 +348,7 @@ class ChannelBathymetry:
     def __init__(self,
                  channel: Channel,
                  dem: xarray.core.dataarray.DataArray,
+                 veg_dem: xarray.core.dataarray.DataArray,
                  transect_spacing: float,
                  resolution: float):
         """ Load in the reference DEM, clip and extract points transects
@@ -355,7 +356,9 @@ class ChannelBathymetry:
         channel
             The channel to estimate bathymetry along defined as a polyline.
         dem
-            The DEM along the channel
+            The ground DEM along the channel
+        veg_dem
+            The vegetation DEM along the channel
         transect_samples
             The sampled values along the transects.
         threshold
@@ -367,6 +370,7 @@ class ChannelBathymetry:
         self.channel = channel
         self.aligned_channel = None
         self.dem = dem
+        self.veg_dem = veg_dem
         self.transect_spacing = transect_spacing
         self.resolution = resolution
         self.transect_radius = None
@@ -645,16 +649,23 @@ class ChannelBathymetry:
         min_z_start_i = self.calculate_min_z_start_i(min_z_search_radius)
         min_z_stop_i = self.calculate_min_z_stop_i(min_z_search_radius)
 
-        transect_samples = {'elevations': [], 'xx': [], 'yy': [], 'min_z': [],
+        transect_samples = {'gnd_elevations': [], 'veg_elevations': [],
+                            'xx': [], 'yy': [], 'min_z': [],
                             'min_i': [], 'min_xy': [], 'min_z_centre': [],
                             'min_i_centre': [], 'min_xy_centre': [],
                             'min_x_centre': [], 'min_y_centre': []}
 
-        # create tree to sample from
+        # create tree of ground values to sample from
         grid_x, grid_y = numpy.meshgrid(self.dem.x, self.dem.y)
         xy_in = numpy.concatenate([[grid_x.flatten()],
                                    [grid_y.flatten()]], axis=0).transpose()
-        tree = scipy.spatial.KDTree(xy_in)
+        gnd_tree = scipy.spatial.KDTree(xy_in)
+
+        # create tree of vegetation values to sample from
+        grid_x, grid_y = numpy.meshgrid(self.veg_dem.x, self.veg_dem.y)
+        xy_in = numpy.concatenate([[grid_x.flatten()],
+                                   [grid_y.flatten()]], axis=0).transpose()
+        veg_tree = scipy.spatial.KDTree(xy_in)
 
         # cycle through each transect - calculate sample points then look up
         for index, row in transects.iterrows():
@@ -662,12 +673,19 @@ class ChannelBathymetry:
             # Calculate xx, and yy points to sample at
             xx = row.midpoint.x + sample_index_array * self.resolution * row['nx']
             yy = row.midpoint.y + sample_index_array * self.resolution * row['ny']
-
-            # Sample the elevations at along the transect
             xy_points = numpy.concatenate([[xx], [yy]], axis=0).transpose()
-            distances, indices = tree.query(xy_points)
+
+            # Sample the vegetation elevations at along the transect
+            distances, indices = veg_tree.query(xy_points)
+            elevations = self.veg_dem.data.flatten()[indices]
+            transect_samples['veg_elevations'].append(elevations)
+
+            # Sample the ground elevations at along the transect
+            distances, indices = gnd_tree.query(xy_points)
             elevations = self.dem.data.flatten()[indices]
-            transect_samples['elevations'].append(elevations)
+            transect_samples['gnd_elevations'].append(elevations)
+
+            # Find the min elevation and index of it along each cross section
             if len(elevations) - numpy.sum(numpy.isnan(elevations)) > 0:
                 min_index = numpy.nanargmin(elevations)
                 transect_samples['min_z'].append(elevations[min_index])
@@ -725,15 +743,16 @@ class ChannelBathymetry:
         widths = {'widths': [], 'first_bank': [], 'last_bank': [],
                   'first_bank_i': [], 'last_bank_i': []}
 
-        for j in range(len(transect_samples['elevations'])):
+        for j in range(len(transect_samples['gnd_elevations'])):
 
-            assert len(transect_samples['elevations'][j]) == self.number_of_samples, "Expect fixed length"
+            assert len(transect_samples['gnd_elevations'][j]) == self.number_of_samples, "Expect fixed length"
 
-            samples = transect_samples['elevations'][j]
+            gnd_samples = transect_samples['gnd_elevations'][j]
+            veg_samples = transect_samples['veg_elevations'][j]
             start_index = self.centre_index
             z_water = transects.iloc[j]['min_z_water']
 
-            start_i, stop_i = self.fixed_threshold_width(samples=samples,
+            start_i, stop_i = self.fixed_threshold_width(samples=gnd_samples,
                                                          start_index=start_index,
                                                          z_water=z_water,
                                                          threshold=threshold,
@@ -750,7 +769,7 @@ class ChannelBathymetry:
             transects[key] = widths[key]
 
     def variable_thresholded_widths_from_centre_within_radius(self, transects: geopandas.GeoDataFrame,
-                                                              transect_samples: dict,
+                                                              sampled_elevations: dict,
                                                               threshold: float,
                                                               resolution: float,
                                                               search_radius: float,
@@ -765,7 +784,7 @@ class ChannelBathymetry:
 
         transects
             The transects with geometry defined as polylines.
-        transect_samples
+        sampled_elevations
             The sampled values along the transects.
         threshold
             The height above the water level to detect as a bank.
@@ -778,16 +797,17 @@ class ChannelBathymetry:
         widths = {'widths': [], 'first_bank': [], 'last_bank': [],
                   'first_bank_i': [], 'last_bank_i': [], 'threshold': []}
 
-        for j in range(len(transect_samples['elevations'])):
+        for j in range(len(sampled_elevations['gnd_elevations'])):
 
-            assert len(transect_samples['elevations'][j]) == self.number_of_samples, "Expect fixed length"
+            assert len(sampled_elevations['gnd_elevations'][j]) == self.number_of_samples, "Expect fixed length"
 
-            samples = transect_samples['elevations'][j]
+            gnd_samples = sampled_elevations['gnd_elevations'][j]
+            veg_samples = sampled_elevations['veg_elevations'][j]
             start_index = self.centre_index
             z_water = transects.iloc[j]['min_z_water']
 
             # Get width based on fixed threshold
-            start_i, stop_i = self.fixed_threshold_width(samples=samples,
+            start_i, stop_i = self.fixed_threshold_width(samples=gnd_samples,
                                                          start_index=start_index,
                                                          z_water=z_water,
                                                          threshold=threshold,
@@ -800,41 +820,41 @@ class ChannelBathymetry:
             else:
                 start_i_bf = start_i
                 stop_i_bf = stop_i
-                z_bankfull = numpy.nanmin([samples[start_i_bf], samples[stop_i_bf]])
+                z_bankfull = numpy.nanmin([gnd_samples[start_i_bf], gnd_samples[stop_i_bf]])
 
                 while start_i_bf > 0 and stop_i_bf < self.number_of_samples - 1 \
                         and z_bankfull < maximum_z:
 
                     # brreak if going down
-                    if samples[start_i_bf - 1] < z_bankfull:
+                    if gnd_samples[start_i_bf - 1] < z_bankfull:
                         break
-                    if samples[stop_i_bf + 1] < z_bankfull:
+                    if gnd_samples[stop_i_bf + 1] < z_bankfull:
                         break
 
                     # if not, extend whichever bank is lower
-                    if samples[start_i_bf - 1] > samples[stop_i_bf + 1]:
+                    if gnd_samples[start_i_bf - 1] > gnd_samples[stop_i_bf + 1]:
                         stop_i_bf += 1
-                    elif samples[start_i_bf - 1] < samples[stop_i_bf + 1]:
+                    elif gnd_samples[start_i_bf - 1] < gnd_samples[stop_i_bf + 1]:
                         start_i_bf -= 1
-                    elif samples[start_i_bf - 1] == samples[stop_i_bf + 1]:
+                    elif gnd_samples[start_i_bf - 1] == gnd_samples[stop_i_bf + 1]:
                         start_i_bf -= 1
                         stop_i_bf += 1
                     else:
                         # extend if value is nan
-                        if numpy.isnan(samples[start_i_bf - 1]):
+                        if numpy.isnan(gnd_samples[start_i_bf - 1]):
                             start_i_bf -= 1
-                        if numpy.isnan(samples[stop_i_bf + 1]):
+                        if numpy.isnan(gnd_samples[stop_i_bf + 1]):
                             stop_i_bf += 1
 
                     # break if the threshold has been meet before updating maz_z
-                    if samples[start_i_bf] > z_water + maximum_threshold \
-                            or samples[stop_i_bf] > z_water + maximum_threshold:
+                    if gnd_samples[start_i_bf] > z_water + maximum_threshold \
+                            or gnd_samples[stop_i_bf] > z_water + maximum_threshold:
                         break
 
                     # update maximum value so far
-                    if not numpy.isnan([samples[start_i_bf], samples[stop_i_bf]]).all() \
-                            and numpy.nanmin([samples[start_i_bf], samples[stop_i_bf]]) > z_bankfull:
-                        z_bankfull = numpy.nanmin([samples[start_i_bf], samples[stop_i_bf]])
+                    if not numpy.isnan([gnd_samples[start_i_bf], gnd_samples[stop_i_bf]]).all() \
+                            and numpy.nanmin([gnd_samples[start_i_bf], gnd_samples[stop_i_bf]]) > z_bankfull:
+                        z_bankfull = numpy.nanmin([gnd_samples[start_i_bf], gnd_samples[stop_i_bf]])
 
                 # set to nan if either end of the cross section has been reached
                 if start_i_bf <= 0 or stop_i >= self.number_of_samples - 1:
@@ -1107,7 +1127,7 @@ class ChannelBathymetry:
 
         '''# Plot all sampled transect values
         f, ax = matplotlib.pyplot.subplots(figsize=(11, 4))
-        for elevations, min_z in zip(transect_samples['elevations'], transect_samples['min_z']):
+        for elevations, min_z in zip(transect_samples['gnd_elevations'], transect_samples['min_z']):
             matplotlib.pyplot.plot(elevations - min_z)
         ax.set(title=f"Sampled transects. Thresh {threshold}")'''
 
@@ -1453,19 +1473,19 @@ class ChannelBathymetry:
         transects = self.transects_along_reaches_at_node(sampled_channel=aligned_channel)
 
         # Sample along transects
-        transect_samples = self.sample_from_transects(transects=transects,
-                                                      min_z_search_radius=min_z_search_radius)
+        sampled_elevations = self.sample_from_transects(transects=transects,
+                                                        min_z_search_radius=min_z_search_radius)
 
         # Estimate water surface level and slope
         self._estimate_water_level_and_slope(transects=transects,
-                                             transect_samples=transect_samples,
+                                             transect_samples=sampled_elevations,
                                              smoothing_distance=slope_smoothing_distance)
 
         # Estimate widths
         #self.fixed_thresholded_widths_from_centre_within_radius(
         self.variable_thresholded_widths_from_centre_within_radius(
             transects=transects,
-            transect_samples=transect_samples,
+            sampled_elevations=sampled_elevations,
             threshold=threshold,
             resolution=self.resolution,
             search_radius=min_z_search_radius/10,
@@ -1494,7 +1514,7 @@ class ChannelBathymetry:
 
         # Plot results
         self._plot_results(transects=transects,
-                           transect_samples=transect_samples,
+                           transect_samples=sampled_elevations,
                            threshold=threshold,
                            aligned_channel=aligned_channel,
                            include_transects=False)

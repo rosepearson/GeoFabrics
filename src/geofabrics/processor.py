@@ -497,7 +497,9 @@ class RiverBathymetryGenerator():
     Attributes:
         channel_polyline  The main channel along which to estimate depth. This
             is a polyline.
-        channel_dem  The DEM generated along the main channel. This is a
+        dem  The ground DEM generated along the main channel. This is a
+            raster.
+        veg_dem  The vegetation DEM generated along the main channel. This is a
             raster.
         aligned_channel_polyline  The main channel after its alignment has been
             updated based on the DEM. Width and slope are estimated on this.
@@ -510,7 +512,8 @@ class RiverBathymetryGenerator():
         self.instructions = json_instructions
 
         self.channel_bathymetry = None
-        self.channel_dem = None
+        self.dem = None
+        self.veg_dem = None
         self.aligned_channel_plyline = None
         self.transects = None
 
@@ -544,8 +547,6 @@ class RiverBathymetryGenerator():
 
         # Define paths for generated files
         local_cache = pathlib.Path(self.instructions['instructions']['data_paths']['local_cache'])
-        dem_file = local_cache / f"channel_dem_{area_threshold}.nc"
-        self.instructions['instructions']['data_paths']['result_dem'] = str(dem_file)
         catchment_file = local_cache / f"channel_catchment_{area_threshold}.geojson"
         self.instructions['instructions']['data_paths']['catchment_boundary'] = str(catchment_file)
         aligned_channel_file = local_cache / f"aligned_channel_{area_threshold}.geojson"
@@ -562,27 +563,50 @@ class RiverBathymetryGenerator():
             channel.get_sampled_spline_fit().to_file(local_cache / "smoothed_main_channel.geojson")
 
         # Generate the DEM
-        dem_file = pathlib.Path(self.instructions['instructions']['data_paths']['result_dem'])
+        dem_file = local_cache / f"channel_dem_{area_threshold}.nc"
+        self.instructions['instructions']['data_paths']['result_dem'] = str(dem_file)
         if not dem_file.is_file():
-            # Create the catchment file if this has not be created yet!
-            print("No DEM along the channel. Generating a DEM.")
+            # Create the ground DEM file if this has not be created yet!
+            print("No gnd DEM along the channel. Generating a DEM.")
             if not pathlib.Path(self.instructions['instructions']['data_paths']['catchment_boundary']).is_file():
                 corridor_radius = max_channel_width / 2 + rec_alignment_tolerance + buffer
                 channel_catchment = channel.get_channel_catchment(corridor_radius=corridor_radius)
                 channel_catchment.to_file(self.instructions['instructions']['data_paths']['catchment_boundary'])
             runner = DemGenerator(self.instructions)
             runner.run()
-            self.channel_dem = runner.dense_dem.dem
+            self.dem = runner.dense_dem.dem
         else:
-            print("DEM along the channel exists. Loading the DEM.")
+            print("gnd DEM along the channel exists. Loading the DEM.")
             with rioxarray.rioxarray.open_rasterio(dem_file, masked=True) as dem:
                 dem.load()
-            self.channel_dem = dem.copy(deep=True)
+            self.dem = dem.copy(deep=True)
+
+        # Generate a DEM of vegetration with LiDAR
+        dem_file = local_cache / f"channel_veg_dem_{area_threshold}.nc"
+        self.instructions['instructions']['data_paths']['result_dem'] = str(dem_file)
+        self.instructions['instructions']['general']['lidar_classifications_to_keep'] = \
+            self.instructions['instructions']['channel_bathymetry']['veg_lidar_classifications_to_keep']
+        if not dem_file.is_file():
+            # Create the catchment file if this has not be created yet!
+            print("No veg DEM along the channel. Generating a DEM.")
+            if not pathlib.Path(self.instructions['instructions']['data_paths']['catchment_boundary']).is_file():
+                corridor_radius = max_channel_width / 2 + rec_alignment_tolerance + buffer
+                channel_catchment = channel.get_channel_catchment(corridor_radius=corridor_radius)
+                channel_catchment.to_file(self.instructions['instructions']['data_paths']['catchment_boundary'])
+            runner = DemGenerator(self.instructions)
+            runner.run()
+            self.veg_dem = runner.dense_dem.dem
+        else:
+            print("veg DEM along the channel exists. Loading the DEM.")
+            with rioxarray.rioxarray.open_rasterio(dem_file, masked=True) as dem:
+                dem.load()
+            self.veg_dem = dem.copy(deep=True)
 
         # Create channel bathymetry estimator
         self.channel_bathymetry = bathymetry_estimation.ChannelBathymetry(
             channel=channel,
-            dem=self.channel_dem,
+            dem=self.dem,
+            veg_dem=self.veg_dem,
             transect_spacing=transect_spacing,
             resolution=resolution)
 
