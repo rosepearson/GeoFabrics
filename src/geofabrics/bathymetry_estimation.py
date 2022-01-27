@@ -820,9 +820,11 @@ class ChannelBathymetry:
             if numpy.isnan(start_i) or numpy.isnan(stop_i):
                 dz_bankfull = threshold
             else:
+                z_bankfull = numpy.nanmin([gnd_samples[start_i], gnd_samples[stop_i]]) \
+                    if not numpy.isnan([gnd_samples[start_i], gnd_samples[stop_i]]).all() \
+                    else threshold
                 start_i_bf = start_i
                 stop_i_bf = stop_i
-                z_bankfull = numpy.nanmin([gnd_samples[start_i_bf], gnd_samples[stop_i_bf]])
 
                 while start_i_bf > 0 and stop_i_bf < self.number_of_samples - 1 \
                         and z_bankfull < maximum_z:
