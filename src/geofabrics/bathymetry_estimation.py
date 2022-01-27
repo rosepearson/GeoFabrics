@@ -752,7 +752,8 @@ class ChannelBathymetry:
             start_index = self.centre_index
             z_water = transects.iloc[j]['min_z_water']
 
-            start_i, stop_i = self.fixed_threshold_width(samples=gnd_samples,
+            start_i, stop_i = self.fixed_threshold_width(gnd_samples=gnd_samples,
+                                                         veg_samples=veg_samples,
                                                          start_index=start_index,
                                                          z_water=z_water,
                                                          threshold=threshold,
@@ -807,7 +808,8 @@ class ChannelBathymetry:
             z_water = transects.iloc[j]['min_z_water']
 
             # Get width based on fixed threshold
-            start_i, stop_i = self.fixed_threshold_width(samples=gnd_samples,
+            start_i, stop_i = self.fixed_threshold_width(gnd_samples=gnd_samples,
+                                                         veg_samples=veg_samples,
                                                          start_index=start_index,
                                                          z_water=z_water,
                                                          threshold=threshold,
@@ -878,7 +880,8 @@ class ChannelBathymetry:
             transects[key] = widths[key]
 
     def fixed_threshold_width(self,
-                              samples: numpy.ndarray,
+                              gnd_samples: numpy.ndarray,
+                              veg_samples: numpy.ndarray,
                               start_index: int,
                               z_water: float,
                               threshold: float,
@@ -890,8 +893,10 @@ class ChannelBathymetry:
         Parameters
         ----------
 
-        samples
-            The elevations for a single cross section.
+        gnd_samples
+            The ground elevations for a single cross section.
+        veg_samples
+            The vegrtation elevations for the same cross section.
         start_index
             The index to start the outward search from.
         threshold
@@ -910,7 +915,8 @@ class ChannelBathymetry:
         backwards_index = start_index
 
         # check outwards
-        start_i, stop_i = self.fixed_threshold_width_outwards(samples=samples,
+        start_i, stop_i = self.fixed_threshold_width_outwards(gnd_samples=gnd_samples,
+                                                              veg_samples=veg_samples,
                                                               start_index=start_index,
                                                               z_water=z_water,
                                                               threshold=threshold)
@@ -922,7 +928,8 @@ class ChannelBathymetry:
 
         # check forewards
         while forwards_index - start_index < search_radius_index:
-            start_i, stop_i = self.fixed_threshold_width_forewards(samples=samples,
+            start_i, stop_i = self.fixed_threshold_width_forewards(gnd_samples=gnd_samples,
+                                                                   veg_samples=veg_samples,
                                                                    start_index=forwards_index,
                                                                    z_water=z_water,
                                                                    threshold=threshold,
@@ -936,7 +943,8 @@ class ChannelBathymetry:
 
         # check backwards
         while start_index - backwards_index < search_radius_index:
-            start_i, stop_i = self.fixed_threshold_width_backwards(samples=samples,
+            start_i, stop_i = self.fixed_threshold_width_backwards(gnd_samples=gnd_samples,
+                                                                   veg_samples=veg_samples,
                                                                    start_index=backwards_index,
                                                                    z_water=z_water,
                                                                    threshold=threshold,
@@ -960,15 +968,22 @@ class ChannelBathymetry:
 
         return start_i, stop_i
 
-    def fixed_threshold_width_outwards(self, samples, start_index, z_water, threshold):
+    def fixed_threshold_width_outwards(self,
+                                       gnd_samples: numpy.ndarray,
+                                       veg_samples: numpy.ndarray,
+                                       start_index: int,
+                                       z_water: float,
+                                       threshold: float):
         """ If the start_index is nan or less than the threshold, then cycle
         outwards until each side has gone above the threshold.
 
         Parameters
         ----------
 
-        samples
-            The elevations for a single cross section.
+        gnd_samples
+            The ground elevations for a single cross section.
+        veg_samples
+            The vegrtation elevations for the same cross section.
         start_index
             The index to start the outward search from.
         threshold
@@ -980,23 +995,30 @@ class ChannelBathymetry:
         start_i = numpy.nan
         stop_i = numpy.nan
 
-        if samples[start_index] - z_water < threshold or numpy.isnan(samples[start_index]):
+        if gnd_samples[start_index] - z_water < threshold or \
+                (numpy.isnan(gnd_samples[start_index]) and numpy.isnan(veg_samples[start_index])):
 
             for i in numpy.arange(0, self.centre_index + 1, 1):
 
                 # work forward checking height
-                elevation_over_minimum = samples[start_index + i] - z_water
+                gnd_elevation_over_minimum = gnd_samples[start_index + i] - z_water
+                veg_elevation_over_minimum = veg_samples[start_index + i] - z_water
 
-                # Detect banks
-                if numpy.isnan(stop_i) and elevation_over_minimum > threshold:
+                # Detect banks - either ground above threshold, or no ground with vegetation over threshold
+                if numpy.isnan(stop_i) and (gnd_elevation_over_minimum > threshold
+                                            or (numpy.isnan(gnd_elevation_over_minimum)
+                                                and veg_elevation_over_minimum > threshold)):
                     # Leaving the channel
                     stop_i = start_index + i
 
                 # work backward checking height
-                elevation_over_minimum = samples[start_index - i] - z_water
+                gnd_elevation_over_minimum = gnd_samples[start_index - i] - z_water
+                veg_elevation_over_minimum = veg_samples[start_index - i] - z_water
 
                 # Detect bank
-                if numpy.isnan(start_i) and elevation_over_minimum > threshold:
+                if numpy.isnan(start_i) and (gnd_elevation_over_minimum > threshold
+                                             or (numpy.isnan(gnd_elevation_over_minimum)
+                                                 and veg_elevation_over_minimum > threshold)):
                     # Leaving the channel
                     start_i = start_index - i
 
@@ -1007,7 +1029,8 @@ class ChannelBathymetry:
         return start_i, stop_i
 
     def fixed_threshold_width_forewards(self,
-                                        samples: numpy.ndarray,
+                                        gnd_samples: numpy.ndarray,
+                                        veg_samples: numpy.ndarray,
                                         start_index: int,
                                         z_water: float,
                                         threshold: float,
@@ -1017,8 +1040,10 @@ class ChannelBathymetry:
         Parameters
         ----------
 
-        samples
-            The elevations for a single cross section.
+        gnd_samples
+            The ground elevations for a single cross section.
+        veg_samples
+            The vegrtation elevations for the same cross section.
         start_index
             The index to start the outward search from.
         threshold
@@ -1033,14 +1058,18 @@ class ChannelBathymetry:
         for i in numpy.arange(start_index, self.number_of_samples, 1):
 
             # work forward checking height
-            elevation_over_minimum = samples[i] - z_water
+            gnd_elevation_over_minimum = gnd_samples[i] - z_water
+            veg_elevation_over_minimum = veg_samples[i] - z_water
 
             # Detect banks
-            if numpy.isnan(start_i) and (elevation_over_minimum < threshold
-                                         or numpy.isnan(samples[i])):
+            if numpy.isnan(start_i) and \
+                (gnd_elevation_over_minimum < threshold or veg_elevation_over_minimum < threshold
+                 or (numpy.isnan(gnd_samples[i]) and numpy.isnan(gnd_samples[i]))):
                 # Entering the channel
                 start_i = i - 1
-            if numpy.isnan(stop_i) and not numpy.isnan(start_i) and elevation_over_minimum > threshold:
+            if numpy.isnan(stop_i) and not numpy.isnan(start_i) and \
+                    (gnd_elevation_over_minimum > threshold or (numpy.isnan(gnd_elevation_over_minimum)
+                                                                and veg_elevation_over_minimum > threshold)):
                 # Leaving the channel
                 stop_i = i
 
@@ -1054,7 +1083,8 @@ class ChannelBathymetry:
         return start_i, stop_i
 
     def fixed_threshold_width_backwards(self,
-                                        samples: numpy.ndarray,
+                                        gnd_samples: numpy.ndarray,
+                                        veg_samples: numpy.ndarray,
                                         start_index: int,
                                         z_water: float,
                                         threshold: float,
@@ -1064,8 +1094,10 @@ class ChannelBathymetry:
         Parameters
         ----------
 
-        samples
-            The elevations for a single cross section.
+        gnd_samples
+            The ground elevations for a single cross section.
+        veg_samples
+            The vegrtation elevations for the same cross section.
         start_index
             The index to start the outward search from.
         threshold
@@ -1080,14 +1112,18 @@ class ChannelBathymetry:
         for i in numpy.arange(start_index, -1, -1):
 
             # work forward checking height
-            elevation_over_minimum = samples[i] - z_water
+            gnd_elevation_over_minimum = gnd_samples[i] - z_water
+            veg_elevation_over_minimum = veg_samples[i] - z_water
 
             # Detect banks
-            if numpy.isnan(stop_i) and (elevation_over_minimum < threshold
-                                        or numpy.isnan(samples[i])):
+            if numpy.isnan(stop_i) and \
+                (gnd_elevation_over_minimum < threshold or veg_elevation_over_minimum < threshold
+                 or (numpy.isnan(gnd_samples[i]) and numpy.isnan(gnd_samples[i]))):
                 # Entering the channel backwards
                 stop_i = i + 1
-            if numpy.isnan(start_i) and not numpy.isnan(stop_i) and elevation_over_minimum > threshold:
+            if numpy.isnan(start_i) and not numpy.isnan(stop_i) and \
+                    (gnd_elevation_over_minimum > threshold or (numpy.isnan(gnd_elevation_over_minimum)
+                                                                and veg_elevation_over_minimum > threshold)):
                 # Leaving the channel backwards
                 start_i = i
 
