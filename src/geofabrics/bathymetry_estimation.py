@@ -717,7 +717,7 @@ class ChannelBathymetry:
         return transect_samples
 
     def fixed_thresholded_widths_from_centre_within_radius(self, transects: geopandas.GeoDataFrame,
-                                                           transect_samples: dict,
+                                                           sampled_elevations: dict,
                                                            threshold: float,
                                                            resolution: float,
                                                            search_radius: float):
@@ -743,12 +743,12 @@ class ChannelBathymetry:
         widths = {'widths': [], 'first_bank': [], 'last_bank': [],
                   'first_bank_i': [], 'last_bank_i': []}
 
-        for j in range(len(transect_samples['gnd_elevations'])):
+        for j in range(len(sampled_elevations['gnd_elevations'])):
 
-            assert len(transect_samples['gnd_elevations'][j]) == self.number_of_samples, "Expect fixed length"
+            assert len(sampled_elevations['gnd_elevations'][j]) == self.number_of_samples, "Expect fixed length"
 
-            gnd_samples = transect_samples['gnd_elevations'][j]
-            veg_samples = transect_samples['veg_elevations'][j]
+            gnd_samples = sampled_elevations['gnd_elevations'][j]
+            veg_samples = sampled_elevations['veg_elevations'][j]
             start_index = self.centre_index
             z_water = transects.iloc[j]['min_z_water']
 
