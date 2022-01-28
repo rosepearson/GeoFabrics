@@ -822,12 +822,14 @@ class ChannelBathymetry:
             else:
                 z_bankfull = numpy.nanmin([gnd_samples[start_i], gnd_samples[stop_i]]) \
                     if not numpy.isnan([gnd_samples[start_i], gnd_samples[stop_i]]).all() \
-                    else threshold
+                    else threshold + z_water
                 start_i_bf = start_i
                 stop_i_bf = stop_i
+                dwidth = 1
 
                 while start_i_bf > 0 and stop_i_bf < self.number_of_samples - 1 \
-                        and z_bankfull < maximum_z:
+                        and z_bankfull < maximum_z and dwidth > 0:
+                    dwidth = 0
 
                     # break if going down
                     if gnd_samples[start_i_bf - 1] < z_bankfull or veg_samples[start_i_bf - 1] < z_bankfull:
@@ -838,23 +840,30 @@ class ChannelBathymetry:
                     # if not, extend whichever bank is lower
                     if gnd_samples[start_i_bf - 1] > gnd_samples[stop_i_bf + 1]:
                         stop_i_bf += 1
+                        dwidth += 1
                     elif gnd_samples[start_i_bf - 1] < gnd_samples[stop_i_bf + 1]:
                         start_i_bf -= 1
+                        dwidth += 1
                     elif gnd_samples[start_i_bf - 1] == gnd_samples[stop_i_bf + 1]:
                         start_i_bf -= 1
                         stop_i_bf += 1
+                        dwidth += 2
                     else:
                         # extend if value is nan and not vegetated, or if vegetation is under limit
                         if numpy.isnan(gnd_samples[start_i_bf - 1]) and numpy.isnan(veg_samples[start_i_bf - 1]):
                             start_i_bf -= 1
+                            dwidth += 1
                         elif numpy.isnan(gnd_samples[start_i_bf - 1]) \
                                 and veg_samples[start_i_bf - 1] < z_water + maximum_threshold:
                             start_i_bf -= 1
+                            dwidth += 1
                         if numpy.isnan(gnd_samples[stop_i_bf + 1]) and numpy.isnan(veg_samples[start_i_bf + 1]):
                             stop_i_bf += 1
+                            dwidth += 1
                         elif numpy.isnan(gnd_samples[start_i_bf + 1]) \
                                 and veg_samples[start_i_bf + 1] < z_water + maximum_threshold:
                             stop_i_bf += 1
+                            dwidth += 1
 
                     # Break if the threshold has been meet before updating maz_z
                     if gnd_samples[start_i_bf] >= z_water + maximum_threshold \
