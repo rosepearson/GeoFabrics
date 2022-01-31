@@ -59,8 +59,8 @@ class ProcessorRiverBathymetryTest(unittest.TestCase):
 
         # Run pipeline - download files and generated DEM
         runner = processor.RiverBathymetryGenerator(cls.instructions)
-        runner.run(
-            pathlib.Path(cls.instructions['instructions']['data_paths']['local_cache']) / 'instruction_parameters.json')
+        '''runner.run(
+            pathlib.Path(cls.instructions['instructions']['data_paths']['local_cache']) / 'instruction_parameters.json')'''
 
     @classmethod
     def tearDownClass(cls):
@@ -85,7 +85,7 @@ class ProcessorRiverBathymetryTest(unittest.TestCase):
                 elif file.is_dir():
                     shutil.rmtree(file)
 
-    def test_catchment(self):
+    '''def test_catchment(self):
         """ A test to see if the correct dataset is downloaded """
 
         catchment_file = pathlib.Path(
@@ -121,7 +121,7 @@ class ProcessorRiverBathymetryTest(unittest.TestCase):
         numpy.testing.assert_array_almost_equal(test_dem.data[~numpy.isnan(test_dem.data)],
                                                 benchmark_dem.data[~numpy.isnan(benchmark_dem.data)],
                                                 err_msg="The generated result_dem has different data from the " +
-                                                "benchmark_dem")
+                                                "benchmark_dem")'''
 
 
     '''def test_transects(self):
