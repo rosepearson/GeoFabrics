@@ -59,7 +59,8 @@ class ProcessorRiverBathymetryTest(unittest.TestCase):
 
         # Run pipeline - download files and generated DEM
         runner = processor.RiverBathymetryGenerator(cls.instructions)
-        runner.run()
+        runner.run(
+            pathlib.Path(cls.instructions['instructions']['data_paths']['local_cache']) / 'instruction_parameters.json')
 
     @classmethod
     def tearDownClass(cls):
