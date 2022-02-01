@@ -741,7 +741,7 @@ class ChannelBathymetry:
 
         search_radius_index = int(search_radius / self.resolution)
         widths = {'widths': [], 'first_bank': [], 'last_bank': [],
-                  'first_bank_i': [], 'last_bank_i': []}
+                  'first_bank_i': [], 'last_bank_i': [], 'channel_count': []}
 
         for j in range(len(sampled_elevations['gnd_elevations'])):
 
@@ -765,6 +765,7 @@ class ChannelBathymetry:
             widths['first_bank_i'].append(start_i)
             widths['last_bank_i'].append(stop_i)
             widths['widths'].append((stop_i - start_i) * resolution)
+            widths['channel_count'].append(channel_count)
 
         for key in widths.keys():
             transects[key] = widths[key]
@@ -984,13 +985,17 @@ class ChannelBathymetry:
         start_i = numpy.nan
         stop_i = numpy.nan
         longest_width = 0
+        channel_count = 0
         for i in range(len(start_i_list)):
-            if stop_i_list[i] - start_i_list[i] > longest_width:
+            channel_width = stop_i_list[i] - start_i_list[i]
+            if channel_width > longest_width:
                 longest_width = stop_i_list[i] - start_i_list[i]
                 start_i = start_i_list[i]
                 stop_i = stop_i_list[i]
+            if channel_width > 10:
+                channel_count += 1
 
-        return start_i, stop_i
+        return start_i, stop_i, channel_count
 
     def fixed_threshold_width_outwards(self,
                                        gnd_samples: numpy.ndarray,
@@ -1256,11 +1261,18 @@ class ChannelBathymetry:
             The smoothing multiplier to apply to the spline fit.
         """
 
+        # Create a single clear channel mask
+        channel_mask = transects['channel_count'] == 1
+
         # Calculate the offset distance between the transect and width centres
-        widths_centre_offset = self.resolution * ((transects['first_bank_i']
-                                                   + transects['last_bank_i']) / 2 - self.centre_index)
-        widths_centre_xy = numpy.vstack([(transects['mid_x'] + widths_centre_offset * transects['nx']).array,
-                                         (transects['mid_y'] + widths_centre_offset * transects['ny']).array]).T
+        widths_centre_offset = self.resolution * (
+            (transects.loc[channel_mask, 'first_bank_i']
+             + transects.loc[channel_mask, 'last_bank_i']) / 2 - self.centre_index)
+        widths_centre_xy = numpy.vstack(
+            [(transects.loc[channel_mask, 'mid_x']
+              + widths_centre_offset * transects.loc[channel_mask, 'nx']).array,
+             (transects.loc[channel_mask, 'mid_y']
+              + widths_centre_offset * transects.loc[channel_mask, 'ny']).array]).T
         widths_centre_xy = widths_centre_xy[numpy.isnan(widths_centre_xy).any(axis=1) == False]
         widths_centre_line = geopandas.GeoDataFrame(geometry=[shapely.geometry.LineString(widths_centre_xy)],
                                                     crs=transects.crs)
@@ -1470,8 +1482,8 @@ class ChannelBathymetry:
                                                         smoothing_multiplier=min_z_smoothing_multiplier)
 
         # Get spline and transect intersection
-        self._transect_and_spline_intersection(transects=transects, spline=min_centre_spline, entry_name='min_spline_i')
-        transect_samples['min_spline_i'] = transects['min_spline_i']
+        '''self._transect_and_spline_intersection(transects=transects, spline=min_centre_spline, entry_name='min_spline_i')
+        transect_samples['min_spline_i'] = transects['min_spline_i']'''
 
         # Estimate water surface level and slope - Smooth slope upstream over 1km
         self._estimate_water_level_and_slope(transects=transects,
@@ -1481,7 +1493,7 @@ class ChannelBathymetry:
         # Bank estimates - outside in
         self.fixed_thresholded_widths_from_centre_within_radius(
             transects=transects,
-            transect_samples=transect_samples,
+            sampled_elevations=transect_samples,
             threshold=threshold,
             search_radius=min_z_search_radius,
             resolution=self.resolution)
@@ -1542,7 +1554,12 @@ class ChannelBathymetry:
                                              smoothing_distance=slope_smoothing_distance)
 
         # Estimate widths
-        #self.fixed_thresholded_widths_from_centre_within_radius(
+        '''self.fixed_thresholded_widths_from_centre_within_radius(
+            transects=transects,
+            sampled_elevations=sampled_elevations,
+            threshold=threshold,
+            resolution=self.resolution,
+            search_radius=min_z_search_radius/10)'''
         self.variable_thresholded_widths_from_centre_within_radius(
             transects=transects,
             sampled_elevations=sampled_elevations,
