@@ -532,9 +532,8 @@ class RiverBathymetryGenerator():
 
         buffer = 50
         max_channel_width = self.instructions['instructions']['channel_bathymetry']['max_channel_width']
+        min_channel_width = self.instructions['instructions']['channel_bathymetry']['min_channel_width']
         rec_alignment_tolerance = self.instructions['instructions']['channel_bathymetry']['rec_alignment_tolerance']
-
-        min_z_search_radius = self.instructions['instructions']['channel_bathymetry']['min_z_search_radius']
 
         resolution = self.instructions['instructions']['output']['grid_params']['resolution']
         transect_spacing = self.instructions['instructions']['channel_bathymetry']['transect_spacing']
@@ -543,7 +542,6 @@ class RiverBathymetryGenerator():
 
         width_centre_smoothing_multiplier = \
             self.instructions['instructions']['channel_bathymetry']['width_centre_smoothing']
-        min_z_smoothing_multiplier = self.instructions['instructions']['channel_bathymetry']['min_z_smoothing']
 
         # Define paths for generated files
         local_cache = pathlib.Path(self.instructions['instructions']['data_paths']['local_cache'])
@@ -616,22 +614,21 @@ class RiverBathymetryGenerator():
 
             corridor_radius = max_channel_width / 2 + rec_alignment_tolerance + buffer
 
-            aligned_channel, transects, min_centre_spline = self.channel_bathymetry.align_channel(
-                min_z_smoothing_multiplier=min_z_smoothing_multiplier,
+            aligned_channel, transects = self.channel_bathymetry.align_channel(
                 threshold=bank_threshold,
-                min_z_search_radius=min_z_search_radius,
+                min_channel_width=min_channel_width,
+                search_radius=rec_alignment_tolerance,
                 width_centre_smoothing_multiplier=width_centre_smoothing_multiplier,
                 transect_radius=corridor_radius)
 
             aligned_channel.to_file(aligned_channel_file)
-            min_centre_spline.to_file(local_cache / f"min_z_spline_{area_threshold}.geojson")
             geopandas.GeoDataFrame(geometry=transects['width_line'],
                                    crs=transects.crs).to_file(local_cache / "intial_widths.geojson")
             geopandas.GeoDataFrame(geometry=transects['min_xy'],
                                    crs=transects.crs).to_file(local_cache / "min_xy.geojson")
             geopandas.GeoDataFrame(geometry=transects['min_xy_centre'],
                                    crs=transects.crs).to_file(local_cache / "min_xy_centre.geojson")
-            transects[['geometry']].to_file(local_cache / "transects.geojson")
+            transects[['geometry', 'channel_count']].to_file(local_cache / "transects.geojson")
         else:
             print("Channel already aligned and loaded in.")
             aligned_channel = geopandas.read_file(aligned_channel_file)
@@ -644,7 +641,8 @@ class RiverBathymetryGenerator():
             transects = self.channel_bathymetry.estimate_width_and_slope(aligned_channel=aligned_channel,
                                                                          threshold=bank_threshold,
                                                                          transect_radius=corridor_radius,
-                                                                         min_z_search_radius=min_z_search_radius)
+                                                                         search_radius=rec_alignment_tolerance,
+                                                                         min_channel_width=min_channel_width)
 
             transect_widths = geopandas.GeoDataFrame(geometry=transects['width_line'], crs=transects.crs)
             transect_widths.to_file(local_cache / "final_widths.geojson")

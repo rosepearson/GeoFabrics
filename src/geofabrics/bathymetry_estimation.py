@@ -720,7 +720,8 @@ class ChannelBathymetry:
                                                            sampled_elevations: dict,
                                                            threshold: float,
                                                            resolution: float,
-                                                           search_radius: float):
+                                                           search_radius: float,
+                                                           min_channel_width: float):
         """ Estimate width based on a thresbold of bank height above water level.
         Start in the centre and work out. Doesn't detect banks until a value
         less than the threshold has been detected. Takes the widest channel within
@@ -737,6 +738,10 @@ class ChannelBathymetry:
             The height above the water level to detect as a bank.
         resolution
             The resolution to sample at.
+        resolution
+            The resolution to sample at.
+        min_channel_width
+            The resolution to sample at.
         """
 
         search_radius_index = int(search_radius / self.resolution)
@@ -752,12 +757,14 @@ class ChannelBathymetry:
             start_index = self.centre_index
             z_water = transects.iloc[j]['min_z_water']
 
-            start_i, stop_i = self.fixed_threshold_width(gnd_samples=gnd_samples,
-                                                         veg_samples=veg_samples,
-                                                         start_index=start_index,
-                                                         z_water=z_water,
-                                                         threshold=threshold,
-                                                         search_radius_index=search_radius_index)
+            start_i, stop_i, channel_count = self.fixed_threshold_width(
+                gnd_samples=gnd_samples,
+                veg_samples=gnd_samples,
+                start_index=start_index,
+                z_water=z_water,
+                threshold=threshold,
+                search_radius_index=search_radius_index,
+                min_channel_width=min_channel_width)
 
             # assign the longest width
             widths['first_bank'].append((start_index - start_i) * resolution)
@@ -775,7 +782,8 @@ class ChannelBathymetry:
                                                               threshold: float,
                                                               resolution: float,
                                                               search_radius: float,
-                                                              maximum_threshold: float):
+                                                              maximum_threshold: float,
+                                                              min_channel_width=float):
         """ Estimate width based on a thresbold of bank height above water level.
         Start in the centre and work out. Doesn't detect banks until a value
         less than the threshold has been detected. Takes the widest channel within
@@ -809,12 +817,14 @@ class ChannelBathymetry:
             z_water = transects.iloc[j]['min_z_water']
 
             # Get width based on fixed threshold
-            start_i, stop_i = self.fixed_threshold_width(gnd_samples=gnd_samples,
-                                                         veg_samples=veg_samples,
-                                                         start_index=start_index,
-                                                         z_water=z_water,
-                                                         threshold=threshold,
-                                                         search_radius_index=search_radius_index)
+            start_i, stop_i, channel_count = self.fixed_threshold_width(
+                gnd_samples=gnd_samples,
+                veg_samples=veg_samples,
+                start_index=start_index,
+                z_water=z_water,
+                threshold=threshold,
+                search_radius_index=search_radius_index,
+                min_channel_width=min_channel_width)
 
             # Iterate out from the fixed threshold width until the banks go down, or the max threshold is reached
             maximum_z = z_water + maximum_threshold
@@ -910,7 +920,8 @@ class ChannelBathymetry:
                               start_index: int,
                               z_water: float,
                               threshold: float,
-                              search_radius_index: int):
+                              search_radius_index: int,
+                              min_channel_width: float):
         """ Calculate the maximum width for a cross section given a fixed
         threshold - checking outwards, forewards and backwards within the
         search radius.
@@ -958,7 +969,7 @@ class ChannelBathymetry:
                                                                    start_index=forwards_index,
                                                                    z_water=z_water,
                                                                    threshold=threshold,
-                                                                   search_range=search_radius_index)
+                                                                   stop_index=start_index + search_radius_index)
             if not numpy.isnan(start_i) and not numpy.isnan(stop_i):
                 start_i_list.append(start_i)
                 stop_i_list.append(stop_i)
@@ -973,7 +984,7 @@ class ChannelBathymetry:
                                                                    start_index=backwards_index,
                                                                    z_water=z_water,
                                                                    threshold=threshold,
-                                                                   search_range=search_radius_index)
+                                                                   stop_index=start_index - search_radius_index)
             if not numpy.isnan(start_i) and not numpy.isnan(stop_i):
                 start_i_list.append(start_i)
                 stop_i_list.append(stop_i)
@@ -992,7 +1003,7 @@ class ChannelBathymetry:
                 longest_width = stop_i_list[i] - start_i_list[i]
                 start_i = start_i_list[i]
                 stop_i = stop_i_list[i]
-            if channel_width > 10:
+            if channel_width >= min_channel_width:
                 channel_count += 1
 
         return start_i, stop_i, channel_count
@@ -1063,7 +1074,7 @@ class ChannelBathymetry:
                                         start_index: int,
                                         z_water: float,
                                         threshold: float,
-                                        search_range: int):
+                                        stop_index: int):
         """ Check for channels approaching foreward.
 
         Parameters
@@ -1079,6 +1090,8 @@ class ChannelBathymetry:
             The height above the water level to detect as a bank.
         z_water
             The elevation of the water.
+        stop_index
+            The maximum index to search through
         """
 
         start_i = numpy.nan
@@ -1106,7 +1119,7 @@ class ChannelBathymetry:
             if not numpy.isnan(start_i) and not numpy.isnan(stop_i):
                 break
             # break if the first edge is not detected in the search range
-            if numpy.isnan(start_i) and i > start_index + search_range:
+            if numpy.isnan(start_i) and i > stop_index:
                 break
 
         return start_i, stop_i
@@ -1117,7 +1130,7 @@ class ChannelBathymetry:
                                         start_index: int,
                                         z_water: float,
                                         threshold: float,
-                                        search_range: int):
+                                        stop_index: int):
         """ Check for channels approaching foreward.
 
         Parameters
@@ -1133,6 +1146,8 @@ class ChannelBathymetry:
             The height above the water level to detect as a bank.
         z_water
             The elevation of the water.
+        stop_index
+            The minimum index to search through
         """
 
         start_i = numpy.nan
@@ -1160,7 +1175,7 @@ class ChannelBathymetry:
             if not numpy.isnan(start_i) and not numpy.isnan(stop_i):
                 break
             # break if the first edge is not detected in the search range
-            if numpy.isnan(stop_i) and i < start_index - search_range:
+            if numpy.isnan(stop_i) and i < stop_index:
                 break
 
         return start_i, stop_i
@@ -1440,8 +1455,8 @@ class ChannelBathymetry:
 
     def align_channel(self,
                       threshold: float,
-                      min_z_smoothing_multiplier: float,
-                      min_z_search_radius: float,
+                      search_radius: float,
+                      min_channel_width: float,
                       width_centre_smoothing_multiplier: float,
                       transect_radius: float):
         """ Estimate the channel centre from transect samples
@@ -1455,7 +1470,7 @@ class ChannelBathymetry:
             The number of transects to include in the downstream spline smoothing.
         """
 
-        assert transect_radius >= min_z_search_radius, "The transect radius must be >= the min_z_radius"
+        assert transect_radius >= search_radius, "The transect radius must be >= the min_z_radius"
         self.transect_radius = transect_radius
 
         # Sample channel
@@ -1467,7 +1482,7 @@ class ChannelBathymetry:
 
         # Sample along transects
         transect_samples = self.sample_from_transects(transects=transects,
-                                                      min_z_search_radius=min_z_search_radius)
+                                                      min_z_search_radius=search_radius)
 
         # record min_i and min_xy
         transects['min_i'] = transect_samples['min_i']
@@ -1478,12 +1493,6 @@ class ChannelBathymetry:
         # Create a new centreline estimate from a spline through the near min z
         transects['min_x_centre'] = transect_samples['min_x_centre']
         transects['min_y_centre'] = transect_samples['min_y_centre']
-        min_centre_spline = self._centreline_from_min_z(transects=transects,
-                                                        smoothing_multiplier=min_z_smoothing_multiplier)
-
-        # Get spline and transect intersection
-        '''self._transect_and_spline_intersection(transects=transects, spline=min_centre_spline, entry_name='min_spline_i')
-        transect_samples['min_spline_i'] = transects['min_spline_i']'''
 
         # Estimate water surface level and slope - Smooth slope upstream over 1km
         self._estimate_water_level_and_slope(transects=transects,
@@ -1495,7 +1504,8 @@ class ChannelBathymetry:
             transects=transects,
             sampled_elevations=transect_samples,
             threshold=threshold,
-            search_radius=min_z_search_radius,
+            search_radius=search_radius,
+            min_channel_width=min_channel_width,
             resolution=self.resolution)
 
         # Add width linestring to the transects
@@ -1516,15 +1526,16 @@ class ChannelBathymetry:
                            threshold=threshold,
                            include_transects=False,
                            aligned_channel=aligned_channel,
-                           initial_spline=min_centre_spline)
+                           initial_spline=sampled_channel)
 
-        return aligned_channel, transects, min_centre_spline
+        return aligned_channel, transects
 
     def estimate_width_and_slope(self,
                                  aligned_channel: geopandas.GeoDataFrame,
                                  threshold: float,
                                  transect_radius: float,
-                                 min_z_search_radius: float):
+                                 search_radius: float,
+                                 min_channel_width: float):
         """ Estimate the channel centre from transect samples
 
         Parameters
@@ -1536,7 +1547,7 @@ class ChannelBathymetry:
             The height above the water level to detect as a bank.
         """
 
-        assert transect_radius >= min_z_search_radius, "The transect radius must be >= the min_z_radius"
+        assert transect_radius >= search_radius, "The transect radius must be >= the min_z_radius"
         self.transect_radius = transect_radius
 
         slope_smoothing_distance = 500  # Smooth slope upstream over this many metres
@@ -1546,7 +1557,7 @@ class ChannelBathymetry:
 
         # Sample along transects
         sampled_elevations = self.sample_from_transects(transects=transects,
-                                                        min_z_search_radius=min_z_search_radius)
+                                                        min_z_search_radius=search_radius)
 
         # Estimate water surface level and slope
         self._estimate_water_level_and_slope(transects=transects,
@@ -1559,14 +1570,15 @@ class ChannelBathymetry:
             sampled_elevations=sampled_elevations,
             threshold=threshold,
             resolution=self.resolution,
-            search_radius=min_z_search_radius/10)'''
+            search_radius=search_radius/10)'''
         self.variable_thresholded_widths_from_centre_within_radius(
             transects=transects,
             sampled_elevations=sampled_elevations,
             threshold=threshold,
             resolution=self.resolution,
-            search_radius=min_z_search_radius/10,
-            maximum_threshold=7*threshold)
+            search_radius=search_radius/10,
+            maximum_threshold=7*threshold,
+            min_channel_width=min_channel_width)
 
         # Width smoothing - either from polygon if good enough, or function fit to aligned_widths_outward
         widths_no_nan = transects['widths'].interpolate('index', limit_direction='both')
