@@ -805,7 +805,8 @@ class ChannelBathymetry:
         search_radius_index = int(search_radius / self.resolution)
         print(f'search radius index = {search_radius_index}')
         widths = {'widths': [], 'first_bank': [], 'last_bank': [],
-                  'first_bank_i': [], 'last_bank_i': [], 'threshold': []}
+                  'first_bank_i': [], 'last_bank_i': [], 'threshold': [],
+                  'channel_count': []}
 
         for j in range(len(sampled_elevations['gnd_elevations'])):
 
@@ -910,6 +911,7 @@ class ChannelBathymetry:
             widths['last_bank_i'].append(stop_i)
             widths['widths'].append((stop_i - start_i) * resolution)
             widths['threshold'].append(dz_bankfull)
+            widths['channel_count'].append(channel_count)
 
         for key in widths.keys():
             transects[key] = widths[key]
@@ -1233,7 +1235,7 @@ class ChannelBathymetry:
         if aligned_channel is not None:
             aligned_channel.plot(ax=ax, linewidth=2, color='green', zorder=4, label='Aligned channel')
         if initial_spline is not None:
-            initial_spline.plot(ax=ax, linewidth=2, color='blue', zorder=3, label='Min Z splne')
+            initial_spline.plot(ax=ax, linewidth=2, color='blue', zorder=3, label='REC smooth splne')
         if 'perturbed_midpoints' in transects.columns:
             transects.set_geometry('perturbed_midpoints').plot(ax=ax, color='aqua', zorder=5,
                                                                markersize=5, label='Perturbed midpoints')
@@ -1533,6 +1535,7 @@ class ChannelBathymetry:
     def estimate_width_and_slope(self,
                                  aligned_channel: geopandas.GeoDataFrame,
                                  threshold: float,
+                                 max_threshold: float,
                                  transect_radius: float,
                                  search_radius: float,
                                  min_channel_width: float):
@@ -1577,7 +1580,7 @@ class ChannelBathymetry:
             threshold=threshold,
             resolution=self.resolution,
             search_radius=search_radius/10,
-            maximum_threshold=7*threshold,
+            maximum_threshold=max_threshold,
             min_channel_width=min_channel_width)
 
         # Width smoothing - either from polygon if good enough, or function fit to aligned_widths_outward
