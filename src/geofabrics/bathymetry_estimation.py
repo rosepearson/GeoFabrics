@@ -820,7 +820,7 @@ class ChannelBathymetry:
             # Get width based on fixed threshold
             start_i, stop_i, channel_count = self.fixed_threshold_width(
                 gnd_samples=gnd_samples,
-                veg_samples=veg_samples,
+                veg_samples=gnd_samples,
                 start_index=start_index,
                 z_water=z_water,
                 threshold=threshold,
