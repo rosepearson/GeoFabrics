@@ -539,6 +539,7 @@ class RiverBathymetryGenerator():
         transect_spacing = self.instructions['instructions']['channel_bathymetry']['transect_spacing']
 
         bank_threshold = self.instructions['instructions']['channel_bathymetry']['bank_threshold']
+        max_bank_height = self.instructions['instructions']['channel_bathymetry']['max_bank_height']
 
         width_centre_smoothing_multiplier = \
             self.instructions['instructions']['channel_bathymetry']['width_centre_smoothing']
@@ -642,11 +643,12 @@ class RiverBathymetryGenerator():
                                                                          threshold=bank_threshold,
                                                                          transect_radius=corridor_radius,
                                                                          search_radius=rec_alignment_tolerance,
-                                                                         min_channel_width=min_channel_width)
+                                                                         min_channel_width=min_channel_width,
+                                                                         max_threshold=max_bank_height)
 
             transect_widths = geopandas.GeoDataFrame(geometry=transects['width_line'], crs=transects.crs)
             transect_widths.to_file(local_cache / "final_widths.geojson")
-            transects[['geometry']].to_file(local_cache / "final_transects.geojson")
+            transects[['geometry', 'channel_count']].to_file(local_cache / "final_transects.geojson")
             columns = ['geometry']
             columns.extend([column_name for column_name in transects.columns
                             if 'slope' in column_name or 'widths' in column_name
