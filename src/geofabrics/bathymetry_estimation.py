@@ -820,7 +820,7 @@ class ChannelBathymetry:
             # Get width based on fixed threshold
             start_i, stop_i, channel_count = self.fixed_threshold_width(
                 gnd_samples=gnd_samples,
-                veg_samples=gnd_samples,
+                veg_samples=veg_samples,
                 start_index=start_index,
                 z_water=z_water,
                 threshold=threshold,
@@ -832,21 +832,18 @@ class ChannelBathymetry:
             if numpy.isnan(start_i) or numpy.isnan(stop_i):
                 dz_bankfull = numpy.nan
             else:
-                z_bankfull = numpy.nanmin([gnd_samples[start_i], gnd_samples[stop_i]]) \
-                    if not numpy.isnan([gnd_samples[start_i], gnd_samples[stop_i]]).all() \
-                    else threshold + z_water
+                z_bankfull = threshold + z_water
                 start_i_bf = start_i
                 stop_i_bf = stop_i
                 dwidth = 1
 
-                while start_i_bf > 0 and stop_i_bf < self.number_of_samples - 1 \
-                        and z_bankfull < maximum_z and dwidth > 0:
+                while start_i_bf > 0 and stop_i_bf < self.number_of_samples - 1 and dwidth > 0:
                     dwidth = 0
 
                     # break if going down
-                    if gnd_samples[start_i_bf - 1] < z_bankfull or veg_samples[start_i_bf - 1] < z_bankfull:
+                    if gnd_samples[start_i_bf] < z_bankfull or veg_samples[start_i_bf] < z_bankfull:
                         break
-                    if gnd_samples[stop_i_bf + 1] < z_bankfull or veg_samples[start_i_bf + 1] < z_bankfull:
+                    if gnd_samples[stop_i_bf] < z_bankfull or veg_samples[start_i_bf] < z_bankfull:
                         break
 
                     # if not, extend whichever bank is lower
@@ -866,25 +863,24 @@ class ChannelBathymetry:
                             start_i_bf -= 1
                             dwidth += 1
                         elif numpy.isnan(gnd_samples[start_i_bf - 1]) \
-                                and veg_samples[start_i_bf - 1] < z_water + maximum_threshold:
+                                and veg_samples[start_i_bf - 1] < maximum_z:
                             start_i_bf -= 1
                             dwidth += 1
                         if numpy.isnan(gnd_samples[stop_i_bf + 1]) and numpy.isnan(veg_samples[start_i_bf + 1]):
                             stop_i_bf += 1
                             dwidth += 1
                         elif numpy.isnan(gnd_samples[start_i_bf + 1]) \
-                                and veg_samples[start_i_bf + 1] < z_water + maximum_threshold:
+                                and veg_samples[start_i_bf + 1] < maximum_z:
                             stop_i_bf += 1
                             dwidth += 1
 
                     # Break if the threshold has been meet before updating maz_z
-                    if gnd_samples[start_i_bf] >= z_water + maximum_threshold \
-                            or gnd_samples[stop_i_bf] >= z_water + maximum_threshold:
+                    if gnd_samples[start_i_bf] >= maximum_z or gnd_samples[stop_i_bf] >= maximum_z:
                         break
                     # Break if ground is nan and the vegetation is over the limit
-                    if numpy.isnan(gnd_samples[start_i_bf]) and veg_samples[start_i_bf] >= z_water + maximum_threshold:
+                    if numpy.isnan(gnd_samples[start_i_bf]) and veg_samples[start_i_bf] >= maximum_z:
                         break
-                    if numpy.isnan(gnd_samples[stop_i_bf]) and veg_samples[stop_i_bf] >= z_water + maximum_threshold:
+                    if numpy.isnan(gnd_samples[stop_i_bf]) and veg_samples[stop_i_bf] >= maximum_z:
                         break
 
                     # update maximum value so far
@@ -896,7 +892,7 @@ class ChannelBathymetry:
 
                 # set to nan if either end of the cross section has been reached
                 if start_i_bf <= 0 or stop_i >= self.number_of_samples - 1:
-                    dz_bankfull = threshold
+                    dz_bankfull = numpy.nan
                     start_i = numpy.nan
                     stop_i = numpy.nan
                 else:
