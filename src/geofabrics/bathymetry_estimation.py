@@ -830,7 +830,7 @@ class ChannelBathymetry:
             # Iterate out from the fixed threshold width until the banks go down, or the max threshold is reached
             maximum_z = z_water + maximum_threshold
             if numpy.isnan(start_i) or numpy.isnan(stop_i):
-                dz_bankfull = threshold
+                dz_bankfull = numpy.nan
             else:
                 z_bankfull = numpy.nanmin([gnd_samples[start_i], gnd_samples[stop_i]]) \
                     if not numpy.isnan([gnd_samples[start_i], gnd_samples[stop_i]]).all() \
@@ -1045,24 +1045,18 @@ class ChannelBathymetry:
                 # work forward checking height
                 if start_index + i < self.number_of_samples and numpy.isnan(stop_i):
                     gnd_elevation_over_minimum = gnd_samples[start_index + i] - z_water
-                    veg_elevation_over_minimum = veg_samples[start_index + i] - z_water
 
                     # Detect banks - either ground above threshold, or no ground with vegetation over threshold
-                    if numpy.isnan(stop_i) and (gnd_elevation_over_minimum > threshold
-                                                or (numpy.isnan(gnd_elevation_over_minimum)
-                                                    and veg_elevation_over_minimum > threshold)):
+                    if numpy.isnan(stop_i) and gnd_elevation_over_minimum > threshold:
                         # Leaving the channel
                         stop_i = start_index + i
 
                 # work backward checking height
                 if start_index - i >= 0 and numpy.isnan(start_i):
                     gnd_elevation_over_minimum = gnd_samples[start_index - i] - z_water
-                    veg_elevation_over_minimum = veg_samples[start_index - i] - z_water
 
                     # Detect bank
-                    if numpy.isnan(start_i) and (gnd_elevation_over_minimum > threshold
-                                                 or (numpy.isnan(gnd_elevation_over_minimum)
-                                                     and veg_elevation_over_minimum > threshold)):
+                    if numpy.isnan(start_i) and gnd_elevation_over_minimum > threshold:
                         # Leaving the channel
                         start_i = start_index - i
 
@@ -1072,9 +1066,9 @@ class ChannelBathymetry:
                 # break if both ends of the sampled cross section reached
                 if start_index + i >= self.number_of_samples and start_index - i < 0:
                     if numpy.isnan(start_i):
-                        start_i = -1
+                        start_i = 0
                     if numpy.isnan(stop_i):
-                        stop_i = self.number_of_samples
+                        stop_i = self.number_of_samples - 1
                     break
 
         return start_i, stop_i
@@ -1105,37 +1099,19 @@ class ChannelBathymetry:
             The maximum index to search through
         """
 
-        start_i = numpy.nan
-        stop_i = numpy.nan
+        for i in numpy.arange(start_index, stop_index + 1, 1):
 
-        for i in numpy.arange(start_index, self.number_of_samples, 1):
-
-            # work forward checking height
-            gnd_elevation_over_minimum = gnd_samples[i] - z_water
-            veg_elevation_over_minimum = veg_samples[i] - z_water
-
-            # Detect banks
-            if numpy.isnan(start_i) and \
-                (gnd_elevation_over_minimum < threshold or veg_elevation_over_minimum < threshold
-                 or (numpy.isnan(gnd_samples[i]) and numpy.isnan(veg_samples[i]))):
-                # Entering the channel
-                start_i = i - 1
-            if numpy.isnan(stop_i) and not numpy.isnan(start_i) and \
-                    (gnd_elevation_over_minimum > threshold or (numpy.isnan(gnd_samples[i])
-                                                                and veg_elevation_over_minimum > threshold)):
-                # Leaving the channel
-                stop_i = i
+            # check if in channel
+            start_i, stop_i = self.fixed_threshold_width_outwards(
+                gnd_samples=gnd_samples,
+                veg_samples=veg_samples,
+                start_index=i,
+                z_water=z_water,
+                threshold=threshold)
 
             # break if both edges detected
             if not numpy.isnan(start_i) and not numpy.isnan(stop_i):
                 break
-            # break if the first edge is not detected in the search range
-            if numpy.isnan(start_i) and i > stop_index:
-                break
-
-        # Set to max if the channel end is not yet reached
-        if not numpy.isnan(start_i) and numpy.isnan(stop_i):
-            stop_i = self.number_of_samples
 
         return start_i, stop_i
 
@@ -1168,33 +1144,19 @@ class ChannelBathymetry:
         start_i = numpy.nan
         stop_i = numpy.nan
 
-        for i in numpy.arange(start_index, -1, -1):
+        for i in numpy.arange(start_index, stop_index - 1, -1):
 
-            # work forward checking height
-            gnd_elevation_over_minimum = gnd_samples[i] - z_water
-            veg_elevation_over_minimum = veg_samples[i] - z_water
-
-            # Detect banks
-            if numpy.isnan(stop_i) and \
-                (gnd_elevation_over_minimum < threshold or veg_elevation_over_minimum < threshold
-                 or (numpy.isnan(gnd_samples[i]) and numpy.isnan(veg_samples[i]))):
-                # Entering the channel backwards
-                stop_i = i + 1
-            if numpy.isnan(start_i) and not numpy.isnan(stop_i) and \
-                    (gnd_elevation_over_minimum > threshold or (numpy.isnan(gnd_samples[i])
-                                                                and veg_elevation_over_minimum > threshold)):
-                # Leaving the channel backwards
-                start_i = i
+            # Check if in channel
+            start_i, stop_i = self.fixed_threshold_width_outwards(
+                gnd_samples=gnd_samples,
+                veg_samples=veg_samples,
+                start_index=i,
+                z_water=z_water,
+                threshold=threshold)
 
             # break if both edges detected
             if not numpy.isnan(start_i) and not numpy.isnan(stop_i):
                 break
-            # break if the first edge is not detected in the search range
-            if numpy.isnan(stop_i) and i < stop_index:
-                break
-        # Set to min if the channel start is not yet reached
-        if numpy.isnan(start_i) and not numpy.isnan(stop_i):
-            start_i = -1
 
         return start_i, stop_i
 
