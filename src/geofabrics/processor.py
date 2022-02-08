@@ -648,6 +648,11 @@ class RiverBathymetryGenerator():
 
             transect_widths = geopandas.GeoDataFrame(geometry=transects['width_line'], crs=transects.crs)
             transect_widths.to_file(local_cache / "final_widths.geojson")
+            # Replace the below with a polygon fit to a spline from the 'good'
+            # width estimates of each bank from the 'flat river' initial width estimates
+            transect_widths['combine'] = True
+            transect_widths.dissolve('combine').buffer(transect_spacing).buffer(
+                -transect_spacing).to_file(local_cache / ("flat_water_polygon.geojson"))
             transects[['geometry', 'channel_count']].to_file(local_cache / "final_transects.geojson")
             columns = ['geometry']
             columns.extend([column_name for column_name in transects.columns
@@ -660,9 +665,3 @@ class RiverBathymetryGenerator():
         # Update parameter file - in time only update the bits that have been re-run
         with open(instruction_parameters, 'w') as file_pointer:
             json.dump(self.instructions, file_pointer)
-
-        # Estimate slope from the samples
-
-        # Estimate the width from the samples
-
-        # Regularise and save out the estimates
