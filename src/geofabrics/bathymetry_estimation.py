@@ -145,20 +145,7 @@ class Channel:
                                                 crs=self.channel.crs)
         return spline_channel
 
-    def get_smoothed_spline_fit_df(self, smoothing_multiplier) -> geopandas.GeoDataFrame:
-        """ Return the spline smoothed aligned_centreline sampled at the
-        resolution.
-        """
-
-        xy_T = self.get_smoothed_spline_fit_array(
-            smoothing_multiplier=smoothing_multiplier)
-        spline_channel = shapely.geometry.LineString(xy_T)
-        spline_channel = geopandas.GeoDataFrame(geometry=[spline_channel],
-                                                crs=self.channel.crs)
-
-        return spline_channel
-
-    def get_smoothed_spline_fit_array(self, smoothing_multiplier) -> numpy.ndarray:
+    def get_smoothed_spline_fit(self, smoothing_multiplier) -> numpy.ndarray:
         """ Return the spline smoothed aligned_centreline sampled at the
         resolution.
         """
@@ -1277,7 +1264,7 @@ class ChannelBathymetry:
         start_xy = start_xy[numpy.isnan(start_xy).any(axis=1) == False]
         start_xy = geopandas.GeoDataFrame(geometry=[shapely.geometry.LineString(start_xy)], crs=transects.crs)
         start_xy = Channel(start_xy, resolution=self.transect_spacing)
-        start_xy_spline = start_xy.get_smoothed_spline_fit_array(smoothing_multiplier)
+        start_xy_spline = start_xy.get_smoothed_spline_fit(smoothing_multiplier)
 
         # Get the 'flat water' last bank - +1 to move just inwards
         bank_offset = self.resolution * (transects.loc[channel_mask, 'last_flat_bank_i'] - 1 - self.centre_index)
@@ -1287,7 +1274,7 @@ class ChannelBathymetry:
         stop_xy = stop_xy[numpy.isnan(stop_xy).any(axis=1) == False]
         stop_xy = geopandas.GeoDataFrame(geometry=[shapely.geometry.LineString(stop_xy)], crs=transects.crs)
         stop_xy = Channel(stop_xy, resolution=self.transect_spacing)
-        stop_xy_spline = stop_xy.get_smoothed_spline_fit_array(smoothing_multiplier)
+        stop_xy_spline = stop_xy.get_smoothed_spline_fit(smoothing_multiplier)
 
         flat_xy = numpy.concatenate([start_xy_spline, stop_xy_spline[::-1]])
         flat_water_polygon = geopandas.GeoDataFrame(geometry=[shapely.geometry.Polygon(flat_xy)],
@@ -1318,111 +1305,24 @@ class ChannelBathymetry:
         widths_centre_offset = self.resolution * (
             (transects.loc[channel_mask, 'first_bank_i']
              + transects.loc[channel_mask, 'last_bank_i']) / 2 - self.centre_index)
+
+        # Calculate the location of the centre point between the banks
         widths_centre_xy = numpy.vstack(
             [(transects.loc[channel_mask, 'mid_x']
               + widths_centre_offset * transects.loc[channel_mask, 'nx']).array,
              (transects.loc[channel_mask, 'mid_y']
               + widths_centre_offset * transects.loc[channel_mask, 'ny']).array]).T
         widths_centre_xy = widths_centre_xy[numpy.isnan(widths_centre_xy).any(axis=1) == False]
+
+        # Fit a spline to the centre points
         widths_centre_line = geopandas.GeoDataFrame(geometry=[shapely.geometry.LineString(widths_centre_xy)],
                                                     crs=transects.crs)
         widths_centre_line = Channel(widths_centre_line, resolution=self.transect_spacing)
 
-        aligned_spline = widths_centre_line.get_smoothed_spline_fit_df(smoothing_multiplier)
+        aligned_spline = widths_centre_line.get_smoothed_spline_fit(smoothing_multiplier)
+        aligned_spline = geopandas.GeoDataFrame(geometry=[shapely.geometry.LineString(aligned_spline)],
+                                                crs=self.channel.crs)
         return aligned_spline
-
-    def _centreline_from_min_z(self, transects: geopandas.GeoDataFrame,
-                               smoothing_multiplier: float):
-        """ Fit a spline through the near min z along the transect with a healthy dose of
-        smoothing.
-
-        Parameters
-        ----------
-
-        transects
-            The transects with geometry defined as polylines with width
-            estimates.
-        smoothing_multiplier
-            The smoothing multiplier to apply to the spline fit.
-        """
-
-        # Calculate the offset distance between the transect and width centres
-        min_centre_xy = numpy.vstack([transects['min_x_centre'].array, transects['min_y_centre'].array]).T
-        min_centre_xy = min_centre_xy[numpy.isnan(min_centre_xy).any(axis=1) == False]
-        min_centre_line = geopandas.GeoDataFrame(geometry=[shapely.geometry.LineString(min_centre_xy)],
-                                                 crs=transects.crs)
-        min_centre_line = Channel(min_centre_line, resolution=self.transect_spacing)
-
-        min_centre_spline = min_centre_line.get_smoothed_spline_fit_df(smoothing_multiplier)
-        return min_centre_spline
-
-    def _transect_and_spline_intersection(self, transects: geopandas.GeoDataFrame,
-                                          spline: geopandas.GeoDataFrame,
-                                          entry_name: str):
-        """ Find the nearest index of intersection between each transect
-        profile and the spline. Save the index values in transect.
-
-        Parameters
-        ----------
-
-        transects
-            The transects with geometry defined as polylines with width
-            estimates.
-        spline
-            The spline line.
-        entry_name
-            The name to save the intersection index under
-        """
-        assert len(spline) == 1, "Expect only one spline entry"
-        spline_line = spline.geometry.iloc[0]
-
-        def spline_transect_intersection_index(spline_line,
-                                               transect,
-                                               midpoint,
-                                               nx,
-                                               ny,
-                                               centre_index,
-                                               resolution):
-            """ Calculate the intersection index of a spline and the transect.
-            """
-            if spline_line.intersects(transect):
-                # find where the spline intersects the transect line
-                intersection_point = spline_line.intersection(transect)
-                if type(intersection_point) == shapely.geometry.MultiPoint:
-                    # Take the point nearest to the centre if their are multiple intesections
-                    offset_distance = numpy.inf
-                    offset = []
-                    for point in intersection_point:
-                        point_offset = [point.x - midpoint.x,
-                                        point.y - midpoint.y]
-                        point_distance = numpy.sqrt(point_offset[0] ** 2 + point_offset[1] ** 2)
-                        if point_distance < offset_distance:
-                            offset = point_offset
-                            offset_distance = point_distance
-                else:
-                    # Otherswise do the same calculations
-                    offset = [intersection_point.x - midpoint.x,
-                              intersection_point.y - midpoint.y]
-                    offset_distance = numpy.sqrt(offset[0] ** 2 + offset[1] ** 2)
-
-                # decide if counting up or down
-                if (numpy.sign(nx) == numpy.sign(offset[0]) and nx != 0) \
-                        or (numpy.sign(ny) == numpy.sign(offset[1]) and ny != 0):
-                    direction = +1
-                else:
-                    direction = -1
-                index = centre_index + direction * round(offset_distance / resolution)
-            else:
-                index = numpy.nan
-            return index
-        transects[entry_name] = transects.apply(lambda row:
-                                                spline_transect_intersection_index(spline_line,
-                                                                                   row['geometry'],
-                                                                                   row['midpoint'],
-                                                                                   row['nx'],
-                                                                                   row['ny'],
-                                                                                   self.centre_index,
-                                                                                   self.resolution), axis=1)
 
     def _unimodal_smoothing(self, y: numpy.ndarray):
         """ Fit a monotonically increasing cublic spline to the data.
