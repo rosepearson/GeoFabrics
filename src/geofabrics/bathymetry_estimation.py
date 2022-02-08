@@ -145,7 +145,20 @@ class Channel:
                                                 crs=self.channel.crs)
         return spline_channel
 
-    def get_smoothed_spline_fit(self, smoothing_multiplier) -> numpy.ndarray:
+    def get_smoothed_spline_fit_df(self, smoothing_multiplier) -> geopandas.GeoDataFrame:
+        """ Return the spline smoothed aligned_centreline sampled at the
+        resolution.
+        """
+
+        xy_T = self.get_smoothed_spline_fit_array(
+            smoothing_multiplier=smoothing_multiplier)
+        spline_channel = shapely.geometry.LineString(xy_T)
+        spline_channel = geopandas.GeoDataFrame(geometry=[spline_channel],
+                                                crs=self.channel.crs)
+
+        return spline_channel
+
+    def get_smoothed_spline_fit_array(self, smoothing_multiplier) -> numpy.ndarray:
         """ Return the spline smoothed aligned_centreline sampled at the
         resolution.
         """
@@ -153,11 +166,8 @@ class Channel:
         xy = self._get_corner_points(channel=self.channel,
                                      sampling_direction=self.sampling_direction)
         xy = self._fit_spline_through_xy(xy, smoothing_multiplier)
-        spline_channel = shapely.geometry.LineString(xy.T)
-        spline_channel = geopandas.GeoDataFrame(geometry=[spline_channel],
-                                                crs=self.channel.crs)
 
-        return spline_channel
+        return xy.T
 
     def get_channel_catchment(self,
                               corridor_radius: float):
@@ -806,7 +816,7 @@ class ChannelBathymetry:
         print(f'search radius index = {search_radius_index}')
         widths = {'widths': [], 'first_bank': [], 'last_bank': [],
                   'first_bank_i': [], 'last_bank_i': [], 'threshold': [],
-                  'channel_count': []}
+                  'channel_count': [], 'first_flat_bank_i': [], 'last_flat_bank_i': []}
 
         for j in range(len(sampled_elevations['gnd_elevations'])):
 
@@ -826,6 +836,9 @@ class ChannelBathymetry:
                 threshold=threshold,
                 search_radius_index=search_radius_index,
                 min_channel_width=min_channel_width)
+
+            widths['first_flat_bank_i'].append(start_i)
+            widths['last_flat_bank_i'].append(stop_i)
 
             # Iterate out from the fixed threshold width until the banks go down, or the max threshold is reached
             maximum_z = z_water + maximum_threshold
@@ -1237,8 +1250,52 @@ class ChannelBathymetry:
             transects[slope_columns].plot(ax=ax)
         matplotlib.pyplot.ylim((0, None))
 
+    def _create_flat_water_polygon(self, transects: geopandas.GeoDataFrame,
+                                         smoothing_multiplier):
+        """ Create a polygon of the flat water from spline's of each bank.
+
+        Parameters
+        ----------
+
+        transects
+            The transects with geometry defined as polylines with width
+            estimates.
+        smoothing_multiplier
+            The smoothing multiplier to apply to the spline fit.
+        """
+
+        # Create a single clear channel mask
+        channel_mask = transects['channel_count'] == 1
+        channel_mask &= transects['first_flat_bank_i'] > 0
+        channel_mask &= transects['last_flat_bank_i'] < self.number_of_samples - 1
+
+        # Get the 'flat water' first bank - +1 to move just inwards
+        bank_offset = self.resolution * (transects.loc[channel_mask, 'first_flat_bank_i'] + 1 - self.centre_index)
+        start_xy = numpy.vstack(
+            [(transects.loc[channel_mask, 'mid_x'] + transects.loc[channel_mask, 'nx'] * bank_offset).array,
+             (transects.loc[channel_mask, 'mid_y'] + transects.loc[channel_mask, 'ny'] * bank_offset).array]).T
+        start_xy = start_xy[numpy.isnan(start_xy).any(axis=1) == False]
+        start_xy = geopandas.GeoDataFrame(geometry=[shapely.geometry.LineString(start_xy)], crs=transects.crs)
+        start_xy = Channel(start_xy, resolution=self.transect_spacing)
+        start_xy_spline = start_xy.get_smoothed_spline_fit_array(smoothing_multiplier)
+
+        # Get the 'flat water' last bank - +1 to move just inwards
+        bank_offset = self.resolution * (transects.loc[channel_mask, 'last_flat_bank_i'] - 1 - self.centre_index)
+        stop_xy = numpy.vstack(
+            [(transects.loc[channel_mask, 'mid_x'] + bank_offset * transects.loc[channel_mask, 'nx']).array,
+             (transects.loc[channel_mask, 'mid_y'] + bank_offset * transects.loc[channel_mask, 'ny']).array]).T
+        stop_xy = stop_xy[numpy.isnan(stop_xy).any(axis=1) == False]
+        stop_xy = geopandas.GeoDataFrame(geometry=[shapely.geometry.LineString(stop_xy)], crs=transects.crs)
+        stop_xy = Channel(stop_xy, resolution=self.transect_spacing)
+        stop_xy_spline = stop_xy.get_smoothed_spline_fit_array(smoothing_multiplier)
+
+        flat_xy = numpy.concatenate([start_xy_spline, stop_xy_spline[::-1]])
+        flat_water_polygon = geopandas.GeoDataFrame(geometry=[shapely.geometry.Polygon(flat_xy)],
+                                                    crs=transects.crs)
+        return flat_water_polygon
+
     def _centreline_from_width_spline(self, transects: geopandas.GeoDataFrame,
-                                      smoothing_multiplier):
+                                            smoothing_multiplier):
         """ Fit a spline through the width centres with a healthy dose of
         smoothing.
 
@@ -1271,7 +1328,7 @@ class ChannelBathymetry:
                                                     crs=transects.crs)
         widths_centre_line = Channel(widths_centre_line, resolution=self.transect_spacing)
 
-        aligned_spline = widths_centre_line.get_smoothed_spline_fit(smoothing_multiplier)
+        aligned_spline = widths_centre_line.get_smoothed_spline_fit_df(smoothing_multiplier)
         return aligned_spline
 
     def _centreline_from_min_z(self, transects: geopandas.GeoDataFrame,
@@ -1296,7 +1353,7 @@ class ChannelBathymetry:
                                                  crs=transects.crs)
         min_centre_line = Channel(min_centre_line, resolution=self.transect_spacing)
 
-        min_centre_spline = min_centre_line.get_smoothed_spline_fit(smoothing_multiplier)
+        min_centre_spline = min_centre_line.get_smoothed_spline_fit_df(smoothing_multiplier)
         return min_centre_spline
 
     def _transect_and_spline_intersection(self, transects: geopandas.GeoDataFrame,
@@ -1559,6 +1616,9 @@ class ChannelBathymetry:
             maximum_threshold=max_threshold,
             min_channel_width=min_channel_width)
 
+        # generate a flat water polygon
+        river_polygon = self._create_flat_water_polygon(transects=transects, smoothing_multiplier=10)
+
         # Width smoothing - either from polygon if good enough, or function fit to aligned_widths_outward
         widths_no_nan = transects['widths'].interpolate('index', limit_direction='both')
         for smoothing_distance in [150, 200, 250, 2000, 3000]:
@@ -1588,4 +1648,4 @@ class ChannelBathymetry:
                            include_transects=False)
 
         # Return results for now
-        return transects
+        return transects, river_polygon

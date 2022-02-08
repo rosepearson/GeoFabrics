@@ -639,20 +639,17 @@ class RiverBathymetryGenerator():
             print("Calculating the final widths.")
 
             corridor_radius = max_channel_width / 2 + buffer
-            transects = self.channel_bathymetry.estimate_width_and_slope(aligned_channel=aligned_channel,
-                                                                         threshold=bank_threshold,
-                                                                         transect_radius=corridor_radius,
-                                                                         search_radius=rec_alignment_tolerance,
-                                                                         min_channel_width=min_channel_width,
-                                                                         max_threshold=max_bank_height)
+            transects, river_polygon = self.channel_bathymetry.estimate_width_and_slope(
+                aligned_channel=aligned_channel,
+                threshold=bank_threshold,
+                transect_radius=corridor_radius,
+                search_radius=rec_alignment_tolerance,
+                min_channel_width=min_channel_width,
+                max_threshold=max_bank_height)
 
             transect_widths = geopandas.GeoDataFrame(geometry=transects['width_line'], crs=transects.crs)
             transect_widths.to_file(local_cache / "final_widths.geojson")
-            # Replace the below with a polygon fit to a spline from the 'good'
-            # width estimates of each bank from the 'flat river' initial width estimates
-            transect_widths['combine'] = True
-            transect_widths.dissolve('combine').buffer(transect_spacing).buffer(
-                -transect_spacing).to_file(local_cache / ("flat_water_polygon.geojson"))
+            river_polygon.to_file(local_cache / ("flat_water_polygon.geojson"))
             transects[['geometry', 'channel_count']].to_file(local_cache / "final_transects.geojson")
             columns = ['geometry']
             columns.extend([column_name for column_name in transects.columns
