@@ -365,7 +365,6 @@ class ChannelBathymetry:
         """
 
         self.channel = channel
-        self.aligned_channel = None
         self.dem = dem
         self.veg_dem = veg_dem
         self.transect_spacing = transect_spacing
@@ -570,14 +569,6 @@ class ChannelBathymetry:
             The sampled values along each transect
         """
 
-        # water surface - including monotonically increasing splines fit
-        transects['min_z'] = transect_samples['min_z']
-        '''transects['min_z_unimodal'] = self._unimodal_smoothing(transects['min_z'])
-        transects['min_z_savgol'] = scipy.signal.savgol_filter(
-            transects['min_z'].interpolate('index', limit_direction='both'),
-            int(smoothing_samples / 2) * 2 + 1,  # Must be odd - number of samples to include
-            3)'''
-
         # Min z values as the water surface. Ensure no NaN
         transects['min_z_centre'] = transect_samples['min_z_centre']
         transects['min_z_centre'] = transects['min_z_centre'].interpolate('index', limit_direction='both')
@@ -647,10 +638,7 @@ class ChannelBathymetry:
         min_z_stop_i = self.calculate_min_z_stop_i(min_z_search_radius)
 
         transect_samples = {'gnd_elevations': [], 'veg_elevations': [],
-                            'xx': [], 'yy': [], 'min_z': [],
-                            'min_i': [], 'min_xy': [], 'min_z_centre': [],
-                            'min_i_centre': [], 'min_xy_centre': [],
-                            'min_x_centre': [], 'min_y_centre': []}
+                            'xx': [], 'yy': [], 'min_z_centre': []}
 
         # create tree of ground values to sample from
         grid_x, grid_y = numpy.meshgrid(self.dem.x, self.dem.y)
@@ -682,34 +670,13 @@ class ChannelBathymetry:
             elevations = self.dem.data.flatten()[indices]
             transect_samples['gnd_elevations'].append(elevations)
 
-            # Find the min elevation and index of it along each cross section
-            if len(elevations) - numpy.sum(numpy.isnan(elevations)) > 0:
-                min_index = numpy.nanargmin(elevations)
-                transect_samples['min_z'].append(elevations[min_index])
-                transect_samples['min_i'].append(min_index)
-                transect_samples['min_xy'].append(shapely.geometry.Point(xy_points[min_index]))
-            else:
-                transect_samples['min_z'].append(numpy.nan)
-                transect_samples['min_i'].append(numpy.nan)
-                transect_samples['min_xy'].append(shapely.geometry.Point([numpy.nan,
-                                                                          numpy.nan]))
-
-            # Find the min of just the centre 1/3 of samples
+            # Find the min elevation along the middle of each cross section
             if len(elevations[min_z_start_i:min_z_stop_i]) \
                     - numpy.sum(numpy.isnan(elevations[min_z_start_i:min_z_stop_i])) > 0:
                 min_index = numpy.nanargmin(elevations[min_z_start_i:min_z_stop_i])
                 transect_samples['min_z_centre'].append(elevations[min_z_start_i + min_index])
-                transect_samples['min_i_centre'].append(min_z_start_i + min_index)
-                transect_samples['min_xy_centre'].append(shapely.geometry.Point(xy_points[min_z_start_i
-                                                                                          + min_index]))
-                transect_samples['min_x_centre'].append(xy_points[min_z_start_i + min_index, 0])
-                transect_samples['min_y_centre'].append(xy_points[min_z_start_i + min_index, 1])
             else:
                 transect_samples['min_z_centre'].append(numpy.nan)
-                transect_samples['min_i_centre'].append(numpy.nan)
-                transect_samples['min_xy_centre'].append(shapely.geometry.Point([numpy.nan, numpy.nan]))
-                transect_samples['min_x_centre'].append(numpy.nan)
-                transect_samples['min_y_centre'].append(numpy.nan)
 
         return transect_samples
 
@@ -1418,16 +1385,6 @@ class ChannelBathymetry:
         # Sample along transects
         transect_samples = self.sample_from_transects(transects=transects,
                                                       min_z_search_radius=search_radius)
-
-        # record min_i and min_xy
-        transects['min_i'] = transect_samples['min_i']
-        transects['min_xy'] = transect_samples['min_xy']
-        transects['min_i_centre'] = transect_samples['min_i_centre']
-        transects['min_xy_centre'] = transect_samples['min_xy_centre']
-
-        # Create a new centreline estimate from a spline through the near min z
-        transects['min_x_centre'] = transect_samples['min_x_centre']
-        transects['min_y_centre'] = transect_samples['min_y_centre']
 
         # Estimate water surface level and slope - Smooth slope upstream over 1km
         self._estimate_water_level_and_slope(transects=transects,
