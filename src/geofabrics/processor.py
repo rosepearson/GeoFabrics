@@ -567,7 +567,7 @@ class RiverBathymetryGenerator():
         if not dem_file.is_file():
             # Create the ground DEM file if this has not be created yet!
             print("No gnd DEM along the channel. Generating a DEM.")
-            if not pathlib.Path(self.instructions['instructions']['data_paths']['catchment_boundary']).is_file():
+            if not catchment_file.is_file():
                 corridor_radius = max_channel_width / 2 + rec_alignment_tolerance + buffer
                 channel_catchment = channel.get_channel_catchment(corridor_radius=corridor_radius)
                 channel_catchment.to_file(self.instructions['instructions']['data_paths']['catchment_boundary'])

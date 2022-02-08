@@ -1060,7 +1060,7 @@ class ChannelBathymetry:
                 if not numpy.isnan(start_i) and not numpy.isnan(stop_i):
                     break
                 # break if both ends of the sampled cross section reached
-                if start_index + i >= self.number_of_samples and start_index - i < 0:
+                if start_index + i >= self.number_of_samples - 1 and start_index - i <= 0:
                     if numpy.isnan(start_i):
                         start_i = 0
                     if numpy.isnan(stop_i):
@@ -1254,6 +1254,8 @@ class ChannelBathymetry:
 
         # Create a single clear channel mask
         channel_mask = transects['channel_count'] == 1
+        channel_mask &= transects['first_bank_i'] > 0
+        channel_mask &= transects['last_bank_i'] < self.number_of_samples - 1
 
         # Calculate the offset distance between the transect and width centres
         widths_centre_offset = self.resolution * (
