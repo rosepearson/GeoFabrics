@@ -796,7 +796,7 @@ class ChannelBathymetry:
             if numpy.isnan(start_i) or numpy.isnan(stop_i):
                 dz_bankfull = numpy.nan
             else:
-                z_bankfull = threshold + z_water
+                z_bankfull = numpy.nanmin(gnd_samples[[start_i, stop_i]])
                 start_i_bf = start_i
                 stop_i_bf = stop_i
                 dwidth = 1
@@ -848,11 +848,10 @@ class ChannelBathymetry:
                         break
 
                     # update maximum value so far
-                    if not numpy.isnan([gnd_samples[start_i_bf], gnd_samples[stop_i_bf], veg_samples[start_i_bf], veg_samples[stop_i_bf]]).all() \
-                            and numpy.nanmin([gnd_samples[start_i_bf], gnd_samples[stop_i_bf],
-                                              veg_samples[start_i_bf], veg_samples[stop_i_bf]]) > z_bankfull:
-                        z_bankfull = numpy.nanmin([gnd_samples[start_i_bf], gnd_samples[stop_i_bf],
-                                                   veg_samples[start_i_bf], veg_samples[stop_i_bf]])
+                    if not numpy.isnan([gnd_samples[start_i_bf], gnd_samples[stop_i_bf],
+                                        veg_samples[start_i_bf], veg_samples[stop_i_bf]]).all():
+                        z_bankfull = max(z_bankfull, numpy.nanmin([gnd_samples[start_i_bf], gnd_samples[stop_i_bf],
+                                                                   veg_samples[start_i_bf], veg_samples[stop_i_bf]]))
 
                 # set to nan if either end of the cross section has been reached
                 if start_i_bf <= 0 or stop_i >= self.number_of_samples - 1:
@@ -878,7 +877,7 @@ class ChannelBathymetry:
         valid_mask = transects['channel_count'] == 1
         valid_mask &= transects['first_bank_i'] > 0
         valid_mask &= transects['last_bank_i'] < self.number_of_samples - 1
-        valid_mask &= transects['threshold'] <= maximum_threshold
+        valid_mask &= transects['threshold'] < maximum_threshold
         transects['valid'] = valid_mask
 
     def fixed_threshold_width(self,
