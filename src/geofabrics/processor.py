@@ -625,10 +625,6 @@ class RiverBathymetryGenerator():
             aligned_channel.to_file(aligned_channel_file)
             geopandas.GeoDataFrame(geometry=transects['width_line'],
                                    crs=transects.crs).to_file(local_cache / "intial_widths.geojson")
-            geopandas.GeoDataFrame(geometry=transects['min_xy'],
-                                   crs=transects.crs).to_file(local_cache / "min_xy.geojson")
-            geopandas.GeoDataFrame(geometry=transects['min_xy_centre'],
-                                   crs=transects.crs).to_file(local_cache / "min_xy_centre.geojson")
             transects[['geometry', 'channel_count']].to_file(local_cache / "transects.geojson")
         else:
             print("Channel already aligned and loaded in.")
