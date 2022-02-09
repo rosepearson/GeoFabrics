@@ -437,7 +437,6 @@ class ChannelBathymetry:
         transects_dict = {'geometry': [],
                           'nx': [],
                           'ny': [],
-                          'midpoint': [],
                           'length': [],
                           'mid_x': [],
                           'mid_y': []}
@@ -447,9 +446,6 @@ class ChannelBathymetry:
 
         (x_array, y_array) = sampled_channel.iloc[0].geometry.xy
         for i in range(len(x_array)):
-
-            # define transect midpoint - point on channel reach
-            midpoint = shapely.geometry.Point([x_array[i], y_array[i]])
 
             # caclulate slope along segment
             if i == 0:
@@ -479,14 +475,13 @@ class ChannelBathymetry:
 
             # calculate transect - using effectively nx and ny
             transects_dict['geometry'].append(shapely.geometry.LineString([
-                [midpoint.x - self.transect_radius * normal_x,
-                 midpoint.y - self.transect_radius * normal_y],
-                midpoint,
-                [midpoint.x + self.transect_radius * normal_x,
-                 midpoint.y + self.transect_radius * normal_y]]))
-            transects_dict['midpoint'].append(midpoint)
-            transects_dict['mid_x'].append(midpoint.x)
-            transects_dict['mid_y'].append(midpoint.y)
+                [x_array[i] - self.transect_radius * normal_x,
+                 y_array[i] - self.transect_radius * normal_y],
+                [x_array[i], y_array[i]],
+                [x_array[i] + self.transect_radius * normal_x,
+                 y_array[i] + self.transect_radius * normal_y]]))
+            transects_dict['mid_x'].append(x_array[i])
+            transects_dict['mid_y'].append(y_array[i])
 
             # record the length of the line segment
             transects_dict['length'].append(length)
@@ -510,7 +505,6 @@ class ChannelBathymetry:
         transects_dict = {'geometry': [],
                           'nx': [],
                           'ny': [],
-                          'midpoint': [],
                           'length': [],
                           'mid_x': [],
                           'mid_y': []}
@@ -522,8 +516,8 @@ class ChannelBathymetry:
         for i in range(len(x_array) - 1):
 
             # calculate midpoint
-            midpoint = [(x_array[i] + x_array[i+1])/2,
-                        (y_array[i] + y_array[i+1])/2]
+            midpoint = [(x_array[i] + x_array[i+1]) / 2,
+                        (y_array[i] + y_array[i+1]) / 2]
 
             # caclulate slope and normal for the segment
             dx, dy, length = self._segment_slope(x_array, y_array, i)
@@ -541,9 +535,8 @@ class ChannelBathymetry:
                 midpoint,
                 [midpoint[0] + self.transect_radius * normal_x,
                  midpoint[1] + self.transect_radius * normal_y]]))
-            transects_dict['midpoint'].append(shapely.geometry.Point(midpoint))
-            transects_dict['mid_x'].append(midpoint.x)
-            transects_dict['mid_y'].append(midpoint.y)
+            transects_dict['mid_x'].append(midpoint[0])
+            transects_dict['mid_y'].append(midpoint[1])
 
             # record the length of the line segment
             transects_dict['length'].append(length)
@@ -656,8 +649,8 @@ class ChannelBathymetry:
         for index, row in transects.iterrows():
 
             # Calculate xx, and yy points to sample at
-            xx = row.midpoint.x + sample_index_array * self.resolution * row['nx']
-            yy = row.midpoint.y + sample_index_array * self.resolution * row['ny']
+            xx = row['mid_x'] + sample_index_array * self.resolution * row['nx']
+            yy = row['mid_y'] + sample_index_array * self.resolution * row['ny']
             xy_points = numpy.concatenate([[xx], [yy]], axis=0).transpose()
 
             # Sample the vegetation elevations at along the transect
@@ -1332,14 +1325,16 @@ class ChannelBathymetry:
 
         return mon_cof
 
-    def _apply_bank_width(self, midpoint, nx, ny, first_bank, last_bank):
+    def _apply_bank_width(self, mid_x, mid_y, nx, ny, first_bank, last_bank):
         """ Generate a line for each width for visualisation.
 
         Parameters
         ----------
 
-        midpoint
-            The centre of the transect.
+        mid_x
+            The x centre of the transect.
+        mid_x
+            The y centre of the transect.
         nx
             Transect normal x-component.
         ny
@@ -1350,10 +1345,10 @@ class ChannelBathymetry:
             The signed distance between the last bank and the transect centre.
         """
         return shapely.geometry.LineString([
-            [midpoint.x - first_bank * nx,
-             midpoint.y - first_bank * ny],
-            [midpoint.x + last_bank * nx,
-             midpoint.y + last_bank * ny]])
+            [mid_x - first_bank * nx,
+             mid_y - first_bank * ny],
+            [mid_x + last_bank * nx,
+             mid_y + last_bank * ny]])
 
     def align_channel(self,
                       threshold: float,
@@ -1402,7 +1397,8 @@ class ChannelBathymetry:
 
         # Add width linestring to the transects
         transects['width_line'] = transects.apply(
-            lambda x: self._apply_bank_width(x['midpoint'],
+            lambda x: self._apply_bank_width(x['mid_x'],
+                                             x['mid_y'],
                                              x['nx'],
                                              x['ny'],
                                              x['first_bank'],
@@ -1491,7 +1487,8 @@ class ChannelBathymetry:
                 3)  # Polynomial order'''
 
         transects['width_line'] = transects.apply(
-            lambda x: self._apply_bank_width(x['midpoint'],
+            lambda x: self._apply_bank_width(x['mid_x'],
+                                             x['mid_y'],
                                              x['nx'],
                                              x['ny'],
                                              x['first_bank'],
