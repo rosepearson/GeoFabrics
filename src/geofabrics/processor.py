@@ -623,8 +623,8 @@ class RiverBathymetryGenerator():
                 transect_radius=corridor_radius)
 
             aligned_channel.to_file(aligned_channel_file)
-            geopandas.GeoDataFrame(geometry=transects['width_line'],
-                                   crs=transects.crs).to_file(local_cache / "intial_widths.geojson")
+            transects[['width_line', 'valid', 'channel_count']].set_geometry(
+                'width_line').to_file(local_cache / "intial_widths.geojson")
             transects[['geometry', 'channel_count']].to_file(local_cache / "transects.geojson")
         else:
             print("Channel already aligned and loaded in.")

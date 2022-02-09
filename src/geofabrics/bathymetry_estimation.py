@@ -702,8 +702,8 @@ class ChannelBathymetry:
         """
 
         search_radius_index = int(search_radius / self.resolution)
-        widths = {'widths': [], 'first_bank': [], 'last_bank': [],
-                  'first_bank_i': [], 'last_bank_i': [], 'channel_count': []}
+        widths = {'widths': [], 'first_bank_i': [], 'last_bank_i': [],
+                  'channel_count': []}
 
         for j in range(len(sampled_elevations['gnd_elevations'])):
 
@@ -724,8 +724,6 @@ class ChannelBathymetry:
                 min_channel_width=min_channel_width)
 
             # assign the longest width
-            widths['first_bank'].append((start_index - start_i) * resolution)
-            widths['last_bank'].append((stop_i - start_index) * resolution)
             widths['first_bank_i'].append(start_i)
             widths['last_bank_i'].append(stop_i)
             widths['widths'].append((stop_i - start_i) * resolution)
@@ -733,6 +731,12 @@ class ChannelBathymetry:
 
         for key in widths.keys():
             transects[key] = widths[key]
+
+        # Record if the width is valid
+        valid_mask = transects['channel_count'] == 1
+        valid_mask &= transects['first_bank_i'] > 0
+        valid_mask &= transects['last_bank_i'] < self.number_of_samples - 1
+        transects['valid'] = valid_mask
 
     def variable_thresholded_widths_from_centre_within_radius(self, transects: geopandas.GeoDataFrame,
                                                               sampled_elevations: dict,
@@ -761,9 +765,9 @@ class ChannelBathymetry:
 
         search_radius_index = int(search_radius / self.resolution)
         print(f'search radius index = {search_radius_index}')
-        widths = {'widths': [], 'first_bank': [], 'last_bank': [],
-                  'first_bank_i': [], 'last_bank_i': [], 'threshold': [],
-                  'channel_count': [], 'first_flat_bank_i': [], 'last_flat_bank_i': []}
+        widths = {'widths': [], 'first_bank_i': [], 'last_bank_i': [],
+                  'threshold': [], 'channel_count': [],
+                  'first_flat_bank_i': [], 'last_flat_bank_i': []}
 
         for j in range(len(sampled_elevations['gnd_elevations'])):
 
@@ -861,8 +865,6 @@ class ChannelBathymetry:
                     stop_i = stop_i_bf
 
             # assign the longest width
-            widths['first_bank'].append((start_index - start_i) * resolution)
-            widths['last_bank'].append((stop_i - start_index) * resolution)
             widths['first_bank_i'].append(start_i)
             widths['last_bank_i'].append(stop_i)
             widths['widths'].append((stop_i - start_i) * resolution)
@@ -871,6 +873,13 @@ class ChannelBathymetry:
 
         for key in widths.keys():
             transects[key] = widths[key]
+
+        # Record if the width is valid
+        valid_mask = transects['channel_count'] == 1
+        valid_mask &= transects['first_bank_i'] > 0
+        valid_mask &= transects['last_bank_i'] < self.number_of_samples - 1
+        valid_mask &= transects['threshold'] <= maximum_threshold
+        transects['valid'] = valid_mask
 
     def fixed_threshold_width(self,
                               gnd_samples: numpy.ndarray,
@@ -1163,7 +1172,10 @@ class ChannelBathymetry:
         self.dem.plot(ax=ax, label='DEM')
         if include_transects:
             transects.plot(ax=ax, color='aqua', linewidth=1, label='transects')
-        transects.set_geometry('width_line').plot(ax=ax, color='red', linewidth=1.5, label='widths')
+        transects[transects['valid']].set_geometry('width_line').plot(ax=ax, color='red',
+                                                                      linewidth=1.5, label='Valid widths')
+        transects[transects['valid'] == False].set_geometry('width_line').plot(ax=ax, color='salmon',
+                                                                               linewidth=1.5, label='Invalid widths')
         self.channel.get_sampled_spline_fit().plot(ax=ax, color='black', linewidth=1.5, linestyle='--',
                                                    label='sampled channel')
         if aligned_channel is not None:
@@ -1211,10 +1223,8 @@ class ChannelBathymetry:
             The smoothing multiplier to apply to the spline fit.
         """
 
-        # Create a single clear channel mask
-        channel_mask = transects['channel_count'] == 1
-        channel_mask &= transects['first_flat_bank_i'] > 0
-        channel_mask &= transects['last_flat_bank_i'] < self.number_of_samples - 1
+        # Only use the valid widths
+        channel_mask = transects['valid']
 
         # Get the 'flat water' first bank - +1 to move just inwards
         bank_offset = self.resolution * (transects.loc[channel_mask, 'first_flat_bank_i'] + 1 - self.centre_index)
@@ -1256,10 +1266,8 @@ class ChannelBathymetry:
             The smoothing multiplier to apply to the spline fit.
         """
 
-        # Create a single clear channel mask
-        channel_mask = transects['channel_count'] == 1
-        channel_mask &= transects['first_bank_i'] > 0
-        channel_mask &= transects['last_bank_i'] < self.number_of_samples - 1
+        # Only use the valid widths
+        channel_mask = transects['valid']
 
         # Calculate the offset distance between the transect and width centres
         widths_centre_offset = self.resolution * (
@@ -1325,7 +1333,7 @@ class ChannelBathymetry:
 
         return mon_cof
 
-    def _apply_bank_width(self, mid_x, mid_y, nx, ny, first_bank, last_bank):
+    def _apply_bank_width(self, mid_x, mid_y, nx, ny, first_bank_i, last_bank_i):
         """ Generate a line for each width for visualisation.
 
         Parameters
@@ -1339,16 +1347,16 @@ class ChannelBathymetry:
             Transect normal x-component.
         ny
             Transect normal y-component.
-        first_bank
-            The signed distance between the first bank and the transect centre.
-        last_bank
-            The signed distance between the last bank and the transect centre.
+        first_bank_i
+            The index of the first bank along the transect.
+        last_bank_i
+            The index of the last bank along the transect.
         """
         return shapely.geometry.LineString([
-            [mid_x - first_bank * nx,
-             mid_y - first_bank * ny],
-            [mid_x + last_bank * nx,
-             mid_y + last_bank * ny]])
+            [mid_x + (first_bank_i - self.centre_index) * nx * self.resolution,
+             mid_y + (first_bank_i - self.centre_index) * ny * self.resolution],
+            [mid_x + (last_bank_i - self.centre_index) * nx * self.resolution,
+             mid_y + (last_bank_i - self.centre_index) * ny * self.resolution]])
 
     def align_channel(self,
                       threshold: float,
@@ -1401,8 +1409,8 @@ class ChannelBathymetry:
                                              x['mid_y'],
                                              x['nx'],
                                              x['ny'],
-                                             x['first_bank'],
-                                             x['last_bank']), axis=1)
+                                             x['first_bank_i'],
+                                             x['last_bank_i']), axis=1)
 
         # Create channel polygon with erosion and dilation to reduce sensitivity to poor width measurements
         aligned_channel = self._centreline_from_width_spline(transects,
@@ -1491,8 +1499,8 @@ class ChannelBathymetry:
                                              x['mid_y'],
                                              x['nx'],
                                              x['ny'],
-                                             x['first_bank'],
-                                             x['last_bank']), axis=1)
+                                             x['first_bank_i'],
+                                             x['last_bank_i']), axis=1)
 
         # Plot results
         self._plot_results(transects=transects,
