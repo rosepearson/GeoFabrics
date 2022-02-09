@@ -1200,7 +1200,7 @@ class ChannelBathymetry:
         f, ax = matplotlib.pyplot.subplots(figsize=(20, 10))
         width_columns = [column_name for column_name in transects.columns if 'widths' in column_name]
         if len(width_columns) > 0:
-            transects[width_columns].plot(ax=ax)
+            transects[width_columns][transects['valid']].plot(ax=ax)
 
         # Plot the slopes
         f, ax = matplotlib.pyplot.subplots(figsize=(20, 10))
