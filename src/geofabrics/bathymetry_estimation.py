@@ -1200,7 +1200,7 @@ class ChannelBathymetry:
         f, ax = matplotlib.pyplot.subplots(figsize=(20, 10))
         width_columns = [column_name for column_name in transects.columns if 'widths' in column_name]
         if len(width_columns) > 0:
-            transects[width_columns][transects['valid']].plot(ax=ax)
+            transects[width_columns].plot(ax=ax)
 
         # Plot the slopes
         f, ax = matplotlib.pyplot.subplots(figsize=(20, 10))
@@ -1481,7 +1481,9 @@ class ChannelBathymetry:
         river_polygon = self._create_flat_water_polygon(transects=transects, smoothing_multiplier=10)
 
         # Width smoothing - either from polygon if good enough, or function fit to aligned_widths_outward
-        widths_no_nan = transects['widths'].interpolate('index', limit_direction='both')
+        transects['valid_widths'] = transects['widths']
+        transects.loc[transects['valid'] == False, 'valid_widths'] = numpy.nan
+        widths_no_nan = transects['valid_widths'].interpolate('index', limit_direction='both')
         for smoothing_distance in [150, 200, 250, 2000, 3000]:
             # ensure odd number of samples so array length preserved
             smoothing_samples = int(numpy.ceil(smoothing_distance / self.transect_spacing))

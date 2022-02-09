@@ -650,7 +650,8 @@ class RiverBathymetryGenerator():
             columns = ['geometry']
             columns.extend([column_name for column_name in transects.columns
                             if 'slope' in column_name or 'widths' in column_name
-                            or 'min_z' in column_name or 'threshold' in column_name])
+                            or 'min_z' in column_name or 'threshold' in column_name
+                            or 'valid' in column_name])
             transects[columns].to_file(local_cache / "final_transect_values.geojson")
         else:
             print("The final widths have already been generated")
