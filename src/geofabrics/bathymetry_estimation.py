@@ -1288,7 +1288,7 @@ class ChannelBathymetry:
 
         aligned_spline = widths_centre_line.get_smoothed_spline_fit(smoothing_multiplier)
         aligned_spline = geopandas.GeoDataFrame(geometry=[shapely.geometry.LineString(aligned_spline)],
-                                                crs=self.channel.crs)
+                                                crs=transects.crs)
         return aligned_spline
 
     def _unimodal_smoothing(self, y: numpy.ndarray):
