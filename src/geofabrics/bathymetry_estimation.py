@@ -1383,6 +1383,29 @@ class ChannelBathymetry:
             [mid_x + (last_bank_i - self.centre_index) * nx * self.resolution,
              mid_y + (last_bank_i - self.centre_index) * ny * self.resolution]])
 
+    def _apply_midpoint(self, mid_x, mid_y, nx, ny, first_bank_i, last_bank_i):
+        """ Generate a line for each width for visualisation.
+
+        Parameters
+        ----------
+
+        mid_x
+            The x centre of the transect.
+        mid_x
+            The y centre of the transect.
+        nx
+            Transect normal x-component.
+        ny
+            Transect normal y-component.
+        first_bank_i
+            The index of the first bank along the transect.
+        last_bank_i
+            The index of the last bank along the transect.
+        """
+        mid_i = (first_bank_i + last_bank_i) / 2
+        return shapely.geometry.Point([mid_x + (mid_i - self.centre_index) * nx * self.resolution,
+                                       mid_y + (mid_i - self.centre_index) * ny * self.resolution])
+
     def align_channel(self,
                       threshold: float,
                       search_radius: float,
@@ -1509,8 +1532,25 @@ class ChannelBathymetry:
         # generate a flat water polygon
         river_polygon = self._create_flat_water_polygon(transects=transects, smoothing_multiplier=10)
 
+
+        transects['width_line'] = transects.apply(
+            lambda x: self._apply_bank_width(x['mid_x'],
+                                             x['mid_y'],
+                                             x['nx'],
+                                             x['ny'],
+                                             x['first_bank_i'],
+                                             x['last_bank_i']), axis=1)
+
+        transects['flat_midpoint'] = transects.apply(
+            lambda x: self._apply_midpoint(x['mid_x'],
+                                           x['mid_y'],
+                                           x['nx'],
+                                           x['ny'],
+                                           x['first_flat_bank_i'],
+                                           x['last_flat_bank_i']), axis=1)
+
         # Width and threshod smoothing - rolling mean
-        self._smooth_widths_and_thresholds(transects=transects)
+        self._smooth_widths_and_thresholds(cross_sections=transects)
 
         # Plot results
         self._plot_results(transects=transects,
