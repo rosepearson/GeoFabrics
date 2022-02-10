@@ -651,8 +651,8 @@ class RiverBathymetryGenerator():
                             or 'min_z' in column_name or 'threshold' in column_name
                             or 'valid' in column_name])
             transects[columns].to_file(local_cache / "final_transect_values.geojson")
-            transects.set_geometry('width_line')[['geometry', 'valid']].to_file(local_cache / "final_widths.geojson")
-            transects.set_geometry('flat_midpoint')[columns].to_file(local_cache / "final_values.geojson")
+            transects.set_geometry('width_line', drop=True)[['geometry', 'valid']].to_file(local_cache / "final_widths.geojson")
+            transects.set_geometry('flat_midpoint', drop=True)[columns].to_file(local_cache / "final_values.geojson")
         else:
             print("The final widths have already been generated")
 
@@ -688,7 +688,7 @@ class RiverBathymetryGenerator():
 
         # Save the bed elevations
         transects[['flat_midpoint', 'bed_elevation_Neal_et_al', 'bed_elevation_Smart_et_al']].set_geometry(
-            'flat_midpoint').to_file(local_cache / "river_bathymetry.geojson")
+            'flat_midpoint', drop=True).to_file(local_cache / "river_bathymetry.geojson")
 
         # Update parameter file - in time only update the bits that have been re-run
         with open(instruction_parameters, 'w') as file_pointer:
