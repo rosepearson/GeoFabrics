@@ -805,9 +805,8 @@ class ChannelBathymetry:
                     dwidth = 0
 
                     # break if going down
-                    if gnd_samples[start_i_bf] < z_bankfull or veg_samples[start_i_bf] < z_bankfull:
-                        break
-                    if gnd_samples[stop_i_bf] < z_bankfull or veg_samples[start_i_bf] < z_bankfull:
+                    if gnd_samples[start_i_bf - 1] < numpy.nanmax([gnd_samples[start_i_bf], z_bankfull]) \
+                            or gnd_samples[stop_i_bf + 1] < numpy.nanmax([gnd_samples[stop_i_bf], z_bankfull]):
                         break
 
                     # if not, extend whichever bank is lower
@@ -822,46 +821,31 @@ class ChannelBathymetry:
                         stop_i_bf += 1
                         dwidth += 2
                     else:
-                        # extend if value is nan and not vegetated, or if vegetation is under limit
+                        # extend if value is nan and not vegetated
                         if numpy.isnan(gnd_samples[start_i_bf - 1]) and numpy.isnan(veg_samples[start_i_bf - 1]):
-                            start_i_bf -= 1
-                            dwidth += 1
-                        elif numpy.isnan(gnd_samples[start_i_bf - 1]) \
-                                and veg_samples[start_i_bf - 1] < maximum_z:
                             start_i_bf -= 1
                             dwidth += 1
                         if numpy.isnan(gnd_samples[stop_i_bf + 1]) and numpy.isnan(veg_samples[start_i_bf + 1]):
                             stop_i_bf += 1
                             dwidth += 1
-                        elif numpy.isnan(gnd_samples[start_i_bf + 1]) \
-                                and veg_samples[start_i_bf + 1] < maximum_z:
-                            stop_i_bf += 1
-                            dwidth += 1
 
                     # Break if the threshold has been meet before updating maz_z
-                    if gnd_samples[start_i_bf] >= maximum_z or gnd_samples[stop_i_bf] >= maximum_z:
+                    if gnd_samples[start_i_bf] >= maximum_z and gnd_samples[stop_i_bf] >= maximum_z:
                         break
-                    # Break if ground is nan and the vegetation is over the limit
-                    if numpy.isnan(gnd_samples[start_i_bf]) and veg_samples[start_i_bf] >= maximum_z:
+                    # Break if ground is nan, but there are vegatation returns
+                    if numpy.isnan(gnd_samples[start_i_bf]) and not numpy.isnan(veg_samples[start_i_bf]):
                         break
-                    if numpy.isnan(gnd_samples[stop_i_bf]) and veg_samples[stop_i_bf] >= maximum_z:
+                    if numpy.isnan(gnd_samples[stop_i_bf]) and not numpy.isnan(veg_samples[stop_i_bf]):
                         break
 
                     # update maximum value so far
-                    if not numpy.isnan([gnd_samples[start_i_bf], gnd_samples[stop_i_bf],
-                                        veg_samples[start_i_bf], veg_samples[stop_i_bf]]).all():
-                        z_bankfull = max(z_bankfull, numpy.nanmin([gnd_samples[start_i_bf], gnd_samples[stop_i_bf],
-                                                                   veg_samples[start_i_bf], veg_samples[stop_i_bf]]))
+                    if not numpy.isnan([gnd_samples[start_i_bf], gnd_samples[stop_i_bf]]).all():
+                        z_bankfull = max(z_bankfull, numpy.nanmin([gnd_samples[start_i_bf], gnd_samples[stop_i_bf]]))
 
-                # set to nan if either end of the cross section has been reached
-                if start_i_bf <= 0 or stop_i >= self.number_of_samples - 1:
-                    dz_bankfull = numpy.nan
-                    start_i = numpy.nan
-                    stop_i = numpy.nan
-                else:
-                    dz_bankfull = z_bankfull - z_water
-                    start_i = start_i_bf
-                    stop_i = stop_i_bf
+                # Set the detected bankful values
+                dz_bankfull = z_bankfull - z_water
+                start_i = start_i_bf
+                stop_i = stop_i_bf
 
             # assign the longest width
             widths['first_bank_i'].append(start_i)
@@ -1401,6 +1385,10 @@ class ChannelBathymetry:
             search_radius=search_radius,
             min_channel_width=min_channel_width,
             resolution=self.resolution)
+
+        # Separate out valid and invalid widths
+        transects['valid_widths'] = transects['widths']
+        transects.loc[transects['valid'] == False, 'valid_widths'] = numpy.nan
 
         # Add width linestring to the transects
         transects['width_line'] = transects.apply(
