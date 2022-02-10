@@ -794,8 +794,10 @@ class ChannelBathymetry:
             # Iterate out from the fixed threshold width until the banks go down, or the max threshold is reached
             maximum_z = z_water + maximum_threshold
             if numpy.isnan(start_i) or numpy.isnan(stop_i):
+                # No valid width to begin with
                 dz_bankfull = numpy.nan
             else:
+                # Iterate out from the fixed threshold width until the banks go down, or the max threshold is reached
                 z_bankfull = numpy.nanmin(gnd_samples[[start_i, stop_i]])
                 start_i_bf = start_i
                 stop_i_bf = stop_i
@@ -830,7 +832,7 @@ class ChannelBathymetry:
                             dwidth += 1
 
                     # Break if the threshold has been meet before updating maz_z
-                    if gnd_samples[start_i_bf] >= maximum_z and gnd_samples[stop_i_bf] >= maximum_z:
+                    if gnd_samples[start_i_bf] >= maximum_z or gnd_samples[stop_i_bf] >= maximum_z:
                         break
                     # Break if ground is nan, but there are vegatation returns
                     if numpy.isnan(gnd_samples[start_i_bf]) and not numpy.isnan(veg_samples[start_i_bf]):
@@ -862,6 +864,7 @@ class ChannelBathymetry:
         valid_mask &= transects['first_bank_i'] > 0
         valid_mask &= transects['last_bank_i'] < self.number_of_samples - 1
         valid_mask &= transects['threshold'] < maximum_threshold
+        valid_mask &= numpy.isnan(transects['threshold']) == False
         transects['valid'] = valid_mask
 
     def fixed_threshold_width(self,
