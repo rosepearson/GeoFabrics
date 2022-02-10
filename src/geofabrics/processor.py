@@ -631,7 +631,7 @@ class RiverBathymetryGenerator():
             aligned_channel = geopandas.read_file(aligned_channel_file)
 
         # Estimate width and slope of channel
-        if not (local_cache / "final_widths.geojson").is_file():
+        if not (local_cache / "final_values.geojson").is_file():
             print("Calculating the final widths.")
 
             corridor_radius = max_channel_width / 2 + buffer
@@ -651,12 +651,13 @@ class RiverBathymetryGenerator():
                             or 'min_z' in column_name or 'threshold' in column_name
                             or 'valid' in column_name])
             transects[columns].to_file(local_cache / "final_transect_values.geojson")
-            transects.set_geometry('width_line')[columns].to_file(local_cache / "final_widths.geojson")
+            transects.set_geometry('width_line')[['geometry', 'valid']].to_file(local_cache / "final_widths.geojson")
+            transects.set_geometry('flat_midpoint')[columns].to_file(local_cache / "final_values.geojson")
         else:
             print("The final widths have already been generated")
 
         # Read in the flow file and calcaulate the depths - write out the results
-        width_values = geopandas.read_file(local_cache / "final_widths.geojson")
+        width_values = geopandas.read_file(local_cache / "final_values.geojson")
         width_values = width_values[width_values['nzsegment'] != 0]
 
         # Match the flow and friction values to the widths and slopes
@@ -685,24 +686,9 @@ class RiverBathymetryGenerator():
         width_values['bed_elevation_Neal_et_al'] = width_values[min_z_name] - width_values['depth_Neal_et_al']
         width_values['bed_elevation_Smart_et_al'] = width_values[min_z_name] - width_values['depth_Smart_et_al']
 
-        # Calculate midpoint - eventually from the flat water results
-        def _apply_midpoint(self, line):
-            """ Generate a line for each width for visualisation.
-
-            Parameters
-            ----------
-
-            width_line
-                A LineString defining the channel width.
-            """
-            x, y = line.xy
-            return shapely.geometry.Point([(x[0] + x[1])/2, (y[0] + y[1])/2])
-        transects['mid_point'] = transects.apply(
-            lambda row: self._apply_midpoint(row['width_line']), axis=1)
-
         # Save the bed elevations
-        transects[['mid_point', 'bed_elevation_Neal_et_al', 'bed_elevation_Smart_et_al']].set_geometry(
-            'mid_point').to_file(local_cache / "river_bathymetry.geojson")
+        transects[['flat_midpoint', 'bed_elevation_Neal_et_al', 'bed_elevation_Smart_et_al']].set_geometry(
+            'flat_midpoint').to_file(local_cache / "river_bathymetry.geojson")
 
         # Update parameter file - in time only update the bits that have been re-run
         with open(instruction_parameters, 'w') as file_pointer:
