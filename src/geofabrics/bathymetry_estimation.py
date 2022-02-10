@@ -591,6 +591,45 @@ class ChannelBathymetry:
             transects[f'slope_mean_{label}'] = self._rolling_mean_with_padding(transects['slope'],
                                                                                smoothing_samples)
 
+    def _smooth_widths_and_thresholds(self, cross_sections: geopandas.GeoDataFrame):
+        """ Record the valid and reolling mean of the calculated thresholds and widths
+
+        Parameters
+        ----------
+
+        cross_sections
+            The elevations and calculated widths and thresholds for each sampled cross section
+        """
+
+        invalid_mask = cross_sections['valid'] == False
+
+        # Tidy up widths - pull out the valid widths
+        cross_sections['valid_widths'] = cross_sections['widths']
+        cross_sections.loc[invalid_mask, 'valid_widths'] = numpy.nan
+        widths_no_nan = cross_sections['valid_widths'].interpolate('index', limit_direction='both')
+
+        # Tidy up thresholds - pull out the valid thresholds
+        cross_sections['valid_threhold'] = cross_sections['threshold']
+        cross_sections.loc[invalid_mask, 'valid_threhold'] = numpy.nan
+        thresholds_no_nan = cross_sections['valid_threhold'].interpolate('index', limit_direction='both')
+
+        # Cycle through and caluclate the rolling mean
+        for smoothing_distance in [150, 200, 250, 2000, 3000]:
+            # ensure odd number of samples so array length preserved
+            smoothing_samples = int(numpy.ceil(smoothing_distance / self.transect_spacing))
+            smoothing_samples = int(smoothing_samples / 2) * 2 + 1
+            label = f"{smoothing_distance/1000}km"
+
+            # Apply the rolling mean to each
+            cross_sections[f'widths_mean_{label}'] = self._rolling_mean_with_padding(widths_no_nan, smoothing_samples)
+            cross_sections[f'thresholds_mean_{label}'] = self._rolling_mean_with_padding(thresholds_no_nan,
+                                                                                         smoothing_samples)
+
+            '''transects[f'widths_Savgol_{label}'] = scipy.signal.savgol_filter(
+                transects['widths'].interpolate('index', limit_direction='both'),
+                smoothing_samples,  # Ensure odd. number of samples included
+                3)  # Polynomial order'''
+
     def _rolling_mean_with_padding(self, data: geopandas.GeoSeries, number_of_samples: int) -> numpy.ndarray:
         """ Calculate the rolling mean of an array after padding the array with
         the edge value to ensure the derivative is smooth.
@@ -1470,29 +1509,8 @@ class ChannelBathymetry:
         # generate a flat water polygon
         river_polygon = self._create_flat_water_polygon(transects=transects, smoothing_multiplier=10)
 
-        # Width smoothing - either from polygon if good enough, or function fit to aligned_widths_outward
-        transects['valid_widths'] = transects['widths']
-        transects.loc[transects['valid'] == False, 'valid_widths'] = numpy.nan
-        widths_no_nan = transects['valid_widths'].interpolate('index', limit_direction='both')
-        for smoothing_distance in [150, 200, 250, 2000, 3000]:
-            # ensure odd number of samples so array length preserved
-            smoothing_samples = int(numpy.ceil(smoothing_distance / self.transect_spacing))
-            smoothing_samples = int(smoothing_samples / 2) * 2 + 1
-            label = f"{smoothing_distance/1000}km"
-            # try a variety of smoothing approaches
-            transects[f'widths_mean_{label}'] = self._rolling_mean_with_padding(widths_no_nan, smoothing_samples)
-            '''transects[f'widths_Savgol_{label}'] = scipy.signal.savgol_filter(
-                transects['widths'].interpolate('index', limit_direction='both'),
-                smoothing_samples,  # Ensure odd. number of samples included
-                3)  # Polynomial order'''
-
-        transects['width_line'] = transects.apply(
-            lambda x: self._apply_bank_width(x['mid_x'],
-                                             x['mid_y'],
-                                             x['nx'],
-                                             x['ny'],
-                                             x['first_bank_i'],
-                                             x['last_bank_i']), axis=1)
+        # Width and threshod smoothing - rolling mean
+        self._smooth_widths_and_thresholds(transects=transects)
 
         # Plot results
         self._plot_results(transects=transects,
