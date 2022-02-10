@@ -658,9 +658,16 @@ class RiverBathymetryGenerator():
 
         # Read in the flow file and calcaulate the depths - write out the results
         width_values = geopandas.read_file(local_cache / "final_values.geojson")
-        width_values = width_values[width_values['nzsegment'] != 0]
 
-        # Match the flow and friction values to the widths and slopes
+        # Match each channel midpoint to a nzsegment id - based on what channel reach is closest
+        width_values['nzsegment'] = numpy.zeros(len(width_values['widths']), dtype=int)
+        for i, row in width_values.iterrows():
+            distances = channel.channel.distance(width_values.loc[i].geometry)
+            width_values.loc[i, ('nzsegment')] = channel.channel[distances == distances.min()]['nzsegment'].min()
+
+        # Add the friction and flow values to the widths and slopes
+        width_values['mannings_n'] = numpy.zeros(len(width_values['nzsegment']), dtype=int)
+        width_values['flow'] = numpy.zeros(len(width_values['nzsegment']), dtype=int)
         for nzsegment in width_values['nzsegment'].unique():
             width_values.loc[width_values['nzsegment'] == nzsegment,
                              ('mannings_n')] = flow[flow['nzsegment'] == nzsegment]['n'].unique()[0]
@@ -687,8 +694,7 @@ class RiverBathymetryGenerator():
         width_values['bed_elevation_Smart_et_al'] = width_values[min_z_name] - width_values['depth_Smart_et_al']
 
         # Save the bed elevations
-        transects[['flat_midpoint', 'bed_elevation_Neal_et_al', 'bed_elevation_Smart_et_al']].set_geometry(
-            'flat_midpoint', drop=True).to_file(local_cache / "river_bathymetry.geojson")
+        width_values[['geometry', 'bed_elevation_Neal_et_al', 'bed_elevation_Smart_et_al']][width_values['valid']].to_file(local_cache / "river_bathymetry.geojson")
 
         # Update parameter file - in time only update the bits that have been re-run
         with open(instruction_parameters, 'w') as file_pointer:
