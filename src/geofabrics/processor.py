@@ -11,6 +11,8 @@ import abc
 import logging
 import distributed
 import rioxarray
+import pandas
+import geopandas
 from . import geometry
 from . import bathymetry_estimation
 import geoapis.lidar
@@ -522,11 +524,9 @@ class RiverBathymetryGenerator():
         pipeline to produce a DEM before sampling this to extimate width, slope
         and eventually depth. """
 
-        # Function to trace out upstream catchment
-        import geopandas
-
-        # Read in rec file
+        # Read ininstructions
         rec = geopandas.read_file(self.instructions['instructions']['channel_bathymetry']['rec_file'])
+        flow = pandas.read_csv(self.instructions['instructions']['channel_bathymetry']['flow_file'])
         channel_rec_id = self.instructions['instructions']['channel_bathymetry']['channel_rec_id']
         area_threshold = self.instructions['instructions']['channel_bathymetry']['channel_area_threshold']
 
@@ -625,7 +625,7 @@ class RiverBathymetryGenerator():
             aligned_channel.to_file(aligned_channel_file)
             transects[['width_line', 'valid', 'channel_count']].set_geometry(
                 'width_line').to_file(local_cache / "intial_widths.geojson")
-            transects[['geometry', 'channel_count']].to_file(local_cache / "transects.geojson")
+            transects[['geometry', 'channel_count', 'valid']].to_file(local_cache / "transects.geojson")
         else:
             print("Channel already aligned and loaded in.")
             aligned_channel = geopandas.read_file(aligned_channel_file)
@@ -643,8 +643,6 @@ class RiverBathymetryGenerator():
                 min_channel_width=min_channel_width,
                 max_threshold=max_bank_height)
 
-            transect_widths = geopandas.GeoDataFrame(geometry=transects['width_line'], crs=transects.crs)
-            transect_widths.to_file(local_cache / "final_widths.geojson")
             river_polygon.to_file(local_cache / ("flat_water_polygon.geojson"))
             transects[['geometry', 'channel_count']].to_file(local_cache / "final_transects.geojson")
             columns = ['geometry']
@@ -653,8 +651,58 @@ class RiverBathymetryGenerator():
                             or 'min_z' in column_name or 'threshold' in column_name
                             or 'valid' in column_name])
             transects[columns].to_file(local_cache / "final_transect_values.geojson")
+            transects.set_geometry('width_line')[columns].to_file(local_cache / "final_widths.geojson")
         else:
             print("The final widths have already been generated")
+
+        # Read in the flow file and calcaulate the depths - write out the results
+        width_values = geopandas.read_file(local_cache / "final_widths.geojson")
+        width_values = width_values[width_values['nzsegment'] != 0]
+
+        # Match the flow and friction values to the widths and slopes
+        for nzsegment in width_values['nzsegment'].unique():
+            width_values.loc[width_values['nzsegment'] == nzsegment,
+                             ('mannings_n')] = flow[flow['nzsegment'] == nzsegment]['n'].unique()[0]
+            width_values.loc[width_values['nzsegment'] == nzsegment,
+                             ('flow')] = flow[flow['nzsegment'] == nzsegment]['flow'].unique()[0]
+
+        # Calculate the depths using various approaches
+        slope_name = 'slope_mean_2.0km'
+        min_z_name = 'min_z_centre_unimodal'
+        width_name = 'widths_mean_0.25km'
+        threshold_name = 'thresholds_mean_0.25km'
+        width_values['depth_Neal_et_al'] = \
+            (width_values['mannings_n'] * width_values['flow']
+             / (numpy.sqrt(width_values[slope_name]) * width_values[width_name])) ** (3/5) - width_values[threshold_name]
+        a = 0.745
+        b = 0.305
+        K_0 = 6.16
+        width_values['depth_Smart_et_al'] = \
+            (width_values['flow'] / (K_0 * width_values[width_name]
+                                     * width_values[slope_name] ** b)) ** (1 / (1+a)) - width_values[threshold_name]
+
+        # Calculate the bed elevation
+        width_values['bed_elevation_Neal_et_al'] = width_values[min_z_name] - width_values['depth_Neal_et_al']
+        width_values['bed_elevation_Smart_et_al'] = width_values[min_z_name] - width_values['depth_Smart_et_al']
+
+        # Calculate midpoint - eventually from the flat water results
+        def _apply_midpoint(self, line):
+            """ Generate a line for each width for visualisation.
+
+            Parameters
+            ----------
+
+            width_line
+                A LineString defining the channel width.
+            """
+            x, y = line.xy
+            return shapely.geometry.Point([(x[0] + x[1])/2, (y[0] + y[1])/2])
+        transects['mid_point'] = transects.apply(
+            lambda row: self._apply_midpoint(row['width_line']), axis=1)
+
+        # Save the bed elevations
+        transects[['mid_point', 'bed_elevation_Neal_et_al', 'bed_elevation_Smart_et_al']].set_geometry(
+            'mid_point').to_file(local_cache / "river_bathymetry.geojson")
 
         # Update parameter file - in time only update the bits that have been re-run
         with open(instruction_parameters, 'w') as file_pointer:
