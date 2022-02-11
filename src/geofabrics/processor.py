@@ -400,9 +400,9 @@ class DemGenerator(BaseProcessor):
                 # Get the bathymetry data directory
                 bathy_contour_dirs = self.get_vector_paths('bathymetry_contours')
                 assert len(bathy_contour_dirs) == 1, f"{len(bathy_contour_dirs)} bathymetry_contours's provided. " + \
-                    f"Specficially {catchment_dirs}. Support has not yet been added for multiple datasets."
+                    f"Specficially {bathy_contour_dirs}. Support has not yet been added for multiple datasets."
 
-                logging.info(f"Incorporating Bathymetry: {bathy_contour_dirs}")
+                logging.info(f"Incorporating offshore Bathymetry: {bathy_contour_dirs}")
 
                 # Load in bathymetry
                 self.bathy_contours = geometry.BathymetryContours(
@@ -412,6 +412,29 @@ class DemGenerator(BaseProcessor):
 
                 # interpolate
                 self.dense_dem.interpolate_offshore(self.bathy_contours)
+
+        '''# Load in river bathymetry and incorporate where decernable at the resolution
+        if self.check_vector('river_polygons') and self.check_vector('river_bathymetry'):
+
+            # Get the polygons and bathymetry and check only one of each
+            bathy_dirs = self.get_vector_paths('river_bathymetry')
+            assert len(bathy_dirs) == 1, f"{len(bathy_dirs)} bathymetry_contours's provided. " + \
+                f"Specficially {bathy_dirs}. Support has not yet been added for multiple datasets."
+            poly_dirs = self.get_vector_paths('river_polygons')
+            assert len(poly_dirs) == 1, f"{len(poly_dirs)} bathymetry_contours's provided. " + \
+                f"Specficially {poly_dirs}. Support has not yet been added for multiple datasets."
+
+            logging.info(f"Incorporating river Bathymetry: {bathy_contour_dirs}")
+
+            # Load in bathymetry
+            self.river_bathy = geometry.RiverBathymetryPoints(
+                points_file=bathy_dirs[0],
+                polygon_file=poly_dirs[0],
+                catchment_geometry=self.catchment_geometry,
+                z_label=self.get_instruction_general('bed_elevation_Smart_et_al'))
+
+            # Call interpolate river on the DEM - note the DEM checks to see if any pixels actually fall inside the polygon
+            self.dense_dem.interpolate_river_bathymetry(river_bathymetry=self.river_bathy)'''
 
         # fill combined dem - save results
         self.dense_dem.dem.to_netcdf(self.get_instruction_path('result_dem'))

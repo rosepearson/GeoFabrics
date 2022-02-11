@@ -339,6 +339,82 @@ class BathymetryPoints:
         return self._z
 
 
+class RiverBathymetryPoints:
+    """ A class working with bathymetry points """
+
+    def __init__(self,
+                 points_file: str,
+                 polygon_file: str,
+                 catchment_geometry: CatchmentGeometry,
+                 z_label: str = None):
+        self._points = geopandas.read_file(points_file)
+        self.polygon = geopandas.read_file(polygon_file)
+        self.catchment_geometry = catchment_geometry
+        self.z_label = z_label
+
+        self._set_up()
+
+    def _set_up(self):
+        """ Set CRS and clip to catchment and within the flat water polygon """
+
+        self._points = self._points.to_crs(self.catchment_geometry.crs['horizontal'])
+        self._polygon = self._points.to_crs(self.catchment_geometry.crs['horizontal'])
+
+        self._points = self._points.clip(self.polygon, keep_geom_type=True)
+        self._points = self._points.clip(self.catchment_geometry.catchment, keep_geom_type=True)
+        self._points = self._points.reset_index(drop=True)
+
+    def points_array(self) -> numpy.ndarray:
+        """ Sample the contours at the specified resolution. """
+
+        points = numpy.empty([len(self._points)],
+                             dtype=[('X', numpy.float64), ('Y', numpy.float64), ('Z', numpy.float64)])
+
+        # Extract the x, y and z values from the Shapely MultiPoints and possibly a depth column
+        points['X'] = self._points.apply(lambda row: row.geometry.x, axis=1).to_list()
+        points['Y'] = self._points.apply(lambda row: row.geometry.y, axis=1).to_list()
+        if self.z_label is None:
+            points['Z'] = self._points.apply(lambda row: row.geometry.z, axis=1).to_list()
+        else:
+            points['Z'] = self._points.apply(lambda row: row[self.z_label].x, axis=1).to_list()
+
+        return points
+
+    @property
+    def points(self):
+        """ Return the points """
+
+        return self._points
+
+    @property
+    def x(self):
+        """ The x values """
+
+        if self._x is None:
+            self._x = self._points.points.apply(lambda row: row['geometry'][0].x, axis=1).to_numpy()
+
+        return self._x
+
+    @property
+    def y(self):
+        """ The y values """
+
+        if self._y is None:
+            self._y = self._points.points.apply(lambda row: row['geometry'][0].y, axis=1).to_numpy()
+
+        return self._y
+
+    @property
+    def z(self):
+        """ The z values """
+
+        if self._z is None:
+            # map depth to elevation
+            self._z = self._points.points.apply(lambda row: row['geometry'][0].z, axis=1).to_numpy() * -1
+
+        return self._z
+
+
 class TileInfo:
     """ A class for working with tiling information """
 

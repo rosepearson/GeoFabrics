@@ -161,6 +161,7 @@ class DenseDem(abc.ABC):
         self.interpolate_missing_values = interpolate_missing_values
 
         self._offshore_dem = None
+        self._river_dem = None
 
         self._dem = None
 
@@ -286,6 +287,71 @@ class DenseDem(abc.ABC):
                                                                 flat_y_masked[start_index:end_index])
         flat_z[mask_z] = flat_z_masked
         self._offshore_dem.data[0] = flat_z.reshape(self._offshore_dem.data[0].shape)
+
+        # Ensure the DEM will be recalculated to include the interpolated offshore region
+        self._dem = None
+
+    def interpolate_river_bathymetry(self,
+                                     river_bathymetry):
+        """ Performs interpolation with a river polygon using the SciPy RBF function. """
+
+        # Get edge points
+        edge_dem = self._dense_dem.rio.clip(self.catchment_geometry.caatchment.geometry, drop=True)
+        edge_dem.data[0] = 0  # set all to zero then clip out dense region where we don't need to interpolate
+        edge_dem = edge_dem.rio.clip(river_bathymetry.polygon.buffer(self.catchment_geometry.resolution), drop=True)
+        edge_dem = edge_dem.rio.clip(river_bathymetry.polygon, invert=True, drop=True)
+        grid_x, grid_y = numpy.meshgrid(edge_dem.x, edge_dem.y)
+        flat_z = edge_dem.data[0].flatten()
+        mask_z = ~numpy.isnan(flat_z)
+        edge_points = numpy.empty([mask_z.sum().sum()],
+                                  dtype=[('X', numpy.float64), ('Y', numpy.float64), ('Z', numpy.float64)])
+
+        edge_points['X'] = grid_x.flatten()[mask_z]
+        edge_points['Y'] = grid_y.flatten()[mask_z]
+        edge_points['Z'] = flat_z[mask_z]
+
+        # Get Bathy Points then concatenate
+        bathy_points = river_bathymetry.points_array()
+        river_points = numpy.concatenate([edge_points, bathy_points])
+
+        # Resample at a lower resolution if too many offshore points
+        if len(edge_points) > self.CACHE_SIZE - len(bathy_points):
+            reduced_resolution = self.catchment_geometry.resolution * len(edge_points) / (self.CACHE_SIZE
+                                                                                          - len(bathy_points))
+            logging.info("Reducing the number of 'river_points' used to create the RBF function by increasing the "
+                         f"resolution from {self.catchment_geometry.resolution} to {reduced_resolution}")
+            edge_points = self._sample_offshore_edge(reduced_resolution)
+            river_points = numpy.concatenate([edge_points, bathy_points])
+
+        # Set up the interpolation function
+        logging.info("Creating river interpolant")
+        rbf_function = scipy.interpolate.Rbf(river_points['X'], river_points['Y'], river_points['Z'],
+                                             function='linear')
+
+        # Setup the empty river area ready for interpolation
+        self._river_dem = self._dense_dem.rio.clip(river_bathymetry.polygon.geometry) # use polygon bbox in future
+        self._river_dem.data[0] = 0  # set all to zero then clip out dense region where we don't need to interpolate
+        self._river_dem = self._river_dem.rio.clip(river_bathymetry.polygon.geometry)
+
+        grid_x, grid_y = numpy.meshgrid(self._river_dem.x, self._river_dem.y)
+        flat_z = self._river_dem.data[0].flatten()
+        mask_z = ~numpy.isnan(flat_z)
+
+        flat_x_masked = grid_x.flatten()[mask_z]
+        flat_y_masked = grid_y.flatten()[mask_z]
+        flat_z_masked = flat_z[mask_z]
+
+        # Tile offshore area - this limits the maximum memory required at any one time
+        number_offshore_tiles = math.ceil(len(flat_x_masked) / self.CACHE_SIZE)
+        for i in range(number_offshore_tiles):
+            logging.info(f"Offshore intepolant tile {i+1} of {number_offshore_tiles}")
+            start_index = int(i*self.CACHE_SIZE)
+            end_index = int((i+1)*self.CACHE_SIZE) if i + 1 != number_offshore_tiles else len(flat_x_masked)
+
+            flat_z_masked[start_index:end_index] = rbf_function(flat_x_masked[start_index:end_index],
+                                                                flat_y_masked[start_index:end_index])
+        flat_z[mask_z] = flat_z_masked
+        self._river_dem.data[0] = flat_z.reshape(self._river_dem.data[0].shape)
 
         # Ensure the DEM will be recalculated to include the interpolated offshore region
         self._dem = None
