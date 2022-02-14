@@ -376,7 +376,7 @@ class RiverBathymetryPoints:
         if self.z_label is None:
             points['Z'] = self._points.apply(lambda row: row.geometry.z, axis=1).to_list()
         else:
-            points['Z'] = self._points.apply(lambda row: row[self.z_label].x, axis=1).to_list()
+            points['Z'] = self._points.apply(lambda row: row[self.z_label], axis=1).to_list()
 
         return points
 

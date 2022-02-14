@@ -413,7 +413,7 @@ class DemGenerator(BaseProcessor):
                 # interpolate
                 self.dense_dem.interpolate_offshore(self.bathy_contours)
 
-        '''# Load in river bathymetry and incorporate where decernable at the resolution
+        # Load in river bathymetry and incorporate where decernable at the resolution
         if self.check_vector('river_polygons') and self.check_vector('river_bathymetry'):
 
             # Get the polygons and bathymetry and check only one of each
@@ -431,10 +431,10 @@ class DemGenerator(BaseProcessor):
                 points_file=bathy_dirs[0],
                 polygon_file=poly_dirs[0],
                 catchment_geometry=self.catchment_geometry,
-                z_label=self.get_instruction_general('bed_elevation_Smart_et_al'))
+                z_label=self.get_instruction_general("river_bathy_z_label"))
 
             # Call interpolate river on the DEM - note the DEM checks to see if any pixels actually fall inside the polygon
-            self.dense_dem.interpolate_river_bathymetry(river_bathymetry=self.river_bathy)'''
+            self.dense_dem.interpolate_river_bathymetry(river_bathymetry=self.river_bathy)
 
         # fill combined dem - save results
         self.dense_dem.dem.to_netcdf(self.get_instruction_path('result_dem'))
@@ -484,7 +484,8 @@ class OffshoreDemGenerator(BaseProcessor):
         # setup dense DEM and catchment LiDAR objects
         self.dense_dem = dem.DenseDemFromFiles(catchment_geometry=self.catchment_geometry,
                                                dense_dem_path=self.get_instruction_path('dense_dem'),
-                                               extents_path=self.get_instruction_path('dense_dem_extents'))
+                                               extents_path=self.get_instruction_path('dense_dem_extents'),
+                                               interpolate_missing_values=self.get_instruction_general('interpolate_missing_values'))
 
         # Load in bathymetry and interpolate offshore if significant offshore is not covered by LiDAR
         area_without_lidar = \
@@ -507,6 +508,29 @@ class OffshoreDemGenerator(BaseProcessor):
 
             # interpolate
             self.dense_dem.interpolate_offshore(self.bathy_contours)
+
+        # Load in river bathymetry and incorporate where decernable at the resolution
+        if self.check_vector('river_polygons') and self.check_vector('river_bathymetry'):
+
+            # Get the polygons and bathymetry and check only one of each
+            bathy_dirs = self.get_vector_paths('river_bathymetry')
+            assert len(bathy_dirs) == 1, f"{len(bathy_dirs)} bathymetry_contours's provided. " + \
+                f"Specficially {bathy_dirs}. Support has not yet been added for multiple datasets."
+            poly_dirs = self.get_vector_paths('river_polygons')
+            assert len(poly_dirs) == 1, f"{len(poly_dirs)} bathymetry_contours's provided. " + \
+                f"Specficially {poly_dirs}. Support has not yet been added for multiple datasets."
+
+            logging.info(f"Incorporating river Bathymetry: {bathy_contour_dirs}")
+
+            # Load in bathymetry
+            self.river_bathy = geometry.RiverBathymetryPoints(
+                points_file=bathy_dirs[0],
+                polygon_file=poly_dirs[0],
+                catchment_geometry=self.catchment_geometry,
+                z_label=self.get_instruction_general("river_bathy_z_label"))
+
+            # Call interpolate river on the DEM - note the DEM checks to see if any pixels actually fall inside the polygon
+            self.dense_dem.interpolate_river_bathymetry(river_bathymetry=self.river_bathy)
 
         # fill combined dem - save results
         self.dense_dem.dem.to_netcdf(self.get_instruction_path('result_dem'))

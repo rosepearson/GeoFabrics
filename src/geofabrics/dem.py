@@ -184,11 +184,17 @@ class DenseDem(abc.ABC):
         """ Return the combined DEM from tiles and any interpolated offshore values """
 
         if self._dem is None:
-            if self._offshore_dem is None:
+            if self._offshore_dem is None and self._river_dem is None:
                 self._dem = self._dense_dem
-            else:
+            elif self._river_dem is None:
                 # method='first' or 'last'; use method='first' as `DenseDemFromFiles._dense_dem` clipped to extents
                 self._dem = rioxarray.merge.merge_arrays([self._dense_dem, self._offshore_dem], method='first')
+            elif self._offshore_dem is None:
+                # method='first' or 'last'; use method='first' as `DenseDemFromFiles._dense_dem` clipped to extents
+                self._dem = rioxarray.merge.merge_arrays([self._river_dem, self._dense_dem], method='first')
+            else:
+                self._dem = rioxarray.merge.merge_arrays([self._river_dem, self._dense_dem,
+                                                          self._offshore_dem], method='first')
 
         # Ensure valid name and increasing dimension indexing for the dem
         self._dem = self._dem.rename(self.DENSE_BINNING)
@@ -296,10 +302,8 @@ class DenseDem(abc.ABC):
         """ Performs interpolation with a river polygon using the SciPy RBF function. """
 
         # Get edge points
-        edge_dem = self._dense_dem.rio.clip(self.catchment_geometry.caatchment.geometry, drop=True)
-        edge_dem.data[0] = 0  # set all to zero then clip out dense region where we don't need to interpolate
-        edge_dem = edge_dem.rio.clip(river_bathymetry.polygon.buffer(self.catchment_geometry.resolution), drop=True)
-        edge_dem = edge_dem.rio.clip(river_bathymetry.polygon, invert=True, drop=True)
+        edge_dem = self._dense_dem.rio.clip(river_bathymetry.polygon.buffer(self.catchment_geometry.resolution), drop=True)
+        edge_dem = edge_dem.rio.clip(river_bathymetry.polygon.geometry, invert=True, drop=True)
         grid_x, grid_y = numpy.meshgrid(edge_dem.x, edge_dem.y)
         flat_z = edge_dem.data[0].flatten()
         mask_z = ~numpy.isnan(flat_z)
@@ -329,7 +333,7 @@ class DenseDem(abc.ABC):
                                              function='linear')
 
         # Setup the empty river area ready for interpolation
-        self._river_dem = self._dense_dem.rio.clip(river_bathymetry.polygon.geometry) # use polygon bbox in future
+        self._river_dem = self._dense_dem.rio.clip(river_bathymetry.polygon.geometry)  # use polygon bbox in future
         self._river_dem.data[0] = 0  # set all to zero then clip out dense region where we don't need to interpolate
         self._river_dem = self._river_dem.rio.clip(river_bathymetry.polygon.geometry)
 
@@ -341,12 +345,15 @@ class DenseDem(abc.ABC):
         flat_y_masked = grid_y.flatten()[mask_z]
         flat_z_masked = flat_z[mask_z]
 
+        # check there are actually pixels in the rive
+        logging.info(f"There are {len(flat_z_masked)} pixels in the river")
+
         # Tile offshore area - this limits the maximum memory required at any one time
-        number_offshore_tiles = math.ceil(len(flat_x_masked) / self.CACHE_SIZE)
-        for i in range(number_offshore_tiles):
-            logging.info(f"Offshore intepolant tile {i+1} of {number_offshore_tiles}")
+        number_tiles = math.ceil(len(flat_x_masked) / self.CACHE_SIZE)
+        for i in range(number_tiles):
+            logging.info(f"River intepolant tile {i+1} of {number_tiles}")
             start_index = int(i*self.CACHE_SIZE)
-            end_index = int((i+1)*self.CACHE_SIZE) if i + 1 != number_offshore_tiles else len(flat_x_masked)
+            end_index = int((i+1)*self.CACHE_SIZE) if i + 1 != number_tiles else len(flat_x_masked)
 
             flat_z_masked[start_index:end_index] = rbf_function(flat_x_masked[start_index:end_index],
                                                                 flat_y_masked[start_index:end_index])
