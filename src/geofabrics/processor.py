@@ -667,7 +667,7 @@ class RiverBathymetryGenerator():
                 min_channel_width=min_channel_width,
                 search_radius=rec_alignment_tolerance,
                 width_centre_smoothing_multiplier=width_centre_smoothing_multiplier,
-                transect_radius=corridor_radius)
+                cross_section_radius=corridor_radius)
 
             aligned_channel.to_file(aligned_channel_file)
             transects[['width_line', 'valid', 'channel_count']].set_geometry(
@@ -685,7 +685,7 @@ class RiverBathymetryGenerator():
             transects, river_polygon = self.channel_bathymetry.estimate_width_and_slope(
                 aligned_channel=aligned_channel,
                 threshold=bank_threshold,
-                transect_radius=corridor_radius,
+                cross_section_radius=corridor_radius,
                 search_radius=rec_alignment_tolerance,
                 min_channel_width=min_channel_width,
                 max_threshold=max_bank_height,
@@ -701,11 +701,12 @@ class RiverBathymetryGenerator():
             transects[columns].to_file(local_cache / "final_transect_values.geojson")
             transects.set_geometry('width_line', drop=True)[['geometry', 'valid']].to_file(local_cache / "final_widths.geojson")
             transects.set_geometry('flat_midpoint', drop=True)[columns].to_file(local_cache / "final_values.geojson")
+            transects.set_geometry('river_polygon_midpoint', drop=True)[columns].to_file(local_cache / "river_polygon_midpoint.geojson")
         else:
             print("The final widths have already been generated")
 
         # Read in the flow file and calcaulate the depths - write out the results
-        width_values = geopandas.read_file(local_cache / "final_values.geojson")
+        width_values = geopandas.read_file(local_cache / "river_polygon_midpoint.geojson")
 
         # Match each channel midpoint to a nzsegment id - based on what channel reach is closest
         width_values['nzsegment'] = numpy.zeros(len(width_values['widths']), dtype=int)
@@ -742,7 +743,7 @@ class RiverBathymetryGenerator():
         width_values['bed_elevation_Smart_et_al'] = width_values[min_z_name] - width_values['depth_Smart_et_al']
 
         # Save the bed elevations
-        width_values[['geometry', 'bed_elevation_Neal_et_al', 'bed_elevation_Smart_et_al']][width_values['valid']].to_file(local_cache / "river_bathymetry.geojson")
+        width_values[['geometry', 'bed_elevation_Neal_et_al', 'bed_elevation_Smart_et_al']][width_values].to_file(local_cache / "river_bathymetry.geojson")
 
         # Update parameter file - in time only update the bits that have been re-run
         with open(instruction_parameters, 'w') as file_pointer:
