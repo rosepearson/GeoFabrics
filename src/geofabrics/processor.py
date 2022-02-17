@@ -688,9 +688,10 @@ class RiverBathymetryGenerator():
                 transect_radius=corridor_radius,
                 search_radius=rec_alignment_tolerance,
                 min_channel_width=min_channel_width,
-                max_threshold=max_bank_height)
+                max_threshold=max_bank_height,
+                river_polygon_smoothing_multiplier=width_centre_smoothing_multiplier)
 
-            river_polygon.to_file(local_cache / ("flat_water_polygon.geojson"))
+            river_polygon.to_file(local_cache / ("river_polygon.geojson"))
             transects[['geometry', 'channel_count']].to_file(local_cache / "final_transects.geojson")
             columns = ['geometry']
             columns.extend([column_name for column_name in transects.columns

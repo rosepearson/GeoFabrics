@@ -546,8 +546,7 @@ class ChannelBathymetry:
         return transects
 
     def _estimate_water_level_and_slope(self, transects: geopandas.GeoDataFrame,
-                                        transect_samples: dict,
-                                        smoothing_distance: float = 1000):
+                                        transect_samples: dict):
         """ Estimate the water level and slope from the minimumz heights along
         the sampled transects after applying appropiate smoothing and
         constraints to ensure it is monotonically increasing. Values are stored
@@ -1261,7 +1260,7 @@ class ChannelBathymetry:
         start_xy = Channel(start_xy, resolution=self.transect_spacing)
         start_xy_spline = start_xy.get_smoothed_spline_fit(smoothing_multiplier)
 
-        # Get the 'flat water' last bank - +1 to move just inwards
+        # Get the 'flat water' last bank - -1 to move just inwards
         bank_offset = self.resolution * (transects.loc[channel_mask, 'last_flat_bank_i'] - 1 - self.centre_index)
         stop_xy = numpy.vstack(
             [(transects.loc[channel_mask, 'mid_x'] + bank_offset * transects.loc[channel_mask, 'nx']).array,
@@ -1411,7 +1410,7 @@ class ChannelBathymetry:
                       search_radius: float,
                       min_channel_width: float,
                       width_centre_smoothing_multiplier: float,
-                      transect_radius: float):
+                      cross_section_radius: float):
         """ Estimate the channel centre from transect samples
 
         Parameters
@@ -1423,8 +1422,8 @@ class ChannelBathymetry:
             The number of transects to include in the downstream spline smoothing.
         """
 
-        assert transect_radius >= search_radius, "The transect radius must be >= the min_z_radius"
-        self.transect_radius = transect_radius
+        assert cross_section_radius >= search_radius, "The transect radius must be >= the min_z_radius"
+        self.transect_radius = cross_section_radius
 
         # Sample channel
         sampled_channel = self.channel.get_sampled_spline_fit()
@@ -1439,8 +1438,7 @@ class ChannelBathymetry:
 
         # Estimate water surface level and slope - Smooth slope upstream over 1km
         self._estimate_water_level_and_slope(transects=transects,
-                                             transect_samples=transect_samples,
-                                             smoothing_distance=1000)
+                                             transect_samples=transect_samples)
 
         # Bank estimates - outside in
         self.fixed_thresholded_widths_from_centre_within_radius(
@@ -1482,9 +1480,10 @@ class ChannelBathymetry:
                                  aligned_channel: geopandas.GeoDataFrame,
                                  threshold: float,
                                  max_threshold: float,
-                                 transect_radius: float,
+                                 cross_section_radius: float,
                                  search_radius: float,
-                                 min_channel_width: float):
+                                 min_channel_width: float,
+                                 river_polygon_smoothing_multiplier: float):
         """ Estimate the channel centre from transect samples
 
         Parameters
@@ -1496,22 +1495,19 @@ class ChannelBathymetry:
             The height above the water level to detect as a bank.
         """
 
-        assert transect_radius >= search_radius, "The transect radius must be >= the min_z_radius"
-        self.transect_radius = transect_radius
-
-        slope_smoothing_distance = 500  # Smooth slope upstream over this many metres
+        assert cross_section_radius >= search_radius, "The transect radius must be >= the min_z_radius"
+        self.transect_radius = cross_section_radius
 
         # Create transects
-        transects = self.transects_along_reaches_at_node(sampled_channel=aligned_channel)
+        cross_sections = self.transects_along_reaches_at_node(sampled_channel=aligned_channel)
 
         # Sample along transects
-        sampled_elevations = self.sample_from_transects(transects=transects,
+        sampled_elevations = self.sample_from_transects(transects=cross_sections,
                                                         min_z_search_radius=search_radius)
 
         # Estimate water surface level and slope
-        self._estimate_water_level_and_slope(transects=transects,
-                                             transect_samples=sampled_elevations,
-                                             smoothing_distance=slope_smoothing_distance)
+        self._estimate_water_level_and_slope(transects=cross_sections,
+                                             transect_samples=sampled_elevations)
 
         # Estimate widths
         '''self.fixed_thresholded_widths_from_centre_within_radius(
@@ -1521,7 +1517,7 @@ class ChannelBathymetry:
             resolution=self.resolution,
             search_radius=search_radius/10)'''
         self.variable_thresholded_widths_from_centre_within_radius(
-            transects=transects,
+            transects=cross_sections,
             sampled_elevations=sampled_elevations,
             threshold=threshold,
             resolution=self.resolution,
@@ -1530,10 +1526,10 @@ class ChannelBathymetry:
             min_channel_width=min_channel_width)
 
         # generate a flat water polygon
-        river_polygon = self._create_flat_water_polygon(transects=transects, smoothing_multiplier=10)
+        river_polygon = self._create_flat_water_polygon(transects=cross_sections,
+                                                        smoothing_multiplier=river_polygon_smoothing_multiplier)
 
-
-        transects['width_line'] = transects.apply(
+        cross_sections['width_line'] = cross_sections.apply(
             lambda x: self._apply_bank_width(x['mid_x'],
                                              x['mid_y'],
                                              x['nx'],
@@ -1541,7 +1537,7 @@ class ChannelBathymetry:
                                              x['first_bank_i'],
                                              x['last_bank_i']), axis=1)
 
-        transects['flat_midpoint'] = transects.apply(
+        cross_sections['flat_midpoint'] = cross_sections.apply(
             lambda x: self._apply_midpoint(x['mid_x'],
                                            x['mid_y'],
                                            x['nx'],
@@ -1550,14 +1546,14 @@ class ChannelBathymetry:
                                            x['last_flat_bank_i']), axis=1)
 
         # Width and threshod smoothing - rolling mean
-        self._smooth_widths_and_thresholds(cross_sections=transects)
+        self._smooth_widths_and_thresholds(cross_sections=cross_sections)
 
         # Plot results
-        self._plot_results(transects=transects,
+        self._plot_results(transects=cross_sections,
                            transect_samples=sampled_elevations,
                            threshold=threshold,
                            aligned_channel=aligned_channel,
                            include_transects=False)
 
         # Return results for now
-        return transects, river_polygon
+        return cross_sections, river_polygon
