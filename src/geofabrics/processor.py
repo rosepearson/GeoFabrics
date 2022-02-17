@@ -536,7 +536,7 @@ class OffshoreDemGenerator(BaseProcessor):
         self.dense_dem.dem.to_netcdf(self.get_instruction_path('result_dem'))
 
 
-class RiverBathymetryGenerator():
+class RiverBathymetryGenerator(BaseProcessor):
     """ RiverbathymetryGenerator executes a pipeline to estimate river
     bathymetry depths from flows, slopes, friction and widths along a main
     channel. This is dones by first creating a hydrologically conditioned DEM
@@ -572,6 +572,7 @@ class RiverBathymetryGenerator():
         and eventually depth. """
 
         # Read ininstructions
+        crs = self.instructions["instructions"]["output"]["crs"]["horizontal"]
         rec = geopandas.read_file(self.instructions['instructions']['channel_bathymetry']['rec_file'])
         flow = pandas.read_csv(self.instructions['instructions']['channel_bathymetry']['flow_file'])
         channel_rec_id = self.instructions['instructions']['channel_bathymetry']['channel_rec_id']
@@ -743,7 +744,76 @@ class RiverBathymetryGenerator():
         width_values['bed_elevation_Smart_et_al'] = width_values[min_z_name] - width_values['depth_Smart_et_al']
 
         # Save the bed elevations
-        width_values[['geometry', 'bed_elevation_Neal_et_al', 'bed_elevation_Smart_et_al']][width_values].to_file(local_cache / "river_bathymetry.geojson")
+        width_values[['geometry', 'bed_elevation_Neal_et_al', 'bed_elevation_Smart_et_al']].to_file(local_cache / "river_bathymetry.geojson")
+
+        ## Ocean fan calculations
+        # Add some bathymetry transitioning from river to coast and a polygon
+        aligned_channel = geopandas.read_file(aligned_channel_file)
+
+        # Calculate the tangent and normal to the last segment
+        import shapely
+        (x,y) = aligned_channel.loc[0].geometry.xy
+        mouth_point = shapely.geometry.Point([x[0], y[0]])
+        segment_dx = x[0] - x[1]
+        segment_dy = y[0] - y[1]
+        segment_length = numpy.sqrt(segment_dx**2 + segment_dy**2)
+        tangent_x = segment_dx / segment_length
+        tangent_y = segment_dy / segment_length
+        normal_x = -tangent_x
+        normal_y = tangent_y
+
+        # create fan centreline
+        fan_max_length = 10000
+        extended_line = shapely.geometry.LineString(
+            [mouth_point,
+             [mouth_point.x + fan_max_length * tangent_x, mouth_point.y + fan_max_length * tangent_y]])
+
+        # Load in the depth and width at the river mouth
+        river_mouth_depth = geopandas.read_file(local_cache / "river_bathymetry.geojson")['bed_elevation_Smart_et_al'].iloc[0]
+        river_mouth_width = geopandas.read_file(local_cache / "final_values.geojson")['widths'].iloc[0]
+
+        # Load in the ocean contours and find the contours to terminate against
+        ocean_contours = geopandas.read_file(self.get_vector_paths('bathymetry_contours')[0]).to_crs(crs)
+        depth_label = self.instructions['instructions']['general']['bathymetry_contours_z_label']
+        depth_sign = -1
+        depth_multiplier = 2
+        end_depth = ocean_contours[depth_label][ocean_contours[depth_label] > depth_multiplier * river_mouth_depth * depth_sign ].min()
+        ocean_contours = ocean_contours[ocean_contours[depth_label] == end_depth].reset_index(drop=True)
+
+        # Cycle through contours finding the first 'deep enough' contour to cross
+        distance = numpy.inf
+        end_point = shapely.geometry.Point()
+
+        for i, row in ocean_contours.iterrows():
+            if row.geometry.intersects(extended_line):
+                intersection_point = row.geometry.intersection(extended_line)
+                if intersection_point.distance(mouth_point) < distance:
+                    distance = intersection_point.distance(mouth_point)
+                    end_point = intersection_point
+
+        # Define and save the fan polygon
+        fan_angle = 15
+        end_width = river_mouth_width + 2 * distance * numpy.tan(numpy.pi/180 * fan_angle)
+        fan_polygon = shapely.geometry.Polygon([[mouth_point.x - normal_x * river_mouth_width / 2,
+                                                 mouth_point.y - normal_y * river_mouth_width / 2],
+                                                [mouth_point.x + normal_x * river_mouth_width / 2,
+                                                 mouth_point.y + normal_y * river_mouth_width / 2],
+                                                [end_point.x + normal_x * end_width / 2,
+                                                 end_point.y + normal_y * end_width / 2],
+                                                [end_point.x - normal_x * end_width / 2,
+                                                 end_point.y - normal_y * end_width / 2]])
+        geopandas.GeoDataFrame(geometry=[fan_polygon], crs=crs).to_file(local_cache / "river_mouth_fan_polygon.geojson")
+
+        # Define and save the fan depths
+        fan_depths = {'geometry': [], 'depths': []}
+        number_of_samples = int(distance / transect_spacing)
+        depth_increment = (-1 * end_depth - river_mouth_depth) / number_of_samples
+        
+        for i in range(1, number_of_samples):
+            fan_depths['geometry'].append(shapely.geometry.Point([mouth_point.x + tangent_x * i * transect_spacing,
+                                                                  mouth_point.y + tangent_y * i * transect_spacing]))
+            fan_depths['depths'].append(river_mouth_depth + i * depth_increment)
+        geopandas.GeoDataFrame(fan_depths, crs=crs).to_file(local_cache / "river_mouth_fan_depths.geojson")
 
         # Update parameter file - in time only update the bits that have been re-run
         with open(instruction_parameters, 'w') as file_pointer:
