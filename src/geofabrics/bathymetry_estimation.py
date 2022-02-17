@@ -1405,20 +1405,6 @@ class ChannelBathymetry:
         return shapely.geometry.Point([mid_x + (mid_i - self.centre_index) * nx * self.resolution,
                                        mid_y + (mid_i - self.centre_index) * ny * self.resolution])
 
-    def _apply_line_polygon_intersection_centroid(self, polygon, line):
-        """ Calculate the line-polygon instersection midpoint
-
-        Parameters
-        ----------
-
-        line
-            A cross section line
-        polygon
-            A polygon the line is expected to cross
-        """
-        
-        return line.intersection(polygon).centroid
-
     def align_channel(self,
                       threshold: float,
                       search_radius: float,
@@ -1543,25 +1529,24 @@ class ChannelBathymetry:
         river_polygon = self._create_flat_water_polygon(transects=cross_sections,
                                                         smoothing_multiplier=river_polygon_smoothing_multiplier)
 
+        cross_sections['river_polygon_midpoint'] = cross_sections.apply(
+            lambda row: row.geometry.intersection(river_polygon.iloc[0].geometry).centroid, axis=1)
+
         cross_sections['width_line'] = cross_sections.apply(
-            lambda x: self._apply_bank_width(x['mid_x'],
-                                             x['mid_y'],
-                                             x['nx'],
-                                             x['ny'],
-                                             x['first_bank_i'],
-                                             x['last_bank_i']), axis=1)
+            lambda row: self._apply_bank_width(row['mid_x'],
+                                               row['mid_y'],
+                                               row['nx'],
+                                               row['ny'],
+                                               row['first_bank_i'],
+                                               row['last_bank_i']), axis=1)
 
         cross_sections['flat_midpoint'] = cross_sections.apply(
-            lambda x: self._apply_midpoint(x['mid_x'],
-                                           x['mid_y'],
-                                           x['nx'],
-                                           x['ny'],
-                                           x['first_flat_bank_i'],
-                                           x['last_flat_bank_i']), axis=1)
-
-        cross_sections['river_polygon_midpoint'] = cross_sections.apply(
-            lambda row: self._apply_line_polygon_intersection_centroid(
-                river_polygon, row.geometry), axis=1)
+            lambda row: self._apply_midpoint(row['mid_x'],
+                                             row['mid_y'],
+                                             row['nx'],
+                                             row['ny'],
+                                             row['first_flat_bank_i'],
+                                             row['last_flat_bank_i']), axis=1)
 
         # Width and threshod smoothing - rolling mean
         self._smooth_widths_and_thresholds(cross_sections=cross_sections)
