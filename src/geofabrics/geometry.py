@@ -342,23 +342,47 @@ class BathymetryPoints:
 class RiverBathymetryPoints:
     """ A class working with bathymetry points """
 
+    DEPTH_LABEL = 'depths'
+
     def __init__(self,
-                 points_file: str,
-                 polygon_file: str,
+                 points_files: str,
+                 polygon_files: str,
                  catchment_geometry: CatchmentGeometry,
-                 z_label: str = None):
-        self._points = geopandas.read_file(points_file)
-        self.polygon = geopandas.read_file(polygon_file)
+                 z_labels: str = None):
+
         self.catchment_geometry = catchment_geometry
-        self.z_label = z_label
 
-        self._set_up()
+        self.z_label = z_labels is not None
+        self._points = None
+        self.polygon = None
 
-    def _set_up(self):
+        self._set_up(points_files, polygon_files, z_labels)
+
+    def _set_up(self, points_files, polygon_files, z_labels):
         """ Set CRS and clip to catchment and within the flat water polygon """
 
+        assert len(points_files) == len(polygon_files) and len(points_files) == len(z_labels), \
+            f"The polygon and points lists should all be the same length."
+        assert z_labels is None or len(points_files) == len(z_labels), \
+            f"Either all points should include z-values, or all have a label."
+
+        points = geopandas.read_file(points_files[0])
+        if z_labels is not None:
+            points[self.DEPTH_LABEL] = points[z_labels[0]]
+        polygon = geopandas.read_file(polygon_files[0])
+        for i in range(1, len(points_files)):
+            points_i = geopandas.read_file(points_files[i])
+            if z_labels is not None:
+                points[self.DEPTH_LABEL] = points[z_labels[i]]
+            points.append(points_i)
+            polygon_i = geopandas.read_file(polygon_files[i])
+            polygon.append(polygon_i)
+
+        self._points = points
+        self.polygon = polygon
+
         self._points = self._points.to_crs(self.catchment_geometry.crs['horizontal'])
-        self._polygon = self._points.to_crs(self.catchment_geometry.crs['horizontal'])
+        self.polygon = self.polygon.to_crs(self.catchment_geometry.crs['horizontal'])
 
         self._points = self._points.clip(self.polygon, keep_geom_type=True)
         self._points = self._points.clip(self.catchment_geometry.catchment, keep_geom_type=True)
@@ -373,10 +397,10 @@ class RiverBathymetryPoints:
         # Extract the x, y and z values from the Shapely MultiPoints and possibly a depth column
         points['X'] = self._points.apply(lambda row: row.geometry.x, axis=1).to_list()
         points['Y'] = self._points.apply(lambda row: row.geometry.y, axis=1).to_list()
-        if self.z_label is None:
-            points['Z'] = self._points.apply(lambda row: row.geometry.z, axis=1).to_list()
+        if self.z_label:
+            points['Z'] = self._points.apply(lambda row: row[self.DEPTH_LABEL], axis=1).to_list()
         else:
-            points['Z'] = self._points.apply(lambda row: row[self.z_label], axis=1).to_list()
+            points['Z'] = self._points.apply(lambda row: row.geometry.z, axis=1).to_list()
 
         return points
 
@@ -408,9 +432,10 @@ class RiverBathymetryPoints:
     def z(self):
         """ The z values """
 
-        if self._z is None:
-            # map depth to elevation
-            self._z = self._points.points.apply(lambda row: row['geometry'][0].z, axis=1).to_numpy() * -1
+        if self.z_label:
+            self._z = self._points.apply(lambda row: row[self.DEPTH_LABEL], axis=1).to_list()
+        else:
+            self._z = self._points.apply(lambda row: row.geometry.z, axis=1).to_list()
 
         return self._z
 
