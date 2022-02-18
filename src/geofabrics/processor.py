@@ -759,8 +759,8 @@ class RiverBathymetryGenerator(BaseProcessor):
         segment_length = numpy.sqrt(segment_dx**2 + segment_dy**2)
         tangent_x = segment_dx / segment_length
         tangent_y = segment_dy / segment_length
-        normal_x = -tangent_x
-        normal_y = tangent_y
+        normal_x = -tangent_y
+        normal_y = tangent_x
 
         # create fan centreline
         fan_max_length = 10000
