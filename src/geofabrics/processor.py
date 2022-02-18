@@ -416,22 +416,18 @@ class DemGenerator(BaseProcessor):
         # Load in river bathymetry and incorporate where decernable at the resolution
         if self.check_vector('river_polygons') and self.check_vector('river_bathymetry'):
 
-            # Get the polygons and bathymetry and check only one of each
+            # Get the polygons and bathymetry and can be multiple
             bathy_dirs = self.get_vector_paths('river_bathymetry')
-            assert len(bathy_dirs) == 1, f"{len(bathy_dirs)} bathymetry_contours's provided. " + \
-                f"Specficially {bathy_dirs}. Support has not yet been added for multiple datasets."
             poly_dirs = self.get_vector_paths('river_polygons')
-            assert len(poly_dirs) == 1, f"{len(poly_dirs)} bathymetry_contours's provided. " + \
-                f"Specficially {poly_dirs}. Support has not yet been added for multiple datasets."
 
-            logging.info(f"Incorporating river Bathymetry: {bathy_contour_dirs}")
+            logging.info(f"Incorporating river Bathymetry: {bathy_dirs}")
 
             # Load in bathymetry
             self.river_bathy = geometry.RiverBathymetryPoints(
-                points_file=bathy_dirs[0],
-                polygon_file=poly_dirs[0],
+                points_files=bathy_dirs,
+                polygon_files=poly_dirs,
                 catchment_geometry=self.catchment_geometry,
-                z_label=self.get_instruction_general("river_bathy_z_label"))
+                z_labels=self.get_instruction_general("river_bathy_z_label"))
 
             # Call interpolate river on the DEM - note the DEM checks to see if any pixels actually fall inside the polygon
             self.dense_dem.interpolate_river_bathymetry(river_bathymetry=self.river_bathy)
@@ -512,22 +508,18 @@ class OffshoreDemGenerator(BaseProcessor):
         # Load in river bathymetry and incorporate where decernable at the resolution
         if self.check_vector('river_polygons') and self.check_vector('river_bathymetry'):
 
-            # Get the polygons and bathymetry and check only one of each
+            # Get the polygons and bathymetry and can be multiple
             bathy_dirs = self.get_vector_paths('river_bathymetry')
-            assert len(bathy_dirs) == 1, f"{len(bathy_dirs)} bathymetry_contours's provided. " + \
-                f"Specficially {bathy_dirs}. Support has not yet been added for multiple datasets."
             poly_dirs = self.get_vector_paths('river_polygons')
-            assert len(poly_dirs) == 1, f"{len(poly_dirs)} bathymetry_contours's provided. " + \
-                f"Specficially {poly_dirs}. Support has not yet been added for multiple datasets."
 
-            logging.info(f"Incorporating river Bathymetry: {bathy_contour_dirs}")
+            logging.info(f"Incorporating river Bathymetry: {bathy_dirs}")
 
             # Load in bathymetry
             self.river_bathy = geometry.RiverBathymetryPoints(
-                points_file=bathy_dirs[0],
-                polygon_file=poly_dirs[0],
+                points_files=bathy_dirs,
+                polygon_files=poly_dirs,
                 catchment_geometry=self.catchment_geometry,
-                z_label=self.get_instruction_general("river_bathy_z_label"))
+                z_labels=self.get_instruction_general("river_bathy_z_label"))
 
             # Call interpolate river on the DEM - note the DEM checks to see if any pixels actually fall inside the polygon
             self.dense_dem.interpolate_river_bathymetry(river_bathymetry=self.river_bathy)

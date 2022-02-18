@@ -196,12 +196,12 @@ class DenseDem(abc.ABC):
                 self._dem = rioxarray.merge.merge_arrays([self._river_dem, self._dense_dem,
                                                           self._offshore_dem], method='first')
 
-        # Ensure valid name and increasing dimension indexing for the dem
-        self._dem = self._dem.rename(self.DENSE_BINNING)
-        if self.interpolate_missing_values:
-            self._dem = self._dem.rio.interpolate_na(method='linear')  # methods are 'nearest', 'linear' and 'cubic'
-        self._dem = self._dem.rio.clip(self.catchment_geometry.catchment.geometry)
-        self._dem = self._ensure_positive_indexing(self._dem)  # Some programs require positively increasing indices
+            # Ensure valid name and increasing dimension indexing for the dem
+            self._dem = self._dem.rename(self.DENSE_BINNING)
+            if self.interpolate_missing_values:
+                self._dem = self._dem.rio.interpolate_na(method='linear')  # methods are 'nearest', 'linear' and 'cubic'
+            self._dem = self._dem.rio.clip(self.catchment_geometry.catchment.geometry)
+            self._dem = self._ensure_positive_indexing(self._dem)  # Some programs require positively increasing indices
         return self._dem
 
     @staticmethod
@@ -301,8 +301,12 @@ class DenseDem(abc.ABC):
                                      river_bathymetry):
         """ Performs interpolation with a river polygon using the SciPy RBF function. """
 
+        # Reset the river and overall DEM
+        self._river_dem = None
+        self._dem = None
+
         # Get edge points
-        edge_dem = self._dense_dem.rio.clip(river_bathymetry.polygon.buffer(self.catchment_geometry.resolution), drop=True)
+        edge_dem = self.dem.rio.clip(river_bathymetry.polygon.buffer(self.catchment_geometry.resolution), drop=True)
         edge_dem = edge_dem.rio.clip(river_bathymetry.polygon.geometry, invert=True, drop=True)
         grid_x, grid_y = numpy.meshgrid(edge_dem.x, edge_dem.y)
         flat_z = edge_dem.data[0].flatten()
@@ -333,7 +337,7 @@ class DenseDem(abc.ABC):
                                              function='linear')
 
         # Setup the empty river area ready for interpolation
-        self._river_dem = self._dense_dem.rio.clip(river_bathymetry.polygon.geometry)  # use polygon bbox in future
+        self._river_dem = self.dem.rio.clip(river_bathymetry.polygon.geometry)
         self._river_dem.data[0] = 0  # set all to zero then clip out dense region where we don't need to interpolate
         self._river_dem = self._river_dem.rio.clip(river_bathymetry.polygon.geometry)
 
