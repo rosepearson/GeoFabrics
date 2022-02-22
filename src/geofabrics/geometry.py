@@ -361,8 +361,8 @@ class RiverBathymetryPoints:
     def _set_up(self, points_files, polygon_files, z_labels):
         """ Set CRS and clip to catchment and within the flat water polygon """
 
-        assert len(points_files) == len(polygon_files) and len(points_files) == len(z_labels), \
-            f"The polygon and points lists should all be the same length."
+        assert len(points_files) == len(polygon_files), "The polygon and point lists should all be the " \
+            f"same length. Instead there are {len(points_files)} points files and {len(polygon_files)} polygon files"
         assert z_labels is None or len(points_files) == len(z_labels), \
             f"Either all points should include z-values, or all have a label."
 
@@ -374,9 +374,9 @@ class RiverBathymetryPoints:
             points_i = geopandas.read_file(points_files[i])
             if z_labels is not None:
                 points[self.DEPTH_LABEL] = points[z_labels[i]]
-            points.append(points_i)
+            points = points.append(points_i)
             polygon_i = geopandas.read_file(polygon_files[i])
-            polygon.append(polygon_i)
+            polygon = polygon.append(polygon_i)
 
         self._points = points
         self.polygon = polygon
