@@ -540,7 +540,7 @@ class RiverBathymetryGenerator(BaseProcessor):
     Attributes:
         channel_polyline  The main channel along which to estimate depth. This
             is a polyline.
-        dem  The ground DEM generated along the main channel. This is a
+        gen_dem  The ground DEM generated along the main channel. This is a
             raster.
         veg_dem  The vegetation DEM generated along the main channel. This is a
             raster.
@@ -551,11 +551,11 @@ class RiverBathymetryGenerator(BaseProcessor):
     """
 
     def __init__(self, json_instructions: json):
-        
+
         super(RiverBathymetryGenerator, self).__init__(json_instructions=json_instructions)
 
         self.channel_bathymetry = None
-        self.dem = None
+        self.gnd_dem = None
         self.veg_dem = None
         self.aligned_channel_plyline = None
         self.transects = None
@@ -615,12 +615,12 @@ class RiverBathymetryGenerator(BaseProcessor):
                 channel_catchment.to_file(self.instructions['instructions']['data_paths']['catchment_boundary'])
             runner = DemGenerator(self.instructions)
             runner.run()
-            self.dem = runner.dense_dem.dem
+            self.gnd_dem = runner.dense_dem.dem
         else:
             print("gnd DEM along the channel exists. Loading the DEM.")
             with rioxarray.rioxarray.open_rasterio(dem_file, masked=True) as dem:
                 dem.load()
-            self.dem = dem.copy(deep=True)
+            self.gnd_dem = dem.copy(deep=True)
 
         # Generate a DEM of vegetration with LiDAR
         dem_file = local_cache / f"channel_veg_dem_{area_threshold}.nc"
@@ -646,7 +646,7 @@ class RiverBathymetryGenerator(BaseProcessor):
         # Create channel bathymetry estimator
         self.channel_bathymetry = bathymetry_estimation.ChannelBathymetry(
             channel=channel,
-            dem=self.dem,
+            dem=self.gnd_dem,
             veg_dem=self.veg_dem,
             transect_spacing=transect_spacing,
             resolution=resolution)
