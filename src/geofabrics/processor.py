@@ -177,12 +177,8 @@ class BaseProcessor(abc.ABC):
                     f"{self.instructions['instructions']['apis'][data_service]}"
                 api_key = self.instructions['instructions']['apis'][data_service]['key']
 
-                if self.catchment_geometry is not None:
-                    bounding_polygon = self.catchment_geometry.catchment
-                else:
-                    bounding_polygon = None
-
                 # Instantiate the geoapis object for downloading vectors from the data service.
+                bounding_polygon = self.catchment_geometry.catchment
                 vector_fetcher = data_services[data_service](api_key,
                                                              bounding_polygon=bounding_polygon,
                                                              verbose=True)
