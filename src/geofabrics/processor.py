@@ -177,12 +177,14 @@ class BaseProcessor(abc.ABC):
                     f"{self.instructions['instructions']['apis'][data_service]}"
                 api_key = self.instructions['instructions']['apis'][data_service]['key']
 
-                assert self.catchment_geometry is not None, "The `self.catchment_geometry` object must exist " + \
-                    "before a vector is downloaded using `vector.Linz`"
+                if self.catchment_geometry is not None:
+                    bounding_polygon = self.catchment_geometry.catchment
+                else:
+                    bounding_polygon = None
 
                 # Instantiate the geoapis object for downloading vectors from the data service.
                 vector_fetcher = data_services[data_service](api_key,
-                                                             bounding_polygon=self.catchment_geometry.catchment,
+                                                             bounding_polygon=bounding_polygon,
                                                              verbose=True)
 
                 vector_instruction = self.instructions['instructions']['apis'][data_service][key]
@@ -549,8 +551,8 @@ class RiverBathymetryGenerator(BaseProcessor):
     """
 
     def __init__(self, json_instructions: json):
-
-        self.instructions = json_instructions
+        
+        super(RiverBathymetryGenerator, self).__init__(json_instructions=json_instructions)
 
         self.channel_bathymetry = None
         self.dem = None
@@ -698,6 +700,7 @@ class RiverBathymetryGenerator(BaseProcessor):
         else:
             print("The final widths have already been generated")
 
+        # TODO -  add error check and break into functions
         # Read in the flow file and calcaulate the depths - write out the results
         width_values = geopandas.read_file(local_cache / "river_polygon_midpoint.geojson")
 
@@ -772,28 +775,52 @@ class RiverBathymetryGenerator(BaseProcessor):
         end_depth = ocean_contours[depth_label][ocean_contours[depth_label] > depth_multiplier * river_mouth_depth * depth_sign ].min()
         ocean_contours = ocean_contours[ocean_contours[depth_label] == end_depth].reset_index(drop=True)
 
-        # Cycle through contours finding the first 'deep enough' contour to cross
-        distance = numpy.inf
-        end_point = shapely.geometry.Point()
-
-        for i, row in ocean_contours.iterrows():
-            if row.geometry.intersects(extended_line):
-                intersection_point = row.geometry.intersection(extended_line)
-                if intersection_point.distance(mouth_point) < distance:
-                    distance = intersection_point.distance(mouth_point)
-                    end_point = intersection_point
-
-        # Define and save the fan polygon
+        # Define fan polygon
         fan_angle = 15
-        end_width = river_mouth_width + 2 * distance * numpy.tan(numpy.pi/180 * fan_angle)
+        fan_length = 10_000
+        end_width = river_mouth_width + 2 * fan_length * numpy.tan(numpy.pi/180 * fan_angle)
+        fan_end_point = shapely.geometry.Point([mouth_point.x + fan_length * tangent_x,
+                                                mouth_point.y + fan_length * tangent_y])
         fan_polygon = shapely.geometry.Polygon([[mouth_point.x - normal_x * river_mouth_width / 2,
                                                  mouth_point.y - normal_y * river_mouth_width / 2],
                                                 [mouth_point.x + normal_x * river_mouth_width / 2,
                                                  mouth_point.y + normal_y * river_mouth_width / 2],
-                                                [end_point.x + normal_x * end_width / 2,
-                                                 end_point.y + normal_y * end_width / 2],
-                                                [end_point.x - normal_x * end_width / 2,
-                                                 end_point.y - normal_y * end_width / 2]])
+                                                [fan_end_point.x + normal_x * end_width / 2,
+                                                 fan_end_point.y + normal_y * end_width / 2],
+                                                [fan_end_point.x - normal_x * end_width / 2,
+                                                 fan_end_point.y - normal_y * end_width / 2]])
+
+        # Cycle through contours finding the nearest contour to intersect the fan
+        distance = numpy.inf
+        end_point = shapely.geometry.Point()
+
+        for i, row in ocean_contours.iterrows():
+            if row.geometry.intersects(fan_polygon):
+                intersection_line = row.geometry.intersection(fan_polygon)
+                if intersection_line.distance(mouth_point) < distance:
+                    distance = intersection_line.distance(mouth_point)
+                    end_point = intersection_line
+
+        # Construct a fan ending at the contour
+        (x,y) = intersection_line.xy
+        polygon_points = [[xi, yi] for (xi, yi) in zip(x, y)] 
+
+        # Determine line direction before adding the mouth points in the correct direction
+        first_point = shapely.geometry.Point([x[0], y[0]])
+        last_point = shapely.geometry.Point([x[0], y[0]])
+        bottom_fan_edge = shapely.geometry.LineString([[mouth_point.x + normal_x * river_mouth_width / 2, mouth_point.y + normal_y * river_mouth_width / 2],
+                                                                             [fan_end_point.x + normal_x * end_width / 2, fan_end_point.y + normal_y * end_width / 2]])
+
+        if first_point.distance(bottom_fan_edge) < last_point.distance(bottom_fan_edge):
+            # keep line order
+            polygon_points.extend([[mouth_point.x - normal_x * river_mouth_width / 2, mouth_point.y - normal_y * river_mouth_width / 2], 
+                                   [mouth_point.x + normal_x * river_mouth_width / 2, mouth_point.y + normal_y * river_mouth_width / 2]])
+        else:
+            # reverse fan order
+            polygon_points.extend([[mouth_point.x + normal_x * river_mouth_width / 2, mouth_point.y + normal_y * river_mouth_width / 2], 
+                                   [mouth_point.x - normal_x * river_mouth_width / 2, mouth_point.y - normal_y * river_mouth_width / 2]])
+        fan_polygon = shapely.geometry.Polygon(polygon_points)
+
         geopandas.GeoDataFrame(geometry=[fan_polygon], crs=crs).to_file(local_cache / "river_mouth_fan_polygon.geojson")
 
         # Define and save the fan depths
