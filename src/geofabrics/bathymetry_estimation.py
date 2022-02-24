@@ -338,21 +338,18 @@ class Channel:
         return numpy.array([x_sampled, y_sampled])
 
 
-class ChannelBathymetry:
-    """ A class to estimate the width, slope and depth of a channel from
-    a detailed DEM and a river network. """
+class ChannelWidth:
+    """ A class to estimate the width, slope and other characteristics of a
+    channel from a detailed DEM and a river network. """
 
     def __init__(self,
-                 channel: Channel,
-                 dem: xarray.core.dataarray.DataArray,
+                 gnd_dem: xarray.core.dataarray.DataArray,
                  veg_dem: xarray.core.dataarray.DataArray,
                  transect_spacing: float,
                  resolution: float):
         """ Load in the reference DEM, clip and extract points transects
 
-        channel
-            The channel to estimate bathymetry along defined as a polyline.
-        dem
+        gnd_dem
             The ground DEM along the channel
         veg_dem
             The vegetation DEM along the channel
@@ -364,8 +361,7 @@ class ChannelBathymetry:
             The resolution to sample at.
         """
 
-        self.channel = channel
-        self.dem = dem
+        self.gnd_dem = gnd_dem
         self.veg_dem = veg_dem
         self.transect_spacing = transect_spacing
         self.resolution = resolution
@@ -672,7 +668,7 @@ class ChannelBathymetry:
                             'xx': [], 'yy': [], 'min_z_centre': []}
 
         # create tree of ground values to sample from
-        grid_x, grid_y = numpy.meshgrid(self.dem.x, self.dem.y)
+        grid_x, grid_y = numpy.meshgrid(self.gnd_dem.x, self.gnd_dem.y)
         xy_in = numpy.concatenate([[grid_x.flatten()],
                                    [grid_y.flatten()]], axis=0).transpose()
         gnd_tree = scipy.spatial.KDTree(xy_in)
@@ -698,7 +694,7 @@ class ChannelBathymetry:
 
             # Sample the ground elevations at along the transect
             distances, indices = gnd_tree.query(xy_points)
-            elevations = self.dem.data.flatten()[indices]
+            elevations = self.gnd_dem.data.flatten()[indices]
             transect_samples['gnd_elevations'].append(elevations)
 
             # Find the min elevation along the middle of each cross section
@@ -1193,15 +1189,13 @@ class ChannelBathymetry:
 
         # Plot transects, widths, and centrelines on the DEM
         f, ax = matplotlib.pyplot.subplots(figsize=(40, 20))
-        self.dem.plot(ax=ax, label='DEM')
+        self.gnd_dem.plot(ax=ax, label='DEM')
         if include_transects:
             transects.plot(ax=ax, color='aqua', linewidth=1, label='transects')
         transects[transects['valid']].set_geometry('width_line').plot(ax=ax, color='red',
                                                                       linewidth=1.5, label='Valid widths')
         transects[transects['valid'] == False].set_geometry('width_line').plot(ax=ax, color='salmon',
                                                                                linewidth=1.5, label='Invalid widths')
-        self.channel.get_sampled_spline_fit().plot(ax=ax, color='black', linewidth=1.5, linestyle='--',
-                                                   label='sampled channel')
         if aligned_channel is not None:
             aligned_channel.plot(ax=ax, linewidth=2, color='green', zorder=4, label='Aligned channel')
         if initial_spline is not None:
@@ -1409,6 +1403,7 @@ class ChannelBathymetry:
                       threshold: float,
                       search_radius: float,
                       min_channel_width: float,
+                      initial_channel: Channel,
                       width_centre_smoothing_multiplier: float,
                       cross_section_radius: float):
         """ Estimate the channel centre from transect samples
@@ -1426,7 +1421,7 @@ class ChannelBathymetry:
         self.transect_radius = cross_section_radius
 
         # Sample channel
-        sampled_channel = self.channel.get_sampled_spline_fit()
+        sampled_channel = initial_channel.get_sampled_spline_fit()
 
         # Create transects
         transects = self.transects_along_reaches_at_node(
@@ -1496,6 +1491,7 @@ class ChannelBathymetry:
         """
 
         assert cross_section_radius >= search_radius, "The transect radius must be >= the min_z_radius"
+        assert max_threshold > threshold, "The max threshold must be greater than the threshold"
         self.transect_radius = cross_section_radius
 
         # Create transects
@@ -1529,9 +1525,11 @@ class ChannelBathymetry:
         river_polygon = self._create_flat_water_polygon(transects=cross_sections,
                                                         smoothing_multiplier=river_polygon_smoothing_multiplier)
 
+        # Midpoints as defined by the midpoint of the river polygon
         cross_sections['river_polygon_midpoint'] = cross_sections.apply(
             lambda row: row.geometry.intersection(river_polygon.iloc[0].geometry).centroid, axis=1)
 
+        # A line defining the extents of the bankfull width at that cross section
         cross_sections['width_line'] = cross_sections.apply(
             lambda row: self._apply_bank_width(row['mid_x'],
                                                row['mid_y'],
@@ -1540,6 +1538,7 @@ class ChannelBathymetry:
                                                row['first_bank_i'],
                                                row['last_bank_i']), axis=1)
 
+        # The 'flat water' midpoint
         cross_sections['flat_midpoint'] = cross_sections.apply(
             lambda row: self._apply_midpoint(row['mid_x'],
                                              row['mid_y'],
