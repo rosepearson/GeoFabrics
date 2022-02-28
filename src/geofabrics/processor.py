@@ -679,6 +679,14 @@ class RiverBathymetryGenerator(BaseProcessor):
             channel_catchment = channel.get_channel_catchment(corridor_radius=corridor_radius)
             channel_catchment.to_file(catchment_file)
 
+        # Remove bathymetry contour information if it exists while creating DEMs
+        bathy_data_paths = None
+        bathy_apis = None
+        if 'bathymetry_contours' in self.instructions['instructions']['data_paths']:
+            bathy_data_paths = self.instructions['instructions']['data_paths'].pop('bathymetry_contours')
+        if 'bathymetry_contours' in self.instructions['instructions']['apis']['linz']:
+            bathy_apis = self.instructions['instructions']['apis']['linz'].pop('bathymetry_contours')
+
         # Get the ground DEM
         if not gnd_file.is_file():
             # Create the ground DEM file if this has not be created yet!
@@ -708,6 +716,12 @@ class RiverBathymetryGenerator(BaseProcessor):
             with rioxarray.rioxarray.open_rasterio(veg_file, masked=True) as dem:
                 dem.load()
             veg_dem = dem.copy(deep=True)
+
+        # Replace bathymetry contour information if it exists
+        if bathy_data_paths is not None:
+            self.instructions['instructions']['data_paths']['bathymetry_contours'] = bathy_data_paths
+        if bathy_apis is not None:
+            self.instructions['instructions']['apis']['linz']['bathymetry_contours'] = bathy_apis
 
         return gnd_dem, veg_dem
 
