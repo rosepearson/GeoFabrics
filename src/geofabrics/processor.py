@@ -701,9 +701,16 @@ class RiverBathymetryGenerator(BaseProcessor):
             # Create the ground DEM file if this has not be created yet!
             print("Generating ground DEM.")
             self.instructions['instructions']['data_paths']['result_dem'] = str(gnd_file)
+            self.instructions['instructions']['data_paths']['dense_dem'] = pathlib.Path(self.get_instruction_path("local_cache")) \
+                / "dense_gnd_dem.nc"
+            self.instructions['instructions']['data_paths']['dense_dem_extents'] = pathlib.Path(self.get_instruction_path("local_cache")) \
+                / "dense_gnd_extents.geojson"
             runner = DemGenerator(self.instructions)
             runner.run()
             gnd_dem = runner.dense_dem.dem
+            self.instructions['instructions']['data_paths'].pop('dense_dem')
+            self.instructions['instructions']['data_paths'].pop('dense_dem_extents')
+            self.instructions['instructions']['data_paths'].pop('result_dem')
         else:
             print("Loading ground DEM.")
             with rioxarray.rioxarray.open_rasterio(gnd_file, masked=True) as dem:
@@ -717,9 +724,16 @@ class RiverBathymetryGenerator(BaseProcessor):
             self.instructions['instructions']['data_paths']['result_dem'] = str(veg_file)
             self.instructions['instructions']['general']['lidar_classifications_to_keep'] = \
                 self.get_bathymetry_instruction('veg_lidar_classifications_to_keep')
+            self.instructions['instructions']['data_paths']['dense_dem'] = pathlib.Path(self.get_instruction_path("local_cache")) \
+                / "dense_veg_dem.nc"
+            self.instructions['instructions']['data_paths']['dense_dem_extents'] = pathlib.Path(self.get_instruction_path("local_cache")) \
+                / "dense_veg_extents.geojson"
             runner = DemGenerator(self.instructions)
             runner.run()
             veg_dem = runner.dense_dem.dem
+            self.instructions['instructions']['data_paths'].pop('dense_dem')
+            self.instructions['instructions']['data_paths'].pop('dense_dem_extents')
+            self.instructions['instructions']['data_paths'].pop('result_dem')
         else:
             print("Loading the vegetation DEM.")
             with rioxarray.rioxarray.open_rasterio(veg_file, masked=True) as dem:
