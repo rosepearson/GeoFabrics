@@ -555,9 +555,6 @@ class RiverBathymetryGenerator(BaseProcessor):
     def channel_characteristics_exist(self) -> bool:
         """ Return true if the DEMs are required for later processing
 
-
-        Parameters:
-            instructions  The json instructions defining the behaviour
         """
 
         # Check if channel needs to be aligned or widths calculated
@@ -565,6 +562,17 @@ class RiverBathymetryGenerator(BaseProcessor):
         river_polygon_file = self.get_result_file(key='river_polygon')
 
         return river_characteristics_file.is_file() and river_polygon_file.is_file()
+
+    def channel_bathymetry_exist(self) -> bool:
+        """ Return true if the river channel and bathymetry files exist. """
+
+        # Check if the expected bathymetry and polygon files exist
+        river_bathymetry_file = self.get_result_file(key='river_bathymetry')
+        river_polygon_file = self.get_result_file(key='river_polygon')
+        fan_bathymetry_file = self.get_result_file(key='fan_bathymetry')
+        fan_polygon_file = self.get_result_file(key='fan_polygon')
+        return river_bathymetry_file.is_file() and river_polygon_file.is_file() \
+            and fan_bathymetry_file.is_file() and fan_polygon_file.is_file()
 
     def alignment_exists(self) -> bool:
         """ Return true if the DEMs are required for later processing
@@ -630,8 +638,9 @@ class RiverBathymetryGenerator(BaseProcessor):
         """
 
         # Get instructions
+        crs = self.get_crs()["horizontal"]
         area_threshold = self.get_bathymetry_instruction('channel_area_threshold')
-        rec_network = geopandas.read_file(self.get_bathymetry_instruction('rec_file'))
+        rec_network = geopandas.read_file(self.get_bathymetry_instruction('rec_file')).to_crs(crs)
         channel_rec_id = self.get_bathymetry_instruction('channel_rec_id')
         transect_spacing = self.get_bathymetry_instruction('transect_spacing')
 
@@ -785,8 +794,6 @@ class RiverBathymetryGenerator(BaseProcessor):
             channel  The REC defined channel alignment
         """
 
-        print("Calculating the final widths.")
-
         # Get instruciton parameters
         max_channel_width = self.get_bathymetry_instruction('max_channel_width')
         min_channel_width = self.get_bathymetry_instruction('min_channel_width')
@@ -826,17 +833,17 @@ class RiverBathymetryGenerator(BaseProcessor):
 
     def characterise_channel(self,
                              buffer: float) -> bathymetry_estimation.ChannelWidth:
-        """ Calculate the channel width, slope and other characteristics. This
-        may require alignment of the channel centreline.
+        """ Calculate the channel width, slope and other characteristics. This requires a
+        ground and vegetation DEM. This also may require alignment of the channel centreline.
 
 
         Parameters:
-            instructions  The json instructions defining the behaviour
+            buffer  The amount of extra space to create around the river catchment
         """
 
         # Extract instructions
         transect_spacing = self.get_bathymetry_instruction('transect_spacing')
-        resolution = self.instructions['instructions']['output']['grid_params']['resolution']
+        resolution = self.get_resolution()
 
         # Create REC defined channel
         channel = self.get_rec_channel()
@@ -869,23 +876,12 @@ class RiverBathymetryGenerator(BaseProcessor):
                                                aligned_channel=aligned_channel,
                                                buffer=buffer)
 
-    def run(self, instruction_parameters):
-        """ This method extracts a main channel then executes the DemGeneration
-        pipeline to produce a DEM before sampling this to extimate width, slope
-        and eventually depth. """
+    def calculate_depths(self):
+        """ Calculate and save depth estimates along the channel using various
+        approaches.
 
-        # Create/load DEM's if needed
-        if not self.channel_characteristics_exist():
-            buffer = 50
-            self.characterise_channel(buffer=buffer)
+        """
 
-        # Estimate channel and fan depths if needed
-
-        # Read ininstructions
-        crs = self.instructions["instructions"]["output"]["crs"]["horizontal"]
-        transect_spacing = self.instructions['instructions']['channel_bathymetry']['transect_spacing']
-
-        # TODO -  add error check and break into functions
         # Read in the flow file and calcaulate the depths - write out the results
         width_values = geopandas.read_file(self.get_result_file(key='river_characteristics'))
         flow = pandas.read_csv(self.get_bathymetry_instruction('flow_file'))
@@ -906,34 +902,51 @@ class RiverBathymetryGenerator(BaseProcessor):
             width_values.loc[width_values['nzsegment'] == nzsegment,
                              ('flow')] = flow[flow['nzsegment'] == nzsegment]['flow'].unique()[0]
 
-        # Calculate the depths using various approaches
+        # Names of values to use
         slope_name = 'slope_mean_2.0km'
         min_z_name = 'min_z_centre_unimodal'
         width_name = 'widths_mean_0.25km'
+        flat_width_name = 'flat_widths_mean_0.25km'
         threshold_name = 'thresholds_mean_0.25km'
-        width_values['depth_Neal_et_al'] = \
-            (width_values['mannings_n'] * width_values['flow']
-             / (numpy.sqrt(width_values[slope_name]) * width_values[width_name])) ** (3/5) - width_values[threshold_name]
+
+        # Calculate full bank width depths using the Neal et al approach (Uniform flow theory)
+        full_bank_depth = (width_values['mannings_n'] * width_values['flow'] / (
+            numpy.sqrt(width_values[slope_name]) * width_values[width_name])) ** (3/5) - width_values[threshold_name]
+        flat_bank_depth = full_bank_depth * width_values[width_name] / width_values[flat_width_name]
+
+        # Bed elevation
+        width_values['bed_elevation_Neal_et_al'] = width_values[min_z_name] - flat_bank_depth
+
+        # Calculate full bank width depths using the Rupp & Smart approach (Hydrologic geometry)
         a = 0.745
         b = 0.305
         K_0 = 6.16
-        width_values['depth_Smart_et_al'] = \
-            (width_values['flow'] / (K_0 * width_values[width_name]
-                                     * width_values[slope_name] ** b)) ** (1 / (1+a)) - width_values[threshold_name]
+        full_bank_depth = (width_values['flow'] / (K_0 * width_values[width_name] * width_values[slope_name] ** b)
+                           ) ** (1 / (1+a)) - width_values[threshold_name]
+        flat_bank_depth = full_bank_depth * width_values[width_name] / width_values[flat_width_name]
 
         # Calculate the bed elevation
-        width_values['bed_elevation_Neal_et_al'] = width_values[min_z_name] - width_values['depth_Neal_et_al']
-        width_values['bed_elevation_Smart_et_al'] = width_values[min_z_name] - width_values['depth_Smart_et_al']
+        width_values['bed_elevation_Rupp_and_Smart'] = width_values[min_z_name] - flat_bank_depth
 
         # Save the bed elevations
-        width_values[['geometry', 'bed_elevation_Neal_et_al', 'bed_elevation_Smart_et_al', 'widths']].to_file(self.get_result_file(key="river_bathymetry"))
+        width_values[['geometry', 'bed_elevation_Neal_et_al', 'bed_elevation_Smart_et_al', 'widths', width_name, flat_width_name]].to_file(self.get_result_file(key="river_bathymetry"))
 
-        ## Ocean fan calculations
-        # Add some bathymetry transitioning from river to coast and a polygon
+    def calculate_fan_values(self):
+        """ Calculate and save depth estimates in the fan region such that the fan
+        has an angle of 15 degrees on each side. This fan region defines a
+        transition from river to coast within a fan shaped polygon. The fan
+        begins with the most downstream river width estimate, and ends with the
+        first contour of either more than 2x the depth of the mouth. In future,
+        it may move to defining the width as 10x the mouth width. """
+
+        transect_spacing = self.get_bathymetry_instruction('transect_spacing')
+        crs = self.get_crs()["horizontal"]
+
+        # Calculate the tangent and normal of the segment at the river mouth
         aligned_channel_file = self.get_result_file(key='aligned')
         aligned_channel = geopandas.read_file(aligned_channel_file)
 
-        # Calculate the tangent and normal to the last segment
+        # Calculate the tangent and normal at the mouth. Tangent = along channel, normal = perpindicular to river
         import shapely
         (x,y) = aligned_channel.loc[0].geometry.xy
         mouth_point = shapely.geometry.Point([x[0], y[0]])
@@ -944,9 +957,9 @@ class RiverBathymetryGenerator(BaseProcessor):
         tangent_y = segment_dy / segment_length
         normal_x = -tangent_y
         normal_y = tangent_x
-
+    
         # create fan centreline
-        fan_max_length = 10000
+        fan_max_length = 10000 # 10km max length of the fan
         extended_line = shapely.geometry.LineString(
             [mouth_point,
              [mouth_point.x + fan_max_length * tangent_x, mouth_point.y + fan_max_length * tangent_y]])
@@ -1015,12 +1028,30 @@ class RiverBathymetryGenerator(BaseProcessor):
         fan_depths = {'geometry': [], 'depths': []}
         number_of_samples = int(distance / transect_spacing)
         depth_increment = (-1 * end_depth - river_mouth_depth) / number_of_samples
-        
+
         for i in range(1, number_of_samples):
             fan_depths['geometry'].append(shapely.geometry.Point([mouth_point.x + tangent_x * i * transect_spacing,
                                                                   mouth_point.y + tangent_y * i * transect_spacing]))
             fan_depths['depths'].append(river_mouth_depth + i * depth_increment)
         geopandas.GeoDataFrame(fan_depths, crs=crs).to_file(self.get_result_file(key="fan_bathymetry"))
+
+    def run(self, instruction_parameters):
+        """ This method extracts a main channel then executes the DemGeneration
+        pipeline to produce a DEM before sampling this to extimate width, slope
+        and eventually depth. """
+
+        # Characterise river channel if not already done
+        if not self.channel_characteristics_exist():
+            buffer = 50
+            self.characterise_channel(buffer=buffer)
+
+        # Estimate channel and fan depths if not already done
+        if not self.channel_bathymetry_exist():
+
+            # Calculate and save river bathymetry depths
+            self.calculate_depths()
+
+        # TODO -  add error check and break into functions
 
         # Update parameter file - in time only update the bits that have been re-run
         with open(instruction_parameters, 'w') as file_pointer:

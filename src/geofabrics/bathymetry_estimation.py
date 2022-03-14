@@ -603,6 +603,11 @@ class ChannelWidth:
         cross_sections.loc[invalid_mask, 'valid_widths'] = numpy.nan
         widths_no_nan = cross_sections['valid_widths'].interpolate('index', limit_direction='both')
 
+        # Flat widths
+        cross_sections['valid_flat_widths'] = cross_sections['flat_widths']
+        cross_sections.loc[invalid_mask, 'valid_flat_widths'] = numpy.nan
+        flat_widths_no_nan = cross_sections['valid_flat_widths'].interpolate('index', limit_direction='both')
+
         # Tidy up thresholds - pull out the valid thresholds
         cross_sections['valid_threhold'] = cross_sections['threshold']
         cross_sections.loc[invalid_mask, 'valid_threhold'] = numpy.nan
@@ -617,6 +622,7 @@ class ChannelWidth:
 
             # Apply the rolling mean to each
             cross_sections[f'widths_mean_{label}'] = self._rolling_mean_with_padding(widths_no_nan, smoothing_samples)
+            cross_sections[f'flat_widths_mean_{label}'] = self._rolling_mean_with_padding(flat_widths_no_nan, smoothing_samples)
             cross_sections[f'thresholds_mean_{label}'] = self._rolling_mean_with_padding(thresholds_no_nan,
                                                                                          smoothing_samples)
 
@@ -824,6 +830,7 @@ class ChannelWidth:
 
             widths['first_flat_bank_i'].append(start_i)
             widths['last_flat_bank_i'].append(stop_i)
+            widths['flat_widths'].append((stop_i - start_i) * resolution)
 
             # Iterate out from the fixed threshold width until the banks go down, or the max threshold is reached
             maximum_z = z_water + maximum_threshold

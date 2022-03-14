@@ -207,7 +207,7 @@ class DenseDem(abc.ABC):
             combined_dem = rioxarray.merge.merge_arrays([self._river_dem, self._dense_dem], method='first')
         else:
             combined_dem = rioxarray.merge.merge_arrays([self._river_dem, self._dense_dem,
-                                                          self._offshore_dem], method='first')
+                                                         self._offshore_dem], method='first')
 
         return combined_dem
 
