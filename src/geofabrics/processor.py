@@ -890,7 +890,7 @@ class RiverBathymetryGenerator(BaseProcessor):
                                                aligned_channel=aligned_channel,
                                                buffer=buffer)
 
-    def calculate_depths(self):
+    def calculate_river_depths(self):
         """ Calculate and save depth estimates along the channel using various
         approaches.
 
@@ -943,111 +943,33 @@ class RiverBathymetryGenerator(BaseProcessor):
         width_values['bed_elevation_Rupp_and_Smart'] = width_values[min_z_name] - flat_bank_depth
 
         # Save the bed elevations
-        width_values[['geometry', 'bed_elevation_Neal_et_al', 'bed_elevation_Smart_et_al', 'widths', width_name, flat_width_name]].to_file(self.get_result_file(key="river_bathymetry"))
+        width_values[['geometry', 'bed_elevation_Neal_et_al', 'bed_elevation_Rupp_and_Smart', 'widths', width_name, flat_width_name]].to_file(self.get_result_file(key="river_bathymetry"))
 
-    def calculate_fan_values(self):
-        """ Calculate and save depth estimates in the fan region such that the fan
-        has an angle of 15 degrees on each side. This fan region defines a
-        transition from river to coast within a fan shaped polygon. The fan
-        begins with the most downstream river width estimate, and ends with the
-        first contour of either more than 2x the depth of the mouth. In future,
-        it may move to defining the width as 10x the mouth width. """
+    def estimate_river_mouth_fan(self):
+        """ Calculate and save depth estimates along the river mouth fan.
 
-        transect_spacing = self.get_bathymetry_instruction('transect_spacing')
+        """
+
+        # Required inputs
         crs = self.get_crs()["horizontal"]
-
-        # Calculate the tangent and normal of the segment at the river mouth
+        transect_spacing = self.get_bathymetry_instruction('transect_spacing')
+        river_bathymetry_file = self.get_result_file(key="river_bathymetry")
+        ocean_contour_file = self.get_vector_paths('bathymetry_contours')[0]
         aligned_channel_file = self.get_result_file(key='aligned')
-        aligned_channel = geopandas.read_file(aligned_channel_file)
+        ocean_contour_depth_label = self.get_instruction_general('bathymetry_contours_z_label')
 
-        # Calculate the tangent and normal at the mouth. Tangent = along channel, normal = perpindicular to river
-        import shapely
-        (x,y) = aligned_channel.loc[0].geometry.xy
-        mouth_point = shapely.geometry.Point([x[0], y[0]])
-        segment_dx = x[0] - x[1]
-        segment_dy = y[0] - y[1]
-        segment_length = numpy.sqrt(segment_dx**2 + segment_dy**2)
-        tangent_x = segment_dx / segment_length
-        tangent_y = segment_dy / segment_length
-        normal_x = -tangent_y
-        normal_y = tangent_x
-    
-        # create fan centreline
-        fan_max_length = 10000 # 10km max length of the fan
-        extended_line = shapely.geometry.LineString(
-            [mouth_point,
-             [mouth_point.x + fan_max_length * tangent_x, mouth_point.y + fan_max_length * tangent_y]])
+        # Create fan object
+        fan = geometry.RiverMouthFan(aligned_channel_file=aligned_channel_file,
+                                     river_bathymetry_file=river_bathymetry_file,
+                                     ocean_contour_file=ocean_contour_file,
+                                     crs=crs,
+                                     transect_spacing=transect_spacing,
+                                     ocean_contour_depth_label=ocean_contour_depth_label)
 
-        # Load in the depth and width at the river mouth
-        river_mouth_depth = geopandas.read_file(self.get_result_file(key="river_bathymetry"))['bed_elevation_Smart_et_al'].iloc[0]
-        river_mouth_width = geopandas.read_file(self.get_result_file(key="river_bathymetry"))['widths'].iloc[0]
-
-        # Load in the ocean contours and find the contours to terminate against
-        ocean_contours = geopandas.read_file(self.get_vector_paths('bathymetry_contours')[0]).to_crs(crs)
-        depth_label = self.instructions['instructions']['general']['bathymetry_contours_z_label']
-        depth_sign = -1
-        depth_multiplier = 2
-        end_depth = ocean_contours[depth_label][ocean_contours[depth_label] > depth_multiplier * river_mouth_depth * depth_sign ].min()
-        ocean_contours = ocean_contours[ocean_contours[depth_label] == end_depth].reset_index(drop=True)
-
-        # Define fan polygon
-        fan_angle = 15
-        fan_length = 10_000
-        end_width = river_mouth_width + 2 * fan_length * numpy.tan(numpy.pi/180 * fan_angle)
-        fan_end_point = shapely.geometry.Point([mouth_point.x + fan_length * tangent_x,
-                                                mouth_point.y + fan_length * tangent_y])
-        fan_polygon = shapely.geometry.Polygon([[mouth_point.x - normal_x * river_mouth_width / 2,
-                                                 mouth_point.y - normal_y * river_mouth_width / 2],
-                                                [mouth_point.x + normal_x * river_mouth_width / 2,
-                                                 mouth_point.y + normal_y * river_mouth_width / 2],
-                                                [fan_end_point.x + normal_x * end_width / 2,
-                                                 fan_end_point.y + normal_y * end_width / 2],
-                                                [fan_end_point.x - normal_x * end_width / 2,
-                                                 fan_end_point.y - normal_y * end_width / 2]])
-
-        # Cycle through contours finding the nearest contour to intersect the fan
-        distance = numpy.inf
-        end_point = shapely.geometry.Point()
-
-        for i, row in ocean_contours.iterrows():
-            if row.geometry.intersects(fan_polygon):
-                intersection_line = row.geometry.intersection(fan_polygon)
-                if intersection_line.distance(mouth_point) < distance:
-                    distance = intersection_line.distance(mouth_point)
-                    end_point = intersection_line
-
-        # Construct a fan ending at the contour
-        (x,y) = intersection_line.xy
-        polygon_points = [[xi, yi] for (xi, yi) in zip(x, y)] 
-
-        # Determine line direction before adding the mouth points in the correct direction
-        first_point = shapely.geometry.Point([x[0], y[0]])
-        last_point = shapely.geometry.Point([x[0], y[0]])
-        bottom_fan_edge = shapely.geometry.LineString([[mouth_point.x + normal_x * river_mouth_width / 2, mouth_point.y + normal_y * river_mouth_width / 2],
-                                                                             [fan_end_point.x + normal_x * end_width / 2, fan_end_point.y + normal_y * end_width / 2]])
-
-        if first_point.distance(bottom_fan_edge) < last_point.distance(bottom_fan_edge):
-            # keep line order
-            polygon_points.extend([[mouth_point.x - normal_x * river_mouth_width / 2, mouth_point.y - normal_y * river_mouth_width / 2], 
-                                   [mouth_point.x + normal_x * river_mouth_width / 2, mouth_point.y + normal_y * river_mouth_width / 2]])
-        else:
-            # reverse fan order
-            polygon_points.extend([[mouth_point.x + normal_x * river_mouth_width / 2, mouth_point.y + normal_y * river_mouth_width / 2], 
-                                   [mouth_point.x - normal_x * river_mouth_width / 2, mouth_point.y - normal_y * river_mouth_width / 2]])
-        fan_polygon = shapely.geometry.Polygon(polygon_points)
-
-        geopandas.GeoDataFrame(geometry=[fan_polygon], crs=crs).to_file(self.get_result_file(key="fan_polygon"))
-
-        # Define and save the fan depths
-        fan_depths = {'geometry': [], 'depths': []}
-        number_of_samples = int(distance / transect_spacing)
-        depth_increment = (-1 * end_depth - river_mouth_depth) / number_of_samples
-
-        for i in range(1, number_of_samples):
-            fan_depths['geometry'].append(shapely.geometry.Point([mouth_point.x + tangent_x * i * transect_spacing,
-                                                                  mouth_point.y + tangent_y * i * transect_spacing]))
-            fan_depths['depths'].append(river_mouth_depth + i * depth_increment)
-        geopandas.GeoDataFrame(fan_depths, crs=crs).to_file(self.get_result_file(key="fan_bathymetry"))
+        # Estimate the fan extents and bathymetry
+        fan_polygon, fan_bathymetry = fan.polygon_and_bathymetry()
+        fan_polygon.to_file(self.get_result_file(key="fan_polygon"))
+        fan_bathymetry.to_file(self.get_result_file(key="fan_bathymetry"))
 
     def run(self, instruction_parameters):
         """ This method extracts a main channel then executes the DemGeneration
@@ -1063,7 +985,8 @@ class RiverBathymetryGenerator(BaseProcessor):
         if not self.channel_bathymetry_exist():
 
             # Calculate and save river bathymetry depths
-            self.calculate_depths()
+            self.calculate_river_depths()
+            self.estimate_river_mouth_fan()
 
         # TODO -  add error check and break into functions
 

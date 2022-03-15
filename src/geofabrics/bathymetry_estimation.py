@@ -807,7 +807,7 @@ class ChannelWidth:
         print(f'search radius index = {search_radius_index}')
         widths = {'widths': [], 'first_bank_i': [], 'last_bank_i': [],
                   'threshold': [], 'channel_count': [],
-                  'first_flat_bank_i': [], 'last_flat_bank_i': []}
+                  'flat_widths': [], 'first_flat_bank_i': [], 'last_flat_bank_i': []}
 
         for j in range(len(sampled_elevations['gnd_elevations'])):
 
