@@ -692,7 +692,6 @@ class RiverMouthFan:
         fan_polygon = geopandas.GeoDataFrame(geometry=[fan_polygon], crs=self.crs)
 
         # Get bathymetry values
-        
         bathymetry = self._bathymetry(intersection_line=intersection_line,
                                       end_depth=end_depth,
                                       river_mouth_depth=river_mouth_depth,
