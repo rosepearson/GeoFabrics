@@ -574,7 +574,7 @@ class RiverMouthFan:
                     mouth_point: shapely.geometry.Point,
                     mouth_tangent: shapely.geometry.Point):
         """ Calculate and return the fan bathymetry values.
-        
+
         Parameters:
             intersection_line  The contour line defining the end of the fan
             river_mouth_depth  The depth in m of the river mouth
