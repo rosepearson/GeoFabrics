@@ -862,7 +862,7 @@ class RiverBathymetryGenerator(BaseProcessor):
         # Create REC defined channel
         channel = self.get_rec_channel()
 
-        # Get DEMs
+        # Get DEMs - create and save if don't exist
         gnd_dem, veg_dem = self.get_dems(buffer=buffer,
                                          channel=channel)
 
@@ -890,7 +890,7 @@ class RiverBathymetryGenerator(BaseProcessor):
                                                aligned_channel=aligned_channel,
                                                buffer=buffer)
 
-    def calculate_river_depths(self):
+    def calculate_river_bed_elevations(self):
         """ Calculate and save depth estimates along the channel using various
         approaches.
 
@@ -901,7 +901,7 @@ class RiverBathymetryGenerator(BaseProcessor):
         flow = pandas.read_csv(self.get_bathymetry_instruction('flow_file'))
         channel = self.get_rec_channel()
 
-        # Match each channel midpoint to a nzsegment id - based on what channel reach is closest
+        # Match each channel midpoint to a nzsegment ID - based on what channel reach is closest
         width_values['nzsegment'] = numpy.zeros(len(width_values['widths']), dtype=int)
         for i, row in width_values.iterrows():
             distances = channel.channel.distance(width_values.loc[i].geometry)
@@ -923,27 +923,107 @@ class RiverBathymetryGenerator(BaseProcessor):
         flat_width_name = 'flat_widths_mean_0.25km'
         threshold_name = 'thresholds_mean_0.25km'
 
-        # Calculate full bank width depths using the Neal et al approach (Uniform flow theory)
-        full_bank_depth = (width_values['mannings_n'] * width_values['flow'] / (
+        # Calculate depths and bed elevation using the Neal et al approach (Uniform flow theory)
+        full_bank_depth = self._calculate_neal_et_al_depth(
+            width_values=width_values,
+            width_name=width_name,
+            slope_name=slope_name,
+            threshold_name=threshold_name)
+        active_channel_bank_depth = self._convert_full_bank_to_channel_depth(full_bank_depth=full_bank_depth,
+                                                                             threshold_name=threshold_name,
+                                                                             flat_width_name=flat_width_name,
+                                                                             full_bank_width_name=width_name,
+                                                                             width_values=width_values)
+        width_values['bed_elevation_Neal_et_al'] = width_values[min_z_name] - active_channel_bank_depth
+
+        # Calculate depths and bed elevation using the Rupp & Smart approach (Hydrologic geometry)
+        full_bank_depth = self._calculate_rupp_and_smart_depth(
+            width_values=width_values,
+            width_name=width_name,
+            slope_name=slope_name,
+            threshold_name=threshold_name)
+        active_channel_bank_depth = self._convert_full_bank_to_channel_depth(full_bank_depth=full_bank_depth,
+                                                                             threshold_name=threshold_name,
+                                                                             flat_width_name=flat_width_name,
+                                                                             full_bank_width_name=width_name,
+                                                                             width_values=width_values)
+        width_values['bed_elevation_Rupp_and_Smart'] = width_values[min_z_name] - active_channel_bank_depth
+
+        # Save the bed elevations
+        width_values[['geometry', 'bed_elevation_Neal_et_al', 'bed_elevation_Rupp_and_Smart',
+                      'widths', width_name, flat_width_name]].to_file(self.get_result_file(key="river_bathymetry"))
+
+    def _calculate_neal_et_al_depth(self,
+                                    width_values,
+                                    width_name,
+                                    slope_name,
+                                    threshold_name):
+        """ Calculate the uniform flow theory depth estimate as laid out in Neal
+        et al.
+
+        Parameters:
+            width_values  A dataframe of channel charateristics.
+            width_name  The name of the channel width column.
+            slope_name  The name of the down-river channel slope column.
+            threshold_name The name of the bank height threshold column. """
+
+        bank_depth = (width_values['mannings_n'] * width_values['flow'] / (
             numpy.sqrt(width_values[slope_name]) * width_values[width_name])) ** (3/5) - width_values[threshold_name]
-        flat_bank_depth = full_bank_depth * width_values[width_name] / width_values[flat_width_name]
+        return bank_depth
 
-        # Bed elevation
-        width_values['bed_elevation_Neal_et_al'] = width_values[min_z_name] - flat_bank_depth
+    def _calculate_rupp_and_smart_depth(self,
+                                        width_values,
+                                        width_name,
+                                        slope_name,
+                                        threshold_name):
+        """ Calculate the hydrolic geometry depth estimate as laid out in Rupp
+        and Smart.
 
-        # Calculate full bank width depths using the Rupp & Smart approach (Hydrologic geometry)
+        Parameters:
+            width_values  A dataframe of channel charateristics.
+            width_name  The name of the channel width column.
+            slope_name  The name of the down-river channel slope column.
+            threshold_name The name of the bank height threshold column. """
+
         a = 0.745
         b = 0.305
         K_0 = 6.16
-        full_bank_depth = (width_values['flow'] / (K_0 * width_values[width_name] * width_values[slope_name] ** b)
-                           ) ** (1 / (1+a)) - width_values[threshold_name]
-        flat_bank_depth = full_bank_depth * width_values[width_name] / width_values[flat_width_name]
+        bank_depth = (width_values['flow'] / (K_0 * width_values[width_name] * width_values[slope_name] ** b)
+                      ) ** (1 / (1+a)) - width_values[threshold_name]
+        return bank_depth
 
-        # Calculate the bed elevation
-        width_values['bed_elevation_Rupp_and_Smart'] = width_values[min_z_name] - flat_bank_depth
+    def _convert_full_bank_to_channel_depth(self,
+                                            full_bank_depth,
+                                            threshold_name,
+                                            flat_width_name,
+                                            full_bank_width_name,
+                                            width_values):
+        """ Calculate the depth of the channel as detected in the LiDAR derived
+        DEM. Remove the above water area, then calculate the depth for the
+        'flat water' width as derived in the LiDAR.
 
-        # Save the bed elevations
-        width_values[['geometry', 'bed_elevation_Neal_et_al', 'bed_elevation_Rupp_and_Smart', 'widths', width_name, flat_width_name]].to_file(self.get_result_file(key="river_bathymetry"))
+        Parameters:
+            width_values  A dataframe of channel charateristics.
+            full_bank_width_name  The name of the full bank width column.
+            flat_width_name  The name of the down-river channel slope column.
+            threshold_name The name of the bank height threshold column. """
+
+        # Calculate the area estimated for full bank width flow
+        full_bank_area = full_bank_depth * width_values[full_bank_width_name]
+
+        # Remove/correct for area along the bank edges (approximate as a triangle - two triangles = a rectange)
+        bank_edge_area = (width_values[full_bank_width_name] - width_values[flat_width_name]) * (
+            width_values[threshold_name] - self.get_bathymetry_instruction('bank_threshold'))
+
+        assert (bank_edge_area >= 0).all(), "The full bank area should be greater than zero"
+
+        # The area to convert to the active 'flat' channel depth
+        active_channel_area = full_bank_area - bank_edge_area
+
+        # Calculate the depth from the area
+        active_channel_bank_depth = active_channel_area / width_values[flat_width_name]
+
+        return active_channel_bank_depth
 
     def estimate_river_mouth_fan(self):
         """ Calculate and save depth estimates along the river mouth fan.
@@ -976,7 +1056,7 @@ class RiverBathymetryGenerator(BaseProcessor):
         pipeline to produce a DEM before sampling this to extimate width, slope
         and eventually depth. """
 
-        # Characterise river channel if not already done
+        # Characterise river channel if not already done - may generate DEMs
         if not self.channel_characteristics_exist():
             buffer = 50
             self.characterise_channel(buffer=buffer)
@@ -985,10 +1065,8 @@ class RiverBathymetryGenerator(BaseProcessor):
         if not self.channel_bathymetry_exist():
 
             # Calculate and save river bathymetry depths
-            self.calculate_river_depths()
+            self.calculate_river_bed_elevations()
             self.estimate_river_mouth_fan()
-
-        # TODO -  add error check and break into functions
 
         # Update parameter file - in time only update the bits that have been re-run
         with open(instruction_parameters, 'w') as file_pointer:
