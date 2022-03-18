@@ -619,7 +619,7 @@ class RiverMouthFan:
             mouth_normal  The normal to the river mouth (cross channel axis)
         """
 
-        end_width = river_mouth_width + 2 * self.FAN_MAX_LENGTH * numpy.tan(numpy.pi/180 * self.FAN_ANGLE)
+        end_width = river_mouth_width + 2 * self.FAN_MAX_LENGTH * numpy.tan(numpy.pi/180 * self.FAN_ANGLE / 2)
         fan_end_point = shapely.geometry.Point([mouth_point.x + self.FAN_MAX_LENGTH * mouth_tangent.x,
                                                 mouth_point.y + self.FAN_MAX_LENGTH * mouth_tangent.y])
         fan_polygon = shapely.geometry.Polygon([[mouth_point.x - mouth_normal.x * river_mouth_width / 2,
