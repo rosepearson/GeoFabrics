@@ -1,7 +1,9 @@
 # -*- coding: utf-8 -*-
 """
-This module contains classes associated with generating hydrologically conditioned DEMs from
+This module contains classes associated with generating GeoFabric layers from
 LiDAR and bathymetry contours based on the instructions contained in a JSON file.
+
+GeoFabric layers include hydrologically conditioned DEMs.
 """
 import numpy
 import json
@@ -749,7 +751,7 @@ class RiverBathymetryGenerator(BaseProcessor):
         return gnd_dem, veg_dem
 
     def align_channel(self,
-                      channel_width: bathymetry_estimation.ChannelWidth,
+                      channel_width: bathymetry_estimation.ChannelCharacteristics,
                       channel: bathymetry_estimation.Channel,
                       buffer: float) -> geopandas.GeoDataFrame:
         """ Align the REC defined channel based on LiDAR and save the aligned
@@ -795,7 +797,7 @@ class RiverBathymetryGenerator(BaseProcessor):
         return aligned_channel
 
     def calculate_channel_characteristics(self,
-                                          channel_width: bathymetry_estimation.ChannelWidth,
+                                          channel_width: bathymetry_estimation.ChannelCharacteristics,
                                           aligned_channel: geopandas.GeoDataFrame,
                                           buffer: float) -> tuple:
         """ Align the REC defined channel based on LiDAR and save the aligned
@@ -846,7 +848,7 @@ class RiverBathymetryGenerator(BaseProcessor):
                 columns].to_file(self.get_result_file(name="final_midpoints.geojson"))
 
     def characterise_channel(self,
-                             buffer: float) -> bathymetry_estimation.ChannelWidth:
+                             buffer: float) -> bathymetry_estimation.ChannelCharacteristics:
         """ Calculate the channel width, slope and other characteristics. This requires a
         ground and vegetation DEM. This also may require alignment of the channel centreline.
 
@@ -867,7 +869,7 @@ class RiverBathymetryGenerator(BaseProcessor):
                                          channel=channel)
 
         # Create the channel width object
-        channel_width = bathymetry_estimation.ChannelWidth(
+        channel_width = bathymetry_estimation.ChannelCharacteristics(
             gnd_dem=gnd_dem,
             veg_dem=veg_dem,
             transect_spacing=transect_spacing,

@@ -11,7 +11,7 @@ import logging
 
 
 class CatchmentGeometry:
-    """ A class defining all relevant regions as defined by polygons in a catchment.
+    """ A class defining revelant catchment regions by polygons.
 
     The CRS is a dictionary containing the EPSG code for a 'horizontal' and 'vertical' datum.
 
@@ -213,7 +213,7 @@ class CatchmentGeometry:
 
 
 class BathymetryContours:
-    """ A class working with bathymetry contours.
+    """ A class for sampling from bathymetry contours.
 
     Assumes contours to be sampled to the catchment_geometry resolution """
 
@@ -280,7 +280,7 @@ class BathymetryContours:
 
 
 class BathymetryPoints:
-    """ A class working with bathymetry points """
+    """ A class for accesing bathymetry points."""
 
     def __init__(self, points_file: str, catchment_geometry: CatchmentGeometry, exclusion_extent=None):
         self._points = geopandas.read_file(points_file)
@@ -340,7 +340,7 @@ class BathymetryPoints:
 
 
 class RiverBathymetryPoints:
-    """ A class working with bathymetry points """
+    """ A class for accessing river bathymetry points. """
 
     DEPTH_LABEL = 'depths'
 
@@ -441,7 +441,7 @@ class RiverBathymetryPoints:
 
 
 class TileInfo:
-    """ A class for working with tiling information """
+    """ A class for working with tiling information. """
 
     def __init__(self, tile_file: str, catchment_geometry: CatchmentGeometry):
         self._tile_info = geopandas.read_file(tile_file)

@@ -1,6 +1,7 @@
 # -*- coding: utf-8 -*-
 """
-This module contains classes associated with reading in DEMs, generating DEMs, and combining DEMs.
+This module contains classes associated with loading, generating, and combining
+DEMs.
 """
 import rioxarray
 import rioxarray.merge
@@ -24,7 +25,7 @@ from . import geometry
 
 
 class ReferenceDem:
-    """ A class to manage the reference DEM in a catchment context
+    """ A class to manage reference or background DEMs in the catchment context
 
     Specifically, clip within the catchment land and foreshore. There is the option to clip outside any LiDAR using the
     optional 'exclusion_extent' input.
@@ -128,7 +129,7 @@ class ReferenceDem:
 
 
 class DenseDem(abc.ABC):
-    """ An abstract class class to manage the dense DEM in a catchment context.
+    """ An abstract class to manage the dense DEM in a catchment context.
 
     The dense DEM is made up of a dense DEM that is loaded in, and an offshore DEM that is interpolated from bathymetry
     contours offshore and outside all LiDAR tiles.

@@ -1,6 +1,7 @@
 # -*- coding: utf-8 -*-
 """
-This module contains classes associated with estiming channel bathymetry information.
+This module contains classes associated with characterising channel geometry
+information.
 """
 
 import geopandas
@@ -13,7 +14,7 @@ import scipy.interpolate
 
 
 class Channel:
-    """ A class to define a channel centre line. """
+    """ A class to define a channel centre line from a digital network. """
 
     def __init__(self,
                  channel: geopandas.GeoDataFrame,
@@ -338,7 +339,7 @@ class Channel:
         return numpy.array([x_sampled, y_sampled])
 
 
-class ChannelWidth:
+class ChannelCharacteristics:
     """ A class to estimate the width, slope and other characteristics of a
     channel from a detailed DEM and a river network. """
 
