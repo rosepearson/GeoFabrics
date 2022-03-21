@@ -11,6 +11,7 @@ import xarray
 import scipy
 import scipy.signal
 import scipy.interpolate
+import matplotlib
 
 
 class Channel:
@@ -181,7 +182,7 @@ class Channel:
         ----------
 
         xy
-            A paired nx2 array of x, y points.
+            A paired n x 2 array of x, y points.
         """
         xy_unique, indices = numpy.unique(xy, axis=1, return_index=True)
         indices.sort()
@@ -194,6 +195,8 @@ class Channel:
         Parameters
         ----------
 
+        channel
+            A data frame with the geometry defining the channel centreline.
         sample_direction
             Are the reaches sampled in the same direction they are ordered.
             1 if in the same direction, -1 if in the opposite direction.
@@ -218,6 +221,8 @@ class Channel:
         Parameters
         ----------
 
+        channel
+            A data frame with the geometry defining the channel centreline.
         spacing
             The spacing between sampled points along straight segments
         sample_direction
@@ -251,6 +256,8 @@ class Channel:
         Parameters
         ----------
 
+        channel
+            A data frame with the geometry defining the channel centreline.
         spacing
             The spacing between sampled points along straight segments
         sample_direction
@@ -290,6 +297,8 @@ class Channel:
         Parameters
         ----------
 
+        xy
+            A paired n x 2 array of x, y points.
         smoothing_multiplier
             This is multiplied by the number of aligned_centreline points and
             passed into the scipy.interpolate.splprep.
@@ -314,6 +323,8 @@ class Channel:
         Parameters
         ----------
 
+        xy
+            A paired n x 2 array of x, y points.
         k
             The polynomial degree. Should be off. 1<= k <= 5.
         """
@@ -356,8 +367,6 @@ class ChannelCharacteristics:
             The vegetation DEM along the channel
         transect_samples
             The sampled values along the transects.
-        threshold
-            The height above the water level to detect as a bank.
         resolution
             The resolution to sample at.
         """
@@ -379,7 +388,14 @@ class ChannelCharacteristics:
 
     def calculate_min_z_start_i(self, min_z_search_radius) -> int:
         """ Return the starting index of samples along each transect to begin
-        looking for the minimu z. """
+        looking for the minimum z.
+
+        Parameters
+        ----------
+
+        min_z_search_radius
+            The distance to search from the centre.
+        """
 
         number_min_z_samples = int(min_z_search_radius / self.resolution) * 2 - 1
 
@@ -387,7 +403,14 @@ class ChannelCharacteristics:
 
     def calculate_min_z_stop_i(self, min_z_search_radius) -> int:
         """ Return the stopping index of samples along each transect to begin
-        looking for the minimu z. """
+        looking for the minimum z.
+
+        Parameters
+        ----------
+
+        min_z_search_radius
+            The distance to search from the centre.
+        """
 
         return int(self.number_of_samples - self.calculate_min_z_start_i(min_z_search_radius))
 
@@ -427,8 +450,6 @@ class ChannelCharacteristics:
         sampled_channel
             The sampled channel defined as a single polyline. Any branches described
             separately.
-        transect_length
-            The radius of the transect (or half length).
         """
 
         transects_dict = {'geometry': [],
@@ -660,6 +681,8 @@ class ChannelCharacteristics:
 
         transects
             The transects with geometry defined as polylines.
+        min_z_search_radius
+            The distance to search from the centre.
 
         """
 
@@ -730,16 +753,16 @@ class ChannelCharacteristics:
 
         transects
             The transects with geometry defined as polylines.
-        transect_samples
+        sampled_elevations
             The sampled values along the transects.
         threshold
             The height above the water level to detect as a bank.
         resolution
             The resolution to sample at.
-        resolution
-            The resolution to sample at.
+        search_radius
+            The distance to search side to side from the centre index.
         min_channel_width
-            The resolution to sample at.
+            The minimum width of a 'valid' channel.
         """
 
         search_radius_index = int(search_radius / self.resolution)
@@ -802,6 +825,12 @@ class ChannelCharacteristics:
             The height above the water level to detect as a bank.
         resolution
             The resolution to sample at.
+        search_radius
+            The distance to search side to side from the centre index.
+        maximum_threshold
+            The maximum amount to increase the bank height before stopping.
+        min_channel_width
+            The minimum width of a 'valid' channel.
         """
 
         search_radius_index = int(search_radius / self.resolution)
@@ -930,13 +959,15 @@ class ChannelCharacteristics:
             The vegrtation elevations for the same cross section.
         start_index
             The index to start the outward search from.
-        threshold
-            The height above the water level to detect as a bank.
         z_water
             The elevation of the water.
+        threshold
+            The height above the water level to detect as a bank.
         search_radius_index
             The distance in indices to search for the start of a channel away
             from the start_index
+        min_channel_width
+            The minimum width of a 'valid' channel.
         """
 
         start_i_list = []
@@ -1021,10 +1052,11 @@ class ChannelCharacteristics:
             The vegrtation elevations for the same cross section.
         start_index
             The index to start the outward search from.
-        threshold
-            The height above the water level to detect as a bank.
         z_water
             The elevation of the water.
+        threshold
+            The height above the water level to detect as a bank.
+
         """
 
         start_i = numpy.nan
@@ -1084,10 +1116,10 @@ class ChannelCharacteristics:
             The vegrtation elevations for the same cross section.
         start_index
             The index to start the outward search from.
-        threshold
-            The height above the water level to detect as a bank.
         z_water
             The elevation of the water.
+        threshold
+            The height above the water level to detect as a bank.
         stop_index
             The maximum index to search through
         """
@@ -1126,10 +1158,10 @@ class ChannelCharacteristics:
             The vegrtation elevations for the same cross section.
         start_index
             The index to start the outward search from.
-        threshold
-            The height above the water level to detect as a bank.
         z_water
             The elevation of the water.
+        threshold
+            The height above the water level to detect as a bank.
         stop_index
             The minimum index to search through
         """
@@ -1174,9 +1206,12 @@ class ChannelCharacteristics:
             The bank detection threshold.
         aligned_channel
             The aligned channel generated from the transects
+        initial_spline
+            Channel centre spline at the start of the current operation.
+        include_transects
+            Plot the transects or not.
         """
 
-        import matplotlib
 
         '''# Plot all sampled transect values
         f, ax = matplotlib.pyplot.subplots(figsize=(11, 4))
@@ -1323,7 +1358,9 @@ class ChannelCharacteristics:
 
         Monotonically increasing cublic splines
         - https://stats.stackexchange.com/questions/467126/monotonic-splines-in-python
-        -- https://analyticalsciencejournals.onlinelibrary.wiley.com/doi/epdf/10.1002/cem.935
+        - https://analyticalsciencejournals.onlinelibrary.wiley.com/doi/epdf/10.1002/cem.935
+
+        At end could fit non-monotonic fit. unconstrained_polynomial_fit = numpy.linalg.solve(E + la * D3.T @ D3, y)
 
         Parameters
         ----------
@@ -1338,28 +1375,34 @@ class ChannelCharacteristics:
         dd = 3
         la = 100
         kp = 10000000
-        E  = numpy.eye(len(x))
-        D3 = numpy.diff(E, n = dd, axis=0)
-        D1 = numpy.diff(E, n = 1, axis=0)
+        E = numpy.eye(len(x))
+        D3 = numpy.diff(E, n=dd, axis=0)
+        D1 = numpy.diff(E, n=1, axis=0)
 
         # Monotone smoothing
         ws = numpy.zeros(len(x) - 1)
-        for it in range(30):
+        # Iterative process to improve the monotonic fit
+        max_iterations = 30
+        for it in range(max_iterations):
             Ws = numpy.diag(ws * kp)
-            mon_cof = numpy.linalg.solve(E + la * D3.T @ D3 + D1.T @ Ws @ D1, y)  # Polynomial fit, monotonically constrained
-            ws_new = (D1 @ mon_cof < 0.0) * 1
-            dw = numpy.sum(ws != ws_new)
-            ws = ws_new
-            if(dw == 0):
-                break
-            #print(dw)
 
-        # Monotonic and non monotonic fits
-        unconstrained_polynomial_fit = numpy.linalg.solve(E + la * D3.T @ D3, y)
+            # Polynomial fit, monotonically constrained
+            mon_cof = numpy.linalg.solve(E + la * D3.T @ D3 + D1.T @ Ws @ D1, y)
+            ws_new = (D1 @ mon_cof < 0.0) * 1
+
+            # Break criteria for the monotonic fit - break if no change
+            if(numpy.sum(ws != ws_new) == 0):
+                break
+            ws = ws_new
 
         return mon_cof
 
-    def _apply_bank_width(self, mid_x, mid_y, nx, ny, first_bank_i, last_bank_i):
+    def _apply_bank_width(self, mid_x: float,
+                          mid_y: float,
+                          nx: float,
+                          ny: float,
+                          first_bank_i: int,
+                          last_bank_i: int):
         """ Generate a line for each width for visualisation.
 
         Parameters
@@ -1384,7 +1427,12 @@ class ChannelCharacteristics:
             [mid_x + (last_bank_i - self.centre_index) * nx * self.resolution,
              mid_y + (last_bank_i - self.centre_index) * ny * self.resolution]])
 
-    def _apply_midpoint(self, mid_x, mid_y, nx, ny, first_bank_i, last_bank_i):
+    def _apply_midpoint(self, mid_x: float,
+                        mid_y: float,
+                        nx: float,
+                        ny: float,
+                        first_bank_i: int,
+                        last_bank_i: int):
         """ Generate a line for each width for visualisation.
 
         Parameters
@@ -1421,8 +1469,17 @@ class ChannelCharacteristics:
 
         threshold
             The height above the water level to detect as a bank.
-        smoothing_multiplier
+        search_radius
+            The distance to search side to side from the centre index.
+        min_channel_width
+            The minimum width of a 'valid' channel.
+        initial_channel
+            The initial channel centreline to align.
+        width_centre_smoothing_multiplier
             The number of transects to include in the downstream spline smoothing.
+        cross_section_radius
+            The radius (or 1/2 length) of the cross sections along which to
+            sample.
         """
 
         assert cross_section_radius >= search_radius, "The transect radius must be >= the min_z_radius"
@@ -1495,7 +1552,21 @@ class ChannelCharacteristics:
         aligned_channel
             The channel centre line. Should be in the channel bed.
         threshold
-            The height above the water level to detect as a bank.
+            The height height above the water level to detect as a bank.
+        max_threshold
+            The maximum height above water level to detect as a bank (i.e. not
+            a cliff)
+        cross_section_radius
+            The radius (or 1/2 length) of the cross sections along which to
+            sample.
+        search_radius
+            The distance to search side to side from the centre index.
+        min_channel_width
+            The minimum width of a 'valid' channel.
+        river_polygon_smoothing_multiplier
+            The amount of smoothing to apply to each bank prior to constructing
+            a polygon representing the channel.
+
         """
 
         assert cross_section_radius >= search_radius, "The transect radius must be >= the min_z_radius"
