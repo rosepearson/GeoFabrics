@@ -508,61 +508,6 @@ class ChannelCharacteristics:
                                            crs=sampled_channel.crs)
         return transects
 
-    def transects_along_reaches_at_midpoint(self, sampled_channel: geopandas.GeoDataFrame):
-        """ Calculate transects along a channel at the midpoint of each segment.
-
-        Parameters
-        ----------
-
-        sampled_channel
-            The sampled channel defined as a single polyline.
-        transect_length
-            The radius of the transect (or half length).
-        """
-
-        transects_dict = {'geometry': [],
-                          'nx': [],
-                          'ny': [],
-                          'length': [],
-                          'mid_x': [],
-                          'mid_y': []}
-
-        assert len(sampled_channel) == 1, "Expect only one polyline " \
-            "geometry per channel. Instead got {len(channel_polyline)}"
-
-        (x_array, y_array) = sampled_channel.iloc[0].geometry.xy
-        for i in range(len(x_array) - 1):
-
-            # calculate midpoint
-            midpoint = [(x_array[i] + x_array[i+1]) / 2,
-                        (y_array[i] + y_array[i+1]) / 2]
-
-            # caclulate slope and normal for the segment
-            dx, dy, length = self._segment_slope(x_array, y_array, i)
-            normal_x = -dy
-            normal_y = dx
-
-            # record normal to a segment nx and ny
-            transects_dict['nx'].append(normal_x)
-            transects_dict['ny'].append(normal_y)
-
-            # calculate transect - using effectively nx and ny
-            transects_dict['geometry'].append(shapely.geometry.LineString([
-                [midpoint[0] - self.transect_radius * normal_x,
-                 midpoint[1] - self.transect_radius * normal_y],
-                midpoint,
-                [midpoint[0] + self.transect_radius * normal_x,
-                 midpoint[1] + self.transect_radius * normal_y]]))
-            transects_dict['mid_x'].append(midpoint[0])
-            transects_dict['mid_y'].append(midpoint[1])
-
-            # record the length of the line segment
-            transects_dict['length'].append(length)
-
-        transects = geopandas.GeoDataFrame(transects_dict,
-                                           crs=sampled_channel.crs)
-        return transects
-
     def _estimate_water_level_and_slope(self, transects: geopandas.GeoDataFrame,
                                         transect_samples: dict):
         """ Estimate the water level and slope from the minimumz heights along
@@ -1211,24 +1156,6 @@ class ChannelCharacteristics:
         include_transects
             Plot the transects or not.
         """
-
-
-        '''# Plot all sampled transect values
-        f, ax = matplotlib.pyplot.subplots(figsize=(11, 4))
-        for elevations, min_z in zip(transect_samples['gnd_elevations'], transect_samples['min_z']):
-            matplotlib.pyplot.plot(elevations - min_z)
-        ax.set(title=f"Sampled transects. Thresh {threshold}")'''
-
-        # Plot a specific transect alongside various threshold values
-        '''i = 10
-        f, ax = matplotlib.pyplot.subplots(figsize=(11, 4))
-        matplotlib.pyplot.plot(transect_samples['elevations'][i] - transect_samples['min_z'][i], label="Transects")
-        matplotlib.pyplot.plot([0, 300], [0.25, 0.25], label="0.25 Thresh")
-        matplotlib.pyplot.plot([0, 300], [0.5, 0.5], label="0.75 Thresh")
-        matplotlib.pyplot.plot([0, 300], [0.75, 0.75], label="0.5 Thresh")
-        matplotlib.pyplot.plot([0, 300], [1, 1], label="1.0 Thresh")
-        matplotlib.pyplot.legend()
-        ax.set(title=f"Sampled transects. Thresh {threshold}, segment {i + 1}")'''
 
         # Plot transects, widths, and centrelines on the DEM
         f, ax = matplotlib.pyplot.subplots(figsize=(40, 20))
