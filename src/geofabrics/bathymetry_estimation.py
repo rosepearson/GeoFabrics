@@ -358,7 +358,8 @@ class ChannelCharacteristics:
                  gnd_dem: xarray.core.dataarray.DataArray,
                  veg_dem: xarray.core.dataarray.DataArray,
                  transect_spacing: float,
-                 resolution: float):
+                 resolution: float,
+                 debug: bool = False):
         """ Load in the reference DEM, clip and extract points transects
 
         gnd_dem
@@ -376,6 +377,7 @@ class ChannelCharacteristics:
         self.transect_spacing = transect_spacing
         self.resolution = resolution
         self.transect_radius = None
+        self.debug = debug
 
     @property
     def number_of_samples(self) -> int:
@@ -1440,26 +1442,27 @@ class ChannelCharacteristics:
         transects['valid_widths'] = transects['widths']
         transects.loc[transects['valid'] == False, 'valid_widths'] = numpy.nan
 
-        # Add width linestring to the transects
-        transects['width_line'] = transects.apply(
-            lambda x: self._apply_bank_width(x['mid_x'],
-                                             x['mid_y'],
-                                             x['nx'],
-                                             x['ny'],
-                                             x['first_bank_i'],
-                                             x['last_bank_i']), axis=1)
-
         # Create channel polygon with erosion and dilation to reduce sensitivity to poor width measurements
         aligned_channel = self._centreline_from_width_spline(transects,
                                                              smoothing_multiplier=width_centre_smoothing_multiplier)
 
-        # Plot results
-        self._plot_results(transects=transects,
-                           transect_samples=transect_samples,
-                           threshold=threshold,
-                           include_transects=False,
-                           aligned_channel=aligned_channel,
-                           initial_spline=sampled_channel)
+        # Optoinal outputs
+        if self.debug:
+            # Add width linestring to the transects
+            transects['width_line'] = transects.apply(
+                lambda x: self._apply_bank_width(x['mid_x'],
+                                                 x['mid_y'],
+                                                 x['nx'],
+                                                 x['ny'],
+                                                 x['first_bank_i'],
+                                                 x['last_bank_i']), axis=1)
+            # Plot results
+            self._plot_results(transects=transects,
+                               transect_samples=transect_samples,
+                               threshold=threshold,
+                               include_transects=False,
+                               aligned_channel=aligned_channel,
+                               initial_spline=sampled_channel)
 
         return aligned_channel, transects
 
@@ -1512,12 +1515,6 @@ class ChannelCharacteristics:
                                              transect_samples=sampled_elevations)
 
         # Estimate widths
-        '''self.fixed_thresholded_widths_from_centre_within_radius(
-            transects=transects,
-            sampled_elevations=sampled_elevations,
-            threshold=threshold,
-            resolution=self.resolution,
-            search_radius=search_radius/10)'''
         self.variable_thresholded_widths_from_centre_within_radius(
             transects=cross_sections,
             sampled_elevations=sampled_elevations,
@@ -1535,33 +1532,34 @@ class ChannelCharacteristics:
         cross_sections['river_polygon_midpoint'] = cross_sections.apply(
             lambda row: row.geometry.intersection(river_polygon.iloc[0].geometry).centroid, axis=1)
 
-        # A line defining the extents of the bankfull width at that cross section
-        cross_sections['width_line'] = cross_sections.apply(
-            lambda row: self._apply_bank_width(row['mid_x'],
-                                               row['mid_y'],
-                                               row['nx'],
-                                               row['ny'],
-                                               row['first_bank_i'],
-                                               row['last_bank_i']), axis=1)
-
-        # The 'flat water' midpoint
-        cross_sections['flat_midpoint'] = cross_sections.apply(
-            lambda row: self._apply_midpoint(row['mid_x'],
-                                             row['mid_y'],
-                                             row['nx'],
-                                             row['ny'],
-                                             row['first_flat_bank_i'],
-                                             row['last_flat_bank_i']), axis=1)
-
         # Width and threshod smoothing - rolling mean
         self._smooth_widths_and_thresholds(cross_sections=cross_sections)
 
-        # Plot results
-        self._plot_results(transects=cross_sections,
-                           transect_samples=sampled_elevations,
-                           threshold=threshold,
-                           aligned_channel=aligned_channel,
-                           include_transects=False)
+        # Optional outputs
+        if self.debug:
+            # A line defining the extents of the bankfull width at that cross section
+            cross_sections['width_line'] = cross_sections.apply(
+                lambda row: self._apply_bank_width(row['mid_x'],
+                                                   row['mid_y'],
+                                                   row['nx'],
+                                                   row['ny'],
+                                                   row['first_bank_i'],
+                                                   row['last_bank_i']), axis=1)
 
-        # Return results for now
+            # The 'flat water' midpoint
+            cross_sections['flat_midpoint'] = cross_sections.apply(
+                lambda row: self._apply_midpoint(row['mid_x'],
+                                                 row['mid_y'],
+                                                 row['nx'],
+                                                 row['ny'],
+                                                 row['first_flat_bank_i'],
+                                                 row['last_flat_bank_i']), axis=1)
+            # Plot results
+            self._plot_results(transects=cross_sections,
+                               transect_samples=sampled_elevations,
+                               threshold=threshold,
+                               aligned_channel=aligned_channel,
+                               include_transects=False)
+
+        # Return results
         return cross_sections, river_polygon

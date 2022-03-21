@@ -845,7 +845,7 @@ class RiverBathymetryGenerator(BaseProcessor):
             sampled_cross_sections.set_geometry('width_line', drop=True)[[
                 'geometry', 'valid']].to_file(self.get_result_file(name='final_widths.geojson'))
             sampled_cross_sections.set_geometry('flat_midpoint', drop=True)[
-                columns].to_file(self.get_result_file(name="final_midpoints.geojson"))
+                columns].to_file(self.get_result_file(name="final_flat_midpoints.geojson"))
 
     def characterise_channel(self,
                              buffer: float) -> bathymetry_estimation.ChannelCharacteristics:
@@ -873,7 +873,8 @@ class RiverBathymetryGenerator(BaseProcessor):
             gnd_dem=gnd_dem,
             veg_dem=veg_dem,
             transect_spacing=transect_spacing,
-            resolution=resolution)
+            resolution=resolution,
+            debug=self.debug)
 
         # Align channel if required
         if not self.alignment_exists():
