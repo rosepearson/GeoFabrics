@@ -357,31 +357,31 @@ class ChannelCharacteristics:
     def __init__(self,
                  gnd_dem: xarray.core.dataarray.DataArray,
                  veg_dem: xarray.core.dataarray.DataArray,
-                 transect_spacing: float,
+                 cross_section_spacing: float,
                  resolution: float,
                  debug: bool = False):
-        """ Load in the reference DEM, clip and extract points transects
+        """ Setup for estimating river characteristics from DEM cross sections.
 
         gnd_dem
             The ground DEM along the channel
         veg_dem
             The vegetation DEM along the channel
-        transect_samples
-            The sampled values along the transects.
+        cross_section_spacing
+            The spacing down channel of the cross sections.
         resolution
             The resolution to sample at.
         """
 
         self.gnd_dem = gnd_dem
         self.veg_dem = veg_dem
-        self.transect_spacing = transect_spacing
+        self.cross_section_spacing = cross_section_spacing
         self.resolution = resolution
         self.transect_radius = None
         self.debug = debug
 
     @property
     def number_of_samples(self) -> int:
-        """ Return the number of samples to take along transects. This should
+        """ Return the number of samples to take along cross_sections. This should
         be an odd number. Subtract 1 instead of adding to ensure within the
         generated DEM. """
 
@@ -443,8 +443,9 @@ class ChannelCharacteristics:
             / length
         return dx, dy, length
 
-    def transects_along_reaches_at_node(self, sampled_channel: geopandas.GeoDataFrame):
-        """ Calculate transects along a channel at the midpoint of each segment.
+    def node_centred_reach_cross_section(self, sampled_channel: geopandas.GeoDataFrame):
+        """ Calculate cross_sections along a channel at the midpoint of each
+        segment.
 
         Parameters
         ----------
@@ -454,12 +455,12 @@ class ChannelCharacteristics:
             separately.
         """
 
-        transects_dict = {'geometry': [],
-                          'nx': [],
-                          'ny': [],
-                          'length': [],
-                          'mid_x': [],
-                          'mid_y': []}
+        cross_sections_dict = {'geometry': [],
+                               'nx': [],
+                               'ny': [],
+                               'length': [],
+                               'mid_x': [],
+                               'mid_y': []}
 
         assert len(sampled_channel) == 1, "Expect only one polyline " \
             "geometry per channel. Instead got {len(channel_polyline)}"
@@ -490,70 +491,66 @@ class ChannelCharacteristics:
             normal_y = dx
 
             # record normal to a segment nx and ny
-            transects_dict['nx'].append(normal_x)
-            transects_dict['ny'].append(normal_y)
+            cross_sections_dict['nx'].append(normal_x)
+            cross_sections_dict['ny'].append(normal_y)
 
             # calculate transect - using effectively nx and ny
-            transects_dict['geometry'].append(shapely.geometry.LineString([
+            cross_sections_dict['geometry'].append(shapely.geometry.LineString([
                 [x_array[i] - self.transect_radius * normal_x,
                  y_array[i] - self.transect_radius * normal_y],
                 [x_array[i], y_array[i]],
                 [x_array[i] + self.transect_radius * normal_x,
                  y_array[i] + self.transect_radius * normal_y]]))
-            transects_dict['mid_x'].append(x_array[i])
-            transects_dict['mid_y'].append(y_array[i])
+            cross_sections_dict['mid_x'].append(x_array[i])
+            cross_sections_dict['mid_y'].append(y_array[i])
 
             # record the length of the line segment
-            transects_dict['length'].append(length)
+            cross_sections_dict['length'].append(length)
 
-        transects = geopandas.GeoDataFrame(transects_dict,
-                                           crs=sampled_channel.crs)
-        return transects
+        cross_sections = geopandas.GeoDataFrame(cross_sections_dict,
+                                                crs=sampled_channel.crs)
+        return cross_sections
 
-    def _estimate_water_level_and_slope(self, transects: geopandas.GeoDataFrame,
-                                        transect_samples: dict):
-        """ Estimate the water level and slope from the minimumz heights along
-        the sampled transects after applying appropiate smoothing and
+    def _estimate_water_level_and_slope(self, cross_sections: geopandas.GeoDataFrame):
+        """ Estimate the water level and slope from the minimum z heights along
+        the sampled cross_sections after applying appropiate smoothing and
         constraints to ensure it is monotonically increasing. Values are stored
-        in the transects.
+        in the cross_sections.
 
         Parameters
         ----------
 
-        transects
-            The transects with geometry defined as polylines.
-        transect_samples
-            The sampled values along each transect
+        cross_sections
+            The cross_sections with geometry defined as polylines.
         """
 
         # Min z values as the water surface. Ensure no NaN
-        transects['min_z_centre'] = transect_samples['min_z_centre']
-        transects['min_z_centre'] = transects['min_z_centre'].interpolate('index', limit_direction='both')
+        cross_sections['min_z_centre'] = cross_sections['min_z_centre'].interpolate('index', limit_direction='both')
         # Unimodal enforaces monotonically increasing
-        transects['min_z_centre_unimodal'] = self._unimodal_smoothing(transects['min_z_centre'])
+        cross_sections['min_z_centre_unimodal'] = self._unimodal_smoothing(cross_sections['min_z_centre'])
 
         # Set the water z value to use for width thresholding
-        transects['min_z_water'] = transects['min_z_centre_unimodal']
+        cross_sections['min_z_water'] = cross_sections['min_z_centre_unimodal']
 
         # Slope from the water surface - interpolate to fill any Nan
-        transects['slope'] = transects['min_z_water'].diff() / self.transect_spacing
-        transects['slope'] = transects['slope'].interpolate('index', limit_direction='both')
+        cross_sections['slope'] = cross_sections['min_z_water'].diff() / self.cross_section_spacing
+        cross_sections['slope'] = cross_sections['slope'].interpolate('index', limit_direction='both')
 
         # Slopes for a range of smoothings
         for smoothing_distance in [500, 1000, 2000, 3000]:
             # ensure odd number of samples so array length preserved
-            smoothing_samples = int(numpy.ceil(smoothing_distance / self.transect_spacing))
+            smoothing_samples = int(numpy.ceil(smoothing_distance / self.cross_section_spacing))
             smoothing_samples = int(smoothing_samples / 2) * 2 + 1
             label = f'{smoothing_distance/1000}km'
 
             # Smoothed min_z_centre_unimodal
-            transects[f'min_z_centre_unimodal_mean_{label}'] \
-                = self._rolling_mean_with_padding(transects['min_z_centre_unimodal'],
+            cross_sections[f'min_z_centre_unimodal_mean_{label}'] \
+                = self._rolling_mean_with_padding(cross_sections['min_z_centre_unimodal'],
                                                   smoothing_samples)
 
             # Smoothed slope
-            transects[f'slope_mean_{label}'] = self._rolling_mean_with_padding(transects['slope'],
-                                                                               smoothing_samples)
+            cross_sections[f'slope_mean_{label}'] = self._rolling_mean_with_padding(cross_sections['slope'],
+                                                                                    smoothing_samples)
 
     def _smooth_widths_and_thresholds(self, cross_sections: geopandas.GeoDataFrame):
         """ Record the valid and reolling mean of the calculated thresholds and widths
@@ -585,7 +582,7 @@ class ChannelCharacteristics:
         # Cycle through and caluclate the rolling mean
         for smoothing_distance in [150, 200, 250, 2000, 3000]:
             # ensure odd number of samples so array length preserved
-            smoothing_samples = int(numpy.ceil(smoothing_distance / self.transect_spacing))
+            smoothing_samples = int(numpy.ceil(smoothing_distance / self.cross_section_spacing))
             smoothing_samples = int(smoothing_samples / 2) * 2 + 1
             label = f"{smoothing_distance/1000}km"
 
@@ -595,8 +592,8 @@ class ChannelCharacteristics:
             cross_sections[f'thresholds_mean_{label}'] = self._rolling_mean_with_padding(thresholds_no_nan,
                                                                                          smoothing_samples)
 
-            '''transects[f'widths_Savgol_{label}'] = scipy.signal.savgol_filter(
-                transects['widths'].interpolate('index', limit_direction='both'),
+            '''cross_sections[f'widths_Savgol_{label}'] = scipy.signal.savgol_filter(
+                cross_sections['widths'].interpolate('index', limit_direction='both'),
                 smoothing_samples,  # Ensure odd. number of samples included
                 3)  # Polynomial order'''
 
@@ -618,16 +615,18 @@ class ChannelCharacteristics:
             numpy.ones(number_of_samples), 'valid') / number_of_samples
         return rolling_mean
 
-    def sample_from_transects(self,
-                              transects: geopandas.GeoDataFrame,
+    def sample_cross_sections(self,
+                              cross_sections: geopandas.GeoDataFrame,
                               min_z_search_radius: float):
-        """ Sample at the sampling resolution along transects
+        """ Return the elevations along the cross_section sampled at the
+        sampling resolution. Also add the measured 'min_z_centre' values to
+        the cross_sections. 
 
         Parameters
         ----------
 
-        transects
-            The transects with geometry defined as polylines.
+        cross_sections
+            The cross_sections with geometry defined as polylines.
         min_z_search_radius
             The distance to search from the centre.
 
@@ -641,8 +640,8 @@ class ChannelCharacteristics:
         min_z_start_i = self.calculate_min_z_start_i(min_z_search_radius)
         min_z_stop_i = self.calculate_min_z_stop_i(min_z_search_radius)
 
-        transect_samples = {'gnd_elevations': [], 'veg_elevations': [],
-                            'xx': [], 'yy': [], 'min_z_centre': []}
+        cross_section_elevations = {'gnd_elevations': [], 'veg_elevations': []}
+        min_z_centre = []
 
         # create tree of ground values to sample from
         grid_x, grid_y = numpy.meshgrid(self.gnd_dem.x, self.gnd_dem.y)
@@ -657,7 +656,7 @@ class ChannelCharacteristics:
         veg_tree = scipy.spatial.KDTree(xy_in)
 
         # cycle through each transect - calculate sample points then look up
-        for index, row in transects.iterrows():
+        for index, row in cross_sections.iterrows():
 
             # Calculate xx, and yy points to sample at
             xx = row['mid_x'] + sample_index_array * self.resolution * row['nx']
@@ -667,25 +666,28 @@ class ChannelCharacteristics:
             # Sample the vegetation elevations at along the transect
             distances, indices = veg_tree.query(xy_points)
             elevations = self.veg_dem.data.flatten()[indices]
-            transect_samples['veg_elevations'].append(elevations)
+            cross_section_elevations['veg_elevations'].append(elevations)
 
             # Sample the ground elevations at along the transect
             distances, indices = gnd_tree.query(xy_points)
             elevations = self.gnd_dem.data.flatten()[indices]
-            transect_samples['gnd_elevations'].append(elevations)
+            cross_section_elevations['gnd_elevations'].append(elevations)
 
             # Find the min elevation along the middle of each cross section
             if len(elevations[min_z_start_i:min_z_stop_i]) \
                     - numpy.sum(numpy.isnan(elevations[min_z_start_i:min_z_stop_i])) > 0:
                 min_index = numpy.nanargmin(elevations[min_z_start_i:min_z_stop_i])
-                transect_samples['min_z_centre'].append(elevations[min_z_start_i + min_index])
+                min_z_centre.append(elevations[min_z_start_i + min_index])
             else:
-                transect_samples['min_z_centre'].append(numpy.nan)
+                min_z_centre.append(numpy.nan)
 
-        return transect_samples
+        # Set min_z in the cross sections
+        cross_sections['min_z_centre'] = min_z_centre
 
-    def fixed_thresholded_widths_from_centre_within_radius(self, transects: geopandas.GeoDataFrame,
-                                                           sampled_elevations: dict,
+        return cross_section_elevations
+
+    def fixed_thresholded_widths_from_centre_within_radius(self, cross_sections: geopandas.GeoDataFrame,
+                                                           cross_section_elevations: dict,
                                                            threshold: float,
                                                            resolution: float,
                                                            search_radius: float,
@@ -698,10 +700,10 @@ class ChannelCharacteristics:
         Parameters
         ----------
 
-        transects
-            The transects with geometry defined as polylines.
-        sampled_elevations
-            The sampled values along the transects.
+        cross_sections
+            The cross_sections with geometry defined as polylines.
+        cross_section_elevations
+            The sampled elevations along the cross_sections.
         threshold
             The height above the water level to detect as a bank.
         resolution
@@ -716,14 +718,14 @@ class ChannelCharacteristics:
         widths = {'widths': [], 'first_bank_i': [], 'last_bank_i': [],
                   'channel_count': []}
 
-        for j in range(len(sampled_elevations['gnd_elevations'])):
+        for j in range(len(cross_section_elevations['gnd_elevations'])):
 
-            assert len(sampled_elevations['gnd_elevations'][j]) == self.number_of_samples, "Expect fixed length"
+            assert len(cross_section_elevations['gnd_elevations'][j]) == self.number_of_samples, "Expect fixed length"
 
-            gnd_samples = sampled_elevations['gnd_elevations'][j]
-            veg_samples = sampled_elevations['veg_elevations'][j]
+            gnd_samples = cross_section_elevations['gnd_elevations'][j]
+            veg_samples = cross_section_elevations['veg_elevations'][j]
             start_index = self.centre_index
-            z_water = transects.iloc[j]['min_z_water']
+            z_water = cross_sections.iloc[j]['min_z_water']
 
             start_i, stop_i, channel_count = self.fixed_threshold_width(
                 gnd_samples=gnd_samples,
@@ -741,16 +743,16 @@ class ChannelCharacteristics:
             widths['channel_count'].append(channel_count)
 
         for key in widths.keys():
-            transects[key] = widths[key]
+            cross_sections[key] = widths[key]
 
         # Record if the width is valid
-        valid_mask = transects['channel_count'] == 1
-        valid_mask &= transects['first_bank_i'] > 0
-        valid_mask &= transects['last_bank_i'] < self.number_of_samples - 1
-        transects['valid'] = valid_mask
+        valid_mask = cross_sections['channel_count'] == 1
+        valid_mask &= cross_sections['first_bank_i'] > 0
+        valid_mask &= cross_sections['last_bank_i'] < self.number_of_samples - 1
+        cross_sections['valid'] = valid_mask
 
-    def variable_thresholded_widths_from_centre_within_radius(self, transects: geopandas.GeoDataFrame,
-                                                              sampled_elevations: dict,
+    def variable_thresholded_widths_from_centre_within_radius(self, cross_sections: geopandas.GeoDataFrame,
+                                                              cross_section_elevations: dict,
                                                               threshold: float,
                                                               resolution: float,
                                                               search_radius: float,
@@ -764,10 +766,10 @@ class ChannelCharacteristics:
         Parameters
         ----------
 
-        transects
-            The transects with geometry defined as polylines.
-        sampled_elevations
-            The sampled values along the transects.
+        cross_sections
+            The cross_sections with geometry defined as polylines.
+        cross_section_elevations
+            The sampled elevations along the cross_sections.
         threshold
             The height above the water level to detect as a bank.
         resolution
@@ -786,14 +788,14 @@ class ChannelCharacteristics:
                   'threshold': [], 'channel_count': [],
                   'flat_widths': [], 'first_flat_bank_i': [], 'last_flat_bank_i': []}
 
-        for j in range(len(sampled_elevations['gnd_elevations'])):
+        for j in range(len(cross_section_elevations['gnd_elevations'])):
+            print(f"cross section {j} out of {len(cross_section_elevations['gnd_elevations'])}")
+            assert len(cross_section_elevations['gnd_elevations'][j]) == self.number_of_samples, "Expect fixed length"
 
-            assert len(sampled_elevations['gnd_elevations'][j]) == self.number_of_samples, "Expect fixed length"
-
-            gnd_samples = sampled_elevations['gnd_elevations'][j]
-            veg_samples = sampled_elevations['veg_elevations'][j]
+            gnd_samples = cross_section_elevations['gnd_elevations'][j]
+            veg_samples = cross_section_elevations['veg_elevations'][j]
             start_index = self.centre_index
-            z_water = transects.iloc[j]['min_z_water']
+            z_water = cross_sections.iloc[j]['min_z_water']
 
             # Get width based on fixed threshold
             start_i, stop_i, channel_count = self.fixed_threshold_width(
@@ -875,15 +877,15 @@ class ChannelCharacteristics:
             widths['channel_count'].append(channel_count)
 
         for key in widths.keys():
-            transects[key] = widths[key]
+            cross_sections[key] = widths[key]
 
         # Record if the width is valid
-        valid_mask = transects['channel_count'] == 1
-        valid_mask &= transects['first_bank_i'] > 0
-        valid_mask &= transects['last_bank_i'] < self.number_of_samples - 1
-        valid_mask &= transects['threshold'] < maximum_threshold
-        valid_mask &= numpy.isnan(transects['threshold']) == False
-        transects['valid'] = valid_mask
+        valid_mask = cross_sections['channel_count'] == 1
+        valid_mask &= cross_sections['first_bank_i'] > 0
+        valid_mask &= cross_sections['last_bank_i'] < self.number_of_samples - 1
+        valid_mask &= cross_sections['threshold'] < maximum_threshold
+        valid_mask &= numpy.isnan(cross_sections['threshold']) == False
+        cross_sections['valid'] = valid_mask
 
     def fixed_threshold_width(self,
                               gnd_samples: numpy.ndarray,
@@ -1132,116 +1134,117 @@ class ChannelCharacteristics:
 
         return start_i, stop_i
 
-    def _plot_results(self, transects: geopandas.GeoDataFrame,
-                      transect_samples: dict,
+    def _plot_results(self, cross_sections: geopandas.GeoDataFrame,
                       threshold: float,
                       aligned_channel: geopandas.GeoDataFrame = None,
                       initial_spline: geopandas.GeoDataFrame = None,
-                      include_transects: bool = True):
+                      plot_cross_sections: bool = True):
         """ Function used for debugging or interactively to visualised the
         samples and widths
 
         Parameters
         ----------
 
-        transects
-            The transects with geometry defined as polylines with width
+        cross_sections
+            The cross_sections with geometry defined as polylines with width
             estimates.
-        transect_samples
-            The sampled transect values.
         threshold
             The bank detection threshold.
         aligned_channel
-            The aligned channel generated from the transects
+            The aligned channel generated from the cross_sections
         initial_spline
             Channel centre spline at the start of the current operation.
-        include_transects
-            Plot the transects or not.
+        plot_cross_sections
+            Plot the cross_sections or not.
         """
 
-        # Plot transects, widths, and centrelines on the DEM
+        # Plot cross_sections, widths, and centrelines on the DEM
         f, ax = matplotlib.pyplot.subplots(figsize=(40, 20))
         self.gnd_dem.plot(ax=ax, label='DEM')
-        if include_transects:
-            transects.plot(ax=ax, color='aqua', linewidth=1, label='transects')
-        transects[transects['valid']].set_geometry('width_line').plot(ax=ax, color='red',
-                                                                      linewidth=1.5, label='Valid widths')
-        transects[transects['valid'] == False].set_geometry('width_line').plot(ax=ax, color='salmon',
-                                                                               linewidth=1.5, label='Invalid widths')
+        if plot_cross_sections:
+            cross_sections.plot(ax=ax, color='aqua', linewidth=1, label='cross_sections')
+        cross_sections[cross_sections['valid']
+                       ].set_geometry('width_line').plot(ax=ax, color='red', linewidth=1.5, label='Valid widths')
+        cross_sections[cross_sections['valid'] == False
+                       ].set_geometry('width_line').plot(ax=ax, color='salmon', linewidth=1.5, label='Invalid widths')
         if aligned_channel is not None:
             aligned_channel.plot(ax=ax, linewidth=2, color='green', zorder=4, label='Aligned channel')
         if initial_spline is not None:
             initial_spline.plot(ax=ax, linewidth=2, color='blue', zorder=3, label='REC smooth splne')
-        if 'perturbed_midpoints' in transects.columns:
-            transects.set_geometry('perturbed_midpoints').plot(ax=ax, color='aqua', zorder=5,
-                                                               markersize=5, label='Perturbed midpoints')
+        if 'perturbed_midpoints' in cross_sections.columns:
+            cross_sections.set_geometry('perturbed_midpoints'
+                                        ).plot(ax=ax, color='aqua', zorder=5, markersize=5, label='Perturbed midpoints')
         ax.set(title=f"Raster Layer with Vector Overlay. Thresh {threshold}")
         ax.axis('off')
         matplotlib.pyplot.legend()
         matplotlib.pyplot.show()
 
-        # Plot the various min_z values if they have been added to the transects
+        # Plot the various min_z values if they have been added to the cross_sections
         f, ax = matplotlib.pyplot.subplots(figsize=(40, 20))
-        min_z_columns = [column_name for column_name in transects.columns if 'min_z' in column_name]
+        min_z_columns = [column_name for column_name in cross_sections.columns if 'min_z' in column_name]
         if len(min_z_columns) > 0:
-            transects[min_z_columns].plot(ax=ax)
+            cross_sections[min_z_columns].plot(ax=ax)
 
         # Plot the widths
         f, ax = matplotlib.pyplot.subplots(figsize=(20, 10))
-        width_columns = [column_name for column_name in transects.columns if 'widths' in column_name]
+        width_columns = [column_name for column_name in cross_sections.columns if 'widths' in column_name]
         if len(width_columns) > 0:
-            transects[width_columns].plot(ax=ax)
+            cross_sections[width_columns].plot(ax=ax)
 
         # Plot the slopes
         f, ax = matplotlib.pyplot.subplots(figsize=(20, 10))
-        slope_columns = [column_name for column_name in transects.columns if 'slope' in column_name]
+        slope_columns = [column_name for column_name in cross_sections.columns if 'slope' in column_name]
         if len(slope_columns) > 0:
-            transects[slope_columns].plot(ax=ax)
+            cross_sections[slope_columns].plot(ax=ax)
         matplotlib.pyplot.ylim((0, None))
 
-    def _create_flat_water_polygon(self, transects: geopandas.GeoDataFrame,
+    def _create_flat_water_polygon(self, cross_sections: geopandas.GeoDataFrame,
                                          smoothing_multiplier):
         """ Create a polygon of the flat water from spline's of each bank.
 
         Parameters
         ----------
 
-        transects
-            The transects with geometry defined as polylines with width
+        cross_sections
+            The cross_sections with geometry defined as polylines with width
             estimates.
         smoothing_multiplier
             The smoothing multiplier to apply to the spline fit.
         """
 
         # Only use the valid widths
-        channel_mask = transects['valid']
+        channel_mask = cross_sections['valid']
 
         # Get the 'flat water' first bank - +1 to move just inwards
-        bank_offset = self.resolution * (transects.loc[channel_mask, 'first_flat_bank_i'] + 1 - self.centre_index)
+        bank_offset = self.resolution * (cross_sections.loc[channel_mask, 'first_flat_bank_i'] + 1 - self.centre_index)
         start_xy = numpy.vstack(
-            [(transects.loc[channel_mask, 'mid_x'] + transects.loc[channel_mask, 'nx'] * bank_offset).array,
-             (transects.loc[channel_mask, 'mid_y'] + transects.loc[channel_mask, 'ny'] * bank_offset).array]).T
+            [(cross_sections.loc[channel_mask, 'mid_x']
+              + cross_sections.loc[channel_mask, 'nx'] * bank_offset).array,
+             (cross_sections.loc[channel_mask, 'mid_y']
+              + cross_sections.loc[channel_mask, 'ny'] * bank_offset).array]).T
         start_xy = start_xy[numpy.isnan(start_xy).any(axis=1) == False]
-        start_xy = geopandas.GeoDataFrame(geometry=[shapely.geometry.LineString(start_xy)], crs=transects.crs)
-        start_xy = Channel(start_xy, resolution=self.transect_spacing)
+        start_xy = geopandas.GeoDataFrame(geometry=[shapely.geometry.LineString(start_xy)], crs=cross_sections.crs)
+        start_xy = Channel(start_xy, resolution=self.cross_section_spacing)
         start_xy_spline = start_xy.get_smoothed_spline_fit(smoothing_multiplier)
 
         # Get the 'flat water' last bank - -1 to move just inwards
-        bank_offset = self.resolution * (transects.loc[channel_mask, 'last_flat_bank_i'] - 1 - self.centre_index)
+        bank_offset = self.resolution * (cross_sections.loc[channel_mask, 'last_flat_bank_i'] - 1 - self.centre_index)
         stop_xy = numpy.vstack(
-            [(transects.loc[channel_mask, 'mid_x'] + bank_offset * transects.loc[channel_mask, 'nx']).array,
-             (transects.loc[channel_mask, 'mid_y'] + bank_offset * transects.loc[channel_mask, 'ny']).array]).T
+            [(cross_sections.loc[channel_mask, 'mid_x']
+              + bank_offset * cross_sections.loc[channel_mask, 'nx']).array,
+             (cross_sections.loc[channel_mask, 'mid_y']
+              + bank_offset * cross_sections.loc[channel_mask, 'ny']).array]).T
         stop_xy = stop_xy[numpy.isnan(stop_xy).any(axis=1) == False]
-        stop_xy = geopandas.GeoDataFrame(geometry=[shapely.geometry.LineString(stop_xy)], crs=transects.crs)
-        stop_xy = Channel(stop_xy, resolution=self.transect_spacing)
+        stop_xy = geopandas.GeoDataFrame(geometry=[shapely.geometry.LineString(stop_xy)], crs=cross_sections.crs)
+        stop_xy = Channel(stop_xy, resolution=self.cross_section_spacing)
         stop_xy_spline = stop_xy.get_smoothed_spline_fit(smoothing_multiplier)
 
         flat_xy = numpy.concatenate([start_xy_spline, stop_xy_spline[::-1]])
         flat_water_polygon = geopandas.GeoDataFrame(geometry=[shapely.geometry.Polygon(flat_xy)],
-                                                    crs=transects.crs)
+                                                    crs=cross_sections.crs)
         return flat_water_polygon
 
-    def _centreline_from_width_spline(self, transects: geopandas.GeoDataFrame,
+    def _centreline_from_width_spline(self, cross_sections: geopandas.GeoDataFrame,
                                             smoothing_multiplier):
         """ Fit a spline through the width centres with a healthy dose of
         smoothing.
@@ -1249,37 +1252,37 @@ class ChannelCharacteristics:
         Parameters
         ----------
 
-        transects
-            The transects with geometry defined as polylines with width
+        cross_sections
+            The cross_sections with geometry defined as polylines with width
             estimates.
         smoothing_multiplier
             The smoothing multiplier to apply to the spline fit.
         """
 
         # Only use the valid widths
-        channel_mask = transects['valid']
+        channel_mask = cross_sections['valid']
 
         # Calculate the offset distance between the transect and width centres
         widths_centre_offset = self.resolution * (
-            (transects.loc[channel_mask, 'first_bank_i']
-             + transects.loc[channel_mask, 'last_bank_i']) / 2 - self.centre_index)
+            (cross_sections.loc[channel_mask, 'first_bank_i']
+             + cross_sections.loc[channel_mask, 'last_bank_i']) / 2 - self.centre_index)
 
         # Calculate the location of the centre point between the banks
         widths_centre_xy = numpy.vstack(
-            [(transects.loc[channel_mask, 'mid_x']
-              + widths_centre_offset * transects.loc[channel_mask, 'nx']).array,
-             (transects.loc[channel_mask, 'mid_y']
-              + widths_centre_offset * transects.loc[channel_mask, 'ny']).array]).T
+            [(cross_sections.loc[channel_mask, 'mid_x']
+              + widths_centre_offset * cross_sections.loc[channel_mask, 'nx']).array,
+             (cross_sections.loc[channel_mask, 'mid_y']
+              + widths_centre_offset * cross_sections.loc[channel_mask, 'ny']).array]).T
         widths_centre_xy = widths_centre_xy[numpy.isnan(widths_centre_xy).any(axis=1) == False]
 
         # Fit a spline to the centre points
         widths_centre_line = geopandas.GeoDataFrame(geometry=[shapely.geometry.LineString(widths_centre_xy)],
-                                                    crs=transects.crs)
-        widths_centre_line = Channel(widths_centre_line, resolution=self.transect_spacing)
+                                                    crs=cross_sections.crs)
+        widths_centre_line = Channel(widths_centre_line, resolution=self.cross_section_spacing)
 
         aligned_spline = widths_centre_line.get_smoothed_spline_fit(smoothing_multiplier)
         aligned_spline = geopandas.GeoDataFrame(geometry=[shapely.geometry.LineString(aligned_spline)],
-                                                crs=transects.crs)
+                                                crs=cross_sections.crs)
         return aligned_spline
 
     def _unimodal_smoothing(self, y: numpy.ndarray):
@@ -1405,7 +1408,8 @@ class ChannelCharacteristics:
         initial_channel
             The initial channel centreline to align.
         width_centre_smoothing_multiplier
-            The number of transects to include in the downstream spline smoothing.
+            The number of cross_sections to include in the downstream spline
+            smoothing.
         cross_section_radius
             The radius (or 1/2 length) of the cross sections along which to
             sample.
@@ -1417,39 +1421,38 @@ class ChannelCharacteristics:
         # Sample channel
         sampled_channel = initial_channel.get_sampled_spline_fit()
 
-        # Create transects
-        transects = self.transects_along_reaches_at_node(
-                    sampled_channel=sampled_channel)
+        # Create cross_sections
+        cross_sections = self.node_centred_reach_cross_section(
+            sampled_channel=sampled_channel)
 
-        # Sample along transects
-        transect_samples = self.sample_from_transects(transects=transects,
-                                                      min_z_search_radius=search_radius)
+        # Sample along cross_sections
+        cross_section_elevations = self.sample_cross_sections(cross_sections=cross_sections,
+                                                              min_z_search_radius=search_radius)
 
         # Estimate water surface level and slope - Smooth slope upstream over 1km
-        self._estimate_water_level_and_slope(transects=transects,
-                                             transect_samples=transect_samples)
+        self._estimate_water_level_and_slope(cross_sections=cross_sections)
 
         # Bank estimates - outside in
         self.fixed_thresholded_widths_from_centre_within_radius(
-            transects=transects,
-            sampled_elevations=transect_samples,
+            cross_sections=cross_sections,
+            cross_section_elevations=cross_section_elevations,
             threshold=threshold,
             search_radius=search_radius,
             min_channel_width=min_channel_width,
             resolution=self.resolution)
 
         # Separate out valid and invalid widths
-        transects['valid_widths'] = transects['widths']
-        transects.loc[transects['valid'] == False, 'valid_widths'] = numpy.nan
+        cross_sections['valid_widths'] = cross_sections['widths']
+        cross_sections.loc[cross_sections['valid'] == False, 'valid_widths'] = numpy.nan
 
         # Create channel polygon with erosion and dilation to reduce sensitivity to poor width measurements
-        aligned_channel = self._centreline_from_width_spline(transects,
+        aligned_channel = self._centreline_from_width_spline(cross_sections=cross_sections,
                                                              smoothing_multiplier=width_centre_smoothing_multiplier)
 
         # Optoinal outputs
         if self.debug:
-            # Add width linestring to the transects
-            transects['width_line'] = transects.apply(
+            # Add width linestring to the cross_sections
+            cross_sections['width_line'] = cross_sections.apply(
                 lambda x: self._apply_bank_width(x['mid_x'],
                                                  x['mid_y'],
                                                  x['nx'],
@@ -1457,14 +1460,13 @@ class ChannelCharacteristics:
                                                  x['first_bank_i'],
                                                  x['last_bank_i']), axis=1)
             # Plot results
-            self._plot_results(transects=transects,
-                               transect_samples=transect_samples,
+            self._plot_results(cross_sections=cross_sections,
                                threshold=threshold,
-                               include_transects=False,
+                               plot_cross_sections=False,
                                aligned_channel=aligned_channel,
                                initial_spline=sampled_channel)
 
-        return aligned_channel, transects
+        return aligned_channel, cross_sections
 
     def estimate_width_and_slope(self,
                                  aligned_channel: geopandas.GeoDataFrame,
@@ -1503,21 +1505,21 @@ class ChannelCharacteristics:
         assert max_threshold > threshold, "The max threshold must be greater than the threshold"
         self.transect_radius = cross_section_radius
 
-        # Create transects
-        cross_sections = self.transects_along_reaches_at_node(sampled_channel=aligned_channel)
+        # Create cross_sections
+        cross_sections = self.node_centred_reach_cross_section(
+            sampled_channel=aligned_channel)
 
-        # Sample along transects
-        sampled_elevations = self.sample_from_transects(transects=cross_sections,
-                                                        min_z_search_radius=search_radius)
+        # Sample along cross_sections
+        cross_section_elevations = self.sample_cross_sections(cross_sections=cross_sections,
+                                                              min_z_search_radius=search_radius)
 
         # Estimate water surface level and slope
-        self._estimate_water_level_and_slope(transects=cross_sections,
-                                             transect_samples=sampled_elevations)
+        self._estimate_water_level_and_slope(cross_sections=cross_sections)
 
         # Estimate widths
         self.variable_thresholded_widths_from_centre_within_radius(
-            transects=cross_sections,
-            sampled_elevations=sampled_elevations,
+            cross_sections=cross_sections,
+            cross_section_elevations=cross_section_elevations,
             threshold=threshold,
             resolution=self.resolution,
             search_radius=search_radius/10,
@@ -1525,7 +1527,7 @@ class ChannelCharacteristics:
             min_channel_width=min_channel_width)
 
         # generate a flat water polygon
-        river_polygon = self._create_flat_water_polygon(transects=cross_sections,
+        river_polygon = self._create_flat_water_polygon(cross_sections=cross_sections,
                                                         smoothing_multiplier=river_polygon_smoothing_multiplier)
 
         # Midpoints as defined by the midpoint of the river polygon
@@ -1555,11 +1557,10 @@ class ChannelCharacteristics:
                                                  row['first_flat_bank_i'],
                                                  row['last_flat_bank_i']), axis=1)
             # Plot results
-            self._plot_results(transects=cross_sections,
-                               transect_samples=sampled_elevations,
+            self._plot_results(cross_sections=cross_sections,
                                threshold=threshold,
                                aligned_channel=aligned_channel,
-                               include_transects=False)
+                               plot_cross_sections=False)
 
         # Return results
         return cross_sections, river_polygon

@@ -644,11 +644,11 @@ class RiverBathymetryGenerator(BaseProcessor):
         area_threshold = self.get_bathymetry_instruction('channel_area_threshold')
         rec_network = geopandas.read_file(self.get_bathymetry_instruction('rec_file')).to_crs(crs)
         channel_rec_id = self.get_bathymetry_instruction('channel_rec_id')
-        transect_spacing = self.get_bathymetry_instruction('transect_spacing')
+        cross_section_spacing = self.get_bathymetry_instruction('cross_section_spacing')
 
         channel = bathymetry_estimation.Channel.from_rec(rec_network=rec_network,
                                                          reach_id=channel_rec_id,
-                                                         resolution=transect_spacing,
+                                                         resolution=cross_section_spacing,
                                                          area_threshold=area_threshold)
 
         if self.debug:
@@ -858,7 +858,7 @@ class RiverBathymetryGenerator(BaseProcessor):
         """
 
         # Extract instructions
-        transect_spacing = self.get_bathymetry_instruction('transect_spacing')
+        cross_section_spacing = self.get_bathymetry_instruction('cross_section_spacing')
         resolution = self.get_resolution()
 
         # Create REC defined channel
@@ -872,7 +872,7 @@ class RiverBathymetryGenerator(BaseProcessor):
         channel_width = bathymetry_estimation.ChannelCharacteristics(
             gnd_dem=gnd_dem,
             veg_dem=veg_dem,
-            transect_spacing=transect_spacing,
+            cross_section_spacing=cross_section_spacing,
             resolution=resolution,
             debug=self.debug)
 
@@ -1035,7 +1035,7 @@ class RiverBathymetryGenerator(BaseProcessor):
 
         # Required inputs
         crs = self.get_crs()["horizontal"]
-        transect_spacing = self.get_bathymetry_instruction('transect_spacing')
+        cross_section_spacing = self.get_bathymetry_instruction('cross_section_spacing')
         river_bathymetry_file = self.get_result_file(key="river_bathymetry")
         ocean_contour_file = self.get_vector_paths('bathymetry_contours')[0]
         aligned_channel_file = self.get_result_file(key='aligned')
@@ -1046,7 +1046,7 @@ class RiverBathymetryGenerator(BaseProcessor):
                                      river_bathymetry_file=river_bathymetry_file,
                                      ocean_contour_file=ocean_contour_file,
                                      crs=crs,
-                                     transect_spacing=transect_spacing,
+                                     cross_section_spacing=cross_section_spacing,
                                      ocean_contour_depth_label=ocean_contour_depth_label)
 
         # Estimate the fan extents and bathymetry

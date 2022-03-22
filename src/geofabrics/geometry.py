@@ -487,7 +487,7 @@ class RiverMouthFan:
 
     Attributes:
         crs  The horizontal CRS to be used. i.e. EPSG:2193
-        transect_spacing  The spacing in (m) of the sampled cross sections.
+        cross_section_spacing  The spacing in (m) of the sampled cross sections.
         aligned_channel_file  Thefile name for the aligned river channel file.
         river_bathymetry_file  The file name for the river bathymetry values.
         ocean_contour_file  The file name for the ocean contours.
@@ -502,11 +502,11 @@ class RiverMouthFan:
                  river_bathymetry_file: str,
                  ocean_contour_file: str,
                  crs: int,
-                 transect_spacing: float,
+                 cross_section_spacing: float,
                  ocean_contour_depth_label: str = None):
 
         self.crs = crs
-        self.transect_spacing = transect_spacing
+        self.cross_section_spacing = cross_section_spacing
         self.aligned_channel_file = aligned_channel_file
         self.river_bathymetry_file = river_bathymetry_file
         self.ocean_contour_file = ocean_contour_file
@@ -591,15 +591,15 @@ class RiverMouthFan:
 
         # Setup the fan data values
         fan_depths = {'geometry': [], 'depths': []}
-        number_of_samples = int(distance / self.transect_spacing)
+        number_of_samples = int(distance / self.cross_section_spacing)
         depth_increment = (-1 * end_depth - river_mouth_depth) / number_of_samples
 
         # Iterate through creating fan bathymetry
         for i in range(1, number_of_samples):
             fan_depths['geometry'].append(shapely.geometry.Point([mouth_point.x + mouth_tangent.x
-                                                                  * i * self.transect_spacing,
+                                                                  * i * self.cross_section_spacing,
                                                                   mouth_point.y + mouth_tangent.y
-                                                                  * i * self.transect_spacing]))
+                                                                  * i * self.cross_section_spacing]))
             fan_depths['depths'].append(river_mouth_depth + i * depth_increment)
         fan_depths = geopandas.GeoDataFrame(fan_depths, crs=self.crs)
         return fan_depths
