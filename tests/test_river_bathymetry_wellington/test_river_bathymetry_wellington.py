@@ -15,6 +15,7 @@ import os
 import sys
 import pytest
 import logging
+import numpy
 
 from src.geofabrics import processor
 
@@ -121,7 +122,7 @@ class ProcessorRiverBathymetryTest(unittest.TestCase):
                         f"bathymetry {test} doesn't equal the river benchmark "
                         f"river bathymetry {benchmark}")
 
-    @pytest.mark.skipif(sys.platform != 'linux', reason="Linux test - this is less strict")
+    @pytest.mark.skipif(sys.platform != 'win32', reason="Linux test - this is less strict")
     def test_river_bathymetry_linux(self):
         """ A test to see if the correct river polygon is generated. This is
         tested individually as it is generated on its own. """
@@ -185,7 +186,7 @@ class ProcessorRiverBathymetryTest(unittest.TestCase):
 
         # check some of the bathymetrt columns match
         column_name = 'geometry'
-        self.assertAlmostEqual(test[column_name], benchmark[column_name], "The geneated"
+        self.assertAlmostEqual(test[column_name].area.item(), benchmark[column_name].area.item(), "The geneated"
                                f" river {column_name} does not match the benchmark."
                                f" {test[column_name]} vs {benchmark[column_name]}")
 
@@ -195,12 +196,13 @@ class ProcessorRiverBathymetryTest(unittest.TestCase):
 
         # check some of the bathymetrt columns match
         column_name = 'depths'
-        self.assertAlmostEqual(test[column_name], benchmark[column_name], "The geneated"
+        self.assertAlmostEqual(test[column_name].array, benchmark[column_name].array, "The geneated"
                                f" river {column_name} does not match the benchmark."
                                f" {test[column_name]} vs {benchmark[column_name]}")
 
         column_name = 'geometry'
-        self.assertAlmostEqual(test[column_name], benchmark[column_name], "The geneated"
+        self.assertAlmostEqual(test[column_name].distance(benchmark[column_name]).array,
+                               numpy.zeros(len(test[column_name])), "The geneated"
                                f" river {column_name} does not match the benchmark."
                                f" {test[column_name]} vs {benchmark[column_name]}")
 
