@@ -233,9 +233,9 @@ class ProcessorRiverBathymetryTest(unittest.TestCase):
         comparison = test[column_name].distance(benchmark[column_name]).array
         print(f"Distances between the test and benchmark points {numpy.array(comparison)}")
         self.assertAlmostEqual(comparison, numpy.zeros(len(test[column_name])),
-                               places=7, msg=f"The geneate driver "
-                               f"{column_name}  does not match the benchmark."
-                               f" Thy are separated by distances of {comparison}")
+                               places=7, msg=f"The geneate driver {column_name}"
+                               f" does not match the benchmark. They are"
+                               f" separated by distances of {comparison}")
 
 
 if __name__ == '__main__':
