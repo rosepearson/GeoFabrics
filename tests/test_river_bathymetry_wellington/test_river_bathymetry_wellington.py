@@ -210,7 +210,7 @@ class ProcessorRiverBathymetryTest(unittest.TestCase):
         test_comparison = test[column_name].area.item()
         benchmark_comparison = benchmark[column_name].area.item()
         print(f"test area {test_comparison}, and benchmark area {benchmark_comparison}")
-        self.assertAlmostEqual(test_comparison, benchmark_comparison, places=7,
+        self.assertAlmostEqual(test_comparison, benchmark_comparison, places=6,
                                msg=f"The geneated river {column_name} does"
                                f" not match the benchmark. {test_comparison} "
                                f"vs {benchmark_comparison}")
