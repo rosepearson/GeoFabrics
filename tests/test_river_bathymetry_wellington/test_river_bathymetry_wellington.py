@@ -12,6 +12,8 @@ import geopandas
 import shutil
 import dotenv
 import os
+import sys
+import pytest
 import logging
 
 from src.geofabrics import processor
@@ -103,7 +105,8 @@ class ProcessorRiverBathymetryTest(unittest.TestCase):
                         f"polygon {test} doesn't equal the river benchmark "
                         f"river polygon {benchmark}")
 
-    def test_river_bathymetry(self):
+    @pytest.mark.skipif(sys.platform != 'win32', reason="Windows test - this is strict")
+    def test_river_bathymetry_windows(self):
         """ A test to see if the correct river polygon is generated. This is
         tested individually as it is generated on its own. """
 
@@ -118,7 +121,34 @@ class ProcessorRiverBathymetryTest(unittest.TestCase):
                         f"bathymetry {test} doesn't equal the river benchmark "
                         f"river bathymetry {benchmark}")
 
-    def test_fan_bathymetry(self):
+    @pytest.mark.skipif(sys.platform != 'linux', reason="Linux test - this is less strict")
+    def test_river_bathymetry_linux(self):
+        """ A test to see if the correct river polygon is generated. This is
+        tested individually as it is generated on its own. """
+
+        data_path_instructions = self.instructions['instructions']['data_paths']
+        cache_path = pathlib.Path(data_path_instructions['local_cache'])
+
+        test = geopandas.read_file(cache_path / "river_bathymetry.geojson")
+        benchmark = geopandas.read_file(cache_path / data_path_instructions['river_bathymetry_benchmark'])
+
+        # check some of the bathymetrt columns match
+        column_name = 'bed_elevation_Neal_et_al'
+        self.assertAlmostEqual(test[column_name], benchmark[column_name], "The geneated"
+                               f" river {column_name} does not match the benchmark."
+                               f" {test[column_name]} vs {benchmark[column_name]}")
+        column_name = 'widths'
+        self.assertAlmostEqual(test[column_name], benchmark[column_name], "The geneated"
+                               f" river {column_name} does not match the benchmark."
+                               f" {test[column_name]} vs {benchmark[column_name]}")
+
+        column_name = 'geometry'
+        self.assertAlmostEqual(test[column_name], benchmark[column_name], "The geneated"
+                               f" river {column_name} does not match the benchmark."
+                               f" {test[column_name]} vs {benchmark[column_name]}")
+
+    @pytest.mark.skipif(sys.platform != 'win32', reason="Windows test - this is strict")
+    def test_fan_bathymetry_windows(self):
         """ A test to see if the correct fan polygon and bathymetry are
         generated. These are generated and tested together. """
 
@@ -140,6 +170,39 @@ class ProcessorRiverBathymetryTest(unittest.TestCase):
         self.assertTrue((test == benchmark).all().all(), "The geneated fan"
                         f"bathymetry {test} doesn't equal the fan benchmark "
                         f"fan bathymetry {benchmark}")
+
+    @pytest.mark.skipif(sys.platform != 'linux', reason="Linux test - this is less strict")
+    def test_fan_bathymetry_linux(self):
+        """ A test to see if the correct fan polygon and bathymetry are
+        generated. These are generated and tested together. """
+
+        data_path_instructions = self.instructions['instructions']['data_paths']
+        cache_path = pathlib.Path(data_path_instructions['local_cache'])
+
+        # Compare the polygons
+        test = geopandas.read_file(cache_path / "fan_polygon.geojson")
+        benchmark = geopandas.read_file(cache_path / data_path_instructions['fan_polygon_benchmark'])
+
+        # check some of the bathymetrt columns match
+        column_name = 'geometry'
+        self.assertAlmostEqual(test[column_name], benchmark[column_name], "The geneated"
+                               f" river {column_name} does not match the benchmark."
+                               f" {test[column_name]} vs {benchmark[column_name]}")
+
+        # Compare the bathymetries
+        test = geopandas.read_file(cache_path / "fan_bathymetry.geojson")
+        benchmark = geopandas.read_file(cache_path / data_path_instructions['fan_bathymetry_benchmark'])
+
+        # check some of the bathymetrt columns match
+        column_name = 'depths'
+        self.assertAlmostEqual(test[column_name], benchmark[column_name], "The geneated"
+                               f" river {column_name} does not match the benchmark."
+                               f" {test[column_name]} vs {benchmark[column_name]}")
+
+        column_name = 'geometry'
+        self.assertAlmostEqual(test[column_name], benchmark[column_name], "The geneated"
+                               f" river {column_name} does not match the benchmark."
+                               f" {test[column_name]} vs {benchmark[column_name]}")
 
 
 if __name__ == '__main__':
