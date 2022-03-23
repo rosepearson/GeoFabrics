@@ -1,0 +1,146 @@
+# -*- coding: utf-8 -*-
+"""
+Created on Wed Jun 30 11:11:25 2021
+
+@author: pearsonra
+"""
+
+import unittest
+import json
+import pathlib
+import geopandas
+import shutil
+import dotenv
+import os
+import logging
+
+from src.geofabrics import processor
+
+
+class ProcessorRiverBathymetryTest(unittest.TestCase):
+    """ A class to test the basic river bathymetry estimation functionality
+    contained in processor.RiverBathymetryGenerator.
+
+    Tests run include:
+        1. test_river_polygon - Test that the expected river polygon is created
+        2. test_river_bathymetry - Test that the expected river bathymetry is created
+        3. test_fan - Test that the expected fan polygon and geometry are created
+    """
+
+    @classmethod
+    def setUpClass(cls):
+        """ Create a CatchmentGeometry object and then run the DemGenerator processing chain to download remote
+        files and produce a DEM prior to testing. """
+
+        test_path = pathlib.Path().cwd() / pathlib.Path("tests/test_river_bathymetry_wellington")
+
+        # Setup logging
+        logging.basicConfig(filename=test_path / 'test.log', encoding='utf-8', level=logging.INFO, force=True)
+        logging.info("In test_river_bathymetry_wellington.py")
+
+        # load in the test instructions
+        instruction_file_path = test_path / "instruction.json"
+        with open(instruction_file_path, 'r') as file_pointer:
+            cls.instructions = json.load(file_pointer)
+
+        # Load in environment variables to get and set the private API keys
+        dotenv.load_dotenv()
+        linz_key = os.environ.get('LINZ_API', None)
+        cls.instructions['instructions']['apis']['linz']['key'] = linz_key
+
+        # define cache location - and catchment dirs
+        cls.cache_dir = pathlib.Path(cls.instructions['instructions']['data_paths']['local_cache'])
+
+        # ensure the cache directory doesn't exist - i.e. clean up from last test occurred correctly
+        cls.clean_data_folder()
+
+        # Run pipeline - download files and generated DEM
+        runner = processor.RiverBathymetryGenerator(cls.instructions, debug=False)
+        runner.run(
+            pathlib.Path(cls.instructions['instructions']['data_paths']['local_cache']) / 'instruction_parameters.json')
+
+    @classmethod
+    def tearDownClass(cls):
+        """ Remove created cache directory and included created and downloaded files at the end of the test. """
+
+        cls.clean_data_folder()
+
+    @classmethod
+    def clean_data_folder(cls):
+        """ Remove all generated or downloaded files from the data directory """
+
+        files_to_keep = []
+        bathymetry_instructions = cls.instructions['instructions']['channel_bathymetry']
+        files_to_keep.append(pathlib.Path(bathymetry_instructions['rec_file']))
+        files_to_keep.append(pathlib.Path(bathymetry_instructions['flow_file']))
+
+        data_path_instructions = cls.instructions['instructions']['data_paths']
+        cache_path = pathlib.Path(data_path_instructions['local_cache'])
+        files_to_keep.append(cache_path / data_path_instructions['river_polygon_benchmark'])
+        files_to_keep.append(cache_path / data_path_instructions['river_bathymetry_benchmark'])
+        files_to_keep.append(cache_path / data_path_instructions['fan_polygon_benchmark'])
+        files_to_keep.append(cache_path / data_path_instructions['fan_bathymetry_benchmark'])
+
+        for file in cls.cache_dir.glob('*'):  # only files
+            if file not in files_to_keep:
+                if file.is_file():
+                    file.unlink()
+                elif file.is_dir():
+                    shutil.rmtree(file)
+
+    def test_river_polygon(self):
+        """ A test to see if the correct river polygon is generated. This is
+        tested individually as it is generated first. """
+
+        data_path_instructions = self.instructions['instructions']['data_paths']
+        cache_path = pathlib.Path(data_path_instructions['local_cache'])
+
+        test = geopandas.read_file(cache_path / "river_polygon.geojson")
+        benchmark = geopandas.read_file(cache_path / data_path_instructions['river_polygon_benchmark'])
+
+        # check the polygons match
+        self.assertTrue((test == benchmark).all().all(), "The geneated river"
+                        f"polygon {test} doesn't equal the river benchmark "
+                        f"river polygon {benchmark}")
+
+    def test_river_bathymetry(self):
+        """ A test to see if the correct river polygon is generated. This is
+        tested individually as it is generated on its own. """
+
+        data_path_instructions = self.instructions['instructions']['data_paths']
+        cache_path = pathlib.Path(data_path_instructions['local_cache'])
+
+        test = geopandas.read_file(cache_path / "river_bathymetry.geojson")
+        benchmark = geopandas.read_file(cache_path / data_path_instructions['river_bathymetry_benchmark'])
+
+        # check the bathymetries match
+        self.assertTrue((test == benchmark).all().all(), "The geneated river"
+                        f"bathymetry {test} doesn't equal the river benchmark "
+                        f"river bathymetry {benchmark}")
+
+    def test_fan_bathymetry(self):
+        """ A test to see if the correct fan polygon and bathymetry are
+        generated. These are generated and tested together. """
+
+        data_path_instructions = self.instructions['instructions']['data_paths']
+        cache_path = pathlib.Path(data_path_instructions['local_cache'])
+
+        # Compare the polygons
+        test = geopandas.read_file(cache_path / "fan_polygon.geojson")
+        benchmark = geopandas.read_file(cache_path / data_path_instructions['fan_polygon_benchmark'])
+
+        self.assertTrue((test == benchmark).all().all(), "The geneated river"
+                        f"fan {test} doesn't equal the river benchmark "
+                        f"fan polygon {benchmark}")
+
+        # Compare the bathymetries
+        test = geopandas.read_file(cache_path / "fan_bathymetry.geojson")
+        benchmark = geopandas.read_file(cache_path / data_path_instructions['fan_bathymetry_benchmark'])
+
+        self.assertTrue((test == benchmark).all().all(), "The geneated fan"
+                        f"bathymetry {test} doesn't equal the fan benchmark "
+                        f"fan bathymetry {benchmark}")
+
+
+if __name__ == '__main__':
+    unittest.main()

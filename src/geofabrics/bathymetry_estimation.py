@@ -12,6 +12,7 @@ import scipy
 import scipy.signal
 import scipy.interpolate
 import matplotlib
+import logging
 
 
 class Channel:
@@ -141,7 +142,8 @@ class Channel:
                                     spacing=self.resolution * 10)
         '''xy = self._get_corner_points(channel=self.channel,
                                      sampling_direction=self.sampling_direction)'''
-        xy = self._fit_spline_between_xy(xy)
+        if len(xy) > 3:  # default k= 3, must be greater to fit with knots
+            xy = self._fit_spline_between_xy(xy)
         spline_channel = shapely.geometry.LineString(xy.T)
         spline_channel = geopandas.GeoDataFrame(geometry=[spline_channel],
                                                 crs=self.channel.crs)
@@ -154,7 +156,8 @@ class Channel:
 
         xy = self._get_corner_points(channel=self.channel,
                                      sampling_direction=self.sampling_direction)
-        xy = self._fit_spline_through_xy(xy, smoothing_multiplier)
+        if len(xy) > 3:  # There must be more than three points to fit a spline
+            xy = self._fit_spline_through_xy(xy, smoothing_multiplier)
 
         return xy.T
 
@@ -326,10 +329,15 @@ class Channel:
         xy
             A paired n x 2 array of x, y points.
         k
-            The polynomial degree. Should be off. 1<= k <= 5.
+            The polynomial degree. Should be off. 1 <= k <= 5.
         """
 
-        knotspace = range(len(xy[0]))
+        num_points = len(xy[0])
+
+        assert num_points > k, "scipy.interpolate require num_points > k." + \
+            "Select a larger k."
+
+        knotspace = range(num_points)
         knots = scipy.interpolate.InterpolatedUnivariateSpline(knotspace, knotspace, k=k).get_knots()
         knots_full = numpy.concatenate(([knots[0]] * k, knots, [knots[-1]] * k))
 
@@ -783,13 +791,14 @@ class ChannelCharacteristics:
         """
 
         search_radius_index = int(search_radius / self.resolution)
-        print(f'search radius index = {search_radius_index}')
+
         widths = {'widths': [], 'first_bank_i': [], 'last_bank_i': [],
                   'threshold': [], 'channel_count': [],
                   'flat_widths': [], 'first_flat_bank_i': [], 'last_flat_bank_i': []}
 
         for j in range(len(cross_section_elevations['gnd_elevations'])):
-            print(f"cross section {j} out of {len(cross_section_elevations['gnd_elevations'])}")
+            logging.info(f"Variable thresholding cross section {j} out of "
+                         "{len(cross_section_elevations['gnd_elevations'])}")
             assert len(cross_section_elevations['gnd_elevations'][j]) == self.number_of_samples, "Expect fixed length"
 
             gnd_samples = cross_section_elevations['gnd_elevations'][j]
@@ -1530,9 +1539,9 @@ class ChannelCharacteristics:
         river_polygon = self._create_flat_water_polygon(cross_sections=cross_sections,
                                                         smoothing_multiplier=river_polygon_smoothing_multiplier)
 
-        # Midpoints as defined by the midpoint of the river polygon
+        # Midpoints as defined by the midpoint of the river polygon - buffer slightly to ensure intersection at the start and end
         cross_sections['river_polygon_midpoint'] = cross_sections.apply(
-            lambda row: row.geometry.intersection(river_polygon.iloc[0].geometry).centroid, axis=1)
+            lambda row: row.geometry.intersection(river_polygon.buffer(self.resolution/10).iloc[0]).centroid, axis=1)
 
         # Width and threshod smoothing - rolling mean
         self._smooth_widths_and_thresholds(cross_sections=cross_sections)

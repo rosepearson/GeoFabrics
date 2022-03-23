@@ -857,6 +857,8 @@ class RiverBathymetryGenerator(BaseProcessor):
             buffer  The amount of extra space to create around the river catchment
         """
 
+        logging.info("The channel hasn't been characerised. Charactreising now.")
+
         # Extract instructions
         cross_section_spacing = self.get_bathymetry_instruction('cross_section_spacing')
         resolution = self.get_resolution()
@@ -1059,6 +1061,9 @@ class RiverBathymetryGenerator(BaseProcessor):
         pipeline to produce a DEM before sampling this to extimate width, slope
         and eventually depth. """
 
+        logging.info("Adding river and fan bathymetry if it doesn't already"
+                     "exist.")
+
         # Characterise river channel if not already done - may generate DEMs
         if not self.channel_characteristics_exist():
             buffer = 50
@@ -1066,6 +1071,7 @@ class RiverBathymetryGenerator(BaseProcessor):
 
         # Estimate channel and fan depths if not already done
         if not self.channel_bathymetry_exist():
+            logging.info("Estimating the channel and fan bathymetry.")
 
             # Calculate and save river bathymetry depths
             self.calculate_river_bed_elevations()

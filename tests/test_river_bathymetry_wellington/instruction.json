@@ -1,0 +1,64 @@
+{"instructions": 
+	{
+		"output": {
+			"crs": {
+				"horizontal": 2193,
+				"vertical": 7839
+			},
+			"grid_params": {
+				"resolution": 1
+			}
+		},
+		"processing": {
+			"chunk_size": 1000,
+			"number_of_cores": 3
+		},
+		"data_paths": {
+			"local_cache": "tests/test_river_bathymetry_wellington/data",
+			"river_polygon_benchmark": "river_polygon_benchmark.geojson",
+			"river_bathymetry_benchmark": "river_bathymetry_benchmark.geojson",
+			"fan_polygon_benchmark": "fan_polygon_benchmark.geojson",
+			"fan_bathymetry_benchmark": "fan_bathymetry_benchmark.geojson"
+		},
+		"apis": {
+			"open_topography": {
+				"Wellington_2013": {
+					"crs": {
+						"horizontal": 2193,
+						"vertical": 7839
+					}
+				}
+			},
+			"linz": {
+				"land": {
+					"layers": [51559]
+				},
+				"bathymetry_contours": {
+					"layers": [50554]
+				}
+			}
+		},
+		"general": {
+			"set_dem_shoreline": true,
+			"bathymetry_contours_z_label": "valdco",
+			"drop_offshore_lidar": true,
+			"lidar_classifications_to_keep": [2, 9],
+			"interpolate_missing_values": false
+		},
+		"channel_bathymetry": {
+			"veg_lidar_classifications_to_keep": [2, 3, 4, 5, 9],
+			"max_channel_width": 120,
+			"min_channel_width": 10,
+			"max_bank_height": 2,
+			"rec_alignment_tolerance": 65,
+			"width_centre_smoothing": 10,
+			"channel_area_threshold": 152000000,
+			"channel_rec_id": 9253579,
+			"cross_section_spacing": 10,
+			"bank_threshold": 0.75,
+			"rec_file": "tests/test_river_bathymetry_wellington/data/rec2_3.geojson",
+			"flow_file": "tests/test_river_bathymetry_wellington/data/flow_and_friction.csv.gz"
+		}
+	}
+}
+
