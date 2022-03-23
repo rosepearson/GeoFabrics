@@ -144,23 +144,26 @@ class ProcessorRiverBathymetryTest(unittest.TestCase):
         test_comparison = test[column_name].array
         benchmark_comparison = benchmark[column_name].array
         print(f"{column_name} difference {numpy.array(test_comparison) - numpy.array(benchmark_comparison)}")
-        self.assertAlmostEqual(test_comparison, benchmark_comparison, "The geneated"
-                               f" river {column_name} does not match the benchmark."
-                               f" {test_comparison} vs {benchmark_comparison}")
+        self.assertAlmostEqual(test_comparison, benchmark_comparison, places=7,
+                               msg=f"The geneated river {column_name} does not"
+                               f" match the benchmark. {test_comparison} vs "
+                               f"{benchmark_comparison}")
         column_name = 'widths'
         test_comparison = test[column_name].array
         benchmark_comparison = benchmark[column_name].array
         print(f"{column_name} difference {numpy.array(test_comparison) - numpy.array(benchmark_comparison)}")
-        self.assertAlmostEqual(test_comparison, benchmark_comparison, "The geneated"
-                               f" river {column_name} does not match the benchmark."
-                               f" {test_comparison} vs {benchmark_comparison}")
+        self.assertAlmostEqual(test_comparison, benchmark_comparison, places=7,
+                               msg=f"The geneated river {column_name} does not"
+                               f" match the benchmark. {test_comparison} vs "
+                               f"{benchmark_comparison}")
 
         column_name = 'geometry'
         comparison = test[column_name].distance(benchmark[column_name]).array
         print(f"Distances between the test and benchmark points {numpy.array(comparison)}")
-        self.assertAlmostEqual(comparison, numpy.zeros(len(test[column_name])), "The geneated"
-                               f" river {column_name} does not match the benchmark."
-                               f" Thy are separated by distances of {comparison}")
+        self.assertAlmostEqual(comparison, numpy.zeros(len(test[column_name])), places=7,
+                               msg=f"The geneated river {column_name} does not"
+                               f" match the benchmark. They are separated by "
+                               f"distances of {comparison}")
 
     @pytest.mark.skipif(sys.platform != 'win32', reason="Windows test - this is strict")
     def test_fan_windows(self):
@@ -208,7 +211,7 @@ class ProcessorRiverBathymetryTest(unittest.TestCase):
         benchmark_comparison = benchmark[column_name].area.item()
         print(f"test area {test_comparison}, and benchmark area {benchmark_comparison}")
         self.assertAlmostEqual(test_comparison, benchmark_comparison, places=7,
-                               message=f"The geneated river {column_name} does"
+                               msg=f"The geneated river {column_name} does"
                                f" not match the benchmark. {test_comparison} "
                                f"vs {benchmark_comparison}")
 
@@ -222,7 +225,7 @@ class ProcessorRiverBathymetryTest(unittest.TestCase):
         benchmark_comparison = benchmark[column_name].array
         print(f"{column_name} difference {numpy.array(test_comparison) - numpy.array(benchmark_comparison)}")
         self.assertAlmostEqual(test_comparison, benchmark_comparison, places=7,
-                               message="The geneated  river {column_name} does"
+                               msg="The geneated  river {column_name} does"
                                f" not match the benchmark. {test_comparison} "
                                f"vs {benchmark_comparison}")
 
@@ -230,7 +233,7 @@ class ProcessorRiverBathymetryTest(unittest.TestCase):
         comparison = test[column_name].distance(benchmark[column_name]).array
         print(f"Distances between the test and benchmark points {numpy.array(comparison)}")
         self.assertAlmostEqual(comparison, numpy.zeros(len(test[column_name])),
-                               places=7, message=f"The geneate driver "
+                               places=7, msg=f"The geneate driver "
                                f"{column_name}  does not match the benchmark."
                                f" Thy are separated by distances of {comparison}")
 
