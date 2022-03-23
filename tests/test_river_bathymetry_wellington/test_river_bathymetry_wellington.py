@@ -126,7 +126,7 @@ class ProcessorRiverBathymetryTest(unittest.TestCase):
                         f"bathymetry {test} doesn't equal the river benchmark "
                         f"river bathymetry {benchmark}")
 
-    @pytest.mark.skipif(sys.platform != 'win32', reason="Linux test - this is less strict")
+    @pytest.mark.skipif(sys.platform != 'linux', reason="Linux test - this is less strict")
     def test_river_bathymetry_linux(self):
         """ A test to see if the correct river polygon is generated. This is
         tested individually as it is generated on its own. """
@@ -188,7 +188,7 @@ class ProcessorRiverBathymetryTest(unittest.TestCase):
                         f"bathymetry {test} doesn't equal the fan benchmark "
                         f"fan bathymetry {benchmark}")
 
-    @pytest.mark.skipif(sys.platform != 'win32', reason="Linux test - this is less strict")
+    @pytest.mark.skipif(sys.platform != 'linux', reason="Linux test - this is less strict")
     def test_fan_linux(self):
         """ A test to see if the correct fan polygon and bathymetry are
         generated. These are generated and tested together. """
