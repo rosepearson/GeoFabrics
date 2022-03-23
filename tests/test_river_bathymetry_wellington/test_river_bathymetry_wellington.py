@@ -207,9 +207,10 @@ class ProcessorRiverBathymetryTest(unittest.TestCase):
         test_comparison = test[column_name].area.item()
         benchmark_comparison = benchmark[column_name].area.item()
         print(f"test area {test_comparison}, and benchmark area {benchmark_comparison}")
-        self.assertAlmostEqual(test_comparison, benchmark_comparison, "The geneated"
-                               f" river {column_name} does not match the benchmark."
-                               f" {test_comparison} vs {benchmark_comparison}")
+        self.assertAlmostEqual(test_comparison, benchmark_comparison, places=7,
+                               message=f"The geneated river {column_name} does"
+                               f" not match the benchmark. {test_comparison} "
+                               f"vs {benchmark_comparison}")
 
         # Compare the bathymetries
         test = geopandas.read_file(cache_path / "fan_bathymetry.geojson")
@@ -220,15 +221,17 @@ class ProcessorRiverBathymetryTest(unittest.TestCase):
         test_comparison = test[column_name].array
         benchmark_comparison = benchmark[column_name].array
         print(f"{column_name} difference {numpy.array(test_comparison) - numpy.array(benchmark_comparison)}")
-        self.assertAlmostEqual(test_comparison, benchmark_comparison, "The geneated"
-                               f" river {column_name} does not match the benchmark."
-                               f" {test_comparison} vs {benchmark_comparison}")
+        self.assertAlmostEqual(test_comparison, benchmark_comparison, places=7,
+                               message="The geneated  river {column_name} does"
+                               f" not match the benchmark. {test_comparison} "
+                               f"vs {benchmark_comparison}")
 
         column_name = 'geometry'
         comparison = test[column_name].distance(benchmark[column_name]).array
         print(f"Distances between the test and benchmark points {numpy.array(comparison)}")
-        self.assertAlmostEqual(comparison, numpy.zeros(len(test[column_name])), "The geneated"
-                               f" river {column_name} does not match the benchmark."
+        self.assertAlmostEqual(comparison, numpy.zeros(len(test[column_name])),
+                               places=7, message=f"The geneate driver "
+                               f"{column_name}  does not match the benchmark."
                                f" Thy are separated by distances of {comparison}")
 
 
