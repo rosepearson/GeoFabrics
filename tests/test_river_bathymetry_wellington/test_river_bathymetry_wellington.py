@@ -95,6 +95,8 @@ class ProcessorRiverBathymetryTest(unittest.TestCase):
         """ A test to see if the correct river polygon is generated. This is
         tested individually as it is generated first. """
 
+        print("Compare river polygon  - All OS")
+
         data_path_instructions = self.instructions['instructions']['data_paths']
         cache_path = pathlib.Path(data_path_instructions['local_cache'])
 
@@ -110,6 +112,8 @@ class ProcessorRiverBathymetryTest(unittest.TestCase):
     def test_river_bathymetry_windows(self):
         """ A test to see if the correct river polygon is generated. This is
         tested individually as it is generated on its own. """
+
+        print("Compare river bathymetry - Windows")
 
         data_path_instructions = self.instructions['instructions']['data_paths']
         cache_path = pathlib.Path(data_path_instructions['local_cache'])
@@ -127,6 +131,8 @@ class ProcessorRiverBathymetryTest(unittest.TestCase):
         """ A test to see if the correct river polygon is generated. This is
         tested individually as it is generated on its own. """
 
+        print("Compare river bathymetry - Linux")
+
         data_path_instructions = self.instructions['instructions']['data_paths']
         cache_path = pathlib.Path(data_path_instructions['local_cache'])
 
@@ -135,23 +141,33 @@ class ProcessorRiverBathymetryTest(unittest.TestCase):
 
         # check some of the bathymetrt columns match
         column_name = 'bed_elevation_Neal_et_al'
-        self.assertAlmostEqual(test[column_name], benchmark[column_name], "The geneated"
+        test_comparison = test[column_name].array
+        benchmark_comparison = benchmark[column_name].array
+        print(f"{column_name} difference {numpy.array(test_comparison) - numpy.array(benchmark_comparison)}")
+        self.assertAlmostEqual(test_comparison, benchmark_comparison, "The geneated"
                                f" river {column_name} does not match the benchmark."
-                               f" {test[column_name]} vs {benchmark[column_name]}")
+                               f" {test_comparison} vs {benchmark_comparison}")
         column_name = 'widths'
-        self.assertAlmostEqual(test[column_name], benchmark[column_name], "The geneated"
+        test_comparison = test[column_name].array
+        benchmark_comparison = benchmark[column_name].array
+        print(f"{column_name} difference {numpy.array(test_comparison) - numpy.array(benchmark_comparison)}")
+        self.assertAlmostEqual(test_comparison, benchmark_comparison, "The geneated"
                                f" river {column_name} does not match the benchmark."
-                               f" {test[column_name]} vs {benchmark[column_name]}")
+                               f" {test_comparison} vs {benchmark_comparison}")
 
         column_name = 'geometry'
-        self.assertAlmostEqual(test[column_name], benchmark[column_name], "The geneated"
+        comparison = test[column_name].distance(benchmark[column_name]).array
+        print(f"Distances between the test and benchmark points {numpy.array(comparison)}")
+        self.assertAlmostEqual(comparison, numpy.zeros(len(test[column_name])), "The geneated"
                                f" river {column_name} does not match the benchmark."
-                               f" {test[column_name]} vs {benchmark[column_name]}")
+                               f" Thy are separated by distances of {comparison}")
 
     @pytest.mark.skipif(sys.platform != 'win32', reason="Windows test - this is strict")
-    def test_fan_bathymetry_windows(self):
+    def test_fan_windows(self):
         """ A test to see if the correct fan polygon and bathymetry are
         generated. These are generated and tested together. """
+
+        print("Compare fan bathymetry and polygon - Windows")
 
         data_path_instructions = self.instructions['instructions']['data_paths']
         cache_path = pathlib.Path(data_path_instructions['local_cache'])
@@ -172,10 +188,12 @@ class ProcessorRiverBathymetryTest(unittest.TestCase):
                         f"bathymetry {test} doesn't equal the fan benchmark "
                         f"fan bathymetry {benchmark}")
 
-    @pytest.mark.skipif(sys.platform != 'linux', reason="Linux test - this is less strict")
-    def test_fan_bathymetry_linux(self):
+    @pytest.mark.skipif(sys.platform != 'win32', reason="Linux test - this is less strict")
+    def test_fan_linux(self):
         """ A test to see if the correct fan polygon and bathymetry are
         generated. These are generated and tested together. """
+
+        print("Compare fan bathymetry and polygon - Linux")
 
         data_path_instructions = self.instructions['instructions']['data_paths']
         cache_path = pathlib.Path(data_path_instructions['local_cache'])
@@ -184,11 +202,14 @@ class ProcessorRiverBathymetryTest(unittest.TestCase):
         test = geopandas.read_file(cache_path / "fan_polygon.geojson")
         benchmark = geopandas.read_file(cache_path / data_path_instructions['fan_polygon_benchmark'])
 
-        # check some of the bathymetrt columns match
+        # check some of the bathymetry columns match
         column_name = 'geometry'
-        self.assertAlmostEqual(test[column_name].area.item(), benchmark[column_name].area.item(), "The geneated"
+        test_comparison = test[column_name].area.item()
+        benchmark_comparison = benchmark[column_name].area.item()
+        print(f"test area {test_comparison}, and benchmark area {benchmark_comparison}")
+        self.assertAlmostEqual(test_comparison, benchmark_comparison, "The geneated"
                                f" river {column_name} does not match the benchmark."
-                               f" {test[column_name]} vs {benchmark[column_name]}")
+                               f" {test_comparison} vs {benchmark_comparison}")
 
         # Compare the bathymetries
         test = geopandas.read_file(cache_path / "fan_bathymetry.geojson")
@@ -196,15 +217,19 @@ class ProcessorRiverBathymetryTest(unittest.TestCase):
 
         # check some of the bathymetrt columns match
         column_name = 'depths'
-        self.assertAlmostEqual(test[column_name].array, benchmark[column_name].array, "The geneated"
+        test_comparison = test[column_name].array
+        benchmark_comparison = benchmark[column_name].array
+        print(f"{column_name} difference {numpy.array(test_comparison) - numpy.array(benchmark_comparison)}")
+        self.assertAlmostEqual(test_comparison, benchmark_comparison, "The geneated"
                                f" river {column_name} does not match the benchmark."
-                               f" {test[column_name]} vs {benchmark[column_name]}")
+                               f" {test_comparison} vs {benchmark_comparison}")
 
         column_name = 'geometry'
-        self.assertAlmostEqual(test[column_name].distance(benchmark[column_name]).array,
-                               numpy.zeros(len(test[column_name])), "The geneated"
+        comparison = test[column_name].distance(benchmark[column_name]).array
+        print(f"Distances between the test and benchmark points {numpy.array(comparison)}")
+        self.assertAlmostEqual(comparison, numpy.zeros(len(test[column_name])), "The geneated"
                                f" river {column_name} does not match the benchmark."
-                               f" {test[column_name]} vs {benchmark[column_name]}")
+                               f" Thy are separated by distances of {comparison}")
 
 
 if __name__ == '__main__':
