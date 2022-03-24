@@ -142,7 +142,7 @@ class Channel:
                                     spacing=self.resolution * 10)
         '''xy = self._get_corner_points(channel=self.channel,
                                      sampling_direction=self.sampling_direction)'''
-        if len(xy) > 3:  # default k= 3, must be greater to fit with knots
+        if len(xy[0]) > 3:  # default k= 3, must be greater to fit with knots
             xy = self._fit_spline_between_xy(xy)
         spline_channel = shapely.geometry.LineString(xy.T)
         spline_channel = geopandas.GeoDataFrame(geometry=[spline_channel],
@@ -156,7 +156,7 @@ class Channel:
 
         xy = self._get_corner_points(channel=self.channel,
                                      sampling_direction=self.sampling_direction)
-        if len(xy) > 3:  # There must be more than three points to fit a spline
+        if len(xy[0]) > 3:  # There must be more than three points to fit a spline
             xy = self._fit_spline_through_xy(xy, smoothing_multiplier)
 
         return xy.T
