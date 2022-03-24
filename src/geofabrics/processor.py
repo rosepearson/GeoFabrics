@@ -907,10 +907,14 @@ class RiverBathymetryGenerator(BaseProcessor):
         channel = self.get_rec_channel()
 
         # Match each channel midpoint to a nzsegment ID - based on what channel reach is closest
-        width_values['nzsegment'] = numpy.zeros(len(width_values['widths']), dtype=int)
+        width_values['nzsegment'] = numpy.ones(len(width_values['widths']), dtype=float) * numpy.nan
         for i, row in width_values.iterrows():
-            distances = channel.channel.distance(width_values.loc[i].geometry)
-            width_values.loc[i, ('nzsegment')] = channel.channel[distances == distances.min()]['nzsegment'].min()
+            if row.geometry is not None and not row.geometry.is_empty:
+                distances = channel.channel.distance(width_values.loc[i].geometry)
+                width_values.loc[i, ('nzsegment')] = channel.channel[distances == distances.min()]['nzsegment'].min()
+        # Fill in any missing values
+        width_values['nzsegment'] = width_values['nzsegment'].fillna(method='ffill').fillna(method='bfill')
+        width_values['nzsegment'] = width_values['nzsegment'].astype('int')
 
         # Add the friction and flow values to the widths and slopes
         width_values['mannings_n'] = numpy.zeros(len(width_values['nzsegment']), dtype=int)
