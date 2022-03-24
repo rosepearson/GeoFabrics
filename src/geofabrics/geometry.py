@@ -666,28 +666,25 @@ class RiverMouthFan:
         (x, y) = intersection_line.xy
         polygon_points = [[xi, yi] for (xi, yi) in zip(x, y)]
 
-        # Construct the bottom edge of the fan to work out the direction of the intersection line
-        bottom_mouth_point = shapely.geometry.Point([mouth_point.x + mouth_normal.x * river_mouth_width / 2,
-                                                     mouth_point.y + mouth_normal.y * river_mouth_width / 2])
-        bottom_fan_edge = shapely.geometry.LineString([bottom_mouth_point,
-                                                       [bottom_mouth_point.x + distance * mouth_tangent.x,
-                                                        bottom_mouth_point.y + distance * mouth_tangent.y]])
+        # Check if the intersected contour and mouth normal are roughtly parallel or anti-parallel
+        unit_vector_contour = numpy.array([x[-1] - x[0], y[-1] - y[0]])
+        unit_vector_contour = unit_vector_contour / numpy.linalg.norm(unit_vector_contour)
+        unit_vector_mouth = numpy.array([mouth_normal.x, mouth_normal.y])
 
-        # Determine line direction before adding the mouth points in the correct direction
-        first_point = shapely.geometry.Point([x[0], y[0]])
-        last_point = shapely.geometry.Point([x[0], y[0]])
-        if first_point.distance(bottom_fan_edge) < last_point.distance(bottom_fan_edge):
+        # they have the oposite direction
+        if numpy.arccos(numpy.dot(unit_vector_contour, unit_vector_mouth)) > numpy.pi / 2:
             # keep line order
             polygon_points.extend([[mouth_point.x - mouth_normal.x * river_mouth_width / 2,
                                     mouth_point.y - mouth_normal.y * river_mouth_width / 2],
                                    [mouth_point.x + mouth_normal.x * river_mouth_width / 2,
                                     mouth_point.y + mouth_normal.y * river_mouth_width / 2]])
-        else:
+        else:  # The have the same direction, so reverse
             # reverse fan order
             polygon_points.extend([[mouth_point.x + mouth_normal.x * river_mouth_width / 2,
                                     mouth_point.y + mouth_normal.y * river_mouth_width / 2],
                                    [mouth_point.x - mouth_normal.x * river_mouth_width / 2,
                                     mouth_point.y - mouth_normal.y * river_mouth_width / 2]])
+
         fan_polygon = shapely.geometry.Polygon(polygon_points)
         fan_polygon = geopandas.GeoDataFrame(geometry=[fan_polygon], crs=self.crs)
 
