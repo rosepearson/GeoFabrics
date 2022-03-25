@@ -314,7 +314,8 @@ class Channel:
         # Sample every roughly res along the spine with rough line length estimate
         line_length = shapely.geometry.LineString(xy.T).length
         sample_step_u = 1 / round(line_length / self.resolution)
-        u_sampled = numpy.arange(0, 1 + sample_step_u, sample_step_u)
+        # Increase sample range 1 past in each direction to avoid shrtinage of the line
+        u_sampled = numpy.arange(-sample_step_u, 1 + 2 * sample_step_u, sample_step_u)
         xy_sampled = scipy.interpolate.splev(u_sampled, tck_tuple)
         xy_sampled = numpy.array(xy_sampled)
 
