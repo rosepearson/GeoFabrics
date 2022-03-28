@@ -143,23 +143,22 @@ class DenseDem(abc.ABC):
         Defines the extents of any dense (LiDAR or refernence DEM) values already added.
     dense_dem
         The dense portion of the DEM
-    interpolate_missing_values
-        If True any missing values at the end of the rasterisation process will be populated using nearest neighbour
-        interpolation.
+    interpolation_method
+        If not None, interpolate using that method. Valid options are 'linear', 'nearest', and 'cubic'
     """
 
     DENSE_BINNING = "idw"
     CACHE_SIZE = 10000  # The max number of points to create the offshore RBF and to evaluate in the RBF at one time
 
     def __init__(self, catchment_geometry: geometry.CatchmentGeometry, extents: geopandas.GeoDataFrame,
-                 dense_dem: xarray.core.dataarray.DataArray, interpolate_missing_values: bool):
+                 dense_dem: xarray.core.dataarray.DataArray, interpolation_method: str):
         """ Setup base DEM to add future tiles too """
 
         self.catchment_geometry = catchment_geometry
         self._dense_dem = dense_dem
         self._extents = extents
 
-        self.interpolate_missing_values = interpolate_missing_values
+        self.interpolation_method = interpolation_method
 
         self._offshore_dem = None
         self._river_dem = None
@@ -189,8 +188,8 @@ class DenseDem(abc.ABC):
 
             # Ensure valid name and increasing dimension indexing for the dem
             self._dem = self._dem.rename(self.DENSE_BINNING)
-            if self.interpolate_missing_values:
-                self._dem = self._dem.rio.interpolate_na(method='linear')  # methods are 'nearest', 'linear' and 'cubic'
+            if self.interpolation_method is not None:
+                self._dem = self._dem.rio.interpolate_na(method=self.interpolation_method)  # methods are 'nearest', 'linear' and 'cubic'
             self._dem = self._dem.rio.clip(self.catchment_geometry.catchment.geometry)
             self._dem = self._ensure_positive_indexing(self._dem)  # Some programs require positively increasing indices
         return self._dem
@@ -387,13 +386,13 @@ class DenseDemFromFiles(DenseDem):
     ----------
 
     Logic controlling behaviour
-        Interpolate_missing_values - If True any missing values at the end of the rasterisation process will be
-        populated using nearest neighbour interpolation.
+        interpolation_method
+            If not None, interpolate using that method. Valid options are 'linear', 'nearest', and 'cubic'
     """
 
     def __init__(self, catchment_geometry: geometry.CatchmentGeometry,
                  dense_dem_path: typing.Union[str, pathlib.Path], extents_path: typing.Union[str, pathlib.Path],
-                 interpolate_missing_values: bool = True):
+                 interpolation_method: str):
         """ Load in the extents and dense DEM. Ensure the dense DEM is clipped within the extents """
 
         extents = geopandas.read_file(pathlib.Path(extents_path))
@@ -411,7 +410,7 @@ class DenseDemFromFiles(DenseDem):
 
         # Setup the DenseDem class
         super(DenseDemFromFiles, self).__init__(catchment_geometry=catchment_geometry, dense_dem=dense_dem,
-                                                extents=extents, interpolate_missing_values=interpolate_missing_values)
+                                                extents=extents, interpolation_method=interpolation_method)
 
 
 class DenseDemFromTiles(DenseDem):
@@ -427,9 +426,8 @@ class DenseDemFromTiles(DenseDem):
     drop_offshore_lidar
         If True only keep LiDAR values within the foreshore and land regions defined by the catchment_geometry.
         If False keep all LiDAR values.
-    interpolate_missing_values
-        If True any missing values at the end of the rasterisation process will be populated using nearest neighbour
-        interpolation.
+    interpolation_method
+        If not None, interpolate using that method. Valid options are 'linear', 'nearest', and 'cubic'.
     idw_power
         The power to apply when performing IDW
     idw_radius
@@ -437,7 +435,7 @@ class DenseDemFromTiles(DenseDem):
     """
 
     def __init__(self, catchment_geometry: geometry.CatchmentGeometry, idw_power: int, idw_radius: float,
-                 drop_offshore_lidar: bool = True, interpolate_missing_values: bool = True):
+                 interpolation_method: str, drop_offshore_lidar: bool = True):
         """ Setup base DEM to add future tiles too """
 
         self.drop_offshore_lidar = drop_offshore_lidar
@@ -448,7 +446,7 @@ class DenseDemFromTiles(DenseDem):
         self.idw_radius = idw_radius
 
         super(DenseDemFromTiles, self).__init__(catchment_geometry=catchment_geometry, dense_dem=None,
-                                                extents=None, interpolate_missing_values=interpolate_missing_values)
+                                                extents=None, interpolation_method=interpolation_method)
 
     def _set_up_chunks(self, chunk_size: int) -> (list, list):
         """ Define the chunked coordinates to cover the catchment """

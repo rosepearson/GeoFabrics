@@ -29,8 +29,7 @@
 		"general": {
 			"set_dem_shoreline": true,
 			"drop_offshore_lidar": false,
-			"lidar_classifications_to_keep": [2],
-			"interpolate_missing_values": false
+			"lidar_classifications_to_keep": [2]
 		}
 	}
 }

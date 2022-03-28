@@ -98,7 +98,7 @@ class BaseProcessor(abc.ABC):
 
         defaults = {'set_dem_shoreline': True,
                     'bathymetry_contours_z_label': None, 'drop_offshore_lidar': True,
-                    'lidar_classifications_to_keep': [2], 'interpolate_missing_values': True}
+                    'lidar_classifications_to_keep': [2], 'interpolation_method': None}
 
         assert key in defaults or key in self.instructions['instructions']['general'], f"The key: {key} is missing " \
             + "from the general instructions, and does not have a default value"
@@ -345,7 +345,7 @@ class DemGenerator(BaseProcessor):
         self.dense_dem = dem.DenseDemFromTiles(
             catchment_geometry=self.catchment_geometry,
             drop_offshore_lidar=self.get_instruction_general('drop_offshore_lidar'),
-            interpolate_missing_values=self.get_instruction_general('interpolate_missing_values'),
+            interpolation_method=self.get_instruction_general('interpolation_method'),
             idw_power=idw_power, idw_radius=idw_radius)
 
         # Setup Dask cluster and client
@@ -386,7 +386,7 @@ class DemGenerator(BaseProcessor):
                 self.dense_dem.add_reference_dem(tile_points=self.reference_dem.points,
                                                  tile_extent=self.reference_dem.extents)
 
-        if self.dense_dem.extents is not None:  # Save ou the extents of the LiDAR - before reference DEM
+        if self.dense_dem.extents is not None:  # Save out the extents of the LiDAR - before reference DEM
             self.dense_dem.extents.to_file(self.get_instruction_path('dense_dem_extents'))
         else:
             logging.warning("In processor.DemGenerator - no LiDAR extents exist so no extents file written")
@@ -481,7 +481,7 @@ class OffshoreDemGenerator(BaseProcessor):
         self.dense_dem = dem.DenseDemFromFiles(catchment_geometry=self.catchment_geometry,
                                                dense_dem_path=self.get_instruction_path('dense_dem'),
                                                extents_path=self.get_instruction_path('dense_dem_extents'),
-                                               interpolate_missing_values=self.get_instruction_general('interpolate_missing_values'))
+                                               interpolation_method=self.get_instruction_general('interpolation_method'))
 
         # Load in bathymetry and interpolate offshore if significant offshore is not covered by LiDAR
         area_without_lidar = \
