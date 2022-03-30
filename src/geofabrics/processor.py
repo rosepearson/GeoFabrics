@@ -30,6 +30,8 @@ class BaseProcessor(abc.ABC):
     def __init__(self, json_instructions: json):
         self.instructions = json_instructions
 
+        self.catchment_geometry = None
+
     def get_instruction_path(self, key: str) -> str:
         """ Return the file path from the instruction file, or default if there is a default value and the local cache
         is specified. Raise an error if the key is not in the instructions. """
@@ -307,7 +309,6 @@ class BathymetryDemGenerator(BaseProcessor):
 
         super(BathymetryDemGenerator, self).__init__(json_instructions=json_instructions)
 
-        self.catchment_geometry = None        
         self.dense_dem = None
         self.bathy_contours = None
 
@@ -409,7 +410,6 @@ class LidarDemGenerator(BathymetryDemGenerator):
 
         super(LidarDemGenerator, self).__init__(json_instructions=json_instructions)
 
-        self.catchment_geometry = None
         self.dense_dem = None
         self.reference_dem = None
         self.bathy_contours = None
