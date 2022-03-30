@@ -159,7 +159,7 @@ class ProcessorLocalFilesTest(unittest.TestCase):
         """ A basic comparison between the generated and benchmark DEM """
 
         # Run pipeline
-        runner = processor.DemGenerator(self.instructions)
+        runner = processor.LidarDemGenerator(self.instructions)
         runner.run()
 
         # Load in benchmark DEM

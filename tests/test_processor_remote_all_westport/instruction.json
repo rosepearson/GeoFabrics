@@ -19,7 +19,6 @@
 			"result_dem": "tests/test_processor_remote_all_westport/data/test_dem.nc",
 			"dense_dem_extents": "tests/test_processor_remote_all_westport/data/extents.geojson",
 			"benchmark_dem": "tests/test_processor_remote_all_westport/data/benchmark_dem.nc"
-			
 		},
 		"apis": {
 			"open_topography": {

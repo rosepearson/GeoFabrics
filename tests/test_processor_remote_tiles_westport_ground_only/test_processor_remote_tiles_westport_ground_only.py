@@ -86,7 +86,7 @@ class ProcessorRemoteTilesWestportTest(unittest.TestCase):
         shutil.rmtree(catchment_dir)
 
         # Run pipeline - download files and generated DEM
-        runner = processor.DemGenerator(cls.instructions)
+        runner = processor.LidarDemGenerator(cls.instructions)
         runner.run()
 
     @classmethod
