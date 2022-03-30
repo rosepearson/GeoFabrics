@@ -260,8 +260,9 @@ class BaseProcessor(abc.ABC):
                 "'file_paths' in the instruction file if you are going to use an API - like 'open_topography'"
 
             # download the specified datasets from the data service - then get the local file path
+            search_polygon = self.catchment_geometry.catchment if self.catchment_geometry is not None else None
             self.lidar_fetcher = geoapis.lidar.OpenTopography(cache_path=self.get_instruction_path('local_cache'),
-                                                              search_polygon=self.catchment_geometry.catchment,
+                                                              search_polygon=search_polygon,
                                                               verbose=True)
             # Loop through each specified dataset and download it
             for dataset_name in self.instructions['instructions']['apis'][data_service].keys():
