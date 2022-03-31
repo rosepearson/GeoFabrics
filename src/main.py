@@ -44,7 +44,7 @@ def launch_processor(args):
     # Run the pipeline
     start_time = time.time()
     if 'channel_bathymetry' in instructions['instructions']:
-        # Update a dense DEM with offshore values
+        # Update a dense DEM with river channel values
         print("Run processor.RiverBathymetryGenerator")
         runner = processor.RiverBathymetryGenerator(instructions)
         runner.run(pathlib.Path(instructions['instructions']['data_paths']['local_cache'])
