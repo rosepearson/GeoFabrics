@@ -711,10 +711,8 @@ class RiverBathymetryGenerator(BaseProcessor):
             # Create the ground DEM file if this has not be created yet!
             print("Generating ground DEM.")
             instruction_paths['result_dem'] = str(self.get_result_file_name(key='gnd_dem'))
-            instruction_paths['dense_dem'] = pathlib.Path(self.get_instruction_path("local_cache")) \
-                / "dense_gnd_dem.nc"
-            instruction_paths['dense_dem_extents'] = pathlib.Path(self.get_instruction_path("local_cache")) \
-                / "dense_gnd_extents.geojson"
+            instruction_paths['dense_dem'] = "dense_gnd_dem.nc"
+            instruction_paths['dense_dem_extents'] = "dense_gnd_extents.geojson"
             runner = LidarDemGenerator(self.instructions)
             runner.run()
             gnd_dem = runner.dense_dem.dem
@@ -734,10 +732,8 @@ class RiverBathymetryGenerator(BaseProcessor):
             instruction_paths['result_dem'] = str(self.get_result_file_name(key='veg_dem'))
             self.instructions['instructions']['general']['lidar_classifications_to_keep'] = \
                 self.get_bathymetry_instruction('veg_lidar_classifications_to_keep')
-            instruction_paths['dense_dem'] = pathlib.Path(self.get_instruction_path("local_cache")) \
-                / "dense_veg_dem.nc"
-            instruction_paths['dense_dem_extents'] = pathlib.Path(self.get_instruction_path("local_cache")) \
-                / "dense_veg_extents.geojson"
+            instruction_paths['dense_dem'] = "dense_veg_dem.nc"
+            instruction_paths['dense_dem_extents'] = "dense_veg_extents.geojson"
             runner = LidarDemGenerator(self.instructions)
             runner.run()
             veg_dem = runner.dense_dem.dem

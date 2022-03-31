@@ -78,11 +78,10 @@ class ProcessorRiverBathymetryTest(unittest.TestCase):
         files_to_keep.append(pathlib.Path(bathymetry_instructions['flow_file']))
 
         data_path_instructions = cls.instructions['instructions']['data_paths']
-        cache_path = pathlib.Path(data_path_instructions['local_cache'])
-        files_to_keep.append(cache_path / data_path_instructions['river_polygon_benchmark'])
-        files_to_keep.append(cache_path / data_path_instructions['river_bathymetry_benchmark'])
-        files_to_keep.append(cache_path / data_path_instructions['fan_polygon_benchmark'])
-        files_to_keep.append(cache_path / data_path_instructions['fan_bathymetry_benchmark'])
+        files_to_keep.append(cls.cache_dir / data_path_instructions['river_polygon_benchmark'])
+        files_to_keep.append(cls.cache_dir / data_path_instructions['river_bathymetry_benchmark'])
+        files_to_keep.append(cls.cache_dir / data_path_instructions['fan_polygon_benchmark'])
+        files_to_keep.append(cls.cache_dir / data_path_instructions['fan_bathymetry_benchmark'])
 
         for file in cls.cache_dir.glob('*'):  # only files
             if file not in files_to_keep:
@@ -115,7 +114,6 @@ class ProcessorRiverBathymetryTest(unittest.TestCase):
         print("Compare river bathymetry - Windows")
 
         data_path_instructions = self.instructions['instructions']['data_paths']
-        cache_path = pathlib.Path(data_path_instructions['local_cache'])
 
         test = geopandas.read_file(self.cache_dir / "river_bathymetry.geojson")
         benchmark = geopandas.read_file(self.cache_dir / data_path_instructions['river_bathymetry_benchmark'])
