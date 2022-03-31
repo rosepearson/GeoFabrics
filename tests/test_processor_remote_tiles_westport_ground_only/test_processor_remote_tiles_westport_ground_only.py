@@ -154,6 +154,7 @@ class ProcessorRemoteTilesWestportTest(unittest.TestCase):
     def test_result_dem_windows(self):
         """ A basic comparison between the generated and benchmark DEM """
 
+        # Load in benchmark DEM
         file_path = self.cache_dir / self.instructions['instructions']['data_paths']['benchmark_dem']
         with rioxarray.rioxarray.open_rasterio(file_path,
                                                masked=True) as benchmark_dem:
@@ -178,12 +179,14 @@ class ProcessorRemoteTilesWestportTest(unittest.TestCase):
         """ A basic comparison between the generated and benchmark DEM """
 
         # Load in benchmark DEM
-        with rioxarray.rioxarray.open_rasterio(self.instructions['instructions']['data_paths']['benchmark_dem'],
+        file_path = self.cache_dir / self.instructions['instructions']['data_paths']['benchmark_dem']
+        with rioxarray.rioxarray.open_rasterio(file_path,
                                                masked=True) as benchmark_dem:
             benchmark_dem.load()
 
         # Load in test DEM
-        with rioxarray.rioxarray.open_rasterio(self.instructions['instructions']['data_paths']['result_dem'],
+        file_path = self.cache_dir / self.instructions['instructions']['data_paths']['result_dem']
+        with rioxarray.rioxarray.open_rasterio(file_path,
                                                masked=True) as test_dem:
             test_dem.load()
 

@@ -788,15 +788,15 @@ class RiverBathymetryGenerator(BaseProcessor):
             cross_section_radius=corridor_radius)
 
         # Save out results
-        aligned_channel_file = self.self.get_result_file_path(key='aligned')
+        aligned_channel_file = self.get_result_file_path(key='aligned')
         aligned_channel.to_file(aligned_channel_file)
         if self.debug:
             sampled_cross_sections[
                 ['width_line', 'valid', 'channel_count']].set_geometry(
-                'width_line').to_file(self.self.get_result_file_path(name="initial_widths.geojson"))
+                'width_line').to_file(self.get_result_file_path(name="initial_widths.geojson"))
             sampled_cross_sections[
                 ['geometry', 'channel_count', 'valid']].to_file(
-                    self.self.get_result_file_path(name="initial_cross_sections.geojson"))
+                    self.get_result_file_path(name="initial_cross_sections.geojson"))
 
         return aligned_channel
 
@@ -833,7 +833,7 @@ class RiverBathymetryGenerator(BaseProcessor):
             max_threshold=max_bank_height,
             river_polygon_smoothing_multiplier=width_centre_smoothing_multiplier)
 
-        river_polygon.to_file(self.self.get_result_file_path('river_polygon'))
+        river_polygon.to_file(self.get_result_file_path('river_polygon'))
         columns = ['geometry']
         columns.extend([column_name for column_name in sampled_cross_sections.columns
                         if 'slope' in column_name or 'widths' in column_name
@@ -841,15 +841,15 @@ class RiverBathymetryGenerator(BaseProcessor):
                         or 'valid' in column_name or 'channel_count' in column_name])
         sampled_cross_sections.set_geometry(
             'river_polygon_midpoint', drop=True)[
-                columns].to_file(self.self.get_result_file_path(key='river_characteristics'))
+                columns].to_file(self.get_result_file_path(key='river_characteristics'))
 
         if self.debug:
             # Write out optional outputs
-            sampled_cross_sections[columns].to_file(self.self.get_result_file_path(name='final_cross_sections.geojson'))
+            sampled_cross_sections[columns].to_file(self.get_result_file_path(name='final_cross_sections.geojson'))
             sampled_cross_sections.set_geometry('width_line', drop=True)[[
-                'geometry', 'valid']].to_file(self.self.get_result_file_path(name='final_widths.geojson'))
+                'geometry', 'valid']].to_file(self.get_result_file_path(name='final_widths.geojson'))
             sampled_cross_sections.set_geometry('flat_midpoint', drop=True)[
-                columns].to_file(self.self.get_result_file_path(name="final_flat_midpoints.geojson"))
+                columns].to_file(self.get_result_file_path(name="final_flat_midpoints.geojson"))
 
     def characterise_channel(self,
                              buffer: float) -> bathymetry_estimation.ChannelCharacteristics:
@@ -891,7 +891,7 @@ class RiverBathymetryGenerator(BaseProcessor):
                                                  channel=channel,
                                                  buffer=buffer)
         else:
-            aligned_channel_file = self.self.get_result_file_path(key='aligned')
+            aligned_channel_file = self.get_result_file_path(key='aligned')
             aligned_channel = geopandas.read_file(aligned_channel_file)
 
         # calculate the channel width and save results
@@ -906,7 +906,7 @@ class RiverBathymetryGenerator(BaseProcessor):
         """
 
         # Read in the flow file and calcaulate the depths - write out the results
-        width_values = geopandas.read_file(self.self.get_result_file_path(key='river_characteristics'))
+        width_values = geopandas.read_file(self.get_result_file_path(key='river_characteristics'))
         flow = pandas.read_csv(self.get_bathymetry_instruction('flow_file'))
         channel = self.get_rec_channel()
 
@@ -964,7 +964,7 @@ class RiverBathymetryGenerator(BaseProcessor):
 
         # Save the bed elevations
         width_values[['geometry', 'bed_elevation_Neal_et_al', 'bed_elevation_Rupp_and_Smart',
-                      'widths', width_name, flat_width_name]].to_file(self.self.get_result_file_path(key="river_bathymetry"))
+                      'widths', width_name, flat_width_name]].to_file(self.get_result_file_path(key="river_bathymetry"))
 
     def _calculate_neal_et_al_depth(self,
                                     width_values,
