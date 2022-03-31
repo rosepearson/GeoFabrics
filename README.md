@@ -8,7 +8,7 @@ The `geofabrics` package includes routines and classes for combining point (i.e.
 
 ### General workflow
 
-![image](https://user-images.githubusercontent.com/22883860/128109715-80738b70-b5d9-480e-811e-1c045c27105f.png)
+![DEM_generation_workflow](https://user-images.githubusercontent.com/22883860/161160412-eef14d39-ed92-4998-838a-15176052afb9.png)
 
 ## Documentation
 ### Wiki
