@@ -135,7 +135,7 @@ class ProcessorRiverBathymetryTest(unittest.TestCase):
         test = geopandas.read_file(self.cache_dir / "river_bathymetry.geojson")
         benchmark = geopandas.read_file(self.cache_dir / data_path_instructions['river_bathymetry_benchmark'])
 
-        # check some of the bathymetrt columns match
+        # check some of the bathymetry columns match
         column_name = 'bed_elevation_Neal_et_al'
         test_comparison = test[column_name].array
         benchmark_comparison = benchmark[column_name].array
