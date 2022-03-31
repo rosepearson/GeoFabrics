@@ -10,14 +10,14 @@
 			}
 		},
 		"data_paths": {
-			"local_cache": "tests/test_processor_local_files_offshore_after/data",
-			"catchment_boundary": "tests/test_processor_local_files_limited_offshore_res/data/catchment_boundary.zip",
-			"land": "tests/test_processor_local_files_limited_offshore_res/data/land.zip",
-			"lidars": ["tests/test_processor_local_files_limited_offshore_res/data/lidar.laz"],
-			"bathymetry_contours": ["tests/test_processor_local_files_limited_offshore_res/data/bathymetry.zip"],
-			"result_dem": "tests/test_processor_local_files_limited_offshore_res/data/test_dem.nc",
-			"dense_dem_extents": "tests/test_processor_local_files_limited_offshore_res/data/extents.geojson",
-			"benchmark_dem": "tests/test_processor_local_files_limited_offshore_res/data/benchmark_dem.nc"
+			"local_cache": "tests/test_processor_local_files_limited_offshore_res/data",
+			"catchment_boundary": "catchment_boundary.zip",
+			"land": "land.zip",
+			"lidars": ["lidar.laz"],
+			"bathymetry_contours": ["bathymetry.zip"],
+			"result_dem": "test_dem.nc",
+			"dense_dem_extents": "extents.geojson",
+			"benchmark_dem": "benchmark_dem.nc"
 		},
 		"general": {
 			"set_dem_shoreline": true,

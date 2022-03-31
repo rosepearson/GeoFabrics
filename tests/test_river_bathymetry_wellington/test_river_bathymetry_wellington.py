@@ -98,10 +98,9 @@ class ProcessorRiverBathymetryTest(unittest.TestCase):
         print("Compare river polygon  - All OS")
 
         data_path_instructions = self.instructions['instructions']['data_paths']
-        cache_path = pathlib.Path(data_path_instructions['local_cache'])
 
-        test = geopandas.read_file(cache_path / "river_polygon.geojson")
-        benchmark = geopandas.read_file(cache_path / data_path_instructions['river_polygon_benchmark'])
+        test = geopandas.read_file(self.cache_dir / "river_polygon.geojson")
+        benchmark = geopandas.read_file(self.cache_dir / data_path_instructions['river_polygon_benchmark'])
 
         # check the polygons match
         self.assertTrue((test == benchmark).all().all(), "The geneated river"
@@ -118,8 +117,8 @@ class ProcessorRiverBathymetryTest(unittest.TestCase):
         data_path_instructions = self.instructions['instructions']['data_paths']
         cache_path = pathlib.Path(data_path_instructions['local_cache'])
 
-        test = geopandas.read_file(cache_path / "river_bathymetry.geojson")
-        benchmark = geopandas.read_file(cache_path / data_path_instructions['river_bathymetry_benchmark'])
+        test = geopandas.read_file(self.cache_dir / "river_bathymetry.geojson")
+        benchmark = geopandas.read_file(self.cache_dir / data_path_instructions['river_bathymetry_benchmark'])
 
         # check the bathymetries match
         self.assertTrue((test == benchmark).all().all(), "The geneated river"
@@ -134,10 +133,9 @@ class ProcessorRiverBathymetryTest(unittest.TestCase):
         print("Compare river bathymetry - Linux")
 
         data_path_instructions = self.instructions['instructions']['data_paths']
-        cache_path = pathlib.Path(data_path_instructions['local_cache'])
 
-        test = geopandas.read_file(cache_path / "river_bathymetry.geojson")
-        benchmark = geopandas.read_file(cache_path / data_path_instructions['river_bathymetry_benchmark'])
+        test = geopandas.read_file(self.cache_dir / "river_bathymetry.geojson")
+        benchmark = geopandas.read_file(self.cache_dir / data_path_instructions['river_bathymetry_benchmark'])
 
         # check some of the bathymetrt columns match
         column_name = 'bed_elevation_Neal_et_al'
@@ -173,19 +171,18 @@ class ProcessorRiverBathymetryTest(unittest.TestCase):
         print("Compare fan bathymetry and polygon - Windows")
 
         data_path_instructions = self.instructions['instructions']['data_paths']
-        cache_path = pathlib.Path(data_path_instructions['local_cache'])
 
         # Compare the polygons
-        test = geopandas.read_file(cache_path / "fan_polygon.geojson")
-        benchmark = geopandas.read_file(cache_path / data_path_instructions['fan_polygon_benchmark'])
+        test = geopandas.read_file(self.cache_dir / "fan_polygon.geojson")
+        benchmark = geopandas.read_file(self.cache_dir / data_path_instructions['fan_polygon_benchmark'])
 
         self.assertTrue((test == benchmark).all().all(), "The geneated river"
                         f"fan {test} doesn't equal the river benchmark "
                         f"fan polygon {benchmark}")
 
         # Compare the bathymetries
-        test = geopandas.read_file(cache_path / "fan_bathymetry.geojson")
-        benchmark = geopandas.read_file(cache_path / data_path_instructions['fan_bathymetry_benchmark'])
+        test = geopandas.read_file(self.cache_dir / "fan_bathymetry.geojson")
+        benchmark = geopandas.read_file(self.cache_dir / data_path_instructions['fan_bathymetry_benchmark'])
 
         self.assertTrue((test == benchmark).all().all(), "The geneated fan"
                         f"bathymetry {test} doesn't equal the fan benchmark "
@@ -199,11 +196,10 @@ class ProcessorRiverBathymetryTest(unittest.TestCase):
         print("Compare fan bathymetry and polygon - Linux")
 
         data_path_instructions = self.instructions['instructions']['data_paths']
-        cache_path = pathlib.Path(data_path_instructions['local_cache'])
 
         # Compare the polygons
-        test = geopandas.read_file(cache_path / "fan_polygon.geojson")
-        benchmark = geopandas.read_file(cache_path / data_path_instructions['fan_polygon_benchmark'])
+        test = geopandas.read_file(self.cache_dir / "fan_polygon.geojson")
+        benchmark = geopandas.read_file(self.cache_dir / data_path_instructions['fan_polygon_benchmark'])
 
         # check some of the bathymetry columns match
         column_name = 'geometry'
@@ -216,8 +212,8 @@ class ProcessorRiverBathymetryTest(unittest.TestCase):
                                f"vs {benchmark_comparison}")
 
         # Compare the bathymetries
-        test = geopandas.read_file(cache_path / "fan_bathymetry.geojson")
-        benchmark = geopandas.read_file(cache_path / data_path_instructions['fan_bathymetry_benchmark'])
+        test = geopandas.read_file(self.cache_dir / "fan_bathymetry.geojson")
+        benchmark = geopandas.read_file(self.cache_dir / data_path_instructions['fan_bathymetry_benchmark'])
 
         # check some of the bathymetrt columns match
         column_name = 'depths'

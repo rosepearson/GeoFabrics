@@ -15,10 +15,10 @@
 		},
 		"data_paths": {
 			"local_cache": "tests/test_processor_remote_all_westport/data",
-			"catchment_boundary": "tests/test_processor_remote_all_westport/data/catchment.zip",
-			"result_dem": "tests/test_processor_remote_all_westport/data/test_dem.nc",
-			"dense_dem_extents": "tests/test_processor_remote_all_westport/data/extents.geojson",
-			"benchmark_dem": "tests/test_processor_remote_all_westport/data/benchmark_dem.nc"
+			"catchment_boundary": "catchment.zip",
+			"result_dem": "test_dem.nc",
+			"dense_dem_extents": "extents.geojson",
+			"benchmark_dem": "benchmark_dem.nc"
 		},
 		"apis": {
 			"open_topography": {

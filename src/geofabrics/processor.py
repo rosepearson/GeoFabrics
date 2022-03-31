@@ -39,24 +39,44 @@ class BaseProcessor(abc.ABC):
         defaults = {'result_dem': "generated_dem.nc", 'dense_dem': "dense_dem.nc",
                     'dense_dem_extents': "dense_extents.geojson"}
 
-        if key in self.instructions['instructions']['data_paths']:
-            return self.instructions['instructions']['data_paths'][key]
-        elif "local_cache" in self.instructions['instructions']['data_paths'] and key in defaults.keys():
-            return pathlib.Path(self.instructions['instructions']['data_paths']['local_cache']) / defaults[key]
+        path_instructions = self.instructions['instructions']['data_paths']
+        local_cache = pathlib.Path(path_instructions['local_cache'])
+
+        if key == 'local_cache':
+            return local_cache
+        elif key in path_instructions:
+            # check if a list or single path
+            if type(path_instructions[key]) == list:
+                absolute_file_paths = []
+                file_paths = path_instructions[key]
+                for file_path in file_paths:
+                    file_path = pathlib.Path(file_path)
+                    file_path = file_path if file_path.is_absolute() else local_cache / file_path
+                    absolute_file_paths.append(str(file_path))
+                return absolute_file_paths
+            else:
+                file_path = pathlib.Path(path_instructions[key])
+                file_path = file_path if file_path.is_absolute() else local_cache / file_path
+                return file_path
+        elif key in defaults.keys():
+            return local_cache.absolute() / defaults[key]
         else:
-            assert False, f"Either the key `{key}` missing from data paths, or either the `local_cache` is not " + \
-                f"specified in the data paths or the key is not specified in the defaults: {defaults}"
+            assert False, f"The key `{key}` is either missing from data " \
+                "paths, not specified in the defaults: {defaults}"
 
     def check_instruction_path(self, key: str) -> bool:
         """ Return True if the file path exists in the instruction file, or True if there is a default value and the
         local cache is specified. """
+
+        assert 'local_cache' in self.instructions['instructions']['data_paths'], \
+            "local_cache is a required 'data_paths' entry"
 
         defaults = ['result_dem', 'dense_dem_extents', 'dense_dem']
 
         if key in self.instructions['instructions']['data_paths']:
             return True
         else:
-            return 'local_cache' in self.instructions['instructions']['data_paths'] and key in defaults
+            return key in defaults
 
     def get_resolution(self) -> float:
         """ Return the resolution from the instruction file. Raise an error if not in the instructions. """
@@ -156,10 +176,11 @@ class BaseProcessor(abc.ABC):
         # Check the instructions for vector data specified as a data_paths
         if "data_paths" in self.instructions['instructions'] and key in self.instructions['instructions']['data_paths']:
             # Key included in the data paths - add - either list or individual path
-            if type(self.instructions['instructions']['data_paths'][key]) == list:
-                paths.extend(self.instructions['instructions']['data_paths'][key])
+            data_paths = self.get_instruction_path(key)
+            if type(data_paths) is list:
+                paths.extend(data_paths)
             else:
-                paths.append(self.instructions['instructions']['data_paths'][key])
+                paths.append(data_paths)
 
         # Define the supported vector 'apis' keywords and the geoapis class for accessing that data service
         data_services = {"linz": geoapis.vector.Linz, "lris": geoapis.vector.Lris}
@@ -531,8 +552,8 @@ class RiverBathymetryGenerator(BaseProcessor):
         """
 
         # Check if channel needs to be aligned or widths calculated
-        river_characteristics_file = self.get_result_file(key='river_characteristics')
-        river_polygon_file = self.get_result_file(key='river_polygon')
+        river_characteristics_file = self.get_result_file_path(key='river_characteristics')
+        river_polygon_file = self.get_result_file_path(key='river_polygon')
 
         return river_characteristics_file.is_file() and river_polygon_file.is_file()
 
@@ -540,10 +561,10 @@ class RiverBathymetryGenerator(BaseProcessor):
         """ Return true if the river channel and bathymetry files exist. """
 
         # Check if the expected bathymetry and polygon files exist
-        river_bathymetry_file = self.get_result_file(key='river_bathymetry')
-        river_polygon_file = self.get_result_file(key='river_polygon')
-        fan_bathymetry_file = self.get_result_file(key='fan_bathymetry')
-        fan_polygon_file = self.get_result_file(key='fan_polygon')
+        river_bathymetry_file = self.get_result_file_path(key='river_bathymetry')
+        river_polygon_file = self.get_result_file_path(key='river_polygon')
+        fan_bathymetry_file = self.get_result_file_path(key='fan_bathymetry')
+        fan_polygon_file = self.get_result_file_path(key='fan_polygon')
         return river_bathymetry_file.is_file() and river_polygon_file.is_file() \
             and fan_bathymetry_file.is_file() and fan_polygon_file.is_file()
 
@@ -556,21 +577,19 @@ class RiverBathymetryGenerator(BaseProcessor):
         """
 
         # Check if channel needs to be aligned or widths calculated
-        aligned_channel_file = self.get_result_file(key='aligned')
+        aligned_channel_file = self.get_result_file_path(key='aligned')
 
         return aligned_channel_file.is_file()
 
-    def get_result_file(self,
-                        key: str = None,
-                        name: str = None) -> pathlib.Path:
-        """ Return true if the DEMs are required for later processing
+    def get_result_file_name(self,
+                             key: str = None,
+                             name: str = None) -> str:
+        """ Return the file name of the file to save.
 
 
         Parameters:
             instructions  The json instructions defining the behaviour
         """
-
-        local_cache = pathlib.Path(self.instructions['instructions']['data_paths']['local_cache'])
 
         if key is not None and name is not None:
             assert False, "Only either a key or a name can be provided"
@@ -592,9 +611,25 @@ class RiverBathymetryGenerator(BaseProcessor):
                                'catchment': f"channel_catchment_{area_threshold}.geojson",
                                'rec_channel': f"rec_channel_{area_threshold}.geojson",
                                'rec_channel_smoothed': f"rec_channel_{area_threshold}_smoothed.geojson"}
-            return local_cache / name_dictionary[key]
+            return name_dictionary[key]
         else:
-            return local_cache / name
+            return name
+
+    def get_result_file_path(self,
+                             key: str = None,
+                             name: str = None) -> pathlib.Path:
+        """ Return the file name of the file to save with the local cache path.
+
+
+        Parameters:
+            instructions  The json instructions defining the behaviour
+        """
+
+        local_cache = pathlib.Path(self.instructions['instructions']['data_paths']['local_cache'])
+
+        name = self.get_result_file_name(key=key, name=name)
+
+        return local_cache / name
 
     def get_bathymetry_instruction(self, key: str):
         """ Return true if the DEMs are required for later processing
@@ -624,11 +659,11 @@ class RiverBathymetryGenerator(BaseProcessor):
 
         if self.debug:
             # Save the REC channel and smoothed REC channel if not already
-            rec_name = self.get_result_file(key='rec_channel')
+            rec_name = self.get_result_file_path(key='rec_channel')
             if not rec_name.is_file():
                 channel.channel.to_file(rec_name)
 
-            smoothed_rec_name = self.get_result_file(key='rec_channel_smoothed')
+            smoothed_rec_name = self.get_result_file_path(key='rec_channel_smoothed')
             if not smoothed_rec_name.is_file():
                 channel.get_sampled_spline_fit().to_file(smoothed_rec_name)
 
@@ -645,18 +680,20 @@ class RiverBathymetryGenerator(BaseProcessor):
             instructions  The json instructions defining the behaviour
         """
 
+        instruction_paths = self.instructions['instructions']['data_paths']
+
         # Extract instructions from JSON
         max_channel_width = self.get_bathymetry_instruction('max_channel_width')
         rec_alignment_tolerance = self.get_bathymetry_instruction('rec_alignment_tolerance')
 
         # Define ground and veg files
-        gnd_file = self.get_result_file(key='gnd_dem')
-        veg_file = self.get_result_file(key='veg_dem')
+        gnd_file = self.get_result_file_path(key='gnd_dem')
+        veg_file = self.get_result_file_path(key='veg_dem')
 
         # Ensure channel catchment exists and is up to date if needed
         if not gnd_file.is_file() or not veg_file.is_file():
-            catchment_file = self.get_result_file(key='catchment')
-            self.instructions['instructions']['data_paths']['catchment_boundary'] = str(catchment_file)
+            catchment_file = self.get_result_file_path(key='catchment')
+            instruction_paths['catchment_boundary'] = str(self.get_result_file_name(key='catchment'))
             corridor_radius = max_channel_width / 2 + rec_alignment_tolerance + buffer
             channel_catchment = channel.get_channel_catchment(corridor_radius=corridor_radius)
             channel_catchment.to_file(catchment_file)
@@ -664,8 +701,8 @@ class RiverBathymetryGenerator(BaseProcessor):
         # Remove bathymetry contour information if it exists while creating DEMs
         bathy_data_paths = None
         bathy_apis = None
-        if 'bathymetry_contours' in self.instructions['instructions']['data_paths']:
-            bathy_data_paths = self.instructions['instructions']['data_paths'].pop('bathymetry_contours')
+        if 'bathymetry_contours' in instruction_paths:
+            bathy_data_paths = instruction_paths.pop('bathymetry_contours')
         if 'bathymetry_contours' in self.instructions['instructions']['apis']['linz']:
             bathy_apis = self.instructions['instructions']['apis']['linz'].pop('bathymetry_contours')
 
@@ -673,17 +710,17 @@ class RiverBathymetryGenerator(BaseProcessor):
         if not gnd_file.is_file():
             # Create the ground DEM file if this has not be created yet!
             print("Generating ground DEM.")
-            self.instructions['instructions']['data_paths']['result_dem'] = str(gnd_file)
-            self.instructions['instructions']['data_paths']['dense_dem'] = pathlib.Path(self.get_instruction_path("local_cache")) \
+            instruction_paths['result_dem'] = str(self.get_result_file_name(key='gnd_dem'))
+            instruction_paths['dense_dem'] = pathlib.Path(self.get_instruction_path("local_cache")) \
                 / "dense_gnd_dem.nc"
-            self.instructions['instructions']['data_paths']['dense_dem_extents'] = pathlib.Path(self.get_instruction_path("local_cache")) \
+            instruction_paths['dense_dem_extents'] = pathlib.Path(self.get_instruction_path("local_cache")) \
                 / "dense_gnd_extents.geojson"
             runner = LidarDemGenerator(self.instructions)
             runner.run()
             gnd_dem = runner.dense_dem.dem
-            self.instructions['instructions']['data_paths'].pop('dense_dem')
-            self.instructions['instructions']['data_paths'].pop('dense_dem_extents')
-            self.instructions['instructions']['data_paths'].pop('result_dem')
+            instruction_paths.pop('dense_dem')
+            instruction_paths.pop('dense_dem_extents')
+            instruction_paths.pop('result_dem')
         else:
             print("Loading ground DEM.")
             with rioxarray.rioxarray.open_rasterio(gnd_file, masked=True) as dem:
@@ -694,19 +731,19 @@ class RiverBathymetryGenerator(BaseProcessor):
         if not veg_file.is_file():
             # Create the catchment file if this has not be created yet!
             print("Generating vegetation DEM.")
-            self.instructions['instructions']['data_paths']['result_dem'] = str(veg_file)
+            instruction_paths['result_dem'] = str(self.get_result_file_name(key='veg_dem'))
             self.instructions['instructions']['general']['lidar_classifications_to_keep'] = \
                 self.get_bathymetry_instruction('veg_lidar_classifications_to_keep')
-            self.instructions['instructions']['data_paths']['dense_dem'] = pathlib.Path(self.get_instruction_path("local_cache")) \
+            instruction_paths['dense_dem'] = pathlib.Path(self.get_instruction_path("local_cache")) \
                 / "dense_veg_dem.nc"
-            self.instructions['instructions']['data_paths']['dense_dem_extents'] = pathlib.Path(self.get_instruction_path("local_cache")) \
+            instruction_paths['dense_dem_extents'] = pathlib.Path(self.get_instruction_path("local_cache")) \
                 / "dense_veg_extents.geojson"
             runner = LidarDemGenerator(self.instructions)
             runner.run()
             veg_dem = runner.dense_dem.dem
-            self.instructions['instructions']['data_paths'].pop('dense_dem')
-            self.instructions['instructions']['data_paths'].pop('dense_dem_extents')
-            self.instructions['instructions']['data_paths'].pop('result_dem')
+            instruction_paths.pop('dense_dem')
+            instruction_paths.pop('dense_dem_extents')
+            instruction_paths.pop('result_dem')
         else:
             print("Loading the vegetation DEM.")
             with rioxarray.rioxarray.open_rasterio(veg_file, masked=True) as dem:
@@ -715,7 +752,7 @@ class RiverBathymetryGenerator(BaseProcessor):
 
         # Replace bathymetry contour information if it exists
         if bathy_data_paths is not None:
-            self.instructions['instructions']['data_paths']['bathymetry_contours'] = bathy_data_paths
+            instruction_paths['bathymetry_contours'] = bathy_data_paths
         if bathy_apis is not None:
             self.instructions['instructions']['apis']['linz']['bathymetry_contours'] = bathy_apis
 
@@ -755,15 +792,15 @@ class RiverBathymetryGenerator(BaseProcessor):
             cross_section_radius=corridor_radius)
 
         # Save out results
-        aligned_channel_file = self.get_result_file(key='aligned')
+        aligned_channel_file = self.self.get_result_file_path(key='aligned')
         aligned_channel.to_file(aligned_channel_file)
         if self.debug:
             sampled_cross_sections[
                 ['width_line', 'valid', 'channel_count']].set_geometry(
-                'width_line').to_file(self.get_result_file(name="initial_widths.geojson"))
+                'width_line').to_file(self.self.get_result_file_path(name="initial_widths.geojson"))
             sampled_cross_sections[
                 ['geometry', 'channel_count', 'valid']].to_file(
-                    self.get_result_file(name="initial_cross_sections.geojson"))
+                    self.self.get_result_file_path(name="initial_cross_sections.geojson"))
 
         return aligned_channel
 
@@ -800,7 +837,7 @@ class RiverBathymetryGenerator(BaseProcessor):
             max_threshold=max_bank_height,
             river_polygon_smoothing_multiplier=width_centre_smoothing_multiplier)
 
-        river_polygon.to_file(self.get_result_file('river_polygon'))
+        river_polygon.to_file(self.self.get_result_file_path('river_polygon'))
         columns = ['geometry']
         columns.extend([column_name for column_name in sampled_cross_sections.columns
                         if 'slope' in column_name or 'widths' in column_name
@@ -808,15 +845,15 @@ class RiverBathymetryGenerator(BaseProcessor):
                         or 'valid' in column_name or 'channel_count' in column_name])
         sampled_cross_sections.set_geometry(
             'river_polygon_midpoint', drop=True)[
-                columns].to_file(self.get_result_file(key='river_characteristics'))
+                columns].to_file(self.self.get_result_file_path(key='river_characteristics'))
 
         if self.debug:
             # Write out optional outputs
-            sampled_cross_sections[columns].to_file(self.get_result_file(name='final_cross_sections.geojson'))
+            sampled_cross_sections[columns].to_file(self.self.get_result_file_path(name='final_cross_sections.geojson'))
             sampled_cross_sections.set_geometry('width_line', drop=True)[[
-                'geometry', 'valid']].to_file(self.get_result_file(name='final_widths.geojson'))
+                'geometry', 'valid']].to_file(self.self.get_result_file_path(name='final_widths.geojson'))
             sampled_cross_sections.set_geometry('flat_midpoint', drop=True)[
-                columns].to_file(self.get_result_file(name="final_flat_midpoints.geojson"))
+                columns].to_file(self.self.get_result_file_path(name="final_flat_midpoints.geojson"))
 
     def characterise_channel(self,
                              buffer: float) -> bathymetry_estimation.ChannelCharacteristics:
@@ -858,7 +895,7 @@ class RiverBathymetryGenerator(BaseProcessor):
                                                  channel=channel,
                                                  buffer=buffer)
         else:
-            aligned_channel_file = self.get_result_file(key='aligned')
+            aligned_channel_file = self.self.get_result_file_path(key='aligned')
             aligned_channel = geopandas.read_file(aligned_channel_file)
 
         # calculate the channel width and save results
@@ -873,7 +910,7 @@ class RiverBathymetryGenerator(BaseProcessor):
         """
 
         # Read in the flow file and calcaulate the depths - write out the results
-        width_values = geopandas.read_file(self.get_result_file(key='river_characteristics'))
+        width_values = geopandas.read_file(self.self.get_result_file_path(key='river_characteristics'))
         flow = pandas.read_csv(self.get_bathymetry_instruction('flow_file'))
         channel = self.get_rec_channel()
 
@@ -931,7 +968,7 @@ class RiverBathymetryGenerator(BaseProcessor):
 
         # Save the bed elevations
         width_values[['geometry', 'bed_elevation_Neal_et_al', 'bed_elevation_Rupp_and_Smart',
-                      'widths', width_name, flat_width_name]].to_file(self.get_result_file(key="river_bathymetry"))
+                      'widths', width_name, flat_width_name]].to_file(self.self.get_result_file_path(key="river_bathymetry"))
 
     def _calculate_neal_et_al_depth(self,
                                     width_values,
@@ -1013,9 +1050,9 @@ class RiverBathymetryGenerator(BaseProcessor):
         # Required inputs
         crs = self.get_crs()["horizontal"]
         cross_section_spacing = self.get_bathymetry_instruction('cross_section_spacing')
-        river_bathymetry_file = self.get_result_file(key="river_bathymetry")
+        river_bathymetry_file = self.get_result_file_path(key="river_bathymetry")
         ocean_contour_file = self.get_vector_paths('bathymetry_contours')[0]
-        aligned_channel_file = self.get_result_file(key='aligned')
+        aligned_channel_file = self.get_result_file_path(key='aligned')
         ocean_contour_depth_label = self.get_instruction_general('bathymetry_contours_z_label')
 
         # Create fan object
@@ -1028,8 +1065,8 @@ class RiverBathymetryGenerator(BaseProcessor):
 
         # Estimate the fan extents and bathymetry
         fan_polygon, fan_bathymetry = fan.polygon_and_bathymetry()
-        fan_polygon.to_file(self.get_result_file(key="fan_polygon"))
-        fan_bathymetry.to_file(self.get_result_file(key="fan_bathymetry"))
+        fan_polygon.to_file(self.get_result_file_path(key="fan_polygon"))
+        fan_bathymetry.to_file(self.get_result_file_path(key="fan_bathymetry"))
 
     def run(self, instruction_parameters):
         """ This method extracts a main channel then executes the DemGeneration
