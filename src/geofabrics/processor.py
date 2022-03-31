@@ -360,7 +360,7 @@ class BathymetryDemGenerator(BaseProcessor):
             # interpolate
             self.dense_dem.interpolate_offshore(self.bathy_contours)
 
-        # Load in river bathymetry and incorporate where decernable at the resolution
+        # Load in river bathymetry and incorporate where discernable at the resolution
         if self.check_vector('river_polygons') and self.check_vector('river_bathymetry'):
 
             # Get the polygons and bathymetry and can be multiple
