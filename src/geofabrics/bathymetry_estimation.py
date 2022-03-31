@@ -477,7 +477,7 @@ class ChannelCharacteristics:
         (x_array, y_array) = sampled_channel.iloc[0].geometry.xy
         for i in range(len(x_array)):
 
-            # caclulate slope along segment
+            # calculate slope along segment
             if i == 0:
                 # first segment - slope of next segment
                 dx, dy, length = self._segment_slope(x_array, y_array, i)
@@ -485,7 +485,7 @@ class ChannelCharacteristics:
                 # last segment - slope of previous segment
                 dx, dy, length = self._segment_slope(x_array, y_array, i - 1)
             else:
-                # slope of the length weighted mean of both sgments
+                # slope of the length weighted mean of both segments
                 dx_prev, dy_prev, l_prev = self._segment_slope(x_array,
                                                                y_array,
                                                                i)
