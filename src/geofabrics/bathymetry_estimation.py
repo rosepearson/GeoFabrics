@@ -906,7 +906,7 @@ class ChannelCharacteristics:
                               search_radius_index: int,
                               min_channel_width: float):
         """ Calculate the maximum width for a cross section given a fixed
-        threshold - checking outwards, forewards and backwards within the
+        threshold - checking outwards, forwards and backwards within the
         search radius.
 
         Parameters
@@ -947,9 +947,9 @@ class ChannelCharacteristics:
             forwards_index = stop_i + 1
             backwards_index = start_i - 1
 
-        # check forewards
+        # check forwards
         while forwards_index - start_index < search_radius_index:
-            start_i, stop_i = self.fixed_threshold_width_forewards(gnd_samples=gnd_samples,
+            start_i, stop_i = self.fixed_threshold_width_forwards(gnd_samples=gnd_samples,
                                                                    veg_samples=veg_samples,
                                                                    start_index=forwards_index,
                                                                    z_water=z_water,
@@ -1057,14 +1057,14 @@ class ChannelCharacteristics:
 
         return start_i, stop_i
 
-    def fixed_threshold_width_forewards(self,
-                                        gnd_samples: numpy.ndarray,
-                                        veg_samples: numpy.ndarray,
-                                        start_index: int,
-                                        z_water: float,
-                                        threshold: float,
-                                        stop_index: int):
-        """ Check for channels approaching foreward.
+    def fixed_threshold_width_forwards(self,
+                                       gnd_samples: numpy.ndarray,
+                                       veg_samples: numpy.ndarray,
+                                       start_index: int,
+                                       z_water: float,
+                                       threshold: float,
+                                       stop_index: int):
+        """ Check for channels approaching forward.
 
         Parameters
         ----------
@@ -1106,7 +1106,7 @@ class ChannelCharacteristics:
                                         z_water: float,
                                         threshold: float,
                                         stop_index: int):
-        """ Check for channels approaching foreward.
+        """ Check for channels approaching backwards.
 
         Parameters
         ----------
