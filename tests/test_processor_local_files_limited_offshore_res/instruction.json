@@ -16,7 +16,6 @@
 			"lidars": ["lidar.laz"],
 			"bathymetry_contours": ["bathymetry.zip"],
 			"result_dem": "test_dem.nc",
-			"dense_dem_extents": "extents.geojson",
 			"benchmark_dem": "benchmark_dem.nc"
 		},
 		"general": {

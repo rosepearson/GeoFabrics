@@ -17,7 +17,6 @@
 			"local_cache": "tests/test_processor_remote_all_westport/data",
 			"catchment_boundary": "catchment.zip",
 			"result_dem": "test_dem.nc",
-			"dense_dem_extents": "extents.geojson",
 			"benchmark_dem": "benchmark_dem.nc"
 		},
 		"apis": {
