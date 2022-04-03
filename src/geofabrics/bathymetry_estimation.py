@@ -571,7 +571,7 @@ class ChannelCharacteristics:
             The elevations and calculated widths and thresholds for each sampled cross section
         """
 
-        invalid_mask = cross_sections['valid'] == False
+        invalid_mask = numpy.logical_not(cross_sections['valid'])
 
         # Tidy up widths - pull out the valid widths
         cross_sections['valid_widths'] = cross_sections['widths']
@@ -597,7 +597,8 @@ class ChannelCharacteristics:
 
             # Apply the rolling mean to each
             cross_sections[f'widths_mean_{label}'] = self._rolling_mean_with_padding(widths_no_nan, smoothing_samples)
-            cross_sections[f'flat_widths_mean_{label}'] = self._rolling_mean_with_padding(flat_widths_no_nan, smoothing_samples)
+            cross_sections[f'flat_widths_mean_{label}'] = self._rolling_mean_with_padding(flat_widths_no_nan,
+                                                                                          smoothing_samples)
             cross_sections[f'thresholds_mean_{label}'] = self._rolling_mean_with_padding(thresholds_no_nan,
                                                                                          smoothing_samples)
 
@@ -629,7 +630,7 @@ class ChannelCharacteristics:
                               min_z_search_radius: float):
         """ Return the elevations along the cross_section sampled at the
         sampling resolution. Also add the measured 'min_z_centre' values to
-        the cross_sections. 
+        the cross_sections.
 
         Parameters
         ----------
@@ -894,7 +895,7 @@ class ChannelCharacteristics:
         valid_mask &= cross_sections['first_bank_i'] > 0
         valid_mask &= cross_sections['last_bank_i'] < self.number_of_samples - 1
         valid_mask &= cross_sections['threshold'] < maximum_threshold
-        valid_mask &= numpy.isnan(cross_sections['threshold']) == False
+        valid_mask &= numpy.logical_not(numpy.isnan(cross_sections['threshold']))
         cross_sections['valid'] = valid_mask
 
     def fixed_threshold_width(self,
@@ -950,11 +951,11 @@ class ChannelCharacteristics:
         # check forwards
         while forwards_index - start_index < search_radius_index:
             start_i, stop_i = self.fixed_threshold_width_forwards(gnd_samples=gnd_samples,
-                                                                   veg_samples=veg_samples,
-                                                                   start_index=forwards_index,
-                                                                   z_water=z_water,
-                                                                   threshold=threshold,
-                                                                   stop_index=start_index + search_radius_index)
+                                                                  veg_samples=veg_samples,
+                                                                  start_index=forwards_index,
+                                                                  z_water=z_water,
+                                                                  threshold=threshold,
+                                                                  stop_index=start_index + search_radius_index)
             if not numpy.isnan(start_i) and not numpy.isnan(stop_i):
                 start_i_list.append(start_i)
                 stop_i_list.append(stop_i)
@@ -1175,7 +1176,7 @@ class ChannelCharacteristics:
             cross_sections.plot(ax=ax, color='aqua', linewidth=1, label='cross_sections')
         cross_sections[cross_sections['valid']
                        ].set_geometry('width_line').plot(ax=ax, color='red', linewidth=1.5, label='Valid widths')
-        cross_sections[cross_sections['valid'] == False
+        cross_sections[numpy.logical_not(cross_sections['valid'])
                        ].set_geometry('width_line').plot(ax=ax, color='salmon', linewidth=1.5, label='Invalid widths')
         if aligned_channel is not None:
             aligned_channel.plot(ax=ax, linewidth=2, color='green', zorder=4, label='Aligned channel')
@@ -1209,7 +1210,7 @@ class ChannelCharacteristics:
         matplotlib.pyplot.ylim((0, None))
 
     def _create_flat_water_polygon(self, cross_sections: geopandas.GeoDataFrame,
-                                         smoothing_multiplier):
+                                   smoothing_multiplier):
         """ Create a polygon of the flat water from spline's of each bank.
 
         Parameters
@@ -1232,7 +1233,7 @@ class ChannelCharacteristics:
               + cross_sections.loc[channel_mask, 'nx'] * bank_offset).array,
              (cross_sections.loc[channel_mask, 'mid_y']
               + cross_sections.loc[channel_mask, 'ny'] * bank_offset).array]).T
-        start_xy = start_xy[numpy.isnan(start_xy).any(axis=1) == False]
+        start_xy = start_xy[numpy.logical_not(numpy.isnan(start_xy).any(axis=1))]
         start_xy = geopandas.GeoDataFrame(geometry=[shapely.geometry.LineString(start_xy)], crs=cross_sections.crs)
         start_xy = Channel(start_xy, resolution=self.cross_section_spacing)
         start_xy_spline = start_xy.get_smoothed_spline_fit(smoothing_multiplier)
@@ -1244,7 +1245,7 @@ class ChannelCharacteristics:
               + bank_offset * cross_sections.loc[channel_mask, 'nx']).array,
              (cross_sections.loc[channel_mask, 'mid_y']
               + bank_offset * cross_sections.loc[channel_mask, 'ny']).array]).T
-        stop_xy = stop_xy[numpy.isnan(stop_xy).any(axis=1) == False]
+        stop_xy = stop_xy[numpy.logical_not(numpy.isnan(stop_xy).any(axis=1))]
         stop_xy = geopandas.GeoDataFrame(geometry=[shapely.geometry.LineString(stop_xy)], crs=cross_sections.crs)
         stop_xy = Channel(stop_xy, resolution=self.cross_section_spacing)
         stop_xy_spline = stop_xy.get_smoothed_spline_fit(smoothing_multiplier)
@@ -1255,7 +1256,7 @@ class ChannelCharacteristics:
         return flat_water_polygon
 
     def _centreline_from_width_spline(self, cross_sections: geopandas.GeoDataFrame,
-                                            smoothing_multiplier):
+                                      smoothing_multiplier):
         """ Fit a spline through the width centres with a healthy dose of
         smoothing.
 
@@ -1283,7 +1284,7 @@ class ChannelCharacteristics:
               + widths_centre_offset * cross_sections.loc[channel_mask, 'nx']).array,
              (cross_sections.loc[channel_mask, 'mid_y']
               + widths_centre_offset * cross_sections.loc[channel_mask, 'ny']).array]).T
-        widths_centre_xy = widths_centre_xy[numpy.isnan(widths_centre_xy).any(axis=1) == False]
+        widths_centre_xy = widths_centre_xy[numpy.logical_not(numpy.isnan(widths_centre_xy).any(axis=1))]
 
         # Fit a spline to the centre points
         widths_centre_line = geopandas.GeoDataFrame(geometry=[shapely.geometry.LineString(widths_centre_xy)],
@@ -1453,7 +1454,7 @@ class ChannelCharacteristics:
 
         # Separate out valid and invalid widths
         cross_sections['valid_widths'] = cross_sections['widths']
-        cross_sections.loc[cross_sections['valid'] == False, 'valid_widths'] = numpy.nan
+        cross_sections.loc[numpy.logical_not(cross_sections['valid']), 'valid_widths'] = numpy.nan
 
         # Create channel polygon with erosion and dilation to reduce sensitivity to poor width measurements
         aligned_channel = self._centreline_from_width_spline(cross_sections=cross_sections,
@@ -1540,7 +1541,7 @@ class ChannelCharacteristics:
         river_polygon = self._create_flat_water_polygon(cross_sections=cross_sections,
                                                         smoothing_multiplier=river_polygon_smoothing_multiplier)
 
-        # Midpoints as defined by the midpoint of the river polygon - buffer slightly to ensure intersection at the start and end
+        # Midpoints of the river polygon - buffer slightly to ensure intersection at the start and end
         cross_sections['river_polygon_midpoint'] = cross_sections.apply(
             lambda row: row.geometry.intersection(river_polygon.buffer(self.resolution/10).iloc[0]).centroid, axis=1)
 

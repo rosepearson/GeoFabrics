@@ -477,11 +477,12 @@ class LidarDemGenerator(BathymetryDemGenerator):
         with distributed.LocalCluster(**cluster_kwargs) as cluster, distributed.Client(cluster) as client:
             print(client)
             # Load in LiDAR tiles
-            self.dense_dem.add_lidar(lidar_files=lidar_dataset_info['file_paths'], source_crs=lidar_dataset_info['crs'],
-                                     drop_offshore_lidar=self.get_instruction_general('drop_offshore_lidar'),
-                                     lidar_classifications_to_keep=self.get_instruction_general('lidar_classifications_to_keep'),
-                                     tile_index_file=lidar_dataset_info['tile_index_file'],
-                                     chunk_size=self.get_processing_instructions('chunk_size'))
+            self.dense_dem.add_lidar(
+                lidar_files=lidar_dataset_info['file_paths'], source_crs=lidar_dataset_info['crs'],
+                drop_offshore_lidar=self.get_instruction_general('drop_offshore_lidar'),
+                lidar_classifications_to_keep=self.get_instruction_general('lidar_classifications_to_keep'),
+                tile_index_file=lidar_dataset_info['tile_index_file'],
+                chunk_size=self.get_processing_instructions('chunk_size'))
 
         # Load in reference DEM if any significant land/foreshore not covered by LiDAR
         if self.check_instruction_path('reference_dems'):
