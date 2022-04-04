@@ -55,7 +55,7 @@
 			"channel_area_threshold": 152000000,
 			"channel_rec_id": 9253579,
 			"cross_section_spacing": 10,
-			"bank_threshold": 0.75,
+			"min_bank_height": 0.75,
 			"rec_file": "tests/test_river_bathymetry_wellington/data/rec2_3.geojson",
 			"flow_file": "tests/test_river_bathymetry_wellington/data/flow_and_friction.csv.gz"
 		}

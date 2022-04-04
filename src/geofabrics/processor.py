@@ -776,7 +776,7 @@ class RiverBathymetryGenerator(BaseProcessor):
         min_channel_width = self.get_bathymetry_instruction('min_channel_width')
         rec_alignment_tolerance = self.get_bathymetry_instruction('rec_alignment_tolerance')
 
-        bank_threshold = self.get_bathymetry_instruction('bank_threshold')
+        bank_threshold = self.get_bathymetry_instruction('min_bank_height')
         width_centre_smoothing_multiplier = self.get_bathymetry_instruction('width_centre_smoothing')
 
         # The width of cross sections to sample
@@ -820,7 +820,7 @@ class RiverBathymetryGenerator(BaseProcessor):
         # Get instruciton parameters
         max_channel_width = self.get_bathymetry_instruction('max_channel_width')
         min_channel_width = self.get_bathymetry_instruction('min_channel_width')
-        bank_threshold = self.get_bathymetry_instruction('bank_threshold')
+        bank_threshold = self.get_bathymetry_instruction('min_bank_height')
         max_bank_height = self.get_bathymetry_instruction('max_bank_height')
         width_centre_smoothing_multiplier = self.get_bathymetry_instruction('width_centre_smoothing')
         rec_alignment_tolerance = self.get_bathymetry_instruction('rec_alignment_tolerance')
@@ -1029,7 +1029,7 @@ class RiverBathymetryGenerator(BaseProcessor):
 
         # Remove/correct for area along the bank edges (approximate as a triangle - two triangles = a rectange)
         bank_edge_area = (width_values[full_bank_width_name] - width_values[flat_width_name]) * (
-            width_values[threshold_name] - self.get_bathymetry_instruction('bank_threshold'))
+            width_values[threshold_name] - self.get_bathymetry_instruction('min_bank_height'))
 
         assert (bank_edge_area >= 0).all(), "The full bank area should be greater than zero"
 
