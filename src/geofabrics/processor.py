@@ -232,10 +232,12 @@ class BaseProcessor(abc.ABC):
         has been specified, this CRS is returned, and will later be used to override the CRS encoded in the LAS files.
         """
 
-        if self.check_apis(data_service) and type(self.instructions['instructions']['apis'][data_service]) is dict \
-                and dataset_name in self.instructions['instructions']['apis'][data_service] \
-                and type(self.instructions['instructions']['apis'][data_service][dataset_name]) is dict:
-            dataset_instruction = self.instructions['instructions']['apis'][data_service][dataset_name]
+        apis_instructions = self.instructions['instructions']['apis']
+
+        if self.check_apis(data_service) and type(apis_instructions[data_service]) is dict \
+                and dataset_name in apis_instructions[data_service] \
+                and type(apis_instructions[data_service][dataset_name]) is dict:
+            dataset_instruction = apis_instructions[data_service][dataset_name]
 
             if 'crs' in dataset_instruction and 'horizontal' in dataset_instruction['crs'] and \
                     'vertical' in dataset_instruction['crs']:
