@@ -316,7 +316,7 @@ class BaseProcessor(abc.ABC):
 
 
 class BathymetryDemGenerator(BaseProcessor):
-    """ OffshoreDemGenerator executes a pipeline for loading in a Dense DEM and extents before interpolating offshore
+    """ BathymetryDemGenerator executes a pipeline for loading in a Dense DEM and extents before interpolating offshore
     DEM values. The data and pipeline logic is defined in the json_instructions file.
 
     The `BathymetryDemGenerator` class contains several important class members:
