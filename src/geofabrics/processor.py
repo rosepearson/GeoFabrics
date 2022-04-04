@@ -317,7 +317,7 @@ class BathymetryDemGenerator(BaseProcessor):
     """ OffshoreDemGenerator executes a pipeline for loading in a Dense DEM and extents before interpolating offshore
     DEM values. The data and pipeline logic is defined in the json_instructions file.
 
-    The `DemGenerator` class contains several important class members:
+    The `BathymetryDemGenerator` class contains several important class members:
      * catchment_geometry - Defines all relevant regions in a catchment required in the generation of a DEM as polygons.
      * dense_dem - Defines the hydrologically conditioned DEM as a combination of tiles from LiDAR and interpolated from
        bathymetry.
