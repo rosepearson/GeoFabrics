@@ -279,8 +279,9 @@ class BathymetryContours:
         return points
 
 
-class BathymetryPoints:
-    """ A class for accesing bathymetry points."""
+class MarineBathymetryPoints:
+    """ A class for accesing marine bathymetry points. These can be used as
+    depths to interpolate elevations offshore. """
 
     def __init__(self, points_file: str, catchment_geometry: CatchmentGeometry, exclusion_extent=None):
         self._points = geopandas.read_file(points_file)
@@ -340,7 +341,10 @@ class BathymetryPoints:
 
 
 class RiverBathymetryPoints:
-    """ A class for accessing river bathymetry points. """
+    """ A class for accessing river and mouth bathymetry points. Paired river
+    and mouth elevation and polygon files are expected. These depths can be
+    used to interpolate elevations within the river and mouth polygon.
+    """
 
     DEPTH_LABEL = 'depths'
 
