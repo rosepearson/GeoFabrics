@@ -86,7 +86,9 @@ class Channel:
                                iteration: int):
         """ A recurive function to trace all up reaches from the reach_id.
         The default values for reaches and iteration are set for the
-        initial call to the recursive function.
+        initial call to the recursive function. The max_iterations acts as a
+        limit on the numbers of reaches upstream to check. This impacts the
+        memory usage. Smaller reduces memory usage.
 
         Parameters
         ----------
