@@ -140,8 +140,6 @@ class Channel:
         xy = self.get_spaced_points(channel=self.channel,
                                     sampling_direction=self.sampling_direction,
                                     spacing=self.resolution * 10)
-        '''xy = self._get_corner_points(channel=self.channel,
-                                     sampling_direction=self.sampling_direction)'''
         if len(xy[0]) > 3:  # default k= 3, must be greater to fit with knots
             xy = self._fit_spline_between_xy(xy)
         spline_channel = shapely.geometry.LineString(xy.T)
