@@ -9,4 +9,4 @@ Modules:
     * dem - A module associated with reading, generating, and combining DEMs
 """
 
-__version__ = "0.8.0"
+__version__ = "0.8.1"

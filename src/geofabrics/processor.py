@@ -118,7 +118,8 @@ class BaseProcessor(abc.ABC):
 
         defaults = {'set_dem_shoreline': True,
                     'bathymetry_contours_z_label': None, 'drop_offshore_lidar': True,
-                    'lidar_classifications_to_keep': [2], 'interpolation_method': None}
+                    'lidar_classifications_to_keep': [2], 'interpolation_method': None,
+                    'elevation_range': None}
 
         assert key in defaults or key in self.instructions['instructions']['general'], f"The key: {key} is missing " \
             + "from the general instructions, and does not have a default value"
@@ -470,7 +471,8 @@ class LidarDemGenerator(BathymetryDemGenerator):
             catchment_geometry=self.catchment_geometry,
             drop_offshore_lidar=self.get_instruction_general('drop_offshore_lidar'),
             interpolation_method=self.get_instruction_general('interpolation_method'),
-            idw_power=idw_power, idw_radius=idw_radius)
+            idw_power=idw_power, idw_radius=idw_radius,
+            elevation_range=self.get_instruction_general('elevation_range'))
 
         # Setup Dask cluster and client
         cluster_kwargs = {'n_workers': self.get_processing_instructions('number_of_cores'),
