@@ -128,7 +128,7 @@ Attributes
                                            If not None, interpolate using that method. Valid options are 'linear', 'nearest', and 'cubic'
 
 
-.. py:class:: DenseDemFromTiles(catchment_geometry, idw_power, idw_radius, interpolation_method, drop_offshore_lidar = True)
+.. py:class:: DenseDemFromTiles(catchment_geometry, idw_power, idw_radius, interpolation_method, drop_offshore_lidar = True, elevation_range = None)
 
    Bases: :py:obj:`DenseDem`
 
@@ -179,7 +179,7 @@ Attributes
 
 
 
-.. py:function:: rasterise_chunk(dim_x, dim_y, tile_points, raster_type, lidar_classifications_to_keep, idw_radius, idw_power)
+.. py:function:: rasterise_chunk(dim_x, dim_y, tile_points, raster_type, lidar_classifications_to_keep, idw_radius, idw_power, elevation_range)
 
    Rasterise all points within a chunk.
 
