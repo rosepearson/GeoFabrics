@@ -164,7 +164,7 @@ class ProcessorLocalFilesTest(unittest.TestCase):
         dense_instructions['instructions']['data_paths'].pop('bathymetry_contours')
         dense_instructions['instructions']['data_paths'].pop('final_result_dem')
         dense_instructions['instructions']['data_paths'].pop('benchmark_dem')
-        runner = processor.DemGenerator(dense_instructions)
+        runner = processor.LidarDemGenerator(dense_instructions)
         runner.run()
 
         # Run offshore DEM generation pipeline
@@ -175,16 +175,18 @@ class ProcessorLocalFilesTest(unittest.TestCase):
         self.instructions['instructions']['data_paths'].pop('lidars')
         self.instructions['instructions']['data_paths'].pop('reference_dems')
         self.instructions['instructions']['data_paths'].pop('final_result_dem')
-        runner = processor.OffshoreDemGenerator(self.instructions)
+        runner = processor.BathymetryDemGenerator(self.instructions)
         runner.run()
 
         # Load in benchmark DEM
-        with rioxarray.rioxarray.open_rasterio(self.instructions['instructions']['data_paths']['benchmark_dem'],
+        file_path = self.cache_dir / self.instructions['instructions']['data_paths']['benchmark_dem']
+        with rioxarray.rioxarray.open_rasterio(file_path,
                                                masked=True) as benchmark_dem:
             benchmark_dem.load()
 
         # Load in result DEM
-        with rioxarray.rioxarray.open_rasterio(self.instructions['instructions']['data_paths']['result_dem'],
+        file_path = self.cache_dir / self.instructions['instructions']['data_paths']['result_dem']
+        with rioxarray.rioxarray.open_rasterio(file_path,
                                                masked=True) as test_dem:
             test_dem.load()
 

@@ -1,7 +1,9 @@
 # -*- coding: utf-8 -*-
 """
-This module contains classes associated with generating hydrologically conditioned DEMs from
+This module contains classes associated with generating GeoFabric layers from
 LiDAR and bathymetry contours based on the instructions contained in a JSON file.
+
+GeoFabric layers include hydrologically conditioned DEMs.
 """
 import numpy
 import json
@@ -10,7 +12,11 @@ import shutil
 import abc
 import logging
 import distributed
+import rioxarray
+import pandas
+import geopandas
 from . import geometry
+from . import bathymetry_estimation
 import geoapis.lidar
 import geoapis.vector
 from . import dem
@@ -33,24 +39,44 @@ class BaseProcessor(abc.ABC):
         defaults = {'result_dem': "generated_dem.nc", 'dense_dem': "dense_dem.nc",
                     'dense_dem_extents': "dense_extents.geojson"}
 
-        if key in self.instructions['instructions']['data_paths']:
-            return self.instructions['instructions']['data_paths'][key]
-        elif "local_cache" in self.instructions['instructions']['data_paths'] and key in defaults.keys():
-            return pathlib.Path(self.instructions['instructions']['data_paths']['local_cache']) / defaults[key]
+        path_instructions = self.instructions['instructions']['data_paths']
+        local_cache = pathlib.Path(path_instructions['local_cache'])
+
+        if key == 'local_cache':
+            return local_cache
+        elif key in path_instructions:
+            # check if a list or single path
+            if type(path_instructions[key]) == list:
+                absolute_file_paths = []
+                file_paths = path_instructions[key]
+                for file_path in file_paths:
+                    file_path = pathlib.Path(file_path)
+                    file_path = file_path if file_path.is_absolute() else local_cache / file_path
+                    absolute_file_paths.append(str(file_path))
+                return absolute_file_paths
+            else:
+                file_path = pathlib.Path(path_instructions[key])
+                file_path = file_path if file_path.is_absolute() else local_cache / file_path
+                return file_path
+        elif key in defaults.keys():
+            return local_cache.absolute() / defaults[key]
         else:
-            assert False, f"Either the key `{key}` missing from data paths, or either the `local_cache` is not " + \
-                f"specified in the data paths or the key is not specified in the defaults: {defaults}"
+            assert False, f"The key `{key}` is either missing from data " \
+                "paths, not specified in the defaults: {defaults}"
 
     def check_instruction_path(self, key: str) -> bool:
         """ Return True if the file path exists in the instruction file, or True if there is a default value and the
         local cache is specified. """
+
+        assert 'local_cache' in self.instructions['instructions']['data_paths'], \
+            "local_cache is a required 'data_paths' entry"
 
         defaults = ['result_dem', 'dense_dem_extents', 'dense_dem']
 
         if key in self.instructions['instructions']['data_paths']:
             return True
         else:
-            return 'local_cache' in self.instructions['instructions']['data_paths'] and key in defaults
+            return key in defaults
 
     def get_resolution(self) -> float:
         """ Return the resolution from the instruction file. Raise an error if not in the instructions. """
@@ -92,7 +118,7 @@ class BaseProcessor(abc.ABC):
 
         defaults = {'set_dem_shoreline': True,
                     'bathymetry_contours_z_label': None, 'drop_offshore_lidar': True,
-                    'lidar_classifications_to_keep': [2], 'interpolate_missing_values': True}
+                    'lidar_classifications_to_keep': [2], 'interpolation_method': None}
 
         assert key in defaults or key in self.instructions['instructions']['general'], f"The key: {key} is missing " \
             + "from the general instructions, and does not have a default value"
@@ -150,10 +176,11 @@ class BaseProcessor(abc.ABC):
         # Check the instructions for vector data specified as a data_paths
         if "data_paths" in self.instructions['instructions'] and key in self.instructions['instructions']['data_paths']:
             # Key included in the data paths - add - either list or individual path
-            if type(self.instructions['instructions']['data_paths'][key]) == list:
-                paths.extend(self.instructions['instructions']['data_paths'][key])
+            data_paths = self.get_instruction_path(key)
+            if type(data_paths) is list:
+                paths.extend(data_paths)
             else:
-                paths.append(self.instructions['instructions']['data_paths'][key])
+                paths.append(data_paths)
 
         # Define the supported vector 'apis' keywords and the geoapis class for accessing that data service
         data_services = {"linz": geoapis.vector.Linz, "lris": geoapis.vector.Lris}
@@ -173,12 +200,10 @@ class BaseProcessor(abc.ABC):
                     f"{self.instructions['instructions']['apis'][data_service]}"
                 api_key = self.instructions['instructions']['apis'][data_service]['key']
 
-                assert self.catchment_geometry is not None, "The `self.catchment_geometry` object must exist " + \
-                    "before a vector is downloaded using `vector.Linz`"
-
                 # Instantiate the geoapis object for downloading vectors from the data service.
+                bounding_polygon = self.catchment_geometry.catchment if self.catchment_geometry is not None else None
                 vector_fetcher = data_services[data_service](api_key,
-                                                             bounding_polygon=self.catchment_geometry.catchment,
+                                                             bounding_polygon=bounding_polygon,
                                                              verbose=True)
 
                 vector_instruction = self.instructions['instructions']['apis'][data_service][key]
@@ -207,10 +232,12 @@ class BaseProcessor(abc.ABC):
         has been specified, this CRS is returned, and will later be used to override the CRS encoded in the LAS files.
         """
 
-        if self.check_apis(data_service) and type(self.instructions['instructions']['apis'][data_service]) is dict \
-                and dataset_name in self.instructions['instructions']['apis'][data_service] \
-                and type(self.instructions['instructions']['apis'][data_service][dataset_name]) is dict:
-            dataset_instruction = self.instructions['instructions']['apis'][data_service][dataset_name]
+        apis_instructions = self.instructions['instructions']['apis']
+
+        if self.check_apis(data_service) and type(apis_instructions[data_service]) is dict \
+                and dataset_name in apis_instructions[data_service] \
+                and type(apis_instructions[data_service][dataset_name]) is dict:
+            dataset_instruction = apis_instructions[data_service][dataset_name]
 
             if 'crs' in dataset_instruction and 'horizontal' in dataset_instruction['crs'] and \
                     'vertical' in dataset_instruction['crs']:
@@ -256,8 +283,9 @@ class BaseProcessor(abc.ABC):
                 "'file_paths' in the instruction file if you are going to use an API - like 'open_topography'"
 
             # download the specified datasets from the data service - then get the local file path
+            search_polygon = self.catchment_geometry.catchment if self.catchment_geometry is not None else None
             self.lidar_fetcher = geoapis.lidar.OpenTopography(cache_path=self.get_instruction_path('local_cache'),
-                                                              search_polygon=self.catchment_geometry.catchment,
+                                                              search_polygon=search_polygon,
                                                               verbose=True)
             # Loop through each specified dataset and download it
             for dataset_name in self.instructions['instructions']['apis'][data_service].keys():
@@ -287,8 +315,108 @@ class BaseProcessor(abc.ABC):
         raise NotImplementedError("NETLOC_API must be instantiated in the child class")
 
 
-class DemGenerator(BaseProcessor):
-    """ DemGenerator executes a pipeline for creating a hydrologically conditioned DEM from LiDAR and optionally a
+class BathymetryDemGenerator(BaseProcessor):
+    """ BathymetryDemGenerator executes a pipeline for loading in a Dense DEM and extents before interpolating offshore
+    DEM values. The data and pipeline logic is defined in the json_instructions file.
+
+    The `BathymetryDemGenerator` class contains several important class members:
+     * catchment_geometry - Defines all relevant regions in a catchment required in the generation of a DEM as polygons.
+     * dense_dem - Defines the hydrologically conditioned DEM as a combination of tiles from LiDAR and interpolated from
+       bathymetry.
+     * bathy_contours - This object defines the bathymetry vectors used by the dense_dem to define the DEM
+       offshore.
+
+    See the README.md for usage examples or GeoFabrics/tests/ for examples of usage and an instruction file
+    """
+
+    def __init__(self, json_instructions: json):
+
+        super(BathymetryDemGenerator, self).__init__(json_instructions=json_instructions)
+
+        self.dense_dem = None
+        self.bathy_contours = None
+
+    def add_bathymetry(self, area_threshold: float,
+                       catchment_dirs: pathlib.Path):
+        """ Add in any bathymetry data - ocean or river """
+
+        # Load in bathymetry and interpolate offshore if significant offshore is not covered by LiDAR
+        area_without_lidar = \
+            self.catchment_geometry.offshore_without_lidar(self.dense_dem.extents).geometry.area.sum()
+        if (self.check_vector('bathymetry_contours') and
+                area_without_lidar > self.catchment_geometry.offshore.area.sum() * area_threshold):
+
+            # Get the bathymetry data directory
+            bathy_contour_dirs = self.get_vector_paths('bathymetry_contours')
+            assert len(bathy_contour_dirs) == 1, f"{len(bathy_contour_dirs)} bathymetry_contours's provided. " + \
+                f"Specficially {catchment_dirs}. Support has not yet been added for multiple datasets."
+
+            logging.info(f"Incorporating Bathymetry: {bathy_contour_dirs}")
+
+            # Load in bathymetry
+            self.bathy_contours = geometry.BathymetryContours(
+                bathy_contour_dirs[0], self.catchment_geometry,
+                z_label=self.get_instruction_general('bathymetry_contours_z_label'),
+                exclusion_extent=self.dense_dem.extents)
+
+            # interpolate
+            self.dense_dem.interpolate_offshore(self.bathy_contours)
+
+        # Load in river bathymetry and incorporate where discernable at the resolution
+        if self.check_vector('river_polygons') and self.check_vector('river_bathymetry'):
+
+            # Get the polygons and bathymetry and can be multiple
+            bathy_dirs = self.get_vector_paths('river_bathymetry')
+            poly_dirs = self.get_vector_paths('river_polygons')
+
+            logging.info(f"Incorporating river Bathymetry: {bathy_dirs}")
+
+            # Load in bathymetry
+            self.river_bathy = geometry.RiverBathymetryPoints(
+                points_files=bathy_dirs,
+                polygon_files=poly_dirs,
+                catchment_geometry=self.catchment_geometry,
+                z_labels=self.get_instruction_general("river_bathy_z_label"))
+
+            # Call interpolate river on the DEM - the class checks to see if any pixels actually fall inside the polygon
+            self.dense_dem.interpolate_river_bathymetry(river_bathymetry=self.river_bathy)
+
+    def run(self):
+        """ This method executes the geofabrics generation pipeline to produce geofabric derivatives.
+
+        Only load in the. """
+
+        # Only include data in addition to LiDAR if the area_threshold is not covered
+        area_threshold = 10.0/100  # Used to decide if bathymetry should be included
+
+        # create the catchment geometry object
+        catchment_dirs = self.get_instruction_path('catchment_boundary')
+        assert type(catchment_dirs) is not list, f"A list of catchment_boundary's is provided: {catchment_dirs}, " + \
+            "where only one is supported."
+        self.catchment_geometry = geometry.CatchmentGeometry(catchment_dirs, self.get_crs(),
+                                                             self.get_resolution(), foreshore_buffer=2)
+        land_dirs = self.get_vector_paths('land')
+        assert len(land_dirs) == 1, f"{len(land_dirs)} catchment_boundary's provided, where only one is supported." + \
+            f" Specficially land_dirs = {land_dirs}."
+        self.catchment_geometry.land = land_dirs[0]
+
+        # setup dense DEM and catchment LiDAR objects
+        self.dense_dem = dem.DenseDemFromFiles(
+            catchment_geometry=self.catchment_geometry,
+            dense_dem_path=self.get_instruction_path('dense_dem'),
+            extents_path=self.get_instruction_path('dense_dem_extents'),
+            interpolation_method=self.get_instruction_general('interpolation_method'))
+
+        # Check for and add any bathymetry information
+        self.add_bathymetry(area_threshold=area_threshold,
+                            catchment_dirs=catchment_dirs)
+
+        # fill combined dem - save results
+        self.dense_dem.dem.to_netcdf(self.get_instruction_path('result_dem'))
+
+
+class LidarDemGenerator(BathymetryDemGenerator):
+    """ LidarDemGenerator executes a pipeline for creating a hydrologically conditioned DEM from LiDAR and optionally a
     reference DEM and/or bathymetry contours. The data and pipeline logic is defined in the json_instructions file.
 
     The `DemGenerator` class contains several important class members:
@@ -304,7 +432,7 @@ class DemGenerator(BaseProcessor):
 
     def __init__(self, json_instructions: json):
 
-        super(DemGenerator, self).__init__(json_instructions=json_instructions)
+        super(LidarDemGenerator, self).__init__(json_instructions=json_instructions)
 
         self.dense_dem = None
         self.reference_dem = None
@@ -341,7 +469,7 @@ class DemGenerator(BaseProcessor):
         self.dense_dem = dem.DenseDemFromTiles(
             catchment_geometry=self.catchment_geometry,
             drop_offshore_lidar=self.get_instruction_general('drop_offshore_lidar'),
-            interpolate_missing_values=self.get_instruction_general('interpolate_missing_values'),
+            interpolation_method=self.get_instruction_general('interpolation_method'),
             idw_power=idw_power, idw_radius=idw_radius)
 
         # Setup Dask cluster and client
@@ -351,14 +479,12 @@ class DemGenerator(BaseProcessor):
         with distributed.LocalCluster(**cluster_kwargs) as cluster, distributed.Client(cluster) as client:
             print(client)
             # Load in LiDAR tiles
-            self.dense_dem.add_lidar(lidar_files=lidar_dataset_info['file_paths'], source_crs=lidar_dataset_info['crs'],
-                                     drop_offshore_lidar=self.get_instruction_general('drop_offshore_lidar'),
-                                     lidar_classifications_to_keep=self.get_instruction_general('lidar_classifications_to_keep'),
-                                     tile_index_file=lidar_dataset_info['tile_index_file'],
-                                     chunk_size=self.get_processing_instructions('chunk_size'))
-
-        # save dense DEM results
-        self.dense_dem.dense_dem.to_netcdf(self.get_instruction_path('dense_dem'))
+            self.dense_dem.add_lidar(
+                lidar_files=lidar_dataset_info['file_paths'], source_crs=lidar_dataset_info['crs'],
+                drop_offshore_lidar=self.get_instruction_general('drop_offshore_lidar'),
+                lidar_classifications_to_keep=self.get_instruction_general('lidar_classifications_to_keep'),
+                tile_index_file=lidar_dataset_info['tile_index_file'],
+                chunk_size=self.get_processing_instructions('chunk_size'))
 
         # Load in reference DEM if any significant land/foreshore not covered by LiDAR
         if self.check_instruction_path('reference_dems'):
@@ -382,104 +508,587 @@ class DemGenerator(BaseProcessor):
                 self.dense_dem.add_reference_dem(tile_points=self.reference_dem.points,
                                                  tile_extent=self.reference_dem.extents)
 
-        if self.dense_dem.extents is not None:  # Save ou the extents of the LiDAR - before reference DEM
+        # save dense DEM and extents
+        self.dense_dem.dense_dem.to_netcdf(self.get_instruction_path('dense_dem'))
+        if self.dense_dem.extents is not None:
             self.dense_dem.extents.to_file(self.get_instruction_path('dense_dem_extents'))
         else:
             logging.warning("In processor.DemGenerator - no LiDAR extents exist so no extents file written")
 
-        # Load in bathymetry and interpolate offshore if significant offshore is not covered by LiDAR
-        if self.check_vector('bathymetry_contours'):
-            area_without_lidar = \
-                self.catchment_geometry.offshore_without_lidar(self.dense_dem.extents).geometry.area.sum()
-            if area_without_lidar > self.catchment_geometry.offshore.area.sum() * area_threshold:
-
-                # Get the bathymetry data directory
-                bathy_contour_dirs = self.get_vector_paths('bathymetry_contours')
-                assert len(bathy_contour_dirs) == 1, f"{len(bathy_contour_dirs)} bathymetry_contours's provided. " + \
-                    f"Specficially {catchment_dirs}. Support has not yet been added for multiple datasets."
-
-                logging.info(f"Incorporating Bathymetry: {bathy_contour_dirs}")
-
-                # Load in bathymetry
-                self.bathy_contours = geometry.BathymetryContours(
-                    bathy_contour_dirs[0], self.catchment_geometry,
-                    z_label=self.get_instruction_general('bathymetry_contours_z_label'),
-                    exclusion_extent=self.dense_dem.extents)
-
-                # interpolate
-                self.dense_dem.interpolate_offshore(self.bathy_contours)
+        # Check for and add any bathymetry information
+        self.add_bathymetry(area_threshold=area_threshold,
+                            catchment_dirs=catchment_dirs)
 
         # fill combined dem - save results
         self.dense_dem.dem.to_netcdf(self.get_instruction_path('result_dem'))
 
 
-class OffshoreDemGenerator(BaseProcessor):
-    """ OffshoreDemGenerator executes a pipeline for loading in a Dense DEM and extents before interpolating offshore
-    DEM values. The data and pipeline logic is defined in the json_instructions file.
+class RiverBathymetryGenerator(BaseProcessor):
+    """ RiverbathymetryGenerator executes a pipeline to estimate river
+    bathymetry depths from flows, slopes, friction and widths along a main
+    channel. This is dones by first creating a hydrologically conditioned DEM
+    of the channel. A json_instructions file defines the pipeline logic and
+    data.
 
-    The `DemGenerator` class contains several important class members:
-     * catchment_geometry - Defines all relevant regions in a catchment required in the generation of a DEM as polygons.
-     * dense_dem - Defines the hydrologically conditioned DEM as a combination of tiles from LiDAR and interpolated from
-       bathymetry.
-     * bathy_contours - This object defines the bathymetry vectors used by the dense_dem to define the DEM
-       offshore.
-
-    See the README.md for usage examples or GeoFabrics/tests/ for examples of usage and an instruction file
+    Attributes:
+        channel_polyline  The main channel along which to estimate depth. This
+            is a polyline.
+        gen_dem  The ground DEM generated along the main channel. This is a
+            raster.
+        veg_dem  The vegetation DEM generated along the main channel. This is a
+            raster.
+        aligned_channel_polyline  The main channel after its alignment has been
+            updated based on the DEM. Width and slope are estimated on this.
+        transects  Transect polylines perpindicular to the aligned channel with
+            samples of the DEM values
     """
 
-    def __init__(self, json_instructions: json):
+    def __init__(self, json_instructions: json, debug: bool = True):
 
-        super(OffshoreDemGenerator, self).__init__(json_instructions=json_instructions)
+        super(RiverBathymetryGenerator, self).__init__(json_instructions=json_instructions)
 
-        self.dense_dem = None
-        self.bathy_contours = None
+        self.debug = debug
 
-    def run(self):
-        """ This method executes the geofabrics generation pipeline to produce geofabric derivatives.
+    def channel_characteristics_exist(self) -> bool:
+        """ Return true if the DEMs are required for later processing
 
-        Note it currently only considers one LiDAR dataset that may have many tiles.
-        See 'get_lidar_file_list' for where to change this. """
+        """
 
-        # Only include data in addition to LiDAR if the area_threshold is not covered
-        area_threshold = 10.0/100  # Used to decide if bathymetry should be included
+        # Check if channel needs to be aligned or widths calculated
+        river_characteristics_file = self.get_result_file_path(key='river_characteristics')
+        river_polygon_file = self.get_result_file_path(key='river_polygon')
 
-        # create the catchment geometry object
-        catchment_dirs = self.get_instruction_path('catchment_boundary')
-        assert type(catchment_dirs) is not list, f"A list of catchment_boundary's is provided: {catchment_dirs}, " + \
-            "where only one is supported."
-        self.catchment_geometry = geometry.CatchmentGeometry(catchment_dirs, self.get_crs(),
-                                                             self.get_resolution(), foreshore_buffer=2)
-        land_dirs = self.get_vector_paths('land')
-        assert len(land_dirs) == 1, f"{len(land_dirs)} catchment_boundary's provided, where only one is supported." + \
-            f" Specficially land_dirs = {land_dirs}."
-        self.catchment_geometry.land = land_dirs[0]
+        return river_characteristics_file.is_file() and river_polygon_file.is_file()
 
-        # setup dense DEM and catchment LiDAR objects
-        self.dense_dem = dem.DenseDemFromFiles(catchment_geometry=self.catchment_geometry,
-                                               dense_dem_path=self.get_instruction_path('dense_dem'),
-                                               extents_path=self.get_instruction_path('dense_dem_extents'))
+    def channel_bathymetry_exist(self) -> bool:
+        """ Return true if the river channel and bathymetry files exist. """
 
-        # Load in bathymetry and interpolate offshore if significant offshore is not covered by LiDAR
-        area_without_lidar = \
-            self.catchment_geometry.offshore_without_lidar(self.dense_dem.extents).geometry.area.sum()
-        if (self.check_vector('bathymetry_contours') and
-                area_without_lidar > self.catchment_geometry.offshore.area.sum() * area_threshold):
+        # Check if the expected bathymetry and polygon files exist
+        river_bathymetry_file = self.get_result_file_path(key='river_bathymetry')
+        river_polygon_file = self.get_result_file_path(key='river_polygon')
+        fan_bathymetry_file = self.get_result_file_path(key='fan_bathymetry')
+        fan_polygon_file = self.get_result_file_path(key='fan_polygon')
+        return river_bathymetry_file.is_file() and river_polygon_file.is_file() \
+            and fan_bathymetry_file.is_file() and fan_polygon_file.is_file()
 
-            # Get the bathymetry data directory
-            bathy_contour_dirs = self.get_vector_paths('bathymetry_contours')
-            assert len(bathy_contour_dirs) == 1, f"{len(bathy_contour_dirs)} bathymetry_contours's provided. " + \
-                f"Specficially {catchment_dirs}. Support has not yet been added for multiple datasets."
+    def alignment_exists(self) -> bool:
+        """ Return true if the DEMs are required for later processing
 
-            logging.info(f"Incorporating Bathymetry: {bathy_contour_dirs}")
 
-            # Load in bathymetry
-            self.bathy_contours = geometry.BathymetryContours(
-                bathy_contour_dirs[0], self.catchment_geometry,
-                z_label=self.get_instruction_general('bathymetry_contours_z_label'),
-                exclusion_extent=self.dense_dem.extents)
+        Parameters:
+            instructions  The json instructions defining the behaviour
+        """
 
-            # interpolate
-            self.dense_dem.interpolate_offshore(self.bathy_contours)
+        # Check if channel needs to be aligned or widths calculated
+        aligned_channel_file = self.get_result_file_path(key='aligned')
 
-        # fill combined dem - save results
-        self.dense_dem.dem.to_netcdf(self.get_instruction_path('result_dem'))
+        return aligned_channel_file.is_file()
+
+    def get_result_file_name(self,
+                             key: str = None,
+                             name: str = None) -> str:
+        """ Return the file name of the file to save.
+
+
+        Parameters:
+            instructions  The json instructions defining the behaviour
+        """
+
+        if key is not None and name is not None:
+            assert False, "Only either a key or a name can be provided"
+        if key is None and name is None:
+            assert False, "Either a key or a name must be provided"
+
+        if key is not None:
+            area_threshold = self.get_bathymetry_instruction('channel_area_threshold')
+
+            # key to output name mapping
+            name_dictionary = {'aligned': f"aligned_channel_{area_threshold}.geojson",
+                               'river_characteristics': "river_characteristics.geojson",
+                               'river_polygon': "river_polygon.geojson",
+                               'river_bathymetry': "river_bathymetry.geojson",
+                               'fan_bathymetry': "fan_bathymetry.geojson",
+                               'fan_polygon': "fan_polygon.geojson",
+                               'gnd_dem': f"channel_dem_{area_threshold}.nc",
+                               'veg_dem': f"channel_veg_dem_{area_threshold}.nc",
+                               'catchment': f"channel_catchment_{area_threshold}.geojson",
+                               'rec_channel': f"rec_channel_{area_threshold}.geojson",
+                               'rec_channel_smoothed': f"rec_channel_{area_threshold}_smoothed.geojson"}
+            return name_dictionary[key]
+        else:
+            return name
+
+    def get_result_file_path(self,
+                             key: str = None,
+                             name: str = None) -> pathlib.Path:
+        """ Return the file name of the file to save with the local cache path.
+
+
+        Parameters:
+            instructions  The json instructions defining the behaviour
+        """
+
+        local_cache = pathlib.Path(self.instructions['instructions']['data_paths']['local_cache'])
+
+        name = self.get_result_file_name(key=key, name=name)
+
+        return local_cache / name
+
+    def get_bathymetry_instruction(self, key: str):
+        """ Return true if the DEMs are required for later processing
+
+
+        Parameters:
+            instructions  The json instructions defining the behaviour
+        """
+
+        return self.instructions['instructions']['channel_bathymetry'][key]
+
+    def get_rec_channel(self) -> bathymetry_estimation.Channel:
+        """ Create a rec channel.
+        """
+
+        # Get instructions
+        crs = self.get_crs()["horizontal"]
+        area_threshold = self.get_bathymetry_instruction('channel_area_threshold')
+        rec_network = geopandas.read_file(self.get_bathymetry_instruction('rec_file')).to_crs(crs)
+        channel_rec_id = self.get_bathymetry_instruction('channel_rec_id')
+        cross_section_spacing = self.get_bathymetry_instruction('cross_section_spacing')
+
+        channel = bathymetry_estimation.Channel.from_rec(rec_network=rec_network,
+                                                         reach_id=channel_rec_id,
+                                                         resolution=cross_section_spacing,
+                                                         area_threshold=area_threshold)
+
+        if self.debug:
+            # Save the REC channel and smoothed REC channel if not already
+            rec_name = self.get_result_file_path(key='rec_channel')
+            if not rec_name.is_file():
+                channel.channel.to_file(rec_name)
+
+            smoothed_rec_name = self.get_result_file_path(key='rec_channel_smoothed')
+            if not smoothed_rec_name.is_file():
+                channel.get_sampled_spline_fit().to_file(smoothed_rec_name)
+
+        return channel
+
+    def get_dems(self,
+                 buffer: float,
+                 channel: geometry.CatchmentGeometry) -> tuple:
+        """ Allow selection of the ground or vegetation DEM, and either create
+        or load it.
+
+
+        Parameters:
+            instructions  The json instructions defining the behaviour
+        """
+
+        instruction_paths = self.instructions['instructions']['data_paths']
+
+        # Extract instructions from JSON
+        max_channel_width = self.get_bathymetry_instruction('max_channel_width')
+        rec_alignment_tolerance = self.get_bathymetry_instruction('rec_alignment_tolerance')
+
+        # Define ground and veg files
+        gnd_file = self.get_result_file_path(key='gnd_dem')
+        veg_file = self.get_result_file_path(key='veg_dem')
+
+        # Ensure channel catchment exists and is up to date if needed
+        if not gnd_file.is_file() or not veg_file.is_file():
+            catchment_file = self.get_result_file_path(key='catchment')
+            instruction_paths['catchment_boundary'] = str(self.get_result_file_name(key='catchment'))
+            corridor_radius = max_channel_width / 2 + rec_alignment_tolerance + buffer
+            channel_catchment = channel.get_channel_catchment(corridor_radius=corridor_radius)
+            channel_catchment.to_file(catchment_file)
+
+        # Remove bathymetry contour information if it exists while creating DEMs
+        bathy_data_paths = None
+        bathy_apis = None
+        if 'bathymetry_contours' in instruction_paths:
+            bathy_data_paths = instruction_paths.pop('bathymetry_contours')
+        if 'bathymetry_contours' in self.instructions['instructions']['apis']['linz']:
+            bathy_apis = self.instructions['instructions']['apis']['linz'].pop('bathymetry_contours')
+
+        # Get the ground DEM
+        if not gnd_file.is_file():
+            # Create the ground DEM file if this has not be created yet!
+            print("Generating ground DEM.")
+            instruction_paths['result_dem'] = str(self.get_result_file_name(key='gnd_dem'))
+            instruction_paths['dense_dem'] = "dense_gnd_dem.nc"
+            instruction_paths['dense_dem_extents'] = "dense_gnd_extents.geojson"
+            runner = LidarDemGenerator(self.instructions)
+            runner.run()
+            gnd_dem = runner.dense_dem.dem
+            instruction_paths.pop('dense_dem')
+            instruction_paths.pop('dense_dem_extents')
+            instruction_paths.pop('result_dem')
+        else:
+            print("Loading ground DEM.")
+            with rioxarray.rioxarray.open_rasterio(gnd_file, masked=True) as dem:
+                dem.load()
+            gnd_dem = dem.copy(deep=True)
+
+        # Get the vegetation DEM
+        if not veg_file.is_file():
+            # Create the catchment file if this has not be created yet!
+            print("Generating vegetation DEM.")
+            instruction_paths['result_dem'] = str(self.get_result_file_name(key='veg_dem'))
+            self.instructions['instructions']['general']['lidar_classifications_to_keep'] = \
+                self.get_bathymetry_instruction('veg_lidar_classifications_to_keep')
+            instruction_paths['dense_dem'] = "dense_veg_dem.nc"
+            instruction_paths['dense_dem_extents'] = "dense_veg_extents.geojson"
+            runner = LidarDemGenerator(self.instructions)
+            runner.run()
+            veg_dem = runner.dense_dem.dem
+            instruction_paths.pop('dense_dem')
+            instruction_paths.pop('dense_dem_extents')
+            instruction_paths.pop('result_dem')
+        else:
+            print("Loading the vegetation DEM.")
+            with rioxarray.rioxarray.open_rasterio(veg_file, masked=True) as dem:
+                dem.load()
+            veg_dem = dem.copy(deep=True)
+
+        # Replace bathymetry contour information if it exists
+        if bathy_data_paths is not None:
+            instruction_paths['bathymetry_contours'] = bathy_data_paths
+        if bathy_apis is not None:
+            self.instructions['instructions']['apis']['linz']['bathymetry_contours'] = bathy_apis
+
+        return gnd_dem, veg_dem
+
+    def align_channel(self,
+                      channel_width: bathymetry_estimation.ChannelCharacteristics,
+                      channel: bathymetry_estimation.Channel,
+                      buffer: float) -> geopandas.GeoDataFrame:
+        """ Align the REC defined channel based on LiDAR and save the aligned
+        channel.
+
+
+        Parameters:
+            channel_width  The class for characterising channel width and other
+                properties
+            channel  The REC defined channel alignment
+        """
+
+        # Get instruciton parameters
+        max_channel_width = self.get_bathymetry_instruction('max_channel_width')
+        min_channel_width = self.get_bathymetry_instruction('min_channel_width')
+        rec_alignment_tolerance = self.get_bathymetry_instruction('rec_alignment_tolerance')
+
+        bank_threshold = self.get_bathymetry_instruction('min_bank_height')
+        width_centre_smoothing_multiplier = self.get_bathymetry_instruction('width_centre_smoothing')
+
+        # The width of cross sections to sample
+        corridor_radius = max_channel_width / 2 + rec_alignment_tolerance + buffer
+
+        aligned_channel, sampled_cross_sections = channel_width.align_channel(
+            threshold=bank_threshold,
+            min_channel_width=min_channel_width,
+            initial_channel=channel,
+            search_radius=rec_alignment_tolerance,
+            width_centre_smoothing_multiplier=width_centre_smoothing_multiplier,
+            cross_section_radius=corridor_radius)
+
+        # Save out results
+        aligned_channel_file = self.get_result_file_path(key='aligned')
+        aligned_channel.to_file(aligned_channel_file)
+        if self.debug:
+            sampled_cross_sections[
+                ['width_line', 'valid', 'channel_count']].set_geometry(
+                'width_line').to_file(self.get_result_file_path(name="initial_widths.geojson"))
+            sampled_cross_sections[
+                ['geometry', 'channel_count', 'valid']].to_file(
+                    self.get_result_file_path(name="initial_cross_sections.geojson"))
+
+        return aligned_channel
+
+    def calculate_channel_characteristics(self,
+                                          channel_width: bathymetry_estimation.ChannelCharacteristics,
+                                          aligned_channel: geopandas.GeoDataFrame,
+                                          buffer: float) -> tuple:
+        """ Align the REC defined channel based on LiDAR and save the aligned
+        channel.
+
+
+        Parameters:
+            channel_width  The class for characterising channel width and other
+                properties
+            channel  The REC defined channel alignment
+        """
+
+        # Get instruciton parameters
+        max_channel_width = self.get_bathymetry_instruction('max_channel_width')
+        min_channel_width = self.get_bathymetry_instruction('min_channel_width')
+        bank_threshold = self.get_bathymetry_instruction('min_bank_height')
+        max_bank_height = self.get_bathymetry_instruction('max_bank_height')
+        width_centre_smoothing_multiplier = self.get_bathymetry_instruction('width_centre_smoothing')
+        rec_alignment_tolerance = self.get_bathymetry_instruction('rec_alignment_tolerance')
+
+        corridor_radius = max_channel_width / 2 + buffer
+
+        sampled_cross_sections, river_polygon = channel_width.estimate_width_and_slope(
+            aligned_channel=aligned_channel,
+            threshold=bank_threshold,
+            cross_section_radius=corridor_radius,
+            search_radius=rec_alignment_tolerance,
+            min_channel_width=min_channel_width,
+            max_threshold=max_bank_height,
+            river_polygon_smoothing_multiplier=width_centre_smoothing_multiplier)
+
+        river_polygon.to_file(self.get_result_file_path('river_polygon'))
+        columns = ['geometry']
+        columns.extend([column_name for column_name in sampled_cross_sections.columns
+                        if 'slope' in column_name or 'widths' in column_name
+                        or 'min_z' in column_name or 'threshold' in column_name
+                        or 'valid' in column_name or 'channel_count' in column_name])
+        sampled_cross_sections.set_geometry(
+            'river_polygon_midpoint', drop=True)[
+                columns].to_file(self.get_result_file_path(key='river_characteristics'))
+
+        if self.debug:
+            # Write out optional outputs
+            sampled_cross_sections[columns].to_file(self.get_result_file_path(name='final_cross_sections.geojson'))
+            sampled_cross_sections.set_geometry('width_line', drop=True)[[
+                'geometry', 'valid']].to_file(self.get_result_file_path(name='final_widths.geojson'))
+            sampled_cross_sections.set_geometry('flat_midpoint', drop=True)[
+                columns].to_file(self.get_result_file_path(name="final_flat_midpoints.geojson"))
+
+    def characterise_channel(self,
+                             buffer: float) -> bathymetry_estimation.ChannelCharacteristics:
+        """ Calculate the channel width, slope and other characteristics. This requires a
+        ground and vegetation DEM. This also may require alignment of the channel centreline.
+
+
+        Parameters:
+            buffer  The amount of extra space to create around the river catchment
+        """
+
+        logging.info("The channel hasn't been characerised. Charactreising now.")
+
+        # Extract instructions
+        cross_section_spacing = self.get_bathymetry_instruction('cross_section_spacing')
+        resolution = self.get_resolution()
+
+        # Create REC defined channel
+        channel = self.get_rec_channel()
+
+        # Get DEMs - create and save if don't exist
+        gnd_dem, veg_dem = self.get_dems(buffer=buffer,
+                                         channel=channel)
+
+        # Create the channel width object
+        channel_width = bathymetry_estimation.ChannelCharacteristics(
+            gnd_dem=gnd_dem,
+            veg_dem=veg_dem,
+            cross_section_spacing=cross_section_spacing,
+            resolution=resolution,
+            debug=self.debug)
+
+        # Align channel if required
+        if not self.alignment_exists():
+            print("No aligned channel provided. Aligning the channel.")
+
+            # Align and save the REC defined channel
+            aligned_channel = self.align_channel(channel_width=channel_width,
+                                                 channel=channel,
+                                                 buffer=buffer)
+        else:
+            aligned_channel_file = self.get_result_file_path(key='aligned')
+            aligned_channel = geopandas.read_file(aligned_channel_file)
+
+        # calculate the channel width and save results
+        self.calculate_channel_characteristics(channel_width=channel_width,
+                                               aligned_channel=aligned_channel,
+                                               buffer=buffer)
+
+    def calculate_river_bed_elevations(self):
+        """ Calculate and save depth estimates along the channel using various
+        approaches.
+
+        """
+
+        # Read in the flow file and calcaulate the depths - write out the results
+        width_values = geopandas.read_file(self.get_result_file_path(key='river_characteristics'))
+        flow = pandas.read_csv(self.get_bathymetry_instruction('flow_file'))
+        channel = self.get_rec_channel()
+
+        # Match each channel midpoint to a nzsegment ID - based on what channel reach is closest
+        width_values['nzsegment'] = numpy.ones(len(width_values['widths']), dtype=float) * numpy.nan
+        for i, row in width_values.iterrows():
+            if row.geometry is not None and not row.geometry.is_empty:
+                distances = channel.channel.distance(width_values.loc[i].geometry)
+                width_values.loc[i, ('nzsegment')] = channel.channel[distances == distances.min()]['nzsegment'].min()
+        # Fill in any missing values
+        width_values['nzsegment'] = width_values['nzsegment'].fillna(method='ffill').fillna(method='bfill')
+        width_values['nzsegment'] = width_values['nzsegment'].astype('int')
+
+        # Add the friction and flow values to the widths and slopes
+        width_values['mannings_n'] = numpy.zeros(len(width_values['nzsegment']), dtype=int)
+        width_values['flow'] = numpy.zeros(len(width_values['nzsegment']), dtype=int)
+        for nzsegment in width_values['nzsegment'].unique():
+            width_values.loc[width_values['nzsegment'] == nzsegment,
+                             ('mannings_n')] = flow[flow['nzsegment'] == nzsegment]['n'].unique()[0]
+            width_values.loc[width_values['nzsegment'] == nzsegment,
+                             ('flow')] = flow[flow['nzsegment'] == nzsegment]['flow'].unique()[0]
+
+        # Names of values to use
+        slope_name = 'slope_mean_2.0km'
+        min_z_name = 'min_z_centre_unimodal'
+        width_name = 'widths_mean_0.25km'
+        flat_width_name = 'flat_widths_mean_0.25km'
+        threshold_name = 'thresholds_mean_0.25km'
+
+        # Calculate depths and bed elevation using the Neal et al approach (Uniform flow theory)
+        full_bank_depth = self._calculate_neal_et_al_depth(
+            width_values=width_values,
+            width_name=width_name,
+            slope_name=slope_name,
+            threshold_name=threshold_name)
+        active_channel_bank_depth = self._convert_full_bank_to_channel_depth(full_bank_depth=full_bank_depth,
+                                                                             threshold_name=threshold_name,
+                                                                             flat_width_name=flat_width_name,
+                                                                             full_bank_width_name=width_name,
+                                                                             width_values=width_values)
+        width_values['bed_elevation_Neal_et_al'] = width_values[min_z_name] - active_channel_bank_depth
+
+        # Calculate depths and bed elevation using the Rupp & Smart approach (Hydrologic geometry)
+        full_bank_depth = self._calculate_rupp_and_smart_depth(
+            width_values=width_values,
+            width_name=width_name,
+            slope_name=slope_name,
+            threshold_name=threshold_name)
+        active_channel_bank_depth = self._convert_full_bank_to_channel_depth(full_bank_depth=full_bank_depth,
+                                                                             threshold_name=threshold_name,
+                                                                             flat_width_name=flat_width_name,
+                                                                             full_bank_width_name=width_name,
+                                                                             width_values=width_values)
+        width_values['bed_elevation_Rupp_and_Smart'] = width_values[min_z_name] - active_channel_bank_depth
+
+        # Save the bed elevations
+        width_values[['geometry', 'bed_elevation_Neal_et_al', 'bed_elevation_Rupp_and_Smart',
+                      'widths', width_name, flat_width_name]].to_file(self.get_result_file_path(key="river_bathymetry"))
+
+    def _calculate_neal_et_al_depth(self,
+                                    width_values,
+                                    width_name,
+                                    slope_name,
+                                    threshold_name):
+        """ Calculate the uniform flow theory depth estimate as laid out in Neal
+        et al.
+
+        Parameters:
+            width_values  A dataframe of channel charateristics.
+            width_name  The name of the channel width column.
+            slope_name  The name of the down-river channel slope column.
+            threshold_name The name of the bank height threshold column. """
+
+        bank_depth = (width_values['mannings_n'] * width_values['flow'] / (
+            numpy.sqrt(width_values[slope_name]) * width_values[width_name])) ** (3/5) - width_values[threshold_name]
+        return bank_depth
+
+    def _calculate_rupp_and_smart_depth(self,
+                                        width_values,
+                                        width_name,
+                                        slope_name,
+                                        threshold_name):
+        """ Calculate the hydrolic geometry depth estimate as laid out in Rupp
+        and Smart.
+
+        Parameters:
+            width_values  A dataframe of channel charateristics.
+            width_name  The name of the channel width column.
+            slope_name  The name of the down-river channel slope column.
+            threshold_name The name of the bank height threshold column. """
+
+        a = 0.745
+        b = 0.305
+        K_0 = 6.16
+        bank_depth = (width_values['flow'] / (K_0 * width_values[width_name] * width_values[slope_name] ** b)
+                      ) ** (1 / (1+a)) - width_values[threshold_name]
+        return bank_depth
+
+    def _convert_full_bank_to_channel_depth(self,
+                                            full_bank_depth,
+                                            threshold_name,
+                                            flat_width_name,
+                                            full_bank_width_name,
+                                            width_values):
+        """ Calculate the depth of the channel as detected in the LiDAR derived
+        DEM. Remove the above water area, then calculate the depth for the
+        'flat water' width as derived in the LiDAR.
+
+        Parameters:
+            width_values  A dataframe of channel charateristics.
+            full_bank_width_name  The name of the full bank width column.
+            flat_width_name  The name of the down-river channel slope column.
+            threshold_name The name of the bank height threshold column. """
+
+        # Calculate the area estimated for full bank width flow
+        full_bank_area = full_bank_depth * width_values[full_bank_width_name]
+
+        # Remove/correct for area along the bank edges (approximate as a triangle - two triangles = a rectange)
+        bank_edge_area = (width_values[full_bank_width_name] - width_values[flat_width_name]) * (
+            width_values[threshold_name] - self.get_bathymetry_instruction('min_bank_height'))
+
+        assert (bank_edge_area >= 0).all(), "The full bank area should be greater than zero"
+
+        # The area to convert to the active 'flat' channel depth
+        active_channel_area = full_bank_area - bank_edge_area
+
+        # Calculate the depth from the area
+        active_channel_bank_depth = active_channel_area / width_values[flat_width_name]
+
+        return active_channel_bank_depth
+
+    def estimate_river_mouth_fan(self):
+        """ Calculate and save depth estimates along the river mouth fan.
+
+        """
+
+        # Required inputs
+        crs = self.get_crs()["horizontal"]
+        cross_section_spacing = self.get_bathymetry_instruction('cross_section_spacing')
+        river_bathymetry_file = self.get_result_file_path(key="river_bathymetry")
+        ocean_contour_file = self.get_vector_paths('bathymetry_contours')[0]
+        aligned_channel_file = self.get_result_file_path(key='aligned')
+        ocean_contour_depth_label = self.get_instruction_general('bathymetry_contours_z_label')
+
+        # Create fan object
+        fan = geometry.RiverMouthFan(aligned_channel_file=aligned_channel_file,
+                                     river_bathymetry_file=river_bathymetry_file,
+                                     ocean_contour_file=ocean_contour_file,
+                                     crs=crs,
+                                     cross_section_spacing=cross_section_spacing,
+                                     ocean_contour_depth_label=ocean_contour_depth_label)
+
+        # Estimate the fan extents and bathymetry
+        fan_polygon, fan_bathymetry = fan.polygon_and_bathymetry()
+        fan_polygon.to_file(self.get_result_file_path(key="fan_polygon"))
+        fan_bathymetry.to_file(self.get_result_file_path(key="fan_bathymetry"))
+
+    def run(self, instruction_parameters):
+        """ This method extracts a main channel then executes the DemGeneration
+        pipeline to produce a DEM before sampling this to extimate width, slope
+        and eventually depth. """
+
+        logging.info("Adding river and fan bathymetry if it doesn't already"
+                     "exist.")
+
+        # Characterise river channel if not already done - may generate DEMs
+        if not self.channel_characteristics_exist():
+            buffer = 50
+            self.characterise_channel(buffer=buffer)
+
+        # Estimate channel and fan depths if not already done
+        if not self.channel_bathymetry_exist():
+            logging.info("Estimating the channel and fan bathymetry.")
+            print("Estimating the channel and fan bathymetry.")
+
+            # Calculate and save river bathymetry depths
+            self.calculate_river_bed_elevations()
+            self.estimate_river_mouth_fan()
+
+        # Update parameter file - in time only update the bits that have been re-run
+        with open(instruction_parameters, 'w') as file_pointer:
+            json.dump(self.instructions, file_pointer)

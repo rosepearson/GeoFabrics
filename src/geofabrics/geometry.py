@@ -11,7 +11,7 @@ import logging
 
 
 class CatchmentGeometry:
-    """ A class defining all relevant regions as defined by polygons in a catchment.
+    """ A class defining revelant catchment regions by polygons.
 
     The CRS is a dictionary containing the EPSG code for a 'horizontal' and 'vertical' datum.
 
@@ -213,7 +213,7 @@ class CatchmentGeometry:
 
 
 class BathymetryContours:
-    """ A class working with bathymetry contours.
+    """ A class for sampling from bathymetry contours.
 
     Assumes contours to be sampled to the catchment_geometry resolution """
 
@@ -279,8 +279,9 @@ class BathymetryContours:
         return points
 
 
-class BathymetryPoints:
-    """ A class working with bathymetry points """
+class MarineBathymetryPoints:
+    """ A class for accesing marine bathymetry points. These can be used as
+    depths to interpolate elevations offshore. """
 
     def __init__(self, points_file: str, catchment_geometry: CatchmentGeometry, exclusion_extent=None):
         self._points = geopandas.read_file(points_file)
@@ -339,8 +340,112 @@ class BathymetryPoints:
         return self._z
 
 
+class RiverBathymetryPoints:
+    """ A class for accessing river and mouth bathymetry points. Paired river
+    and mouth elevation and polygon files are expected. These depths can be
+    used to interpolate elevations within the river and mouth polygon.
+    """
+
+    DEPTH_LABEL = 'depths'
+
+    def __init__(self,
+                 points_files: str,
+                 polygon_files: str,
+                 catchment_geometry: CatchmentGeometry,
+                 z_labels: str = None):
+
+        self.catchment_geometry = catchment_geometry
+
+        self.z_label = z_labels is not None
+        self._points = None
+        self.polygon = None
+
+        self._set_up(points_files, polygon_files, z_labels)
+
+    def _set_up(self, points_files, polygon_files, z_labels):
+        """ Set CRS and clip to catchment and within the flat water polygon """
+
+        assert len(points_files) == len(polygon_files), "The polygon and point lists should all be the " \
+            f"same length. Instead there are {len(points_files)} points files and {len(polygon_files)} polygon files"
+        assert z_labels is None or len(points_files) == len(z_labels), \
+            "Either all points should include z-values, or all have a label."
+
+        points = geopandas.read_file(points_files[0])
+        if z_labels is not None:
+            points[self.DEPTH_LABEL] = points[z_labels[0]]
+        polygon = geopandas.read_file(polygon_files[0])
+        for i in range(1, len(points_files)):
+            points_i = geopandas.read_file(points_files[i])
+            if z_labels is not None:
+                points[self.DEPTH_LABEL] = points[z_labels[i]]
+            points = points.append(points_i)
+            polygon_i = geopandas.read_file(polygon_files[i])
+            polygon = polygon.append(polygon_i)
+
+        self._points = points
+        self.polygon = polygon
+
+        self._points = self._points.to_crs(self.catchment_geometry.crs['horizontal'])
+        self.polygon = self.polygon.to_crs(self.catchment_geometry.crs['horizontal'])
+
+        self._points = self._points.clip(self.polygon, keep_geom_type=True)
+        self._points = self._points.clip(self.catchment_geometry.catchment, keep_geom_type=True)
+        self._points = self._points.reset_index(drop=True)
+
+    def points_array(self) -> numpy.ndarray:
+        """ Sample the contours at the specified resolution. """
+
+        points = numpy.empty([len(self._points)],
+                             dtype=[('X', numpy.float64), ('Y', numpy.float64), ('Z', numpy.float64)])
+
+        # Extract the x, y and z values from the Shapely MultiPoints and possibly a depth column
+        points['X'] = self._points.apply(lambda row: row.geometry.x, axis=1).to_list()
+        points['Y'] = self._points.apply(lambda row: row.geometry.y, axis=1).to_list()
+        if self.z_label:
+            points['Z'] = self._points.apply(lambda row: row[self.DEPTH_LABEL], axis=1).to_list()
+        else:
+            points['Z'] = self._points.apply(lambda row: row.geometry.z, axis=1).to_list()
+
+        return points
+
+    @property
+    def points(self):
+        """ Return the points """
+
+        return self._points
+
+    @property
+    def x(self):
+        """ The x values """
+
+        if self._x is None:
+            self._x = self._points.points.apply(lambda row: row['geometry'][0].x, axis=1).to_numpy()
+
+        return self._x
+
+    @property
+    def y(self):
+        """ The y values """
+
+        if self._y is None:
+            self._y = self._points.points.apply(lambda row: row['geometry'][0].y, axis=1).to_numpy()
+
+        return self._y
+
+    @property
+    def z(self):
+        """ The z values """
+
+        if self.z_label:
+            self._z = self._points.apply(lambda row: row[self.DEPTH_LABEL], axis=1).to_list()
+        else:
+            self._z = self._points.apply(lambda row: row.geometry.z, axis=1).to_list()
+
+        return self._z
+
+
 class TileInfo:
-    """ A class for working with tiling information """
+    """ A class for working with tiling information. """
 
     def __init__(self, tile_file: str, catchment_geometry: CatchmentGeometry):
         self._tile_info = geopandas.read_file(tile_file)
@@ -371,3 +476,226 @@ class TileInfo:
         """ Return the names of all tiles within the catchment """
 
         return self._tile_info[self.file_name]
+
+
+class RiverMouthFan:
+    """ A class for creating an appropiate river mouth fan to transition from
+    river depth estimates to the ocean bathymetry values. This fan region defines a
+    transition from river to coast within a fan shaped polygon (15 degrees on each side). The fan
+    begins with the most downstream river width estimate, and ends with the
+    first contour of either more than 2x the depth of the mouth. This aims to ensure
+    their is a defined fan that is slightly deeper than the surrounding during
+    the transition.
+    TODO In future,it may move to defining the width as 10x the mouth width.
+    TODO deal with no width at the mouth and work upstream.
+
+    Attributes:
+        crs  The horizontal CRS to be used. i.e. EPSG:2193
+        cross_section_spacing  The spacing in (m) of the sampled cross sections.
+        aligned_channel_file  Thefile name for the aligned river channel file.
+        river_bathymetry_file  The file name for the river bathymetry values.
+        ocean_contour_file  The file name for the ocean contours.
+        ocean_contour_depth_label  The column label for the depth values.
+    """
+
+    FAN_ANGLE = 30
+    FAN_MAX_LENGTH = 10_000
+
+    def __init__(self,
+                 aligned_channel_file: str,
+                 river_bathymetry_file: str,
+                 ocean_contour_file: str,
+                 crs: int,
+                 cross_section_spacing: float,
+                 ocean_contour_depth_label: str = None):
+
+        self.crs = crs
+        self.cross_section_spacing = cross_section_spacing
+        self.aligned_channel_file = aligned_channel_file
+        self.river_bathymetry_file = river_bathymetry_file
+        self.ocean_contour_file = ocean_contour_file
+        self.ocean_contour_depth_label = ocean_contour_depth_label
+
+    def _get_mouth_alignment(self):
+        """ Get the location and alignment of the river mouth. """
+
+        aligned_channel = geopandas.read_file(self.aligned_channel_file)
+        (x, y) = aligned_channel.loc[0].geometry.xy
+
+        # Get the midpoint of the river mouth
+        mouth_point = shapely.geometry.Point([x[0], y[0]])
+
+        # Calculate the normal and tangent to the channel segment at the mouth
+        segment_dx = x[0] - x[1]
+        segment_dy = y[0] - y[1]
+        segment_length = numpy.sqrt(segment_dx**2 + segment_dy**2)
+        mouth_tangent = shapely.geometry.Point([segment_dx / segment_length,
+                                                segment_dy / segment_length])
+        mouth_normal = shapely.geometry.Point([-mouth_tangent.y,
+                                               mouth_tangent.x])
+
+        return mouth_point, mouth_tangent, mouth_normal
+
+    def _get_mouth_bathymetry(self):
+        """ Get the width and depth at the river mouth. """
+
+        river_bathymetry = geopandas.read_file(self.river_bathymetry_file)
+        river_mouth_depth = river_bathymetry['bed_elevation_Rupp_and_Smart'].iloc[0]
+        river_mouth_width = river_bathymetry['widths'].iloc[0]
+        return river_mouth_depth, river_mouth_width
+
+    def _get_ocean_contours(self, river_mouth_depth,
+                            depth_sign: int = -1,
+                            depth_multiplier: int = 2):
+        """ Load in the ocean contours.
+
+        Parameters:
+            river_mouth_depth  The depth in m of the river mouth
+            depth_sign  The sign of the depths (-1 means depths are positive)
+            depth_multiplier  Number of times deeped the end contour should be
+                than the river mouth
+        """
+
+        assert self.ocean_contour_depth_label is not None, "Support not yet " \
+            "added for z values within the geometry values"
+
+        # Load in the ocean contours and find the contours to terminate against
+        ocean_contours = geopandas.read_file(self.ocean_contour_file).to_crs(self.crs)
+        depth_label = self.ocean_contour_depth_label
+
+        # Determine the end depth and filter the contours to include only these contours
+        end_depth = ocean_contours[depth_label][ocean_contours[depth_label] >
+                                                depth_multiplier * river_mouth_depth * depth_sign].min()
+        ocean_contours = ocean_contours[ocean_contours[depth_label] == end_depth].reset_index(drop=True)
+
+        assert len(ocean_contours) > 0, "No contours exist with a depth 2x the river mouth depth. "
+
+        return ocean_contours, end_depth
+
+    def _bathymetry(self, intersection_line: shapely.geometry.LineString,
+                    river_mouth_depth: float,
+                    end_depth: float,
+                    mouth_point: shapely.geometry.Point,
+                    mouth_tangent: shapely.geometry.Point):
+        """ Calculate and return the fan bathymetry values.
+
+        Parameters:
+            intersection_line  The contour line defining the end of the fan
+            river_mouth_depth  The depth in m of the river mouth
+            end_depth  The depth of the end contour of the fan in m
+            mouth_point  The location of the centre of the river mouth
+            mouth_tangent The tangent to the river mouth (along channel axis)
+        """
+
+        # Get the length of the fan centreline
+        fan_centre = shapely.geometry.LineString([mouth_point,
+                                                  [mouth_point.x + self.FAN_MAX_LENGTH * mouth_tangent.x,
+                                                   mouth_point.y + self.FAN_MAX_LENGTH * mouth_tangent.y]])
+        distance = fan_centre.intersection(intersection_line).distance(mouth_point)
+
+        # Setup the fan data values
+        fan_depths = {'geometry': [], 'depths': []}
+        number_of_samples = int(distance / self.cross_section_spacing)
+        depth_increment = (-1 * end_depth - river_mouth_depth) / number_of_samples
+
+        # Iterate through creating fan bathymetry
+        for i in range(1, number_of_samples):
+            fan_depths['geometry'].append(shapely.geometry.Point([mouth_point.x + mouth_tangent.x
+                                                                  * i * self.cross_section_spacing,
+                                                                  mouth_point.y + mouth_tangent.y
+                                                                  * i * self.cross_section_spacing]))
+            fan_depths['depths'].append(river_mouth_depth + i * depth_increment)
+        fan_depths = geopandas.GeoDataFrame(fan_depths, crs=self.crs)
+        return fan_depths
+
+    def _max_length_polygon(self, river_mouth_width: float,
+                            mouth_point: float,
+                            mouth_tangent: float,
+                            mouth_normal: float):
+        """ Return the fan polygon of maximum length. This will be used to
+        produce data to the first contour at least 2x the depth of the river
+        mouth.
+
+        Parameters:
+            river_mouth_depth  The depth in m of the river mouth
+            mouth_point  The location of the centre of the river mouth
+            mouth_tangent The tangent to the river mouth (along channel axis)
+            mouth_normal  The normal to the river mouth (cross channel axis)
+        """
+
+        end_width = river_mouth_width + 2 * self.FAN_MAX_LENGTH * numpy.tan(numpy.pi/180 * self.FAN_ANGLE / 2)
+        fan_end_point = shapely.geometry.Point([mouth_point.x + self.FAN_MAX_LENGTH * mouth_tangent.x,
+                                                mouth_point.y + self.FAN_MAX_LENGTH * mouth_tangent.y])
+        fan_polygon = shapely.geometry.Polygon([[mouth_point.x - mouth_normal.x * river_mouth_width / 2,
+                                                 mouth_point.y - mouth_normal.y * river_mouth_width / 2],
+                                                [mouth_point.x + mouth_normal.x * river_mouth_width / 2,
+                                                 mouth_point.y + mouth_normal.y * river_mouth_width / 2],
+                                                [fan_end_point.x + mouth_normal.x * end_width / 2,
+                                                 fan_end_point.y + mouth_normal.y * end_width / 2],
+                                                [fan_end_point.x - mouth_normal.x * end_width / 2,
+                                                 fan_end_point.y - mouth_normal.y * end_width / 2]])
+        return fan_polygon
+
+    def polygon_and_bathymetry(self):
+        """ Calculate and return the fan polygon values. """
+
+        # Load in river mouth alignment and bathymetry
+        mouth_point, mouth_tangent, mouth_normal = self._get_mouth_alignment()
+        river_mouth_depth, river_mouth_width = self._get_mouth_bathymetry()
+
+        # Create maximum fan polygon
+        fan_polygon = self._max_length_polygon(river_mouth_width=river_mouth_width,
+                                               mouth_point=mouth_point,
+                                               mouth_tangent=mouth_tangent,
+                                               mouth_normal=mouth_normal)
+
+        # Load in ocean depth contours
+        ocean_contours, end_depth = self._get_ocean_contours(river_mouth_depth)
+
+        # Cycle through contours finding the nearest contour to intersect the fan
+        distance = numpy.inf
+        intersection_line = shapely.geometry.Point()
+
+        for i, row in ocean_contours.iterrows():
+            if row.geometry.intersects(fan_polygon):
+                intersection_line_i = row.geometry.intersection(fan_polygon)
+                if intersection_line_i.distance(mouth_point) < distance:
+                    distance = intersection_line_i.distance(mouth_point)
+                    intersection_line = intersection_line_i
+
+        assert distance < numpy.inf, "There must be at least one ocean " \
+            "contour within the max length fan polygon."
+
+        # Construct a fan ending at the contour
+        (x, y) = intersection_line.xy
+        polygon_points = [[xi, yi] for (xi, yi) in zip(x, y)]
+
+        # Check if the intersected contour and mouth normal are roughtly parallel or anti-parallel
+        unit_vector_contour = numpy.array([x[-1] - x[0], y[-1] - y[0]])
+        unit_vector_contour = unit_vector_contour / numpy.linalg.norm(unit_vector_contour)
+        unit_vector_mouth = numpy.array([mouth_normal.x, mouth_normal.y])
+
+        # they have the oposite direction
+        if numpy.arccos(numpy.dot(unit_vector_contour, unit_vector_mouth)) > numpy.pi / 2:
+            # keep line order
+            polygon_points.extend([[mouth_point.x - mouth_normal.x * river_mouth_width / 2,
+                                    mouth_point.y - mouth_normal.y * river_mouth_width / 2],
+                                   [mouth_point.x + mouth_normal.x * river_mouth_width / 2,
+                                    mouth_point.y + mouth_normal.y * river_mouth_width / 2]])
+        else:  # The have the same direction, so reverse
+            # reverse fan order
+            polygon_points.extend([[mouth_point.x + mouth_normal.x * river_mouth_width / 2,
+                                    mouth_point.y + mouth_normal.y * river_mouth_width / 2],
+                                   [mouth_point.x - mouth_normal.x * river_mouth_width / 2,
+                                    mouth_point.y - mouth_normal.y * river_mouth_width / 2]])
+
+        fan_polygon = shapely.geometry.Polygon(polygon_points)
+        fan_polygon = geopandas.GeoDataFrame(geometry=[fan_polygon], crs=self.crs)
+
+        # Get bathymetry values
+        bathymetry = self._bathymetry(intersection_line=intersection_line,
+                                      end_depth=end_depth,
+                                      river_mouth_depth=river_mouth_depth,
+                                      mouth_point=mouth_point,
+                                      mouth_tangent=mouth_tangent)
+        return fan_polygon, bathymetry

@@ -15,11 +15,10 @@
 		},
 		"data_paths": {
 		  "local_cache": "tests/test_processor_remote_tiles_wellington/data",
-		  "catchment_boundary": "tests/test_processor_remote_tiles_wellington/data/catchment.zip",
-		  "land": "tests/test_processor_remote_tiles_wellington/data/catchment.zip",
-		  "result_dem": "tests/test_processor_remote_tiles_wellington/data/test_dem.nc",
-		  "dense_dem_extents": "tests/test_processor_remote_tiles_wellington/data/extents.geojson",
-		  "benchmark_dem": "tests/test_processor_remote_tiles_wellington/data/benchmark_dem.nc"
+		  "catchment_boundary": "catchment.zip",
+		  "land": "catchment.zip",
+		  "result_dem": "test_dem.nc",
+		  "benchmark_dem": "benchmark_dem.nc"
 		},
 		"apis": {
 			"open_topography": {
@@ -32,9 +31,10 @@
 			}
 		},
 		"general": {
-		  "set_dem_shoreline": true,
+			"set_dem_shoreline": true,
 			"drop_offshore_lidar": false,
-			"lidar_classifications_to_keep": [1, 2, 4, 9]
+			"lidar_classifications_to_keep": [1, 2, 4, 9],
+			"interpolation_method": "linear"
 		}
 	}
 }

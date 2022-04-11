@@ -9,7 +9,7 @@ dependencies:
   - gdal
   - geopandas
   - rioxarray
-  - pdal
+  - pdal >=2.3
   - dask
   - distributed
   - python-pdal

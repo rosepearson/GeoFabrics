@@ -1,6 +1,7 @@
 # -*- coding: utf-8 -*-
 """
-This module contains classes associated with reading in DEMs, generating DEMs, and combining DEMs.
+This module contains classes associated with loading, generating, and combining
+DEMs.
 """
 import rioxarray
 import rioxarray.merge
@@ -24,7 +25,7 @@ from . import geometry
 
 
 class ReferenceDem:
-    """ A class to manage the reference DEM in a catchment context
+    """ A class to manage reference or background DEMs in the catchment context
 
     Specifically, clip within the catchment land and foreshore. There is the option to clip outside any LiDAR using the
     optional 'exclusion_extent' input.
@@ -128,7 +129,7 @@ class ReferenceDem:
 
 
 class DenseDem(abc.ABC):
-    """ An abstract class class to manage the dense DEM in a catchment context.
+    """ An abstract class to manage the dense DEM in a catchment context.
 
     The dense DEM is made up of a dense DEM that is loaded in, and an offshore DEM that is interpolated from bathymetry
     contours offshore and outside all LiDAR tiles.
@@ -142,25 +143,25 @@ class DenseDem(abc.ABC):
         Defines the extents of any dense (LiDAR or refernence DEM) values already added.
     dense_dem
         The dense portion of the DEM
-    interpolate_missing_values
-        If True any missing values at the end of the rasterisation process will be populated using nearest neighbour
-        interpolation.
+    interpolation_method
+        If not None, interpolate using that method. Valid options are 'linear', 'nearest', and 'cubic'
     """
 
     DENSE_BINNING = "idw"
     CACHE_SIZE = 10000  # The max number of points to create the offshore RBF and to evaluate in the RBF at one time
 
     def __init__(self, catchment_geometry: geometry.CatchmentGeometry, extents: geopandas.GeoDataFrame,
-                 dense_dem: xarray.core.dataarray.DataArray, interpolate_missing_values: bool):
+                 dense_dem: xarray.core.dataarray.DataArray, interpolation_method: str):
         """ Setup base DEM to add future tiles too """
 
         self.catchment_geometry = catchment_geometry
         self._dense_dem = dense_dem
         self._extents = extents
 
-        self.interpolate_missing_values = interpolate_missing_values
+        self.interpolation_method = interpolation_method
 
         self._offshore_dem = None
+        self._river_dem = None
 
         self._dem = None
 
@@ -183,19 +184,32 @@ class DenseDem(abc.ABC):
         """ Return the combined DEM from tiles and any interpolated offshore values """
 
         if self._dem is None:
-            if self._offshore_dem is None:
-                self._dem = self._dense_dem
-            else:
-                # method='first' or 'last'; use method='first' as `DenseDemFromFiles._dense_dem` clipped to extents
-                self._dem = rioxarray.merge.merge_arrays([self._dense_dem, self._offshore_dem], method='first')
+            self._dem = self.combine_dem_parts()
 
-        # Ensure valid name and increasing dimension indexing for the dem
-        self._dem = self._dem.rename(self.DENSE_BINNING)
-        if self.interpolate_missing_values:
-            self._dem = self._dem.rio.interpolate_na(method='linear')  # methods are 'nearest', 'linear' and 'cubic'
-        self._dem = self._dem.rio.clip(self.catchment_geometry.catchment.geometry)
-        self._dem = self._ensure_positive_indexing(self._dem)  # Some programs require positively increasing indices
+            # Ensure valid name and increasing dimension indexing for the dem
+            self._dem = self._dem.rename(self.DENSE_BINNING)
+            if self.interpolation_method is not None:
+                self._dem = self._dem.rio.interpolate_na(method=self.interpolation_method)  # methods are 'nearest', 'linear' and 'cubic'
+            self._dem = self._dem.rio.clip(self.catchment_geometry.catchment.geometry)
+            self._dem = self._ensure_positive_indexing(self._dem)  # Some programs require positively increasing indices
         return self._dem
+
+    def combine_dem_parts(self):
+        """ Return the combined DEM from tiles and any interpolated offshore values """
+
+        if self._offshore_dem is None and self._river_dem is None:
+            combined_dem = self._dense_dem
+        elif self._river_dem is None:
+            # method='first' or 'last'; use method='first' as `DenseDemFromFiles._dense_dem` clipped to extents
+            combined_dem = rioxarray.merge.merge_arrays([self._dense_dem, self._offshore_dem], method='first')
+        elif self._offshore_dem is None:
+            # method='first' or 'last'; use method='first' as `DenseDemFromFiles._dense_dem` clipped to extents
+            combined_dem = rioxarray.merge.merge_arrays([self._river_dem, self._dense_dem], method='first')
+        else:
+            combined_dem = rioxarray.merge.merge_arrays([self._river_dem, self._dense_dem,
+                                                         self._offshore_dem], method='first')
+
+        return combined_dem
 
     @staticmethod
     def _ensure_positive_indexing(dem: xarray.core.dataarray.DataArray) -> xarray.core.dataarray.DataArray:
@@ -290,6 +304,79 @@ class DenseDem(abc.ABC):
         # Ensure the DEM will be recalculated to include the interpolated offshore region
         self._dem = None
 
+    def interpolate_river_bathymetry(self,
+                                     river_bathymetry):
+        """ Performs interpolation with a river polygon using the SciPy RBF function. """
+
+        # Reset the river and overall DEM
+        self._river_dem = None
+        self._dem = None
+
+        # combined DEM
+        combined_dem = self.combine_dem_parts()
+
+        # Get edge points
+        edge_dem = combined_dem.rio.clip(river_bathymetry.polygon.buffer(self.catchment_geometry.resolution), drop=True)
+        edge_dem = edge_dem.rio.clip(river_bathymetry.polygon.geometry, invert=True, drop=True)
+        grid_x, grid_y = numpy.meshgrid(edge_dem.x, edge_dem.y)
+        flat_z = edge_dem.data[0].flatten()
+        mask_z = ~numpy.isnan(flat_z)
+        edge_points = numpy.empty([mask_z.sum().sum()],
+                                  dtype=[('X', numpy.float64), ('Y', numpy.float64), ('Z', numpy.float64)])
+
+        edge_points['X'] = grid_x.flatten()[mask_z]
+        edge_points['Y'] = grid_y.flatten()[mask_z]
+        edge_points['Z'] = flat_z[mask_z]
+
+        # Get Bathy Points then concatenate
+        bathy_points = river_bathymetry.points_array()
+        river_points = numpy.concatenate([edge_points, bathy_points])
+
+        # Resample at a lower resolution if too many offshore points
+        if len(edge_points) > self.CACHE_SIZE - len(bathy_points):
+            reduced_resolution = self.catchment_geometry.resolution * len(edge_points) / (self.CACHE_SIZE
+                                                                                          - len(bathy_points))
+            logging.info("Reducing the number of 'river_points' used to create the RBF function by increasing the "
+                         f"resolution from {self.catchment_geometry.resolution} to {reduced_resolution}")
+            edge_points = self._sample_offshore_edge(reduced_resolution)
+            river_points = numpy.concatenate([edge_points, bathy_points])
+
+        # Set up the interpolation function
+        logging.info("Creating river interpolant")
+        rbf_function = scipy.interpolate.Rbf(river_points['X'], river_points['Y'], river_points['Z'],
+                                             function='linear')
+
+        # Setup the empty river area ready for interpolation
+        self._river_dem = combined_dem.rio.clip(river_bathymetry.polygon.geometry)
+        self._river_dem.data[0] = 0  # set all to zero then clip out dense region where we don't need to interpolate
+        self._river_dem = self._river_dem.rio.clip(river_bathymetry.polygon.geometry)
+
+        grid_x, grid_y = numpy.meshgrid(self._river_dem.x, self._river_dem.y)
+        flat_z = self._river_dem.data[0].flatten()
+        mask_z = ~numpy.isnan(flat_z)
+
+        flat_x_masked = grid_x.flatten()[mask_z]
+        flat_y_masked = grid_y.flatten()[mask_z]
+        flat_z_masked = flat_z[mask_z]
+
+        # check there are actually pixels in the rive
+        logging.info(f"There are {len(flat_z_masked)} pixels in the river")
+
+        # Tile offshore area - this limits the maximum memory required at any one time
+        number_tiles = math.ceil(len(flat_x_masked) / self.CACHE_SIZE)
+        for i in range(number_tiles):
+            logging.info(f"River intepolant tile {i+1} of {number_tiles}")
+            start_index = int(i*self.CACHE_SIZE)
+            end_index = int((i+1)*self.CACHE_SIZE) if i + 1 != number_tiles else len(flat_x_masked)
+
+            flat_z_masked[start_index:end_index] = rbf_function(flat_x_masked[start_index:end_index],
+                                                                flat_y_masked[start_index:end_index])
+        flat_z[mask_z] = flat_z_masked
+        self._river_dem.data[0] = flat_z.reshape(self._river_dem.data[0].shape)
+
+        # Ensure the DEM will be recalculated to include the interpolated offshore region
+        self._dem = None
+
 
 class DenseDemFromFiles(DenseDem):
     """ A class to manage loading in an already created and saved dense DEM that has yet to have an offshore DEM
@@ -299,13 +386,13 @@ class DenseDemFromFiles(DenseDem):
     ----------
 
     Logic controlling behaviour
-        Interpolate_missing_values - If True any missing values at the end of the rasterisation process will be
-        populated using nearest neighbour interpolation.
+        interpolation_method
+            If not None, interpolate using that method. Valid options are 'linear', 'nearest', and 'cubic'
     """
 
     def __init__(self, catchment_geometry: geometry.CatchmentGeometry,
                  dense_dem_path: typing.Union[str, pathlib.Path], extents_path: typing.Union[str, pathlib.Path],
-                 interpolate_missing_values: bool = True):
+                 interpolation_method: str):
         """ Load in the extents and dense DEM. Ensure the dense DEM is clipped within the extents """
 
         extents = geopandas.read_file(pathlib.Path(extents_path))
@@ -323,7 +410,7 @@ class DenseDemFromFiles(DenseDem):
 
         # Setup the DenseDem class
         super(DenseDemFromFiles, self).__init__(catchment_geometry=catchment_geometry, dense_dem=dense_dem,
-                                                extents=extents, interpolate_missing_values=interpolate_missing_values)
+                                                extents=extents, interpolation_method=interpolation_method)
 
 
 class DenseDemFromTiles(DenseDem):
@@ -339,9 +426,8 @@ class DenseDemFromTiles(DenseDem):
     drop_offshore_lidar
         If True only keep LiDAR values within the foreshore and land regions defined by the catchment_geometry.
         If False keep all LiDAR values.
-    interpolate_missing_values
-        If True any missing values at the end of the rasterisation process will be populated using nearest neighbour
-        interpolation.
+    interpolation_method
+        If not None, interpolate using that method. Valid options are 'linear', 'nearest', and 'cubic'.
     idw_power
         The power to apply when performing IDW
     idw_radius
@@ -349,7 +435,7 @@ class DenseDemFromTiles(DenseDem):
     """
 
     def __init__(self, catchment_geometry: geometry.CatchmentGeometry, idw_power: int, idw_radius: float,
-                 drop_offshore_lidar: bool = True, interpolate_missing_values: bool = True):
+                 interpolation_method: str, drop_offshore_lidar: bool = True):
         """ Setup base DEM to add future tiles too """
 
         self.drop_offshore_lidar = drop_offshore_lidar
@@ -360,7 +446,7 @@ class DenseDemFromTiles(DenseDem):
         self.idw_radius = idw_radius
 
         super(DenseDemFromTiles, self).__init__(catchment_geometry=catchment_geometry, dense_dem=None,
-                                                extents=None, interpolate_missing_values=interpolate_missing_values)
+                                                extents=None, interpolation_method=interpolation_method)
 
     def _set_up_chunks(self, chunk_size: int) -> (list, list):
         """ Define the chunked coordinates to cover the catchment """

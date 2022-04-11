@@ -61,7 +61,7 @@ def benchmark_processing(args):
             # Run the pipeline
             start_time = time.time()
             # Create a DEM from dense data (LiDAR, reference DEM) and bathymetry if specified
-            runner = processor.DemGenerator(instructions)
+            runner = processor.LidarDemGenerator(instructions)
             runner.run()
             end_time = time.time()
             if instructions['instructions']['benchmarking']['delete_dems']:

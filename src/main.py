@@ -43,15 +43,21 @@ def launch_processor(args):
 
     # Run the pipeline
     start_time = time.time()
-    if 'dense_dem' in instructions['instructions']['data_paths']:
+    if 'channel_bathymetry' in instructions['instructions']:
+        # Update a dense DEM with river channel values
+        print("Run processor.RiverBathymetryGenerator")
+        runner = processor.RiverBathymetryGenerator(instructions)
+        runner.run(pathlib.Path(instructions['instructions']['data_paths']['local_cache'])
+                   / 'instruction_parameters.json')
+    elif 'dense_dem' in instructions['instructions']['data_paths']:
         # Update a dense DEM with offshore values
-        print("Run processor.OffshoreDemGenerator")
-        runner = processor.OffshoreDemGenerator(instructions)
+        print("Run processor.BathymetryDemGenerator")
+        runner = processor.BathymetryDemGenerator(instructions)
         runner.run()
     else:
         # Create a DEM from dense data (LiDAR, reference DEM) and bathymetry if specified
-        print("Run processor.DemGenerator")
-        runner = processor.DemGenerator(instructions)
+        print("Run processor.LidarDemGenerator")
+        runner = processor.LidarDemGenerator(instructions)
         runner.run()
     end_time = time.time()
 
