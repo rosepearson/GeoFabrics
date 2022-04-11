@@ -19,15 +19,17 @@ Classes
 
    geofabrics.geometry.CatchmentGeometry
    geofabrics.geometry.BathymetryContours
-   geofabrics.geometry.BathymetryPoints
+   geofabrics.geometry.MarineBathymetryPoints
+   geofabrics.geometry.RiverBathymetryPoints
    geofabrics.geometry.TileInfo
+   geofabrics.geometry.RiverMouthFan
 
 
 
 
 .. py:class:: CatchmentGeometry(catchment_file, crs, resolution, foreshore_buffer = 2)
 
-   A class defining all relevant regions as defined by polygons in a catchment.
+   A class defining revelant catchment regions by polygons.
 
    The CRS is a dictionary containing the EPSG code for a 'horizontal' and 'vertical' datum.
 
@@ -104,7 +106,7 @@ Classes
 
 .. py:class:: BathymetryContours(contour_file, catchment_geometry, z_label=None, exclusion_extent=None)
 
-   A class working with bathymetry contours.
+   A class for sampling from bathymetry contours.
 
    Assumes contours to be sampled to the catchment_geometry resolution
 
@@ -114,9 +116,46 @@ Classes
 
 
 
-.. py:class:: BathymetryPoints(points_file, catchment_geometry, exclusion_extent=None)
+.. py:class:: MarineBathymetryPoints(points_file, catchment_geometry, exclusion_extent=None)
 
-   A class working with bathymetry points
+   A class for accesing marine bathymetry points. These can be used as
+   depths to interpolate elevations offshore.
+
+   .. py:method:: points(self)
+      :property:
+
+      Return the points
+
+
+   .. py:method:: x(self)
+      :property:
+
+      The x values
+
+
+   .. py:method:: y(self)
+      :property:
+
+      The y values
+
+
+   .. py:method:: z(self)
+      :property:
+
+      The z values
+
+
+
+.. py:class:: RiverBathymetryPoints(points_files, polygon_files, catchment_geometry, z_labels = None)
+
+   A class for accessing river and mouth bathymetry points. Paired river
+   and mouth elevation and polygon files are expected. These depths can be
+   used to interpolate elevations within the river and mouth polygon.
+
+   .. py:method:: points_array(self)
+
+      Sample the contours at the specified resolution.
+
 
    .. py:method:: points(self)
       :property:
@@ -145,12 +184,56 @@ Classes
 
 .. py:class:: TileInfo(tile_file, catchment_geometry)
 
-   A class for working with tiling information
+   A class for working with tiling information.
 
    .. py:method:: tile_names(self)
       :property:
 
       Return the names of all tiles within the catchment
+
+
+
+.. py:class:: RiverMouthFan(aligned_channel_file, river_bathymetry_file, ocean_contour_file, crs, cross_section_spacing, ocean_contour_depth_label = None)
+
+   A class for creating an appropiate river mouth fan to transition from
+   river depth estimates to the ocean bathymetry values. This fan region defines a
+   transition from river to coast within a fan shaped polygon (15 degrees on each side). The fan
+   begins with the most downstream river width estimate, and ends with the
+   first contour of either more than 2x the depth of the mouth. This aims to ensure
+   their is a defined fan that is slightly deeper than the surrounding during
+   the transition.
+   TODO In future,it may move to defining the width as 10x the mouth width.
+   TODO deal with no width at the mouth and work upstream.
+
+   .. attribute:: crs  The horizontal CRS to be used. i.e. EPSG
+
+      2193
+
+   .. attribute:: cross_section_spacing  The spacing in
+
+      
+
+      :type: m
+
+   .. attribute:: aligned_channel_file  Thefile name for the aligned river channel file.
+
+      
+
+   .. attribute:: river_bathymetry_file  The file name for the river bathymetry values.
+
+      
+
+   .. attribute:: ocean_contour_file  The file name for the ocean contours.
+
+      
+
+   .. attribute:: ocean_contour_depth_label  The column label for the depth values.
+
+      
+
+   .. py:method:: polygon_and_bathymetry(self)
+
+      Calculate and return the fan polygon values.
 
 
 

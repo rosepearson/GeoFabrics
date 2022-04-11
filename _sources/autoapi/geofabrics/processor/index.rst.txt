@@ -5,8 +5,10 @@
 
 .. autoapi-nested-parse::
 
-   This module contains classes associated with generating hydrologically conditioned DEMs from
+   This module contains classes associated with generating GeoFabric layers from
    LiDAR and bathymetry contours based on the instructions contained in a JSON file.
+
+   GeoFabric layers include hydrologically conditioned DEMs.
 
 
 
@@ -19,8 +21,9 @@ Classes
 .. autoapisummary::
 
    geofabrics.processor.BaseProcessor
-   geofabrics.processor.DemGenerator
-   geofabrics.processor.OffshoreDemGenerator
+   geofabrics.processor.BathymetryDemGenerator
+   geofabrics.processor.LidarDemGenerator
+   geofabrics.processor.RiverBathymetryGenerator
 
 
 
@@ -116,11 +119,40 @@ Classes
 
 
 
-.. py:class:: DemGenerator(json_instructions)
+.. py:class:: BathymetryDemGenerator(json_instructions)
 
    Bases: :py:obj:`BaseProcessor`
 
-   DemGenerator executes a pipeline for creating a hydrologically conditioned DEM from LiDAR and optionally a
+   BathymetryDemGenerator executes a pipeline for loading in a Dense DEM and extents before interpolating offshore
+   DEM values. The data and pipeline logic is defined in the json_instructions file.
+
+   The `BathymetryDemGenerator` class contains several important class members:
+    * catchment_geometry - Defines all relevant regions in a catchment required in the generation of a DEM as polygons.
+    * dense_dem - Defines the hydrologically conditioned DEM as a combination of tiles from LiDAR and interpolated from
+      bathymetry.
+    * bathy_contours - This object defines the bathymetry vectors used by the dense_dem to define the DEM
+      offshore.
+
+   See the README.md for usage examples or GeoFabrics/tests/ for examples of usage and an instruction file
+
+   .. py:method:: add_bathymetry(self, area_threshold, catchment_dirs)
+
+      Add in any bathymetry data - ocean or river
+
+
+   .. py:method:: run(self)
+
+      This method executes the geofabrics generation pipeline to produce geofabric derivatives.
+
+      Only load in the.
+
+
+
+.. py:class:: LidarDemGenerator(json_instructions)
+
+   Bases: :py:obj:`BathymetryDemGenerator`
+
+   LidarDemGenerator executes a pipeline for creating a hydrologically conditioned DEM from LiDAR and optionally a
    reference DEM and/or bathymetry contours. The data and pipeline logic is defined in the json_instructions file.
 
    The `DemGenerator` class contains several important class members:
@@ -142,28 +174,143 @@ Classes
 
 
 
-.. py:class:: OffshoreDemGenerator(json_instructions)
+.. py:class:: RiverBathymetryGenerator(json_instructions, debug = True)
 
    Bases: :py:obj:`BaseProcessor`
 
-   OffshoreDemGenerator executes a pipeline for loading in a Dense DEM and extents before interpolating offshore
-   DEM values. The data and pipeline logic is defined in the json_instructions file.
+   RiverbathymetryGenerator executes a pipeline to estimate river
+   bathymetry depths from flows, slopes, friction and widths along a main
+   channel. This is dones by first creating a hydrologically conditioned DEM
+   of the channel. A json_instructions file defines the pipeline logic and
+   data.
 
-   The `DemGenerator` class contains several important class members:
-    * catchment_geometry - Defines all relevant regions in a catchment required in the generation of a DEM as polygons.
-    * dense_dem - Defines the hydrologically conditioned DEM as a combination of tiles from LiDAR and interpolated from
-      bathymetry.
-    * bathy_contours - This object defines the bathymetry vectors used by the dense_dem to define the DEM
-      offshore.
+   .. attribute:: channel_polyline  The main channel along which to estimate depth. This
 
-   See the README.md for usage examples or GeoFabrics/tests/ for examples of usage and an instruction file
+      is a polyline.
 
-   .. py:method:: run(self)
+   .. attribute:: gen_dem  The ground DEM generated along the main channel. This is a
 
-      This method executes the geofabrics generation pipeline to produce geofabric derivatives.
+      raster.
 
-      Note it currently only considers one LiDAR dataset that may have many tiles.
-      See 'get_lidar_file_list' for where to change this.
+   .. attribute:: veg_dem  The vegetation DEM generated along the main channel. This is a
+
+      raster.
+
+   .. attribute:: aligned_channel_polyline  The main channel after its alignment has been
+
+      updated based on the DEM. Width and slope are estimated on this.
+
+   .. attribute:: transects  Transect polylines perpindicular to the aligned channel with
+
+      samples of the DEM values
+
+   .. py:method:: channel_characteristics_exist(self)
+
+      Return true if the DEMs are required for later processing
+
+
+
+
+   .. py:method:: channel_bathymetry_exist(self)
+
+      Return true if the river channel and bathymetry files exist.
+
+
+   .. py:method:: alignment_exists(self)
+
+      Return true if the DEMs are required for later processing
+
+
+      :param instructions  The json instructions defining the behaviour:
+
+
+   .. py:method:: get_result_file_name(self, key = None, name = None)
+
+      Return the file name of the file to save.
+
+
+      :param instructions  The json instructions defining the behaviour:
+
+
+   .. py:method:: get_result_file_path(self, key = None, name = None)
+
+      Return the file name of the file to save with the local cache path.
+
+
+      :param instructions  The json instructions defining the behaviour:
+
+
+   .. py:method:: get_bathymetry_instruction(self, key)
+
+      Return true if the DEMs are required for later processing
+
+
+      :param instructions  The json instructions defining the behaviour:
+
+
+   .. py:method:: get_rec_channel(self)
+
+      Create a rec channel.
+
+
+
+   .. py:method:: get_dems(self, buffer, channel)
+
+      Allow selection of the ground or vegetation DEM, and either create
+      or load it.
+
+
+      :param instructions  The json instructions defining the behaviour:
+
+
+   .. py:method:: align_channel(self, channel_width, channel, buffer)
+
+      Align the REC defined channel based on LiDAR and save the aligned
+      channel.
+
+
+      :param channel_width  The class for characterising channel width and other: properties
+      :param channel  The REC defined channel alignment:
+
+
+   .. py:method:: calculate_channel_characteristics(self, channel_width, aligned_channel, buffer)
+
+      Align the REC defined channel based on LiDAR and save the aligned
+      channel.
+
+
+      :param channel_width  The class for characterising channel width and other: properties
+      :param channel  The REC defined channel alignment:
+
+
+   .. py:method:: characterise_channel(self, buffer)
+
+      Calculate the channel width, slope and other characteristics. This requires a
+      ground and vegetation DEM. This also may require alignment of the channel centreline.
+
+
+      :param buffer  The amount of extra space to create around the river catchment:
+
+
+   .. py:method:: calculate_river_bed_elevations(self)
+
+      Calculate and save depth estimates along the channel using various
+      approaches.
+
+
+
+   .. py:method:: estimate_river_mouth_fan(self)
+
+      Calculate and save depth estimates along the river mouth fan.
+
+
+
+
+   .. py:method:: run(self, instruction_parameters)
+
+      This method extracts a main channel then executes the DemGeneration
+      pipeline to produce a DEM before sampling this to extimate width, slope
+      and eventually depth.
 
 
 

@@ -78,23 +78,29 @@
 </colgroup>
 <tbody>
 <tr class="row-odd"><td><p><a class="reference internal" href="#geofabrics.geometry.CatchmentGeometry" title="geofabrics.geometry.CatchmentGeometry"><code class="xref py py-obj docutils literal notranslate"><span class="pre">CatchmentGeometry</span></code></a></p></td>
-<td><p>A class defining all relevant regions as defined by polygons in a catchment.</p></td>
+<td><p>A class defining revelant catchment regions by polygons.</p></td>
 </tr>
 <tr class="row-even"><td><p><a class="reference internal" href="#geofabrics.geometry.BathymetryContours" title="geofabrics.geometry.BathymetryContours"><code class="xref py py-obj docutils literal notranslate"><span class="pre">BathymetryContours</span></code></a></p></td>
-<td><p>A class working with bathymetry contours.</p></td>
+<td><p>A class for sampling from bathymetry contours.</p></td>
 </tr>
-<tr class="row-odd"><td><p><a class="reference internal" href="#geofabrics.geometry.BathymetryPoints" title="geofabrics.geometry.BathymetryPoints"><code class="xref py py-obj docutils literal notranslate"><span class="pre">BathymetryPoints</span></code></a></p></td>
-<td><p>A class working with bathymetry points</p></td>
+<tr class="row-odd"><td><p><a class="reference internal" href="#geofabrics.geometry.MarineBathymetryPoints" title="geofabrics.geometry.MarineBathymetryPoints"><code class="xref py py-obj docutils literal notranslate"><span class="pre">MarineBathymetryPoints</span></code></a></p></td>
+<td><p>A class for accesing marine bathymetry points. These can be used as</p></td>
 </tr>
-<tr class="row-even"><td><p><a class="reference internal" href="#geofabrics.geometry.TileInfo" title="geofabrics.geometry.TileInfo"><code class="xref py py-obj docutils literal notranslate"><span class="pre">TileInfo</span></code></a></p></td>
-<td><p>A class for working with tiling information</p></td>
+<tr class="row-even"><td><p><a class="reference internal" href="#geofabrics.geometry.RiverBathymetryPoints" title="geofabrics.geometry.RiverBathymetryPoints"><code class="xref py py-obj docutils literal notranslate"><span class="pre">RiverBathymetryPoints</span></code></a></p></td>
+<td><p>A class for accessing river and mouth bathymetry points. Paired river</p></td>
+</tr>
+<tr class="row-odd"><td><p><a class="reference internal" href="#geofabrics.geometry.TileInfo" title="geofabrics.geometry.TileInfo"><code class="xref py py-obj docutils literal notranslate"><span class="pre">TileInfo</span></code></a></p></td>
+<td><p>A class for working with tiling information.</p></td>
+</tr>
+<tr class="row-even"><td><p><a class="reference internal" href="#geofabrics.geometry.RiverMouthFan" title="geofabrics.geometry.RiverMouthFan"><code class="xref py py-obj docutils literal notranslate"><span class="pre">RiverMouthFan</span></code></a></p></td>
+<td><p>A class for creating an appropiate river mouth fan to transition from</p></td>
 </tr>
 </tbody>
 </table>
 <dl class="py class">
 <dt class="sig sig-object py" id="geofabrics.geometry.CatchmentGeometry">
 <em class="property"><span class="pre">class</span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">geofabrics.geometry.</span></span><span class="sig-name descname"><span class="pre">CatchmentGeometry</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">catchment_file</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">crs</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">resolution</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">foreshore_buffer</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">2</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#geofabrics.geometry.CatchmentGeometry" title="Permalink to this definition"></a></dt>
-<dd><p>A class defining all relevant regions as defined by polygons in a catchment.</p>
+<dd><p>A class defining revelant catchment regions by polygons.</p>
 <p>The CRS is a dictionary containing the EPSG code for a ‘horizontal’ and ‘vertical’ datum.</p>
 <p>Specifically, this defines polygon regions like ‘land’, ‘foreshore’, ‘offshore’, and ensures all regions are
 defined in the same CRS.</p>
@@ -196,7 +202,7 @@ foreshore, etc) can be accessed.</p>
 <dl class="py class">
 <dt class="sig sig-object py" id="geofabrics.geometry.BathymetryContours">
 <em class="property"><span class="pre">class</span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">geofabrics.geometry.</span></span><span class="sig-name descname"><span class="pre">BathymetryContours</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">contour_file</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">catchment_geometry</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">z_label</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">exclusion_extent</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#geofabrics.geometry.BathymetryContours" title="Permalink to this definition"></a></dt>
-<dd><p>A class working with bathymetry contours.</p>
+<dd><p>A class for sampling from bathymetry contours.</p>
 <p>Assumes contours to be sampled to the catchment_geometry resolution</p>
 <dl class="field-list simple">
 <dt class="field-odd">Parameters</dt>
@@ -223,9 +229,10 @@ foreshore, etc) can be accessed.</p>
 </dd></dl>
 
 <dl class="py class">
-<dt class="sig sig-object py" id="geofabrics.geometry.BathymetryPoints">
-<em class="property"><span class="pre">class</span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">geofabrics.geometry.</span></span><span class="sig-name descname"><span class="pre">BathymetryPoints</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">points_file</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">catchment_geometry</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">exclusion_extent</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#geofabrics.geometry.BathymetryPoints" title="Permalink to this definition"></a></dt>
-<dd><p>A class working with bathymetry points</p>
+<dt class="sig sig-object py" id="geofabrics.geometry.MarineBathymetryPoints">
+<em class="property"><span class="pre">class</span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">geofabrics.geometry.</span></span><span class="sig-name descname"><span class="pre">MarineBathymetryPoints</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">points_file</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">catchment_geometry</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">exclusion_extent</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#geofabrics.geometry.MarineBathymetryPoints" title="Permalink to this definition"></a></dt>
+<dd><p>A class for accesing marine bathymetry points. These can be used as
+depths to interpolate elevations offshore.</p>
 <dl class="field-list simple">
 <dt class="field-odd">Parameters</dt>
 <dd class="field-odd"><ul class="simple">
@@ -235,26 +242,79 @@ foreshore, etc) can be accessed.</p>
 </dd>
 </dl>
 <dl class="py method">
-<dt class="sig sig-object py" id="geofabrics.geometry.BathymetryPoints.points">
-<em class="property"><span class="pre">property</span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">points</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">self</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#geofabrics.geometry.BathymetryPoints.points" title="Permalink to this definition"></a></dt>
+<dt class="sig sig-object py" id="geofabrics.geometry.MarineBathymetryPoints.points">
+<em class="property"><span class="pre">property</span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">points</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">self</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#geofabrics.geometry.MarineBathymetryPoints.points" title="Permalink to this definition"></a></dt>
 <dd><p>Return the points</p>
 </dd></dl>
 
 <dl class="py method">
-<dt class="sig sig-object py" id="geofabrics.geometry.BathymetryPoints.x">
-<em class="property"><span class="pre">property</span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">x</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">self</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#geofabrics.geometry.BathymetryPoints.x" title="Permalink to this definition"></a></dt>
+<dt class="sig sig-object py" id="geofabrics.geometry.MarineBathymetryPoints.x">
+<em class="property"><span class="pre">property</span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">x</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">self</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#geofabrics.geometry.MarineBathymetryPoints.x" title="Permalink to this definition"></a></dt>
 <dd><p>The x values</p>
 </dd></dl>
 
 <dl class="py method">
-<dt class="sig sig-object py" id="geofabrics.geometry.BathymetryPoints.y">
-<em class="property"><span class="pre">property</span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">y</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">self</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#geofabrics.geometry.BathymetryPoints.y" title="Permalink to this definition"></a></dt>
+<dt class="sig sig-object py" id="geofabrics.geometry.MarineBathymetryPoints.y">
+<em class="property"><span class="pre">property</span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">y</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">self</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#geofabrics.geometry.MarineBathymetryPoints.y" title="Permalink to this definition"></a></dt>
 <dd><p>The y values</p>
 </dd></dl>
 
 <dl class="py method">
-<dt class="sig sig-object py" id="geofabrics.geometry.BathymetryPoints.z">
-<em class="property"><span class="pre">property</span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">z</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">self</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#geofabrics.geometry.BathymetryPoints.z" title="Permalink to this definition"></a></dt>
+<dt class="sig sig-object py" id="geofabrics.geometry.MarineBathymetryPoints.z">
+<em class="property"><span class="pre">property</span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">z</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">self</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#geofabrics.geometry.MarineBathymetryPoints.z" title="Permalink to this definition"></a></dt>
+<dd><p>The z values</p>
+</dd></dl>
+
+</dd></dl>
+
+<dl class="py class">
+<dt class="sig sig-object py" id="geofabrics.geometry.RiverBathymetryPoints">
+<em class="property"><span class="pre">class</span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">geofabrics.geometry.</span></span><span class="sig-name descname"><span class="pre">RiverBathymetryPoints</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">points_files</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">polygon_files</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">catchment_geometry</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">z_labels</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#geofabrics.geometry.RiverBathymetryPoints" title="Permalink to this definition"></a></dt>
+<dd><p>A class for accessing river and mouth bathymetry points. Paired river
+and mouth elevation and polygon files are expected. These depths can be
+used to interpolate elevations within the river and mouth polygon.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters</dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>points_files</strong> (<em>str</em>) – </p></li>
+<li><p><strong>polygon_files</strong> (<em>str</em>) – </p></li>
+<li><p><strong>catchment_geometry</strong> (<a class="reference internal" href="#geofabrics.geometry.CatchmentGeometry" title="geofabrics.geometry.CatchmentGeometry"><em>CatchmentGeometry</em></a>) – </p></li>
+<li><p><strong>z_labels</strong> (<em>str</em>) – </p></li>
+</ul>
+</dd>
+</dl>
+<dl class="py method">
+<dt class="sig sig-object py" id="geofabrics.geometry.RiverBathymetryPoints.points_array">
+<span class="sig-name descname"><span class="pre">points_array</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">self</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#geofabrics.geometry.RiverBathymetryPoints.points_array" title="Permalink to this definition"></a></dt>
+<dd><p>Sample the contours at the specified resolution.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Return type</dt>
+<dd class="field-odd"><p>numpy.ndarray</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="geofabrics.geometry.RiverBathymetryPoints.points">
+<em class="property"><span class="pre">property</span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">points</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">self</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#geofabrics.geometry.RiverBathymetryPoints.points" title="Permalink to this definition"></a></dt>
+<dd><p>Return the points</p>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="geofabrics.geometry.RiverBathymetryPoints.x">
+<em class="property"><span class="pre">property</span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">x</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">self</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#geofabrics.geometry.RiverBathymetryPoints.x" title="Permalink to this definition"></a></dt>
+<dd><p>The x values</p>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="geofabrics.geometry.RiverBathymetryPoints.y">
+<em class="property"><span class="pre">property</span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">y</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">self</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#geofabrics.geometry.RiverBathymetryPoints.y" title="Permalink to this definition"></a></dt>
+<dd><p>The y values</p>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="geofabrics.geometry.RiverBathymetryPoints.z">
+<em class="property"><span class="pre">property</span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">z</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">self</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#geofabrics.geometry.RiverBathymetryPoints.z" title="Permalink to this definition"></a></dt>
 <dd><p>The z values</p>
 </dd></dl>
 
@@ -263,7 +323,7 @@ foreshore, etc) can be accessed.</p>
 <dl class="py class">
 <dt class="sig sig-object py" id="geofabrics.geometry.TileInfo">
 <em class="property"><span class="pre">class</span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">geofabrics.geometry.</span></span><span class="sig-name descname"><span class="pre">TileInfo</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">tile_file</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">catchment_geometry</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#geofabrics.geometry.TileInfo" title="Permalink to this definition"></a></dt>
-<dd><p>A class for working with tiling information</p>
+<dd><p>A class for working with tiling information.</p>
 <dl class="field-list simple">
 <dt class="field-odd">Parameters</dt>
 <dd class="field-odd"><ul class="simple">
@@ -276,6 +336,74 @@ foreshore, etc) can be accessed.</p>
 <dt class="sig sig-object py" id="geofabrics.geometry.TileInfo.tile_names">
 <em class="property"><span class="pre">property</span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">tile_names</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">self</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#geofabrics.geometry.TileInfo.tile_names" title="Permalink to this definition"></a></dt>
 <dd><p>Return the names of all tiles within the catchment</p>
+</dd></dl>
+
+</dd></dl>
+
+<dl class="py class">
+<dt class="sig sig-object py" id="geofabrics.geometry.RiverMouthFan">
+<em class="property"><span class="pre">class</span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">geofabrics.geometry.</span></span><span class="sig-name descname"><span class="pre">RiverMouthFan</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">aligned_channel_file</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">river_bathymetry_file</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">ocean_contour_file</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">crs</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">cross_section_spacing</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">ocean_contour_depth_label</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#geofabrics.geometry.RiverMouthFan" title="Permalink to this definition"></a></dt>
+<dd><p>A class for creating an appropiate river mouth fan to transition from
+river depth estimates to the ocean bathymetry values. This fan region defines a
+transition from river to coast within a fan shaped polygon (15 degrees on each side). The fan
+begins with the most downstream river width estimate, and ends with the
+first contour of either more than 2x the depth of the mouth. This aims to ensure
+their is a defined fan that is slightly deeper than the surrounding during
+the transition.
+TODO In future,it may move to defining the width as 10x the mouth width.
+TODO deal with no width at the mouth and work upstream.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters</dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>aligned_channel_file</strong> (<em>str</em>) – </p></li>
+<li><p><strong>river_bathymetry_file</strong> (<em>str</em>) – </p></li>
+<li><p><strong>ocean_contour_file</strong> (<em>str</em>) – </p></li>
+<li><p><strong>crs</strong> (<em>int</em>) – </p></li>
+<li><p><strong>cross_section_spacing</strong> (<em>float</em>) – </p></li>
+<li><p><strong>ocean_contour_depth_label</strong> (<em>str</em>) – </p></li>
+</ul>
+</dd>
+</dl>
+<dl class="py attribute">
+<dt class="sig sig-object py">
+<span class="sig-name descname"><span class="pre">crs</span>&#160; <span class="pre">The</span> <span class="pre">horizontal</span> <span class="pre">CRS</span> <span class="pre">to</span> <span class="pre">be</span> <span class="pre">used.</span> <span class="pre">i.e.</span> <span class="pre">EPSG</span></span></dt>
+<dd><p>2193</p>
+</dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py">
+<span class="sig-name descname"><span class="pre">cross_section_spacing</span>&#160; <span class="pre">The</span> <span class="pre">spacing</span> <span class="pre">in</span></span></dt>
+<dd><dl class="field-list simple">
+<dt class="field-odd">Type</dt>
+<dd class="field-odd"><p>m</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py">
+<span class="sig-name descname"><span class="pre">aligned_channel_file</span>&#160; <span class="pre">Thefile</span> <span class="pre">name</span> <span class="pre">for</span> <span class="pre">the</span> <span class="pre">aligned</span> <span class="pre">river</span> <span class="pre">channel</span> <span class="pre">file.</span></span></dt>
+<dd></dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py">
+<span class="sig-name descname"><span class="pre">river_bathymetry_file</span>&#160; <span class="pre">The</span> <span class="pre">file</span> <span class="pre">name</span> <span class="pre">for</span> <span class="pre">the</span> <span class="pre">river</span> <span class="pre">bathymetry</span> <span class="pre">values.</span></span></dt>
+<dd></dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py">
+<span class="sig-name descname"><span class="pre">ocean_contour_file</span>&#160; <span class="pre">The</span> <span class="pre">file</span> <span class="pre">name</span> <span class="pre">for</span> <span class="pre">the</span> <span class="pre">ocean</span> <span class="pre">contours.</span></span></dt>
+<dd></dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py">
+<span class="sig-name descname"><span class="pre">ocean_contour_depth_label</span>&#160; <span class="pre">The</span> <span class="pre">column</span> <span class="pre">label</span> <span class="pre">for</span> <span class="pre">the</span> <span class="pre">depth</span> <span class="pre">values.</span></span></dt>
+<dd></dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="geofabrics.geometry.RiverMouthFan.polygon_and_bathymetry">
+<span class="sig-name descname"><span class="pre">polygon_and_bathymetry</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">self</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#geofabrics.geometry.RiverMouthFan.polygon_and_bathymetry" title="Permalink to this definition"></a></dt>
+<dd><p>Calculate and return the fan polygon values.</p>
 </dd></dl>
 
 </dd></dl>

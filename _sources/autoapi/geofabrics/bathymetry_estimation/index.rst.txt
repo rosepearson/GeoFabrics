@@ -1,0 +1,257 @@
+:py:mod:`geofabrics.bathymetry_estimation`
+==========================================
+
+.. py:module:: geofabrics.bathymetry_estimation
+
+.. autoapi-nested-parse::
+
+   This module contains classes associated with characterising channel geometry
+   information.
+
+
+
+Module Contents
+---------------
+
+Classes
+~~~~~~~
+
+.. autoapisummary::
+
+   geofabrics.bathymetry_estimation.Channel
+   geofabrics.bathymetry_estimation.ChannelCharacteristics
+
+
+
+
+.. py:class:: Channel(channel, resolution, sampling_direction = 1)
+
+   A class to define a channel centre line from a digital network.
+
+   .. py:method:: from_rec(cls, rec_network, reach_id, resolution, area_threshold, max_iterations = 10000)
+      :classmethod:
+
+      Create a channel object from a REC file.
+
+      :param rec_network: Contains association information between upstream and
+                          downstream reaches.
+      :param reach_id: The name of the reach ID in the REC channel.
+      :param area_threshold: The area threshold in metres squared below which to ignore a reach.
+      :param max_iterations: The maximum number of iterations along a single strand to trace
+                             upstream.
+      :param iteration: The number of iterations traveled upstream.
+
+
+   .. py:method:: get_sampled_spline_fit(self)
+
+      Return the smoothed channel sampled at the resolution after it has
+      been fit with a spline between corner points.
+
+      :param catchment_corridor_radius: The radius of the channel corridor. This will determine the width of
+                                        the channel catchment.
+
+
+   .. py:method:: get_smoothed_spline_fit(self, smoothing_multiplier)
+
+      Return the spline smoothed aligned_centreline sampled at the
+      resolution.
+
+
+   .. py:method:: get_channel_catchment(self, corridor_radius)
+
+      Create a catchment from the smooth channel and the specified
+      radius.
+
+      :param corridor_radius: The radius of the channel corridor. This will determine the width of
+                              the channel catchment.
+
+
+   .. py:method:: get_spaced_points(self, channel, spacing, sampling_direction)
+
+      Sample at the specified spacing along the entire line.
+
+      :param channel: A data frame with the geometry defining the channel centreline.
+      :param spacing: The spacing between sampled points along straight segments
+      :param sample_direction: Are the reaches sampled in the same direction they are ordered.
+                               1 if in the same direction, -1 if in the opposite direction.
+
+
+   .. py:method:: get_spaced_points_with_corners(self, channel, spacing, sampling_direction)
+
+      Sample at the specified spacing along each straight segment.
+
+      :param channel: A data frame with the geometry defining the channel centreline.
+      :param spacing: The spacing between sampled points along straight segments
+      :param sample_direction: Are the reaches sampled in the same direction they are ordered.
+                               1 if in the same direction, -1 if in the opposite direction.
+
+
+
+.. py:class:: ChannelCharacteristics(gnd_dem, veg_dem, cross_section_spacing, resolution, debug = False)
+
+   A class to estimate the width, slope and other characteristics of a
+   channel from a detailed DEM and a river network.
+
+   .. py:method:: number_of_samples(self)
+      :property:
+
+      Return the number of samples to take along cross_sections. This should
+      be an odd number. Subtract 1 instead of adding to ensure within the
+      generated DEM.
+
+
+   .. py:method:: calculate_min_z_start_i(self, min_z_search_radius)
+
+      Return the starting index of samples along each transect to begin
+      looking for the minimum z.
+
+      :param min_z_search_radius: The distance to search from the centre.
+
+
+   .. py:method:: calculate_min_z_stop_i(self, min_z_search_radius)
+
+      Return the stopping index of samples along each transect to begin
+      looking for the minimum z.
+
+      :param min_z_search_radius: The distance to search from the centre.
+
+
+   .. py:method:: centre_index(self)
+      :property:
+
+      Return the centre index for samples taken along a transect.
+
+
+   .. py:method:: node_centred_reach_cross_section(self, sampled_channel)
+
+      Calculate cross_sections along a channel at the midpoint of each
+      segment.
+
+      :param sampled_channel: The sampled channel defined as a single polyline. Any branches described
+                              separately.
+
+
+   .. py:method:: sample_cross_sections(self, cross_sections, min_z_search_radius)
+
+      Return the elevations along the cross_section sampled at the
+      sampling resolution. Also add the measured 'min_z_centre' values to
+      the cross_sections.
+
+      :param cross_sections: The cross_sections with geometry defined as polylines.
+      :param min_z_search_radius: The distance to search from the centre.
+
+
+   .. py:method:: fixed_thresholded_widths_from_centre_within_radius(self, cross_sections, cross_section_elevations, threshold, resolution, search_radius, min_channel_width)
+
+      Estimate width based on a thresbold of bank height above water level.
+      Start in the centre and work out. Doesn't detect banks until a value
+      less than the threshold has been detected. Takes the widest channel within
+      the radius.'
+
+      :param cross_sections: The cross_sections with geometry defined as polylines.
+      :param cross_section_elevations: The sampled elevations along the cross_sections.
+      :param threshold: The height above the water level to detect as a bank.
+      :param resolution: The resolution to sample at.
+      :param search_radius: The distance to search side to side from the centre index.
+      :param min_channel_width: The minimum width of a 'valid' channel.
+
+
+   .. py:method:: variable_thresholded_widths_from_centre_within_radius(self, cross_sections, cross_section_elevations, threshold, resolution, search_radius, maximum_threshold, min_channel_width=float)
+
+      Estimate width based on a thresbold of bank height above water level.
+      Start in the centre and work out. Doesn't detect banks until a value
+      less than the threshold has been detected. Takes the widest channel within
+      the radius.'
+
+      :param cross_sections: The cross_sections with geometry defined as polylines.
+      :param cross_section_elevations: The sampled elevations along the cross_sections.
+      :param threshold: The height above the water level to detect as a bank.
+      :param resolution: The resolution to sample at.
+      :param search_radius: The distance to search side to side from the centre index.
+      :param maximum_threshold: The maximum amount to increase the bank height before stopping.
+      :param min_channel_width: The minimum width of a 'valid' channel.
+
+
+   .. py:method:: fixed_threshold_width(self, gnd_samples, veg_samples, start_index, z_water, threshold, search_radius_index, min_channel_width)
+
+      Calculate the maximum width for a cross section given a fixed
+      threshold - checking outwards, forwards and backwards within the
+      search radius.
+
+      :param gnd_samples: The ground elevations for a single cross section.
+      :param veg_samples: The vegrtation elevations for the same cross section.
+      :param start_index: The index to start the outward search from.
+      :param z_water: The elevation of the water.
+      :param threshold: The height above the water level to detect as a bank.
+      :param search_radius_index: The distance in indices to search for the start of a channel away
+                                  from the start_index
+      :param min_channel_width: The minimum width of a 'valid' channel.
+
+
+   .. py:method:: fixed_threshold_width_outwards(self, gnd_samples, veg_samples, start_index, z_water, threshold)
+
+      If the start_index is nan or less than the threshold, then cycle
+      outwards until each side has gone above the threshold.
+
+      :param gnd_samples: The ground elevations for a single cross section.
+      :param veg_samples: The vegrtation elevations for the same cross section.
+      :param start_index: The index to start the outward search from.
+      :param z_water: The elevation of the water.
+      :param threshold: The height above the water level to detect as a bank.
+
+
+   .. py:method:: fixed_threshold_width_forwards(self, gnd_samples, veg_samples, start_index, z_water, threshold, stop_index)
+
+      Check for channels approaching forward.
+
+      :param gnd_samples: The ground elevations for a single cross section.
+      :param veg_samples: The vegrtation elevations for the same cross section.
+      :param start_index: The index to start the outward search from.
+      :param z_water: The elevation of the water.
+      :param threshold: The height above the water level to detect as a bank.
+      :param stop_index: The maximum index to search through
+
+
+   .. py:method:: fixed_threshold_width_backwards(self, gnd_samples, veg_samples, start_index, z_water, threshold, stop_index)
+
+      Check for channels approaching backwards.
+
+      :param gnd_samples: The ground elevations for a single cross section.
+      :param veg_samples: The vegrtation elevations for the same cross section.
+      :param start_index: The index to start the outward search from.
+      :param z_water: The elevation of the water.
+      :param threshold: The height above the water level to detect as a bank.
+      :param stop_index: The minimum index to search through
+
+
+   .. py:method:: align_channel(self, threshold, search_radius, min_channel_width, initial_channel, width_centre_smoothing_multiplier, cross_section_radius)
+
+      Estimate the channel centre from transect samples
+
+      :param threshold: The height above the water level to detect as a bank.
+      :param search_radius: The distance to search side to side from the centre index.
+      :param min_channel_width: The minimum width of a 'valid' channel.
+      :param initial_channel: The initial channel centreline to align.
+      :param width_centre_smoothing_multiplier: The number of cross_sections to include in the downstream spline
+                                                smoothing.
+      :param cross_section_radius: The radius (or 1/2 length) of the cross sections along which to
+                                   sample.
+
+
+   .. py:method:: estimate_width_and_slope(self, aligned_channel, threshold, max_threshold, cross_section_radius, search_radius, min_channel_width, river_polygon_smoothing_multiplier)
+
+      Estimate the channel centre from transect samples
+
+      :param aligned_channel: The channel centre line. Should be in the channel bed.
+      :param threshold: The height height above the water level to detect as a bank.
+      :param max_threshold: The maximum height above water level to detect as a bank (i.e. not
+                            a cliff)
+      :param cross_section_radius: The radius (or 1/2 length) of the cross sections along which to
+                                   sample.
+      :param search_radius: The distance to search side to side from the centre index.
+      :param min_channel_width: The minimum width of a 'valid' channel.
+      :param river_polygon_smoothing_multiplier: The amount of smoothing to apply to each bank prior to constructing
+                                                 a polygon representing the channel.
+
+
+

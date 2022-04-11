@@ -66,7 +66,8 @@
              
   <section id="module-geofabrics.dem">
 <span id="geofabrics-dem"></span><h1><a class="reference internal" href="#module-geofabrics.dem" title="geofabrics.dem"><code class="xref py py-mod docutils literal notranslate"><span class="pre">geofabrics.dem</span></code></a><a class="headerlink" href="#module-geofabrics.dem" title="Permalink to this headline"></a></h1>
-<p>This module contains classes associated with reading in DEMs, generating DEMs, and combining DEMs.</p>
+<p>This module contains classes associated with loading, generating, and combining
+DEMs.</p>
 <section id="module-contents">
 <h2>Module Contents<a class="headerlink" href="#module-contents" title="Permalink to this headline"></a></h2>
 <section id="classes">
@@ -78,10 +79,10 @@
 </colgroup>
 <tbody>
 <tr class="row-odd"><td><p><a class="reference internal" href="#geofabrics.dem.ReferenceDem" title="geofabrics.dem.ReferenceDem"><code class="xref py py-obj docutils literal notranslate"><span class="pre">ReferenceDem</span></code></a></p></td>
-<td><p>A class to manage the reference DEM in a catchment context</p></td>
+<td><p>A class to manage reference or background DEMs in the catchment context</p></td>
 </tr>
 <tr class="row-even"><td><p><a class="reference internal" href="#geofabrics.dem.DenseDem" title="geofabrics.dem.DenseDem"><code class="xref py py-obj docutils literal notranslate"><span class="pre">DenseDem</span></code></a></p></td>
-<td><p>An abstract class class to manage the dense DEM in a catchment context.</p></td>
+<td><p>An abstract class to manage the dense DEM in a catchment context.</p></td>
 </tr>
 <tr class="row-odd"><td><p><a class="reference internal" href="#geofabrics.dem.DenseDemFromFiles" title="geofabrics.dem.DenseDemFromFiles"><code class="xref py py-obj docutils literal notranslate"><span class="pre">DenseDemFromFiles</span></code></a></p></td>
 <td><p>A class to manage loading in an already created and saved dense DEM that has yet to have an offshore DEM</p></td>
@@ -131,7 +132,7 @@
 <dl class="py class">
 <dt class="sig sig-object py" id="geofabrics.dem.ReferenceDem">
 <em class="property"><span class="pre">class</span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">geofabrics.dem.</span></span><span class="sig-name descname"><span class="pre">ReferenceDem</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">dem_file</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">catchment_geometry</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">set_foreshore</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">True</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">exclusion_extent</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#geofabrics.dem.ReferenceDem" title="Permalink to this definition"></a></dt>
-<dd><p>A class to manage the reference DEM in a catchment context</p>
+<dd><p>A class to manage reference or background DEMs in the catchment context</p>
 <p>Specifically, clip within the catchment land and foreshore. There is the option to clip outside any LiDAR using the
 optional ‘exclusion_extent’ input.</p>
 <p>If set_foreshore is True all positive DEM values in the foreshore are set to zero.</p>
@@ -171,9 +172,9 @@ filtering.</p>
 
 <dl class="py class">
 <dt class="sig sig-object py" id="geofabrics.dem.DenseDem">
-<em class="property"><span class="pre">class</span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">geofabrics.dem.</span></span><span class="sig-name descname"><span class="pre">DenseDem</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">catchment_geometry</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">extents</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">dense_dem</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">interpolate_missing_values</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#geofabrics.dem.DenseDem" title="Permalink to this definition"></a></dt>
+<em class="property"><span class="pre">class</span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">geofabrics.dem.</span></span><span class="sig-name descname"><span class="pre">DenseDem</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">catchment_geometry</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">extents</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">dense_dem</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">interpolation_method</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#geofabrics.dem.DenseDem" title="Permalink to this definition"></a></dt>
 <dd><p>Bases: <code class="xref py py-obj docutils literal notranslate"><span class="pre">abc.ABC</span></code></p>
-<p>An abstract class class to manage the dense DEM in a catchment context.</p>
+<p>An abstract class to manage the dense DEM in a catchment context.</p>
 <p>The dense DEM is made up of a dense DEM that is loaded in, and an offshore DEM that is interpolated from bathymetry
 contours offshore and outside all LiDAR tiles.</p>
 <dl class="field-list simple">
@@ -182,8 +183,7 @@ contours offshore and outside all LiDAR tiles.</p>
 <li><p><strong>catchment_geometry</strong> (<a class="reference internal" href="../geometry/index.html#geofabrics.geometry.CatchmentGeometry" title="geofabrics.geometry.CatchmentGeometry"><em>geofabrics.geometry.CatchmentGeometry</em></a>) – Defines the spatial extents of the catchment, land, foreshore, and offshore regions</p></li>
 <li><p><strong>extents</strong> (<em>geopandas.GeoDataFrame</em>) – Defines the extents of any dense (LiDAR or refernence DEM) values already added.</p></li>
 <li><p><strong>dense_dem</strong> (<em>xarray.core.dataarray.DataArray</em>) – The dense portion of the DEM</p></li>
-<li><p><strong>interpolate_missing_values</strong> (<em>bool</em>) – If True any missing values at the end of the rasterisation process will be populated using nearest neighbour
-interpolation.</p></li>
+<li><p><strong>interpolation_method</strong> (<em>str</em>) – If not None, interpolate using that method. Valid options are ‘linear’, ‘nearest’, and ‘cubic’</p></li>
 </ul>
 </dd>
 </dl>
@@ -206,28 +206,43 @@ interpolation.</p></li>
 </dd></dl>
 
 <dl class="py method">
+<dt class="sig sig-object py" id="geofabrics.dem.DenseDem.combine_dem_parts">
+<span class="sig-name descname"><span class="pre">combine_dem_parts</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">self</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#geofabrics.dem.DenseDem.combine_dem_parts" title="Permalink to this definition"></a></dt>
+<dd><p>Return the combined DEM from tiles and any interpolated offshore values</p>
+</dd></dl>
+
+<dl class="py method">
 <dt class="sig sig-object py" id="geofabrics.dem.DenseDem.interpolate_offshore">
 <span class="sig-name descname"><span class="pre">interpolate_offshore</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">self</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">bathy_contours</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#geofabrics.dem.DenseDem.interpolate_offshore" title="Permalink to this definition"></a></dt>
 <dd><p>Performs interpolation offshore outside LiDAR extents using the SciPy RBF function.</p>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="geofabrics.dem.DenseDem.interpolate_river_bathymetry">
+<span class="sig-name descname"><span class="pre">interpolate_river_bathymetry</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">self</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">river_bathymetry</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#geofabrics.dem.DenseDem.interpolate_river_bathymetry" title="Permalink to this definition"></a></dt>
+<dd><p>Performs interpolation with a river polygon using the SciPy RBF function.</p>
 </dd></dl>
 
 </dd></dl>
 
 <dl class="py class">
 <dt class="sig sig-object py" id="geofabrics.dem.DenseDemFromFiles">
-<em class="property"><span class="pre">class</span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">geofabrics.dem.</span></span><span class="sig-name descname"><span class="pre">DenseDemFromFiles</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">catchment_geometry</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">dense_dem_path</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">extents_path</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">interpolate_missing_values</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">True</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#geofabrics.dem.DenseDemFromFiles" title="Permalink to this definition"></a></dt>
+<em class="property"><span class="pre">class</span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">geofabrics.dem.</span></span><span class="sig-name descname"><span class="pre">DenseDemFromFiles</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">catchment_geometry</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">dense_dem_path</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">extents_path</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">interpolation_method</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#geofabrics.dem.DenseDemFromFiles" title="Permalink to this definition"></a></dt>
 <dd><p>Bases: <a class="reference internal" href="#geofabrics.dem.DenseDem" title="geofabrics.dem.DenseDem"><code class="xref py py-obj docutils literal notranslate"><span class="pre">DenseDem</span></code></a></p>
 <p>A class to manage loading in an already created and saved dense DEM that has yet to have an offshore DEM
 associated with it.</p>
 <dl class="field-list simple">
 <dt class="field-odd">Parameters</dt>
 <dd class="field-odd"><ul class="simple">
-<li><p><strong>behaviour</strong> (<em>Logic controlling</em>) – Interpolate_missing_values - If True any missing values at the end of the rasterisation process will be
-populated using nearest neighbour interpolation.</p></li>
+<li><p><strong>behaviour</strong> (<em>Logic controlling</em>) – <dl class="simple">
+<dt>interpolation_method</dt><dd><p>If not None, interpolate using that method. Valid options are ‘linear’, ‘nearest’, and ‘cubic’</p>
+</dd>
+</dl>
+</p></li>
 <li><p><strong>catchment_geometry</strong> (<a class="reference internal" href="../geometry/index.html#geofabrics.geometry.CatchmentGeometry" title="geofabrics.geometry.CatchmentGeometry"><em>geofabrics.geometry.CatchmentGeometry</em></a>) – </p></li>
 <li><p><strong>dense_dem_path</strong> (<em>Union</em><em>[</em><em>str</em><em>, </em><em>pathlib.Path</em><em>]</em>) – </p></li>
 <li><p><strong>extents_path</strong> (<em>Union</em><em>[</em><em>str</em><em>, </em><em>pathlib.Path</em><em>]</em>) – </p></li>
-<li><p><strong>interpolate_missing_values</strong> (<em>bool</em>) – </p></li>
+<li><p><strong>interpolation_method</strong> (<em>str</em>) – </p></li>
 </ul>
 </dd>
 </dl>
@@ -235,7 +250,7 @@ populated using nearest neighbour interpolation.</p></li>
 
 <dl class="py class">
 <dt class="sig sig-object py" id="geofabrics.dem.DenseDemFromTiles">
-<em class="property"><span class="pre">class</span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">geofabrics.dem.</span></span><span class="sig-name descname"><span class="pre">DenseDemFromTiles</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">catchment_geometry</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">idw_power</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">idw_radius</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">drop_offshore_lidar</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">True</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">interpolate_missing_values</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">True</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#geofabrics.dem.DenseDemFromTiles" title="Permalink to this definition"></a></dt>
+<em class="property"><span class="pre">class</span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">geofabrics.dem.</span></span><span class="sig-name descname"><span class="pre">DenseDemFromTiles</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">catchment_geometry</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">idw_power</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">idw_radius</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">interpolation_method</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">drop_offshore_lidar</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">True</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#geofabrics.dem.DenseDemFromTiles" title="Permalink to this definition"></a></dt>
 <dd><p>Bases: <a class="reference internal" href="#geofabrics.dem.DenseDem" title="geofabrics.dem.DenseDem"><code class="xref py py-obj docutils literal notranslate"><span class="pre">DenseDem</span></code></a></p>
 <p>A class to manage the population of the DenseDem’s dense_dem from LiDAR tiles, and/or a reference DEM.</p>
 <p>The dense DEM is made up of tiles created from dense point data - Either LiDAR point clouds, or a reference DEM.</p>
@@ -245,8 +260,7 @@ populated using nearest neighbour interpolation.</p></li>
 <dd class="field-odd"><ul class="simple">
 <li><p><strong>drop_offshore_lidar</strong> (<em>bool</em>) – If True only keep LiDAR values within the foreshore and land regions defined by the catchment_geometry.
 If False keep all LiDAR values.</p></li>
-<li><p><strong>interpolate_missing_values</strong> (<em>bool</em>) – If True any missing values at the end of the rasterisation process will be populated using nearest neighbour
-interpolation.</p></li>
+<li><p><strong>interpolation_method</strong> (<em>str</em>) – If not None, interpolate using that method. Valid options are ‘linear’, ‘nearest’, and ‘cubic’.</p></li>
 <li><p><strong>idw_power</strong> (<em>int</em>) – The power to apply when performing IDW</p></li>
 <li><p><strong>idw_radius</strong> (<em>float</em>) – The radius to apply IDW over</p></li>
 <li><p><strong>catchment_geometry</strong> (<a class="reference internal" href="../geometry/index.html#geofabrics.geometry.CatchmentGeometry" title="geofabrics.geometry.CatchmentGeometry"><em>geofabrics.geometry.CatchmentGeometry</em></a>) – </p></li>
