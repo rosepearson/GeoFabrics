@@ -435,10 +435,14 @@ class DenseDemFromTiles(DenseDem):
     """
 
     def __init__(self, catchment_geometry: geometry.CatchmentGeometry, idw_power: int, idw_radius: float,
-                 interpolation_method: str, drop_offshore_lidar: bool = True):
+                 interpolation_method: str, drop_offshore_lidar: bool = True, elevation_range: list = None):
         """ Setup base DEM to add future tiles too """
 
         self.drop_offshore_lidar = drop_offshore_lidar
+        self.elevation_range = elevation_range
+        assert elevation_range is None or (type(elevation_range) == list
+                                                  and len(elevation_range) == 2), \
+            "Error the 'elevation_range' must either be none, or a two entry list"
 
         self.raster_type = numpy.float64
 
@@ -669,7 +673,8 @@ class DenseDemFromTiles(DenseDem):
                                             lidar_classifications_to_keep=lidar_classifications_to_keep,
                                             idw_radius=self.idw_radius,
                                             idw_power=self.idw_power,
-                                            raster_type=self.raster_type),
+                                            raster_type=self.raster_type,
+                                            elevation_range=self.elevation_range),
                     shape=(chunk_size, chunk_size), dtype=numpy.float32))
             delayed_chunked_matrix.append(delayed_chunked_x)
         chunked_dem = xarray.DataArray(dask.array.block([delayed_chunked_matrix]),
@@ -851,7 +856,8 @@ def load_tiles_in_chunk(dim_x: numpy.ndarray, dim_y: numpy.ndarray, tile_index_e
 
 
 def rasterise_chunk(dim_x: numpy.ndarray, dim_y: numpy.ndarray, tile_points: numpy.ndarray, raster_type,
-                    lidar_classifications_to_keep: list, idw_radius: float, idw_power: int):
+                    lidar_classifications_to_keep: list, idw_radius: float, idw_power: int,
+                    elevation_range: list):
     """ Rasterise all points within a chunk. """
 
     # Get the indicies overwhich to perform IDW
@@ -869,6 +875,11 @@ def rasterise_chunk(dim_x: numpy.ndarray, dim_y: numpy.ndarray, tile_points: num
     for classification in lidar_classifications_to_keep:
         classification_mask[tile_points['Classification'] == classification] = True
     tile_points = tile_points[classification_mask]
+
+    # optionally filter to within the specified elevation range
+    if elevation_range is not None:
+        tile_points = tile_points[tile_points['Z'] >= elevation_range[0]]
+        tile_points = tile_points[tile_points['Z'] <= elevation_range[1]]
 
     # Check again - if no points return an array of NaN
     if len(tile_points) == 0:
