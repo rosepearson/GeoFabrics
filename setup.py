@@ -23,8 +23,7 @@ setuptools.setup(
         'Bug Reports':
         'https://github.com/rosepearson/GeoFabrics/issues',
         'Source Code': 'https://github.com/rosepearson/GeoFabrics',
-        # 'Funding': '',
-        # 'Say Thanks!': '',
+
     },
     package_dir={'': 'src'},
     packages=setuptools.find_packages(where='src'),
