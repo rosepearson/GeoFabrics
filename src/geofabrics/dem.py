@@ -222,6 +222,25 @@ class DenseDem(abc.ABC):
         dem = dem.reindex(x=x, y=y)
         return dem
 
+    @staticmethod
+    def _write_netcdf_conventions_in_place(dem: xarray.core.dataarray.DataArray, crs_dict: dict):
+        """ Write the CRS and transform associated with a netCDF file such that it is CF complient and meets the GDAL
+        expectations for transform information.
+
+        Parameters
+        ----------
+
+        dem
+            The dataset to have its spatial data written in place.
+        crs_dict
+            A dict with horizontal and vertical CRS information.
+        """
+
+        dem.rio.write_crs(crs_dict['horizontal'], inplace=True)
+        dem.z.rio.write_crs(crs_dict['horizontal'], inplace=True)
+        dem.rio.write_transform(inplace=True)
+        dem.z.rio.write_nodata(numpy.nan, encoded=True, inplace=True)
+
     def _sample_offshore_edge(self, resolution) -> numpy.ndarray:
         """ Return the pixel values of the offshore edge to be used for offshore interpolation """
 
@@ -400,9 +419,7 @@ class DenseDemFromFiles(DenseDem):
                                                masked=True, parse_coordinates=True) as dense_dem:
             dense_dem.load()
         dense_dem = dense_dem.copy(deep=True)  # Deep copy is required to ensure the opened file is properly unlocked
-        dense_dem.rio.write_crs(catchment_geometry.crs['horizontal'])
-        dense_dem.z.rio.write_crs(catchment_geometry.crs['horizontal'])
-        dense_dem.z.rio.write_nodata(numpy.nan, encoded=True, inplace=True)
+        self._write_netcdf_conventions_in_place(dense_dem, self.catchment_geometry.crs)
 
         # Ensure all values outside the exents are nan as that defines the dense extents
         dense_dem = dense_dem.rio.clip(extents.geometry, drop=True)
@@ -434,13 +451,14 @@ class DenseDemFromTiles(DenseDem):
     """
 
     def __init__(self, catchment_geometry: geometry.CatchmentGeometry, idw_power: int, idw_radius: float,
-                 interpolation_method: str, drop_offshore_lidar: bool = True, elevation_range: list = None):
+                 interpolation_method: str, drop_offshore_lidar: bool = True,
+                 elevation_range: list = None):
         """ Setup base DEM to add future tiles too """
 
         self.drop_offshore_lidar = drop_offshore_lidar
         self.elevation_range = elevation_range
         assert elevation_range is None or (type(elevation_range) == list
-                                                  and len(elevation_range) == 2), \
+                                           and len(elevation_range) == 2), \
             "Error the 'elevation_range' must either be none, or a two entry list"
 
         self.raster_type = numpy.float64
@@ -577,7 +595,8 @@ class DenseDemFromTiles(DenseDem):
 
     def add_lidar(self, lidar_files: typing.List[typing.Union[str, pathlib.Path]],
                   tile_index_file: typing.Union[str, pathlib.Path], chunk_size: int,
-                  lidar_classifications_to_keep: list, source_crs: dict = None, drop_offshore_lidar: bool = True):
+                  lidar_classifications_to_keep: list, source_crs: dict,
+                  drop_offshore_lidar: bool, metadata: dict):
         """ Read in all LiDAR files and use to create a dense DEM.
 
             Parameters
@@ -610,7 +629,8 @@ class DenseDemFromTiles(DenseDem):
         if len(lidar_files) == 1:  # If one file it's ok if there is no tile_index
             self._dense_dem = self._add_file(lidar_file=lidar_files[0], region_to_rasterise=region_to_rasterise,
                                              source_crs=source_crs,
-                                             lidar_classifications_to_keep=lidar_classifications_to_keep)
+                                             lidar_classifications_to_keep=lidar_classifications_to_keep,
+                                             metadata=metadata)
         else:
             assert tile_index_file is not None, "A tile index file is required for multiple tile files added together"
             assert chunk_size > 0 and chunk_size is not None, "The chunk size should be set when reading in tiled LiDAR " \
@@ -620,7 +640,8 @@ class DenseDemFromTiles(DenseDem):
                                                             source_crs=source_crs,
                                                             lidar_classifications_to_keep=lidar_classifications_to_keep,
                                                             region_to_rasterise=region_to_rasterise,
-                                                            chunk_size=chunk_size)
+                                                            chunk_size=chunk_size,
+                                                            metadata=metadata)
 
         # Set any values outside the region_to_rasterise to NaN
         self._dense_dem = self.dense_dem.rio.clip(region_to_rasterise.geometry, drop=False)
@@ -634,7 +655,7 @@ class DenseDemFromTiles(DenseDem):
     def _add_tiled_lidar_chunked(self, lidar_files: typing.List[typing.Union[str, pathlib.Path]],
                                  tile_index_file: typing.Union[str, pathlib.Path], source_crs: dict,
                                  lidar_classifications_to_keep: list, region_to_rasterise: geopandas.GeoDataFrame,
-                                 chunk_size: int) -> xarray.DataArray:
+                                 chunk_size: int, metadata: dict) -> xarray.DataArray:
         """ Create a dense DEM from a set of tiled LiDAR files. Read these in over non-overlapping chunks and
         then combine """
 
@@ -676,21 +697,12 @@ class DenseDemFromTiles(DenseDem):
                                             elevation_range=self.elevation_range),
                     shape=(chunk_size, chunk_size), dtype=numpy.float32))
             delayed_chunked_matrix.append(delayed_chunked_x)
-            elevation = dask.array.block(delayed_chunked_matrix)
-        chunked_dem = xarray.Dataset(
-            data_vars=dict(z=(["y", "x"], elevation,
-                              {"units": "m", "long_name": "ground elevation",
-                               "vertical_datum": f"EPSG:{self.catchment_geometry.crs['vertical']}"})),
-            coords=dict(x=(["x"], numpy.concatenate(chunked_dim_x)),
-                        y=(["y"], numpy.concatenate(chunked_dim_y))),
-            attrs={"title": "GeoFabrics representing elevation and roughness",
-                   "source": "GeoFabrics version",
-                   "description": "GeoFabrics:xx_processor_class resolution xx",
-                   "geofabrics_instructions": "dumped instruction file"})
-        chunked_dem.rio.write_crs(self.catchment_geometry.crs['horizontal'], inplace=True)
-        chunked_dem.z.rio.write_crs(self.catchment_geometry.crs['horizontal'], inplace=True)
-        chunked_dem.rio.write_transform(inplace=True)
-        chunked_dem.z.rio.write_nodata(numpy.nan, encoded=True, inplace=True)
+
+        # Combine chunks into a dataset
+        elevation = dask.array.block(delayed_chunked_matrix)
+        x = numpy.concatenate(chunked_dim_x)
+        y = numpy.concatenate(chunked_dim_y)
+        chunked_dem = self._create_data_set(x=x, y=y, z=elevation, metadata=metadata)
         logging.info("Computing chunks")
         chunked_dem = chunked_dem.compute()
 
@@ -700,7 +712,7 @@ class DenseDemFromTiles(DenseDem):
         return dense_dem
 
     def _add_file(self, lidar_file: typing.Union[str, pathlib.Path], region_to_rasterise: geopandas.GeoDataFrame,
-                  lidar_classifications_to_keep: list, source_crs: dict = None) -> xarray.DataArray:
+                  lidar_classifications_to_keep: list, source_crs: dict, metadata: dict) -> xarray.DataArray:
         """ Create the dense DEM region from a single LiDAR file. """
 
         logging.info(f"On LiDAR tile 1 of 1: {lidar_file}")
@@ -722,21 +734,42 @@ class DenseDemFromTiles(DenseDem):
         elevation = raster_values.reshape((len(dim_y), len(dim_x)))
 
         # Create xarray
-        dense_dem = xarray.Dataset(
-            data_vars=dict(z=(["y", "x"], elevation,
-                              {"units": "m", "long_name": "ground elevation",
-                               "vertical_datum": f"EPSG:{self.catchment_geometry.crs['vertical']}"})),
-            coords=dict(x=(["x"], dim_x), y=(["y"], dim_y)),
-            attrs={"title": "GeoFabrics representing elevation and roughness",
-                   "source": "GeoFabrics version",
-                   "description": "GeoFabrics:xx_processor_class resolution xx",
-                   "geofabrics_instructions": "dumped instruction file"})
-        dense_dem.rio.write_crs(self.catchment_geometry.crs['horizontal'], inplace=True)
-        dense_dem.z.rio.write_crs(self.catchment_geometry.crs['horizontal'], inplace=True)
-        dense_dem.rio.write_transform(inplace=True)
-        dense_dem.z.rio.write_nodata(numpy.nan, encoded=True, inplace=True)
+        dense_dem = self._create_data_set(x=dim_x, y=dim_y, z=elevation, metadata=metadata)
 
         return dense_dem
+
+    def _create_data_set(self,
+                         x: numpy.ndarray,
+                         y: numpy.ndarray,
+                         z: numpy.ndarray,
+                         metadata: dict) -> xarray.Dataset:
+        """ A function to create a new dataset from x, y and z arrays.
+
+        Parameters
+        ----------
+
+            x
+                X coordinates of the dataset.
+            y
+                Y coordinates of the dataset.
+            z
+                Elevations over the x, and y coordiantes.
+        """
+
+        dem = xarray.Dataset(
+            data_vars=dict(z=(["y", "x"], z,
+                              {"units": "m", "long_name": "ground elevation",
+                               "vertical_datum": f"EPSG:{self.catchment_geometry.crs['vertical']}"})),
+            coords=dict(x=(["x"], x), y=(["y"], y)),
+            attrs={"title": "Geofabric representing elevation and roughness",
+                   "source": f"{metadata['library_name']} version {metadata['library_version']}",
+                   "description": f"{metadata['library_name']}:{metadata['class_name']} resolution" +
+                                  f" {self.catchment_geometry.resolution}",
+                   "geofabrics_instructions": f"{metadata['instructions']}"})
+
+        # ensure the expected CF conventions are followed
+        self._write_netcdf_conventions_in_place(dem, self.catchment_geometry.crs)
+        return dem
 
     def add_reference_dem(self, tile_points: numpy.ndarray, tile_extent: geopandas.GeoDataFrame):
         """ Update gaps in dense DEM from areas with no LiDAR with the reference DEM. """
