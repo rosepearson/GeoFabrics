@@ -147,7 +147,6 @@ class DenseDem(abc.ABC):
         If not None, interpolate using that method. Valid options are 'linear', 'nearest', and 'cubic'
     """
 
-    DENSE_BINNING = "idw"
     CACHE_SIZE = 10000  # The max number of points to create the offshore RBF and to evaluate in the RBF at one time
 
     def __init__(self, catchment_geometry: geometry.CatchmentGeometry, extents: geopandas.GeoDataFrame,
@@ -187,7 +186,6 @@ class DenseDem(abc.ABC):
             self._dem = self.combine_dem_parts()
 
             # Ensure valid name and increasing dimension indexing for the dem
-            self._dem = self._dem.rename(self.DENSE_BINNING)
             if self.interpolation_method is not None:
                 self._dem = self._dem.rio.interpolate_na(method=self.interpolation_method)  # methods are 'nearest', 'linear' and 'cubic'
             self._dem = self._dem.rio.clip(self.catchment_geometry.catchment.geometry)
@@ -198,15 +196,15 @@ class DenseDem(abc.ABC):
         """ Return the combined DEM from tiles and any interpolated offshore values """
 
         if self._offshore_dem is None and self._river_dem is None:
-            combined_dem = self._dense_dem
+            combined_dem = self.dense_dem
         elif self._river_dem is None:
-            # method='first' or 'last'; use method='first' as `DenseDemFromFiles._dense_dem` clipped to extents
-            combined_dem = rioxarray.merge.merge_arrays([self._dense_dem, self._offshore_dem], method='first')
+            # method='first' or 'last'; use method='first' as `DenseDemFromFiles.dense_dem` clipped to extents
+            combined_dem = rioxarray.merge.merge_datasets([self.dense_dem, self._offshore_dem], method='first')
         elif self._offshore_dem is None:
-            # method='first' or 'last'; use method='first' as `DenseDemFromFiles._dense_dem` clipped to extents
-            combined_dem = rioxarray.merge.merge_arrays([self._river_dem, self._dense_dem], method='first')
+            # method='first' or 'last'; use method='first' as `DenseDemFromFiles.dense_dem` clipped to extents
+            combined_dem = rioxarray.merge.merge_datasets([self._river_dem, self.dense_dem], method='first')
         else:
-            combined_dem = rioxarray.merge.merge_arrays([self._river_dem, self._dense_dem,
+            combined_dem = rioxarray.merge.merge_datasets([self._river_dem, self.dense_dem,
                                                          self._offshore_dem], method='first')
 
         return combined_dem
@@ -232,7 +230,7 @@ class DenseDem(abc.ABC):
             f" the catchment resolution of {self.catchment_geometry.resolution}"
 
         offshore_dense_data_edge = self.catchment_geometry.offshore_dense_data_edge(self._extents)
-        offshore_edge_dem = self._dense_dem.rio.clip(offshore_dense_data_edge.geometry)
+        offshore_edge_dem = self.dense_dem.rio.clip(offshore_dense_data_edge.geometry)
 
         # If the sampling resolution is coaser than the catchment_geometry resolution resample the DEM
         if resolution > self.catchment_geometry.resolution:
@@ -242,7 +240,7 @@ class DenseDem(abc.ABC):
             offshore_edge_dem = offshore_edge_dem.rio.clip(offshore_dense_data_edge.geometry)  # Reclip to inbounds
 
         offshore_grid_x, offshore_grid_y = numpy.meshgrid(offshore_edge_dem.x, offshore_edge_dem.y)
-        offshore_flat_z = offshore_edge_dem.data[0].flatten()
+        offshore_flat_z = offshore_edge_dem.z.data.flatten()
         offshore_mask_z = ~numpy.isnan(offshore_flat_z)
 
         offshore_edge = numpy.empty([offshore_mask_z.sum().sum()],
@@ -277,12 +275,12 @@ class DenseDem(abc.ABC):
 
         # Setup the empty offshore area ready for interpolation
         offshore_no_dense_data = self.catchment_geometry.offshore_no_dense_data(self._extents)
-        self._offshore_dem = self._dense_dem.rio.clip(self.catchment_geometry.offshore.geometry)
-        self._offshore_dem.data[0] = 0  # set all to zero then clip out dense region where we don't need to interpolate
+        self._offshore_dem = self.dense_dem.rio.clip(self.catchment_geometry.offshore.geometry)
+        self._offshore_dem.z.data[:] = 0  # set all zero then clip out dense region where we don't need to interpolate
         self._offshore_dem = self._offshore_dem.rio.clip(offshore_no_dense_data.geometry)
 
         grid_x, grid_y = numpy.meshgrid(self._offshore_dem.x, self._offshore_dem.y)
-        flat_z = self._offshore_dem.data[0].flatten()
+        flat_z = self._offshore_dem.z.data.flatten()
         mask_z = ~numpy.isnan(flat_z)
 
         flat_x_masked = grid_x.flatten()[mask_z]
@@ -299,7 +297,7 @@ class DenseDem(abc.ABC):
             flat_z_masked[start_index:end_index] = rbf_function(flat_x_masked[start_index:end_index],
                                                                 flat_y_masked[start_index:end_index])
         flat_z[mask_z] = flat_z_masked
-        self._offshore_dem.data[0] = flat_z.reshape(self._offshore_dem.data[0].shape)
+        self._offshore_dem.z.data = flat_z.reshape(self._offshore_dem.z.data.shape)
 
         # Ensure the DEM will be recalculated to include the interpolated offshore region
         self._dem = None
@@ -398,15 +396,16 @@ class DenseDemFromFiles(DenseDem):
         extents = geopandas.read_file(pathlib.Path(extents_path))
 
         # Read in the dense DEM raster - and free up file by performing a deep copy.
-        with rioxarray.rioxarray.open_rasterio(pathlib.Path(dense_dem_path), masked=True) as dense_dem:
+        with rioxarray.rioxarray.open_rasterio(pathlib.Path(dense_dem_path),
+                                               masked=True, parse_coordinates=True) as dense_dem:
             dense_dem.load()
         dense_dem = dense_dem.copy(deep=True)  # Deep copy is required to ensure the opened file is properly unlocked
-        dense_dem.rio.set_crs(catchment_geometry.crs['horizontal'])
+        dense_dem.rio.write_crs(catchment_geometry.crs['horizontal'])
+        dense_dem.z.rio.write_crs(catchment_geometry.crs['horizontal'])
+        dense_dem.z.rio.write_nodata(numpy.nan, encoded=True, inplace=True)
 
         # Ensure all values outside the exents are nan as that defines the dense extents
-        dense_dem_inside_extents = dense_dem.rio.clip(extents.geometry)
-        dense_dem.data[0] = numpy.nan
-        dense_dem = rioxarray.merge.merge_arrays([dense_dem, dense_dem_inside_extents], method='first')
+        dense_dem = dense_dem.rio.clip(extents.geometry, drop=True)
 
         # Setup the DenseDem class
         super(DenseDemFromFiles, self).__init__(catchment_geometry=catchment_geometry, dense_dem=dense_dem,
@@ -505,7 +504,7 @@ class DenseDemFromTiles(DenseDem):
         warnings. """
 
         dense_extents = [shapely.geometry.shape(polygon[0]) for polygon in
-                         rasterio.features.shapes(numpy.uint8(numpy.isnan(self._dense_dem.data) == False))
+                         rasterio.features.shapes(numpy.uint8(numpy.isnan(self.dense_dem.z.data) == False))
                          if polygon[1] == 1.0]
         dense_extents = shapely.ops.unary_union(dense_extents)
 
@@ -521,7 +520,7 @@ class DenseDemFromTiles(DenseDem):
                                                crs=self.catchment_geometry.crs['horizontal'])
 
         # Apply a transform so in the same space as the dense DEM - buffer(0) to reduce self intersection warnings
-        dense_dem_affine = self._dense_dem.rio.transform()
+        dense_dem_affine = self.dense_dem.z.rio.transform()
         dense_extents = dense_extents.affine_transform([dense_dem_affine.a, dense_dem_affine.b,
                                                         dense_dem_affine.d, dense_dem_affine.e,
                                                         dense_dem_affine.xoff, dense_dem_affine.yoff]).buffer(0)
@@ -624,7 +623,7 @@ class DenseDemFromTiles(DenseDem):
                                                             chunk_size=chunk_size)
 
         # Set any values outside the region_to_rasterise to NaN
-        self._dense_dem = self._dense_dem.rio.clip(region_to_rasterise.geometry, drop=False)
+        self._dense_dem = self.dense_dem.rio.clip(region_to_rasterise.geometry, drop=False)
 
         # Create a polygon defining the region where there are dense DEM values
         self._extents = self._calculate_dense_extents()
@@ -677,14 +676,21 @@ class DenseDemFromTiles(DenseDem):
                                             elevation_range=self.elevation_range),
                     shape=(chunk_size, chunk_size), dtype=numpy.float32))
             delayed_chunked_matrix.append(delayed_chunked_x)
-        chunked_dem = xarray.DataArray(dask.array.block([delayed_chunked_matrix]),
-                                       coords={'band': [1], 'y': numpy.concatenate(chunked_dim_y),
-                                               'x': numpy.concatenate(chunked_dim_x)},
-                                       dims=['band', 'y', 'x'],
-                                       attrs={'scale_factor': 1.0, 'add_offset': 0.0, 'long_name': 'idw'})
+            elevation = dask.array.block(delayed_chunked_matrix)
+        chunked_dem = xarray.Dataset(
+            data_vars=dict(z=(["y", "x"], elevation,
+                              {"units": "m", "long_name": "ground elevation",
+                               "vertical_datum": f"EPSG:{self.catchment_geometry.crs['vertical']}"})),
+            coords=dict(x=(["x"], numpy.concatenate(chunked_dim_x)),
+                        y=(["y"], numpy.concatenate(chunked_dim_y))),
+            attrs={"title": "GeoFabrics representing elevation and roughness",
+                   "source": "GeoFabrics version",
+                   "description": "GeoFabrics:xx_processor_class resolution xx",
+                   "geofabrics_instructions": "dumped instruction file"})
         chunked_dem.rio.write_crs(self.catchment_geometry.crs['horizontal'], inplace=True)
-        chunked_dem.name = 'z'
-        chunked_dem = chunked_dem.rio.write_nodata(numpy.nan)
+        chunked_dem.z.rio.write_crs(self.catchment_geometry.crs['horizontal'], inplace=True)
+        chunked_dem.rio.write_transform(inplace=True)
+        chunked_dem.z.rio.write_nodata(numpy.nan, encoded=True, inplace=True)
         logging.info("Computing chunks")
         chunked_dem = chunked_dem.compute()
 
@@ -713,14 +719,22 @@ class DenseDemFromTiles(DenseDem):
 
         raster_values = self._rasterise_tile(dim_x=dim_x, dim_y=dim_y, tile_points=tile_array,
                                              lidar_classifications_to_keep=lidar_classifications_to_keep)
+        elevation = raster_values.reshape((len(dim_y), len(dim_x)))
 
         # Create xarray
-        dense_dem = xarray.DataArray(raster_values.reshape((1, len(dim_y), len(dim_x))),
-                                     coords={'band': [1], 'y': dim_y, 'x': dim_x}, dims=['band', 'y', 'x'],
-                                     attrs={'scale_factor': 1.0, 'add_offset': 0.0, 'long_name': 'idw'})
+        dense_dem = xarray.Dataset(
+            data_vars=dict(z=(["y", "x"], elevation,
+                              {"units": "m", "long_name": "ground elevation",
+                               "vertical_datum": f"EPSG:{self.catchment_geometry.crs['vertical']}"})),
+            coords=dict(x=(["x"], dim_x), y=(["y"], dim_y)),
+            attrs={"title": "GeoFabrics representing elevation and roughness",
+                   "source": "GeoFabrics version",
+                   "description": "GeoFabrics:xx_processor_class resolution xx",
+                   "geofabrics_instructions": "dumped instruction file"})
         dense_dem.rio.write_crs(self.catchment_geometry.crs['horizontal'], inplace=True)
-        dense_dem.name = 'z'
-        dense_dem = dense_dem.rio.write_nodata(numpy.nan)
+        dense_dem.z.rio.write_crs(self.catchment_geometry.crs['horizontal'], inplace=True)
+        dense_dem.rio.write_transform(inplace=True)
+        dense_dem.z.rio.write_nodata(numpy.nan, encoded=True, inplace=True)
 
         return dense_dem
 
@@ -728,7 +742,7 @@ class DenseDemFromTiles(DenseDem):
         """ Update gaps in dense DEM from areas with no LiDAR with the reference DEM. """
 
         # Areas not covered by LiDAR values
-        mask = numpy.isnan(self._dense_dem.data[0])
+        mask = numpy.isnan(self.dense_dem.z.data)
 
         if len(tile_points) == 0:
             logging.warning("DenseDem.add_tile: the latest reference DEM has no data and is being ignored.")
@@ -738,7 +752,7 @@ class DenseDemFromTiles(DenseDem):
             return
 
         # Get the indicies overwhich to perform IDW
-        grid_x, grid_y = numpy.meshgrid(self._dense_dem.x, self._dense_dem.y)
+        grid_x, grid_y = numpy.meshgrid(self.dense_dem.x, self.dense_dem.y)
 
         xy_out = numpy.empty((mask.sum(), 2))
         xy_out[:, 0] = grid_x[mask]
@@ -748,7 +762,7 @@ class DenseDemFromTiles(DenseDem):
         z_idw = rasterise_with_idw(point_cloud=tile_points, xy_out=xy_out, idw_radius=self.idw_radius,
                                    idw_power=self.idw_power,
                                    raster_type=self.raster_type, smoothing=0, eps=0, leaf_size=10)
-        self._dense_dem.data[0, mask] = z_idw
+        self.dense_dem.z.data[mask] = z_idw
 
         # Update the dense DEM extents
         self._extents = self._calculate_dense_extents()

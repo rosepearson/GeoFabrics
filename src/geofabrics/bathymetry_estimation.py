@@ -675,12 +675,12 @@ class ChannelCharacteristics:
 
             # Sample the vegetation elevations at along the transect
             distances, indices = veg_tree.query(xy_points)
-            elevations = self.veg_dem.data.flatten()[indices]
+            elevations = self.veg_dem.z.data.flatten()[indices]
             cross_section_elevations['veg_elevations'].append(elevations)
 
             # Sample the ground elevations at along the transect
             distances, indices = gnd_tree.query(xy_points)
-            elevations = self.gnd_dem.data.flatten()[indices]
+            elevations = self.gnd_dem.z.data.flatten()[indices]
             cross_section_elevations['gnd_elevations'].append(elevations)
 
             # Find the min elevation along the middle of each cross section
