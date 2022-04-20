@@ -157,7 +157,7 @@ class DenseDem(abc.ABC):
 
     CACHE_SIZE = 10000  # The max number of points to create the offshore RBF and to evaluate in the RBF at one time
     SOURCE_CLASSIFICATION = {"LiDAR": 1, "ocean bathymetry": 2, "river bathymetry": 3, "reference DEM": 4,
-                             "interpolated": 0}
+                             "interpolated": 0, "no data": -1}
 
     def __init__(self, catchment_geometry: geometry.CatchmentGeometry, extents: geopandas.GeoDataFrame,
                  dense_dem: xarray.core.dataarray.DataArray, interpolation_method: str):
@@ -217,6 +217,7 @@ class DenseDem(abc.ABC):
 
             # Ensure valid name and increasing dimension indexing for the dem
             if self.interpolation_method is not None:  # methods are 'nearest', 'linear' and 'cubic'
+                self._dem.source_class.data[numpy.isnan(self._dem.z.data)] = self.SOURCE_CLASSIFICATION['interpolated']
                 self._dem['z'] = self._dem.z.rio.interpolate_na(method=self.interpolation_method)
             self._dem = self._dem.rio.clip(self.catchment_geometry.catchment.geometry)
             self._dem = self._ensure_positive_indexing(self._dem)  # Some programs require positively increasing indices
@@ -268,8 +269,10 @@ class DenseDem(abc.ABC):
 
         dem.rio.write_crs(crs_dict['horizontal'], inplace=True)
         dem.z.rio.write_crs(crs_dict['horizontal'], inplace=True)
+        dem.source_class.rio.write_crs(crs_dict['horizontal'], inplace=True)
         dem.rio.write_transform(inplace=True)
         dem.z.rio.write_nodata(numpy.nan, encoded=True, inplace=True)
+        dem.source_class.rio.write_nodata(numpy.nan, encoded=True, inplace=True)
 
     def _sample_offshore_edge(self, resolution) -> numpy.ndarray:
         """ Return the pixel values of the offshore edge to be used for offshore interpolation """
@@ -325,7 +328,10 @@ class DenseDem(abc.ABC):
         # Setup the empty offshore area ready for interpolation
         offshore_no_dense_data = self.catchment_geometry.offshore_no_dense_data(self._extents)
         self._offshore_dem = self.dense_dem.rio.clip(self.catchment_geometry.offshore.geometry)
-        self._offshore_dem.z.data[:] = 0  # set all zero then clip out dense region where we don't need to interpolate
+
+        # set all zero (or to ocean bathy classification) then clip out dense region where we don't need to interpolate
+        self._offshore_dem.z.data[:] = 0
+        self._offshore_dem.source_class.data[:] = self.SOURCE_CLASSIFICATION['ocean bathymetry']
         self._offshore_dem = self._offshore_dem.rio.clip(offshore_no_dense_data.geometry)
 
         grid_x, grid_y = numpy.meshgrid(self._offshore_dem.x, self._offshore_dem.y)
@@ -395,7 +401,9 @@ class DenseDem(abc.ABC):
 
         # Setup the empty river area ready for interpolation
         self._river_dem = combined_dem.rio.clip(river_bathymetry.polygon.geometry)
-        self._river_dem.data[0] = 0  # set all to zero then clip out dense region where we don't need to interpolate
+        # set all zero (or to ocean bathy classification) then clip out dense region where we don't need to interpolate
+        self._river_dem.data[0] = 0
+        self._river_dem.source_class.data[:] = self.SOURCE_CLASSIFICATION['river bathymetry']
         self._river_dem = self._river_dem.rio.clip(river_bathymetry.polygon.geometry)
 
         grid_x, grid_y = numpy.meshgrid(self._river_dem.x, self._river_dem.y)
@@ -787,7 +795,7 @@ class DenseDemFromTiles(DenseDem):
         """
 
         # Create source variable - assume all values are defined from LiDAR
-        source_class = numpy.zeros_like(z)
+        source_class = numpy.ones_like(z) * self.SOURCE_CLASSIFICATION['no data']
         source_class[numpy.logical_not(numpy.isnan(z))] = self.SOURCE_CLASSIFICATION['LiDAR']
         dem = xarray.Dataset(
             data_vars=dict(z=(["y", "x"], z,
@@ -832,6 +840,7 @@ class DenseDemFromTiles(DenseDem):
                                    idw_power=self.idw_power,
                                    raster_type=self.raster_type, smoothing=0, eps=0, leaf_size=10)
         self.dense_dem.z.data[mask] = z_idw
+        self.dense_dem.source_class.data[mask] = self.SOURCE_CLASSIFICATION['reference DEM']
 
         # Update the dense DEM extents
         self._extents = self._calculate_dense_extents()
