@@ -16,6 +16,7 @@ import rioxarray
 import pytest
 import sys
 import logging
+import gc
 
 from src.geofabrics import processor
 
@@ -155,11 +156,17 @@ class ProcessorRemoteTilesWellingtonElevationFilterTest(unittest.TestCase):
             test_dem.load()
 
         # compare the generated and benchmark DEMs
-        diff_array = test_dem.data[~numpy.isnan(test_dem.data)]-benchmark_dem.data[~numpy.isnan(benchmark_dem.data)]
+        diff_array = test_dem.z.data[~numpy.isnan(test_dem.z.data)] \
+            - benchmark_dem.z.data[~numpy.isnan(benchmark_dem.z.data)]
         logging.info(f"DEM array diff is: {diff_array[diff_array != 0]}")
-        numpy.testing.assert_array_almost_equal(test_dem.data, benchmark_dem.data,
+        numpy.testing.assert_array_almost_equal(test_dem.z.data, benchmark_dem.z.data,
                                                 err_msg="The generated result_dem has different data from the " +
                                                 "benchmark_dem")
+
+        # explicitly free memory as xarray seems to be hanging onto memory
+        del test_dem
+        del benchmark_dem
+        gc.collect()
 
     @pytest.mark.skipif(sys.platform != 'linux', reason="Linux test - this is less strict")
     def test_result_dem_linux(self):
@@ -178,7 +185,8 @@ class ProcessorRemoteTilesWellingtonElevationFilterTest(unittest.TestCase):
             test_dem.load()
 
         # compare the generated and benchmark DEMs
-        diff_array = test_dem.data[~numpy.isnan(test_dem.data)]-benchmark_dem.data[~numpy.isnan(benchmark_dem.data)]
+        diff_array = test_dem.z.data[~numpy.isnan(test_dem.z.data)] \
+            - benchmark_dem.z.data[~numpy.isnan(benchmark_dem.z.data)]
         logging.info(f"DEM array diff is: {diff_array[diff_array != 0]}")
 
         threshold = 10e-6
@@ -188,6 +196,11 @@ class ProcessorRemoteTilesWellingtonElevationFilterTest(unittest.TestCase):
                         + " DEM values differ by more than {threshold} on Linux test run: " +
                         f"{diff_array[numpy.abs(diff_array) > threshold]} or " +
                         f"{len(diff_array[numpy.abs(diff_array) > threshold]) / len(diff_array.flatten()) * 100}%")
+
+        # explicitly free memory as xarray seems to be hanging onto memory
+        del test_dem
+        del benchmark_dem
+        gc.collect()
 
 
 if __name__ == '__main__':

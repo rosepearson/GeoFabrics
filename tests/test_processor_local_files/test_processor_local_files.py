@@ -170,7 +170,7 @@ class ProcessorLocalFilesTest(unittest.TestCase):
             test_dem = test_dem.squeeze('band', drop=True)
 
         # Compare DEMs - load both from file as rioxarray.rioxarray.open_rasterio ignores index order
-        diff_array = test_dem.z.data-benchmark_dem.z.data
+        diff_array = test_dem.z.data - benchmark_dem.z.data
         logging.info(f"DEM array diff is: {diff_array[diff_array != 0]}")
         numpy.testing.assert_array_almost_equal(test_dem.z.data, benchmark_dem.z.data,
                                                 err_msg="The generated result_dem has different data from the " +
