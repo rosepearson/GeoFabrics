@@ -22,6 +22,7 @@ import logging
 import scipy.interpolate
 import scipy.spatial
 from . import geometry
+import gc
 
 
 class ReferenceDem:
@@ -40,6 +41,7 @@ class ReferenceDem:
         self.set_foreshore = set_foreshore
         with rioxarray.rioxarray.open_rasterio(dem_file, masked=True) as self._dem:
             self._dem.load()
+        self._dem = self._dem.squeeze('band', drop=True)  # Drop the band coordinate added by rasterio.open()
 
         self._extents = None
         self._points = None
@@ -71,7 +73,7 @@ class ReferenceDem:
         if self.catchment_geometry.land.area.sum() > 0:
             land_dem = self._dem.rio.clip(self.catchment_geometry.land.geometry)
             # get reference DEM points on land
-            land_flat_z = land_dem.data[0].flatten()
+            land_flat_z = land_dem.data.flatten()
             land_mask_z = ~numpy.isnan(land_flat_z)
             land_grid_x, land_grid_y = numpy.meshgrid(land_dem.x, land_dem.y)
 
@@ -148,6 +150,8 @@ class DenseDem(abc.ABC):
     """
 
     CACHE_SIZE = 10000  # The max number of points to create the offshore RBF and to evaluate in the RBF at one time
+    SOURCE_CLASSIFICATION = {"LiDAR": 1, "ocean bathymetry": 2, "river bathymetry": 3, "reference DEM": 4,
+                             "interpolated": 0}
 
     def __init__(self, catchment_geometry: geometry.CatchmentGeometry, extents: geopandas.GeoDataFrame,
                  dense_dem: xarray.core.dataarray.DataArray, interpolation_method: str):
@@ -186,8 +190,8 @@ class DenseDem(abc.ABC):
             self._dem = self.combine_dem_parts()
 
             # Ensure valid name and increasing dimension indexing for the dem
-            if self.interpolation_method is not None:
-                self._dem = self._dem.rio.interpolate_na(method=self.interpolation_method)  # methods are 'nearest', 'linear' and 'cubic'
+            if self.interpolation_method is not None:  # methods are 'nearest', 'linear' and 'cubic'
+                self._dem['z'] = self._dem.z.rio.interpolate_na(method=self.interpolation_method)
             self._dem = self._dem.rio.clip(self.catchment_geometry.catchment.geometry)
             self._dem = self._ensure_positive_indexing(self._dem)  # Some programs require positively increasing indices
         return self._dem
@@ -205,7 +209,7 @@ class DenseDem(abc.ABC):
             combined_dem = rioxarray.merge.merge_datasets([self._river_dem, self.dense_dem], method='first')
         else:
             combined_dem = rioxarray.merge.merge_datasets([self._river_dem, self.dense_dem,
-                                                         self._offshore_dem], method='first')
+                                                          self._offshore_dem], method='first')
 
         return combined_dem
 
@@ -415,11 +419,14 @@ class DenseDemFromFiles(DenseDem):
         extents = geopandas.read_file(pathlib.Path(extents_path))
 
         # Read in the dense DEM raster - and free up file by performing a deep copy.
-        with rioxarray.rioxarray.open_rasterio(pathlib.Path(dense_dem_path),
-                                               masked=True, parse_coordinates=True) as dense_dem:
-            dense_dem.load()
-        dense_dem = dense_dem.copy(deep=True)  # Deep copy is required to ensure the opened file is properly unlocked
-        self._write_netcdf_conventions_in_place(dense_dem, self.catchment_geometry.crs)
+        dem = rioxarray.rioxarray.open_rasterio(pathlib.Path(dense_dem_path),  masked=True, parse_coordinates=True)
+        dem.load()
+        # Deep copy to ensure the opened file is properly unlocked; Squeeze as rasterio.open() adds band coordinate
+        dense_dem = dem.copy(deep=True).squeeze('band', drop=True)
+        dem.close()
+        del dem
+        gc.collect()
+        self._write_netcdf_conventions_in_place(dense_dem, catchment_geometry.crs)
 
         # Ensure all values outside the exents are nan as that defines the dense extents
         dense_dem = dense_dem.rio.clip(extents.geometry, drop=True)
@@ -522,7 +529,7 @@ class DenseDemFromTiles(DenseDem):
         warnings. """
 
         dense_extents = [shapely.geometry.shape(polygon[0]) for polygon in
-                         rasterio.features.shapes(numpy.uint8(numpy.isnan(self.dense_dem.z.data) == False))
+                         rasterio.features.shapes(numpy.uint8(numpy.logical_not(numpy.isnan(self.dense_dem.z.data))))
                          if polygon[1] == 1.0]
         dense_extents = shapely.ops.unary_union(dense_extents)
 
@@ -756,10 +763,16 @@ class DenseDemFromTiles(DenseDem):
                 Elevations over the x, and y coordiantes.
         """
 
+        # Create source variable - assume all values are defined from LiDAR
+        source_class = numpy.zeros_like(z)
+        source_class[numpy.logical_not(numpy.isnan(z))] = self.SOURCE_CLASSIFICATION['LiDAR']
         dem = xarray.Dataset(
             data_vars=dict(z=(["y", "x"], z,
                               {"units": "m", "long_name": "ground elevation",
-                               "vertical_datum": f"EPSG:{self.catchment_geometry.crs['vertical']}"})),
+                               "vertical_datum": f"EPSG:{self.catchment_geometry.crs['vertical']}"}),
+                           source_class=(["y", "x"], source_class,
+                                         {"units": "", "long_name": "source data classification",
+                                          "classifications": f"{self.SOURCE_CLASSIFICATION}"})),
             coords=dict(x=(["x"], x), y=(["y"], y)),
             attrs={"title": "Geofabric representing elevation and roughness",
                    "source": f"{metadata['library_name']} version {metadata['library_version']}",
