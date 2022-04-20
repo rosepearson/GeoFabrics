@@ -169,12 +169,19 @@ class ProcessorLocalFilesTest(unittest.TestCase):
                                                masked=True) as test_dem:
             test_dem = test_dem.squeeze('band', drop=True)
 
-        # Compare DEMs - load both from file as rioxarray.rioxarray.open_rasterio ignores index order
+        # Compare DEMs z - load both from file as rioxarray.rioxarray.open_rasterio ignores index order
         diff_array = test_dem.z.data - benchmark_dem.z.data
-        logging.info(f"DEM array diff is: {diff_array[diff_array != 0]}")
+        logging.info(f"DEM z array diff is: {diff_array[diff_array != 0]}")
         numpy.testing.assert_array_almost_equal(test_dem.z.data, benchmark_dem.z.data,
-                                                err_msg="The generated result_dem has different data from the " +
+                                                err_msg="The generated result_dem z has different data from the " +
                                                 "benchmark_dem")
+
+        # Compare DEMs source classification
+        diff_array = test_dem.source_class.data - benchmark_dem.source_class.data
+        logging.info(f"DEM z array diff is: {diff_array[diff_array != 0]}")
+        numpy.testing.assert_array_almost_equal(test_dem.source_class.data, benchmark_dem.source_class.data,
+                                                err_msg="The generated result_dem source_class has different data " +
+                                                "from the benchmark_dem")
 
         # explicitly free memory as xarray seems to be hanging onto memory
         del test_dem

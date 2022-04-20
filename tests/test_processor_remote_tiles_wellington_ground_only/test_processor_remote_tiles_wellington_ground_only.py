@@ -157,7 +157,8 @@ class ProcessorRemoteTilesWellingtonTest(unittest.TestCase):
             test_dem.load()
 
         # compare the generated and benchmark DEMs
-        diff_array = test_dem.z.data[~numpy.isnan(test_dem.z.data)]-benchmark_dem.z.data[~numpy.isnan(benchmark_dem.z.data)]
+        diff_array = test_dem.z.data[~numpy.isnan(test_dem.z.data)] \
+            - benchmark_dem.z.data[~numpy.isnan(benchmark_dem.z.data)]
         logging.info(f"DEM array diff is: {diff_array[diff_array != 0]}")
         numpy.testing.assert_array_almost_equal(test_dem.z.data, benchmark_dem.z.data,
                                                 err_msg="The generated result_dem has different data from the " +
