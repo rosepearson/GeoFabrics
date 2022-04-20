@@ -22,7 +22,6 @@ import logging
 import scipy.interpolate
 import scipy.spatial
 from . import geometry
-import gc
 
 
 class ReferenceDem:
@@ -39,14 +38,21 @@ class ReferenceDem:
 
         self.catchment_geometry = catchment_geometry
         self.set_foreshore = set_foreshore
-        with rioxarray.rioxarray.open_rasterio(dem_file, masked=True) as self._dem:
-            self._dem.load()
-        self._dem = self._dem.squeeze('band', drop=True)  # Drop the band coordinate added by rasterio.open()
+        # Drop the band coordinate added by rasterio.open()
+        self._dem = rioxarray.rioxarray.open_rasterio(dem_file, masked=True).squeeze('band', drop=True)
 
         self._extents = None
         self._points = None
 
         self._set_up(exclusion_extent)
+
+    def __del__(self):
+        """ Ensure the memory associated with netCDF files is properly freed. """
+
+        # The overall DEM
+        if self._dem is not None:
+            self._dem.close()
+            del self._dem
 
     def _set_up(self, exclusion_extent):
         """ Set DEM CRS and trim the DEM to size """
@@ -167,6 +173,26 @@ class DenseDem(abc.ABC):
         self._river_dem = None
 
         self._dem = None
+
+    def __del__(self):
+        """ Ensure the memory associated with netCDF files is properly freed. """
+
+        # The dense DEM - may be opened from memory
+        if self._dense_dem is not None:
+            self._dense_dem.close()
+            del self._dense_dem
+        # The offshore DEM
+        if self._offshore_dem is not None:
+            self._offshore_dem.close()
+            del self._offshore_dem
+        # The river DEM
+        if self._river_dem is not None:
+            self._river_dem.close()
+            del self._river_dem
+        # The overall DEM
+        if self._dem is not None:
+            self._dem.close()
+            del self._dem
 
     @property
     def extents(self):
@@ -419,13 +445,10 @@ class DenseDemFromFiles(DenseDem):
         extents = geopandas.read_file(pathlib.Path(extents_path))
 
         # Read in the dense DEM raster - and free up file by performing a deep copy.
-        dem = rioxarray.rioxarray.open_rasterio(pathlib.Path(dense_dem_path),  masked=True, parse_coordinates=True)
-        dem.load()
+        dense_dem = rioxarray.rioxarray.open_rasterio(pathlib.Path(dense_dem_path), masked=True, parse_coordinates=True)
+
         # Deep copy to ensure the opened file is properly unlocked; Squeeze as rasterio.open() adds band coordinate
-        dense_dem = dem.copy(deep=True).squeeze('band', drop=True)
-        dem.close()
-        del dem
-        gc.collect()
+        dense_dem = dense_dem.squeeze('band', drop=True)
         self._write_netcdf_conventions_in_place(dense_dem, catchment_geometry.crs)
 
         # Ensure all values outside the exents are nan as that defines the dense extents

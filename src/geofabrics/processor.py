@@ -747,10 +747,8 @@ class RiverBathymetryGenerator(BaseProcessor):
             instruction_paths.pop('dense_dem_extents')
             instruction_paths.pop('result_dem')
         else:
-            print("Loading ground DEM.")
-            with rioxarray.rioxarray.open_rasterio(gnd_file, masked=True) as dem:
-                dem.load()
-            gnd_dem = dem.copy(deep=True).squeeze('band', drop=True)  # drop band added by rasterio.open()
+            print("Loading ground DEM.")  # drop band added by rasterio.open()
+            gnd_dem = rioxarray.rioxarray.open_rasterio(gnd_file, masked=True).squeeze('band', drop=True)
 
         # Get the vegetation DEM
         if not veg_file.is_file():
@@ -768,10 +766,8 @@ class RiverBathymetryGenerator(BaseProcessor):
             instruction_paths.pop('dense_dem_extents')
             instruction_paths.pop('result_dem')
         else:
-            print("Loading the vegetation DEM.")
-            with rioxarray.rioxarray.open_rasterio(veg_file, masked=True) as dem:
-                dem.load()
-            veg_dem = dem.copy(deep=True).squeeze('band', drop=True)  # drop band added by rasterio.open()
+            print("Loading the vegetation DEM.")  # drop band added by rasterio.open()
+            veg_dem = dem.rioxarray.rioxarray.open_rasterio(veg_file, masked=True).squeeze('band', drop=True)
 
         # Replace bathymetry contour information if it exists
         if bathy_data_paths is not None:

@@ -172,6 +172,8 @@ class ProcessorLocalFilesOffshoreTest(unittest.TestCase):
         self.instructions['instructions']['data_paths'].pop('final_result_dem')
         runner = processor.BathymetryDemGenerator(self.instructions)
         runner.run()
+        del runner
+        gc.collect()
 
         # Load in benchmark DEM
         file_path = self.cache_dir / self.instructions['instructions']['data_paths']['benchmark_dem']

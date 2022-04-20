@@ -182,6 +182,5 @@ class ProcessorLocalFilesTest(unittest.TestCase):
         gc.collect()
 
 
-
 if __name__ == '__main__':
     unittest.main()
