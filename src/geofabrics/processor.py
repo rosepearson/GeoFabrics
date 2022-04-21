@@ -15,6 +15,7 @@ import distributed
 import rioxarray
 import pandas
 import geopandas
+import datetime
 from . import geometry
 from . import bathymetry_estimation
 from . import version
@@ -455,6 +456,7 @@ class LidarDemGenerator(BathymetryDemGenerator):
         metadata = {"library_name": "GeoFabrics",
                     "library_version": version.__version__,
                     "class_name": self.__class__.__name__,
+                    "utc_time": datetime.datetime.now(datetime.timezone.utc).isoformat(),
                     "instructions": self.instructions}
         return metadata
 

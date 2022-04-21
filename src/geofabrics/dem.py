@@ -809,6 +809,8 @@ class DenseDemFromTiles(DenseDem):
                    "source": f"{metadata['library_name']} version {metadata['library_version']}",
                    "description": f"{metadata['library_name']}:{metadata['class_name']} resolution" +
                                   f" {self.catchment_geometry.resolution}",
+                   "history": f"{metadata['utc_time']}: {metadata['library_name']}:{metadata['class_name']} " +
+                              f"resolution {self.catchment_geometry.resolution};",
                    "geofabrics_instructions": f"{metadata['instructions']}"})
 
         # ensure the expected CF conventions are followed
