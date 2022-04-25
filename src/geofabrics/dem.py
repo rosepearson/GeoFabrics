@@ -912,6 +912,16 @@ def rasterise_points(point_cloud: numpy.ndarray, xy_out, options: dict,
             elif options['method'] == 'idw':
                 z_out[i] = calculate_idw(near_indicies=near_indicies, point=point,
                                          tree=tree, point_cloud=point_cloud)
+            elif options['method'] == 'min':
+                z_out[i] = numpy.min(point_cloud['Z'][near_indicies])
+            elif options['method'] == 'max':
+                z_out[i] = numpy.max(point_cloud['Z'][near_indicies])
+            elif options['method'] == 'std':
+                z_out[i] = numpy.std(point_cloud['Z'][near_indicies])
+            elif options['method'] == 'count':
+                z_out[i] = numpy.len(point_cloud['Z'][near_indicies])
+            else:
+                assert False, f"An invalid lidar_interpolation_method of '{options['method']}' was provided"
 
     return z_out
 
