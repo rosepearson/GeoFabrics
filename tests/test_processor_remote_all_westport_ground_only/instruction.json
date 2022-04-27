@@ -15,7 +15,7 @@
 		},
 		"data_paths": {
 			"local_cache": "tests/test_processor_remote_all_westport_ground_only/data",
-			"catchment_boundary": "catchment.zip",
+			"catchment_boundary": "catchment.geojson",
 			"result_dem": "test_dem.nc",
 			"benchmark_dem": "benchmark_dem.nc"
 		},

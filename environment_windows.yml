@@ -26,5 +26,6 @@ dependencies:
   - pytest
   - pip:
     - git+https://github.com/niwa/geoapis
+    - netcdf4
 
 prefix: C:\ProgramData\Anaconda3\envs\geofabrics

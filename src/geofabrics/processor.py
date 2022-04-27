@@ -15,8 +15,10 @@ import distributed
 import rioxarray
 import pandas
 import geopandas
+import datetime
 from . import geometry
 from . import bathymetry_estimation
+from . import version
 import geoapis.lidar
 import geoapis.vector
 from . import dem
@@ -90,7 +92,8 @@ class BaseProcessor(abc.ABC):
     def get_crs(self) -> dict:
         """ Return the CRS projection information (horiztonal and vertical) from the instruction file. Raise an error
         if 'output' is not in the instructions. If no 'crs' or 'horizontal' or 'vertical' values are specified then use
-        the default value for each one missing from the instructions."""
+        the default value for each one missing from the instructions. If the default is used it is added to the
+        instructions. """
 
         defaults = {'horizontal': 2193, 'vertical': 7839}
 
@@ -100,6 +103,7 @@ class BaseProcessor(abc.ABC):
         if 'crs' not in self.instructions['instructions']['output']:
             logging.warning("No output the coordinate system EPSG values specified. We will instead be using the " +
                             f"defaults: {defaults}.")
+            self.instructions['instructions']['output']['crs'] = defaults
             return defaults
         else:
             crs_instruction = self.instructions['instructions']['output']['crs']
@@ -110,27 +114,31 @@ class BaseProcessor(abc.ABC):
                 defaults['vertical']
             logging.info(f"The output the coordinate system EPSG values of {crs_dict} will be used. If these are not "
                          "as expected. Check both the 'horizontal' and 'vertical' values are specified.")
+            # Update the CRS just incase this includes any default values
+            self.instructions['instructions']['output']['crs'] = crs_dict
             return crs_dict
 
     def get_instruction_general(self, key: str):
         """ Return the general instruction from the instruction file or return the default value if not specified in
-        the instruction file. Raise an error if the key is not in the instructions and there is no default value. """
+        the instruction file. Raise an error if the key is not in the instructions and there is no default value. If the
+        default is used it is added to the instructions. """
 
         defaults = {'set_dem_shoreline': True,
                     'bathymetry_contours_z_label': None, 'drop_offshore_lidar': True,
                     'lidar_classifications_to_keep': [2], 'interpolation_method': None,
-                    'elevation_range': None}
+                    'elevation_range': None, 'lidar_interpolation_method': 'idw'}
 
         assert key in defaults or key in self.instructions['instructions']['general'], f"The key: {key} is missing " \
             + "from the general instructions, and does not have a default value"
         if 'general' in self.instructions['instructions'] and key in self.instructions['instructions']['general']:
             return self.instructions['instructions']['general'][key]
         else:
+            self.instructions['instructions']['general'][key] = defaults[key]
             return defaults[key]
 
     def get_processing_instructions(self, key: str):
         """ Return the processing instruction from the instruction file or return the default value if not specified in
-        the instruction file. """
+        the instruction file. If the default is used it is added to the instructions. """
 
         defaults = {'number_of_cores': 1, "chunk_size": None}
 
@@ -139,6 +147,9 @@ class BaseProcessor(abc.ABC):
         if 'processing' in self.instructions['instructions'] and key in self.instructions['instructions']['processing']:
             return self.instructions['instructions']['processing'][key]
         else:
+            if not 'processing' in self.instructions['instructions']:
+                self.instructions['instructions']['processing'] = {}
+            self.instructions['instructions']['processing'][key] = defaults[key]
             return defaults[key]
 
     def check_apis(self, key) -> bool:
@@ -413,7 +424,8 @@ class BathymetryDemGenerator(BaseProcessor):
                             catchment_dirs=catchment_dirs)
 
         # fill combined dem - save results
-        self.dense_dem.dem.to_netcdf(self.get_instruction_path('result_dem'))
+        self.dense_dem.dem.to_netcdf(self.get_instruction_path('result_dem'),
+                                     format='NETCDF4', engine='netcdf4')
 
 
 class LidarDemGenerator(BathymetryDemGenerator):
@@ -439,6 +451,15 @@ class LidarDemGenerator(BathymetryDemGenerator):
         self.reference_dem = None
         self.bathy_contours = None
 
+    def create_metadata(self) -> dict:
+        """ A clase to create metadata to be added as netCDF attributes. """
+        metadata = {"library_name": "GeoFabrics",
+                    "library_version": version.__version__,
+                    "class_name": self.__class__.__name__,
+                    "utc_time": datetime.datetime.now(datetime.timezone.utc).isoformat(),
+                    "instructions": self.instructions}
+        return metadata
+
     def run(self):
         """ This method executes the geofabrics generation pipeline to produce geofabric derivatives.
 
@@ -459,10 +480,6 @@ class LidarDemGenerator(BathymetryDemGenerator):
             f" Specficially land_dirs = {land_dirs}."
         self.catchment_geometry.land = land_dirs[0]
 
-        # Define PDAL/GDAL griding parameter values
-        idw_radius = self.catchment_geometry.resolution * numpy.sqrt(2)
-        idw_power = 2
-
         # Get LiDAR data file-list - this may involve downloading lidar files
         lidar_dataset_info = self.get_lidar_file_list('open_topography')
 
@@ -471,7 +488,7 @@ class LidarDemGenerator(BathymetryDemGenerator):
             catchment_geometry=self.catchment_geometry,
             drop_offshore_lidar=self.get_instruction_general('drop_offshore_lidar'),
             interpolation_method=self.get_instruction_general('interpolation_method'),
-            idw_power=idw_power, idw_radius=idw_radius,
+            lidar_interpolation_method=self.get_instruction_general('lidar_interpolation_method'),
             elevation_range=self.get_instruction_general('elevation_range'))
 
         # Setup Dask cluster and client
@@ -486,7 +503,8 @@ class LidarDemGenerator(BathymetryDemGenerator):
                 drop_offshore_lidar=self.get_instruction_general('drop_offshore_lidar'),
                 lidar_classifications_to_keep=self.get_instruction_general('lidar_classifications_to_keep'),
                 tile_index_file=lidar_dataset_info['tile_index_file'],
-                chunk_size=self.get_processing_instructions('chunk_size'))
+                chunk_size=self.get_processing_instructions('chunk_size'),
+                metadata=self.create_metadata())  # Note must be called after all others if it is to be complete
 
         # Load in reference DEM if any significant land/foreshore not covered by LiDAR
         if self.check_instruction_path('reference_dems'):
@@ -511,7 +529,8 @@ class LidarDemGenerator(BathymetryDemGenerator):
                                                  tile_extent=self.reference_dem.extents)
 
         # save dense DEM and extents
-        self.dense_dem.dense_dem.to_netcdf(self.get_instruction_path('dense_dem'))
+        self.dense_dem.dense_dem.to_netcdf(self.get_instruction_path('dense_dem'),
+                                           format='NETCDF4', engine='netcdf4')
         if self.dense_dem.extents is not None:
             self.dense_dem.extents.to_file(self.get_instruction_path('dense_dem_extents'))
         else:
@@ -522,7 +541,8 @@ class LidarDemGenerator(BathymetryDemGenerator):
                             catchment_dirs=catchment_dirs)
 
         # fill combined dem - save results
-        self.dense_dem.dem.to_netcdf(self.get_instruction_path('result_dem'))
+        self.dense_dem.dem.to_netcdf(self.get_instruction_path('result_dem'),
+                                     format='NETCDF4', engine='netcdf4')
 
 
 class RiverBathymetryGenerator(BaseProcessor):
@@ -725,10 +745,8 @@ class RiverBathymetryGenerator(BaseProcessor):
             instruction_paths.pop('dense_dem_extents')
             instruction_paths.pop('result_dem')
         else:
-            print("Loading ground DEM.")
-            with rioxarray.rioxarray.open_rasterio(gnd_file, masked=True) as dem:
-                dem.load()
-            gnd_dem = dem.copy(deep=True)
+            print("Loading ground DEM.")  # drop band added by rasterio.open()
+            gnd_dem = rioxarray.rioxarray.open_rasterio(gnd_file, masked=True).squeeze('band', drop=True)
 
         # Get the vegetation DEM
         if not veg_file.is_file():
@@ -746,10 +764,8 @@ class RiverBathymetryGenerator(BaseProcessor):
             instruction_paths.pop('dense_dem_extents')
             instruction_paths.pop('result_dem')
         else:
-            print("Loading the vegetation DEM.")
-            with rioxarray.rioxarray.open_rasterio(veg_file, masked=True) as dem:
-                dem.load()
-            veg_dem = dem.copy(deep=True)
+            print("Loading the vegetation DEM.")  # drop band added by rasterio.open()
+            veg_dem = dem.rioxarray.rioxarray.open_rasterio(veg_file, masked=True).squeeze('band', drop=True)
 
         # Replace bathymetry contour information if it exists
         if bathy_data_paths is not None:

@@ -16,6 +16,7 @@ import shapely
 import geopandas
 import pdal
 import logging
+import gc
 
 from src.geofabrics import processor
 
@@ -53,7 +54,7 @@ class ProcessorLocalFilesTest(unittest.TestCase):
         cls.tearDownClass()
 
         # Generate catchment data
-        catchment_dir = cls.cache_dir / "catchment_boundary"
+        catchment_file = cls.cache_dir / "catchment_boundary.geojson"
         x0 = 250
         y0 = -250
         x1 = 1250
@@ -61,12 +62,10 @@ class ProcessorLocalFilesTest(unittest.TestCase):
         catchment = shapely.geometry.Polygon([(x0, y0), (x1, y0), (x1, y1), (x0, y1)])
         catchment = geopandas.GeoSeries([catchment])
         catchment = catchment.set_crs(cls.instructions['instructions']['output']['crs']['horizontal'])
-        catchment.to_file(catchment_dir)
-        shutil.make_archive(base_name=catchment_dir, format='zip', root_dir=catchment_dir)
-        shutil.rmtree(catchment_dir)
+        catchment.to_file(catchment_file)
 
         # Generate land data
-        land_dir = cls.cache_dir / "land"
+        land_file = cls.cache_dir / "land.geojson"
         x0 = 0
         y0 = 0
         x1 = 1500
@@ -74,12 +73,10 @@ class ProcessorLocalFilesTest(unittest.TestCase):
         land = shapely.geometry.Polygon([(x0, y0), (x1, y0), (x1, y1), (x0, y1)])
         land = geopandas.GeoSeries([land])
         land = land.set_crs(cls.instructions['instructions']['output']['crs']['horizontal'])
-        land.to_file(land_dir)
-        shutil.make_archive(base_name=land_dir, format='zip', root_dir=land_dir)
-        shutil.rmtree(land_dir)
+        land.to_file(land_file)
 
         # Generate bathymetry data
-        bathymetry_dir = cls.cache_dir / "bathymetry"
+        bathymetry_file = cls.cache_dir / "bathymetry.geojson"
         x0 = 0
         x1 = 1500
         y0 = -50
@@ -90,9 +87,7 @@ class ProcessorLocalFilesTest(unittest.TestCase):
         contour_2 = shapely.geometry.LineString([(x0, y2, -y2/10), (x1, y2, -y2/10)])
         contours = geopandas.GeoSeries([contour_0, contour_1, contour_2])
         contours = contours.set_crs(cls.instructions['instructions']['output']['crs']['horizontal'])
-        contours.to_file(bathymetry_dir)
-        shutil.make_archive(base_name=bathymetry_dir, format='zip', root_dir=bathymetry_dir)
-        shutil.rmtree(bathymetry_dir)
+        contours.to_file(bathymetry_file)
 
         # Create a reference DEM
         dem_file = cls.cache_dir / "reference_dem.nc"
@@ -166,20 +161,32 @@ class ProcessorLocalFilesTest(unittest.TestCase):
         file_path = self.cache_dir / self.instructions['instructions']['data_paths']['benchmark_dem']
         with rioxarray.rioxarray.open_rasterio(file_path,
                                                masked=True) as benchmark_dem:
-            benchmark_dem.load()
+            benchmark_dem = benchmark_dem.squeeze('band', drop=True)
 
         # Load in result DEM
         file_path = self.cache_dir / self.instructions['instructions']['data_paths']['result_dem']
         with rioxarray.rioxarray.open_rasterio(file_path,
                                                masked=True) as test_dem:
-            test_dem.load()
+            test_dem = test_dem.squeeze('band', drop=True)
 
-        # Compare DEMs - load both from file as rioxarray.rioxarray.open_rasterio ignores index order
-        diff_array = test_dem.data-benchmark_dem.data
-        logging.info(f"DEM array diff is: {diff_array[diff_array != 0]}")
-        numpy.testing.assert_array_almost_equal(test_dem.data, benchmark_dem.data,
-                                                err_msg="The generated result_dem has different data from the " +
+        # Compare DEMs z - load both from file as rioxarray.rioxarray.open_rasterio ignores index order
+        diff_array = test_dem.z.data - benchmark_dem.z.data
+        logging.info(f"DEM z array diff is: {diff_array[diff_array != 0]}")
+        numpy.testing.assert_array_almost_equal(test_dem.z.data, benchmark_dem.z.data,
+                                                err_msg="The generated result_dem z has different data from the " +
                                                 "benchmark_dem")
+
+        # Compare DEMs source classification
+        diff_array = test_dem.source_class.data - benchmark_dem.source_class.data
+        logging.info(f"DEM z array diff is: {diff_array[diff_array != 0]}")
+        numpy.testing.assert_array_almost_equal(test_dem.source_class.data, benchmark_dem.source_class.data,
+                                                err_msg="The generated result_dem source_class has different data " +
+                                                "from the benchmark_dem")
+
+        # explicitly free memory as xarray seems to be hanging onto memory
+        del test_dem
+        del benchmark_dem
+        gc.collect()
 
 
 if __name__ == '__main__':

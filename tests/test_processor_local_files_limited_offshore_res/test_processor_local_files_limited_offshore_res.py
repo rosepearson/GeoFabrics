@@ -17,6 +17,7 @@ import pdal
 import pytest
 import sys
 import logging
+import gc
 
 from src.geofabrics import processor
 
@@ -57,7 +58,7 @@ class ProcessorLocalFilesOffshoreResTest(unittest.TestCase):
         cls.clean_data_folder()
 
         # Generate catchment data
-        catchment_dir = cls.cache_dir / "catchment_boundary"
+        catchment_file = cls.cache_dir / "catchment_boundary.geojson"
         x0 = 0
         x1 = 3000
         y0 = -5
@@ -65,12 +66,10 @@ class ProcessorLocalFilesOffshoreResTest(unittest.TestCase):
         catchment = shapely.geometry.Polygon([(x0, y0), (x1, y0), (x1, y1), (x0, y1)])
         catchment = geopandas.GeoSeries([catchment])
         catchment = catchment.set_crs(cls.instructions['instructions']['output']['crs']['horizontal'])
-        catchment.to_file(catchment_dir)
-        shutil.make_archive(base_name=catchment_dir, format='zip', root_dir=catchment_dir)
-        shutil.rmtree(catchment_dir)
+        catchment.to_file(catchment_file)
 
         # Generate land data - wider than catchment
-        land_dir = cls.cache_dir / "land"
+        land_file = cls.cache_dir / "land.geojson"
         x0 = -50
         x1 = 3050
         y0 = 0
@@ -78,12 +77,10 @@ class ProcessorLocalFilesOffshoreResTest(unittest.TestCase):
         land = shapely.geometry.Polygon([(x0, y0), (x1, y0), (x1, y1), (x0, y1)])
         land = geopandas.GeoSeries([land])
         land = land.set_crs(cls.instructions['instructions']['output']['crs']['horizontal'])
-        land.to_file(land_dir)
-        shutil.make_archive(base_name=land_dir, format='zip', root_dir=land_dir)
-        shutil.rmtree(land_dir)
+        land.to_file(land_file)
 
         # Generate bathymetry data - wider than catchment
-        bathymetry_dir = cls.cache_dir / "bathymetry"
+        bathymetry_file = cls.cache_dir / "bathymetry.geojson"
         x0 = -50
         x1 = 3050
         y0 = -1
@@ -94,9 +91,7 @@ class ProcessorLocalFilesOffshoreResTest(unittest.TestCase):
         contour_2 = shapely.geometry.LineString([(x0, y2, -y2 * 0.1), ((x0 + x1) / 2, y2, 0), (x1, y2, -y2 * 0.1)])
         contours = geopandas.GeoSeries([contour_0, contour_1, contour_2])
         contours = contours.set_crs(cls.instructions['instructions']['output']['crs']['horizontal'])
-        contours.to_file(bathymetry_dir)
-        shutil.make_archive(base_name=bathymetry_dir, format='zip', root_dir=bathymetry_dir)
-        shutil.rmtree(bathymetry_dir)
+        contours.to_file(bathymetry_file)
 
         # Create LiDAR - wider than catchment
         lidar_file = cls.cache_dir / "lidar.laz"
@@ -125,6 +120,10 @@ class ProcessorLocalFilesOffshoreResTest(unittest.TestCase):
         pdal_pipeline = pdal.Pipeline(json.dumps(pdal_pipeline_instructions), [lidar_array])
         pdal_pipeline.execute()
 
+        # Run geofabrics processing pipeline
+        runner = processor.LidarDemGenerator(cls.instructions)
+        runner.run()
+
     @classmethod
     def tearDownClass(cls):
         """ Remove created files in the cache directory as part of the testing process at the end of the test. """
@@ -149,10 +148,6 @@ class ProcessorLocalFilesOffshoreResTest(unittest.TestCase):
     def test_result_dem_windows(self):
         """ A basic comparison between the generated and benchmark DEM """
 
-        # Run pipeline
-        runner = processor.LidarDemGenerator(self.instructions)
-        runner.run()
-
         # Load in benchmark DEM
         file_path = self.cache_dir / self.instructions['instructions']['data_paths']['benchmark_dem']
         with rioxarray.rioxarray.open_rasterio(file_path,
@@ -166,18 +161,19 @@ class ProcessorLocalFilesOffshoreResTest(unittest.TestCase):
             test_dem.load()
 
         # Compare DEMs - load from file as rioxarray.rioxarray.open_rasterio ignores index order
-        diff_array = test_dem.data-benchmark_dem.data
+        diff_array = test_dem.z.data-benchmark_dem.z.data
         logging.info(f"DEM array diff is: {diff_array[diff_array != 0]}")
-        numpy.testing.assert_array_equal(test_dem.data, benchmark_dem.data,
+        numpy.testing.assert_array_equal(test_dem.z.data, benchmark_dem.z.data,
                                          err_msg="The generated result_dem has different data from the benchmark_dem")
+
+        # explicitly free memory as xarray seems to be hanging onto memory
+        del test_dem
+        del benchmark_dem
+        gc.collect()
 
     @pytest.mark.skipif(sys.platform != 'linux', reason="Linux test - this is less strict")
     def test_result_dem_linux(self):
         """ A basic comparison between the generated and benchmark DEM """
-
-        # Run pipeline
-        runner = processor.LidarDemGenerator(self.instructions)
-        runner.run()
 
         # Load in benchmark DEM
         file_path = self.cache_dir / self.instructions['instructions']['data_paths']['benchmark_dem']
@@ -192,11 +188,16 @@ class ProcessorLocalFilesOffshoreResTest(unittest.TestCase):
             test_dem.load()
 
         # Compare DEMs - load both from file as rioxarray.rioxarray.open_rasterio ignores index order
-        diff_array = test_dem.data-benchmark_dem.data
+        diff_array = test_dem.z.data - benchmark_dem.z.data
         logging.info(f"DEM array diff is: {diff_array[diff_array != 0]}")
-        numpy.testing.assert_array_almost_equal(test_dem.data, benchmark_dem.data,
+        numpy.testing.assert_array_almost_equal(test_dem.z.data, benchmark_dem.z.data,
                                                 err_msg="The generated result_dem has different data from the " +
                                                 "benchmark_dem")
+
+        # explicitly free memory as xarray seems to be hanging onto memory
+        del test_dem
+        del benchmark_dem
+        gc.collect()
 
 
 if __name__ == '__main__':
