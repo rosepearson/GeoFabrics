@@ -126,7 +126,7 @@ class BaseProcessor(abc.ABC):
         defaults = {'set_dem_shoreline': True,
                     'bathymetry_contours_z_label': None, 'drop_offshore_lidar': True,
                     'lidar_classifications_to_keep': [2], 'interpolation_method': None,
-                    'elevation_range': None}
+                    'elevation_range': None, 'lidar_interpolation_method': 'idw'}
 
         assert key in defaults or key in self.instructions['instructions']['general'], f"The key: {key} is missing " \
             + "from the general instructions, and does not have a default value"
@@ -480,10 +480,6 @@ class LidarDemGenerator(BathymetryDemGenerator):
             f" Specficially land_dirs = {land_dirs}."
         self.catchment_geometry.land = land_dirs[0]
 
-        # Define PDAL/GDAL griding parameter values
-        idw_radius = self.catchment_geometry.resolution * numpy.sqrt(2)
-        idw_power = 2
-
         # Get LiDAR data file-list - this may involve downloading lidar files
         lidar_dataset_info = self.get_lidar_file_list('open_topography')
 
@@ -492,7 +488,7 @@ class LidarDemGenerator(BathymetryDemGenerator):
             catchment_geometry=self.catchment_geometry,
             drop_offshore_lidar=self.get_instruction_general('drop_offshore_lidar'),
             interpolation_method=self.get_instruction_general('interpolation_method'),
-            idw_power=idw_power, idw_radius=idw_radius,
+            lidar_interpolation_method=self.get_instruction_general('lidar_interpolation_method'),
             elevation_range=self.get_instruction_general('elevation_range'))
 
         # Setup Dask cluster and client

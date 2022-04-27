@@ -482,14 +482,12 @@ class DenseDemFromTiles(DenseDem):
         If False keep all LiDAR values.
     interpolation_method
         If not None, interpolate using that method. Valid options are 'linear', 'nearest', and 'cubic'.
-    idw_power
-        The power to apply when performing IDW
-    idw_radius
-        The radius to apply IDW over
+    lidar_interpolation_method
+        The interpolation method to apply to point clouds. Options are: mean, median, IDW
     """
 
-    def __init__(self, catchment_geometry: geometry.CatchmentGeometry, idw_power: int, idw_radius: float,
-                 interpolation_method: str, drop_offshore_lidar: bool = True,
+    def __init__(self, catchment_geometry: geometry.CatchmentGeometry, interpolation_method: str,
+                 lidar_interpolation_method: str, drop_offshore_lidar: bool = True,
                  elevation_range: list = None):
         """ Setup base DEM to add future tiles too """
 
@@ -501,8 +499,7 @@ class DenseDemFromTiles(DenseDem):
 
         self.raster_type = numpy.float64
 
-        self.idw_power = idw_power
-        self.idw_radius = idw_radius
+        self.lidar_interpolation_method = lidar_interpolation_method
 
         super(DenseDemFromTiles, self).__init__(catchment_geometry=catchment_geometry, dense_dem=None,
                                                 extents=None, interpolation_method=interpolation_method)
@@ -535,20 +532,20 @@ class DenseDemFromTiles(DenseDem):
         return dim_x, dim_y
 
     def _define_chunk_region(self, region_to_rasterise: geopandas.GeoDataFrame, dim_x: numpy.ndarray,
-                             dim_y: numpy.ndarray):
+                             dim_y: numpy.ndarray, radius: float):
         """ Define the region to rasterise within a single chunk. """
         # Define the region to tile
         chunk_geometry = geopandas.GeoDataFrame(
              {'geometry': [shapely.geometry.Polygon(
-                 [(numpy.min(dim_x) - self.idw_radius, numpy.min(dim_y) - self.idw_radius),
-                  (numpy.max(dim_x) + self.idw_radius, numpy.min(dim_y) - self.idw_radius),
-                  (numpy.max(dim_x) + self.idw_radius, numpy.max(dim_y) + self.idw_radius),
-                  (numpy.min(dim_x) - self.idw_radius, numpy.max(dim_y) + self.idw_radius)])]},
+                 [(numpy.min(dim_x) - radius, numpy.min(dim_y) - radius),
+                  (numpy.max(dim_x) + radius, numpy.min(dim_y) - radius),
+                  (numpy.max(dim_x) + radius, numpy.max(dim_y) + radius),
+                  (numpy.min(dim_x) - radius, numpy.max(dim_y) + radius)])]},
              crs=self.catchment_geometry.crs['horizontal'])
 
         # Define region to rasterise inside the chunk area - remove any subpixel polygons
         chunk_region_to_tile = geopandas.GeoDataFrame(
-             geometry=region_to_rasterise.buffer(self.idw_radius).clip(chunk_geometry, keep_geom_type=True))
+             geometry=region_to_rasterise.buffer(radius).clip(chunk_geometry, keep_geom_type=True))
         chunk_region_to_tile = chunk_region_to_tile[chunk_region_to_tile.area
                                                     > self.catchment_geometry.resolution
                                                     * self.catchment_geometry.resolution]
@@ -604,12 +601,12 @@ class DenseDemFromTiles(DenseDem):
         return tile_index_extents, tile_index_name_column
 
     def _rasterise_tile(self, dim_x: numpy.ndarray, dim_y: numpy.ndarray, tile_points: numpy.ndarray,
-                        lidar_classifications_to_keep: list):
+                        options: dict):
         """ Rasterise all points within a tile. """
 
-        # keep only the selected classification points for idw calculations
+        # keep only the selected classification points for averaging calculations
         classification_mask = numpy.zeros_like(tile_points['Classification'], dtype=bool)
-        for classification in lidar_classifications_to_keep:
+        for classification in options['lidar_classifications_to_keep']:
             classification_mask[tile_points['Classification'] == classification] = True
         tile_points = tile_points[classification_mask]
 
@@ -621,11 +618,9 @@ class DenseDemFromTiles(DenseDem):
         grid_x, grid_y = numpy.meshgrid(dim_x, dim_y)
         xy_out = numpy.concatenate([[grid_x.flatten()], [grid_y.flatten()]], axis=0).transpose()
 
-        # Perform IDW over the dense DEM within the extents of this point cloud tile
-        z_idw = rasterise_with_idw(point_cloud=tile_points, xy_out=xy_out, idw_radius=self.idw_radius,
-                                   idw_power=self.idw_power, raster_type=self.raster_type, smoothing=0,
-                                   eps=0, leaf_size=10)
-        grid_z = z_idw.reshape(grid_x.shape)
+        # Perform the specified averaging over the dense DEM within the extents of this point cloud tile
+        z_flat = rasterise_points(point_cloud=tile_points, xy_out=xy_out, options=options)
+        grid_z = z_flat.reshape(grid_x.shape)
 
         # TODO - add roughness calculation
 
@@ -663,11 +658,18 @@ class DenseDemFromTiles(DenseDem):
         else:
             region_to_rasterise = self.catchment_geometry.catchment
 
+        # create dictionary defining raster options
+        raster_options = {"lidar_classifications_to_keep": lidar_classifications_to_keep,
+                          "raster_type": self.raster_type,
+                          "elevation_range": self.elevation_range,
+                          "radius": self.catchment_geometry.resolution * numpy.sqrt(2),
+                          "method": self.lidar_interpolation_method}
+
         # Determine if adding a single file or tiles
         if len(lidar_files) == 1:  # If one file it's ok if there is no tile_index
             self._dense_dem = self._add_file(lidar_file=lidar_files[0], region_to_rasterise=region_to_rasterise,
                                              source_crs=source_crs,
-                                             lidar_classifications_to_keep=lidar_classifications_to_keep,
+                                             options=raster_options,
                                              metadata=metadata)
         else:
             assert tile_index_file is not None, "A tile index file is required for multiple tile files added together"
@@ -675,8 +677,7 @@ class DenseDemFromTiles(DenseDem):
                 "files. Ideally it should include as many tiles can easily be read in by on core. You will have to equate" \
                 " The tile extents with chunk size by extents / resolution. "
             self._dense_dem = self._add_tiled_lidar_chunked(lidar_files=lidar_files, tile_index_file=tile_index_file,
-                                                            source_crs=source_crs,
-                                                            lidar_classifications_to_keep=lidar_classifications_to_keep,
+                                                            source_crs=source_crs, raster_options=raster_options,
                                                             region_to_rasterise=region_to_rasterise,
                                                             chunk_size=chunk_size,
                                                             metadata=metadata)
@@ -692,8 +693,8 @@ class DenseDemFromTiles(DenseDem):
 
     def _add_tiled_lidar_chunked(self, lidar_files: typing.List[typing.Union[str, pathlib.Path]],
                                  tile_index_file: typing.Union[str, pathlib.Path], source_crs: dict,
-                                 lidar_classifications_to_keep: list, region_to_rasterise: geopandas.GeoDataFrame,
-                                 chunk_size: int, metadata: dict) -> xarray.DataArray:
+                                 region_to_rasterise: geopandas.GeoDataFrame,
+                                 chunk_size: int, metadata: dict, raster_options: dict) -> xarray.DataArray:
         """ Create a dense DEM from a set of tiled LiDAR files. Read these in over non-overlapping chunks and
         then combine """
 
@@ -713,7 +714,7 @@ class DenseDemFromTiles(DenseDem):
 
                 # Define the region to tile
                 chunk_region_to_tile = self._define_chunk_region(region_to_rasterise=region_to_rasterise, dim_x=dim_x,
-                                                                 dim_y=dim_y)
+                                                                 dim_y=dim_y, radius=raster_options['radius'])
 
                 # Load in files and rasterise
                 chunk_points = delayed_load_tiles_in_chunk(dim_x=dim_x,
@@ -728,11 +729,7 @@ class DenseDemFromTiles(DenseDem):
                     delayed_rasterise_chunk(dim_x=dim_x,
                                             dim_y=dim_y,
                                             tile_points=chunk_points,
-                                            lidar_classifications_to_keep=lidar_classifications_to_keep,
-                                            idw_radius=self.idw_radius,
-                                            idw_power=self.idw_power,
-                                            raster_type=self.raster_type,
-                                            elevation_range=self.elevation_range),
+                                            options=raster_options),
                     shape=(chunk_size, chunk_size), dtype=numpy.float32))
             delayed_chunked_matrix.append(delayed_chunked_x)
 
@@ -750,7 +747,7 @@ class DenseDemFromTiles(DenseDem):
         return dense_dem
 
     def _add_file(self, lidar_file: typing.Union[str, pathlib.Path], region_to_rasterise: geopandas.GeoDataFrame,
-                  lidar_classifications_to_keep: list, source_crs: dict, metadata: dict) -> xarray.DataArray:
+                  options: dict, source_crs: dict, metadata: dict) -> xarray.DataArray:
         """ Create the dense DEM region from a single LiDAR file. """
 
         logging.info(f"On LiDAR tile 1 of 1: {lidar_file}")
@@ -767,8 +764,9 @@ class DenseDemFromTiles(DenseDem):
         dim_x = dim_x[0]
         dim_y = dim_y[0]
 
-        raster_values = self._rasterise_tile(dim_x=dim_x, dim_y=dim_y, tile_points=tile_array,
-                                             lidar_classifications_to_keep=lidar_classifications_to_keep)
+        raster_values = self._rasterise_tile(dim_x=dim_x, dim_y=dim_y,
+                                             tile_points=tile_array,
+                                             options=options)
         elevation = raster_values.reshape((len(dim_y), len(dim_x)))
 
         # Create xarray
@@ -830,18 +828,21 @@ class DenseDemFromTiles(DenseDem):
             logging.warning("DenseDem.add_tile: LiDAR covers all raster values so the reference DEM is being ignored.")
             return
 
-        # Get the indicies overwhich to perform IDW
+        # create dictionary defining raster options
+        raster_options = {"raster_type": self.raster_type,
+                          "radius": self.catchment_geometry.resolution * numpy.sqrt(2),
+                          "method": self.lidar_interpolation_method}
+
+        # Get the indicies overwhich to perform averaging
         grid_x, grid_y = numpy.meshgrid(self.dense_dem.x, self.dense_dem.y)
 
         xy_out = numpy.empty((mask.sum(), 2))
         xy_out[:, 0] = grid_x[mask]
         xy_out[:, 1] = grid_y[mask]
 
-        # Perform IDW over the dense DEM within the extents of this point cloud tile
-        z_idw = rasterise_with_idw(point_cloud=tile_points, xy_out=xy_out, idw_radius=self.idw_radius,
-                                   idw_power=self.idw_power,
-                                   raster_type=self.raster_type, smoothing=0, eps=0, leaf_size=10)
-        self.dense_dem.z.data[mask] = z_idw
+        # Perform the specified averaging over the dense DEM within the extents of this point cloud tile
+        z_flat = rasterise_points(point_cloud=tile_points, xy_out=xy_out, options=raster_options)
+        self.dense_dem.z.data[mask] = z_flat
         self.dense_dem.source_class.data[mask] = self.SOURCE_CLASSIFICATION['reference DEM']
 
         # Update the dense DEM extents
@@ -886,32 +887,61 @@ def read_file_with_pdal(lidar_file: typing.Union[str, pathlib.Path], region_to_t
     return pdal_pipeline
 
 
-def rasterise_with_idw(point_cloud: numpy.ndarray, xy_out, idw_radius: float, idw_power: int, raster_type,
-                       smoothing: float = 0, eps: float = 0, leaf_size: int = 10):
-    """ Calculate DEM elevation values at the specified locations using the inverse distance weighing (IDW)
-    approach. This implementation is based on the scipy.spatial.KDTree """
+def rasterise_points(point_cloud: numpy.ndarray, xy_out, options: dict,
+                     eps: float = 0, leaf_size: int = 10):
+    """ Calculate DEM elevation values at the specified locations using the selected approach. Options include: mean,
+    median, and inverse distance weighing (IDW). This implementation is based on the scipy.spatial.KDTree """
+
     xy_in = numpy.empty((len(point_cloud), 2))
     xy_in[:, 0] = point_cloud['X']
     xy_in[:, 1] = point_cloud['Y']
 
     tree = scipy.spatial.KDTree(xy_in, leafsize=leaf_size)  # build the tree
-    tree_index_list = tree.query_ball_point(xy_out, r=idw_radius, eps=eps)  # , eps=0.2)
-    z_out = numpy.zeros(len(xy_out), dtype=raster_type)
+    tree_index_list = tree.query_ball_point(xy_out, r=options['radius'], eps=eps)  # , eps=0.2)
+    z_out = numpy.zeros(len(xy_out), dtype=options['raster_type'])
 
     for i, (near_indicies, point) in enumerate(zip(tree_index_list, xy_out)):
 
         if len(near_indicies) == 0:  # Set NaN if no values in search region
             z_out[i] = numpy.nan
         else:
-            distance_vectors = point - tree.data[near_indicies]
-            smoothed_distances = numpy.sqrt(((distance_vectors**2).sum(axis=1)+smoothing**2))
-            if smoothed_distances.min() == 0:  # in the case of an exact match
-                z_out[i] = point_cloud['Z'][tree.query(point, k=1)[1]]
+            if options['method'] == 'mean':
+                z_out[i] = numpy.mean(point_cloud['Z'][near_indicies])
+            elif options['method'] == 'median':
+                z_out[i] = numpy.median(point_cloud['Z'][near_indicies])
+            elif options['method'] == 'idw':
+                z_out[i] = calculate_idw(near_indicies=near_indicies, point=point,
+                                         tree=tree, point_cloud=point_cloud)
+            elif options['method'] == 'min':
+                z_out[i] = numpy.min(point_cloud['Z'][near_indicies])
+            elif options['method'] == 'max':
+                z_out[i] = numpy.max(point_cloud['Z'][near_indicies])
+            elif options['method'] == 'std':
+                z_out[i] = numpy.std(point_cloud['Z'][near_indicies])
+            elif options['method'] == 'count':
+                z_out[i] = numpy.len(point_cloud['Z'][near_indicies])
             else:
-                z_out[i] = (point_cloud['Z'][near_indicies] / (smoothed_distances**idw_power)).sum(axis=0) \
-                    / (1 / (smoothed_distances**idw_power)).sum(axis=0)
+                assert False, f"An invalid lidar_interpolation_method of '{options['method']}' was provided"
 
     return z_out
+
+
+def calculate_idw(near_indicies: list, point: numpy.ndarray,
+                  tree: scipy.spatial.KDTree, point_cloud: numpy.ndarray,
+                  smoothing: float = 0, power: int = 2):
+    """ Calculate DEM elevation values at the specified locations by
+    calculating the mean. This implementation is based on the
+    scipy.spatial.KDTree """
+
+    distance_vectors = point - tree.data[near_indicies]
+    smoothed_distances = numpy.sqrt(((distance_vectors**2).sum(axis=1)+smoothing**2))
+    if smoothed_distances.min() == 0:  # in the case of an exact match
+        idw = point_cloud['Z'][tree.query(point, k=1)[1]]
+    else:
+        idw = (point_cloud['Z'][near_indicies] / (smoothed_distances**power)).sum(axis=0) \
+            / (1 / (smoothed_distances**power)).sum(axis=0)
+
+    return idw
 
 
 def load_tiles_in_chunk(dim_x: numpy.ndarray, dim_y: numpy.ndarray, tile_index_extents: geopandas.GeoDataFrame,
@@ -949,9 +979,7 @@ def load_tiles_in_chunk(dim_x: numpy.ndarray, dim_y: numpy.ndarray, tile_index_e
     return lidar_points
 
 
-def rasterise_chunk(dim_x: numpy.ndarray, dim_y: numpy.ndarray, tile_points: numpy.ndarray, raster_type,
-                    lidar_classifications_to_keep: list, idw_radius: float, idw_power: int,
-                    elevation_range: list):
+def rasterise_chunk(dim_x: numpy.ndarray, dim_y: numpy.ndarray, tile_points: numpy.ndarray, options: dict):
     """ Rasterise all points within a chunk. """
 
     # Get the indicies overwhich to perform IDW
@@ -964,13 +992,14 @@ def rasterise_chunk(dim_x: numpy.ndarray, dim_y: numpy.ndarray, tile_points: num
         logging.warning("In dem.rasterise_chunk the latest chunk has no data and is being ignored.")
         return grid_z
 
-    # keep only the selected classification points for idw calculations
+    # keep only the selected classification points for averaging calculations
     classification_mask = numpy.zeros_like(tile_points['Classification'], dtype=bool)
-    for classification in lidar_classifications_to_keep:
+    for classification in options['lidar_classifications_to_keep']:
         classification_mask[tile_points['Classification'] == classification] = True
     tile_points = tile_points[classification_mask]
 
     # optionally filter to within the specified elevation range
+    elevation_range = options['elevation_range']
     if elevation_range is not None:
         tile_points = tile_points[tile_points['Z'] >= elevation_range[0]]
         tile_points = tile_points[tile_points['Z'] <= elevation_range[1]]
@@ -979,11 +1008,9 @@ def rasterise_chunk(dim_x: numpy.ndarray, dim_y: numpy.ndarray, tile_points: num
     if len(tile_points) == 0:
         return grid_z
 
-    # Perform IDW over the dense DEM within the extents of this point cloud tile
-    z_idw = rasterise_with_idw(point_cloud=tile_points, xy_out=xy_out,
-                               idw_radius=idw_radius, idw_power=idw_power,
-                               smoothing=0, eps=0, leaf_size=10, raster_type=raster_type)
-    grid_z = z_idw.reshape(grid_x.shape)
+    # Perform the specified averaging method over the dense DEM within the extents of this point cloud tile
+    z_flat = rasterise_points(point_cloud=tile_points, xy_out=xy_out, options=options)
+    grid_z = z_flat.reshape(grid_x.shape)
 
     # TODO - add roughness calculation
 
