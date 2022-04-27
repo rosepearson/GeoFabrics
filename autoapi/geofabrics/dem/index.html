@@ -104,13 +104,16 @@ DEMs.</p>
 <tr class="row-odd"><td><p><a class="reference internal" href="#geofabrics.dem.read_file_with_pdal" title="geofabrics.dem.read_file_with_pdal"><code class="xref py py-obj docutils literal notranslate"><span class="pre">read_file_with_pdal</span></code></a>(lidar_file, region_to_tile, catchment_geometry, source_crs = None, get_extents = False)</p></td>
 <td><p>Read a tile file in using PDAL</p></td>
 </tr>
-<tr class="row-even"><td><p><a class="reference internal" href="#geofabrics.dem.rasterise_with_idw" title="geofabrics.dem.rasterise_with_idw"><code class="xref py py-obj docutils literal notranslate"><span class="pre">rasterise_with_idw</span></code></a>(point_cloud, xy_out, idw_radius, idw_power, raster_type, smoothing = 0, eps = 0, leaf_size = 10)</p></td>
-<td><p>Calculate DEM elevation values at the specified locations using the inverse distance weighing (IDW)</p></td>
+<tr class="row-even"><td><p><a class="reference internal" href="#geofabrics.dem.rasterise_points" title="geofabrics.dem.rasterise_points"><code class="xref py py-obj docutils literal notranslate"><span class="pre">rasterise_points</span></code></a>(point_cloud, xy_out, options, eps = 0, leaf_size = 10)</p></td>
+<td><p>Calculate DEM elevation values at the specified locations using the selected approach. Options include: mean,</p></td>
 </tr>
-<tr class="row-odd"><td><p><a class="reference internal" href="#geofabrics.dem.load_tiles_in_chunk" title="geofabrics.dem.load_tiles_in_chunk"><code class="xref py py-obj docutils literal notranslate"><span class="pre">load_tiles_in_chunk</span></code></a>(dim_x, dim_y, tile_index_extents, tile_index_name_column, lidar_files, source_crs, chunk_region_to_tile, catchment_geometry)</p></td>
+<tr class="row-odd"><td><p><a class="reference internal" href="#geofabrics.dem.calculate_idw" title="geofabrics.dem.calculate_idw"><code class="xref py py-obj docutils literal notranslate"><span class="pre">calculate_idw</span></code></a>(near_indicies, point, tree, point_cloud, smoothing = 0, power = 2)</p></td>
+<td><p>Calculate DEM elevation values at the specified locations by</p></td>
+</tr>
+<tr class="row-even"><td><p><a class="reference internal" href="#geofabrics.dem.load_tiles_in_chunk" title="geofabrics.dem.load_tiles_in_chunk"><code class="xref py py-obj docutils literal notranslate"><span class="pre">load_tiles_in_chunk</span></code></a>(dim_x, dim_y, tile_index_extents, tile_index_name_column, lidar_files, source_crs, chunk_region_to_tile, catchment_geometry)</p></td>
 <td><p>Read in all LiDAR files within the chunked region - clipped to within the region within which to rasterise.</p></td>
 </tr>
-<tr class="row-even"><td><p><a class="reference internal" href="#geofabrics.dem.rasterise_chunk" title="geofabrics.dem.rasterise_chunk"><code class="xref py py-obj docutils literal notranslate"><span class="pre">rasterise_chunk</span></code></a>(dim_x, dim_y, tile_points, raster_type, lidar_classifications_to_keep, idw_radius, idw_power, elevation_range)</p></td>
+<tr class="row-odd"><td><p><a class="reference internal" href="#geofabrics.dem.rasterise_chunk" title="geofabrics.dem.rasterise_chunk"><code class="xref py py-obj docutils literal notranslate"><span class="pre">rasterise_chunk</span></code></a>(dim_x, dim_y, tile_points, options)</p></td>
 <td><p>Rasterise all points within a chunk.</p></td>
 </tr>
 </tbody>
@@ -145,6 +148,12 @@ optional ‘exclusion_extent’ input.</p>
 </ul>
 </dd>
 </dl>
+<dl class="py method">
+<dt class="sig sig-object py" id="geofabrics.dem.ReferenceDem.__del__">
+<span class="sig-name descname"><span class="pre">__del__</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">self</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#geofabrics.dem.ReferenceDem.__del__" title="Permalink to this definition"></a></dt>
+<dd><p>Ensure the memory associated with netCDF files is properly freed.</p>
+</dd></dl>
+
 <dl class="py method">
 <dt class="sig sig-object py" id="geofabrics.dem.ReferenceDem.points">
 <em class="property"><span class="pre">property</span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">points</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">self</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#geofabrics.dem.ReferenceDem.points" title="Permalink to this definition"></a></dt>
@@ -187,6 +196,12 @@ contours offshore and outside all LiDAR tiles.</p>
 </ul>
 </dd>
 </dl>
+<dl class="py method">
+<dt class="sig sig-object py" id="geofabrics.dem.DenseDem.__del__">
+<span class="sig-name descname"><span class="pre">__del__</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">self</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#geofabrics.dem.DenseDem.__del__" title="Permalink to this definition"></a></dt>
+<dd><p>Ensure the memory associated with netCDF files is properly freed.</p>
+</dd></dl>
+
 <dl class="py method">
 <dt class="sig sig-object py" id="geofabrics.dem.DenseDem.extents">
 <em class="property"><span class="pre">property</span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">extents</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">self</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#geofabrics.dem.DenseDem.extents" title="Permalink to this definition"></a></dt>
@@ -250,7 +265,7 @@ associated with it.</p>
 
 <dl class="py class">
 <dt class="sig sig-object py" id="geofabrics.dem.DenseDemFromTiles">
-<em class="property"><span class="pre">class</span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">geofabrics.dem.</span></span><span class="sig-name descname"><span class="pre">DenseDemFromTiles</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">catchment_geometry</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">idw_power</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">idw_radius</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">interpolation_method</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">drop_offshore_lidar</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">True</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">elevation_range</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#geofabrics.dem.DenseDemFromTiles" title="Permalink to this definition"></a></dt>
+<em class="property"><span class="pre">class</span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">geofabrics.dem.</span></span><span class="sig-name descname"><span class="pre">DenseDemFromTiles</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">catchment_geometry</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">interpolation_method</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">lidar_interpolation_method</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">drop_offshore_lidar</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">True</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">elevation_range</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#geofabrics.dem.DenseDemFromTiles" title="Permalink to this definition"></a></dt>
 <dd><p>Bases: <a class="reference internal" href="#geofabrics.dem.DenseDem" title="geofabrics.dem.DenseDem"><code class="xref py py-obj docutils literal notranslate"><span class="pre">DenseDem</span></code></a></p>
 <p>A class to manage the population of the DenseDem’s dense_dem from LiDAR tiles, and/or a reference DEM.</p>
 <p>The dense DEM is made up of tiles created from dense point data - Either LiDAR point clouds, or a reference DEM.</p>
@@ -261,8 +276,7 @@ associated with it.</p>
 <li><p><strong>drop_offshore_lidar</strong> (<em>bool</em>) – If True only keep LiDAR values within the foreshore and land regions defined by the catchment_geometry.
 If False keep all LiDAR values.</p></li>
 <li><p><strong>interpolation_method</strong> (<em>str</em>) – If not None, interpolate using that method. Valid options are ‘linear’, ‘nearest’, and ‘cubic’.</p></li>
-<li><p><strong>idw_power</strong> (<em>int</em>) – The power to apply when performing IDW</p></li>
-<li><p><strong>idw_radius</strong> (<em>float</em>) – The radius to apply IDW over</p></li>
+<li><p><strong>lidar_interpolation_method</strong> (<em>str</em>) – The interpolation method to apply to point clouds. Options are: mean, median, IDW</p></li>
 <li><p><strong>catchment_geometry</strong> (<a class="reference internal" href="../geometry/index.html#geofabrics.geometry.CatchmentGeometry" title="geofabrics.geometry.CatchmentGeometry"><em>geofabrics.geometry.CatchmentGeometry</em></a>) – </p></li>
 <li><p><strong>elevation_range</strong> (<em>list</em>) – </p></li>
 </ul>
@@ -270,7 +284,7 @@ If False keep all LiDAR values.</p></li>
 </dl>
 <dl class="py method">
 <dt class="sig sig-object py" id="geofabrics.dem.DenseDemFromTiles.add_lidar">
-<span class="sig-name descname"><span class="pre">add_lidar</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">self</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">lidar_files</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">tile_index_file</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">chunk_size</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">lidar_classifications_to_keep</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">source_crs</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">drop_offshore_lidar</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">True</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#geofabrics.dem.DenseDemFromTiles.add_lidar" title="Permalink to this definition"></a></dt>
+<span class="sig-name descname"><span class="pre">add_lidar</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">self</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">lidar_files</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">tile_index_file</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">chunk_size</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">lidar_classifications_to_keep</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">source_crs</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">drop_offshore_lidar</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">metadata</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#geofabrics.dem.DenseDemFromTiles.add_lidar" title="Permalink to this definition"></a></dt>
 <dd><p>Read in all LiDAR files and use to create a dense DEM.</p>
 <dl class="field-list simple">
 <dt class="field-odd">Parameters</dt>
@@ -283,6 +297,7 @@ If False keep all LiDAR values.</p></li>
 <li><p><strong>tile_index_file</strong> (<em>Union</em><em>[</em><em>str</em><em>, </em><em>pathlib.Path</em><em>]</em>) – Must exist if there are many LiDAR files. This is used to determine chunking.</p></li>
 <li><p><strong>lidar_files</strong> (<em>List</em><em>[</em><em>Union</em><em>[</em><em>str</em><em>, </em><em>pathlib.Path</em><em>]</em><em>]</em>) – </p></li>
 <li><p><strong>chunk_size</strong> (<em>int</em>) – </p></li>
+<li><p><strong>metadata</strong> (<em>dict</em>) – </p></li>
 </ul>
 </dd>
 </dl>
@@ -322,19 +337,37 @@ If False keep all LiDAR values.</p></li>
 </dd></dl>
 
 <dl class="py function">
-<dt class="sig sig-object py" id="geofabrics.dem.rasterise_with_idw">
-<span class="sig-prename descclassname"><span class="pre">geofabrics.dem.</span></span><span class="sig-name descname"><span class="pre">rasterise_with_idw</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">point_cloud</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">xy_out</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">idw_radius</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">idw_power</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">raster_type</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">smoothing</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">0</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">eps</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">0</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">leaf_size</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">10</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#geofabrics.dem.rasterise_with_idw" title="Permalink to this definition"></a></dt>
-<dd><p>Calculate DEM elevation values at the specified locations using the inverse distance weighing (IDW)
-approach. This implementation is based on the scipy.spatial.KDTree</p>
+<dt class="sig sig-object py" id="geofabrics.dem.rasterise_points">
+<span class="sig-prename descclassname"><span class="pre">geofabrics.dem.</span></span><span class="sig-name descname"><span class="pre">rasterise_points</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">point_cloud</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">xy_out</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">options</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">eps</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">0</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">leaf_size</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">10</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#geofabrics.dem.rasterise_points" title="Permalink to this definition"></a></dt>
+<dd><p>Calculate DEM elevation values at the specified locations using the selected approach. Options include: mean,
+median, and inverse distance weighing (IDW). This implementation is based on the scipy.spatial.KDTree</p>
 <dl class="field-list simple">
 <dt class="field-odd">Parameters</dt>
 <dd class="field-odd"><ul class="simple">
 <li><p><strong>point_cloud</strong> (<em>numpy.ndarray</em>) – </p></li>
-<li><p><strong>idw_radius</strong> (<em>float</em>) – </p></li>
-<li><p><strong>idw_power</strong> (<em>int</em>) – </p></li>
-<li><p><strong>smoothing</strong> (<em>float</em>) – </p></li>
+<li><p><strong>options</strong> (<em>dict</em>) – </p></li>
 <li><p><strong>eps</strong> (<em>float</em>) – </p></li>
 <li><p><strong>leaf_size</strong> (<em>int</em>) – </p></li>
+</ul>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py" id="geofabrics.dem.calculate_idw">
+<span class="sig-prename descclassname"><span class="pre">geofabrics.dem.</span></span><span class="sig-name descname"><span class="pre">calculate_idw</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">near_indicies</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">point</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">tree</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">point_cloud</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">smoothing</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">0</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">power</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">2</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#geofabrics.dem.calculate_idw" title="Permalink to this definition"></a></dt>
+<dd><p>Calculate DEM elevation values at the specified locations by
+calculating the mean. This implementation is based on the
+scipy.spatial.KDTree</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters</dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>near_indicies</strong> (<em>list</em>) – </p></li>
+<li><p><strong>point</strong> (<em>numpy.ndarray</em>) – </p></li>
+<li><p><strong>tree</strong> (<em>scipy.spatial.KDTree</em>) – </p></li>
+<li><p><strong>point_cloud</strong> (<em>numpy.ndarray</em>) – </p></li>
+<li><p><strong>smoothing</strong> (<em>float</em>) – </p></li>
+<li><p><strong>power</strong> (<em>int</em>) – </p></li>
 </ul>
 </dd>
 </dl>
@@ -362,7 +395,7 @@ approach. This implementation is based on the scipy.spatial.KDTree</p>
 
 <dl class="py function">
 <dt class="sig sig-object py" id="geofabrics.dem.rasterise_chunk">
-<span class="sig-prename descclassname"><span class="pre">geofabrics.dem.</span></span><span class="sig-name descname"><span class="pre">rasterise_chunk</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">dim_x</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">dim_y</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">tile_points</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">raster_type</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">lidar_classifications_to_keep</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">idw_radius</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">idw_power</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">elevation_range</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#geofabrics.dem.rasterise_chunk" title="Permalink to this definition"></a></dt>
+<span class="sig-prename descclassname"><span class="pre">geofabrics.dem.</span></span><span class="sig-name descname"><span class="pre">rasterise_chunk</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">dim_x</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">dim_y</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">tile_points</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">options</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#geofabrics.dem.rasterise_chunk" title="Permalink to this definition"></a></dt>
 <dd><p>Rasterise all points within a chunk.</p>
 <dl class="field-list simple">
 <dt class="field-odd">Parameters</dt>
@@ -370,10 +403,7 @@ approach. This implementation is based on the scipy.spatial.KDTree</p>
 <li><p><strong>dim_x</strong> (<em>numpy.ndarray</em>) – </p></li>
 <li><p><strong>dim_y</strong> (<em>numpy.ndarray</em>) – </p></li>
 <li><p><strong>tile_points</strong> (<em>numpy.ndarray</em>) – </p></li>
-<li><p><strong>lidar_classifications_to_keep</strong> (<em>list</em>) – </p></li>
-<li><p><strong>idw_radius</strong> (<em>float</em>) – </p></li>
-<li><p><strong>idw_power</strong> (<em>int</em>) – </p></li>
-<li><p><strong>elevation_range</strong> (<em>list</em>) – </p></li>
+<li><p><strong>options</strong> (<em>dict</em>) – </p></li>
 </ul>
 </dd>
 </dl>

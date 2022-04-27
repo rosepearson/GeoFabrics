@@ -12,6 +12,7 @@
        * processor - A module for running the overall DEM generation pipeline
        * geometry - A module associated with manipulating vector data.
        * dem - A module associated with reading, generating, and combining DEMs
+       * bathymetry_estimation - A module associated with estimating river characteristics
 
 
 
@@ -25,5 +26,6 @@ Submodules
    dem/index.rst
    geometry/index.rst
    processor/index.rst
+   version/index.rst
 
 

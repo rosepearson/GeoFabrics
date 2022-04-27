@@ -150,7 +150,8 @@ local cache is specified.</p>
 <span class="sig-name descname"><span class="pre">get_crs</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">self</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#geofabrics.processor.BaseProcessor.get_crs" title="Permalink to this definition"></a></dt>
 <dd><p>Return the CRS projection information (horiztonal and vertical) from the instruction file. Raise an error
 if ‘output’ is not in the instructions. If no ‘crs’ or ‘horizontal’ or ‘vertical’ values are specified then use
-the default value for each one missing from the instructions.</p>
+the default value for each one missing from the instructions. If the default is used it is added to the
+instructions.</p>
 <dl class="field-list simple">
 <dt class="field-odd">Return type</dt>
 <dd class="field-odd"><p>dict</p>
@@ -162,7 +163,8 @@ the default value for each one missing from the instructions.</p>
 <dt class="sig sig-object py" id="geofabrics.processor.BaseProcessor.get_instruction_general">
 <span class="sig-name descname"><span class="pre">get_instruction_general</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">self</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">key</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#geofabrics.processor.BaseProcessor.get_instruction_general" title="Permalink to this definition"></a></dt>
 <dd><p>Return the general instruction from the instruction file or return the default value if not specified in
-the instruction file. Raise an error if the key is not in the instructions and there is no default value.</p>
+the instruction file. Raise an error if the key is not in the instructions and there is no default value. If the
+default is used it is added to the instructions.</p>
 <dl class="field-list simple">
 <dt class="field-odd">Parameters</dt>
 <dd class="field-odd"><p><strong>key</strong> (<em>str</em>) – </p>
@@ -174,7 +176,7 @@ the instruction file. Raise an error if the key is not in the instructions and t
 <dt class="sig sig-object py" id="geofabrics.processor.BaseProcessor.get_processing_instructions">
 <span class="sig-name descname"><span class="pre">get_processing_instructions</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">self</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">key</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#geofabrics.processor.BaseProcessor.get_processing_instructions" title="Permalink to this definition"></a></dt>
 <dd><p>Return the processing instruction from the instruction file or return the default value if not specified in
-the instruction file.</p>
+the instruction file. If the default is used it is added to the instructions.</p>
 <dl class="field-list simple">
 <dt class="field-odd">Parameters</dt>
 <dd class="field-odd"><p><strong>key</strong> (<em>str</em>) – </p>
@@ -326,6 +328,17 @@ offshore.</p></li>
 <dd class="field-odd"><p><strong>json_instructions</strong> (<em>json</em>) – </p>
 </dd>
 </dl>
+<dl class="py method">
+<dt class="sig sig-object py" id="geofabrics.processor.LidarDemGenerator.create_metadata">
+<span class="sig-name descname"><span class="pre">create_metadata</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">self</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#geofabrics.processor.LidarDemGenerator.create_metadata" title="Permalink to this definition"></a></dt>
+<dd><p>A clase to create metadata to be added as netCDF attributes.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Return type</dt>
+<dd class="field-odd"><p>dict</p>
+</dd>
+</dl>
+</dd></dl>
+
 <dl class="py method">
 <dt class="sig sig-object py" id="geofabrics.processor.LidarDemGenerator.run">
 <span class="sig-name descname"><span class="pre">run</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">self</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#geofabrics.processor.LidarDemGenerator.run" title="Permalink to this definition"></a></dt>

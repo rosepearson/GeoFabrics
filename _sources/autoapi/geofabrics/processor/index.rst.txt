@@ -56,19 +56,21 @@ Classes
 
       Return the CRS projection information (horiztonal and vertical) from the instruction file. Raise an error
       if 'output' is not in the instructions. If no 'crs' or 'horizontal' or 'vertical' values are specified then use
-      the default value for each one missing from the instructions.
+      the default value for each one missing from the instructions. If the default is used it is added to the
+      instructions.
 
 
    .. py:method:: get_instruction_general(self, key)
 
       Return the general instruction from the instruction file or return the default value if not specified in
-      the instruction file. Raise an error if the key is not in the instructions and there is no default value.
+      the instruction file. Raise an error if the key is not in the instructions and there is no default value. If the
+      default is used it is added to the instructions.
 
 
    .. py:method:: get_processing_instructions(self, key)
 
       Return the processing instruction from the instruction file or return the default value if not specified in
-      the instruction file.
+      the instruction file. If the default is used it is added to the instructions.
 
 
    .. py:method:: check_apis(self, key)
@@ -164,6 +166,11 @@ Classes
       offshore.
 
    See the README.md for usage examples or GeoFabrics/tests/ for examples of usage and an instruction file
+
+   .. py:method:: create_metadata(self)
+
+      A clase to create metadata to be added as netCDF attributes.
+
 
    .. py:method:: run(self)
 

@@ -31,7 +31,8 @@ Functions
 .. autoapisummary::
 
    geofabrics.dem.read_file_with_pdal
-   geofabrics.dem.rasterise_with_idw
+   geofabrics.dem.rasterise_points
+   geofabrics.dem.calculate_idw
    geofabrics.dem.load_tiles_in_chunk
    geofabrics.dem.rasterise_chunk
 
@@ -53,6 +54,11 @@ Attributes
    optional 'exclusion_extent' input.
 
    If set_foreshore is True all positive DEM values in the foreshore are set to zero.
+
+   .. py:method:: __del__(self)
+
+      Ensure the memory associated with netCDF files is properly freed.
+
 
    .. py:method:: points(self)
       :property:
@@ -81,6 +87,11 @@ Attributes
    :param extents: Defines the extents of any dense (LiDAR or refernence DEM) values already added.
    :param dense_dem: The dense portion of the DEM
    :param interpolation_method: If not None, interpolate using that method. Valid options are 'linear', 'nearest', and 'cubic'
+
+   .. py:method:: __del__(self)
+
+      Ensure the memory associated with netCDF files is properly freed.
+
 
    .. py:method:: extents(self)
       :property:
@@ -128,7 +139,7 @@ Attributes
                                            If not None, interpolate using that method. Valid options are 'linear', 'nearest', and 'cubic'
 
 
-.. py:class:: DenseDemFromTiles(catchment_geometry, idw_power, idw_radius, interpolation_method, drop_offshore_lidar = True, elevation_range = None)
+.. py:class:: DenseDemFromTiles(catchment_geometry, interpolation_method, lidar_interpolation_method, drop_offshore_lidar = True, elevation_range = None)
 
    Bases: :py:obj:`DenseDem`
 
@@ -141,10 +152,9 @@ Attributes
    :param drop_offshore_lidar: If True only keep LiDAR values within the foreshore and land regions defined by the catchment_geometry.
                                If False keep all LiDAR values.
    :param interpolation_method: If not None, interpolate using that method. Valid options are 'linear', 'nearest', and 'cubic'.
-   :param idw_power: The power to apply when performing IDW
-   :param idw_radius: The radius to apply IDW over
+   :param lidar_interpolation_method: The interpolation method to apply to point clouds. Options are: mean, median, IDW
 
-   .. py:method:: add_lidar(self, lidar_files, tile_index_file, chunk_size, lidar_classifications_to_keep, source_crs = None, drop_offshore_lidar = True)
+   .. py:method:: add_lidar(self, lidar_files, tile_index_file, chunk_size, lidar_classifications_to_keep, source_crs, drop_offshore_lidar, metadata)
 
       Read in all LiDAR files and use to create a dense DEM.
 
@@ -167,10 +177,17 @@ Attributes
    Read a tile file in using PDAL
 
 
-.. py:function:: rasterise_with_idw(point_cloud, xy_out, idw_radius, idw_power, raster_type, smoothing = 0, eps = 0, leaf_size = 10)
+.. py:function:: rasterise_points(point_cloud, xy_out, options, eps = 0, leaf_size = 10)
 
-   Calculate DEM elevation values at the specified locations using the inverse distance weighing (IDW)
-   approach. This implementation is based on the scipy.spatial.KDTree
+   Calculate DEM elevation values at the specified locations using the selected approach. Options include: mean,
+   median, and inverse distance weighing (IDW). This implementation is based on the scipy.spatial.KDTree
+
+
+.. py:function:: calculate_idw(near_indicies, point, tree, point_cloud, smoothing = 0, power = 2)
+
+   Calculate DEM elevation values at the specified locations by
+   calculating the mean. This implementation is based on the
+   scipy.spatial.KDTree
 
 
 .. py:function:: load_tiles_in_chunk(dim_x, dim_y, tile_index_extents, tile_index_name_column, lidar_files, source_crs, chunk_region_to_tile, catchment_geometry)
@@ -179,7 +196,7 @@ Attributes
 
 
 
-.. py:function:: rasterise_chunk(dim_x, dim_y, tile_points, raster_type, lidar_classifications_to_keep, idw_radius, idw_power, elevation_range)
+.. py:function:: rasterise_chunk(dim_x, dim_y, tile_points, options)
 
    Rasterise all points within a chunk.
 

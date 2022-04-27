@@ -1,0 +1,11 @@
+:py:mod:`geofabrics.version`
+============================
+
+.. py:module:: geofabrics.version
+
+.. autoapi-nested-parse::
+
+   Contains the package version information
+
+
+
