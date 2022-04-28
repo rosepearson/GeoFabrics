@@ -1,8 +1,8 @@
 # -*- coding: utf-8 -*-
 """
-A convenience script for running many combinations of chunk_sizes and numbers_of_cores for a small sub-set of a
-catchment to help with the selection of an appropiate chink_size and number_of_cores before processing an entire
-catchment.
+A convenience script for running many combinations of chunk_sizes and numbers_of_cores
+for a small sub-set of a catchment to help with the selection of an appropiate
+chink_size and number_of_cores before processing an entire catchment.
 """
 from geofabrics import processor
 import json
@@ -15,7 +15,8 @@ import pathlib
 
 
 def parse_args():
-    """Expect a command line argument of the form '--instructions path/to/json/instruction/file'"""
+    """Expect a command line argument of the form:
+    '--instructions path/to/json/instruction/file'"""
 
     parser = argparse.ArgumentParser()
 
@@ -31,14 +32,14 @@ def parse_args():
 
 
 def benchmark_processing(args):
-    """Run the DEM generation pipeline given the specified instructions for a range of different 'number_of_cores'
-    and 'chunk_sizes' specified in the instructions. Optionally save each DEM separately. Plot the execution times of
-    all differnet processing configurations at the end."""
+    """Run the DEM generation pipeline given the specified instructions for a range of
+    different 'number_of_cores' and 'chunk_sizes' specified in the instructions.
+    Optionally save each DEM separately. Plot the execution times all differnet
+    processing configurations at the end."""
 
     # Load the instructions
     with open(args.instructions, "r") as file_pointer:
         instructions = json.load(file_pointer)
-
     assert "local_cache" in instructions["instructions"]["data_paths"], (
         "A local_cache must be spcified in the instruction file"
         "this is where the log file will be written."
@@ -56,7 +57,8 @@ def benchmark_processing(args):
     print(f"Log file is located at: {log_path / 'geofabrics.log'}")
     print(
         "Benchmarking processor.DemGenerator for chunk_sizes: "
-        f"{instructions['instructions']['benchmarking']['chunk_sizes']} and numbers_of_cores: "
+        f"{instructions['instructions']['benchmarking']['chunk_sizes']} and "
+        "numbers_of_cores: "
         f"{instructions['instructions']['benchmarking']['numbers_of_cores']}"
     )
 
@@ -71,10 +73,12 @@ def benchmark_processing(args):
         ]:
             instructions["instructions"]["data_paths"]["result_dem"] = (
                 cache_path
-                / f"benchmarking_{resolution}res_{number_of_cores}cores_{chunk_size}chunk.nc"
+                / f"benchmarking_{resolution}res_{number_of_cores}cores_{chunk_size}"
+                "chunk.nc"
             )
             print(
-                f"result path {instructions['instructions']['data_paths']['result_dem']}"
+                "result path "
+                f"{instructions['instructions']['data_paths']['result_dem']}"
             )
             instructions["instructions"]["processing"]["chunk_size"] = chunk_size
             instructions["instructions"]["processing"][
@@ -82,7 +86,8 @@ def benchmark_processing(args):
             ] = number_of_cores
             # Run the pipeline
             start_time = time.time()
-            # Create a DEM from dense data (LiDAR, reference DEM) and bathymetry if specified
+            # Create a DEM from dense data (LiDAR, reference DEM) and bathymetry if
+            # specified
             runner = processor.LidarDemGenerator(instructions)
             runner.run()
             end_time = time.time()
@@ -92,15 +97,14 @@ def benchmark_processing(args):
                         instructions["instructions"]["data_paths"]["result_dem"]
                     )
                 )
-
             # record results
             results["execution_time"].append(end_time - start_time)
             results["number_of_cores"].append(number_of_cores)
             results["chunk_sizes"].append(chunk_size)
             print(
-                f"Time: {end_time - start_time}, Cores: {number_of_cores}, Chunk size: {chunk_size}"
+                f"Time: {end_time - start_time}, Cores: {number_of_cores}, Chunk size:"
+                f" {chunk_size}"
             )
-
     print(results)
     logging.info(results)
 

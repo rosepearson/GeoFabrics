@@ -1,6 +1,7 @@
 # -*- coding: utf-8 -*-
 """
-A convenience script for running the DEM generation pipelines contained in the processor module of geofabrics.
+A convenience script for running the DEM generation pipelines contained in the processor
+ module of geofabrics.
 """
 from geofabrics import processor
 import json
@@ -14,7 +15,8 @@ import pathlib
 
 
 def parse_args():
-    """Expect a command line argument of the form '--instructions path/to/json/instruction/file'"""
+    """Expect a command line argument of the form:
+    '--instructions path/to/json/instruction/file'"""
 
     parser = argparse.ArgumentParser()
 
@@ -68,7 +70,8 @@ def launch_processor(args):
         runner = processor.BathymetryDemGenerator(instructions)
         runner.run()
     else:
-        # Create a DEM from dense data (LiDAR, reference DEM) and bathymetry if specified
+        # Create a DEM from dense data (LiDAR, reference DEM) and bathymetry if
+        # specified
         print("Run processor.LidarDemGenerator")
         runner = processor.LidarDemGenerator(instructions)
         runner.run()
@@ -83,9 +86,11 @@ def launch_processor(args):
         ) as benchmark_dem:
             benchmark_dem.load()
         logging.info(
-            f"Comparing the generated DEM saved at {instructions['instructions']['data_paths']['result_dem']} "
-            f"against the benchmark DEM stored {instructions['instructions']['data_paths']['benchmark_dem']} "
-            "\nAny difference will be reported."
+            "Comparing the generated DEM saved at "
+            f"{instructions['instructions']['data_paths']['result_dem']} against the "
+            f"benchmark DEM stored "
+            "{instructions['instructions']['data_paths']['benchmark_dem']}. \nAny "
+            "difference will be reported."
         )
         # Compare the generated and benchmark DEMs - plot
         diff = benchmark_dem.copy()

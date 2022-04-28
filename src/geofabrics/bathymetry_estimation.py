@@ -147,7 +147,8 @@ class Channel:
             the channel catchment.
         """
 
-        # Use spaced points as the insures consistent distance between sampled points along the spline
+        # Use spaced points as the insures consistent distance between sampled points
+        # along the spline
         xy = self.get_spaced_points(
             channel=self.channel,
             sampling_direction=self.sampling_direction,
@@ -617,7 +618,8 @@ class ChannelCharacteristics:
         ----------
 
         cross_sections
-            The elevations and calculated widths and thresholds for each sampled cross section
+            The elevations and calculated widths and thresholds for each sampled cross
+            section
         """
 
         invalid_mask = numpy.logical_not(cross_sections["valid"])
@@ -923,13 +925,15 @@ class ChannelCharacteristics:
             widths["last_flat_bank_i"].append(stop_i)
             widths["flat_widths"].append((stop_i - start_i) * resolution)
 
-            # Iterate out from the fixed threshold width until the banks go down, or the max threshold is reached
+            # Iterate out from the fixed threshold width until the banks go down, or the
+            # max threshold is reached
             maximum_z = z_water + maximum_threshold
             if numpy.isnan(start_i) or numpy.isnan(stop_i):
                 # No valid width to begin with
                 dz_bankfull = numpy.nan
             else:
-                # Iterate out from the fixed threshold width until the banks go down, or the max threshold is reached
+                # Iterate out from the fixed threshold width until the banks go down,
+                # or the max threshold is reached
                 z_bankfull = numpy.nanmin(gnd_samples[[start_i, stop_i]])
                 start_i_bf = start_i
                 stop_i_bf = stop_i
@@ -1158,7 +1162,8 @@ class ChannelCharacteristics:
                 if start_index + i < self.number_of_samples and numpy.isnan(stop_i):
                     gnd_elevation_over_minimum = gnd_samples[start_index + i] - z_water
 
-                    # Detect banks - either ground above threshold, or no ground with vegetation over threshold
+                    # Detect banks - either ground above threshold, or no ground with
+                    # vegetation over threshold
                     if numpy.isnan(stop_i) and gnd_elevation_over_minimum > threshold:
                         # Leaving the channel
                         stop_i = start_index + i
@@ -1505,7 +1510,8 @@ class ChannelCharacteristics:
         - https://stats.stackexchange.com/questions/467126/monotonic-splines-in-python
         - https://analyticalsciencejournals.onlinelibrary.wiley.com/doi/epdf/10.1002/cem.935
 
-        At end could fit non-monotonic fit. unconstrained_polynomial_fit = numpy.linalg.solve(E + la * D3.T @ D3, y)
+        At end could fit non-monotonic fit. unconstrained_polynomial_fit = numpy.linalg
+        .solve(E + la * D3.T @ D3, y)
 
         Parameters
         ----------
@@ -1683,7 +1689,8 @@ class ChannelCharacteristics:
             numpy.logical_not(cross_sections["valid"]), "valid_widths"
         ] = numpy.nan
 
-        # Create channel polygon with erosion and dilation to reduce sensitivity to poor width measurements
+        # Create channel polygon with erosion and dilation to reduce sensitivity to poor
+        # width measurements
         aligned_channel = self._centreline_from_width_spline(
             cross_sections=cross_sections,
             smoothing_multiplier=width_centre_smoothing_multiplier,
@@ -1786,7 +1793,8 @@ class ChannelCharacteristics:
             smoothing_multiplier=river_polygon_smoothing_multiplier,
         )
 
-        # Midpoints of the river polygon - buffer slightly to ensure intersection at the start and end
+        # Midpoints of the river polygon - buffer slightly to ensure intersection at the
+        # start and end
         cross_sections["river_polygon_midpoint"] = cross_sections.apply(
             lambda row: row.geometry.intersection(
                 river_polygon.buffer(self.resolution / 10).iloc[0]

@@ -8,12 +8,12 @@ import setuptools
 
 with open("README.md", "r", encoding="utf-8") as fh:
     long_description = fh.read()
-
 setuptools.setup(
     name="GeoFabrics",
     author="Rose pearson",
     author_email="rose.pearson@niwa.co.nz",
-    description="A package for creating hydrologically conditioned geo-fabrics (i.e. DEMs and roughness maps)",
+    description="A package for creating hydrologically conditioned geo-fabrics "
+    "(i.e. DEMs and roughness maps)",
     keywords="GeoFabrics, DEM, Roughness, Hydrologically conditioned",
     long_description=long_description,
     long_description_content_type="text/markdown",
