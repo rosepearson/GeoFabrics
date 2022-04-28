@@ -312,11 +312,11 @@ class BaseProcessor(abc.ABC):
                 )
 
                 logging.info(
-                    f"Downloading vector layers {vector_instruction['layers']} from the {data_service} data"
-                    + "service"
+                    f"Downloading vector layers {vector_instruction['layers']} from the"
+                    " {data_service} data service"
                 )
 
-                # Cycle through all layers specified - save each and add to the path list
+                # Cycle through all layers specified - save each & add to the path list
                 for layer in vector_instruction["layers"]:
                     # Use the run method to download each layer in turn
                     vector = vector_fetcher.run(layer, geometry_type)
@@ -334,8 +334,9 @@ class BaseProcessor(abc.ABC):
         return paths
 
     def get_lidar_dataset_crs(self, data_service, dataset_name) -> dict:
-        """Checks to see if source CRS of an associated LiDAR datasets has be specified in the instruction file. If it
-        has been specified, this CRS is returned, and will later be used to override the CRS encoded in the LAS files.
+        """Checks to see if source CRS of an associated LiDAR datasets has be specified
+        in the instruction file. If it has been specified, this CRS is returned, and
+        will later be used to override the CRS encoded in the LAS files.
         """
 
         apis_instructions = self.instructions["instructions"]["apis"]
@@ -358,53 +359,59 @@ class BaseProcessor(abc.ABC):
                     "vertical": dataset_instruction["crs"]["vertical"],
                 }
                 logging.info(
-                    f"The LiDAR dataset {dataset_name} is assumed to have the source coordinate system EPSG: "
-                    f"{dataset_crs} as defined in the instruction file"
+                    f"The LiDAR dataset {dataset_name} is assumed to have the source "
+                    f"coordinate system EPSG: {dataset_crs} as defined in the "
+                    "instruction file"
                 )
                 return dataset_crs
             else:
                 logging.info(
-                    f"The LiDAR dataset {dataset_name} will use the source the coordinate system EPSG defined"
-                    " in its LAZ files"
+                    f"The LiDAR dataset {dataset_name} will use the source the "
+                    "coordinate system EPSG defined in its LAZ files"
                 )
                 return None
         else:
             logging.info(
-                f"The LiDAR dataset {dataset_name} will use the source coordinate system EPSG from its LAZ "
-                "files"
+                f"The LiDAR dataset {dataset_name} will use the source coordinate "
+                "system EPSG from its LAZ files"
             )
             return None
 
     def get_lidar_file_list(self, data_service) -> dict:
-        """Return a dictionary with three enties 'file_paths', 'crs' and 'tile_index_file'. The 'file_paths' contains a
-        list of LiDAR tiles to process.
+        """Return a dictionary with three enties 'file_paths', 'crs' and
+        'tile_index_file'. The 'file_paths' contains a list of LiDAR tiles to process.
 
-        The 'crs' (or coordinate system of the LiDAR data as defined by an EPSG code) is only optionally set (if unset
-        the value is None). The 'crs' should only be set if the CRS information is not correctly encoded in the LAZ/LAS
-        files. Currently this is only supported for OpenTopography LiDAR.
+        The 'crs' (or coordinate system of the LiDAR data as defined by an EPSG code) is
+        only optionally set (if unset the value is None). The 'crs' should only be set
+        if the CRS information is not correctly encoded in the LAZ/LAS files. Currently
+        this is only supported for OpenTopography LiDAR.
 
-        The 'tile_index_file' is also optional (if unset the value is None). The 'tile_index_file' should be given if a
-        tile index file exists for the LiDAR files specifying the extents of each tile. This is currently only supported
-        for OpenTopography files.
+        The 'tile_index_file' is also optional (if unset the value is None). The
+        'tile_index_file' should be given if a tile index file exists for the LiDAR
+        files specifying the extents of each tile. This is currently only supported for
+        OpenTopography files.
 
-        If a LiDAR API is specified this is checked and all files within the catchment area are downloaded and used to
-        construct the file list. If none is specified, the instruction 'data_paths' is checked for 'lidars' and these
-        are returned.
+        If a LiDAR API is specified this is checked and all files within the catchment
+        area are downloaded and used to construct the file list. If none is specified,
+        the instruction 'data_paths' is checked for 'lidars' and these are returned.
         """
 
         lidar_dataset_index = 0  # currently only support one LiDAR dataset
 
         lidar_dataset_info = {}
 
-        # See if 'OpenTopography' or another data_service has been specified as an area to look first
+        # See if 'OpenTopography' or another data_service has been specified as an area
+        # to look first
         if self.check_apis(data_service):
 
             assert self.check_instruction_path("local_cache"), (
-                "A 'local_cache' must be specified under the "
-                + "'file_paths' in the instruction file if you are going to use an API - like 'open_topography'"
+                "A 'local_cache' must be specified under the 'file_paths' in the "
+                "instruction file if you are going to use an API - like "
+                "'open_topography'"
             )
 
-            # download the specified datasets from the data service - then get the local file path
+            # download the specified datasets from the data service - then get the
+            # local file path
             search_polygon = (
                 self.catchment_geometry.catchment
                 if self.catchment_geometry is not None
@@ -422,9 +429,10 @@ class BaseProcessor(abc.ABC):
                 logging.info(f"Fetching dataset: {dataset_name}")
                 self.lidar_fetcher.run(dataset_name)
             assert len(self.lidar_fetcher.dataset_prefixes) == 1, (
-                "geofabrics currently only supports creating a DEM"
-                " from only one LiDAR dataset at a time. Please create an issue if you want support for mutliple "
-                f"datasets. Error as the following datasets were specified: {self.lidar_fetcher.dataset_prefixes}"
+                "geofabrics currently only supports creating a DEM from only one LiDAR "
+                "dataset at a time. Please create an issue if you want support for "
+                "mutliple datasets. Error as the following datasets were specified: "
+                f"{self.lidar_fetcher.dataset_prefixes}"
             )
             dataset_prefix = self.lidar_fetcher.dataset_prefixes[lidar_dataset_index]
             lidar_dataset_info["file_paths"] = sorted(
@@ -455,17 +463,20 @@ class BaseProcessor(abc.ABC):
 
 
 class BathymetryDemGenerator(BaseProcessor):
-    """BathymetryDemGenerator executes a pipeline for loading in a Dense DEM and extents before interpolating offshore
-    DEM values. The data and pipeline logic is defined in the json_instructions file.
+    """BathymetryDemGenerator executes a pipeline for loading in a Dense DEM and extents
+    before interpolating offshore DEM values. The data and pipeline logic is defined in
+    the json_instructions file.
 
     The `BathymetryDemGenerator` class contains several important class members:
-     * catchment_geometry - Defines all relevant regions in a catchment required in the generation of a DEM as polygons.
-     * dense_dem - Defines the hydrologically conditioned DEM as a combination of tiles from LiDAR and interpolated from
-       bathymetry.
-     * bathy_contours - This object defines the bathymetry vectors used by the dense_dem to define the DEM
-       offshore.
+     * catchment_geometry - Defines all relevant regions in a catchment required in the
+       generation of a DEM as polygons.
+     * dense_dem - Defines the hydrologically conditioned DEM as a combination of tiles
+       from LiDAR and interpolated from bathymetry.
+     * bathy_contours - This object defines the bathymetry vectors used by the dense_dem
+       to define the DEM offshore.
 
-    See the README.md for usage examples or GeoFabrics/tests/ for examples of usage and an instruction file
+    See the README.md for usage examples or GeoFabrics/tests/ for examples of usage and
+    an instruction file
     """
 
     def __init__(self, json_instructions: json):
@@ -480,7 +491,8 @@ class BathymetryDemGenerator(BaseProcessor):
     def add_bathymetry(self, area_threshold: float, catchment_dirs: pathlib.Path):
         """Add in any bathymetry data - ocean or river"""
 
-        # Load in bathymetry and interpolate offshore if significant offshore is not covered by LiDAR
+        # Load in bathymetry and interpolate offshore if significant offshore is not
+        # covered by LiDAR
         area_without_lidar = self.catchment_geometry.offshore_without_lidar(
             self.dense_dem.extents
         ).geometry.area.sum()
@@ -494,7 +506,8 @@ class BathymetryDemGenerator(BaseProcessor):
             bathy_contour_dirs = self.get_vector_paths("bathymetry_contours")
             assert len(bathy_contour_dirs) == 1, (
                 f"{len(bathy_contour_dirs)} bathymetry_contours's provided. "
-                + f"Specficially {catchment_dirs}. Support has not yet been added for multiple datasets."
+                f"Specficially {catchment_dirs}. Support has not yet been added for "
+                "multiple datasets."
             )
 
             logging.info(f"Incorporating Bathymetry: {bathy_contour_dirs}")
@@ -528,15 +541,15 @@ class BathymetryDemGenerator(BaseProcessor):
                 z_labels=self.get_instruction_general("river_bathy_z_label"),
             )
 
-            # Call interpolate river on the DEM - the class checks to see if any pixels actually fall inside the polygon
+            # Call interpolate river on the DEM - the class checks to see if any pixels
+            # actually fall inside the polygon
             self.dense_dem.interpolate_river_bathymetry(
                 river_bathymetry=self.river_bathy
             )
 
     def run(self):
-        """This method executes the geofabrics generation pipeline to produce geofabric derivatives.
-
-        Only load in the."""
+        """This method executes the geofabrics generation pipeline to produce geofabric
+        derivatives."""
 
         # Only include data in addition to LiDAR if the area_threshold is not covered
         area_threshold = 10.0 / 100  # Used to decide if bathymetry should be included
@@ -552,8 +565,8 @@ class BathymetryDemGenerator(BaseProcessor):
         )
         land_dirs = self.get_vector_paths("land")
         assert len(land_dirs) == 1, (
-            f"{len(land_dirs)} catchment_boundary's provided, where only one is supported."
-            + f" Specficially land_dirs = {land_dirs}."
+            f"{len(land_dirs)} catchment_boundary's provided, where only one is "
+            + f"supported. Specficially land_dirs = {land_dirs}."
         )
         self.catchment_geometry.land = land_dirs[0]
 
@@ -577,18 +590,22 @@ class BathymetryDemGenerator(BaseProcessor):
 
 
 class LidarDemGenerator(BathymetryDemGenerator):
-    """LidarDemGenerator executes a pipeline for creating a hydrologically conditioned DEM from LiDAR and optionally a
-    reference DEM and/or bathymetry contours. The data and pipeline logic is defined in the json_instructions file.
+    """LidarDemGenerator executes a pipeline for creating a hydrologically conditioned
+    DEM from LiDAR and optionally a reference DEM and/or bathymetry contours. The data
+    and pipeline logic is defined in the json_instructions file.
 
     The `DemGenerator` class contains several important class members:
-     * catchment_geometry - Defines all relevant regions in a catchment required in the generation of a DEM as polygons.
-     * dense_dem - Defines the hydrologically conditioned DEM as a combination of tiles from LiDAR and interpolated from
-       bathymetry.
-     * reference_dem - This optional object defines a background DEM that may be used to fill on land gaps in the LiDAR.
-     * bathy_contours - This optional object defines the bathymetry vectors used by the dense_dem to define the DEM
-       offshore.
+     * catchment_geometry - Defines all relevant regions in a catchment required in the
+       generation of a DEM as polygons.
+     * dense_dem - Defines the hydrologically conditioned DEM as a combination of tiles
+       from LiDAR and interpolated from bathymetry.
+     * reference_dem - This optional object defines a background DEM that may be used to
+       fill on land gaps in the LiDAR.
+     * bathy_contours - This optional object defines the bathymetry vectors used by the
+       dense_dem to define the DEM offshore.
 
-    See the README.md for usage examples or GeoFabrics/tests/ for examples of usage and an instruction file
+    See the README.md for usage examples or GeoFabrics/tests/ for examples of usage and
+    an instruction file.
     """
 
     def __init__(self, json_instructions: json):
@@ -611,7 +628,8 @@ class LidarDemGenerator(BathymetryDemGenerator):
         return metadata
 
     def run(self):
-        """This method executes the geofabrics generation pipeline to produce geofabric derivatives.
+        """This method executes the geofabrics generation pipeline to produce geofabric
+        derivatives.
 
         Note it currently only considers one LiDAR dataset that can have many tiles.
         See 'get_lidar_file_list' for where to change this."""
@@ -632,8 +650,8 @@ class LidarDemGenerator(BathymetryDemGenerator):
         )
         land_dirs = self.get_vector_paths("land")
         assert len(land_dirs) == 1, (
-            f"{len(land_dirs)} catchment_boundary's provided, where only one is supported."
-            + f" Specficially land_dirs = {land_dirs}."
+            f"{len(land_dirs)} catchment_boundary's provided, where only one is "
+            f"supported. Specficially land_dirs = {land_dirs}."
         )
         self.catchment_geometry.land = land_dirs[0]
 
@@ -686,12 +704,14 @@ class LidarDemGenerator(BathymetryDemGenerator):
             ):
 
                 assert len(self.get_instruction_path("reference_dems")) == 1, (
-                    f"{len(self.get_instruction_path('reference_dems'))} reference_dems specified, but only one supported"
-                    + f" currently. reference_dems: {self.get_instruction_path('reference_dems')}"
+                    f"{len(self.get_instruction_path('reference_dems'))} reference_dems"
+                    " specified, but only one supported currently. reference_dems: "
+                    f"{self.get_instruction_path('reference_dems')}"
                 )
 
                 logging.info(
-                    f"Incorporating background DEM: {self.get_instruction_path('reference_dems')}"
+                    "Incorporating background DEM: "
+                    f"{self.get_instruction_path('reference_dems')}"
                 )
 
                 # Load in background DEM - cut away within the LiDAR extents
@@ -702,7 +722,8 @@ class LidarDemGenerator(BathymetryDemGenerator):
                     exclusion_extent=self.dense_dem.extents,
                 )
 
-                # Add the reference DEM patch where there's no LiDAR to the dense DEM without updting the extents
+                # Add the reference DEM patch where there's no LiDAR to the dense DEM
+                # without updting the extents
                 self.dense_dem.add_reference_dem(
                     tile_points=self.reference_dem.points,
                     tile_extent=self.reference_dem.extents,
@@ -717,7 +738,8 @@ class LidarDemGenerator(BathymetryDemGenerator):
             )
         else:
             logging.warning(
-                "In processor.DemGenerator - no LiDAR extents exist so no extents file written"
+                "In processor.DemGenerator - no LiDAR extents exist so no extents file "
+                "written"
             )
         # Check for and add any bathymetry information
         self.add_bathymetry(
@@ -1106,7 +1128,8 @@ class RiverBathymetryGenerator(BaseProcessor):
         self, buffer: float
     ) -> bathymetry_estimation.ChannelCharacteristics:
         """Calculate the channel width, slope and other characteristics. This requires a
-        ground and vegetation DEM. This also may require alignment of the channel centreline.
+        ground and vegetation DEM. This also may require alignment of the channel
+        centreline.
 
 
         Parameters:
@@ -1163,7 +1186,8 @@ class RiverBathymetryGenerator(BaseProcessor):
         flow = pandas.read_csv(self.get_bathymetry_instruction("flow_file"))
         channel = self.get_rec_channel()
 
-        # Match each channel midpoint to a nzsegment ID - based on what channel reach is closest
+        # Match each channel midpoint to a nzsegment ID - based on what channel reach is
+        # closest
         width_values["nzsegment"] = (
             numpy.ones(len(width_values["widths"]), dtype=float) * numpy.nan
         )
@@ -1198,7 +1222,8 @@ class RiverBathymetryGenerator(BaseProcessor):
         flat_width_name = "flat_widths_mean_0.25km"
         threshold_name = "thresholds_mean_0.25km"
 
-        # Calculate depths and bed elevation using the Neal et al approach (Uniform flow theory)
+        # Calculate depths and bed elevation using the Neal et al approach (Uniform flow
+        # theory)
         full_bank_depth = self._calculate_neal_et_al_depth(
             width_values=width_values,
             width_name=width_name,
@@ -1216,7 +1241,8 @@ class RiverBathymetryGenerator(BaseProcessor):
             width_values[min_z_name] - active_channel_bank_depth
         )
 
-        # Calculate depths and bed elevation using the Rupp & Smart approach (Hydrologic geometry)
+        # Calculate depths and bed elevation using the Rupp & Smart approach (Hydrologic
+        # geometry)
         full_bank_depth = self._calculate_rupp_and_smart_depth(
             width_values=width_values,
             width_name=width_name,
