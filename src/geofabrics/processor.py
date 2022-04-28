@@ -25,8 +25,10 @@ from . import dem
 
 
 class BaseProcessor(abc.ABC):
-    """An abstract class with general methods for accessing elements in instruction files including populating default
-    values. Also contains functions for downloading remote data using geopais, and constructing data file lists.
+    """An abstract class with general methods for accessing elements in
+    instruction files including populating default values. Also contains
+    functions for downloading remote data using geopais, and constructing data
+    file lists.
     """
 
     def __init__(self, json_instructions: json):
@@ -35,8 +37,9 @@ class BaseProcessor(abc.ABC):
         self.catchment_geometry = None
 
     def get_instruction_path(self, key: str) -> str:
-        """Return the file path from the instruction file, or default if there is a default value and the local cache
-        is specified. Raise an error if the key is not in the instructions."""
+        """Return the file path from the instruction file, or default if there
+        is a default value and the local cache is specified. Raise an error if
+        the key is not in the instructions."""
 
         defaults = {
             "result_dem": "generated_dem.nc",
@@ -78,8 +81,8 @@ class BaseProcessor(abc.ABC):
             )
 
     def check_instruction_path(self, key: str) -> bool:
-        """Return True if the file path exists in the instruction file, or True if there is a default value and the
-        local cache is specified."""
+        """Return True if the file path exists in the instruction file, or True
+        if there is a default value and the local cache is specified."""
 
         assert (
             "local_cache" in self.instructions["instructions"]["data_paths"]
@@ -93,11 +96,13 @@ class BaseProcessor(abc.ABC):
             return key in defaults
 
     def get_resolution(self) -> float:
-        """Return the resolution from the instruction file. Raise an error if not in the instructions."""
+        """Return the resolution from the instruction file. Raise an error if
+        not in the instructions."""
 
         assert "output" in self.instructions["instructions"], (
-            "'output' is not a key-word in the instructions. It "
-            + "should exist and is where the resolution and optionally the CRS of the output DEM is defined."
+            "'output' is not a key-word in the instructions. It should exist"
+            " and is where the resolution and optionally the CRS of the output"
+            " DEM is defined."
         )
         assert (
             "resolution" in self.instructions["instructions"]["output"]["grid_params"]
@@ -105,22 +110,25 @@ class BaseProcessor(abc.ABC):
         return self.instructions["instructions"]["output"]["grid_params"]["resolution"]
 
     def get_crs(self) -> dict:
-        """Return the CRS projection information (horiztonal and vertical) from the instruction file. Raise an error
-        if 'output' is not in the instructions. If no 'crs' or 'horizontal' or 'vertical' values are specified then use
-        the default value for each one missing from the instructions. If the default is used it is added to the
-        instructions."""
+        """Return the CRS projection information (horiztonal and vertical) from
+        the instruction file. Raise an error if 'output' is not in the instructions. If
+        no 'crs' or 'horizontal' or 'vertical' values are specified then use the default
+        value for each one missing from the instructions. If the default is used it is
+        added to the instructions.
+        """
 
         defaults = {"horizontal": 2193, "vertical": 7839}
 
         assert "output" in self.instructions["instructions"], (
-            "'output' is not a key-word in the instructions. It "
-            + "should exist and is where the resolution and optionally the CRS of the output DEM is defined."
+            "'output' is not a key-word in the instructions. It should exist "
+            "and is where the resolution and optionally the CRS of the output "
+            "DEM is defined."
         )
 
         if "crs" not in self.instructions["instructions"]["output"]:
             logging.warning(
-                "No output the coordinate system EPSG values specified. We will instead be using the "
-                + f"defaults: {defaults}."
+                "No output the coordinate system EPSG values specified. We "
+                f"will instead be using the defaults: {defaults}."
             )
             self.instructions["instructions"]["output"]["crs"] = defaults
             return defaults
@@ -138,17 +146,19 @@ class BaseProcessor(abc.ABC):
                 else defaults["vertical"]
             )
             logging.info(
-                f"The output the coordinate system EPSG values of {crs_dict} will be used. If these are not "
-                "as expected. Check both the 'horizontal' and 'vertical' values are specified."
+                f"The output the coordinate system EPSG values of {crs_dict} "
+                "will be used. If these are not as expected. Check both the "
+                "'horizontal' and 'vertical' values are specified."
             )
             # Update the CRS just incase this includes any default values
             self.instructions["instructions"]["output"]["crs"] = crs_dict
             return crs_dict
 
     def get_instruction_general(self, key: str):
-        """Return the general instruction from the instruction file or return the default value if not specified in
-        the instruction file. Raise an error if the key is not in the instructions and there is no default value. If the
-        default is used it is added to the instructions."""
+        """Return the general instruction from the instruction file or return
+        the default value if not specified in the instruction file. Raise an
+        error if the key is not in the instructions and there is no default
+        value. If the default is used it is added to the instructions."""
 
         defaults = {
             "set_dem_shoreline": True,
@@ -161,8 +171,8 @@ class BaseProcessor(abc.ABC):
         }
 
         assert key in defaults or key in self.instructions["instructions"]["general"], (
-            f"The key: {key} is missing "
-            + "from the general instructions, and does not have a default value"
+            f"The key: {key} is missing from the general instructions, and"
+            " does not have a default value"
         )
         if (
             "general" in self.instructions["instructions"]
@@ -174,8 +184,9 @@ class BaseProcessor(abc.ABC):
             return defaults[key]
 
     def get_processing_instructions(self, key: str):
-        """Return the processing instruction from the instruction file or return the default value if not specified in
-        the instruction file. If the default is used it is added to the instructions."""
+        """Return the processing instruction from the instruction file or
+        return the default value if not specified in the instruction file. If
+        the default is used it is added to the instructions."""
 
         defaults = {"number_of_cores": 1, "chunk_size": None}
 
@@ -191,13 +202,14 @@ class BaseProcessor(abc.ABC):
         ):
             return self.instructions["instructions"]["processing"][key]
         else:
-            if not "processing" in self.instructions["instructions"]:
+            if "processing" not in self.instructions["instructions"]:
                 self.instructions["instructions"]["processing"] = {}
             self.instructions["instructions"]["processing"][key] = defaults[key]
             return defaults[key]
 
     def check_apis(self, key) -> bool:
-        """Check to see if APIs are included in the instructions and if the key is included in specified apis"""
+        """Check to see if APIs are included in the instructions and if the key is
+        included in specified apis"""
 
         if "apis" in self.instructions["instructions"]:
             # 'apis' included instructions and Key included in the APIs
@@ -206,7 +218,8 @@ class BaseProcessor(abc.ABC):
             return False
 
     def check_vector(self, key) -> bool:
-        """Check to see if vector key (i.e. land, bathymetry_contours, etc) is included either as a file path, or
+        """Check to see if vector key (i.e. land, bathymetry_contours, etc) is included
+        either as a file path, or
         within any of the vector API's (i.e. LINZ or LRIS)."""
 
         data_services = [
@@ -232,8 +245,9 @@ class BaseProcessor(abc.ABC):
             return False
 
     def get_vector_paths(self, key) -> list:
-        """Get the path to the vector key data included either as a file path or as a LINZ API. Return all paths
-        where the vector key is specified. In the case that an API is specified ensure the data is fetched as well."""
+        """Get the path to the vector key data included either as a file path or as a
+        LINZ API. Return all paths where the vector key is specified. In the case that
+        an API is specified ensure the data is fetched as well."""
 
         paths = []
 
@@ -248,10 +262,12 @@ class BaseProcessor(abc.ABC):
                 paths.extend(data_paths)
             else:
                 paths.append(data_paths)
-        # Define the supported vector 'apis' keywords and the geoapis class for accessing that data service
+        # Define the supported vector 'apis' keywords and the geoapis class for
+        # accessing that data service
         data_services = {"linz": geoapis.vector.Linz, "lris": geoapis.vector.Lris}
 
-        # Check the instructions for vector data hosted in the supported vector data services: LINZ and LRIS
+        # Check the instructions for vector data hosted in the supported vector data
+        # services: LINZ and LRIS
         for data_service in data_services.keys():
             if (
                 self.check_apis(data_service)
@@ -260,8 +276,8 @@ class BaseProcessor(abc.ABC):
 
                 # Get the location to cache vector data downloaded from data services
                 assert self.check_instruction_path("local_cache"), (
-                    "Local cache file path must exist to specify the"
-                    + f" location to download vector data from the vector APIs: {data_services}"
+                    "Local cache file path must exist to specify thelocation to"
+                    + f" download vector data from the vector APIs: {data_services}"
                 )
                 cache_dir = pathlib.Path(self.get_instruction_path("local_cache"))
 
@@ -269,13 +285,14 @@ class BaseProcessor(abc.ABC):
                 assert (
                     "key" in self.instructions["instructions"]["apis"][data_service]
                 ), (
-                    "A 'key' must be specified"
-                    + f" for the {data_service} data service instead the instruction only includes: "
-                    + f"{self.instructions['instructions']['apis'][data_service]}"
+                    f"A 'key' must be specified for the {data_service} data"
+                    "  service instead the instruction only includes: "
+                    f"{self.instructions['instructions']['apis'][data_service]}"
                 )
                 api_key = self.instructions["instructions"]["apis"][data_service]["key"]
 
-                # Instantiate the geoapis object for downloading vectors from the data service.
+                # Instantiate the geoapis object for downloading vectors from the data
+                # service.
                 bounding_polygon = (
                     self.catchment_geometry.catchment
                     if self.catchment_geometry is not None
@@ -1290,7 +1307,8 @@ class RiverBathymetryGenerator(BaseProcessor):
         # Calculate the area estimated for full bank width flow
         full_bank_area = full_bank_depth * width_values[full_bank_width_name]
 
-        # Remove/correct for area along the bank edges (approximate as a triangle - two triangles = a rectange)
+        # Remove/correct for area along the bank edges (approximate as a
+        # triangle - two triangles = a rectange)
         bank_edge_area = (
             width_values[full_bank_width_name] - width_values[flat_width_name]
         ) * (
