@@ -11,7 +11,7 @@ import numpy
 import matplotlib
 import time
 import logging
-import pathlib  
+import pathlib
 
 
 def parse_args():
