@@ -32,86 +32,99 @@ Classes
 
    Bases: :py:obj:`abc.ABC`
 
-   An abstract class with general methods for accessing elements in instruction files including populating default
-   values. Also contains functions for downloading remote data using geopais, and constructing data file lists.
+   An abstract class with general methods for accessing elements in
+   instruction files including populating default values. Also contains
+   functions for downloading remote data using geopais, and constructing data
+   file lists.
 
    .. py:method:: get_instruction_path(self, key)
 
-      Return the file path from the instruction file, or default if there is a default value and the local cache
-      is specified. Raise an error if the key is not in the instructions.
+      Return the file path from the instruction file, or default if there
+      is a default value and the local cache is specified. Raise an error if
+      the key is not in the instructions.
 
 
    .. py:method:: check_instruction_path(self, key)
 
-      Return True if the file path exists in the instruction file, or True if there is a default value and the
-      local cache is specified.
+      Return True if the file path exists in the instruction file, or True
+      if there is a default value and the local cache is specified.
 
 
    .. py:method:: get_resolution(self)
 
-      Return the resolution from the instruction file. Raise an error if not in the instructions.
+      Return the resolution from the instruction file. Raise an error if
+      not in the instructions.
 
 
    .. py:method:: get_crs(self)
 
-      Return the CRS projection information (horiztonal and vertical) from the instruction file. Raise an error
-      if 'output' is not in the instructions. If no 'crs' or 'horizontal' or 'vertical' values are specified then use
-      the default value for each one missing from the instructions. If the default is used it is added to the
-      instructions.
+      Return the CRS projection information (horiztonal and vertical) from
+      the instruction file. Raise an error if 'output' is not in the instructions. If
+      no 'crs' or 'horizontal' or 'vertical' values are specified then use the default
+      value for each one missing from the instructions. If the default is used it is
+      added to the instructions.
 
 
    .. py:method:: get_instruction_general(self, key)
 
-      Return the general instruction from the instruction file or return the default value if not specified in
-      the instruction file. Raise an error if the key is not in the instructions and there is no default value. If the
-      default is used it is added to the instructions.
+      Return the general instruction from the instruction file or return
+      the default value if not specified in the instruction file. Raise an
+      error if the key is not in the instructions and there is no default
+      value. If the default is used it is added to the instructions.
 
 
    .. py:method:: get_processing_instructions(self, key)
 
-      Return the processing instruction from the instruction file or return the default value if not specified in
-      the instruction file. If the default is used it is added to the instructions.
+      Return the processing instruction from the instruction file or
+      return the default value if not specified in the instruction file. If
+      the default is used it is added to the instructions.
 
 
    .. py:method:: check_apis(self, key)
 
-      Check to see if APIs are included in the instructions and if the key is included in specified apis
+      Check to see if APIs are included in the instructions and if the key is
+      included in specified apis
 
 
    .. py:method:: check_vector(self, key)
 
-      Check to see if vector key (i.e. land, bathymetry_contours, etc) is included either as a file path, or
+      Check to see if vector key (i.e. land, bathymetry_contours, etc) is included
+      either as a file path, or
       within any of the vector API's (i.e. LINZ or LRIS).
 
 
    .. py:method:: get_vector_paths(self, key)
 
-      Get the path to the vector key data included either as a file path or as a LINZ API. Return all paths
-      where the vector key is specified. In the case that an API is specified ensure the data is fetched as well.
+      Get the path to the vector key data included either as a file path or as a
+      LINZ API. Return all paths where the vector key is specified. In the case that
+      an API is specified ensure the data is fetched as well.
 
 
    .. py:method:: get_lidar_dataset_crs(self, data_service, dataset_name)
 
-      Checks to see if source CRS of an associated LiDAR datasets has be specified in the instruction file. If it
-      has been specified, this CRS is returned, and will later be used to override the CRS encoded in the LAS files.
+      Checks to see if source CRS of an associated LiDAR datasets has be specified
+      in the instruction file. If it has been specified, this CRS is returned, and
+      will later be used to override the CRS encoded in the LAS files.
 
 
    .. py:method:: get_lidar_file_list(self, data_service)
 
-      Return a dictionary with three enties 'file_paths', 'crs' and 'tile_index_file'. The 'file_paths' contains a
-      list of LiDAR tiles to process.
+      Return a dictionary with three enties 'file_paths', 'crs' and
+      'tile_index_file'. The 'file_paths' contains a list of LiDAR tiles to process.
 
-      The 'crs' (or coordinate system of the LiDAR data as defined by an EPSG code) is only optionally set (if unset
-      the value is None). The 'crs' should only be set if the CRS information is not correctly encoded in the LAZ/LAS
-      files. Currently this is only supported for OpenTopography LiDAR.
+      The 'crs' (or coordinate system of the LiDAR data as defined by an EPSG code) is
+      only optionally set (if unset the value is None). The 'crs' should only be set
+      if the CRS information is not correctly encoded in the LAZ/LAS files. Currently
+      this is only supported for OpenTopography LiDAR.
 
-      The 'tile_index_file' is also optional (if unset the value is None). The 'tile_index_file' should be given if a
-      tile index file exists for the LiDAR files specifying the extents of each tile. This is currently only supported
-      for OpenTopography files.
+      The 'tile_index_file' is also optional (if unset the value is None). The
+      'tile_index_file' should be given if a tile index file exists for the LiDAR
+      files specifying the extents of each tile. This is currently only supported for
+      OpenTopography files.
 
-      If a LiDAR API is specified this is checked and all files within the catchment area are downloaded and used to
-      construct the file list. If none is specified, the instruction 'data_paths' is checked for 'lidars' and these
-      are returned.
+      If a LiDAR API is specified this is checked and all files within the catchment
+      area are downloaded and used to construct the file list. If none is specified,
+      the instruction 'data_paths' is checked for 'lidars' and these are returned.
 
 
    .. py:method:: run(self)
@@ -125,17 +138,20 @@ Classes
 
    Bases: :py:obj:`BaseProcessor`
 
-   BathymetryDemGenerator executes a pipeline for loading in a Dense DEM and extents before interpolating offshore
-   DEM values. The data and pipeline logic is defined in the json_instructions file.
+   BathymetryDemGenerator executes a pipeline for loading in a Dense DEM and extents
+   before interpolating offshore DEM values. The data and pipeline logic is defined in
+   the json_instructions file.
 
    The `BathymetryDemGenerator` class contains several important class members:
-    * catchment_geometry - Defines all relevant regions in a catchment required in the generation of a DEM as polygons.
-    * dense_dem - Defines the hydrologically conditioned DEM as a combination of tiles from LiDAR and interpolated from
-      bathymetry.
-    * bathy_contours - This object defines the bathymetry vectors used by the dense_dem to define the DEM
-      offshore.
+    * catchment_geometry - Defines all relevant regions in a catchment required in the
+      generation of a DEM as polygons.
+    * dense_dem - Defines the hydrologically conditioned DEM as a combination of tiles
+      from LiDAR and interpolated from bathymetry.
+    * bathy_contours - This object defines the bathymetry vectors used by the dense_dem
+      to define the DEM offshore.
 
-   See the README.md for usage examples or GeoFabrics/tests/ for examples of usage and an instruction file
+   See the README.md for usage examples or GeoFabrics/tests/ for examples of usage and
+   an instruction file
 
    .. py:method:: add_bathymetry(self, area_threshold, catchment_dirs)
 
@@ -144,9 +160,8 @@ Classes
 
    .. py:method:: run(self)
 
-      This method executes the geofabrics generation pipeline to produce geofabric derivatives.
-
-      Only load in the.
+      This method executes the geofabrics generation pipeline to produce geofabric
+      derivatives.
 
 
 
@@ -154,18 +169,22 @@ Classes
 
    Bases: :py:obj:`BathymetryDemGenerator`
 
-   LidarDemGenerator executes a pipeline for creating a hydrologically conditioned DEM from LiDAR and optionally a
-   reference DEM and/or bathymetry contours. The data and pipeline logic is defined in the json_instructions file.
+   LidarDemGenerator executes a pipeline for creating a hydrologically conditioned
+   DEM from LiDAR and optionally a reference DEM and/or bathymetry contours. The data
+   and pipeline logic is defined in the json_instructions file.
 
    The `DemGenerator` class contains several important class members:
-    * catchment_geometry - Defines all relevant regions in a catchment required in the generation of a DEM as polygons.
-    * dense_dem - Defines the hydrologically conditioned DEM as a combination of tiles from LiDAR and interpolated from
-      bathymetry.
-    * reference_dem - This optional object defines a background DEM that may be used to fill on land gaps in the LiDAR.
-    * bathy_contours - This optional object defines the bathymetry vectors used by the dense_dem to define the DEM
-      offshore.
+    * catchment_geometry - Defines all relevant regions in a catchment required in the
+      generation of a DEM as polygons.
+    * dense_dem - Defines the hydrologically conditioned DEM as a combination of tiles
+      from LiDAR and interpolated from bathymetry.
+    * reference_dem - This optional object defines a background DEM that may be used to
+      fill on land gaps in the LiDAR.
+    * bathy_contours - This optional object defines the bathymetry vectors used by the
+      dense_dem to define the DEM offshore.
 
-   See the README.md for usage examples or GeoFabrics/tests/ for examples of usage and an instruction file
+   See the README.md for usage examples or GeoFabrics/tests/ for examples of usage and
+   an instruction file.
 
    .. py:method:: create_metadata(self)
 
@@ -174,7 +193,8 @@ Classes
 
    .. py:method:: run(self)
 
-      This method executes the geofabrics generation pipeline to produce geofabric derivatives.
+      This method executes the geofabrics generation pipeline to produce geofabric
+      derivatives.
 
       Note it currently only considers one LiDAR dataset that can have many tiles.
       See 'get_lidar_file_list' for where to change this.
@@ -214,8 +234,6 @@ Classes
    .. py:method:: channel_characteristics_exist(self)
 
       Return true if the DEMs are required for later processing
-
-
 
 
    .. py:method:: channel_bathymetry_exist(self)
@@ -260,7 +278,6 @@ Classes
       Create a rec channel.
 
 
-
    .. py:method:: get_dems(self, buffer, channel)
 
       Allow selection of the ground or vegetation DEM, and either create
@@ -293,7 +310,8 @@ Classes
    .. py:method:: characterise_channel(self, buffer)
 
       Calculate the channel width, slope and other characteristics. This requires a
-      ground and vegetation DEM. This also may require alignment of the channel centreline.
+      ground and vegetation DEM. This also may require alignment of the channel
+      centreline.
 
 
       :param buffer  The amount of extra space to create around the river catchment:
@@ -309,8 +327,6 @@ Classes
    .. py:method:: estimate_river_mouth_fan(self)
 
       Calculate and save depth estimates along the river mouth fan.
-
-
 
 
    .. py:method:: run(self, instruction_parameters)

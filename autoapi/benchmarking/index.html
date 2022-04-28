@@ -66,9 +66,9 @@
              
   <section id="module-benchmarking">
 <span id="benchmarking"></span><h1><a class="reference internal" href="#module-benchmarking" title="benchmarking"><code class="xref py py-mod docutils literal notranslate"><span class="pre">benchmarking</span></code></a><a class="headerlink" href="#module-benchmarking" title="Permalink to this headline"></a></h1>
-<p>A convenience script for running many combinations of chunk_sizes and numbers_of_cores for a small sub-set of a
-catchment to help with the selection of an appropiate chink_size and number_of_cores before processing an entire
-catchment.</p>
+<p>A convenience script for running many combinations of chunk_sizes and numbers_of_cores
+for a small sub-set of a catchment to help with the selection of an appropiate
+chink_size and number_of_cores before processing an entire catchment.</p>
 <section id="module-contents">
 <h2>Module Contents<a class="headerlink" href="#module-contents" title="Permalink to this headline"></a></h2>
 <section id="functions">
@@ -80,10 +80,10 @@ catchment.</p>
 </colgroup>
 <tbody>
 <tr class="row-odd"><td><p><a class="reference internal" href="#benchmarking.parse_args" title="benchmarking.parse_args"><code class="xref py py-obj docutils literal notranslate"><span class="pre">parse_args</span></code></a>()</p></td>
-<td><p>Expect a command line argument of the form '--instructions path/to/json/instruction/file'</p></td>
+<td><p>Expect a command line argument of the form:</p></td>
 </tr>
 <tr class="row-even"><td><p><a class="reference internal" href="#benchmarking.benchmark_processing" title="benchmarking.benchmark_processing"><code class="xref py py-obj docutils literal notranslate"><span class="pre">benchmark_processing</span></code></a>(args)</p></td>
-<td><p>Run the DEM generation pipeline given the specified instructions for a range of different 'number_of_cores'</p></td>
+<td><p>Run the DEM generation pipeline given the specified instructions for a range of</p></td>
 </tr>
 <tr class="row-odd"><td><p><a class="reference internal" href="#benchmarking.main" title="benchmarking.main"><code class="xref py py-obj docutils literal notranslate"><span class="pre">main</span></code></a>()</p></td>
 <td><p>The entry point to geofabrics.</p></td>
@@ -93,15 +93,17 @@ catchment.</p>
 <dl class="py function">
 <dt class="sig sig-object py" id="benchmarking.parse_args">
 <span class="sig-prename descclassname"><span class="pre">benchmarking.</span></span><span class="sig-name descname"><span class="pre">parse_args</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="headerlink" href="#benchmarking.parse_args" title="Permalink to this definition"></a></dt>
-<dd><p>Expect a command line argument of the form ‘–instructions path/to/json/instruction/file’</p>
+<dd><p>Expect a command line argument of the form:
+‘–instructions path/to/json/instruction/file’</p>
 </dd></dl>
 
 <dl class="py function">
 <dt class="sig sig-object py" id="benchmarking.benchmark_processing">
 <span class="sig-prename descclassname"><span class="pre">benchmarking.</span></span><span class="sig-name descname"><span class="pre">benchmark_processing</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">args</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#benchmarking.benchmark_processing" title="Permalink to this definition"></a></dt>
-<dd><p>Run the DEM generation pipeline given the specified instructions for a range of different ‘number_of_cores’
-and ‘chunk_sizes’ specified in the instructions. Optionally save each DEM separately. Plot the execution times of
-all differnet processing configurations at the end.</p>
+<dd><p>Run the DEM generation pipeline given the specified instructions for a range of
+different ‘number_of_cores’ and ‘chunk_sizes’ specified in the instructions.
+Optionally save each DEM separately. Plot the execution times all differnet
+processing configurations at the end.</p>
 </dd></dl>
 
 <dl class="py function">

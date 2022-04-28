@@ -101,13 +101,17 @@
 <dt class="sig sig-object py" id="geofabrics.geometry.CatchmentGeometry">
 <em class="property"><span class="pre">class</span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">geofabrics.geometry.</span></span><span class="sig-name descname"><span class="pre">CatchmentGeometry</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">catchment_file</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">crs</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">resolution</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">foreshore_buffer</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">2</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#geofabrics.geometry.CatchmentGeometry" title="Permalink to this definition"></a></dt>
 <dd><p>A class defining revelant catchment regions by polygons.</p>
-<p>The CRS is a dictionary containing the EPSG code for a ‘horizontal’ and ‘vertical’ datum.</p>
-<p>Specifically, this defines polygon regions like ‘land’, ‘foreshore’, ‘offshore’, and ensures all regions are
-defined in the same CRS.</p>
-<p>The ‘land’, ‘foreshore’ and ‘offshore’ regions are clipped within the ‘catchment’, but do not overlap. The ‘land’ is
-polygon is defined by a specified polygon which is clipped within the ‘catchment’. The ‘foreshore’ is defined
-as a ‘foreshore_buffer’ x ‘resolution’ outward buffer from the ‘land’ and within the ‘catchment’ extents. The
-‘offshore’ region is any remaining region within the ‘catchment’ and outside the ‘land’ and ‘foreshore’ polygons.</p>
+<p>The CRS is a dictionary containing the EPSG code for a ‘horizontal’ and
+‘vertical’ datum.</p>
+<p>Specifically, this defines polygon regions like ‘land’, ‘foreshore’,
+‘offshore’, and ensures all regions are defined in the same CRS.</p>
+<p>The ‘land’, ‘foreshore’ and ‘offshore’ regions are clipped within the
+‘catchment’, but do not overlap. The ‘land’ is polygon is defined by a
+specified polygon which is clipped within the ‘catchment’. The ‘foreshore’
+is defined as a ‘foreshore_buffer’ x ‘resolution’ outward buffer from the
+‘land’ and within the ‘catchment’ extents. The ‘offshore’ region is any
+remaining region within the ‘catchment’ and outside the ‘land’ and
+‘foreshore’ polygons.</p>
 <p>It also supports functions for determining how much of a region is outside an exclusion zone. I.E. is outside
 <cite>lidar_extents</cite> see class method land_and_foreshore_without_lidar for an example.</p>
 <p>It is initalised with the catchment. The land must be added before the other regions (i.e. land, offshore,

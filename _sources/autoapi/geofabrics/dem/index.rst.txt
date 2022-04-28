@@ -195,7 +195,6 @@ Attributes
    Read in all LiDAR files within the chunked region - clipped to within the region within which to rasterise.
 
 
-
 .. py:function:: rasterise_chunk(dim_x, dim_y, tile_points, options)
 
    Rasterise all points within a chunk.

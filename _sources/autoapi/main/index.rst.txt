@@ -5,7 +5,8 @@
 
 .. autoapi-nested-parse::
 
-   A convenience script for running the DEM generation pipelines contained in the processor module of geofabrics.
+   A convenience script for running the DEM generation pipelines contained in the processor
+    module of geofabrics.
 
 
 
@@ -26,7 +27,8 @@ Functions
 
 .. py:function:: parse_args()
 
-   Expect a command line argument of the form '--instructions path/to/json/instruction/file'
+   Expect a command line argument of the form:
+   '--instructions path/to/json/instruction/file'
 
 
 .. py:function:: launch_processor(args)
