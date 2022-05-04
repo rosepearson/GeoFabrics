@@ -879,32 +879,44 @@ class RiverBathymetryGenerator(BaseProcessor):
         return self.instructions["instructions"]["channel_bathymetry"][key]
 
     def get_rec_channel(self) -> bathymetry_estimation.Channel:
-        """Create a rec channel."""
+        """Read in or create a rec channel."""
 
         # Get instructions
         crs = self.get_crs()["horizontal"]
         area_threshold = self.get_bathymetry_instruction("channel_area_threshold")
-        rec_network = geopandas.read_file(
-            self.get_bathymetry_instruction("rec_file")
-        ).to_crs(crs)
         channel_rec_id = self.get_bathymetry_instruction("channel_rec_id")
         cross_section_spacing = self.get_bathymetry_instruction("cross_section_spacing")
 
-        channel = bathymetry_estimation.Channel.from_rec(
-            rec_network=rec_network,
-            reach_id=channel_rec_id,
-            resolution=cross_section_spacing,
-            area_threshold=area_threshold,
-        )
+        # Check if file exists
+        rec_name = self.get_result_file_path(key="rec_channel")
+        if rec_name.is_file():
+            channel = bathymetry_estimation.Channel(
+                channel=geopandas.read_file(rec_name),
+                resolution=cross_section_spacing,
+                sampling_direction=-1,
+            )
+        else:
+            # Else, create if it doesn't exist
+            rec_network = geopandas.read_file(
+                self.get_bathymetry_instruction("rec_file")
+            ).to_crs(crs)
+            channel = bathymetry_estimation.Channel.from_rec(
+                rec_network=rec_network,
+                reach_id=channel_rec_id,
+                resolution=cross_section_spacing,
+                area_threshold=area_threshold,
+            )
 
-        if self.debug:
-            # Save the REC channel and smoothed REC channel if not already
-            rec_name = self.get_result_file_path(key="rec_channel")
-            if not rec_name.is_file():
-                channel.channel.to_file(rec_name)
-            smoothed_rec_name = self.get_result_file_path(key="rec_channel_smoothed")
-            if not smoothed_rec_name.is_file():
-                channel.get_sampled_spline_fit().to_file(smoothed_rec_name)
+            if self.debug:
+                # Save the REC channel and smoothed REC channel if not already
+                rec_name = self.get_result_file_path(key="rec_channel")
+                if not rec_name.is_file():
+                    channel.channel.to_file(rec_name)
+                smoothed_rec_name = self.get_result_file_path(
+                    key="rec_channel_smoothed"
+                )
+                if not smoothed_rec_name.is_file():
+                    channel.get_sampled_spline_fit().to_file(smoothed_rec_name)
         return channel
 
     def get_dems(self, buffer: float, channel: geometry.CatchmentGeometry) -> tuple:
