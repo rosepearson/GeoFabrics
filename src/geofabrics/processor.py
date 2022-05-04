@@ -1252,6 +1252,7 @@ class RiverBathymetryGenerator(BaseProcessor):
         width_values["bed_elevation_Neal_et_al"] = (
             width_values[min_z_name] - active_channel_bank_depth
         )
+        width_values["depth_Neal_et_al"] = active_channel_bank_depth
 
         # Calculate depths and bed elevation using the Rupp & Smart approach (Hydrologic
         # geometry)
@@ -1271,6 +1272,7 @@ class RiverBathymetryGenerator(BaseProcessor):
         width_values["bed_elevation_Rupp_and_Smart"] = (
             width_values[min_z_name] - active_channel_bank_depth
         )
+        width_values["depth_Rupp_and_Smart"] = active_channel_bank_depth
 
         # Save the bed elevations
         width_values[
@@ -1278,6 +1280,8 @@ class RiverBathymetryGenerator(BaseProcessor):
                 "geometry",
                 "bed_elevation_Neal_et_al",
                 "bed_elevation_Rupp_and_Smart",
+                "depth_Neal_et_al",
+                "depth_Rupp_and_Smart",
                 "widths",
                 width_name,
                 flat_width_name,
@@ -1296,12 +1300,12 @@ class RiverBathymetryGenerator(BaseProcessor):
             slope_name  The name of the down-river channel slope column.
             threshold_name The name of the bank height threshold column."""
 
-        bank_depth = (
+        full_bank_depth = (
             width_values["mannings_n"]
             * width_values["flow"]
             / (numpy.sqrt(width_values[slope_name]) * width_values[width_name])
-        ) ** (3 / 5) - width_values[threshold_name]
-        return bank_depth
+        ) ** (3 / 5)
+        return full_bank_depth
 
     def _calculate_rupp_and_smart_depth(
         self, width_values, width_name, slope_name, threshold_name
@@ -1318,11 +1322,11 @@ class RiverBathymetryGenerator(BaseProcessor):
         a = 0.745
         b = 0.305
         K_0 = 6.16
-        bank_depth = (
+        full_bank_depth = (
             width_values["flow"]
             / (K_0 * width_values[width_name] * width_values[slope_name] ** b)
-        ) ** (1 / (1 + a)) - width_values[threshold_name]
-        return bank_depth
+        ) ** (1 / (1 + a))
+        return full_bank_depth
 
     def _convert_full_bank_to_channel_depth(
         self,
@@ -1337,34 +1341,34 @@ class RiverBathymetryGenerator(BaseProcessor):
         'flat water' width as derived in the LiDAR.
 
         Parameters:
+            full_bank_depth  The flood depth from the flood water height
             width_values  A dataframe of channel charateristics.
             full_bank_width_name  The name of the full bank width column.
             flat_width_name  The name of the down-river channel slope column.
             threshold_name The name of the bank height threshold column."""
 
+        # The depth of flood water above the water surface
+        flood_depth = width_values[threshold_name]
+
         # Calculate the area estimated for full bank width flow
-        full_bank_area = full_bank_depth * width_values[full_bank_width_name]
+        full_flood_area = full_bank_depth * width_values[full_bank_width_name]
 
-        # Remove/correct for area along the bank edges (approximate as a
-        # triangle - two triangles = a rectange)
-        bank_edge_area = (
-            width_values[full_bank_width_name] - width_values[flat_width_name]
-        ) * (
-            width_values[threshold_name]
-            - self.get_bathymetry_instruction("min_bank_height")
-        )
-
-        assert (
-            bank_edge_area >= 0
-        ).all(), "The full bank area should be greater than zero"
+        # Calculate the flood waters (i.e. flowing above the water surface), but with a
+        # correction for the exposed river banks
+        above_water_area = flood_depth * width_values[full_bank_width_name]
+        exposed_bank_area = (
+            flood_depth - self.get_bathymetry_instruction("min_bank_height")
+        ) * (width_values[full_bank_width_name] - width_values[flat_width_name])
+        assert (exposed_bank_area >= 0).all(), "The exposed bank area must be postive"
+        extra_flood_area = above_water_area - exposed_bank_area
 
         # The area to convert to the active 'flat' channel depth
-        active_channel_area = full_bank_area - bank_edge_area
+        flat_flow_area = full_flood_area - extra_flood_area
 
         # Calculate the depth from the area
-        active_channel_bank_depth = active_channel_area / width_values[flat_width_name]
+        flat_flow_depth = flat_flow_area / width_values[flat_width_name]
 
-        return active_channel_bank_depth
+        return flat_flow_depth
 
     def estimate_river_mouth_fan(self):
         """Calculate and save depth estimates along the river mouth fan."""
