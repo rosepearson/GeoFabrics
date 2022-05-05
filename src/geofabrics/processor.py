@@ -1282,6 +1282,9 @@ class RiverBathymetryGenerator(BaseProcessor):
             "geometry",
             "bed_elevation_Neal_et_al",
             "bed_elevation_Rupp_and_Smart",
+            "widths",
+            width_name,
+            flat_width_name,
         ]
         if self.debug:
             # Optionally write out additional depth information
@@ -1291,9 +1294,6 @@ class RiverBathymetryGenerator(BaseProcessor):
                     "depth_Rupp_and_Smart",
                     "flood_depth_Neal_et_al",
                     "flood_depth_Rupp_and_Smart",
-                    "widths",
-                    width_name,
-                    flat_width_name,
                 ]
             )
         # Save the widths and depths
