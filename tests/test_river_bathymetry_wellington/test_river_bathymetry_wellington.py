@@ -32,8 +32,8 @@ class ProcessorRiverBathymetryTest(unittest.TestCase):
 
     @classmethod
     def setUpClass(cls):
-        """Create a CatchmentGeometry object and then run the DemGenerator processing chain to download remote
-        files and produce a DEM prior to testing."""
+        """Create a CatchmentGeometry object and then run the DemGenerator processing
+        chain to download remote files and produce a DEM prior to testing."""
 
         test_path = pathlib.Path().cwd() / pathlib.Path(
             "tests/test_river_bathymetry_wellington"
@@ -52,7 +52,6 @@ class ProcessorRiverBathymetryTest(unittest.TestCase):
         instruction_file_path = test_path / "instruction.json"
         with open(instruction_file_path, "r") as file_pointer:
             cls.instructions = json.load(file_pointer)
-
         # Load in environment variables to get and set the private API keys
         dotenv.load_dotenv()
         linz_key = os.environ.get("LINZ_API", None)
@@ -63,7 +62,8 @@ class ProcessorRiverBathymetryTest(unittest.TestCase):
             cls.instructions["instructions"]["data_paths"]["local_cache"]
         )
 
-        # ensure the cache directory doesn't exist - i.e. clean up from last test occurred correctly
+        # ensure the cache directory doesn't exist - i.e. clean up from last test
+        # occurred correctly
         cls.clean_data_folder()
 
         # Run pipeline - download files and generated DEM
@@ -75,7 +75,8 @@ class ProcessorRiverBathymetryTest(unittest.TestCase):
 
     @classmethod
     def tearDownClass(cls):
-        """Remove created cache directory and included created and downloaded files at the end of the test."""
+        """Remove created cache directory and included created and downloaded files at
+        the end of the test."""
 
         cls.clean_data_folder()
 
@@ -173,7 +174,8 @@ class ProcessorRiverBathymetryTest(unittest.TestCase):
         test_comparison = test[column_name].array
         benchmark_comparison = benchmark[column_name].array
         print(
-            f"{column_name} difference {numpy.array(test_comparison) - numpy.array(benchmark_comparison)}"
+            f"{column_name} difference "
+            f"{numpy.array(test_comparison) - numpy.array(benchmark_comparison)}"
         )
         self.assertAlmostEqual(
             test_comparison,
@@ -187,7 +189,8 @@ class ProcessorRiverBathymetryTest(unittest.TestCase):
         test_comparison = test[column_name].array
         benchmark_comparison = benchmark[column_name].array
         print(
-            f"{column_name} difference {numpy.array(test_comparison) - numpy.array(benchmark_comparison)}"
+            f"{column_name} difference "
+            f"{numpy.array(test_comparison) - numpy.array(benchmark_comparison)}"
         )
         self.assertAlmostEqual(
             test_comparison,
@@ -289,7 +292,8 @@ class ProcessorRiverBathymetryTest(unittest.TestCase):
         test_comparison = test[column_name].array
         benchmark_comparison = benchmark[column_name].array
         print(
-            f"{column_name} difference {numpy.array(test_comparison) - numpy.array(benchmark_comparison)}"
+            f"{column_name} difference "
+            "{numpy.array(test_comparison) - numpy.array(benchmark_comparison)}"
         )
         self.assertAlmostEqual(
             test_comparison,
