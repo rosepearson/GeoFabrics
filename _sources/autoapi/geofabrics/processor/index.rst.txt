@@ -275,7 +275,7 @@ Classes
 
    .. py:method:: get_rec_channel(self)
 
-      Create a rec channel.
+      Read in or create a rec channel.
 
 
    .. py:method:: get_dems(self, buffer, channel)
