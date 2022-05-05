@@ -1181,6 +1181,7 @@ class RiverBathymetryGenerator(BaseProcessor):
             aligned_channel_file = self.get_result_file_path(key="aligned")
             aligned_channel = geopandas.read_file(aligned_channel_file)
         # calculate the channel width and save results
+        print("Characterising the aligned channel.")
         self.calculate_channel_characteristics(
             channel_width=channel_width, aligned_channel=aligned_channel, buffer=buffer
         )
@@ -1253,6 +1254,7 @@ class RiverBathymetryGenerator(BaseProcessor):
             width_values[min_z_name] - active_channel_bank_depth
         )
         width_values["depth_Neal_et_al"] = active_channel_bank_depth
+        width_values["flood_depth_Neal_et_al"] = full_bank_depth
 
         # Calculate depths and bed elevation using the Rupp & Smart approach (Hydrologic
         # geometry)
@@ -1273,20 +1275,31 @@ class RiverBathymetryGenerator(BaseProcessor):
             width_values[min_z_name] - active_channel_bank_depth
         )
         width_values["depth_Rupp_and_Smart"] = active_channel_bank_depth
+        width_values["flood_depth_Rupp_and_Smart"] = full_bank_depth
 
         # Save the bed elevations
-        width_values[
-            [
-                "geometry",
-                "bed_elevation_Neal_et_al",
-                "bed_elevation_Rupp_and_Smart",
-                "depth_Neal_et_al",
-                "depth_Rupp_and_Smart",
-                "widths",
-                width_name,
-                flat_width_name,
-            ]
-        ].to_file(self.get_result_file_path(key="river_bathymetry"))
+        values_to_save = [
+            "geometry",
+            "bed_elevation_Neal_et_al",
+            "bed_elevation_Rupp_and_Smart",
+        ]
+        if self.debug:
+            # Optionally write out additional depth information
+            values_to_save.extend(
+                [
+                    "depth_Neal_et_al",
+                    "depth_Rupp_and_Smart",
+                    "flood_depth_Neal_et_al",
+                    "flood_depth_Rupp_and_Smart",
+                    "widths",
+                    width_name,
+                    flat_width_name,
+                ]
+            )
+        # Save the widths and depths
+        width_values[values_to_save].to_file(
+            self.get_result_file_path(key="river_bathymetry")
+        )
 
     def _calculate_neal_et_al_depth(
         self, width_values, width_name, slope_name, threshold_name
