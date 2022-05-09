@@ -64,6 +64,14 @@ def launch_processor(args):
             pathlib.Path(instructions["instructions"]["data_paths"]["local_cache"])
             / "instruction_parameters.json"
         )
+    elif "drains" in instructions["instructions"]:
+        # Update a dense DEM with river channel values
+        print("Run processor.DrainsBathymetryGenerator")
+        runner = processor.DrainBathymetryGenerator(instructions)
+        runner.run(
+            pathlib.Path(instructions["instructions"]["data_paths"]["local_cache"])
+            / "instruction_parameters.json"
+        )
     elif "dense_dem" in instructions["instructions"]["data_paths"]:
         # Update a dense DEM with offshore values
         print("Run processor.BathymetryDemGenerator")

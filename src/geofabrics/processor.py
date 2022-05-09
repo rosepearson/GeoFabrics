@@ -16,6 +16,8 @@ import rioxarray
 import pandas
 import geopandas
 import datetime
+import shapely
+import OSMPythonTools.overpass
 from . import geometry
 from . import bathymetry_estimation
 from . import version
@@ -1427,3 +1429,162 @@ class RiverBathymetryGenerator(BaseProcessor):
         # Update parameter file - in time only update the bits that have been re-run
         with open(instruction_parameters, "w") as file_pointer:
             json.dump(self.instructions, file_pointer)
+
+
+class DrainBathymetryGenerator(BaseProcessor):
+    """DrainBathymetryGenerator executes a pipeline to pull in OpenStreetMap drain and
+    tunnel information. A DEM is generated of the surrounding area and this used to
+    unblock drains and tunnels.
+
+    """
+
+    OSM_CRS = "EPSG:4326"
+
+    def __init__(self, json_instructions: json, debug: bool = True):
+
+        super(DrainBathymetryGenerator, self).__init__(
+            json_instructions=json_instructions
+        )
+
+        self.debug = debug
+
+    def get_result_file_name(self, key: str) -> str:
+        """Return the name of the file to save."""
+
+        drain_width = self.instructions["instructions"]["drains"]["width"]
+
+        # key to output name mapping
+        name_dictionary = {
+            "dem": f"dem_{drain_width}m_width.nc",
+            "drain_polygon": "drain_polygon_{drain_width}m_width.geojson",
+        }
+        return name_dictionary[key]
+
+    def get_result_file_path(self, key: str) -> pathlib.Path:
+        """Return the file name of the file to save with the local cache path.
+
+        Parameters:
+            instructions  The json instructions defining the behaviour
+        """
+
+        local_cache = pathlib.Path(
+            self.instructions["instructions"]["data_paths"]["local_cache"]
+        )
+
+        name = self.get_result_file_name(key=key)
+
+        return local_cache / name
+
+    def create_dem(self, drains: geopandas.GeoDataFrame) -> dem.DenseDem:
+        """Create and return a DEM at a resolution 1.5x the drain width."""
+
+        dem_file = self.get_result_file_path(key="dem")
+
+        # Load already created DEM file in
+        if dem_file.is_file():
+            dem = rioxarray.rioxarray.open_rasterio(dem_file, masked=True).squeeze(
+                "band", drop=True
+            )
+        else:  # Create DEM over the drain region
+
+            drain_width = self.instructions["instructions"]["drains"]["width"]
+
+            # Save out the drain polygons as a file with a single multipolygon
+            drain_polygon_file = self.get_result_file_path(key="drain_polygon")
+            drain_polygon = drains.buffer(drain_width)
+            drain_polygon = geopandas.GeoDataFrame(
+                geometry=[shapely.geometry.MultiPolygon(drain_polygon.geometry.array)],
+                crs=drain_polygon.crs,
+            )
+            drain_polygon.to_file(drain_polygon_file)
+
+            # Create DEM generation instructions
+            dem_instructions = self.instructions
+            dem_instruction_paths = dem_instructions["instructions"]["data_paths"]
+            dem_instruction_paths["catchment_boundary"] = str(drain_polygon_file)
+            dem_instruction_paths["result_dem"] = str(dem_file)
+            dem_instruction_paths["dense_dem"] = f"dense_dem_{drain_width}m_width.nc"
+            dem_instruction_paths[
+                "dense_dem_extents"
+            ] = "dense_extents_{drain_width}m_width.geojson"
+
+            # Create the ground DEM file if this has not be created yet!
+            print("Generating drain DEM.")
+            runner = LidarDemGenerator(self.instructions)
+            runner.run()
+            dem = runner.dense_dem.dem
+        return dem
+
+    def estimate_tunnel_bathymetry(self) -> bool:
+        """Sample the DEM around the tunnels to estimate the bed elevation."""
+
+        return
+
+    def estimate_drain_bathymetry(self) -> bool:
+        """Sample the DEM along the tunnels to estimate the bed elevation."""
+
+        return
+
+    def download_osm_values(self) -> bool:
+        """Download OpenStreetMap drains and tunnels within the catchment BBox."""
+
+        # Create area to query within
+        self.catchment_geometry = self.create_catchment()
+        bbox_lat_long = self.catchment_geometry.catchment.to_crs(self.OSM_CRS)
+
+        # Construct query
+        query = OSMPythonTools.overpass.overpassQueryBuilder(
+            bbox=[
+                bbox_lat_long.bounds.miny[0],
+                bbox_lat_long.bounds.minx[0],
+                bbox_lat_long.bounds.maxy[0],
+                bbox_lat_long.bounds.maxx[0],
+            ],
+            elementType="way",
+            selector="waterway",
+            out="body",
+            includeGeometry=True,
+        )
+
+        # Perform query
+        overpass = OSMPythonTools.overpass.Overpass()
+        rivers = overpass.query(query)
+
+        # Extract information
+        element_dict = {
+            "geometry": [],
+            "OSM_id": [],
+            "waterway": [],
+            "tunnel": [],
+        }
+
+        for element in rivers.elements():
+            element_dict["geometry"].append(element.geometry())
+            element_dict["OSM_id"].append(element.id())
+            element_dict["waterway"].append(element.tags()["waterway"])
+            element_dict["tunnel"].append("tunnel" in element.tags().keys())
+        drains = geopandas.GeoDataFrame(element_dict, crs=self.OSM_CRS).to_crs(
+            self.catchment_geometry.crs["horizontal"]
+        )
+
+        # Remove rivers
+        drains = drains[drains["waterway"] != "river"]
+
+        return drains
+
+    def run(self, instruction_parameters):
+        """This method runs a pipeline that:
+        * downloads all tunnels and drains within a catchment.
+        * creates and samples a DEM around each feature to estimate the bed
+          elevation.
+        * saves out extents and bed elevations of the drain and tunnel network"""
+
+        logging.info("Estimating drain and tunnel bed elevation from OpenStreetMap.")
+
+        # Download drains and tunnels from OSM
+        drains = self.download_osm_values()
+
+        # Create a DEM where the drains and tunnels are
+        dem = self.create_dem(drains)
+
+        # Estimate the drain and tunnel bed elevations from the DEM
