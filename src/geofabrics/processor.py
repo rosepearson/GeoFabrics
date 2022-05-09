@@ -455,6 +455,24 @@ class BaseProcessor(abc.ABC):
             lidar_dataset_info["tile_index_file"] = None
         return lidar_dataset_info
 
+    def create_catchment(self) -> geometry.CatchmentGeometry:
+        # create the catchment geometry object
+        catchment_dirs = self.get_instruction_path("catchment_boundary")
+        assert type(catchment_dirs) is not list, (
+            f"A list of catchment_boundary's is provided: {catchment_dirs}, "
+            + "where only one is supported."
+        )
+        catchment_geometry = geometry.CatchmentGeometry(
+            catchment_dirs, self.get_crs(), self.get_resolution(), foreshore_buffer=2
+        )
+        land_dirs = self.get_vector_paths("land")
+        assert len(land_dirs) == 1, (
+            f"{len(land_dirs)} catchment_boundary's provided, where only one is "
+            f"supported. Specficially land_dirs = {land_dirs}."
+        )
+        catchment_geometry.land = land_dirs[0]
+        return catchment_geometry
+
     @abc.abstractmethod
     def run(self):
         """This method controls the processor execution and code-flow."""
@@ -555,20 +573,7 @@ class BathymetryDemGenerator(BaseProcessor):
         area_threshold = 10.0 / 100  # Used to decide if bathymetry should be included
 
         # create the catchment geometry object
-        catchment_dirs = self.get_instruction_path("catchment_boundary")
-        assert type(catchment_dirs) is not list, (
-            f"A list of catchment_boundary's is provided: {catchment_dirs}, "
-            + "where only one is supported."
-        )
-        self.catchment_geometry = geometry.CatchmentGeometry(
-            catchment_dirs, self.get_crs(), self.get_resolution(), foreshore_buffer=2
-        )
-        land_dirs = self.get_vector_paths("land")
-        assert len(land_dirs) == 1, (
-            f"{len(land_dirs)} catchment_boundary's provided, where only one is "
-            + f"supported. Specficially land_dirs = {land_dirs}."
-        )
-        self.catchment_geometry.land = land_dirs[0]
+        self.catchment_geometry = self.create_catchment()
 
         # setup dense DEM and catchment LiDAR objects
         self.dense_dem = dem.DenseDemFromFiles(
@@ -580,7 +585,8 @@ class BathymetryDemGenerator(BaseProcessor):
 
         # Check for and add any bathymetry information
         self.add_bathymetry(
-            area_threshold=area_threshold, catchment_dirs=catchment_dirs
+            area_threshold=area_threshold,
+            catchment_dirs=self.get_instruction_path("catchment_boundary"),
         )
 
         # fill combined dem - save results
@@ -635,25 +641,10 @@ class LidarDemGenerator(BathymetryDemGenerator):
         See 'get_lidar_file_list' for where to change this."""
 
         # Only include data in addition to LiDAR if the area_threshold is not covered
-        area_threshold = (
-            10.0 / 100
-        )  # Used to decide if a background DEM or bathymetry should be included
+        area_threshold = 10.0 / 100  # Used to decide if bathymetry should be included
 
         # create the catchment geometry object
-        catchment_dirs = self.get_instruction_path("catchment_boundary")
-        assert type(catchment_dirs) is not list, (
-            f"A list of catchment_boundary's is provided: {catchment_dirs}, "
-            + "where only one is supported."
-        )
-        self.catchment_geometry = geometry.CatchmentGeometry(
-            catchment_dirs, self.get_crs(), self.get_resolution(), foreshore_buffer=2
-        )
-        land_dirs = self.get_vector_paths("land")
-        assert len(land_dirs) == 1, (
-            f"{len(land_dirs)} catchment_boundary's provided, where only one is "
-            f"supported. Specficially land_dirs = {land_dirs}."
-        )
-        self.catchment_geometry.land = land_dirs[0]
+        self.catchment_geometry = self.create_catchment()
 
         # Get LiDAR data file-list - this may involve downloading lidar files
         lidar_dataset_info = self.get_lidar_file_list("open_topography")
@@ -743,7 +734,8 @@ class LidarDemGenerator(BathymetryDemGenerator):
             )
         # Check for and add any bathymetry information
         self.add_bathymetry(
-            area_threshold=area_threshold, catchment_dirs=catchment_dirs
+            area_threshold=area_threshold,
+            catchment_dirs=self.get_instruction_path("catchment_boundary"),
         )
 
         # fill combined dem - save results
