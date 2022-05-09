@@ -749,8 +749,8 @@ class DenseDemFromTiles(DenseDem):
         return chunk_region_to_tile
 
     def _calculate_dense_extents(self):
-        """Calculate the extents of the current dense DEM. Remove holes as these can cause self intersection
-        warnings."""
+        """Calculate the extents of the current dense DEM. Remove holes as these can
+        cause self intersection warnings."""
 
         dense_extents = [
             shapely.geometry.shape(polygon[0])
@@ -1222,8 +1222,9 @@ def rasterise_points(
     eps: float = 0,
     leaf_size: int = 10,
 ):
-    """Calculate DEM elevation values at the specified locations using the selected approach. Options include: mean,
-    median, and inverse distance weighing (IDW). This implementation is based on the scipy.spatial.KDTree"""
+    """Calculate DEM elevation values at the specified locations using the selected
+    approach. Options include: mean, median, and inverse distance weighing (IDW). This
+    implementation is based on the scipy.spatial.KDTree"""
 
     xy_in = numpy.empty((len(point_cloud), 2))
     xy_in[:, 0] = point_cloud["X"]
@@ -1262,7 +1263,8 @@ def rasterise_points(
             else:
                 assert (
                     False
-                ), f"An invalid lidar_interpolation_method of '{options['method']}' was provided"
+                ), f"An invalid lidar_interpolation_method of '{options['method']}' was"
+                " provided"
     return z_out
 
 
