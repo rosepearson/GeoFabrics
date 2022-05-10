@@ -1456,7 +1456,7 @@ class DrainBathymetryGenerator(BaseProcessor):
         # key to output name mapping
         name_dictionary = {
             "dem": f"dem_{drain_width}m_width.nc",
-            "drain_polygon": "drain_polygon_{drain_width}m_width.geojson",
+            "drain_polygon": f"drain_polygon_{drain_width}m_width.geojson",
         }
         return name_dictionary[key]
 
@@ -1493,10 +1493,13 @@ class DrainBathymetryGenerator(BaseProcessor):
             drain_polygon_file = self.get_result_file_path(key="drain_polygon")
             drain_polygon = drains.buffer(drain_width)
             drain_polygon = geopandas.GeoDataFrame(
-                geometry=[shapely.geometry.MultiPolygon(drain_polygon.geometry.array)],
+                geometry=[shapely.ops.unary_union(drain_polygon.geometry.array)],
                 crs=drain_polygon.crs,
             )
-            drain_polygon.to_file(drain_polygon_file)
+            drain_polygon = drain_polygon.clip(self.catchment_geometry.catchment)
+            drain_polygon.to_file(
+                drain_polygon_file
+            )  # gpd.overlay(g1, g1, how='union')
 
             # Create DEM generation instructions
             dem_instructions = self.instructions
@@ -1567,8 +1570,9 @@ class DrainBathymetryGenerator(BaseProcessor):
             self.catchment_geometry.crs["horizontal"]
         )
 
-        # Remove rivers
+        # Remove rivers and polygons
         drains = drains[drains["waterway"] != "river"]
+        drains = drains[drains.geometry.type == "LineString"]
 
         return drains
 
