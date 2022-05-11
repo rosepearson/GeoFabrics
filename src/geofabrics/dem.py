@@ -479,7 +479,7 @@ class DenseDem(abc.ABC):
             river_bathymetry.polygon.geometry, invert=True, drop=True
         )
         grid_x, grid_y = numpy.meshgrid(edge_dem.x, edge_dem.y)
-        flat_z = edge_dem.data[0].flatten()
+        flat_z = edge_dem.z.data.flatten()
         mask_z = ~numpy.isnan(flat_z)
         edge_points = numpy.empty(
             [mask_z.sum().sum()],
@@ -516,15 +516,16 @@ class DenseDem(abc.ABC):
 
         # Setup the empty river area ready for interpolation
         self._river_dem = combined_dem.rio.clip(river_bathymetry.polygon.geometry)
-        # set all zero (or to ocean bathy classification) then clip out dense region where we don't need to interpolate
-        self._river_dem.data[0] = 0
+        # set all zero (or to ocean bathy classification) then clip out dense region
+        # where we don't need to interpolate
+        self._river_dem.z.data[:] = 0
         self._river_dem.source_class.data[:] = self.SOURCE_CLASSIFICATION[
             "river bathymetry"
         ]
         self._river_dem = self._river_dem.rio.clip(river_bathymetry.polygon.geometry)
 
         grid_x, grid_y = numpy.meshgrid(self._river_dem.x, self._river_dem.y)
-        flat_z = self._river_dem.data[0].flatten()
+        flat_z = self._river_dem.z.data[:].flatten()
         mask_z = ~numpy.isnan(flat_z)
 
         flat_x_masked = grid_x.flatten()[mask_z]
@@ -550,7 +551,7 @@ class DenseDem(abc.ABC):
                 flat_y_masked[start_index:end_index],
             )
         flat_z[mask_z] = flat_z_masked
-        self._river_dem.data[0] = flat_z.reshape(self._river_dem.data[0].shape)
+        self._river_dem.z.data = flat_z.reshape(self._river_dem.z.data.shape)
 
         # Ensure the DEM will be recalculated to include the interpolated offshore region
         self._dem = None
