@@ -53,7 +53,6 @@ class ProcessorLocalFilesTest(unittest.TestCase):
         instruction_file_path = test_path / "instruction.json"
         with open(instruction_file_path, "r") as file_pointer:
             cls.instructions = json.load(file_pointer)
-
         # Remove any files from last test in the cache directory
         cls.cache_dir = test_path / "data"
         assert cls.cache_dir.exists(), (
@@ -163,8 +162,9 @@ class ProcessorLocalFilesTest(unittest.TestCase):
         pdal_pipeline_instructions = [
             {
                 "type": "writers.las",
-                "a_srs": f"EPSG:{cls.instructions['instructions']['output']['crs']['horizontal']}+"
-                + f"{cls.instructions['instructions']['output']['crs']['vertical']}",
+                "a_srs": f"EPSG:"
+                f"{cls.instructions['instructions']['output']['crs']['horizontal']}+"
+                f"{cls.instructions['instructions']['output']['crs']['vertical']}",
                 "filename": str(lidar_file),
                 "compression": "laszip",
             }
@@ -177,7 +177,8 @@ class ProcessorLocalFilesTest(unittest.TestCase):
 
     @classmethod
     def tearDownClass(cls):
-        """Remove created files in the cache directory as part of the testing process at the end of the test."""
+        """Remove created files in the cache directory as part of the testing process at
+        the end of the test."""
 
         cls.clean_data_folder()
 
@@ -187,7 +188,7 @@ class ProcessorLocalFilesTest(unittest.TestCase):
 
         assert cls.cache_dir.exists(), (
             "The data directory that should include the comparison benchmark dem file "
-            + "doesn't exist"
+            "doesn't exist"
         )
 
         benchmark_file = cls.cache_dir / "benchmark_dem.nc"
@@ -211,7 +212,6 @@ class ProcessorLocalFilesTest(unittest.TestCase):
         )
         with rioxarray.rioxarray.open_rasterio(file_path, masked=True) as benchmark_dem:
             benchmark_dem = benchmark_dem.squeeze("band", drop=True)
-
         # Load in result DEM
         file_path = (
             self.cache_dir
@@ -219,15 +219,15 @@ class ProcessorLocalFilesTest(unittest.TestCase):
         )
         with rioxarray.rioxarray.open_rasterio(file_path, masked=True) as test_dem:
             test_dem = test_dem.squeeze("band", drop=True)
-
-        # Compare DEMs z - load both from file as rioxarray.rioxarray.open_rasterio ignores index order
+        # Compare DEMs z - load both from file as rioxarray.rioxarray.open_rasterio
+        # ignores index order
         diff_array = test_dem.z.data - benchmark_dem.z.data
         logging.info(f"DEM z array diff is: {diff_array[diff_array != 0]}")
         numpy.testing.assert_array_almost_equal(
             test_dem.z.data,
             benchmark_dem.z.data,
             err_msg="The generated result_dem z has different data from the "
-            + "benchmark_dem",
+            "benchmark_dem",
         )
 
         # Compare DEMs source classification
@@ -237,7 +237,7 @@ class ProcessorLocalFilesTest(unittest.TestCase):
             test_dem.source_class.data,
             benchmark_dem.source_class.data,
             err_msg="The generated result_dem source_class has different data "
-            + "from the benchmark_dem",
+            "from the benchmark_dem",
         )
 
         # explicitly free memory as xarray seems to be hanging onto memory
