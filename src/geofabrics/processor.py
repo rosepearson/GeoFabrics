@@ -1481,6 +1481,27 @@ class DrainBathymetryGenerator(BaseProcessor):
 
         return local_cache / name
 
+    # Get the min in each polygon
+    def minimum_elevation_in_polygon(
+        geometry: shapely.geometry.Polygon, dem: xarray.Dataset
+    ):
+        """Select only coordinates within the polygon bounding box before clipping
+        to the bounding box and then returning the minimum elevation."""
+
+        # Index in polygon bbox
+        bbox = geometry.bounds
+        small_z = dem.z[
+            numpy.arange(len(dem.y))[dem.y > bbox[3]]
+            .max() : numpy.arange(len(dem.y))[dem.y < bbox[1]]
+            .min(),
+            numpy.arange(len(dem.x))[dem.x > bbox[0]]
+            .min() : numpy.arange(len(dem.x))[dem.x < bbox[2]]
+            .max(),
+        ]
+
+        # clip to polygon and return minimum elevation
+        return float(small_z.rio.clip([geometry]).min())
+
     def estimate_closed_bathymetry(
         self, drains: geopandas.GeoDataFrame, dem: xarray.Dataset
     ):
@@ -1493,59 +1514,38 @@ class DrainBathymetryGenerator(BaseProcessor):
         closed_drains["polygon"] = closed_drains.buffer(drain_width)
 
         # save out the polygons
-        closed_polygon_file = self.get_result_file_path(key="closed_polygon")
+        polygon_file = self.get_result_file_path(key="closed_polygon")
         closed_drains.set_geometry("polygon", drop=True)[["geometry"]].to_file(
-            closed_polygon_file
+            polygon_file
         )
 
-        # Get the min in each polygon
-        def minimum_elevation_in_polygon(row: pandas.Series, dem: xarray.Dataset):
-            """Select only coordinates within the polygon bounding box before clipping
-            to the bounding box and then returning the minimum elevation."""
-
-            # Index in polygon bbox
-            bbox = row["polygon"].bounds
-            small_z = dem.z[
-                numpy.arange(len(dem.y))[dem.y > bbox[3]]
-                .max() : numpy.arange(len(dem.y))[dem.y < bbox[1]]
-                .min(),
-                numpy.arange(len(dem.x))[dem.x > bbox[0]]
-                .min() : numpy.arange(len(dem.x))[dem.x < bbox[2]]
-                .max(),
-            ]
-
-            # clip to polygon and return minimum elevation
-            return float(small_z.rio.clip([row["polygon"]]).min())
-
-        closed_drains["elevation"] = closed_drains.apply(
-            lambda row: minimum_elevation_in_polygon(row=row, dem=dem), axis=1
+        elevations = closed_drains.geometry.apply(
+            lambda row: self.minimum_elevation_in_polygon(row=row, dem=dem), axis=1
         )
 
-        # save out the points - currently a bit sort of the end. Make match the end exactly?
-        points_df = closed_drains["geometry"].apply(
+        # Create sampled points
+        points = closed_drains["geometry"].apply(
             lambda row: shapely.geometry.MultiPoint(
                 [
-                    row.interpolate(i * drain_width)
-                    for i in range(int(numpy.ceil(row.length / drain_width)))
+                    # Ensure even spacing across the length of the drain
+                    row.interpolate(
+                        i * row.length / int(numpy.ceil(row.length / drain_width))
+                    )
+                    for i in range(int(numpy.ceil(row.length / drain_width)) + 1)
                 ]
             )
         )
-        points_df = geopandas.GeoDataFrame(
+        points = geopandas.GeoDataFrame(
             {
-                "elevation": closed_drains["elevation"],
-                "geometry": points_df["geometry"],
+                "elevation": elevations,
+                "geometry": points,
             },
             crs=2193,
         )
 
         # Save bathymetry
         closed_bathymetry_file = self.get_result_file_path(key="closed_bathymetry")
-        points_df.explode(ignore_index=True).to_file(closed_bathymetry_file)
-
-        # pandas.concat([points_df, closed_drains["elevation"]], axis=1, crs=2193)
-
-        # todo - see why one of the polygons doesn't have any points in it
-        return
+        points.explode(ignore_index=True).to_file(closed_bathymetry_file)
 
     def estimate_open_bathymetry(
         self, drains: geopandas.GeoDataFrame, dem: xarray.Dataset
