@@ -17,6 +17,7 @@ import pandas
 import geopandas
 import datetime
 import shapely
+import xarray
 import OSMPythonTools.overpass
 from . import geometry
 from . import bathymetry_estimation
@@ -1452,11 +1453,16 @@ class DrainBathymetryGenerator(BaseProcessor):
         """Return the name of the file to save."""
 
         drain_width = self.instructions["instructions"]["drains"]["width"]
+        tag = f"{drain_width}m_width"
 
         # key to output name mapping
         name_dictionary = {
-            "dem": f"dem_{drain_width}m_width.nc",
-            "drain_polygon": f"drain_polygon_{drain_width}m_width.geojson",
+            "dem": f"dem_{tag}.nc",
+            "open_polygon": f"open_drain_polygon_{tag}.geojson",
+            "open_bathymetry": f"open_drain_bathymetry_{tag}.geojson",
+            "closed_polygon": f"closed_drain_polygon_{tag}.geojson",
+            "closed_bathymetry": f"closed_drain_bathymetry_{tag}.geojson",
+            "drain_polygon": f"drain_polygon_{tag}.geojson",
         }
         return name_dictionary[key]
 
@@ -1475,7 +1481,84 @@ class DrainBathymetryGenerator(BaseProcessor):
 
         return local_cache / name
 
-    def create_dem(self, drains: geopandas.GeoDataFrame) -> dem.DenseDem:
+    def estimate_closed_bathymetry(
+        self, drains: geopandas.GeoDataFrame, dem: xarray.Dataset
+    ):
+        """Sample the DEM around the tunnels to estimate the bed elevation."""
+
+        drain_width = self.instructions["instructions"]["drains"]["width"]
+
+        closed_drains = drains[drains["tunnel"]]
+        closed_drains = closed_drains.clip(self.catchment_geometry.catchment)
+        closed_drains["polygon"] = closed_drains.buffer(drain_width)
+
+        # save out the polygons
+        closed_polygon_file = self.get_result_file_path(key="closed_polygon")
+        closed_drains.set_geometry("polygon", drop=True)[["geometry"]].to_file(
+            closed_polygon_file
+        )
+
+        # Get the min in each polygon
+        def minimum_elevation_in_polygon(row: pandas.Series, dem: xarray.Dataset):
+            """Select only coordinates within the polygon bounding box before clipping
+            to the bounding box and then returning the minimum elevation."""
+
+            # Index in polygon bbox
+            bbox = row["polygon"].bounds
+            small_z = dem.z[
+                numpy.arange(len(dem.y))[dem.y > bbox[3]]
+                .max() : numpy.arange(len(dem.y))[dem.y < bbox[1]]
+                .min(),
+                numpy.arange(len(dem.x))[dem.x > bbox[0]]
+                .min() : numpy.arange(len(dem.x))[dem.x < bbox[2]]
+                .max(),
+            ]
+
+            # clip to polygon and return minimum elevation
+            return float(small_z.rio.clip([row["polygon"]]).min())
+
+        closed_drains["elevation"] = closed_drains.apply(
+            lambda row: minimum_elevation_in_polygon(row=row, dem=dem), axis=1
+        )
+
+        # save out the points - currently a bit sort of the end. Make match the end exactly?
+        points_df = closed_drains["geometry"].apply(
+            lambda row: shapely.geometry.MultiPoint(
+                [
+                    row.interpolate(i * drain_width)
+                    for i in range(int(numpy.ceil(row.length / drain_width)))
+                ]
+            )
+        )
+        points_df = geopandas.GeoDataFrame(
+            {
+                "elevation": closed_drains["elevation"],
+                "geometry": points_df["geometry"],
+            },
+            crs=2193,
+        )
+
+        # Save bathymetry
+        closed_bathymetry_file = self.get_result_file_path(key="closed_bathymetry")
+        points_df.explode(ignore_index=True).to_file(closed_bathymetry_file)
+
+        # pandas.concat([points_df, closed_drains["elevation"]], axis=1, crs=2193)
+
+        # todo - see why one of the polygons doesn't have any points in it
+        return
+
+    def estimate_open_bathymetry(
+        self, drains: geopandas.GeoDataFrame, dem: xarray.Dataset
+    ):
+        """Sample the DEM along the tunnels to estimate the bed elevation."""
+
+        drain_width = self.instructions["instructions"]["drains"]["width"]
+
+        opened = drains[drains["tunnel"]].buffer(drain_width)
+
+        return
+
+    def create_dem(self, drains: geopandas.GeoDataFrame) -> xarray.Dataset:
         """Create and return a DEM at a resolution 1.5x the drain width."""
 
         dem_file = self.get_result_file_path(key="dem")
@@ -1517,16 +1600,6 @@ class DrainBathymetryGenerator(BaseProcessor):
             runner.run()
             dem = runner.dense_dem.dem
         return dem
-
-    def estimate_tunnel_bathymetry(self) -> bool:
-        """Sample the DEM around the tunnels to estimate the bed elevation."""
-
-        return
-
-    def estimate_drain_bathymetry(self) -> bool:
-        """Sample the DEM along the tunnels to estimate the bed elevation."""
-
-        return
 
     def download_osm_values(self) -> bool:
         """Download OpenStreetMap drains and tunnels within the catchment BBox."""
@@ -1592,3 +1665,5 @@ class DrainBathymetryGenerator(BaseProcessor):
         dem = self.create_dem(drains)
 
         # Estimate the drain and tunnel bed elevations from the DEM
+        self.estimate_closed_bathymetry(drains=drains, dem=dem)
+        self.estimate_open_bathymetry(drains=drains, dem=dem)
