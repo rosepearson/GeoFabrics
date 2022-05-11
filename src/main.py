@@ -72,7 +72,13 @@ def launch_processor(args):
             pathlib.Path(instructions["instructions"]["data_paths"]["local_cache"])
             / "instruction_parameters.json"
         )
-    elif "dense_dem" in instructions["instructions"]["data_paths"]:
+    elif "dense_dem" in instructions["instructions"]["data_paths"] and (
+        pathlib.Path(instructions["instructions"]["data_paths"]["dense_dem"]).is_file()
+        or (
+            pathlib.Path(instructions["instructions"]["data_paths"]["local_cache"])
+            / instructions["instructions"]["data_paths"]["dense_dem"]
+        ).is_file()
+    ):
         # Update a dense DEM with offshore values
         print("Run processor.BathymetryDemGenerator")
         runner = processor.BathymetryDemGenerator(instructions)
