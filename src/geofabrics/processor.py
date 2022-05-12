@@ -1483,21 +1483,15 @@ class DrainBathymetryGenerator(BaseProcessor):
 
     # Get the min in each polygon
     def minimum_elevation_in_polygon(
-        geometry: shapely.geometry.Polygon, dem: xarray.Dataset
+        self, geometry: shapely.geometry.Polygon, dem: xarray.Dataset
     ):
         """Select only coordinates within the polygon bounding box before clipping
         to the bounding box and then returning the minimum elevation."""
 
         # Index in polygon bbox
         bbox = geometry.bounds
-        small_z = dem.z[
-            numpy.arange(len(dem.y))[dem.y > bbox[3]]
-            .max() : numpy.arange(len(dem.y))[dem.y < bbox[1]]
-            .min(),
-            numpy.arange(len(dem.x))[dem.x > bbox[0]]
-            .min() : numpy.arange(len(dem.x))[dem.x < bbox[2]]
-            .max(),
-        ]
+        # bbox[0] = bbox[0] if dem.x >= bbox[0] else float(dem.x.min())
+        small_z = dem.z.sel(x=slice(bbox[0], bbox[2]), y=slice(bbox[3], bbox[1]))
 
         # clip to polygon and return minimum elevation
         return float(small_z.rio.clip([geometry]).min())
@@ -1507,6 +1501,15 @@ class DrainBathymetryGenerator(BaseProcessor):
     ):
         """Sample the DEM around the tunnels to estimate the bed elevation."""
 
+        # Check if already generated
+        polygon_file = self.get_result_file_path(key="closed_polygon")
+        bathymetry_file = self.get_result_file_path(key="closed_bathymetry")
+        if polygon_file.is_file() and bathymetry_file.is_file():
+            print("Closed drains already recorded. ")
+            logging.info(
+                "Estimating drain and tunnel bed elevation from OpenStreetMap."
+            )
+            return
         drain_width = self.instructions["instructions"]["drains"]["width"]
 
         closed_drains = drains[drains["tunnel"]]
@@ -1514,13 +1517,15 @@ class DrainBathymetryGenerator(BaseProcessor):
         closed_drains["polygon"] = closed_drains.buffer(drain_width)
 
         # save out the polygons
-        polygon_file = self.get_result_file_path(key="closed_polygon")
         closed_drains.set_geometry("polygon", drop=True)[["geometry"]].to_file(
             polygon_file
         )
 
-        elevations = closed_drains.geometry.apply(
-            lambda row: self.minimum_elevation_in_polygon(row=row, dem=dem), axis=1
+        elevations = closed_drains.apply(
+            lambda row: self.minimum_elevation_in_polygon(
+                geometry=row["polygon"], dem=dem
+            ),
+            axis=1,
         )
 
         # Create sampled points
