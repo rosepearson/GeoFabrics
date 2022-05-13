@@ -494,26 +494,6 @@ class DenseDem(abc.ABC):
         bathy_points = river_bathymetry.points_array()
         river_points = numpy.concatenate([edge_points, bathy_points])
 
-        # Resample at a lower resolution if too many offshore points
-        if len(edge_points) > self.CACHE_SIZE - len(bathy_points):
-            reduced_resolution = (
-                self.catchment_geometry.resolution
-                * len(edge_points)
-                / (self.CACHE_SIZE - len(bathy_points))
-            )
-            logging.info(
-                "Reducing the number of 'river_points' used to create the RBF function "
-                "by increasing the resolution from {self.catchment_geometry.resolution}"
-                f" to {reduced_resolution}"
-            )
-            edge_points = self._sample_offshore_edge(reduced_resolution)
-            river_points = numpy.concatenate([edge_points, bathy_points])
-        # Set up the interpolation function
-        logging.info("Creating river interpolant")
-        rbf_function = scipy.interpolate.Rbf(
-            river_points["X"], river_points["Y"], river_points["Z"], function="linear"
-        )
-
         # Setup the empty river area ready for interpolation
         self._river_dem = combined_dem.rio.clip(river_bathymetry.polygon.geometry)
         # set all zero (or to ocean bathy classification) then clip out dense region
@@ -532,28 +512,62 @@ class DenseDem(abc.ABC):
         flat_y_masked = grid_y.flatten()[mask_z]
         flat_z_masked = flat_z[mask_z]
 
-        # check there are actually pixels in the rive
+        # check there are actually pixels in the river
         logging.info(f"There are {len(flat_z_masked)} pixels in the river")
 
-        # Tile offshore area - this limits the maximum memory required at any one time
-        number_tiles = math.ceil(len(flat_x_masked) / self.CACHE_SIZE)
-        for i in range(number_tiles):
-            logging.info(f"River intepolant tile {i+1} of {number_tiles}")
-            start_index = int(i * self.CACHE_SIZE)
-            end_index = (
-                int((i + 1) * self.CACHE_SIZE)
-                if i + 1 != number_tiles
-                else len(flat_x_masked)
+        # Interpolate river area - approach used depends on number of points
+        if len(bathy_points) < self.CACHE_SIZE / 2:  #  Perform RBF interpolation
+            # Check if need to reduce number of LiDAR points included
+            if len(edge_points) > self.CACHE_SIZE - len(bathy_points):
+                # Resample at a lower resolution if too many LiDAR points
+                reduced_resolution = (
+                    self.catchment_geometry.resolution
+                    * len(edge_points)
+                    / (self.CACHE_SIZE - len(bathy_points))
+                )
+                logging.info(
+                    "Reducing the number of 'river_points' used to create the RBF function "
+                    "by increasing the resolution from {self.catchment_geometry.resolution}"
+                    f" to {reduced_resolution}"
+                )
+                edge_points = self._sample_offshore_edge(reduced_resolution)
+                river_points = numpy.concatenate([edge_points, bathy_points])
+            # Set up the interpolation function
+            logging.info("Creating river interpolant")
+            rbf_function = scipy.interpolate.Rbf(
+                river_points["X"],
+                river_points["Y"],
+                river_points["Z"],
+                function="linear",
             )
 
-            flat_z_masked[start_index:end_index] = rbf_function(
-                flat_x_masked[start_index:end_index],
-                flat_y_masked[start_index:end_index],
+            # Tile offshore area - this limits the maximum memory required at any one time
+            number_tiles = math.ceil(len(flat_x_masked) / self.CACHE_SIZE)
+            for i in range(number_tiles):
+                logging.info(f"River intepolant tile {i+1} of {number_tiles}")
+                start_index = int(i * self.CACHE_SIZE)
+                end_index = (
+                    int((i + 1) * self.CACHE_SIZE)
+                    if i + 1 != number_tiles
+                    else len(flat_x_masked)
+                )
+
+                flat_z_masked[start_index:end_index] = rbf_function(
+                    flat_x_masked[start_index:end_index],
+                    flat_y_masked[start_index:end_index],
+                )
+        else:  #  Use linear interpolation as there are more points than the cache size
+            flat_z_masked = scipy.interpolate.griddata(
+                points=(river_points["X"], river_points["Y"]),
+                values=river_points["Z"],
+                xi=(flat_x_masked, flat_x_masked),
+                method="linear",
             )
+        # Set the interpolated value in the DEM
         flat_z[mask_z] = flat_z_masked
         self._river_dem.z.data = flat_z.reshape(self._river_dem.z.data.shape)
 
-        # Ensure the DEM will be recalculated to include the interpolated offshore region
+        # Ensure the DEM will be recalculated to include the newly interpolated region
         self._dem = None
 
 
