@@ -511,7 +511,7 @@ class RiverBathymetryPoints:
         for i in range(1, len(points_files)):
             points_i = geopandas.read_file(points_files[i])
             if z_labels is not None:
-                points[self.DEPTH_LABEL] = points[z_labels[i]]
+                points[self.DEPTH_LABEL] = points_i[z_labels[i]]
             points = points.append(points_i)
             polygon_i = geopandas.read_file(polygon_files[i])
             polygon = polygon.append(polygon_i)
