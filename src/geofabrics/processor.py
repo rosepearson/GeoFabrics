@@ -1459,9 +1459,9 @@ class DrainBathymetryGenerator(BaseProcessor):
         name_dictionary = {
             "dem": f"dem_{tag}.nc",
             "open_polygon": f"open_drain_polygon_{tag}.geojson",
-            "open_bathymetry": f"open_drain_bathymetry_{tag}.geojson",
+            "open_elevation": f"open_drain_elevation_{tag}.geojson",
             "closed_polygon": f"closed_drain_polygon_{tag}.geojson",
-            "closed_bathymetry": f"closed_drain_bathymetry_{tag}.geojson",
+            "closed_elevation": f"closed_drain_elevation_{tag}.geojson",
             "drain_polygon": f"drain_polygon_{tag}.geojson",
         }
         return name_dictionary[key]
@@ -1490,7 +1490,8 @@ class DrainBathymetryGenerator(BaseProcessor):
 
         # Index in polygon bbox
         bbox = geometry.bounds
-        # bbox[0] = bbox[0] if dem.x >= bbox[0] else float(dem.x.min())
+
+        # Select only DEM within the geometry bounding box
         small_z = dem.z.sel(x=slice(bbox[0], bbox[2]), y=slice(bbox[3], bbox[1]))
 
         # clip to polygon and return minimum elevation
@@ -1503,11 +1504,11 @@ class DrainBathymetryGenerator(BaseProcessor):
 
         # Check if already generated
         polygon_file = self.get_result_file_path(key="closed_polygon")
-        bathymetry_file = self.get_result_file_path(key="closed_bathymetry")
-        if polygon_file.is_file() and bathymetry_file.is_file():
+        elevation_file = self.get_result_file_path(key="closed_elevation")
+        if polygon_file.is_file() and elevation_file.is_file():
             print("Closed drains already recorded. ")
             logging.info(
-                "Estimating drain and tunnel bed elevation from OpenStreetMap."
+                "Estimating closed drain and tunnel bed elevation from OpenStreetMap."
             )
             return
         drain_width = self.instructions["instructions"]["drains"]["width"]
@@ -1549,7 +1550,7 @@ class DrainBathymetryGenerator(BaseProcessor):
         )
 
         # Save bathymetry
-        points.explode(ignore_index=True).to_file(bathymetry_file)
+        points.explode(ignore_index=True).to_file(elevation_file)
 
     def estimate_open_bathymetry(
         self, drains: geopandas.GeoDataFrame, dem: xarray.Dataset
@@ -1558,11 +1559,11 @@ class DrainBathymetryGenerator(BaseProcessor):
 
         # Check if already generated
         polygon_file = self.get_result_file_path(key="open_polygon")
-        bathymetry_file = self.get_result_file_path(key="open_bathymetry")
-        if polygon_file.is_file() and bathymetry_file.is_file():
-            print("Closed drains already recorded. ")
+        elevation_file = self.get_result_file_path(key="open_elevation")
+        if polygon_file.is_file() and elevation_file.is_file():
+            print("Open drains already recorded. ")
             logging.info(
-                "Estimating drain and tunnel bed elevation from OpenStreetMap."
+                "Estimating open drain and tunnel bed elevation from OpenStreetMap."
             )
             return
         drain_width = self.instructions["instructions"]["drains"]["width"]
@@ -1644,7 +1645,7 @@ class DrainBathymetryGenerator(BaseProcessor):
         )
 
         # Save bathymetry
-        points.to_file(bathymetry_file)
+        points.to_file(elevation_file)
 
     def create_dem(self, drains: geopandas.GeoDataFrame) -> xarray.Dataset:
         """Create and return a DEM at a resolution 1.5x the drain width."""
