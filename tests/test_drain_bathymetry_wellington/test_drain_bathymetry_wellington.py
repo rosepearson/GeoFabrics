@@ -182,8 +182,8 @@ class ProcessorDrainBathymetryWellingtonTest(unittest.TestCase):
 
         # check the polygons match
         column_name = "geometry"
-        test_comparison = test[column_name].area.item()
-        benchmark_comparison = benchmark[column_name].area.item()
+        test_comparison = test[column_name].area.sum()
+        benchmark_comparison = benchmark[column_name].area.sum()
         print(f"test area {test_comparison}, and benchmark area {benchmark_comparison}")
         self.assertAlmostEqual(
             test_comparison,
