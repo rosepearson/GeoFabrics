@@ -1408,7 +1408,7 @@ class RiverBathymetryGenerator(BaseProcessor):
         fan_polygon.to_file(self.get_result_file_path(key="fan_polygon"))
         fan_bathymetry.to_file(self.get_result_file_path(key="fan_bathymetry"))
 
-    def run(self, instruction_parameters):
+    def run(self, instruction_parameters: pathlib.Path = None):
         """This method extracts a main channel then executes the DemGeneration
         pipeline to produce a DEM before sampling this to extimate width, slope
         and eventually depth."""
@@ -1428,8 +1428,9 @@ class RiverBathymetryGenerator(BaseProcessor):
             self.calculate_river_bed_elevations()
             self.estimate_river_mouth_fan()
         # Update parameter file - in time only update the bits that have been re-run
-        with open(instruction_parameters, "w") as file_pointer:
-            json.dump(self.instructions, file_pointer)
+        if instruction_parameters is not None:
+            with open(instruction_parameters, "w") as file_pointer:
+                json.dump(self.instructions, file_pointer)
 
 
 class DrainBathymetryGenerator(BaseProcessor):
