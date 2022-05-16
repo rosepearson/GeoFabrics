@@ -86,7 +86,7 @@ class ProcessorDrainBathymetryWellingtonTest(unittest.TestCase):
         runner = processor.DrainBathymetryGenerator(cls.instructions, debug=False)
         runner.run(
             pathlib.Path(cls.instructions["instructions"]["data_paths"]["local_cache"])
-            / "instruction_parameters.json"
+            / "drain_parameters.json"
         )
 
     @classmethod
