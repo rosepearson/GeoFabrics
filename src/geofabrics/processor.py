@@ -1755,7 +1755,7 @@ class DrainBathymetryGenerator(BaseProcessor):
 
         return drains
 
-    def run(self, instruction_parameters):
+    def run(self, instruction_parameters: pathlib.Path = None):
         """This method runs a pipeline that:
         * downloads all tunnels and drains within a catchment.
         * creates and samples a DEM around each feature to estimate the bed
@@ -1773,3 +1773,8 @@ class DrainBathymetryGenerator(BaseProcessor):
         # Estimate the drain and tunnel bed elevations from the DEM
         self.estimate_closed_bathymetry(drains=drains, dem=dem)
         self.estimate_open_bathymetry(drains=drains, dem=dem)
+
+        # print out parameters actually run
+        if instruction_parameters is not None:
+            with open(instruction_parameters, "w") as file_pointer:
+                json.dump(self.instructions, file_pointer)
