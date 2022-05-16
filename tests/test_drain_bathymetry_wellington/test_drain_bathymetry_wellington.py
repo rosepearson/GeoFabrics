@@ -122,13 +122,14 @@ class ProcessorDrainBathymetryWellingtonTest(unittest.TestCase):
                 elif file.is_dir():
                     shutil.rmtree(file)
 
-    def test_open_drain_polygon(self):
-        """A test to see if the correct open drain polygon is generated. This is
-        tested individually as it is generated first."""
-
-        print("Compare river polygon  - All OS")
+    @pytest.mark.skipif(sys.platform != "win32", reason="Windows test - this is strict")
+    def test_open_drains_windows(self):
+        """A test to see if the correct open drain polygon and bathymetry are
+        generated."""
 
         data_path_instructions = self.instructions["instructions"]["data_paths"]
+
+        print("Compare river polygon  - Windows")
 
         test = geopandas.read_file(
             self.cache_dir / "open_drain_polygon_5m_width.geojson"
@@ -140,19 +141,11 @@ class ProcessorDrainBathymetryWellingtonTest(unittest.TestCase):
         # check the polygons match
         self.assertTrue(
             (test == benchmark).all().all(),
-            "The geneated river"
-            f"polygon {test} doesn't equal the river benchmark "
+            f"The geneated open drain polygon {test} doesn't equal the river benchmark "
             f"river polygon {benchmark}",
         )
 
-    @pytest.mark.skipif(sys.platform != "win32", reason="Windows test - this is strict")
-    def test_open_drain_bathymetry_windows(self):
-        """A test to see if the correct river polygon is generated. This is
-        tested individually as it is generated on its own."""
-
-        print("Compare river bathymetry - Windows")
-
-        data_path_instructions = self.instructions["instructions"]["data_paths"]
+        print("Compare open drain bathymetry - Windows")
 
         test = geopandas.read_file(
             self.cache_dir / "open_drain_elevation_5m_width.geojson"
@@ -164,21 +157,43 @@ class ProcessorDrainBathymetryWellingtonTest(unittest.TestCase):
         # check the bathymetries match
         self.assertTrue(
             (test == benchmark).all().all(),
-            "The geneated river"
-            f"bathymetry {test} doesn't equal the river benchmark "
-            f"river bathymetry {benchmark}",
+            f"The geneated open drain bathymetry {test} doesn't equal the river "
+            f"benchmark river bathymetry {benchmark}",
         )
 
     @pytest.mark.skipif(
         sys.platform != "linux", reason="Linux test - this is less strict"
     )
-    def test_open_drain_bathymetry_linux(self):
-        """A test to see if the correct river polygon is generated. This is
-        tested individually as it is generated on its own."""
-
-        print("Compare river bathymetry - Linux")
+    def test_open_drains_linux(self):
+        """A test to see if the correct open drain polygon and bathymetry are
+        generated."""
 
         data_path_instructions = self.instructions["instructions"]["data_paths"]
+
+        print("Compare river polygon  - Linux")
+
+        # Compare the polygons
+        test = geopandas.read_file(
+            self.cache_dir / "open_drain_polygon_5m_width.geojson"
+        )
+        benchmark = geopandas.read_file(
+            self.cache_dir / data_path_instructions["open_drain_polygon_benchmark"]
+        )
+
+        # check the polygons match
+        column_name = "geometry"
+        test_comparison = test[column_name].area.item()
+        benchmark_comparison = benchmark[column_name].area.item()
+        print(f"test area {test_comparison}, and benchmark area {benchmark_comparison}")
+        self.assertAlmostEqual(
+            test_comparison,
+            benchmark_comparison,
+            places=6,
+            msg=f"The geneated open drain polygon {column_name} does not match the "
+            f"benchmark. {test_comparison} vs {benchmark_comparison}",
+        )
+
+        print("Compare open drain bathymetry - Linux")
 
         test = geopandas.read_file(
             self.cache_dir / "open_drain_elevation_5m_width.geojson"
@@ -192,16 +207,15 @@ class ProcessorDrainBathymetryWellingtonTest(unittest.TestCase):
         test_comparison = test[column_name].array
         benchmark_comparison = benchmark[column_name].array
         print(
-            f"{column_name} difference "
+            f"Open drain elevation {column_name} difference "
             f"{numpy.array(test_comparison) - numpy.array(benchmark_comparison)}"
         )
         self.assertAlmostEqual(
             test_comparison,
             benchmark_comparison,
             places=7,
-            msg=f"The geneated river {column_name} does not"
-            f" match the benchmark. {test_comparison} vs "
-            f"{benchmark_comparison}",
+            msg=f"The geneated open drain bathymetry {column_name} does not"
+            f" match the benchmark. {test_comparison} vs {benchmark_comparison}",
         )
 
         column_name = "geometry"
@@ -220,10 +234,10 @@ class ProcessorDrainBathymetryWellingtonTest(unittest.TestCase):
 
     @pytest.mark.skipif(sys.platform != "win32", reason="Windows test - this is strict")
     def test_closed_drains_windows(self):
-        """A test to see if the correct fan polygon and bathymetry are
-        generated. These are generated and tested together."""
+        """A test to see if the correct close drain polygon and bathymetry are
+        generated."""
 
-        print("Compare fan bathymetry and polygon - Windows")
+        print("Compare closed drains - Windows")
 
         data_path_instructions = self.instructions["instructions"]["data_paths"]
 
@@ -237,9 +251,8 @@ class ProcessorDrainBathymetryWellingtonTest(unittest.TestCase):
 
         self.assertTrue(
             (test == benchmark).all().all(),
-            "The geneated river"
-            f"fan {test} doesn't equal the river benchmark "
-            f"fan polygon {benchmark}",
+            f"The closed drain polygons {test} doesn't equal the close drain benchmark "
+            f" polygon {benchmark}",
         )
 
         # Compare the bathymetries
@@ -252,19 +265,18 @@ class ProcessorDrainBathymetryWellingtonTest(unittest.TestCase):
 
         self.assertTrue(
             (test == benchmark).all().all(),
-            "The geneated fan"
-            f"bathymetry {test} doesn't equal the fan benchmark "
-            f"fan bathymetry {benchmark}",
+            f"The geneated closed drain bathymetry {test} doesn't equal the closed "
+            f"drain benchmark  bathymetry {benchmark}",
         )
 
     @pytest.mark.skipif(
         sys.platform != "linux", reason="Linux test - this is less strict"
     )
     def test_closed_drains_linux(self):
-        """A test to see if the correct fan polygon and bathymetry are
-        generated. These are generated and tested together."""
+        """A test to see if the correct close drain polygon and bathymetry are
+        generated."""
 
-        print("Compare fan bathymetry and polygon - Linux")
+        print("Compare close drains - Linux")
 
         data_path_instructions = self.instructions["instructions"]["data_paths"]
 
@@ -280,14 +292,16 @@ class ProcessorDrainBathymetryWellingtonTest(unittest.TestCase):
         column_name = "geometry"
         test_comparison = test[column_name].area.item()
         benchmark_comparison = benchmark[column_name].area.item()
-        print(f"test area {test_comparison}, and benchmark area {benchmark_comparison}")
+        print(
+            f"Closed drain polygon test area {test_comparison}, and benchmark area "
+            f"{benchmark_comparison}"
+        )
         self.assertAlmostEqual(
             test_comparison,
             benchmark_comparison,
             places=6,
-            msg=f"The geneated river {column_name} does"
-            f" not match the benchmark. {test_comparison} "
-            f"vs {benchmark_comparison}",
+            msg=f"The geneated closed drain polygon {column_name} does not match the"
+            f" benchmark. {test_comparison} vs {benchmark_comparison}",
         )
 
         # Compare the bathymetries
@@ -303,16 +317,15 @@ class ProcessorDrainBathymetryWellingtonTest(unittest.TestCase):
         test_comparison = test[column_name].array
         benchmark_comparison = benchmark[column_name].array
         print(
-            f"{column_name} difference "
+            f"Close drain bathymetry {column_name} difference "
             "{numpy.array(test_comparison) - numpy.array(benchmark_comparison)}"
         )
         self.assertAlmostEqual(
             test_comparison,
             benchmark_comparison,
             places=7,
-            msg="The geneated  river {column_name} does"
-            f" not match the benchmark. {test_comparison} "
-            f"vs {benchmark_comparison}",
+            msg="The geneated closed drain bathymetry {column_name} does not match "
+            f"the benchmark. {test_comparison} vs {benchmark_comparison}",
         )
 
         column_name = "geometry"
@@ -324,9 +337,8 @@ class ProcessorDrainBathymetryWellingtonTest(unittest.TestCase):
             comparison,
             numpy.zeros(len(test[column_name])),
             places=7,
-            msg=f"The geneate driver {column_name}"
-            f" does not match the benchmark. They are"
-            f" separated by distances of {comparison}",
+            msg=f"The geneated closed drain bathymetry {column_name} does not match the"
+            f"benchmark. They are separated by distances of {comparison}",
         )
 
 
