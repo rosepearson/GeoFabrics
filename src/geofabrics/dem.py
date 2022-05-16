@@ -560,7 +560,7 @@ class DenseDem(abc.ABC):
             flat_z_masked = scipy.interpolate.griddata(
                 points=(river_points["X"], river_points["Y"]),
                 values=river_points["Z"],
-                xi=(flat_x_masked, flat_x_masked),
+                xi=(flat_x_masked, flat_y_masked),
                 method="linear",
             )
         # Set the interpolated value in the DEM
