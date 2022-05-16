@@ -1458,6 +1458,8 @@ class DrainBathymetryGenerator(BaseProcessor):
         # key to output name mapping
         name_dictionary = {
             "dem": f"dem_{tag}.nc",
+            "dense_dem": f"dense_dem_{tag}.nc",
+            "dense_dem_extents": f"dense_extents_{drain_width}m_width.geojson",
             "open_polygon": f"open_drain_polygon_{tag}.geojson",
             "open_elevation": f"open_drain_elevation_{tag}.geojson",
             "closed_polygon": f"closed_drain_polygon_{tag}.geojson",
@@ -1491,8 +1493,20 @@ class DrainBathymetryGenerator(BaseProcessor):
         # Index in polygon bbox
         bbox = geometry.bounds
 
-        # Select only DEM within the geometry bounding box
-        small_z = dem.z.sel(x=slice(bbox[0], bbox[2]), y=slice(bbox[3], bbox[1]))
+        # Select DEM within the geometry bounding box
+        y_slice = (
+            slice(bbox[1], bbox[3])
+            if dem.y[-1] - dem.y[0] > 0
+            else slice(bbox[3], bbox[1])
+        )
+        x_slice = (
+            slice(bbox[0], bbox[2])
+            if dem.x[-1] - dem.x[0] > 0
+            else slice(bbox[2], bbox[0])
+        )
+        # note reverse ordering convention of y
+        # note reverse ordering convention of y
+        small_z = dem.z.sel(x=x_slice, y=y_slice)
 
         # clip to polygon and return minimum elevation
         return float(small_z.rio.clip([geometry]).min())
@@ -1676,12 +1690,16 @@ class DrainBathymetryGenerator(BaseProcessor):
             # Create DEM generation instructions
             dem_instructions = self.instructions
             dem_instruction_paths = dem_instructions["instructions"]["data_paths"]
-            dem_instruction_paths["catchment_boundary"] = str(drain_polygon_file)
-            dem_instruction_paths["result_dem"] = str(dem_file)
-            dem_instruction_paths["dense_dem"] = f"dense_dem_{drain_width}m_width.nc"
-            dem_instruction_paths[
+            dem_instruction_paths["catchment_boundary"] = self.get_result_file_name(
+                key="drain_polygon"
+            )
+            dem_instruction_paths["result_dem"] = self.get_result_file_name(key="dem")
+            dem_instruction_paths["dense_dem"] = self.get_result_file_name(
+                key="dense_dem"
+            )
+            dem_instruction_paths["dense_dem_extents"] = self.get_result_file_name(
                 "dense_dem_extents"
-            ] = "dense_extents_{drain_width}m_width.geojson"
+            )
 
             # Create the ground DEM file if this has not be created yet!
             print("Generating drain DEM.")
