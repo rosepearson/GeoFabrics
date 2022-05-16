@@ -21,7 +21,7 @@ import numpy
 from src.geofabrics import processor
 
 
-class ProcessorRiverBathymetryTest(unittest.TestCase):
+class ProcessorDrainBathymetryWellingtonTest(unittest.TestCase):
     """A class to test the basic river bathymetry estimation functionality
     contained in processor.RiverBathymetryGenerator.
 
