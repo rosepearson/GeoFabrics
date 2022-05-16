@@ -1493,7 +1493,7 @@ class DrainBathymetryGenerator(BaseProcessor):
         # Index in polygon bbox
         bbox = geometry.bounds
 
-        # Select DEM within the geometry bounding box
+        # Select DEM within the bounding box - allow ascending or decending dimensions
         y_slice = (
             slice(bbox[1], bbox[3])
             if dem.y[-1] - dem.y[0] > 0
@@ -1504,8 +1504,6 @@ class DrainBathymetryGenerator(BaseProcessor):
             if dem.x[-1] - dem.x[0] > 0
             else slice(bbox[2], bbox[0])
         )
-        # note reverse ordering convention of y
-        # note reverse ordering convention of y
         small_z = dem.z.sel(x=x_slice, y=y_slice)
 
         # clip to polygon and return minimum elevation
