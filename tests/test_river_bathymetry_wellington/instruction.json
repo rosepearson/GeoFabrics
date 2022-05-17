@@ -44,7 +44,7 @@
 		"lidar_classifications_to_keep": [2, 9],
 		"interpolate_missing_values": false
 	},
-	"channel_bathymetry": {
+	"rivers": {
 		"veg_lidar_classifications_to_keep": [2, 3, 4, 5, 9],
 		"max_channel_width": 120,
 		"min_channel_width": 10,

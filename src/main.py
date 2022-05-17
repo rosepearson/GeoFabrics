@@ -104,10 +104,10 @@ def launch_processor(args):
         instructions = json.load(file_pointer)
     # Run the pipeline
     start_time = time.time()
-    if "channel_bathymetry" in instructions:
+    if "rivers" in instructions:
         # Estimate river channel bathymetry
         print("Run processor.RiverBathymetryGenerator")
-        run_instructions = instructions["channel_bathymetry"]
+        run_instructions = instructions["rivers"]
         setup_logging_for_run(run_instructions)
         runner = processor.RiverBathymetryGenerator(run_instructions)
         runner.run(

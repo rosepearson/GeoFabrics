@@ -849,7 +849,7 @@ class RiverBathymetryGenerator(BaseProcessor):
             instructions  The json instructions defining the behaviour
         """
 
-        return self.instructions["channel_bathymetry"][key]
+        return self.instructions["rivers"][key]
 
     def get_rec_channel(self) -> bathymetry_estimation.Channel:
         """Read in or create a rec channel."""

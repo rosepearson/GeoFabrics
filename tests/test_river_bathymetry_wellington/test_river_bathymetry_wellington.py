@@ -83,7 +83,7 @@ class ProcessorRiverBathymetryTest(unittest.TestCase):
         """Remove all generated or downloaded files from the data directory"""
 
         files_to_keep = []
-        bathymetry_instructions = cls.instructions["channel_bathymetry"]
+        bathymetry_instructions = cls.instructions["rivers"]
         files_to_keep.append(pathlib.Path(bathymetry_instructions["rec_file"]))
         files_to_keep.append(pathlib.Path(bathymetry_instructions["flow_file"]))
 
