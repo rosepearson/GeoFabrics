@@ -114,7 +114,7 @@ def launch_processor(args):
             pathlib.Path(run_instructions["data_paths"]["local_cache"])
             / "river_parameters.json"
         )
-    elif "drains" in instructions:
+    if "drains" in instructions:
         # Estimate drain bathymetry
         print("Run processor.DrainsBathymetryGenerator")
         run_instructions = instructions["drains"]
@@ -124,7 +124,7 @@ def launch_processor(args):
             pathlib.Path(instructions["drains"]["data_paths"]["local_cache"])
             / "drain_parameters.json"
         )
-    elif "dem" in instructions:
+    if "dem" in instructions:
         run_instructions = instructions["dem"]
         setup_logging_for_run(run_instructions)
         dem_paths = run_instructions["data_paths"]

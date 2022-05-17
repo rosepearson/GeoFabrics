@@ -55,12 +55,10 @@ class ProcessorRiverBathymetryTest(unittest.TestCase):
         # Load in environment variables to get and set the private API keys
         dotenv.load_dotenv()
         linz_key = os.environ.get("LINZ_API", None)
-        cls.instructions["instructions"]["apis"]["linz"]["key"] = linz_key
+        cls.instructions["apis"]["linz"]["key"] = linz_key
 
         # define cache location - and catchment dirs
-        cls.cache_dir = pathlib.Path(
-            cls.instructions["instructions"]["data_paths"]["local_cache"]
-        )
+        cls.cache_dir = pathlib.Path(cls.instructions["data_paths"]["local_cache"])
 
         # ensure the cache directory doesn't exist - i.e. clean up from last test
         # occurred correctly
@@ -69,7 +67,7 @@ class ProcessorRiverBathymetryTest(unittest.TestCase):
         # Run pipeline - download files and generated DEM
         runner = processor.RiverBathymetryGenerator(cls.instructions, debug=False)
         runner.run(
-            pathlib.Path(cls.instructions["instructions"]["data_paths"]["local_cache"])
+            pathlib.Path(cls.instructions["data_paths"]["local_cache"])
             / "instruction_parameters.json"
         )
 
@@ -85,11 +83,11 @@ class ProcessorRiverBathymetryTest(unittest.TestCase):
         """Remove all generated or downloaded files from the data directory"""
 
         files_to_keep = []
-        bathymetry_instructions = cls.instructions["instructions"]["channel_bathymetry"]
+        bathymetry_instructions = cls.instructions["channel_bathymetry"]
         files_to_keep.append(pathlib.Path(bathymetry_instructions["rec_file"]))
         files_to_keep.append(pathlib.Path(bathymetry_instructions["flow_file"]))
 
-        data_path_instructions = cls.instructions["instructions"]["data_paths"]
+        data_path_instructions = cls.instructions["data_paths"]
         files_to_keep.append(
             cls.cache_dir / data_path_instructions["river_polygon_benchmark"]
         )
@@ -116,7 +114,7 @@ class ProcessorRiverBathymetryTest(unittest.TestCase):
 
         print("Compare river polygon  - All OS")
 
-        data_path_instructions = self.instructions["instructions"]["data_paths"]
+        data_path_instructions = self.instructions["data_paths"]
 
         test = geopandas.read_file(self.cache_dir / "river_polygon.geojson")
         benchmark = geopandas.read_file(
@@ -138,7 +136,7 @@ class ProcessorRiverBathymetryTest(unittest.TestCase):
 
         print("Compare river bathymetry - Windows")
 
-        data_path_instructions = self.instructions["instructions"]["data_paths"]
+        data_path_instructions = self.instructions["data_paths"]
 
         test = geopandas.read_file(self.cache_dir / "river_bathymetry.geojson")
         benchmark = geopandas.read_file(
@@ -162,7 +160,7 @@ class ProcessorRiverBathymetryTest(unittest.TestCase):
 
         print("Compare river bathymetry - Linux")
 
-        data_path_instructions = self.instructions["instructions"]["data_paths"]
+        data_path_instructions = self.instructions["data_paths"]
 
         test = geopandas.read_file(self.cache_dir / "river_bathymetry.geojson")
         benchmark = geopandas.read_file(
@@ -222,7 +220,7 @@ class ProcessorRiverBathymetryTest(unittest.TestCase):
 
         print("Compare fan bathymetry and polygon - Windows")
 
-        data_path_instructions = self.instructions["instructions"]["data_paths"]
+        data_path_instructions = self.instructions["data_paths"]
 
         # Compare the polygons
         test = geopandas.read_file(self.cache_dir / "fan_polygon.geojson")
@@ -259,7 +257,7 @@ class ProcessorRiverBathymetryTest(unittest.TestCase):
 
         print("Compare fan bathymetry and polygon - Linux")
 
-        data_path_instructions = self.instructions["instructions"]["data_paths"]
+        data_path_instructions = self.instructions["data_paths"]
 
         # Compare the polygons
         test = geopandas.read_file(self.cache_dir / "fan_polygon.geojson")
