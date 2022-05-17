@@ -496,9 +496,9 @@ class RiverBathymetryPoints:
         """Set CRS and clip to catchment and within the flat water polygon"""
 
         assert len(points_files) == len(polygon_files), (
-            "The polygon and point lists should all be the "
-            f"same length. Instead there are {len(points_files)} points files and "
-            f"{len(polygon_files)} polygon files"
+            "The polygon and point lists should all be the same length. Instead there "
+            f"are {len(points_files)} points files and {len(polygon_files)} polygon "
+            "files"
         )
         assert z_labels is None or len(points_files) == len(
             z_labels
@@ -525,7 +525,7 @@ class RiverBathymetryPoints:
         self._points = self._points.to_crs(self.catchment_geometry.crs["horizontal"])
         self.polygon = self.polygon.to_crs(self.catchment_geometry.crs["horizontal"])
 
-        self._points = self._points.clip(self.polygon, keep_geom_type=True)
+        self._points = self._points.clip(self.polygon.buffer(0), keep_geom_type=True)
         self._points = self._points.clip(
             self.catchment_geometry.catchment, keep_geom_type=True
         )
