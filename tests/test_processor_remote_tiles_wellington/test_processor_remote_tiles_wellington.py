@@ -71,9 +71,7 @@ class ProcessorRemoteTilesWellingtonTest(unittest.TestCase):
         with open(instruction_file_path, "r") as file_pointer:
             cls.instructions = json.load(file_pointer)
         # define cache location - and catchment dirs
-        cls.cache_dir = pathlib.Path(
-            cls.instructions["instructions"]["data_paths"]["local_cache"]
-        )
+        cls.cache_dir = pathlib.Path(cls.instructions["data_paths"]["local_cache"])
 
         # ensure the cache directory doesn't exist - in case the last test crashed
         cls.clean_data_folder()
@@ -85,9 +83,7 @@ class ProcessorRemoteTilesWellingtonTest(unittest.TestCase):
         y1 = 5471304
         catchment = shapely.geometry.Polygon([(x0, y0), (x1, y0), (x1, y1), (x0, y1)])
         catchment = geopandas.GeoSeries([catchment])
-        catchment = catchment.set_crs(
-            cls.instructions["instructions"]["output"]["crs"]["horizontal"]
-        )
+        catchment = catchment.set_crs(cls.instructions["output"]["crs"]["horizontal"])
 
         # save faked catchment boundary - used as land boundary as well
         catchment_file = cls.cache_dir / "catchment.geojson"
@@ -192,17 +188,11 @@ class ProcessorRemoteTilesWellingtonTest(unittest.TestCase):
     def test_result_dem_windows(self):
         """A basic comparison between the generated and benchmark DEM"""
 
-        file_path = (
-            self.cache_dir
-            / self.instructions["instructions"]["data_paths"]["benchmark_dem"]
-        )
+        file_path = self.cache_dir / self.instructions["data_paths"]["benchmark_dem"]
         with rioxarray.rioxarray.open_rasterio(file_path, masked=True) as benchmark_dem:
             benchmark_dem.load()
         # Load in test DEM
-        file_path = (
-            self.cache_dir
-            / self.instructions["instructions"]["data_paths"]["result_dem"]
-        )
+        file_path = self.cache_dir / self.instructions["data_paths"]["result_dem"]
         with rioxarray.rioxarray.open_rasterio(file_path, masked=True) as test_dem:
             test_dem.load()
         # compare the generated and benchmark DEMs
@@ -230,17 +220,11 @@ class ProcessorRemoteTilesWellingtonTest(unittest.TestCase):
         """A basic comparison between the generated and benchmark DEM"""
 
         # load in benchmark DEM
-        file_path = (
-            self.cache_dir
-            / self.instructions["instructions"]["data_paths"]["benchmark_dem"]
-        )
+        file_path = self.cache_dir / self.instructions["data_paths"]["benchmark_dem"]
         with rioxarray.rioxarray.open_rasterio(file_path, masked=True) as benchmark_dem:
             benchmark_dem.load()
         # Load in test DEM
-        file_path = (
-            self.cache_dir
-            / self.instructions["instructions"]["data_paths"]["result_dem"]
-        )
+        file_path = self.cache_dir / self.instructions["data_paths"]["result_dem"]
         with rioxarray.rioxarray.open_rasterio(file_path, masked=True) as test_dem:
             test_dem.load()
         # compare the generated and benchmark DEMs

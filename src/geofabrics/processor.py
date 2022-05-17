@@ -50,7 +50,7 @@ class BaseProcessor(abc.ABC):
             "dense_dem_extents": "dense_extents.geojson",
         }
 
-        path_instructions = self.instructions["instructions"]["data_paths"]
+        path_instructions = self.instructions["data_paths"]
         local_cache = pathlib.Path(path_instructions["local_cache"])
 
         if key == "local_cache":
@@ -88,12 +88,12 @@ class BaseProcessor(abc.ABC):
         if there is a default value and the local cache is specified."""
 
         assert (
-            "local_cache" in self.instructions["instructions"]["data_paths"]
+            "local_cache" in self.instructions["data_paths"]
         ), "local_cache is a required 'data_paths' entry"
 
         defaults = ["result_dem", "dense_dem_extents", "dense_dem"]
 
-        if key in self.instructions["instructions"]["data_paths"]:
+        if key in self.instructions["data_paths"]:
             return True
         else:
             return key in defaults
@@ -102,15 +102,15 @@ class BaseProcessor(abc.ABC):
         """Return the resolution from the instruction file. Raise an error if
         not in the instructions."""
 
-        assert "output" in self.instructions["instructions"], (
+        assert "output" in self.instructions, (
             "'output' is not a key-word in the instructions. It should exist"
             " and is where the resolution and optionally the CRS of the output"
             " DEM is defined."
         )
         assert (
-            "resolution" in self.instructions["instructions"]["output"]["grid_params"]
+            "resolution" in self.instructions["output"]["grid_params"]
         ), "'resolution' is not a key-word in the instructions"
-        return self.instructions["instructions"]["output"]["grid_params"]["resolution"]
+        return self.instructions["output"]["grid_params"]["resolution"]
 
     def get_crs(self) -> dict:
         """Return the CRS projection information (horiztonal and vertical) from
@@ -122,21 +122,21 @@ class BaseProcessor(abc.ABC):
 
         defaults = {"horizontal": 2193, "vertical": 7839}
 
-        assert "output" in self.instructions["instructions"], (
+        assert "output" in self.instructions, (
             "'output' is not a key-word in the instructions. It should exist "
             "and is where the resolution and optionally the CRS of the output "
             "DEM is defined."
         )
 
-        if "crs" not in self.instructions["instructions"]["output"]:
+        if "crs" not in self.instructions["output"]:
             logging.warning(
                 "No output the coordinate system EPSG values specified. We "
                 f"will instead be using the defaults: {defaults}."
             )
-            self.instructions["instructions"]["output"]["crs"] = defaults
+            self.instructions["output"]["crs"] = defaults
             return defaults
         else:
-            crs_instruction = self.instructions["instructions"]["output"]["crs"]
+            crs_instruction = self.instructions["output"]["crs"]
             crs_dict = {}
             crs_dict["horizontal"] = (
                 crs_instruction["horizontal"]
@@ -154,7 +154,7 @@ class BaseProcessor(abc.ABC):
                 "'horizontal' and 'vertical' values are specified."
             )
             # Update the CRS just incase this includes any default values
-            self.instructions["instructions"]["output"]["crs"] = crs_dict
+            self.instructions["output"]["crs"] = crs_dict
             return crs_dict
 
     def get_instruction_general(self, key: str):
@@ -173,17 +173,14 @@ class BaseProcessor(abc.ABC):
             "lidar_interpolation_method": "idw",
         }
 
-        assert key in defaults or key in self.instructions["instructions"]["general"], (
+        assert key in defaults or key in self.instructions["general"], (
             f"The key: {key} is missing from the general instructions, and"
             " does not have a default value"
         )
-        if (
-            "general" in self.instructions["instructions"]
-            and key in self.instructions["instructions"]["general"]
-        ):
-            return self.instructions["instructions"]["general"][key]
+        if "general" in self.instructions and key in self.instructions["general"]:
+            return self.instructions["general"][key]
         else:
-            self.instructions["instructions"]["general"][key] = defaults[key]
+            self.instructions["general"][key] = defaults[key]
             return defaults[key]
 
     def get_processing_instructions(self, key: str):
@@ -193,30 +190,25 @@ class BaseProcessor(abc.ABC):
 
         defaults = {"number_of_cores": 1, "chunk_size": None}
 
-        assert (
-            key in defaults or key in self.instructions["instructions"]["processing"]
-        ), (
+        assert key in defaults or key in self.instructions["processing"], (
             f"The key: {key} is missing "
             + "from the general instructions, and does not have a default value"
         )
-        if (
-            "processing" in self.instructions["instructions"]
-            and key in self.instructions["instructions"]["processing"]
-        ):
-            return self.instructions["instructions"]["processing"][key]
+        if "processing" in self.instructions and key in self.instructions["processing"]:
+            return self.instructions["processing"][key]
         else:
-            if "processing" not in self.instructions["instructions"]:
-                self.instructions["instructions"]["processing"] = {}
-            self.instructions["instructions"]["processing"][key] = defaults[key]
+            if "processing" not in self.instructions:
+                self.instructions["processing"] = {}
+            self.instructions["processing"][key] = defaults[key]
             return defaults[key]
 
     def check_apis(self, key) -> bool:
         """Check to see if APIs are included in the instructions and if the key is
         included in specified apis"""
 
-        if "apis" in self.instructions["instructions"]:
+        if "apis" in self.instructions:
             # 'apis' included instructions and Key included in the APIs
-            return key in self.instructions["instructions"]["apis"]
+            return key in self.instructions["apis"]
         else:
             return False
 
@@ -230,17 +222,14 @@ class BaseProcessor(abc.ABC):
             "lris",
         ]  # This list will increase as geopais is extended to support more vector APIs
 
-        if (
-            "data_paths" in self.instructions["instructions"]
-            and key in self.instructions["instructions"]["data_paths"]
-        ):
+        if "data_paths" in self.instructions and key in self.instructions["data_paths"]:
             # Key included in the data paths
             return True
-        elif "apis" in self.instructions["instructions"]:
+        elif "apis" in self.instructions:
             for data_service in data_services:
                 if (
-                    data_service in self.instructions["instructions"]["apis"]
-                    and key in self.instructions["instructions"]["apis"][data_service]
+                    data_service in self.instructions["apis"]
+                    and key in self.instructions["apis"][data_service]
                 ):
                     # Key is included in one or more of the data_service's APIs
                     return True
@@ -255,10 +244,7 @@ class BaseProcessor(abc.ABC):
         paths = []
 
         # Check the instructions for vector data specified as a data_paths
-        if (
-            "data_paths" in self.instructions["instructions"]
-            and key in self.instructions["instructions"]["data_paths"]
-        ):
+        if "data_paths" in self.instructions and key in self.instructions["data_paths"]:
             # Key included in the data paths - add - either list or individual path
             data_paths = self.get_instruction_path(key)
             if type(data_paths) is list:
@@ -274,7 +260,7 @@ class BaseProcessor(abc.ABC):
         for data_service in data_services.keys():
             if (
                 self.check_apis(data_service)
-                and key in self.instructions["instructions"]["apis"][data_service]
+                and key in self.instructions["apis"][data_service]
             ):
 
                 # Get the location to cache vector data downloaded from data services
@@ -285,14 +271,12 @@ class BaseProcessor(abc.ABC):
                 cache_dir = pathlib.Path(self.get_instruction_path("local_cache"))
 
                 # Get the API key for the data_serive being checked
-                assert (
-                    "key" in self.instructions["instructions"]["apis"][data_service]
-                ), (
+                assert "key" in self.instructions["apis"][data_service], (
                     f"A 'key' must be specified for the {data_service} data"
                     "  service instead the instruction only includes: "
-                    f"{self.instructions['instructions']['apis'][data_service]}"
+                    f"{self.instructions['apis'][data_service]}"
                 )
-                api_key = self.instructions["instructions"]["apis"][data_service]["key"]
+                api_key = self.instructions["apis"][data_service]["key"]
 
                 # Instantiate the geoapis object for downloading vectors from the data
                 # service.
@@ -305,9 +289,7 @@ class BaseProcessor(abc.ABC):
                     api_key, bounding_polygon=bounding_polygon, verbose=True
                 )
 
-                vector_instruction = self.instructions["instructions"]["apis"][
-                    data_service
-                ][key]
+                vector_instruction = self.instructions["apis"][data_service][key]
                 geometry_type = (
                     vector_instruction["geometry_name "]
                     if "geometry_name " in vector_instruction
@@ -342,7 +324,7 @@ class BaseProcessor(abc.ABC):
         will later be used to override the CRS encoded in the LAS files.
         """
 
-        apis_instructions = self.instructions["instructions"]["apis"]
+        apis_instructions = self.instructions["apis"]
 
         if (
             self.check_apis(data_service)
@@ -426,9 +408,7 @@ class BaseProcessor(abc.ABC):
                 verbose=True,
             )
             # Loop through each specified dataset and download it
-            for dataset_name in self.instructions["instructions"]["apis"][
-                data_service
-            ].keys():
+            for dataset_name in self.instructions["apis"][data_service].keys():
                 logging.info(f"Fetching dataset: {dataset_name}")
                 self.lidar_fetcher.run(dataset_name)
             assert len(self.lidar_fetcher.dataset_prefixes) == 1, (
@@ -855,9 +835,7 @@ class RiverBathymetryGenerator(BaseProcessor):
             instructions  The json instructions defining the behaviour
         """
 
-        local_cache = pathlib.Path(
-            self.instructions["instructions"]["data_paths"]["local_cache"]
-        )
+        local_cache = pathlib.Path(self.instructions["data_paths"]["local_cache"])
 
         name = self.get_result_file_name(key=key, name=name)
 
@@ -871,7 +849,7 @@ class RiverBathymetryGenerator(BaseProcessor):
             instructions  The json instructions defining the behaviour
         """
 
-        return self.instructions["instructions"]["channel_bathymetry"][key]
+        return self.instructions["channel_bathymetry"][key]
 
     def get_rec_channel(self) -> bathymetry_estimation.Channel:
         """Read in or create a rec channel."""
@@ -923,7 +901,7 @@ class RiverBathymetryGenerator(BaseProcessor):
             instructions  The json instructions defining the behaviour
         """
 
-        instruction_paths = self.instructions["instructions"]["data_paths"]
+        instruction_paths = self.instructions["data_paths"]
 
         # Extract instructions from JSON
         max_channel_width = self.get_bathymetry_instruction("max_channel_width")
@@ -951,10 +929,8 @@ class RiverBathymetryGenerator(BaseProcessor):
         bathy_apis = None
         if "bathymetry_contours" in instruction_paths:
             bathy_data_paths = instruction_paths.pop("bathymetry_contours")
-        if "bathymetry_contours" in self.instructions["instructions"]["apis"]["linz"]:
-            bathy_apis = self.instructions["instructions"]["apis"]["linz"].pop(
-                "bathymetry_contours"
-            )
+        if "bathymetry_contours" in self.instructions["apis"]["linz"]:
+            bathy_apis = self.instructions["apis"]["linz"].pop("bathymetry_contours")
         # Get the ground DEM
         if not gnd_file.is_file():
             # Create the ground DEM file if this has not be created yet!
@@ -982,7 +958,7 @@ class RiverBathymetryGenerator(BaseProcessor):
             instruction_paths["result_dem"] = str(
                 self.get_result_file_name(key="veg_dem")
             )
-            self.instructions["instructions"]["general"][
+            self.instructions["general"][
                 "lidar_classifications_to_keep"
             ] = self.get_bathymetry_instruction("veg_lidar_classifications_to_keep")
             instruction_paths["dense_dem"] = "dense_veg_dem.nc"
@@ -1002,9 +978,7 @@ class RiverBathymetryGenerator(BaseProcessor):
         if bathy_data_paths is not None:
             instruction_paths["bathymetry_contours"] = bathy_data_paths
         if bathy_apis is not None:
-            self.instructions["instructions"]["apis"]["linz"][
-                "bathymetry_contours"
-            ] = bathy_apis
+            self.instructions["apis"]["linz"]["bathymetry_contours"] = bathy_apis
         return gnd_dem, veg_dem
 
     def align_channel(
@@ -1453,7 +1427,7 @@ class DrainBathymetryGenerator(BaseProcessor):
     def get_result_file_name(self, key: str) -> str:
         """Return the name of the file to save."""
 
-        drain_width = self.instructions["instructions"]["drains"]["width"]
+        drain_width = self.instructions["drains"]["width"]
         tag = f"{drain_width}m_width"
 
         # key to output name mapping
@@ -1476,9 +1450,7 @@ class DrainBathymetryGenerator(BaseProcessor):
             instructions  The json instructions defining the behaviour
         """
 
-        local_cache = pathlib.Path(
-            self.instructions["instructions"]["data_paths"]["local_cache"]
-        )
+        local_cache = pathlib.Path(self.instructions["data_paths"]["local_cache"])
 
         name = self.get_result_file_name(key=key)
 
@@ -1524,7 +1496,7 @@ class DrainBathymetryGenerator(BaseProcessor):
                 "Estimating closed drain and tunnel bed elevation from OpenStreetMap."
             )
             return
-        drain_width = self.instructions["instructions"]["drains"]["width"]
+        drain_width = self.instructions["drains"]["width"]
 
         closed_drains = drains[drains["tunnel"]]
         closed_drains = closed_drains.clip(self.catchment_geometry.catchment)
@@ -1579,7 +1551,7 @@ class DrainBathymetryGenerator(BaseProcessor):
                 "Estimating open drain and tunnel bed elevation from OpenStreetMap."
             )
             return
-        drain_width = self.instructions["instructions"]["drains"]["width"]
+        drain_width = self.instructions["drains"]["width"]
 
         open_drains = drains[numpy.logical_not(drains["tunnel"])]
         open_drains = open_drains.clip(self.catchment_geometry.catchment)
@@ -1672,7 +1644,7 @@ class DrainBathymetryGenerator(BaseProcessor):
             )
         else:  # Create DEM over the drain region
 
-            drain_width = self.instructions["instructions"]["drains"]["width"]
+            drain_width = self.instructions["drains"]["width"]
 
             # Save out the drain polygons as a file with a single multipolygon
             drain_polygon_file = self.get_result_file_path(key="drain_polygon")
@@ -1688,7 +1660,7 @@ class DrainBathymetryGenerator(BaseProcessor):
 
             # Create DEM generation instructions
             dem_instructions = self.instructions
-            dem_instruction_paths = dem_instructions["instructions"]["data_paths"]
+            dem_instruction_paths = dem_instructions["data_paths"]
             dem_instruction_paths["catchment_boundary"] = self.get_result_file_name(
                 key="drain_polygon"
             )

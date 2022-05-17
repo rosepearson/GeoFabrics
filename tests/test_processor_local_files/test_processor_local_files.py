@@ -22,18 +22,21 @@ from src.geofabrics import processor
 
 
 class ProcessorLocalFilesTest(unittest.TestCase):
-    """Tests the basic DemGenerator processor class for a simple example with land, offshore, a reference DEM and
+    """Tests the basic DemGenerator processor class for a simple example with land,
+    offshore, a reference DEM and
     LiDAR using the data specified in the instruction.json
 
     Tests run include:
-        1. test_result_dem  Check the generated DEM matches the benchmark DEM within a tolerance
+        1. test_result_dem  Check the generated DEM matches the benchmark DEM within a
+        tolerance
     """
 
     LAS_GROUND = 2
 
     @classmethod
     def setUpClass(cls):
-        """Create a cache directory and CatchmentGeometry object for use in the tests and also download the files used
+        """Create a cache directory and CatchmentGeometry object for use in the tests
+        and also download the files used
         in the tests."""
 
         test_path = pathlib.Path().cwd() / pathlib.Path(
@@ -69,9 +72,7 @@ class ProcessorLocalFilesTest(unittest.TestCase):
         y1 = 750
         catchment = shapely.geometry.Polygon([(x0, y0), (x1, y0), (x1, y1), (x0, y1)])
         catchment = geopandas.GeoSeries([catchment])
-        catchment = catchment.set_crs(
-            cls.instructions["instructions"]["output"]["crs"]["horizontal"]
-        )
+        catchment = catchment.set_crs(cls.instructions["output"]["crs"]["horizontal"])
         catchment.to_file(catchment_file)
 
         # Generate land data
@@ -82,9 +83,7 @@ class ProcessorLocalFilesTest(unittest.TestCase):
         y1 = 1000
         land = shapely.geometry.Polygon([(x0, y0), (x1, y0), (x1, y1), (x0, y1)])
         land = geopandas.GeoSeries([land])
-        land = land.set_crs(
-            cls.instructions["instructions"]["output"]["crs"]["horizontal"]
-        )
+        land = land.set_crs(cls.instructions["output"]["crs"]["horizontal"])
         land.to_file(land_file)
 
         # Generate bathymetry data
@@ -104,9 +103,7 @@ class ProcessorLocalFilesTest(unittest.TestCase):
             [(x0, y2, -y2 / 10), (x1, y2, -y2 / 10)]
         )
         contours = geopandas.GeoSeries([contour_0, contour_1, contour_2])
-        contours = contours.set_crs(
-            cls.instructions["instructions"]["output"]["crs"]["horizontal"]
-        )
+        contours = contours.set_crs(cls.instructions["output"]["crs"]["horizontal"])
         contours.to_file(bathymetry_file)
 
         # Create a reference DEM
@@ -130,7 +127,7 @@ class ProcessorLocalFilesTest(unittest.TestCase):
             attrs={"scale_factor": 1.0, "add_offset": 0.0},
         )
         dem.rio.write_crs(
-            cls.instructions["instructions"]["output"]["crs"]["horizontal"],
+            cls.instructions["output"]["crs"]["horizontal"],
             inplace=True,
         )
         dem.name = "z"
@@ -163,8 +160,8 @@ class ProcessorLocalFilesTest(unittest.TestCase):
             {
                 "type": "writers.las",
                 "a_srs": f"EPSG:"
-                f"{cls.instructions['instructions']['output']['crs']['horizontal']}+"
-                f"{cls.instructions['instructions']['output']['crs']['vertical']}",
+                f"{cls.instructions['output']['crs']['horizontal']}+"
+                f"{cls.instructions['output']['crs']['vertical']}",
                 "filename": str(lidar_file),
                 "compression": "laszip",
             }
@@ -206,17 +203,11 @@ class ProcessorLocalFilesTest(unittest.TestCase):
         runner.run()
 
         # Load in benchmark DEM
-        file_path = (
-            self.cache_dir
-            / self.instructions["instructions"]["data_paths"]["benchmark_dem"]
-        )
+        file_path = self.cache_dir / self.instructions["data_paths"]["benchmark_dem"]
         with rioxarray.rioxarray.open_rasterio(file_path, masked=True) as benchmark_dem:
             benchmark_dem = benchmark_dem.squeeze("band", drop=True)
         # Load in result DEM
-        file_path = (
-            self.cache_dir
-            / self.instructions["instructions"]["data_paths"]["result_dem"]
-        )
+        file_path = self.cache_dir / self.instructions["data_paths"]["result_dem"]
         with rioxarray.rioxarray.open_rasterio(file_path, masked=True) as test_dem:
             test_dem = test_dem.squeeze("band", drop=True)
         # Compare DEMs z - load both from file as rioxarray.rioxarray.open_rasterio

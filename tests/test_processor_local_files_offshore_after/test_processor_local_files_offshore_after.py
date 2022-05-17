@@ -54,7 +54,6 @@ class ProcessorLocalFilesOffshoreTest(unittest.TestCase):
         instruction_file_path = test_path / "instruction.json"
         with open(instruction_file_path, "r") as file_pointer:
             cls.instructions = json.load(file_pointer)
-
         # Remove any files from last test in the cache directory
         cls.cache_dir = test_path / "data"
         assert cls.cache_dir.exists(), (
@@ -71,9 +70,7 @@ class ProcessorLocalFilesOffshoreTest(unittest.TestCase):
         y1 = 750
         catchment = shapely.geometry.Polygon([(x0, y0), (x1, y0), (x1, y1), (x0, y1)])
         catchment = geopandas.GeoSeries([catchment])
-        catchment = catchment.set_crs(
-            cls.instructions["instructions"]["output"]["crs"]["horizontal"]
-        )
+        catchment = catchment.set_crs(cls.instructions["output"]["crs"]["horizontal"])
         catchment.to_file(catchment_file)
 
         # Generate land data
@@ -84,9 +81,7 @@ class ProcessorLocalFilesOffshoreTest(unittest.TestCase):
         y1 = 1000
         land = shapely.geometry.Polygon([(x0, y0), (x1, y0), (x1, y1), (x0, y1)])
         land = geopandas.GeoSeries([land])
-        land = land.set_crs(
-            cls.instructions["instructions"]["output"]["crs"]["horizontal"]
-        )
+        land = land.set_crs(cls.instructions["output"]["crs"]["horizontal"])
         land.to_file(land_file)
 
         # Generate bathymetry data
@@ -106,9 +101,7 @@ class ProcessorLocalFilesOffshoreTest(unittest.TestCase):
             [(x0, y2, -y2 / 10), (x1, y2, -y2 / 10)]
         )
         contours = geopandas.GeoSeries([contour_0, contour_1, contour_2])
-        contours = contours.set_crs(
-            cls.instructions["instructions"]["output"]["crs"]["horizontal"]
-        )
+        contours = contours.set_crs(cls.instructions["output"]["crs"]["horizontal"])
         contours.to_file(bathymetry_file)
 
         # Create a reference DEM
@@ -132,7 +125,7 @@ class ProcessorLocalFilesOffshoreTest(unittest.TestCase):
             attrs={"scale_factor": 1.0, "add_offset": 0.0},
         )
         dem.rio.write_crs(
-            cls.instructions["instructions"]["output"]["crs"]["horizontal"],
+            cls.instructions["output"]["crs"]["horizontal"],
             inplace=True,
         )
         dem.name = "z"
@@ -164,8 +157,8 @@ class ProcessorLocalFilesOffshoreTest(unittest.TestCase):
         pdal_pipeline_instructions = [
             {
                 "type": "writers.las",
-                "a_srs": f"EPSG:{cls.instructions['instructions']['output']['crs']['horizontal']}+"
-                + f"{cls.instructions['instructions']['output']['crs']['vertical']}",
+                "a_srs": f"EPSG:{cls.instructions['output']['crs']['horizontal']}+"
+                + f"{cls.instructions['output']['crs']['vertical']}",
                 "filename": str(lidar_file),
                 "compression": "laszip",
             }
@@ -203,43 +196,35 @@ class ProcessorLocalFilesOffshoreTest(unittest.TestCase):
 
         # Run dense DEM generation pipeline
         dense_instructions = copy.deepcopy(self.instructions)
-        dense_instructions["instructions"]["data_paths"].pop("bathymetry_contours")
-        dense_instructions["instructions"]["data_paths"].pop("final_result_dem")
-        dense_instructions["instructions"]["data_paths"].pop("benchmark_dem")
+        dense_instructions["data_paths"].pop("bathymetry_contours")
+        dense_instructions["data_paths"].pop("final_result_dem")
+        dense_instructions["data_paths"].pop("benchmark_dem")
         runner = processor.LidarDemGenerator(dense_instructions)
         runner.run()
 
         # Run offshore DEM generation pipeline
-        self.instructions["instructions"]["data_paths"][
-            "dense_dem"
-        ] = self.instructions["instructions"]["data_paths"]["result_dem"]
-        self.instructions["instructions"]["data_paths"][
+        self.instructions["data_paths"]["dense_dem"] = self.instructions["data_paths"][
             "result_dem"
-        ] = self.instructions["instructions"]["data_paths"]["final_result_dem"]
-        self.instructions["instructions"]["data_paths"].pop("lidars")
-        self.instructions["instructions"]["data_paths"].pop("reference_dems")
-        self.instructions["instructions"]["data_paths"].pop("final_result_dem")
+        ]
+        self.instructions["data_paths"]["result_dem"] = self.instructions["data_paths"][
+            "final_result_dem"
+        ]
+        self.instructions["data_paths"].pop("lidars")
+        self.instructions["data_paths"].pop("reference_dems")
+        self.instructions["data_paths"].pop("final_result_dem")
         runner = processor.BathymetryDemGenerator(self.instructions)
         runner.run()
         del runner
         gc.collect()
 
         # Load in benchmark DEM
-        file_path = (
-            self.cache_dir
-            / self.instructions["instructions"]["data_paths"]["benchmark_dem"]
-        )
+        file_path = self.cache_dir / self.instructions["data_paths"]["benchmark_dem"]
         with rioxarray.rioxarray.open_rasterio(file_path, masked=True) as benchmark_dem:
             benchmark_dem.load()
-
         # Load in result DEM
-        file_path = (
-            self.cache_dir
-            / self.instructions["instructions"]["data_paths"]["result_dem"]
-        )
+        file_path = self.cache_dir / self.instructions["data_paths"]["result_dem"]
         with rioxarray.rioxarray.open_rasterio(file_path, masked=True) as test_dem:
             test_dem.load()
-
         # Compare DEMs - load both from file as rioxarray.rioxarray.open_rasterio ignores index order
         diff_array = (
             test_dem.z.data[~numpy.isnan(test_dem.z.data)]

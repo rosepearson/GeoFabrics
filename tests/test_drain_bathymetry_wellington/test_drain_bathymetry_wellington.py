@@ -56,12 +56,10 @@ class ProcessorDrainBathymetryWellingtonTest(unittest.TestCase):
         # Load in environment variables to get and set the private API keys
         dotenv.load_dotenv()
         linz_key = os.environ.get("LINZ_API", None)
-        cls.instructions["instructions"]["apis"]["linz"]["key"] = linz_key
+        cls.instructions["apis"]["linz"]["key"] = linz_key
 
         # define cache location - and catchment dirs
-        cls.cache_dir = pathlib.Path(
-            cls.instructions["instructions"]["data_paths"]["local_cache"]
-        )
+        cls.cache_dir = pathlib.Path(cls.instructions["data_paths"]["local_cache"])
 
         # ensure the cache directory doesn't exist - i.e. clean up from last test
         # occurred correctly
@@ -74,9 +72,7 @@ class ProcessorDrainBathymetryWellingtonTest(unittest.TestCase):
         y1 = 5472707
         catchment = shapely.geometry.Polygon([(x0, y0), (x1, y0), (x1, y1), (x0, y1)])
         catchment = geopandas.GeoSeries([catchment])
-        catchment = catchment.set_crs(
-            cls.instructions["instructions"]["output"]["crs"]["horizontal"]
-        )
+        catchment = catchment.set_crs(cls.instructions["output"]["crs"]["horizontal"])
 
         # save faked catchment boundary - used as land boundary as well
         catchment_file = cls.cache_dir / "catchment.geojson"
@@ -85,7 +81,7 @@ class ProcessorDrainBathymetryWellingtonTest(unittest.TestCase):
         # Run pipeline - download files and generated DEM
         runner = processor.DrainBathymetryGenerator(cls.instructions, debug=False)
         runner.run(
-            pathlib.Path(cls.instructions["instructions"]["data_paths"]["local_cache"])
+            pathlib.Path(cls.instructions["data_paths"]["local_cache"])
             / "drain_parameters.json"
         )
 
@@ -101,7 +97,7 @@ class ProcessorDrainBathymetryWellingtonTest(unittest.TestCase):
         """Remove all generated or downloaded files from the data directory"""
 
         files_to_keep = []
-        data_path_instructions = cls.instructions["instructions"]["data_paths"]
+        data_path_instructions = cls.instructions["data_paths"]
         files_to_keep.append(
             cls.cache_dir / data_path_instructions["open_drain_polygon_benchmark"]
         )
@@ -127,7 +123,7 @@ class ProcessorDrainBathymetryWellingtonTest(unittest.TestCase):
         """A test to see if the correct open drain polygon and bathymetry are
         generated."""
 
-        data_path_instructions = self.instructions["instructions"]["data_paths"]
+        data_path_instructions = self.instructions["data_paths"]
 
         print("Compare river polygon  - Windows")
 
@@ -168,7 +164,7 @@ class ProcessorDrainBathymetryWellingtonTest(unittest.TestCase):
         """A test to see if the correct open drain polygon and bathymetry are
         generated."""
 
-        data_path_instructions = self.instructions["instructions"]["data_paths"]
+        data_path_instructions = self.instructions["data_paths"]
 
         print("Compare river polygon  - Linux")
 
@@ -239,7 +235,7 @@ class ProcessorDrainBathymetryWellingtonTest(unittest.TestCase):
 
         print("Compare closed drains - Windows")
 
-        data_path_instructions = self.instructions["instructions"]["data_paths"]
+        data_path_instructions = self.instructions["data_paths"]
 
         # Compare the polygons
         test = geopandas.read_file(
@@ -278,7 +274,7 @@ class ProcessorDrainBathymetryWellingtonTest(unittest.TestCase):
 
         print("Compare close drains - Linux")
 
-        data_path_instructions = self.instructions["instructions"]["data_paths"]
+        data_path_instructions = self.instructions["data_paths"]
 
         # Compare the polygons
         test = geopandas.read_file(

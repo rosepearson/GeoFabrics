@@ -22,18 +22,23 @@ from src.geofabrics import processor
 
 
 class ProcessorRemoteTilesWestportTest(unittest.TestCase):
-    """A class to test the basic processor class Processor functionality for remote tiles by downloading files from
-    OpenTopography within a small region and then generating a DEM. All files are deleted after checking the DEM.
+    """A class to test the basic processor class Processor functionality for remote
+    tiles by downloading files from OpenTopography within a small region and then
+    generating a DEM. All files are deleted after checking the DEM.
 
     Tests run include:
-        1. test_correct_dataset - Test that the expected dataset is downloaded from OpenTopography
-        2. test_correct_lidar_files_downloaded - Test the downloaded LIDAR files have the expected names
-        3. test_correct_lidar_file_size - Test the downloaded LIDAR files have the expected file sizes
-        4. test_result_dem_windows/linux - Check the generated DEM matches the benchmark DEM, where the
-            rigor of the test depends on the operating system (windows or Linux)
+        1. test_correct_dataset - Test that the expected dataset is downloaded from
+           OpenTopography
+        2. test_correct_lidar_files_downloaded - Test the downloaded LIDAR files have
+           the expected names
+        3. test_correct_lidar_file_size - Test the downloaded LIDAR files have the
+           expected file sizes
+        4. test_result_dem_windows/linux - Check the generated DEM matches the benchmark
+           DEM, where the rigor of the test depends on the operating system (windows or
+                                                                             Linux)
     """
 
-    # The expected datasets and files to be downloaded - used for comparison in the later tests
+    # The expected datasets and files to be downloaded - used for comparison in tests
     DATASET = "NZ20_Westport"
     FILE_SIZES = {
         "CL2_BR20_2020_1000_4012.laz": 2636961,
@@ -48,8 +53,8 @@ class ProcessorRemoteTilesWestportTest(unittest.TestCase):
 
     @classmethod
     def setUpClass(cls):
-        """Create a CatchmentGeometry object and then run the DemGenerator processing chain to download remote
-        files and produce a DEM prior to testing."""
+        """Create a CatchmentGeometry object and then run the DemGenerator processing
+        chain to download remote files and produce a DEM prior to testing."""
 
         test_path = pathlib.Path().cwd() / pathlib.Path(
             "tests/test_processor_remote_tiles_westport"
@@ -68,13 +73,10 @@ class ProcessorRemoteTilesWestportTest(unittest.TestCase):
         instruction_file_path = test_path / "instruction.json"
         with open(instruction_file_path, "r") as file_pointer:
             cls.instructions = json.load(file_pointer)
-
         # define cache location - and catchment dirs
-        cls.cache_dir = pathlib.Path(
-            cls.instructions["instructions"]["data_paths"]["local_cache"]
-        )
+        cls.cache_dir = pathlib.Path(cls.instructions["data_paths"]["local_cache"])
 
-        # ensure the cache directory doesn't exist - i.e. clean up from last test occurred correctly
+        # ensure the cache directory doesn't exist - i.e. clean if last run crashed
         cls.clean_data_folder()
 
         # create fake catchment boundary
@@ -98,9 +100,7 @@ class ProcessorRemoteTilesWestportTest(unittest.TestCase):
             ]
         )
         catchment = geopandas.GeoSeries([catchment])
-        catchment = catchment.set_crs(
-            cls.instructions["instructions"]["output"]["crs"]["horizontal"]
-        )
+        catchment = catchment.set_crs(cls.instructions["output"]["crs"]["horizontal"])
 
         # save faked catchment boundary - used as land boundary as well
         catchment_file = cls.cache_dir / "catchment.geojson"
@@ -112,7 +112,8 @@ class ProcessorRemoteTilesWestportTest(unittest.TestCase):
 
     @classmethod
     def tearDownClass(cls):
-        """Remove created cache directory and included created and downloaded files at the end of the test."""
+        """Remove created cache directory and included created and downloaded files at
+        the end of the test."""
 
         cls.clean_data_folder()
 
@@ -141,9 +142,10 @@ class ProcessorRemoteTilesWestportTest(unittest.TestCase):
         self.assertEqual(
             len(list(self.cache_dir.glob("*/**"))),
             1,
-            f"There should only be one dataset named {self.DATASET} as well as the generated "
-            + f"extents.geojson instead there are {len(list(self.cache_dir.glob('*/**')))} list "
-            + f"{list(self.cache_dir.glob('*/**'))}",
+            f"There should only be one dataset named {self.DATASET} as well as the "
+            f" generated extents.geojson instead there are "
+            f"{len(list(self.cache_dir.glob('*/**')))} list "
+            f"{list(self.cache_dir.glob('*/**'))}",
         )
 
         self.assertEqual(
@@ -155,8 +157,8 @@ class ProcessorRemoteTilesWestportTest(unittest.TestCase):
                 ]
             ),
             1,
-            f"Only the {self.DATASET} directory should have been downloaded. Instead we have: "
-            + f"{[file for file in self.cache_dir.iterdir() if file.is_dir()]}",
+            f"Only the {self.DATASET} directory should have been downloaded. Instead "
+            f"we have: {[file for file in self.cache_dir.iterdir() if file.is_dir()]}",
         )
 
     def test_correct_files_downloaded(self):
@@ -170,14 +172,15 @@ class ProcessorRemoteTilesWestportTest(unittest.TestCase):
             len(list(dataset_dir.glob("*"))),
             len(downloaded_files),
             "There should have been "
-            + f"{len(downloaded_files)} files downloaded into the {self.DATASET} directory, instead there "
-            + f"are {len(list(dataset_dir.glob('*')))} files/dirs in the directory",
+            f"{len(downloaded_files)} files downloaded into the {self.DATASET} "
+            f"directory, instead there are {len(list(dataset_dir.glob('*')))} "
+            "files/dirs in the directory",
         )
 
         self.assertTrue(
             numpy.all([file in downloaded_files for file in dataset_dir.glob("*")]),
-            "The downloaded files"
-            + f" {list(dataset_dir.glob('*'))} do not match the expected files {downloaded_files}",
+            "The downloaded files {list(dataset_dir.glob('*'))} do not match the "
+            f"expected files {downloaded_files}",
         )
 
     def test_correct_file_size(self):
@@ -195,30 +198,22 @@ class ProcessorRemoteTilesWestportTest(unittest.TestCase):
                     for downloaded_file in downloaded_files
                 ]
             ),
-            "There is a miss-match between the size"
-            + f" of the downloaded files {[file.stat().st_size for file in downloaded_files]}"
-            + f" and the expected sizes of {self.FILE_SIZES.values()}",
+            "There is a miss-match between the size of the downloaded files "
+            f"{[file.stat().st_size for file in downloaded_files]} and the expected "
+            f"sizes of {self.FILE_SIZES.values()}",
         )
 
     @pytest.mark.skipif(sys.platform != "win32", reason="Windows test - this is strict")
     def test_result_dem_windows(self):
         """A basic comparison between the generated and benchmark DEM"""
 
-        file_path = (
-            self.cache_dir
-            / self.instructions["instructions"]["data_paths"]["benchmark_dem"]
-        )
+        file_path = self.cache_dir / self.instructions["data_paths"]["benchmark_dem"]
         with rioxarray.rioxarray.open_rasterio(file_path, masked=True) as benchmark_dem:
             benchmark_dem.load()
-
         # Load in test DEM
-        file_path = (
-            self.cache_dir
-            / self.instructions["instructions"]["data_paths"]["result_dem"]
-        )
+        file_path = self.cache_dir / self.instructions["data_paths"]["result_dem"]
         with rioxarray.rioxarray.open_rasterio(file_path, masked=True) as test_dem:
             test_dem.load()
-
         # compare the generated and benchmark DEMs
         diff_array = (
             test_dem.z.data[~numpy.isnan(test_dem.z.data)]
@@ -243,21 +238,13 @@ class ProcessorRemoteTilesWestportTest(unittest.TestCase):
     def test_result_dem_linux(self):
         """A basic comparison between the generated and benchmark DEM"""
 
-        file_path = (
-            self.cache_dir
-            / self.instructions["instructions"]["data_paths"]["benchmark_dem"]
-        )
+        file_path = self.cache_dir / self.instructions["data_paths"]["benchmark_dem"]
         with rioxarray.rioxarray.open_rasterio(file_path, masked=True) as benchmark_dem:
             benchmark_dem.load()
-
         # Load in test DEM
-        file_path = (
-            self.cache_dir
-            / self.instructions["instructions"]["data_paths"]["result_dem"]
-        )
+        file_path = self.cache_dir / self.instructions["data_paths"]["result_dem"]
         with rioxarray.rioxarray.open_rasterio(file_path, masked=True) as test_dem:
             test_dem.load()
-
         # compare the generated and benchmark DEMs
         diff_array = (
             test_dem.z.data[~numpy.isnan(test_dem.z.data)]
@@ -271,14 +258,15 @@ class ProcessorRemoteTilesWestportTest(unittest.TestCase):
             len(diff_array[numpy.abs(diff_array) > threshold])
             <= allowable_number_above,
             "more than "
-            + f"{allowable_number_above} DEM values differ by more than {threshold} on Linux test run: "
-            + "{diff_array[numpy.abs(diff_array) > threshold]}",
+            f"{allowable_number_above} DEM values differ by more than {threshold} on"
+            f" Linux test run: {diff_array[numpy.abs(diff_array) > threshold]}",
         )
         threshold = 10e-6
         self.assertTrue(
             len(diff_array[numpy.abs(diff_array) > threshold]) < len(diff_array) / 100,
-            f"{len(diff_array[numpy.abs(diff_array) > threshold])} or more than 1% of DEM values differ by "
-            + f" more than {threshold} on Linux test run: {diff_array[numpy.abs(diff_array) > threshold]}",
+            f"{len(diff_array[numpy.abs(diff_array) > threshold])} or more than 1% of "
+            f"DEM values differ by more than {threshold} on Linux test run: "
+            f"{diff_array[numpy.abs(diff_array) > threshold]}",
         )
 
         # explicitly free memory as xarray seems to be hanging onto memory
