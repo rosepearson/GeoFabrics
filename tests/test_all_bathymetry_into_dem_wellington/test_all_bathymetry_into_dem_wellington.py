@@ -179,18 +179,24 @@ class ProcessorRiverBathymetryTest(unittest.TestCase):
         with rioxarray.rioxarray.open_rasterio(file_path, masked=True) as test_dem:
             test_dem.load()
         # compare the generated and benchmark DEMs
+        lidar_diff = (
+            test_dem.z.data[test_dem.source_class.data == 1]
+            - benchmark_dem.z.data[benchmark_dem.source_class.data == 1]
+        )
+        numpy.testing.assert_array_almost_equal(
+            test_dem.z.data[test_dem.source_class.data == 1],
+            benchmark_dem.z.data[test_dem.source_class.data == 1],
+            decimal=6,
+            err_msg="The generated test_dem has significantly different data from the "
+            f"benchmark_dem where there is LiDAR: {lidar_diff}",
+        )
+
         diff_array = (
             test_dem.z.data[~numpy.isnan(test_dem.z.data)]
             - benchmark_dem.z.data[~numpy.isnan(benchmark_dem.z.data)]
         )
         logging.info(f"DEM array diff is: {diff_array[diff_array != 0]}")
-
         threshold = 10e-6
-        self.assertTrue(
-            len(diff_array[diff_array != 0]) < len(diff_array) / 100,
-            f"{len(diff_array[diff_array != 0])} or more than 1% of DEM values differ "
-            f"on Linux test run: {diff_array[diff_array != 0]}",
-        )
         number_above_threshold = len(diff_array[numpy.abs(diff_array) > threshold])
         self.assertTrue(
             number_above_threshold < len(diff_array) / 250,
