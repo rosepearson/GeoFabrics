@@ -9,7 +9,6 @@ import argparse
 import rioxarray
 import numpy
 import matplotlib
-import xarray
 import time
 import logging
 import pathlib
@@ -51,7 +50,7 @@ def setup_logging_for_run(instructions: dict):
     print(f"Log file is located at: {log_path / 'geofabrics.log'}")
 
 
-def check_for_benchmarks(instructions: dict, result_dem: xarray.Dataset):
+def check_for_benchmarks(instructions: dict, runner: processor.BaseProcessor):
     """Compare against a benchmark DEM if one is specified"""
 
     # Load in benchmark DEM and compare - if specified in the instructions
@@ -60,6 +59,7 @@ def check_for_benchmarks(instructions: dict, result_dem: xarray.Dataset):
             instructions["data_paths"]["benchmark_dem"], masked=True
         ) as benchmark_dem:
             benchmark_dem.load()
+        result_dem = runner.dense_dem.dem
         logging.info(
             "Comparing the generated DEM saved at "
             f"{instructions['data_paths']['result_dem']} against the "
@@ -143,7 +143,7 @@ def launch_processor(args):
             print("Run processor.LidarDemGenerator")
             runner = processor.LidarDemGenerator(run_instructions)
             runner.run()
-        check_for_benchmarks(run_instructions, runner.result_dem)
+        check_for_benchmarks(run_instructions, runner)
     end_time = time.time()
 
     print(f"Execution time is {end_time - start_time}")
