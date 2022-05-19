@@ -24,6 +24,7 @@ Classes
    geofabrics.processor.BathymetryDemGenerator
    geofabrics.processor.LidarDemGenerator
    geofabrics.processor.RiverBathymetryGenerator
+   geofabrics.processor.DrainBathymetryGenerator
 
 
 
@@ -329,11 +330,68 @@ Classes
       Calculate and save depth estimates along the river mouth fan.
 
 
-   .. py:method:: run(self, instruction_parameters)
+   .. py:method:: run(self, instruction_parameters = None)
 
       This method extracts a main channel then executes the DemGeneration
       pipeline to produce a DEM before sampling this to extimate width, slope
       and eventually depth.
+
+
+
+.. py:class:: DrainBathymetryGenerator(json_instructions, debug = True)
+
+   Bases: :py:obj:`BaseProcessor`
+
+   DrainBathymetryGenerator executes a pipeline to pull in OpenStreetMap drain and
+   tunnel information. A DEM is generated of the surrounding area and this used to
+   unblock drains and tunnels.
+
+
+   .. py:method:: get_result_file_name(self, key)
+
+      Return the name of the file to save.
+
+
+   .. py:method:: get_result_file_path(self, key)
+
+      Return the file name of the file to save with the local cache path.
+
+      :param instructions  The json instructions defining the behaviour:
+
+
+   .. py:method:: minimum_elevation_in_polygon(self, geometry, dem)
+
+      Select only coordinates within the polygon bounding box before clipping
+      to the bounding box and then returning the minimum elevation.
+
+
+   .. py:method:: estimate_closed_bathymetry(self, drains, dem)
+
+      Sample the DEM around the tunnels to estimate the bed elevation.
+
+
+   .. py:method:: estimate_open_bathymetry(self, drains, dem)
+
+      Sample the DEM along the open waterways to enforce a decreasing elevation.
+
+
+   .. py:method:: create_dem(self, drains)
+
+      Create and return a DEM at a resolution 1.5x the drain width.
+
+
+   .. py:method:: download_osm_values(self)
+
+      Download OpenStreetMap drains and tunnels within the catchment BBox.
+
+
+   .. py:method:: run(self, instruction_parameters = None)
+
+      This method runs a pipeline that:
+      * downloads all tunnels and drains within a catchment.
+      * creates and samples a DEM around each feature to estimate the bed
+        elevation.
+      * saves out extents and bed elevations of the drain and tunnel network
 
 
 

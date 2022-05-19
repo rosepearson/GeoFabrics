@@ -91,6 +91,9 @@ LiDAR and bathymetry contours based on the instructions contained in a JSON file
 <tr class="row-even"><td><p><a class="reference internal" href="#geofabrics.processor.RiverBathymetryGenerator" title="geofabrics.processor.RiverBathymetryGenerator"><code class="xref py py-obj docutils literal notranslate"><span class="pre">RiverBathymetryGenerator</span></code></a></p></td>
 <td><p>RiverbathymetryGenerator executes a pipeline to estimate river</p></td>
 </tr>
+<tr class="row-odd"><td><p><a class="reference internal" href="#geofabrics.processor.DrainBathymetryGenerator" title="geofabrics.processor.DrainBathymetryGenerator"><code class="xref py py-obj docutils literal notranslate"><span class="pre">DrainBathymetryGenerator</span></code></a></p></td>
+<td><p>DrainBathymetryGenerator executes a pipeline to pull in OpenStreetMap drain and</p></td>
+</tr>
 </tbody>
 </table>
 <dl class="py class">
@@ -609,10 +612,150 @@ approaches.</p>
 
 <dl class="py method">
 <dt class="sig sig-object py" id="geofabrics.processor.RiverBathymetryGenerator.run">
-<span class="sig-name descname"><span class="pre">run</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">self</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">instruction_parameters</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#geofabrics.processor.RiverBathymetryGenerator.run" title="Permalink to this definition"></a></dt>
+<span class="sig-name descname"><span class="pre">run</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">self</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">instruction_parameters</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#geofabrics.processor.RiverBathymetryGenerator.run" title="Permalink to this definition"></a></dt>
 <dd><p>This method extracts a main channel then executes the DemGeneration
 pipeline to produce a DEM before sampling this to extimate width, slope
 and eventually depth.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters</dt>
+<dd class="field-odd"><p><strong>instruction_parameters</strong> (<em>pathlib.Path</em>) – </p>
+</dd>
+</dl>
+</dd></dl>
+
+</dd></dl>
+
+<dl class="py class">
+<dt class="sig sig-object py" id="geofabrics.processor.DrainBathymetryGenerator">
+<em class="property"><span class="pre">class</span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">geofabrics.processor.</span></span><span class="sig-name descname"><span class="pre">DrainBathymetryGenerator</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">json_instructions</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">debug</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">True</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#geofabrics.processor.DrainBathymetryGenerator" title="Permalink to this definition"></a></dt>
+<dd><p>Bases: <a class="reference internal" href="#geofabrics.processor.BaseProcessor" title="geofabrics.processor.BaseProcessor"><code class="xref py py-obj docutils literal notranslate"><span class="pre">BaseProcessor</span></code></a></p>
+<p>DrainBathymetryGenerator executes a pipeline to pull in OpenStreetMap drain and
+tunnel information. A DEM is generated of the surrounding area and this used to
+unblock drains and tunnels.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters</dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>json_instructions</strong> (<em>json</em>) – </p></li>
+<li><p><strong>debug</strong> (<em>bool</em>) – </p></li>
+</ul>
+</dd>
+</dl>
+<dl class="py method">
+<dt class="sig sig-object py" id="geofabrics.processor.DrainBathymetryGenerator.get_result_file_name">
+<span class="sig-name descname"><span class="pre">get_result_file_name</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">self</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">key</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#geofabrics.processor.DrainBathymetryGenerator.get_result_file_name" title="Permalink to this definition"></a></dt>
+<dd><p>Return the name of the file to save.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters</dt>
+<dd class="field-odd"><p><strong>key</strong> (<em>str</em>) – </p>
+</dd>
+<dt class="field-even">Return type</dt>
+<dd class="field-even"><p>str</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="geofabrics.processor.DrainBathymetryGenerator.get_result_file_path">
+<span class="sig-name descname"><span class="pre">get_result_file_path</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">self</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">key</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#geofabrics.processor.DrainBathymetryGenerator.get_result_file_path" title="Permalink to this definition"></a></dt>
+<dd><p>Return the file name of the file to save with the local cache path.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters</dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>behaviour</strong> (<em>instructions  The json instructions defining the</em>) – </p></li>
+<li><p><strong>key</strong> (<em>str</em>) – </p></li>
+</ul>
+</dd>
+<dt class="field-even">Return type</dt>
+<dd class="field-even"><p>pathlib.Path</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="geofabrics.processor.DrainBathymetryGenerator.minimum_elevation_in_polygon">
+<span class="sig-name descname"><span class="pre">minimum_elevation_in_polygon</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">self</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">geometry</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">dem</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#geofabrics.processor.DrainBathymetryGenerator.minimum_elevation_in_polygon" title="Permalink to this definition"></a></dt>
+<dd><p>Select only coordinates within the polygon bounding box before clipping
+to the bounding box and then returning the minimum elevation.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters</dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>geometry</strong> (<em>shapely.geometry.Polygon</em>) – </p></li>
+<li><p><strong>dem</strong> (<em>xarray.Dataset</em>) – </p></li>
+</ul>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="geofabrics.processor.DrainBathymetryGenerator.estimate_closed_bathymetry">
+<span class="sig-name descname"><span class="pre">estimate_closed_bathymetry</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">self</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">drains</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">dem</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#geofabrics.processor.DrainBathymetryGenerator.estimate_closed_bathymetry" title="Permalink to this definition"></a></dt>
+<dd><p>Sample the DEM around the tunnels to estimate the bed elevation.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters</dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>drains</strong> (<em>geopandas.GeoDataFrame</em>) – </p></li>
+<li><p><strong>dem</strong> (<em>xarray.Dataset</em>) – </p></li>
+</ul>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="geofabrics.processor.DrainBathymetryGenerator.estimate_open_bathymetry">
+<span class="sig-name descname"><span class="pre">estimate_open_bathymetry</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">self</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">drains</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">dem</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#geofabrics.processor.DrainBathymetryGenerator.estimate_open_bathymetry" title="Permalink to this definition"></a></dt>
+<dd><p>Sample the DEM along the open waterways to enforce a decreasing elevation.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters</dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>drains</strong> (<em>geopandas.GeoDataFrame</em>) – </p></li>
+<li><p><strong>dem</strong> (<em>xarray.Dataset</em>) – </p></li>
+</ul>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="geofabrics.processor.DrainBathymetryGenerator.create_dem">
+<span class="sig-name descname"><span class="pre">create_dem</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">self</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">drains</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#geofabrics.processor.DrainBathymetryGenerator.create_dem" title="Permalink to this definition"></a></dt>
+<dd><p>Create and return a DEM at a resolution 1.5x the drain width.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters</dt>
+<dd class="field-odd"><p><strong>drains</strong> (<em>geopandas.GeoDataFrame</em>) – </p>
+</dd>
+<dt class="field-even">Return type</dt>
+<dd class="field-even"><p>xarray.Dataset</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="geofabrics.processor.DrainBathymetryGenerator.download_osm_values">
+<span class="sig-name descname"><span class="pre">download_osm_values</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">self</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#geofabrics.processor.DrainBathymetryGenerator.download_osm_values" title="Permalink to this definition"></a></dt>
+<dd><p>Download OpenStreetMap drains and tunnels within the catchment BBox.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Return type</dt>
+<dd class="field-odd"><p>bool</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="geofabrics.processor.DrainBathymetryGenerator.run">
+<span class="sig-name descname"><span class="pre">run</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">self</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">instruction_parameters</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#geofabrics.processor.DrainBathymetryGenerator.run" title="Permalink to this definition"></a></dt>
+<dd><p>This method runs a pipeline that:
+* downloads all tunnels and drains within a catchment.
+* creates and samples a DEM around each feature to estimate the bed</p>
+<blockquote>
+<div><p>elevation.</p>
+</div></blockquote>
+<ul class="simple">
+<li><p>saves out extents and bed elevations of the drain and tunnel network</p></li>
+</ul>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters</dt>
+<dd class="field-odd"><p><strong>instruction_parameters</strong> (<em>pathlib.Path</em>) – </p>
+</dd>
+</dl>
 </dd></dl>
 
 </dd></dl>

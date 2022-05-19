@@ -20,6 +20,8 @@ Functions
 .. autoapisummary::
 
    main.parse_args
+   main.setup_logging_for_run
+   main.check_for_benchmarks
    main.launch_processor
    main.main
 
@@ -29,6 +31,16 @@ Functions
 
    Expect a command line argument of the form:
    '--instructions path/to/json/instruction/file'
+
+
+.. py:function:: setup_logging_for_run(instructions)
+
+   Setup logging for the current processor run
+
+
+.. py:function:: check_for_benchmarks(instructions, runner)
+
+   Compare against a benchmark DEM if one is specified
 
 
 .. py:function:: launch_processor(args)

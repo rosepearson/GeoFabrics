@@ -83,6 +83,12 @@
 <tr class="row-odd"><td><p><a class="reference internal" href="#main.parse_args" title="main.parse_args"><code class="xref py py-obj docutils literal notranslate"><span class="pre">parse_args</span></code></a>()</p></td>
 <td><p>Expect a command line argument of the form:</p></td>
 </tr>
+<tr class="row-even"><td><p><a class="reference internal" href="#main.setup_logging_for_run" title="main.setup_logging_for_run"><code class="xref py py-obj docutils literal notranslate"><span class="pre">setup_logging_for_run</span></code></a>(instructions)</p></td>
+<td><p>Setup logging for the current processor run</p></td>
+</tr>
+<tr class="row-odd"><td><p><a class="reference internal" href="#main.check_for_benchmarks" title="main.check_for_benchmarks"><code class="xref py py-obj docutils literal notranslate"><span class="pre">check_for_benchmarks</span></code></a>(instructions, runner)</p></td>
+<td><p>Compare against a benchmark DEM if one is specified</p></td>
+</tr>
 <tr class="row-even"><td><p><a class="reference internal" href="#main.launch_processor" title="main.launch_processor"><code class="xref py py-obj docutils literal notranslate"><span class="pre">launch_processor</span></code></a>(args)</p></td>
 <td><p>Run the DEM generation pipeline given the specified instructions.</p></td>
 </tr>
@@ -96,6 +102,31 @@
 <span class="sig-prename descclassname"><span class="pre">main.</span></span><span class="sig-name descname"><span class="pre">parse_args</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="headerlink" href="#main.parse_args" title="Permalink to this definition"></a></dt>
 <dd><p>Expect a command line argument of the form:
 ‘–instructions path/to/json/instruction/file’</p>
+</dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py" id="main.setup_logging_for_run">
+<span class="sig-prename descclassname"><span class="pre">main.</span></span><span class="sig-name descname"><span class="pre">setup_logging_for_run</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">instructions</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#main.setup_logging_for_run" title="Permalink to this definition"></a></dt>
+<dd><p>Setup logging for the current processor run</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters</dt>
+<dd class="field-odd"><p><strong>instructions</strong> (<em>dict</em>) – </p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py" id="main.check_for_benchmarks">
+<span class="sig-prename descclassname"><span class="pre">main.</span></span><span class="sig-name descname"><span class="pre">check_for_benchmarks</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">instructions</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">runner</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#main.check_for_benchmarks" title="Permalink to this definition"></a></dt>
+<dd><p>Compare against a benchmark DEM if one is specified</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters</dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>instructions</strong> (<em>dict</em>) – </p></li>
+<li><p><strong>runner</strong> (<a class="reference internal" href="../geofabrics/processor/index.html#geofabrics.processor.BaseProcessor" title="geofabrics.processor.BaseProcessor"><em>geofabrics.processor.BaseProcessor</em></a>) – </p></li>
+</ul>
+</dd>
+</dl>
 </dd></dl>
 
 <dl class="py function">

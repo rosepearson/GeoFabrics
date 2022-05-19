@@ -45,10 +45,12 @@ Classes
    remaining region within the 'catchment' and outside the 'land' and
    'foreshore' polygons.
 
-   It also supports functions for determining how much of a region is outside an exclusion zone. I.E. is outside
+   It also supports functions for determining how much of a region is outside an
+   exclusion zone. I.E. is outside
    `lidar_extents` see class method land_and_foreshore_without_lidar for an example.
 
-   It is initalised with the catchment. The land must be added before the other regions (i.e. land, offshore,
+   It is initalised with the catchment. The land must be added before the other regions
+   (i.e. land, offshore,
    foreshore, etc) can be accessed.
 
    .. py:method:: catchment(self)
@@ -99,7 +101,8 @@ Classes
 
    .. py:method:: offshore_dense_data_edge(self, dense_extents)
 
-      Return the offshore edge of where there is 'dense data' i.e. LiDAR or reference DEM
+      Return the offshore edge of where there is 'dense data' i.e. LiDAR or
+      reference DEM
 
 
    .. py:method:: offshore_no_dense_data(self, lidar_extents)
@@ -201,8 +204,9 @@ Classes
 
    A class for creating an appropiate river mouth fan to transition from
    river depth estimates to the ocean bathymetry values. This fan region defines a
-   transition from river to coast within a fan shaped polygon (15 degrees on each side). The fan
-   begins with the most downstream river width estimate, and ends with the
+   transition from river to coast within a fan shaped polygon (15 degrees on each
+                                                               side).
+   The fan begins with the most downstream river width estimate, and ends with the
    first contour of either more than 2x the depth of the mouth. This aims to ensure
    their is a defined fan that is slightly deeper than the surrounding during
    the transition.

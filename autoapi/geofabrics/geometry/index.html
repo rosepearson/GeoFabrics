@@ -112,9 +112,11 @@ is defined as a ‘foreshore_buffer’ x ‘resolution’ outward buffer from th
 ‘land’ and within the ‘catchment’ extents. The ‘offshore’ region is any
 remaining region within the ‘catchment’ and outside the ‘land’ and
 ‘foreshore’ polygons.</p>
-<p>It also supports functions for determining how much of a region is outside an exclusion zone. I.E. is outside
+<p>It also supports functions for determining how much of a region is outside an
+exclusion zone. I.E. is outside
 <cite>lidar_extents</cite> see class method land_and_foreshore_without_lidar for an example.</p>
-<p>It is initalised with the catchment. The land must be added before the other regions (i.e. land, offshore,
+<p>It is initalised with the catchment. The land must be added before the other regions
+(i.e. land, offshore,
 foreshore, etc) can be accessed.</p>
 <dl class="field-list simple">
 <dt class="field-odd">Parameters</dt>
@@ -187,7 +189,8 @@ foreshore, etc) can be accessed.</p>
 <dl class="py method">
 <dt class="sig sig-object py" id="geofabrics.geometry.CatchmentGeometry.offshore_dense_data_edge">
 <span class="sig-name descname"><span class="pre">offshore_dense_data_edge</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">self</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">dense_extents</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#geofabrics.geometry.CatchmentGeometry.offshore_dense_data_edge" title="Permalink to this definition"></a></dt>
-<dd><p>Return the offshore edge of where there is ‘dense data’ i.e. LiDAR or reference DEM</p>
+<dd><p>Return the offshore edge of where there is ‘dense data’ i.e. LiDAR or
+reference DEM</p>
 <dl class="field-list simple">
 <dt class="field-odd">Parameters</dt>
 <dd class="field-odd"><p><strong>dense_extents</strong> (<em>geopandas.GeoDataFrame</em>) – </p>
@@ -349,8 +352,11 @@ used to interpolate elevations within the river and mouth polygon.</p>
 <em class="property"><span class="pre">class</span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">geofabrics.geometry.</span></span><span class="sig-name descname"><span class="pre">RiverMouthFan</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">aligned_channel_file</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">river_bathymetry_file</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">ocean_contour_file</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">crs</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">cross_section_spacing</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">ocean_contour_depth_label</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#geofabrics.geometry.RiverMouthFan" title="Permalink to this definition"></a></dt>
 <dd><p>A class for creating an appropiate river mouth fan to transition from
 river depth estimates to the ocean bathymetry values. This fan region defines a
-transition from river to coast within a fan shaped polygon (15 degrees on each side). The fan
-begins with the most downstream river width estimate, and ends with the
+transition from river to coast within a fan shaped polygon (15 degrees on each</p>
+<blockquote>
+<div><p>side).</p>
+</div></blockquote>
+<p>The fan begins with the most downstream river width estimate, and ends with the
 first contour of either more than 2x the depth of the mouth. This aims to ensure
 their is a defined fan that is slightly deeper than the surrounding during
 the transition.

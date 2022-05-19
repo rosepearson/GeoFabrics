@@ -105,7 +105,7 @@ DEMs.</p>
 <td><p>Read a tile file in using PDAL</p></td>
 </tr>
 <tr class="row-even"><td><p><a class="reference internal" href="#geofabrics.dem.rasterise_points" title="geofabrics.dem.rasterise_points"><code class="xref py py-obj docutils literal notranslate"><span class="pre">rasterise_points</span></code></a>(point_cloud, xy_out, options, eps = 0, leaf_size = 10)</p></td>
-<td><p>Calculate DEM elevation values at the specified locations using the selected approach. Options include: mean,</p></td>
+<td><p>Calculate DEM elevation values at the specified locations using the selected</p></td>
 </tr>
 <tr class="row-odd"><td><p><a class="reference internal" href="#geofabrics.dem.calculate_idw" title="geofabrics.dem.calculate_idw"><code class="xref py py-obj docutils literal notranslate"><span class="pre">calculate_idw</span></code></a>(near_indicies, point, tree, point_cloud, smoothing = 0, power = 2)</p></td>
 <td><p>Calculate DEM elevation values at the specified locations by</p></td>
@@ -136,7 +136,8 @@ DEMs.</p>
 <dt class="sig sig-object py" id="geofabrics.dem.ReferenceDem">
 <em class="property"><span class="pre">class</span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">geofabrics.dem.</span></span><span class="sig-name descname"><span class="pre">ReferenceDem</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">dem_file</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">catchment_geometry</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">set_foreshore</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">True</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">exclusion_extent</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#geofabrics.dem.ReferenceDem" title="Permalink to this definition"></a></dt>
 <dd><p>A class to manage reference or background DEMs in the catchment context</p>
-<p>Specifically, clip within the catchment land and foreshore. There is the option to clip outside any LiDAR using the
+<p>Specifically, clip within the catchment land and foreshore. There is the option to
+clip outside any LiDAR using the
 optional ‘exclusion_extent’ input.</p>
 <p>If set_foreshore is True all positive DEM values in the foreshore are set to zero.</p>
 <dl class="field-list simple">
@@ -184,15 +185,17 @@ filtering.</p>
 <em class="property"><span class="pre">class</span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">geofabrics.dem.</span></span><span class="sig-name descname"><span class="pre">DenseDem</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">catchment_geometry</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">extents</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">dense_dem</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">interpolation_method</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#geofabrics.dem.DenseDem" title="Permalink to this definition"></a></dt>
 <dd><p>Bases: <code class="xref py py-obj docutils literal notranslate"><span class="pre">abc.ABC</span></code></p>
 <p>An abstract class to manage the dense DEM in a catchment context.</p>
-<p>The dense DEM is made up of a dense DEM that is loaded in, and an offshore DEM that is interpolated from bathymetry
-contours offshore and outside all LiDAR tiles.</p>
+<p>The dense DEM is made up of a dense DEM that is loaded in, and an offshore DEM that
+is interpolated from bathymetry contours offshore and outside all LiDAR tiles.</p>
 <dl class="field-list simple">
 <dt class="field-odd">Parameters</dt>
 <dd class="field-odd"><ul class="simple">
-<li><p><strong>catchment_geometry</strong> (<a class="reference internal" href="../geometry/index.html#geofabrics.geometry.CatchmentGeometry" title="geofabrics.geometry.CatchmentGeometry"><em>geofabrics.geometry.CatchmentGeometry</em></a>) – Defines the spatial extents of the catchment, land, foreshore, and offshore regions</p></li>
+<li><p><strong>catchment_geometry</strong> (<a class="reference internal" href="../geometry/index.html#geofabrics.geometry.CatchmentGeometry" title="geofabrics.geometry.CatchmentGeometry"><em>geofabrics.geometry.CatchmentGeometry</em></a>) – Defines the spatial extents of the catchment, land, foreshore, and offshore
+regions</p></li>
 <li><p><strong>extents</strong> (<em>geopandas.GeoDataFrame</em>) – Defines the extents of any dense (LiDAR or refernence DEM) values already added.</p></li>
 <li><p><strong>dense_dem</strong> (<em>xarray.core.dataarray.DataArray</em>) – The dense portion of the DEM</p></li>
-<li><p><strong>interpolation_method</strong> (<em>str</em>) – If not None, interpolate using that method. Valid options are ‘linear’, ‘nearest’, and ‘cubic’</p></li>
+<li><p><strong>interpolation_method</strong> (<em>str</em>) – If not None, interpolate using that method. Valid options are ‘linear’,
+‘nearest’, and ‘cubic’</p></li>
 </ul>
 </dd>
 </dl>
@@ -229,7 +232,8 @@ contours offshore and outside all LiDAR tiles.</p>
 <dl class="py method">
 <dt class="sig sig-object py" id="geofabrics.dem.DenseDem.interpolate_offshore">
 <span class="sig-name descname"><span class="pre">interpolate_offshore</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">self</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">bathy_contours</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#geofabrics.dem.DenseDem.interpolate_offshore" title="Permalink to this definition"></a></dt>
-<dd><p>Performs interpolation offshore outside LiDAR extents using the SciPy RBF function.</p>
+<dd><p>Performs interpolation offshore outside LiDAR extents using the SciPy RBF
+function.</p>
 </dd></dl>
 
 <dl class="py method">
@@ -339,8 +343,9 @@ If False keep all LiDAR values.</p></li>
 <dl class="py function">
 <dt class="sig sig-object py" id="geofabrics.dem.rasterise_points">
 <span class="sig-prename descclassname"><span class="pre">geofabrics.dem.</span></span><span class="sig-name descname"><span class="pre">rasterise_points</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">point_cloud</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">xy_out</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">options</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">eps</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">0</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">leaf_size</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">10</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#geofabrics.dem.rasterise_points" title="Permalink to this definition"></a></dt>
-<dd><p>Calculate DEM elevation values at the specified locations using the selected approach. Options include: mean,
-median, and inverse distance weighing (IDW). This implementation is based on the scipy.spatial.KDTree</p>
+<dd><p>Calculate DEM elevation values at the specified locations using the selected
+approach. Options include: mean, median, and inverse distance weighing (IDW). This
+implementation is based on the scipy.spatial.KDTree</p>
 <dl class="field-list simple">
 <dt class="field-odd">Parameters</dt>
 <dd class="field-odd"><ul class="simple">
