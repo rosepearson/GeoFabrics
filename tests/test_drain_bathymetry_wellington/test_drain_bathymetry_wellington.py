@@ -9,6 +9,7 @@ import unittest
 import json
 import pathlib
 import geopandas
+import shapely
 import shutil
 import dotenv
 import os
@@ -20,7 +21,7 @@ import numpy
 from src.geofabrics import processor
 
 
-class ProcessorRiverBathymetryTest(unittest.TestCase):
+class ProcessorDrainBathymetryWellingtonTest(unittest.TestCase):
     """A class to test the basic river bathymetry estimation functionality
     contained in processor.RiverBathymetryGenerator.
 
@@ -36,7 +37,7 @@ class ProcessorRiverBathymetryTest(unittest.TestCase):
         chain to download remote files and produce a DEM prior to testing."""
 
         test_path = pathlib.Path().cwd() / pathlib.Path(
-            "tests/test_river_bathymetry_wellington"
+            "tests/test_drain_bathymetry_wellington"
         )
 
         # Setup logging
@@ -46,7 +47,7 @@ class ProcessorRiverBathymetryTest(unittest.TestCase):
             level=logging.INFO,
             force=True,
         )
-        logging.info("In test_river_bathymetry_wellington.py")
+        logging.info("In test_drain_bathymetry_wellington.py")
 
         # load in the test instructions
         instruction_file_path = test_path / "instruction.json"
@@ -64,11 +65,24 @@ class ProcessorRiverBathymetryTest(unittest.TestCase):
         # occurred correctly
         cls.clean_data_folder()
 
+        # create fake catchment boundary
+        x0 = 1770797
+        y0 = 5472879
+        x1 = 1770969
+        y1 = 5472707
+        catchment = shapely.geometry.Polygon([(x0, y0), (x1, y0), (x1, y1), (x0, y1)])
+        catchment = geopandas.GeoSeries([catchment])
+        catchment = catchment.set_crs(cls.instructions["output"]["crs"]["horizontal"])
+
+        # save faked catchment boundary - used as land boundary as well
+        catchment_file = cls.cache_dir / "catchment.geojson"
+        catchment.to_file(catchment_file)
+
         # Run pipeline - download files and generated DEM
-        runner = processor.RiverBathymetryGenerator(cls.instructions, debug=False)
+        runner = processor.DrainBathymetryGenerator(cls.instructions, debug=False)
         runner.run(
             pathlib.Path(cls.instructions["data_paths"]["local_cache"])
-            / "instruction_parameters.json"
+            / "drain_parameters.json"
         )
 
     @classmethod
@@ -83,22 +97,18 @@ class ProcessorRiverBathymetryTest(unittest.TestCase):
         """Remove all generated or downloaded files from the data directory"""
 
         files_to_keep = []
-        bathymetry_instructions = cls.instructions["rivers"]
-        files_to_keep.append(pathlib.Path(bathymetry_instructions["rec_file"]))
-        files_to_keep.append(pathlib.Path(bathymetry_instructions["flow_file"]))
-
         data_path_instructions = cls.instructions["data_paths"]
         files_to_keep.append(
-            cls.cache_dir / data_path_instructions["river_polygon_benchmark"]
+            cls.cache_dir / data_path_instructions["open_drain_polygon_benchmark"]
         )
         files_to_keep.append(
-            cls.cache_dir / data_path_instructions["river_bathymetry_benchmark"]
+            cls.cache_dir / data_path_instructions["open_drain_bathymetry_benchmark"]
         )
         files_to_keep.append(
-            cls.cache_dir / data_path_instructions["fan_polygon_benchmark"]
+            cls.cache_dir / data_path_instructions["closed_drain_polygon_benchmark"]
         )
         files_to_keep.append(
-            cls.cache_dir / data_path_instructions["fan_bathymetry_benchmark"]
+            cls.cache_dir / data_path_instructions["closed_drain_bathymetry_benchmark"]
         )
 
         for file in cls.cache_dir.glob("*"):  # only files
@@ -108,95 +118,100 @@ class ProcessorRiverBathymetryTest(unittest.TestCase):
                 elif file.is_dir():
                     shutil.rmtree(file)
 
-    def test_river_polygon(self):
-        """A test to see if the correct river polygon is generated. This is
-        tested individually as it is generated first."""
-
-        print("Compare river polygon  - All OS")
+    @pytest.mark.skipif(sys.platform != "win32", reason="Windows test - this is strict")
+    def test_open_drains_windows(self):
+        """A test to see if the correct open drain polygon and bathymetry are
+        generated."""
 
         data_path_instructions = self.instructions["data_paths"]
 
-        test = geopandas.read_file(self.cache_dir / "river_polygon.geojson")
+        print("Compare river polygon  - Windows")
+
+        test = geopandas.read_file(
+            self.cache_dir / "open_drain_polygon_5m_width.geojson"
+        )
         benchmark = geopandas.read_file(
-            self.cache_dir / data_path_instructions["river_polygon_benchmark"]
+            self.cache_dir / data_path_instructions["open_drain_polygon_benchmark"]
         )
 
         # check the polygons match
         self.assertTrue(
             (test == benchmark).all().all(),
-            "The geneated river"
-            f"polygon {test} doesn't equal the river benchmark "
+            f"The geneated open drain polygon {test} doesn't equal the river benchmark "
             f"river polygon {benchmark}",
         )
 
-    @pytest.mark.skipif(sys.platform != "win32", reason="Windows test - this is strict")
-    def test_river_bathymetry_windows(self):
-        """A test to see if the correct river polygon is generated. This is
-        tested individually as it is generated on its own."""
+        print("Compare open drain bathymetry - Windows")
 
-        print("Compare river bathymetry - Windows")
-
-        data_path_instructions = self.instructions["data_paths"]
-
-        test = geopandas.read_file(self.cache_dir / "river_bathymetry.geojson")
+        test = geopandas.read_file(
+            self.cache_dir / "open_drain_elevation_5m_width.geojson"
+        )
         benchmark = geopandas.read_file(
-            self.cache_dir / data_path_instructions["river_bathymetry_benchmark"]
+            self.cache_dir / data_path_instructions["open_drain_bathymetry_benchmark"]
         )
 
         # check the bathymetries match
         self.assertTrue(
             (test == benchmark).all().all(),
-            "The geneated river"
-            f"bathymetry {test} doesn't equal the river benchmark "
-            f"river bathymetry {benchmark}",
+            f"The geneated open drain bathymetry {test} doesn't equal the river "
+            f"benchmark river bathymetry {benchmark}",
         )
 
     @pytest.mark.skipif(
         sys.platform != "linux", reason="Linux test - this is less strict"
     )
-    def test_river_bathymetry_linux(self):
-        """A test to see if the correct river polygon is generated. This is
-        tested individually as it is generated on its own."""
-
-        print("Compare river bathymetry - Linux")
+    def test_open_drains_linux(self):
+        """A test to see if the correct open drain polygon and bathymetry are
+        generated."""
 
         data_path_instructions = self.instructions["data_paths"]
 
-        test = geopandas.read_file(self.cache_dir / "river_bathymetry.geojson")
+        print("Compare river polygon  - Linux")
+
+        # Compare the polygons
+        test = geopandas.read_file(
+            self.cache_dir / "open_drain_polygon_5m_width.geojson"
+        )
         benchmark = geopandas.read_file(
-            self.cache_dir / data_path_instructions["river_bathymetry_benchmark"]
+            self.cache_dir / data_path_instructions["open_drain_polygon_benchmark"]
+        )
+
+        # check the polygons match
+        column_name = "geometry"
+        test_comparison = test[column_name].area.sum()
+        benchmark_comparison = benchmark[column_name].area.sum()
+        print(f"test area {test_comparison}, and benchmark area {benchmark_comparison}")
+        self.assertAlmostEqual(
+            test_comparison,
+            benchmark_comparison,
+            places=6,
+            msg=f"The geneated open drain polygon {column_name} does not match the "
+            f"benchmark. {test_comparison} vs {benchmark_comparison}",
+        )
+
+        print("Compare open drain bathymetry - Linux")
+
+        test = geopandas.read_file(
+            self.cache_dir / "open_drain_elevation_5m_width.geojson"
+        )
+        benchmark = geopandas.read_file(
+            self.cache_dir / data_path_instructions["open_drain_bathymetry_benchmark"]
         )
 
         # check some of the bathymetry columns match
-        column_name = "bed_elevation_Neal_et_al"
+        column_name = "elevation"
         test_comparison = test[column_name].array
         benchmark_comparison = benchmark[column_name].array
         print(
-            f"{column_name} difference "
+            f"Open drain elevation {column_name} difference "
             f"{numpy.array(test_comparison) - numpy.array(benchmark_comparison)}"
         )
         self.assertAlmostEqual(
             test_comparison,
             benchmark_comparison,
             places=7,
-            msg=f"The geneated river {column_name} does not"
-            f" match the benchmark. {test_comparison} vs "
-            f"{benchmark_comparison}",
-        )
-        column_name = "widths"
-        test_comparison = test[column_name].array
-        benchmark_comparison = benchmark[column_name].array
-        print(
-            f"{column_name} difference "
-            f"{numpy.array(test_comparison) - numpy.array(benchmark_comparison)}"
-        )
-        self.assertAlmostEqual(
-            test_comparison,
-            benchmark_comparison,
-            places=7,
-            msg=f"The geneated river {column_name} does not"
-            f" match the benchmark. {test_comparison} vs "
-            f"{benchmark_comparison}",
+            msg=f"The geneated open drain bathymetry {column_name} does not"
+            f" match the benchmark. {test_comparison} vs {benchmark_comparison}",
         )
 
         column_name = "geometry"
@@ -214,92 +229,99 @@ class ProcessorRiverBathymetryTest(unittest.TestCase):
         )
 
     @pytest.mark.skipif(sys.platform != "win32", reason="Windows test - this is strict")
-    def test_fan_windows(self):
-        """A test to see if the correct fan polygon and bathymetry are
-        generated. These are generated and tested together."""
+    def test_closed_drains_windows(self):
+        """A test to see if the correct close drain polygon and bathymetry are
+        generated."""
 
-        print("Compare fan bathymetry and polygon - Windows")
+        print("Compare closed drains - Windows")
 
         data_path_instructions = self.instructions["data_paths"]
 
         # Compare the polygons
-        test = geopandas.read_file(self.cache_dir / "fan_polygon.geojson")
+        test = geopandas.read_file(
+            self.cache_dir / "closed_drain_polygon_5m_width.geojson"
+        )
         benchmark = geopandas.read_file(
-            self.cache_dir / data_path_instructions["fan_polygon_benchmark"]
+            self.cache_dir / data_path_instructions["closed_drain_polygon_benchmark"]
         )
 
         self.assertTrue(
             (test == benchmark).all().all(),
-            "The geneated river"
-            f"fan {test} doesn't equal the river benchmark "
-            f"fan polygon {benchmark}",
+            f"The closed drain polygons {test} doesn't equal the close drain benchmark "
+            f" polygon {benchmark}",
         )
 
         # Compare the bathymetries
-        test = geopandas.read_file(self.cache_dir / "fan_bathymetry.geojson")
+        test = geopandas.read_file(
+            self.cache_dir / "closed_drain_elevation_5m_width.geojson"
+        )
         benchmark = geopandas.read_file(
-            self.cache_dir / data_path_instructions["fan_bathymetry_benchmark"]
+            self.cache_dir / data_path_instructions["closed_drain_bathymetry_benchmark"]
         )
 
         self.assertTrue(
             (test == benchmark).all().all(),
-            "The geneated fan"
-            f"bathymetry {test} doesn't equal the fan benchmark "
-            f"fan bathymetry {benchmark}",
+            f"The geneated closed drain bathymetry {test} doesn't equal the closed "
+            f"drain benchmark  bathymetry {benchmark}",
         )
 
     @pytest.mark.skipif(
         sys.platform != "linux", reason="Linux test - this is less strict"
     )
-    def test_fan_linux(self):
-        """A test to see if the correct fan polygon and bathymetry are
-        generated. These are generated and tested together."""
+    def test_closed_drains_linux(self):
+        """A test to see if the correct close drain polygon and bathymetry are
+        generated."""
 
-        print("Compare fan bathymetry and polygon - Linux")
+        print("Compare close drains - Linux")
 
         data_path_instructions = self.instructions["data_paths"]
 
         # Compare the polygons
-        test = geopandas.read_file(self.cache_dir / "fan_polygon.geojson")
+        test = geopandas.read_file(
+            self.cache_dir / "closed_drain_polygon_5m_width.geojson"
+        )
         benchmark = geopandas.read_file(
-            self.cache_dir / data_path_instructions["fan_polygon_benchmark"]
+            self.cache_dir / data_path_instructions["closed_drain_polygon_benchmark"]
         )
 
         # check some of the bathymetry columns match
         column_name = "geometry"
         test_comparison = test[column_name].area.item()
         benchmark_comparison = benchmark[column_name].area.item()
-        print(f"test area {test_comparison}, and benchmark area {benchmark_comparison}")
+        print(
+            f"Closed drain polygon test area {test_comparison}, and benchmark area "
+            f"{benchmark_comparison}"
+        )
         self.assertAlmostEqual(
             test_comparison,
             benchmark_comparison,
             places=6,
-            msg=f"The geneated river {column_name} does"
-            f" not match the benchmark. {test_comparison} "
-            f"vs {benchmark_comparison}",
+            msg=f"The geneated closed drain polygon {column_name} does not match the"
+            f" benchmark. {test_comparison} vs {benchmark_comparison}",
         )
 
         # Compare the bathymetries
-        test = geopandas.read_file(self.cache_dir / "fan_bathymetry.geojson")
+        test = geopandas.read_file(
+            self.cache_dir / "closed_drain_elevation_5m_width.geojson"
+        )
         benchmark = geopandas.read_file(
-            self.cache_dir / data_path_instructions["fan_bathymetry_benchmark"]
+            self.cache_dir / data_path_instructions["closed_drain_bathymetry_benchmark"]
         )
 
         # check some of the bathymetrt columns match
-        column_name = "depths"
+        column_name = "elevation"
         test_comparison = test[column_name].array
         benchmark_comparison = benchmark[column_name].array
         print(
-            f"{column_name} difference "
+            f"Close drain bathymetry {column_name} difference "
             "{numpy.array(test_comparison) - numpy.array(benchmark_comparison)}"
         )
         self.assertAlmostEqual(
             test_comparison,
             benchmark_comparison,
             places=7,
-            msg="The geneated  river {column_name} does"
-            f" not match the benchmark. {test_comparison} "
-            f"vs {benchmark_comparison}",
+            msg="The geneated closed drain bathymetry {column_name} does not match "
+            f"the benchmark. {test_comparison} vs {benchmark_comparison}",
         )
 
         column_name = "geometry"
@@ -311,9 +333,8 @@ class ProcessorRiverBathymetryTest(unittest.TestCase):
             comparison,
             numpy.zeros(len(test[column_name])),
             places=7,
-            msg=f"The geneate driver {column_name}"
-            f" does not match the benchmark. They are"
-            f" separated by distances of {comparison}",
+            msg=f"The geneated closed drain bathymetry {column_name} does not match the"
+            f"benchmark. They are separated by distances of {comparison}",
         )
 
 

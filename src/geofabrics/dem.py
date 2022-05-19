@@ -27,10 +27,12 @@ from . import geometry
 class ReferenceDem:
     """A class to manage reference or background DEMs in the catchment context
 
-    Specifically, clip within the catchment land and foreshore. There is the option to clip outside any LiDAR using the
+    Specifically, clip within the catchment land and foreshore. There is the option to
+    clip outside any LiDAR using the
     optional 'exclusion_extent' input.
 
-    If set_foreshore is True all positive DEM values in the foreshore are set to zero."""
+    If set_foreshore is True all positive DEM values in the foreshore are set to zero.
+    """
 
     def __init__(
         self,
@@ -99,7 +101,7 @@ class ReferenceDem:
             land_x = land_grid_x.flatten()[land_mask_z]
             land_y = land_grid_y.flatten()[land_mask_z]
             land_z = land_flat_z[land_mask_z]
-        else:  # In the case that there is no DEM outside LiDAR/exclusion_extent and on land
+        else:  # If there is no DEM outside LiDAR/exclusion_extent and on land
             land_x = []
             land_y = []
             land_z = []
@@ -120,7 +122,7 @@ class ReferenceDem:
             foreshore_x = foreshore_grid_x.flatten()[foreshore_mask_z]
             foreshore_y = foreshore_grid_y.flatten()[foreshore_mask_z]
             foreshore_z = foreshore_flat_z[foreshore_mask_z]
-        else:  # In the case that there is no DEM outside LiDAR/exclusion_extent and on foreshore
+        else:  # If there is no DEM outside LiDAR/exclusion_extent and on foreshore
             foreshore_x = []
             foreshore_y = []
             foreshore_z = []
@@ -158,23 +160,25 @@ class ReferenceDem:
 class DenseDem(abc.ABC):
     """An abstract class to manage the dense DEM in a catchment context.
 
-    The dense DEM is made up of a dense DEM that is loaded in, and an offshore DEM that is interpolated from bathymetry
-    contours offshore and outside all LiDAR tiles.
+    The dense DEM is made up of a dense DEM that is loaded in, and an offshore DEM that
+    is interpolated from bathymetry contours offshore and outside all LiDAR tiles.
 
     Parameters
     ----------
 
     catchment_geometry
-        Defines the spatial extents of the catchment, land, foreshore, and offshore regions
+        Defines the spatial extents of the catchment, land, foreshore, and offshore
+        regions
     extents
         Defines the extents of any dense (LiDAR or refernence DEM) values already added.
     dense_dem
         The dense portion of the DEM
     interpolation_method
-        If not None, interpolate using that method. Valid options are 'linear', 'nearest', and 'cubic'
+        If not None, interpolate using that method. Valid options are 'linear',
+        'nearest', and 'cubic'
     """
 
-    CACHE_SIZE = 10000  # The max number of points to create the offshore RBF and to evaluate in the RBF at one time
+    CACHE_SIZE = 10000  # The maximum RBF input without performance issues
     SOURCE_CLASSIFICATION = {
         "LiDAR": 1,
         "ocean bathymetry": 2,
@@ -287,7 +291,8 @@ class DenseDem(abc.ABC):
     def _ensure_positive_indexing(
         dem: xarray.core.dataarray.DataArray,
     ) -> xarray.core.dataarray.DataArray:
-        """A routine to check an xarray has positive dimension indexing and to reindex if needed."""
+        """A routine to check an xarray has positive dimension indexing and to reindex
+        if needed."""
 
         x = dem.x
         y = dem.y
@@ -302,7 +307,8 @@ class DenseDem(abc.ABC):
     def _write_netcdf_conventions_in_place(
         dem: xarray.core.dataarray.DataArray, crs_dict: dict
     ):
-        """Write the CRS and transform associated with a netCDF file such that it is CF complient and meets the GDAL
+        """Write the CRS and transform associated with a netCDF file such that it is CF
+        complient and meets the GDAL
         expectations for transform information.
 
         Parameters
@@ -322,12 +328,14 @@ class DenseDem(abc.ABC):
         dem.source_class.rio.write_nodata(numpy.nan, encoded=True, inplace=True)
 
     def _sample_offshore_edge(self, resolution) -> numpy.ndarray:
-        """Return the pixel values of the offshore edge to be used for offshore interpolation"""
+        """Return the pixel values of the offshore edge to be used for offshore
+        interpolation"""
 
         assert resolution >= self.catchment_geometry.resolution, (
             "_sample_offshore_edge only supports downsampling"
-            + f" and not  up-samping. The requested sampling resolution of {resolution} must be equal to or larger than"
-            + f" the catchment resolution of {self.catchment_geometry.resolution}"
+            f" and not  up-samping. The requested sampling resolution of {resolution} "
+            "must be equal to or larger than the catchment resolution of "
+            f" {self.catchment_geometry.resolution}"
         )
 
         offshore_dense_data_edge = self.catchment_geometry.offshore_dense_data_edge(
@@ -335,7 +343,8 @@ class DenseDem(abc.ABC):
         )
         offshore_edge_dem = self.dense_dem.rio.clip(offshore_dense_data_edge.geometry)
 
-        # If the sampling resolution is coaser than the catchment_geometry resolution resample the DEM
+        # If the sampling resolution is coaser than the catchment_geometry resolution
+        # resample the DEM
         if resolution > self.catchment_geometry.resolution:
             x = numpy.arange(
                 offshore_edge_dem.x.min(),
@@ -369,7 +378,8 @@ class DenseDem(abc.ABC):
         return offshore_edge
 
     def interpolate_offshore(self, bathy_contours):
-        """Performs interpolation offshore outside LiDAR extents using the SciPy RBF function."""
+        """Performs interpolation offshore outside LiDAR extents using the SciPy RBF
+        function."""
 
         offshore_edge_points = self._sample_offshore_edge(
             self.catchment_geometry.resolution
@@ -387,8 +397,9 @@ class DenseDem(abc.ABC):
                 / self.CACHE_SIZE
             )
             logging.info(
-                "Reducing the number of 'offshore_points' used to create the RBF function by increasing the "
-                f"resolution from {self.catchment_geometry.resolution} to {reduced_resolution}"
+                "Reducing the number of 'offshore_points' used to create the RBF "
+                "function by increasing the resolution from "
+                f" {self.catchment_geometry.resolution} to {reduced_resolution}"
             )
             offshore_edge_points = self._sample_offshore_edge(reduced_resolution)
             bathy_points = bathy_contours.sample_contours(reduced_resolution)
@@ -410,7 +421,8 @@ class DenseDem(abc.ABC):
             self.catchment_geometry.offshore.geometry
         )
 
-        # set all zero (or to ocean bathy classification) then clip out dense region where we don't need to interpolate
+        # set all zero (or to ocean bathy classification) then clip out dense region
+        # where we don't need to interpolate
         self._offshore_dem.z.data[:] = 0
         self._offshore_dem.source_class.data[:] = self.SOURCE_CLASSIFICATION[
             "ocean bathymetry"
@@ -445,7 +457,7 @@ class DenseDem(abc.ABC):
         flat_z[mask_z] = flat_z_masked
         self._offshore_dem.z.data = flat_z.reshape(self._offshore_dem.z.data.shape)
 
-        # Ensure the DEM will be recalculated to include the interpolated offshore region
+        # Ensure the DEM is recalculated to include the interpolated offshore region
         self._dem = None
 
     def interpolate_river_bathymetry(self, river_bathymetry):
@@ -467,7 +479,7 @@ class DenseDem(abc.ABC):
             river_bathymetry.polygon.geometry, invert=True, drop=True
         )
         grid_x, grid_y = numpy.meshgrid(edge_dem.x, edge_dem.y)
-        flat_z = edge_dem.data[0].flatten()
+        flat_z = edge_dem.z.data.flatten()
         mask_z = ~numpy.isnan(flat_z)
         edge_points = numpy.empty(
             [mask_z.sum().sum()],
@@ -482,64 +494,39 @@ class DenseDem(abc.ABC):
         bathy_points = river_bathymetry.points_array()
         river_points = numpy.concatenate([edge_points, bathy_points])
 
-        # Resample at a lower resolution if too many offshore points
-        if len(edge_points) > self.CACHE_SIZE - len(bathy_points):
-            reduced_resolution = (
-                self.catchment_geometry.resolution
-                * len(edge_points)
-                / (self.CACHE_SIZE - len(bathy_points))
-            )
-            logging.info(
-                "Reducing the number of 'river_points' used to create the RBF function by increasing the "
-                f"resolution from {self.catchment_geometry.resolution} to {reduced_resolution}"
-            )
-            edge_points = self._sample_offshore_edge(reduced_resolution)
-            river_points = numpy.concatenate([edge_points, bathy_points])
-        # Set up the interpolation function
-        logging.info("Creating river interpolant")
-        rbf_function = scipy.interpolate.Rbf(
-            river_points["X"], river_points["Y"], river_points["Z"], function="linear"
-        )
-
         # Setup the empty river area ready for interpolation
         self._river_dem = combined_dem.rio.clip(river_bathymetry.polygon.geometry)
-        # set all zero (or to ocean bathy classification) then clip out dense region where we don't need to interpolate
-        self._river_dem.data[0] = 0
+        # set all zero (or to ocean bathy classification) then clip out dense region
+        # where we don't need to interpolate
+        self._river_dem.z.data[:] = 0
         self._river_dem.source_class.data[:] = self.SOURCE_CLASSIFICATION[
             "river bathymetry"
         ]
         self._river_dem = self._river_dem.rio.clip(river_bathymetry.polygon.geometry)
 
         grid_x, grid_y = numpy.meshgrid(self._river_dem.x, self._river_dem.y)
-        flat_z = self._river_dem.data[0].flatten()
+        flat_z = self._river_dem.z.data[:].flatten()
         mask_z = ~numpy.isnan(flat_z)
 
         flat_x_masked = grid_x.flatten()[mask_z]
         flat_y_masked = grid_y.flatten()[mask_z]
         flat_z_masked = flat_z[mask_z]
 
-        # check there are actually pixels in the rive
+        # check there are actually pixels in the river
         logging.info(f"There are {len(flat_z_masked)} pixels in the river")
 
-        # Tile offshore area - this limits the maximum memory required at any one time
-        number_tiles = math.ceil(len(flat_x_masked) / self.CACHE_SIZE)
-        for i in range(number_tiles):
-            logging.info(f"River intepolant tile {i+1} of {number_tiles}")
-            start_index = int(i * self.CACHE_SIZE)
-            end_index = (
-                int((i + 1) * self.CACHE_SIZE)
-                if i + 1 != number_tiles
-                else len(flat_x_masked)
-            )
-
-            flat_z_masked[start_index:end_index] = rbf_function(
-                flat_x_masked[start_index:end_index],
-                flat_y_masked[start_index:end_index],
-            )
+        # Interpolate river area - use cubic or linear interpolation
+        flat_z_masked = scipy.interpolate.griddata(
+            points=(river_points["X"], river_points["Y"]),
+            values=river_points["Z"],
+            xi=(flat_x_masked, flat_y_masked),
+            method="cubic",  #  cubic, linear
+        )
+        # Set the interpolated value in the DEM
         flat_z[mask_z] = flat_z_masked
-        self._river_dem.data[0] = flat_z.reshape(self._river_dem.data[0].shape)
+        self._river_dem.z.data = flat_z.reshape(self._river_dem.z.data.shape)
 
-        # Ensure the DEM will be recalculated to include the interpolated offshore region
+        # Ensure the DEM will be recalculated to include the newly interpolated region
         self._dem = None
 
 
@@ -576,7 +563,9 @@ class DenseDemFromFiles(DenseDem):
         self._write_netcdf_conventions_in_place(dense_dem, catchment_geometry.crs)
 
         # Ensure all values outside the exents are nan as that defines the dense extents
+        # and clip the dense dem to the catchment extents to ensure performance
         dense_dem = dense_dem.rio.clip(extents.geometry, drop=True)
+        dense_dem = dense_dem.rio.clip(catchment_geometry.catchment.geometry, drop=True)
 
         # Setup the DenseDem class
         super(DenseDemFromFiles, self).__init__(
@@ -736,8 +725,8 @@ class DenseDemFromTiles(DenseDem):
         return chunk_region_to_tile
 
     def _calculate_dense_extents(self):
-        """Calculate the extents of the current dense DEM. Remove holes as these can cause self intersection
-        warnings."""
+        """Calculate the extents of the current dense DEM. Remove holes as these can
+        cause self intersection warnings."""
 
         dense_extents = [
             shapely.geometry.shape(polygon[0])
@@ -946,9 +935,9 @@ class DenseDemFromTiles(DenseDem):
         chunk_size: int,
         metadata: dict,
         raster_options: dict,
-    ) -> xarray.DataArray:
-        """Create a dense DEM from a set of tiled LiDAR files. Read these in over non-overlapping chunks and
-        then combine"""
+    ) -> xarray.Dataset:
+        """Create a dense DEM from a set of tiled LiDAR files. Read these in over
+        non-overlapping chunks and then combine"""
 
         # Remove all tiles entirely outside the region to raserise
         tile_index_extents, tile_index_name_column = self._tile_index_column_name(
@@ -1018,7 +1007,7 @@ class DenseDemFromTiles(DenseDem):
         options: dict,
         source_crs: dict,
         metadata: dict,
-    ) -> xarray.DataArray:
+    ) -> xarray.Dataset:
         """Create the dense DEM region from a single LiDAR file."""
 
         logging.info(f"On LiDAR tile 1 of 1: {lidar_file}")
@@ -1209,8 +1198,9 @@ def rasterise_points(
     eps: float = 0,
     leaf_size: int = 10,
 ):
-    """Calculate DEM elevation values at the specified locations using the selected approach. Options include: mean,
-    median, and inverse distance weighing (IDW). This implementation is based on the scipy.spatial.KDTree"""
+    """Calculate DEM elevation values at the specified locations using the selected
+    approach. Options include: mean, median, and inverse distance weighing (IDW). This
+    implementation is based on the scipy.spatial.KDTree"""
 
     xy_in = numpy.empty((len(point_cloud), 2))
     xy_in[:, 0] = point_cloud["X"]
@@ -1249,7 +1239,8 @@ def rasterise_points(
             else:
                 assert (
                     False
-                ), f"An invalid lidar_interpolation_method of '{options['method']}' was provided"
+                ), f"An invalid lidar_interpolation_method of '{options['method']}' was"
+                " provided"
     return z_out
 
 

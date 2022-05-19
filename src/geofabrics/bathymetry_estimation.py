@@ -389,8 +389,8 @@ class ChannelCharacteristics:
 
     def __init__(
         self,
-        gnd_dem: xarray.core.dataarray.DataArray,
-        veg_dem: xarray.core.dataarray.DataArray,
+        gnd_dem: xarray.Dataset,
+        veg_dem: xarray.Dataset,
         cross_section_spacing: float,
         resolution: float,
         debug: bool = False,

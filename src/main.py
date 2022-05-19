@@ -31,20 +31,15 @@ def parse_args():
     return parser.parse_args()
 
 
-def launch_processor(args):
-    """Run the DEM generation pipeline given the specified instructions.
-    If a benchmark is specified compare the result to the benchmark"""
+def setup_logging_for_run(instructions: dict):
+    """Setup logging for the current processor run"""
 
-    # Load the instructions
-    with open(args.instructions, "r") as file_pointer:
-        instructions = json.load(file_pointer)
-    assert "local_cache" in instructions["instructions"]["data_paths"], (
+    assert "local_cache" in instructions["data_paths"], (
         "A local_cache must be spcified in the instruction file"
         "this is where the log file will be written."
     )
 
-    # Setup logging
-    log_path = pathlib.Path(instructions["instructions"]["data_paths"]["local_cache"])
+    log_path = pathlib.Path(instructions["data_paths"]["local_cache"])
     log_path.mkdir(parents=True, exist_ok=True)
     logging.basicConfig(
         filename=log_path / "geofabrics.log",
@@ -54,47 +49,27 @@ def launch_processor(args):
     )
     print(f"Log file is located at: {log_path / 'geofabrics.log'}")
 
-    # Run the pipeline
-    start_time = time.time()
-    if "channel_bathymetry" in instructions["instructions"]:
-        # Update a dense DEM with river channel values
-        print("Run processor.RiverBathymetryGenerator")
-        runner = processor.RiverBathymetryGenerator(instructions)
-        runner.run(
-            pathlib.Path(instructions["instructions"]["data_paths"]["local_cache"])
-            / "instruction_parameters.json"
-        )
-    elif "dense_dem" in instructions["instructions"]["data_paths"]:
-        # Update a dense DEM with offshore values
-        print("Run processor.BathymetryDemGenerator")
-        runner = processor.BathymetryDemGenerator(instructions)
-        runner.run()
-    else:
-        # Create a DEM from dense data (LiDAR, reference DEM) and bathymetry if
-        # specified
-        print("Run processor.LidarDemGenerator")
-        runner = processor.LidarDemGenerator(instructions)
-        runner.run()
-    end_time = time.time()
 
-    print(f"Execution time is {end_time - start_time}")
+def check_for_benchmarks(instructions: dict, runner: processor.BaseProcessor):
+    """Compare against a benchmark DEM if one is specified"""
 
     # Load in benchmark DEM and compare - if specified in the instructions
-    if "benchmark_dem" in instructions["instructions"]["data_paths"]:
+    if "benchmark_dem" in instructions["data_paths"]:
         with rioxarray.rioxarray.open_rasterio(
-            instructions["instructions"]["data_paths"]["benchmark_dem"], masked=True
+            instructions["data_paths"]["benchmark_dem"], masked=True
         ) as benchmark_dem:
             benchmark_dem.load()
+        result_dem = runner.dense_dem.dem
         logging.info(
             "Comparing the generated DEM saved at "
-            f"{instructions['instructions']['data_paths']['result_dem']} against the "
+            f"{instructions['data_paths']['result_dem']} against the "
             f"benchmark DEM stored "
-            "{instructions['instructions']['data_paths']['benchmark_dem']}. \nAny "
+            "{instructions['data_paths']['benchmark_dem']}. \nAny "
             "difference will be reported."
         )
         # Compare the generated and benchmark DEMs - plot
         diff = benchmark_dem.copy()
-        diff.data = runner.result_dem.data - benchmark_dem.data
+        diff.data = result_dem.data - benchmark_dem.data
 
         f = matplotlib.pyplot.figure(figsize=(15, 5))
         gs = f.add_gridspec(1, 3)
@@ -103,7 +78,7 @@ def launch_processor(args):
         benchmark_dem.plot(cmap="viridis", ax=ax1)
 
         ax2 = f.add_subplot(gs[0, 1])
-        runner.result_dem.plot(cmap="viridis", ax=ax2)
+        result_dem.plot(cmap="viridis", ax=ax2)
 
         ax3 = f.add_subplot(gs[0, 2])
         diff.plot(cmap="viridis", ax=ax3)
@@ -114,10 +89,64 @@ def launch_processor(args):
 
         # assert different
         numpy.testing.assert_array_equal(
-            runner.result_dem.data,
+            result_dem.data,
             benchmark_dem.data,
             "The generated result_dem has different data from the benchmark_dem",
         )
+
+
+def launch_processor(args):
+    """Run the DEM generation pipeline given the specified instructions.
+    If a benchmark is specified compare the result to the benchmark"""
+
+    # Load the instructions
+    with open(args.instructions, "r") as file_pointer:
+        instructions = json.load(file_pointer)
+    # Run the pipeline
+    start_time = time.time()
+    if "rivers" in instructions:
+        # Estimate river channel bathymetry
+        print("Run processor.RiverBathymetryGenerator")
+        run_instructions = instructions["rivers"]
+        setup_logging_for_run(run_instructions)
+        runner = processor.RiverBathymetryGenerator(run_instructions)
+        runner.run(
+            pathlib.Path(run_instructions["data_paths"]["local_cache"])
+            / "river_parameters.json"
+        )
+    if "drains" in instructions:
+        # Estimate drain bathymetry
+        print("Run processor.DrainsBathymetryGenerator")
+        run_instructions = instructions["drains"]
+        setup_logging_for_run(run_instructions)
+        runner = processor.DrainBathymetryGenerator(run_instructions)
+        runner.run(
+            pathlib.Path(instructions["drains"]["data_paths"]["local_cache"])
+            / "drain_parameters.json"
+        )
+    if "dem" in instructions:
+        run_instructions = instructions["dem"]
+        setup_logging_for_run(run_instructions)
+        dem_paths = run_instructions["data_paths"]
+        if "dense_dem" in dem_paths and (
+            pathlib.Path(dem_paths["dense_dem"]).is_file()
+            or (
+                pathlib.Path(dem_paths["local_cache"]) / dem_paths["dense_dem"]
+            ).is_file()
+        ):
+            # Update a dense DEM with offshore values
+            print("Run processor.BathymetryDemGenerator")
+            runner = processor.BathymetryDemGenerator(run_instructions)
+            runner.run()
+        else:
+            # Create a DEM from LiDAR, and specified reference DEM and bathymetry
+            print("Run processor.LidarDemGenerator")
+            runner = processor.LidarDemGenerator(run_instructions)
+            runner.run()
+        check_for_benchmarks(run_instructions, runner)
+    end_time = time.time()
+
+    print(f"Execution time is {end_time - start_time}")
 
 
 def main():

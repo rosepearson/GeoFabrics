@@ -57,7 +57,6 @@ class ProcessorLocalFilesOffshoreResTest(unittest.TestCase):
         instruction_file_path = test_path / "instruction.json"
         with open(instruction_file_path, "r") as file_pointer:
             cls.instructions = json.load(file_pointer)
-
         # Remove any files from last test in the cache directory
         cls.cache_dir = test_path / "data"
         assert cls.cache_dir.exists(), (
@@ -74,9 +73,7 @@ class ProcessorLocalFilesOffshoreResTest(unittest.TestCase):
         y1 = 1
         catchment = shapely.geometry.Polygon([(x0, y0), (x1, y0), (x1, y1), (x0, y1)])
         catchment = geopandas.GeoSeries([catchment])
-        catchment = catchment.set_crs(
-            cls.instructions["instructions"]["output"]["crs"]["horizontal"]
-        )
+        catchment = catchment.set_crs(cls.instructions["output"]["crs"]["horizontal"])
         catchment.to_file(catchment_file)
 
         # Generate land data - wider than catchment
@@ -87,9 +84,7 @@ class ProcessorLocalFilesOffshoreResTest(unittest.TestCase):
         y1 = 5
         land = shapely.geometry.Polygon([(x0, y0), (x1, y0), (x1, y1), (x0, y1)])
         land = geopandas.GeoSeries([land])
-        land = land.set_crs(
-            cls.instructions["instructions"]["output"]["crs"]["horizontal"]
-        )
+        land = land.set_crs(cls.instructions["output"]["crs"]["horizontal"])
         land.to_file(land_file)
 
         # Generate bathymetry data - wider than catchment
@@ -109,9 +104,7 @@ class ProcessorLocalFilesOffshoreResTest(unittest.TestCase):
             [(x0, y2, -y2 * 0.1), ((x0 + x1) / 2, y2, 0), (x1, y2, -y2 * 0.1)]
         )
         contours = geopandas.GeoSeries([contour_0, contour_1, contour_2])
-        contours = contours.set_crs(
-            cls.instructions["instructions"]["output"]["crs"]["horizontal"]
-        )
+        contours = contours.set_crs(cls.instructions["output"]["crs"]["horizontal"])
         contours.to_file(bathymetry_file)
 
         # Create LiDAR - wider than catchment
@@ -139,8 +132,8 @@ class ProcessorLocalFilesOffshoreResTest(unittest.TestCase):
         pdal_pipeline_instructions = [
             {
                 "type": "writers.las",
-                "a_srs": f"EPSG:{cls.instructions['instructions']['output']['crs']['horizontal']}+"
-                + f"{cls.instructions['instructions']['output']['crs']['vertical']}",
+                "a_srs": f"EPSG:{cls.instructions['output']['crs']['horizontal']}+"
+                + f"{cls.instructions['output']['crs']['vertical']}",
                 "filename": str(lidar_file),
                 "compression": "laszip",
             }
@@ -182,21 +175,13 @@ class ProcessorLocalFilesOffshoreResTest(unittest.TestCase):
         """A basic comparison between the generated and benchmark DEM"""
 
         # Load in benchmark DEM
-        file_path = (
-            self.cache_dir
-            / self.instructions["instructions"]["data_paths"]["benchmark_dem"]
-        )
+        file_path = self.cache_dir / self.instructions["data_paths"]["benchmark_dem"]
         with rioxarray.rioxarray.open_rasterio(file_path, masked=True) as benchmark_dem:
             benchmark_dem.load()
-
         # Load in result DEM
-        file_path = (
-            self.cache_dir
-            / self.instructions["instructions"]["data_paths"]["result_dem"]
-        )
+        file_path = self.cache_dir / self.instructions["data_paths"]["result_dem"]
         with rioxarray.rioxarray.open_rasterio(file_path, masked=True) as test_dem:
             test_dem.load()
-
         # Compare DEMs - load from file as rioxarray.rioxarray.open_rasterio ignores index order
         diff_array = test_dem.z.data - benchmark_dem.z.data
         logging.info(f"DEM array diff is: {diff_array[diff_array != 0]}")
@@ -218,21 +203,13 @@ class ProcessorLocalFilesOffshoreResTest(unittest.TestCase):
         """A basic comparison between the generated and benchmark DEM"""
 
         # Load in benchmark DEM
-        file_path = (
-            self.cache_dir
-            / self.instructions["instructions"]["data_paths"]["benchmark_dem"]
-        )
+        file_path = self.cache_dir / self.instructions["data_paths"]["benchmark_dem"]
         with rioxarray.rioxarray.open_rasterio(file_path, masked=True) as benchmark_dem:
             benchmark_dem.load()
-
         # Load in result DEM
-        file_path = (
-            self.cache_dir
-            / self.instructions["instructions"]["data_paths"]["result_dem"]
-        )
+        file_path = self.cache_dir / self.instructions["data_paths"]["result_dem"]
         with rioxarray.rioxarray.open_rasterio(file_path, masked=True) as test_dem:
             test_dem.load()
-
         # Compare DEMs - load both from file as rioxarray.rioxarray.open_rasterio ignores index order
         diff_array = test_dem.z.data - benchmark_dem.z.data
         logging.info(f"DEM array diff is: {diff_array[diff_array != 0]}")

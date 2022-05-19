@@ -16,6 +16,9 @@ import rioxarray
 import pandas
 import geopandas
 import datetime
+import shapely
+import xarray
+import OSMPythonTools.overpass
 from . import geometry
 from . import bathymetry_estimation
 from . import version
@@ -47,7 +50,7 @@ class BaseProcessor(abc.ABC):
             "dense_dem_extents": "dense_extents.geojson",
         }
 
-        path_instructions = self.instructions["instructions"]["data_paths"]
+        path_instructions = self.instructions["data_paths"]
         local_cache = pathlib.Path(path_instructions["local_cache"])
 
         if key == "local_cache":
@@ -85,12 +88,12 @@ class BaseProcessor(abc.ABC):
         if there is a default value and the local cache is specified."""
 
         assert (
-            "local_cache" in self.instructions["instructions"]["data_paths"]
+            "local_cache" in self.instructions["data_paths"]
         ), "local_cache is a required 'data_paths' entry"
 
         defaults = ["result_dem", "dense_dem_extents", "dense_dem"]
 
-        if key in self.instructions["instructions"]["data_paths"]:
+        if key in self.instructions["data_paths"]:
             return True
         else:
             return key in defaults
@@ -99,15 +102,15 @@ class BaseProcessor(abc.ABC):
         """Return the resolution from the instruction file. Raise an error if
         not in the instructions."""
 
-        assert "output" in self.instructions["instructions"], (
+        assert "output" in self.instructions, (
             "'output' is not a key-word in the instructions. It should exist"
             " and is where the resolution and optionally the CRS of the output"
             " DEM is defined."
         )
         assert (
-            "resolution" in self.instructions["instructions"]["output"]["grid_params"]
+            "resolution" in self.instructions["output"]["grid_params"]
         ), "'resolution' is not a key-word in the instructions"
-        return self.instructions["instructions"]["output"]["grid_params"]["resolution"]
+        return self.instructions["output"]["grid_params"]["resolution"]
 
     def get_crs(self) -> dict:
         """Return the CRS projection information (horiztonal and vertical) from
@@ -119,21 +122,21 @@ class BaseProcessor(abc.ABC):
 
         defaults = {"horizontal": 2193, "vertical": 7839}
 
-        assert "output" in self.instructions["instructions"], (
+        assert "output" in self.instructions, (
             "'output' is not a key-word in the instructions. It should exist "
             "and is where the resolution and optionally the CRS of the output "
             "DEM is defined."
         )
 
-        if "crs" not in self.instructions["instructions"]["output"]:
+        if "crs" not in self.instructions["output"]:
             logging.warning(
                 "No output the coordinate system EPSG values specified. We "
                 f"will instead be using the defaults: {defaults}."
             )
-            self.instructions["instructions"]["output"]["crs"] = defaults
+            self.instructions["output"]["crs"] = defaults
             return defaults
         else:
-            crs_instruction = self.instructions["instructions"]["output"]["crs"]
+            crs_instruction = self.instructions["output"]["crs"]
             crs_dict = {}
             crs_dict["horizontal"] = (
                 crs_instruction["horizontal"]
@@ -151,7 +154,7 @@ class BaseProcessor(abc.ABC):
                 "'horizontal' and 'vertical' values are specified."
             )
             # Update the CRS just incase this includes any default values
-            self.instructions["instructions"]["output"]["crs"] = crs_dict
+            self.instructions["output"]["crs"] = crs_dict
             return crs_dict
 
     def get_instruction_general(self, key: str):
@@ -170,17 +173,14 @@ class BaseProcessor(abc.ABC):
             "lidar_interpolation_method": "idw",
         }
 
-        assert key in defaults or key in self.instructions["instructions"]["general"], (
+        assert key in defaults or key in self.instructions["general"], (
             f"The key: {key} is missing from the general instructions, and"
             " does not have a default value"
         )
-        if (
-            "general" in self.instructions["instructions"]
-            and key in self.instructions["instructions"]["general"]
-        ):
-            return self.instructions["instructions"]["general"][key]
+        if "general" in self.instructions and key in self.instructions["general"]:
+            return self.instructions["general"][key]
         else:
-            self.instructions["instructions"]["general"][key] = defaults[key]
+            self.instructions["general"][key] = defaults[key]
             return defaults[key]
 
     def get_processing_instructions(self, key: str):
@@ -190,30 +190,25 @@ class BaseProcessor(abc.ABC):
 
         defaults = {"number_of_cores": 1, "chunk_size": None}
 
-        assert (
-            key in defaults or key in self.instructions["instructions"]["processing"]
-        ), (
+        assert key in defaults or key in self.instructions["processing"], (
             f"The key: {key} is missing "
             + "from the general instructions, and does not have a default value"
         )
-        if (
-            "processing" in self.instructions["instructions"]
-            and key in self.instructions["instructions"]["processing"]
-        ):
-            return self.instructions["instructions"]["processing"][key]
+        if "processing" in self.instructions and key in self.instructions["processing"]:
+            return self.instructions["processing"][key]
         else:
-            if "processing" not in self.instructions["instructions"]:
-                self.instructions["instructions"]["processing"] = {}
-            self.instructions["instructions"]["processing"][key] = defaults[key]
+            if "processing" not in self.instructions:
+                self.instructions["processing"] = {}
+            self.instructions["processing"][key] = defaults[key]
             return defaults[key]
 
     def check_apis(self, key) -> bool:
         """Check to see if APIs are included in the instructions and if the key is
         included in specified apis"""
 
-        if "apis" in self.instructions["instructions"]:
+        if "apis" in self.instructions:
             # 'apis' included instructions and Key included in the APIs
-            return key in self.instructions["instructions"]["apis"]
+            return key in self.instructions["apis"]
         else:
             return False
 
@@ -227,17 +222,14 @@ class BaseProcessor(abc.ABC):
             "lris",
         ]  # This list will increase as geopais is extended to support more vector APIs
 
-        if (
-            "data_paths" in self.instructions["instructions"]
-            and key in self.instructions["instructions"]["data_paths"]
-        ):
+        if "data_paths" in self.instructions and key in self.instructions["data_paths"]:
             # Key included in the data paths
             return True
-        elif "apis" in self.instructions["instructions"]:
+        elif "apis" in self.instructions:
             for data_service in data_services:
                 if (
-                    data_service in self.instructions["instructions"]["apis"]
-                    and key in self.instructions["instructions"]["apis"][data_service]
+                    data_service in self.instructions["apis"]
+                    and key in self.instructions["apis"][data_service]
                 ):
                     # Key is included in one or more of the data_service's APIs
                     return True
@@ -252,10 +244,7 @@ class BaseProcessor(abc.ABC):
         paths = []
 
         # Check the instructions for vector data specified as a data_paths
-        if (
-            "data_paths" in self.instructions["instructions"]
-            and key in self.instructions["instructions"]["data_paths"]
-        ):
+        if "data_paths" in self.instructions and key in self.instructions["data_paths"]:
             # Key included in the data paths - add - either list or individual path
             data_paths = self.get_instruction_path(key)
             if type(data_paths) is list:
@@ -271,7 +260,7 @@ class BaseProcessor(abc.ABC):
         for data_service in data_services.keys():
             if (
                 self.check_apis(data_service)
-                and key in self.instructions["instructions"]["apis"][data_service]
+                and key in self.instructions["apis"][data_service]
             ):
 
                 # Get the location to cache vector data downloaded from data services
@@ -282,14 +271,12 @@ class BaseProcessor(abc.ABC):
                 cache_dir = pathlib.Path(self.get_instruction_path("local_cache"))
 
                 # Get the API key for the data_serive being checked
-                assert (
-                    "key" in self.instructions["instructions"]["apis"][data_service]
-                ), (
+                assert "key" in self.instructions["apis"][data_service], (
                     f"A 'key' must be specified for the {data_service} data"
                     "  service instead the instruction only includes: "
-                    f"{self.instructions['instructions']['apis'][data_service]}"
+                    f"{self.instructions['apis'][data_service]}"
                 )
-                api_key = self.instructions["instructions"]["apis"][data_service]["key"]
+                api_key = self.instructions["apis"][data_service]["key"]
 
                 # Instantiate the geoapis object for downloading vectors from the data
                 # service.
@@ -302,9 +289,7 @@ class BaseProcessor(abc.ABC):
                     api_key, bounding_polygon=bounding_polygon, verbose=True
                 )
 
-                vector_instruction = self.instructions["instructions"]["apis"][
-                    data_service
-                ][key]
+                vector_instruction = self.instructions["apis"][data_service][key]
                 geometry_type = (
                     vector_instruction["geometry_name "]
                     if "geometry_name " in vector_instruction
@@ -339,7 +324,7 @@ class BaseProcessor(abc.ABC):
         will later be used to override the CRS encoded in the LAS files.
         """
 
-        apis_instructions = self.instructions["instructions"]["apis"]
+        apis_instructions = self.instructions["apis"]
 
         if (
             self.check_apis(data_service)
@@ -423,9 +408,7 @@ class BaseProcessor(abc.ABC):
                 verbose=True,
             )
             # Loop through each specified dataset and download it
-            for dataset_name in self.instructions["instructions"]["apis"][
-                data_service
-            ].keys():
+            for dataset_name in self.instructions["apis"][data_service].keys():
                 logging.info(f"Fetching dataset: {dataset_name}")
                 self.lidar_fetcher.run(dataset_name)
             assert len(self.lidar_fetcher.dataset_prefixes) == 1, (
@@ -454,6 +437,24 @@ class BaseProcessor(abc.ABC):
             lidar_dataset_info["crs"] = None
             lidar_dataset_info["tile_index_file"] = None
         return lidar_dataset_info
+
+    def create_catchment(self) -> geometry.CatchmentGeometry:
+        # create the catchment geometry object
+        catchment_dirs = self.get_instruction_path("catchment_boundary")
+        assert type(catchment_dirs) is not list, (
+            f"A list of catchment_boundary's is provided: {catchment_dirs}, "
+            + "where only one is supported."
+        )
+        catchment_geometry = geometry.CatchmentGeometry(
+            catchment_dirs, self.get_crs(), self.get_resolution(), foreshore_buffer=2
+        )
+        land_dirs = self.get_vector_paths("land")
+        assert len(land_dirs) == 1, (
+            f"{len(land_dirs)} catchment_boundary's provided, where only one is "
+            f"supported. Specficially land_dirs = {land_dirs}."
+        )
+        catchment_geometry.land = land_dirs[0]
+        return catchment_geometry
 
     @abc.abstractmethod
     def run(self):
@@ -555,20 +556,7 @@ class BathymetryDemGenerator(BaseProcessor):
         area_threshold = 10.0 / 100  # Used to decide if bathymetry should be included
 
         # create the catchment geometry object
-        catchment_dirs = self.get_instruction_path("catchment_boundary")
-        assert type(catchment_dirs) is not list, (
-            f"A list of catchment_boundary's is provided: {catchment_dirs}, "
-            + "where only one is supported."
-        )
-        self.catchment_geometry = geometry.CatchmentGeometry(
-            catchment_dirs, self.get_crs(), self.get_resolution(), foreshore_buffer=2
-        )
-        land_dirs = self.get_vector_paths("land")
-        assert len(land_dirs) == 1, (
-            f"{len(land_dirs)} catchment_boundary's provided, where only one is "
-            + f"supported. Specficially land_dirs = {land_dirs}."
-        )
-        self.catchment_geometry.land = land_dirs[0]
+        self.catchment_geometry = self.create_catchment()
 
         # setup dense DEM and catchment LiDAR objects
         self.dense_dem = dem.DenseDemFromFiles(
@@ -580,7 +568,8 @@ class BathymetryDemGenerator(BaseProcessor):
 
         # Check for and add any bathymetry information
         self.add_bathymetry(
-            area_threshold=area_threshold, catchment_dirs=catchment_dirs
+            area_threshold=area_threshold,
+            catchment_dirs=self.get_instruction_path("catchment_boundary"),
         )
 
         # fill combined dem - save results
@@ -635,25 +624,10 @@ class LidarDemGenerator(BathymetryDemGenerator):
         See 'get_lidar_file_list' for where to change this."""
 
         # Only include data in addition to LiDAR if the area_threshold is not covered
-        area_threshold = (
-            10.0 / 100
-        )  # Used to decide if a background DEM or bathymetry should be included
+        area_threshold = 10.0 / 100  # Used to decide if bathymetry should be included
 
         # create the catchment geometry object
-        catchment_dirs = self.get_instruction_path("catchment_boundary")
-        assert type(catchment_dirs) is not list, (
-            f"A list of catchment_boundary's is provided: {catchment_dirs}, "
-            + "where only one is supported."
-        )
-        self.catchment_geometry = geometry.CatchmentGeometry(
-            catchment_dirs, self.get_crs(), self.get_resolution(), foreshore_buffer=2
-        )
-        land_dirs = self.get_vector_paths("land")
-        assert len(land_dirs) == 1, (
-            f"{len(land_dirs)} catchment_boundary's provided, where only one is "
-            f"supported. Specficially land_dirs = {land_dirs}."
-        )
-        self.catchment_geometry.land = land_dirs[0]
+        self.catchment_geometry = self.create_catchment()
 
         # Get LiDAR data file-list - this may involve downloading lidar files
         lidar_dataset_info = self.get_lidar_file_list("open_topography")
@@ -743,7 +717,8 @@ class LidarDemGenerator(BathymetryDemGenerator):
             )
         # Check for and add any bathymetry information
         self.add_bathymetry(
-            area_threshold=area_threshold, catchment_dirs=catchment_dirs
+            area_threshold=area_threshold,
+            catchment_dirs=self.get_instruction_path("catchment_boundary"),
         )
 
         # fill combined dem - save results
@@ -860,9 +835,7 @@ class RiverBathymetryGenerator(BaseProcessor):
             instructions  The json instructions defining the behaviour
         """
 
-        local_cache = pathlib.Path(
-            self.instructions["instructions"]["data_paths"]["local_cache"]
-        )
+        local_cache = pathlib.Path(self.instructions["data_paths"]["local_cache"])
 
         name = self.get_result_file_name(key=key, name=name)
 
@@ -876,7 +849,7 @@ class RiverBathymetryGenerator(BaseProcessor):
             instructions  The json instructions defining the behaviour
         """
 
-        return self.instructions["instructions"]["channel_bathymetry"][key]
+        return self.instructions["rivers"][key]
 
     def get_rec_channel(self) -> bathymetry_estimation.Channel:
         """Read in or create a rec channel."""
@@ -928,7 +901,7 @@ class RiverBathymetryGenerator(BaseProcessor):
             instructions  The json instructions defining the behaviour
         """
 
-        instruction_paths = self.instructions["instructions"]["data_paths"]
+        instruction_paths = self.instructions["data_paths"]
 
         # Extract instructions from JSON
         max_channel_width = self.get_bathymetry_instruction("max_channel_width")
@@ -956,10 +929,8 @@ class RiverBathymetryGenerator(BaseProcessor):
         bathy_apis = None
         if "bathymetry_contours" in instruction_paths:
             bathy_data_paths = instruction_paths.pop("bathymetry_contours")
-        if "bathymetry_contours" in self.instructions["instructions"]["apis"]["linz"]:
-            bathy_apis = self.instructions["instructions"]["apis"]["linz"].pop(
-                "bathymetry_contours"
-            )
+        if "bathymetry_contours" in self.instructions["apis"]["linz"]:
+            bathy_apis = self.instructions["apis"]["linz"].pop("bathymetry_contours")
         # Get the ground DEM
         if not gnd_file.is_file():
             # Create the ground DEM file if this has not be created yet!
@@ -987,7 +958,7 @@ class RiverBathymetryGenerator(BaseProcessor):
             instruction_paths["result_dem"] = str(
                 self.get_result_file_name(key="veg_dem")
             )
-            self.instructions["instructions"]["general"][
+            self.instructions["general"][
                 "lidar_classifications_to_keep"
             ] = self.get_bathymetry_instruction("veg_lidar_classifications_to_keep")
             instruction_paths["dense_dem"] = "dense_veg_dem.nc"
@@ -1007,9 +978,7 @@ class RiverBathymetryGenerator(BaseProcessor):
         if bathy_data_paths is not None:
             instruction_paths["bathymetry_contours"] = bathy_data_paths
         if bathy_apis is not None:
-            self.instructions["instructions"]["apis"]["linz"][
-                "bathymetry_contours"
-            ] = bathy_apis
+            self.instructions["apis"]["linz"]["bathymetry_contours"] = bathy_apis
         return gnd_dem, veg_dem
 
     def align_channel(
@@ -1413,7 +1382,7 @@ class RiverBathymetryGenerator(BaseProcessor):
         fan_polygon.to_file(self.get_result_file_path(key="fan_polygon"))
         fan_bathymetry.to_file(self.get_result_file_path(key="fan_bathymetry"))
 
-    def run(self, instruction_parameters):
+    def run(self, instruction_parameters: pathlib.Path = None):
         """This method extracts a main channel then executes the DemGeneration
         pipeline to produce a DEM before sampling this to extimate width, slope
         and eventually depth."""
@@ -1433,5 +1402,351 @@ class RiverBathymetryGenerator(BaseProcessor):
             self.calculate_river_bed_elevations()
             self.estimate_river_mouth_fan()
         # Update parameter file - in time only update the bits that have been re-run
-        with open(instruction_parameters, "w") as file_pointer:
-            json.dump(self.instructions, file_pointer)
+        if instruction_parameters is not None:
+            with open(instruction_parameters, "w") as file_pointer:
+                json.dump(self.instructions, file_pointer)
+
+
+class DrainBathymetryGenerator(BaseProcessor):
+    """DrainBathymetryGenerator executes a pipeline to pull in OpenStreetMap drain and
+    tunnel information. A DEM is generated of the surrounding area and this used to
+    unblock drains and tunnels.
+
+    """
+
+    OSM_CRS = "EPSG:4326"
+
+    def __init__(self, json_instructions: json, debug: bool = True):
+
+        super(DrainBathymetryGenerator, self).__init__(
+            json_instructions=json_instructions
+        )
+
+        self.debug = debug
+
+    def get_result_file_name(self, key: str) -> str:
+        """Return the name of the file to save."""
+
+        drain_width = self.instructions["drains"]["width"]
+        tag = f"{drain_width}m_width"
+
+        # key to output name mapping
+        name_dictionary = {
+            "dem": f"dem_{tag}.nc",
+            "dense_dem": f"dense_dem_{tag}.nc",
+            "dense_dem_extents": f"dense_extents_{drain_width}m_width.geojson",
+            "open_polygon": f"open_drain_polygon_{tag}.geojson",
+            "open_elevation": f"open_drain_elevation_{tag}.geojson",
+            "closed_polygon": f"closed_drain_polygon_{tag}.geojson",
+            "closed_elevation": f"closed_drain_elevation_{tag}.geojson",
+            "drain_polygon": f"drain_polygon_{tag}.geojson",
+        }
+        return name_dictionary[key]
+
+    def get_result_file_path(self, key: str) -> pathlib.Path:
+        """Return the file name of the file to save with the local cache path.
+
+        Parameters:
+            instructions  The json instructions defining the behaviour
+        """
+
+        local_cache = pathlib.Path(self.instructions["data_paths"]["local_cache"])
+
+        name = self.get_result_file_name(key=key)
+
+        return local_cache / name
+
+    # Get the min in each polygon
+    def minimum_elevation_in_polygon(
+        self, geometry: shapely.geometry.Polygon, dem: xarray.Dataset
+    ):
+        """Select only coordinates within the polygon bounding box before clipping
+        to the bounding box and then returning the minimum elevation."""
+
+        # Index in polygon bbox
+        bbox = geometry.bounds
+
+        # Select DEM within the bounding box - allow ascending or decending dimensions
+        y_slice = (
+            slice(bbox[1], bbox[3])
+            if dem.y[-1] - dem.y[0] > 0
+            else slice(bbox[3], bbox[1])
+        )
+        x_slice = (
+            slice(bbox[0], bbox[2])
+            if dem.x[-1] - dem.x[0] > 0
+            else slice(bbox[2], bbox[0])
+        )
+        small_z = dem.z.sel(x=x_slice, y=y_slice)
+
+        # clip to polygon and return minimum elevation
+        return float(small_z.rio.clip([geometry]).min())
+
+    def estimate_closed_bathymetry(
+        self, drains: geopandas.GeoDataFrame, dem: xarray.Dataset
+    ):
+        """Sample the DEM around the tunnels to estimate the bed elevation."""
+
+        # Check if already generated
+        polygon_file = self.get_result_file_path(key="closed_polygon")
+        elevation_file = self.get_result_file_path(key="closed_elevation")
+        if polygon_file.is_file() and elevation_file.is_file():
+            print("Closed drains already recorded. ")
+            logging.info(
+                "Estimating closed drain and tunnel bed elevation from OpenStreetMap."
+            )
+            return
+        drain_width = self.instructions["drains"]["width"]
+
+        closed_drains = drains[drains["tunnel"]]
+        closed_drains = closed_drains.clip(self.catchment_geometry.catchment)
+        closed_drains["polygon"] = closed_drains.buffer(drain_width)
+
+        # save out the polygons
+        closed_drains.set_geometry("polygon", drop=True)[["geometry"]].to_file(
+            polygon_file
+        )
+
+        elevations = closed_drains.apply(
+            lambda row: self.minimum_elevation_in_polygon(
+                geometry=row["polygon"], dem=dem
+            ),
+            axis=1,
+        )
+
+        # Create sampled points
+        points = closed_drains["geometry"].apply(
+            lambda row: shapely.geometry.MultiPoint(
+                [
+                    # Ensure even spacing across the length of the drain
+                    row.interpolate(
+                        i * row.length / int(numpy.ceil(row.length / drain_width))
+                    )
+                    for i in range(int(numpy.ceil(row.length / drain_width)) + 1)
+                ]
+            )
+        )
+        points = geopandas.GeoDataFrame(
+            {
+                "elevation": elevations,
+                "geometry": points,
+            },
+            crs=2193,
+        )
+
+        # Save bathymetry
+        points.explode(ignore_index=True).to_file(elevation_file)
+
+    def estimate_open_bathymetry(
+        self, drains: geopandas.GeoDataFrame, dem: xarray.Dataset
+    ):
+        """Sample the DEM along the open waterways to enforce a decreasing elevation."""
+
+        # Check if already generated
+        polygon_file = self.get_result_file_path(key="open_polygon")
+        elevation_file = self.get_result_file_path(key="open_elevation")
+        if polygon_file.is_file() and elevation_file.is_file():
+            print("Open drains already recorded. ")
+            logging.info(
+                "Estimating open drain and tunnel bed elevation from OpenStreetMap."
+            )
+            return
+        drain_width = self.instructions["drains"]["width"]
+
+        open_drains = drains[numpy.logical_not(drains["tunnel"])]
+        open_drains = open_drains.clip(self.catchment_geometry.catchment)
+
+        # save out the polygons
+        open_drains.buffer(drain_width).to_file(polygon_file)
+
+        # sample the ends of the drain - sample over a polygon at each end
+        polygons = open_drains.interpolate(0).buffer(drain_width)
+        open_drains["start_elevation"] = polygons.apply(
+            lambda geometry: self.minimum_elevation_in_polygon(
+                geometry=geometry, dem=dem
+            )
+        )
+        polygons = open_drains.interpolate(open_drains.length).buffer(drain_width)
+        open_drains["end_elevation"] = polygons.geometry.apply(
+            lambda geometry: self.minimum_elevation_in_polygon(
+                geometry=geometry, dem=dem
+            )
+        )
+
+        # Sample down-slope location along each line
+        def sample_location_down_slope(row, drain_width):
+            """Sample evenly space poinst along polylines in the downslope direction"""
+
+            if row["start_elevation"] > row["end_elevation"]:
+                sample_range = range(
+                    int(numpy.ceil(row.geometry.length / drain_width)) + 1
+                )
+            else:
+                sample_range = range(
+                    int(numpy.ceil(row.geometry.length / drain_width)), -1, -1
+                )
+            sampled_multipoints = shapely.geometry.MultiPoint(
+                [
+                    # Ensure even spacing across the length of the drain
+                    row.geometry.interpolate(
+                        i
+                        * row.geometry.length
+                        / int(numpy.ceil(row.geometry.length / drain_width))
+                    )
+                    for i in sample_range
+                ]
+            )
+
+            return sampled_multipoints
+
+        points = open_drains.apply(
+            lambda row: sample_location_down_slope(row=row, drain_width=drain_width),
+            axis=1,
+        )
+
+        # Sample elevation enforcing no local elevation gain
+        bathymetries = []
+        for drain_index, row in enumerate(points):
+            row_bathymetries = [
+                max(
+                    open_drains.iloc[drain_index]["start_elevation"],
+                    open_drains.iloc[drain_index]["end_elevation"],
+                )
+            ]
+            for point in row.geoms[1:]:
+                elevation = float(dem.z.sel(x=point.x, y=point.y, method="nearest"))
+                row_bathymetries.append(
+                    elevation
+                    if elevation < row_bathymetries[-1]
+                    else row_bathymetries[-1]
+                )
+            bathymetries.extend(row_bathymetries)
+        points = geopandas.GeoDataFrame(
+            {
+                "elevation": bathymetries,
+                "geometry": points.explode(ignore_index=True),
+            },
+            crs=open_drains.crs,
+        )
+
+        # Save bathymetry
+        points.to_file(elevation_file)
+
+    def create_dem(self, drains: geopandas.GeoDataFrame) -> xarray.Dataset:
+        """Create and return a DEM at a resolution 1.5x the drain width."""
+
+        dem_file = self.get_result_file_path(key="dem")
+
+        # Load already created DEM file in
+        if dem_file.is_file():
+            dem = rioxarray.rioxarray.open_rasterio(dem_file, masked=True).squeeze(
+                "band", drop=True
+            )
+        else:  # Create DEM over the drain region
+
+            drain_width = self.instructions["drains"]["width"]
+
+            # Save out the drain polygons as a file with a single multipolygon
+            drain_polygon_file = self.get_result_file_path(key="drain_polygon")
+            drain_polygon = drains.buffer(drain_width)
+            drain_polygon = geopandas.GeoDataFrame(
+                geometry=[shapely.ops.unary_union(drain_polygon.geometry.array)],
+                crs=drain_polygon.crs,
+            )
+            drain_polygon = drain_polygon.clip(self.catchment_geometry.catchment)
+            drain_polygon.to_file(
+                drain_polygon_file
+            )  # gpd.overlay(g1, g1, how='union')
+
+            # Create DEM generation instructions
+            dem_instructions = self.instructions
+            dem_instruction_paths = dem_instructions["data_paths"]
+            dem_instruction_paths["catchment_boundary"] = self.get_result_file_name(
+                key="drain_polygon"
+            )
+            dem_instruction_paths["result_dem"] = self.get_result_file_name(key="dem")
+            dem_instruction_paths["dense_dem"] = self.get_result_file_name(
+                key="dense_dem"
+            )
+            dem_instruction_paths["dense_dem_extents"] = self.get_result_file_name(
+                "dense_dem_extents"
+            )
+
+            # Create the ground DEM file if this has not be created yet!
+            print("Generating drain DEM.")
+            runner = LidarDemGenerator(self.instructions)
+            runner.run()
+            dem = runner.dense_dem.dem
+        return dem
+
+    def download_osm_values(self) -> bool:
+        """Download OpenStreetMap drains and tunnels within the catchment BBox."""
+
+        # Create area to query within
+        self.catchment_geometry = self.create_catchment()
+        bbox_lat_long = self.catchment_geometry.catchment.to_crs(self.OSM_CRS)
+
+        # Construct query
+        query = OSMPythonTools.overpass.overpassQueryBuilder(
+            bbox=[
+                bbox_lat_long.bounds.miny[0],
+                bbox_lat_long.bounds.minx[0],
+                bbox_lat_long.bounds.maxy[0],
+                bbox_lat_long.bounds.maxx[0],
+            ],
+            elementType="way",
+            selector="waterway",
+            out="body",
+            includeGeometry=True,
+        )
+
+        # Perform query
+        overpass = OSMPythonTools.overpass.Overpass()
+        rivers = overpass.query(query)
+
+        # Extract information
+        element_dict = {
+            "geometry": [],
+            "OSM_id": [],
+            "waterway": [],
+            "tunnel": [],
+        }
+
+        for element in rivers.elements():
+            element_dict["geometry"].append(element.geometry())
+            element_dict["OSM_id"].append(element.id())
+            element_dict["waterway"].append(element.tags()["waterway"])
+            element_dict["tunnel"].append("tunnel" in element.tags().keys())
+        drains = geopandas.GeoDataFrame(element_dict, crs=self.OSM_CRS).to_crs(
+            self.catchment_geometry.crs["horizontal"]
+        )
+
+        # Remove rivers and polygons
+        drains = drains[drains["waterway"] != "river"]
+        drains = drains[drains.geometry.type == "LineString"]
+
+        return drains
+
+    def run(self, instruction_parameters: pathlib.Path = None):
+        """This method runs a pipeline that:
+        * downloads all tunnels and drains within a catchment.
+        * creates and samples a DEM around each feature to estimate the bed
+          elevation.
+        * saves out extents and bed elevations of the drain and tunnel network"""
+
+        logging.info("Estimating drain and tunnel bed elevation from OpenStreetMap.")
+
+        # Download drains and tunnels from OSM
+        drains = self.download_osm_values()
+
+        # Create a DEM where the drains and tunnels are
+        dem = self.create_dem(drains)
+
+        # Estimate the drain and tunnel bed elevations from the DEM
+        self.estimate_closed_bathymetry(drains=drains, dem=dem)
+        self.estimate_open_bathymetry(drains=drains, dem=dem)
+
+        # print out parameters actually run
+        if instruction_parameters is not None:
+            with open(instruction_parameters, "w") as file_pointer:
+                json.dump(self.instructions, file_pointer)
