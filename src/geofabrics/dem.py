@@ -1280,7 +1280,8 @@ def load_tiles_in_chunk(
     chunk_region_to_tile: geopandas.GeoDataFrame,
     catchment_geometry: geometry.CatchmentGeometry,
 ):
-    """Read in all LiDAR files within the chunked region - clipped to within the region within which to rasterise."""
+    """Read in all LiDAR files within the chunked region - clipped to within the region
+    within which to rasterise."""
 
     # Clip the tile indices to only include those within the chunk region
     chunk_tile_index_extents = tile_index_extents.drop(columns=["index_right"])
@@ -1290,7 +1291,8 @@ def load_tiles_in_chunk(
     chunk_tile_index_extents = chunk_tile_index_extents.reset_index(drop=True)
 
     logging.info(
-        f"Reading all {len(chunk_tile_index_extents[tile_index_name_column])} files in chunk."
+        f"Reading all {len(chunk_tile_index_extents[tile_index_name_column])} files in"
+        " chunk."
     )
 
     # Initialise LiDAR points
