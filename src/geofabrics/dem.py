@@ -906,6 +906,7 @@ class DenseDemFromTiles(DenseDem):
                 "files. Ideally it should include as many tiles can easily be read in by on core. You will have to equate"
                 " The tile extents with chunk size by extents / resolution. "
             )
+            assert len(lidar_files) > 1, "There are no LiDAR files specified"
             self._dense_dem = self._add_tiled_lidar_chunked(
                 lidar_files=lidar_files,
                 tile_index_file=tile_index_file,
