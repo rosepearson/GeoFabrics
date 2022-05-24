@@ -272,12 +272,14 @@ class DenseDem(abc.ABC):
         if self._offshore_dem is None and self._river_dem is None:
             combined_dem = self.dense_dem
         elif self._river_dem is None:
-            # method='first' or 'last'; use method='first' as `DenseDemFromFiles.dense_dem` clipped to extents
+            # method='first' or 'last'; use method='first' as
+            # `DenseDemFromFiles.dense_dem` clipped to extents
             combined_dem = rioxarray.merge.merge_datasets(
                 [self.dense_dem, self._offshore_dem], method="first"
             )
         elif self._offshore_dem is None:
-            # method='first' or 'last'; use method='first' as `DenseDemFromFiles.dense_dem` clipped to extents
+            # method='first' or 'last'; use method='first' as
+            # `DenseDemFromFiles.dense_dem` clipped to extents
             combined_dem = rioxarray.merge.merge_datasets(
                 [self._river_dem, self.dense_dem], method="first"
             )
@@ -520,7 +522,7 @@ class DenseDem(abc.ABC):
             points=(river_points["X"], river_points["Y"]),
             values=river_points["Z"],
             xi=(flat_x_masked, flat_y_masked),
-            method="cubic",  #  cubic, linear
+            method="cubic",  # cubic, linear
         )
         # Set the interpolated value in the DEM
         flat_z[mask_z] = flat_z_masked
@@ -531,8 +533,8 @@ class DenseDem(abc.ABC):
 
 
 class DenseDemFromFiles(DenseDem):
-    """A class to manage loading in an already created and saved dense DEM that has yet to have an offshore DEM
-    associated with it.
+    """A class to manage loading in an already created and saved dense DEM that has yet
+    to have an offshore DEM associated with it.
 
     Parameters
     ----------
