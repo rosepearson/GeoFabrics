@@ -7,7 +7,7 @@ channels:
 dependencies:
   - pip
   - gdal
-  - geopandas
+  - geopandas >=0.10.2
   - rioxarray
   - pdal >=2.3
   - dask

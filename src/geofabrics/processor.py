@@ -419,7 +419,7 @@ class BaseProcessor(abc.ABC):
             )
             dataset_prefix = self.lidar_fetcher.dataset_prefixes[lidar_dataset_index]
             lidar_dataset_info["file_paths"] = sorted(
-                pathlib.Path(self.lidar_fetcher.cache_path / dataset_prefix).glob(
+                pathlib.Path(self.lidar_fetcher.cache_path / dataset_prefix).rglob(
                     "*.laz"
                 )
             )

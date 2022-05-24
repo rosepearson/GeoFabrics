@@ -272,12 +272,14 @@ class DenseDem(abc.ABC):
         if self._offshore_dem is None and self._river_dem is None:
             combined_dem = self.dense_dem
         elif self._river_dem is None:
-            # method='first' or 'last'; use method='first' as `DenseDemFromFiles.dense_dem` clipped to extents
+            # method='first' or 'last'; use method='first' as
+            # `DenseDemFromFiles.dense_dem` clipped to extents
             combined_dem = rioxarray.merge.merge_datasets(
                 [self.dense_dem, self._offshore_dem], method="first"
             )
         elif self._offshore_dem is None:
-            # method='first' or 'last'; use method='first' as `DenseDemFromFiles.dense_dem` clipped to extents
+            # method='first' or 'last'; use method='first' as
+            # `DenseDemFromFiles.dense_dem` clipped to extents
             combined_dem = rioxarray.merge.merge_datasets(
                 [self._river_dem, self.dense_dem], method="first"
             )
@@ -520,7 +522,7 @@ class DenseDem(abc.ABC):
             points=(river_points["X"], river_points["Y"]),
             values=river_points["Z"],
             xi=(flat_x_masked, flat_y_masked),
-            method="cubic",  #  cubic, linear
+            method="cubic",  # cubic, linear
         )
         # Set the interpolated value in the DEM
         flat_z[mask_z] = flat_z_masked
@@ -531,8 +533,8 @@ class DenseDem(abc.ABC):
 
 
 class DenseDemFromFiles(DenseDem):
-    """A class to manage loading in an already created and saved dense DEM that has yet to have an offshore DEM
-    associated with it.
+    """A class to manage loading in an already created and saved dense DEM that has yet
+    to have an offshore DEM associated with it.
 
     Parameters
     ----------
@@ -906,6 +908,7 @@ class DenseDemFromTiles(DenseDem):
                 "files. Ideally it should include as many tiles can easily be read in by on core. You will have to equate"
                 " The tile extents with chunk size by extents / resolution. "
             )
+            assert len(lidar_files) > 1, "There are no LiDAR files specified"
             self._dense_dem = self._add_tiled_lidar_chunked(
                 lidar_files=lidar_files,
                 tile_index_file=tile_index_file,
@@ -1279,7 +1282,8 @@ def load_tiles_in_chunk(
     chunk_region_to_tile: geopandas.GeoDataFrame,
     catchment_geometry: geometry.CatchmentGeometry,
 ):
-    """Read in all LiDAR files within the chunked region - clipped to within the region within which to rasterise."""
+    """Read in all LiDAR files within the chunked region - clipped to within the region
+    within which to rasterise."""
 
     # Clip the tile indices to only include those within the chunk region
     chunk_tile_index_extents = tile_index_extents.drop(columns=["index_right"])
@@ -1289,7 +1293,8 @@ def load_tiles_in_chunk(
     chunk_tile_index_extents = chunk_tile_index_extents.reset_index(drop=True)
 
     logging.info(
-        f"Reading all {len(chunk_tile_index_extents[tile_index_name_column])} files in chunk."
+        f"Reading all {len(chunk_tile_index_extents[tile_index_name_column])} files in"
+        " chunk."
     )
 
     # Initialise LiDAR points
