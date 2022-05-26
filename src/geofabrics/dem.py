@@ -570,6 +570,7 @@ class DenseDemFromFiles(DenseDem):
         # Ensure all values outside the exents are nan as that defines the dense extents
         # and clip the dense dem to the catchment extents to ensure performance
         dense_dem = dense_dem.rio.clip(catchment_geometry.catchment.geometry, drop=True)
+        dense_dem = dense_dem.rio.clip(extents.geometry, drop=False)
 
         # Setup the DenseDem class
         super(DenseDemFromFiles, self).__init__(
@@ -1157,15 +1158,14 @@ class DenseDemFromTiles(DenseDem):
         xy_out[:, 0] = grid_x[mask]
         xy_out[:, 1] = grid_y[mask]
 
-        # Perform the specified averaging over the dense DEM within the extents of this
-        # point cloud tile
+        # Perform specified averaging from the reference DEM where there is no data
         z_flat = rasterise_points(
             point_cloud=tile_points, xy_out=xy_out, options=raster_options
         )
         self.dense_dem.z.data[mask] = z_flat
-        self.dense_dem.source_class.data[mask] = self.SOURCE_CLASSIFICATION[
-            "reference DEM"
-        ]
+        self.dense_dem.source_class.data[
+            mask & numpy.logical_not(numpy.isnan(self.dense_dem.z.data))
+        ] = self.SOURCE_CLASSIFICATION["reference DEM"]
 
         # Update the dense DEM extents
         self._extents = self._calculate_dense_extents()
