@@ -23,22 +23,25 @@ from src.geofabrics import processor
 
 
 class ProcessorLocalFilesOffshoreResTest(unittest.TestCase):
-    """A class to test the basic DemGenerator processor class for a simple example with land, offshore bathymetry, and
-    LiDAR using the data generated in the set-up routine and referenced in the instruction.json
+    """A class to test the basic DemGenerator processor class for a simple example with
+    land, offshore bathymetry, and LiDAR using the data generated in the set-up routine
+    and referenced in the instruction.json.
 
-    The dem.DenseDem.CACHE_SIZE is exceded and the offshore sampled points are re-sampled at a lower resolution.
+    The dem.DenseDem.CACHE_SIZE is exceded and the offshore sampled points are
+    re-sampled at a lower resolution.
 
     Tests run include:
-        1. test_result_dem  Check the generated DEM matches the benchmark DEM exactly in Windows, or approximately in
-        Linux. It aims to ensure the offshore resolution is reduced.
+        1. test_result_dem  Check the generated DEM matches the benchmark DEM exactly in
+           Windows, or approximately in Linux. It aims to ensure the offshore resolution
+           is reduced.
     """
 
     LAS_GROUND = 2
 
     @classmethod
     def setUpClass(cls):
-        """Create a cache directory and CatchmentGeometry object for use in the tests and also download the files used
-        in the tests."""
+        """Create a cache directory and CatchmentGeometry object for use in the tests
+        and also download the files used in the tests."""
 
         test_path = pathlib.Path().cwd() / pathlib.Path(
             "tests/test_processor_local_files_limited_offshore_res"
@@ -113,7 +116,8 @@ class ProcessorLocalFilesOffshoreResTest(unittest.TestCase):
         x1 = 3050
         y0 = (
             -5
-        )  # drop offshore LiDAR is True in the instruction file so only LiDAR in the foreshore will be kept
+        )  # drop offshore LiDAR is True in the instruction file so only LiDAR in the
+        # foreshore will be kept
         y1 = 5
         dxy = 0.1
         grid_lidar_x, grid_lidar_y = numpy.meshgrid(
@@ -152,7 +156,8 @@ class ProcessorLocalFilesOffshoreResTest(unittest.TestCase):
 
     @classmethod
     def tearDownClass(cls):
-        """Remove created files in the cache directory as part of the testing process at the end of the test."""
+        """Remove created files in the cache directory as part of the testing process at
+        the end of the test."""
 
         cls.clean_data_folder()
 
@@ -184,13 +189,14 @@ class ProcessorLocalFilesOffshoreResTest(unittest.TestCase):
         file_path = self.cache_dir / self.instructions["data_paths"]["result_dem"]
         with rioxarray.rioxarray.open_rasterio(file_path, masked=True) as test_dem:
             test_dem.load()
-        # Compare DEMs - load from file as rioxarray.rioxarray.open_rasterio ignores index order
+        # Compare DEMs - load from file as rioxarray.rioxarray.open_rasterio ignores
+        # index order
         diff_array = test_dem.z.data - benchmark_dem.z.data
         logging.info(f"DEM array diff is: {diff_array[diff_array != 0]}")
         numpy.testing.assert_array_equal(
             test_dem.z.data,
             benchmark_dem.z.data,
-            err_msg="The generated result_dem has different data from the benchmark_dem",
+            err_msg="The generated result_dem differs from the benchmark_dem",
         )
 
         # explicitly free memory as xarray seems to be hanging onto memory
@@ -212,7 +218,8 @@ class ProcessorLocalFilesOffshoreResTest(unittest.TestCase):
         file_path = self.cache_dir / self.instructions["data_paths"]["result_dem"]
         with rioxarray.rioxarray.open_rasterio(file_path, masked=True) as test_dem:
             test_dem.load()
-        # Compare DEMs - load both from file as rioxarray.rioxarray.open_rasterio ignores index order
+        # Compare DEMs - load both from file as rioxarray.rioxarray.open_rasterio
+        # ignores index order
         diff_array = test_dem.z.data - benchmark_dem.z.data
         logging.info(f"DEM array diff is: {diff_array[diff_array != 0]}")
         numpy.testing.assert_array_almost_equal(
