@@ -516,10 +516,9 @@ class RawLidarDemGenerator(BaseProcessor):
         lidar_dataset_info = self.get_lidar_file_list("open_topography")
 
         # setup dense DEM and catchment LiDAR objects
-        self.dense_dem = dem.RawDenseDem(
+        self.dense_dem = dem.RawDem(
             catchment_geometry=self.catchment_geometry,
             drop_offshore_lidar=self.get_instruction_general("drop_offshore_lidar"),
-            interpolation_method=self.get_instruction_general("interpolation_method"),
             lidar_interpolation_method=self.get_instruction_general(
                 "lidar_interpolation_method"
             ),
@@ -586,7 +585,7 @@ class RawLidarDemGenerator(BaseProcessor):
                     tile_extent=self.reference_dem.extents,
                 )
         # save dense DEM and extents
-        self.dense_dem.dense_dem.to_netcdf(
+        self.dense_dem.dem.to_netcdf(
             self.get_instruction_path("dense_dem"), format="NETCDF4", engine="netcdf4"
         )
         if self.dense_dem.extents is not None:
