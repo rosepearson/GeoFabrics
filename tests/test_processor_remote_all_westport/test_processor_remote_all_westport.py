@@ -110,7 +110,9 @@ class ProcessorRemoteAllWestportTest(unittest.TestCase):
         catchment.to_file(catchment_file)
 
         # Run pipeline - download files and generated DEM
-        runner = processor.LidarDemGenerator(cls.instructions)
+        runner = processor.RawLidarDemGenerator(cls.instructions)
+        runner.run()
+        runner = processor.BathymetryDemGenerator(cls.instructions)
         runner.run()
 
     @classmethod

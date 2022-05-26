@@ -566,7 +566,6 @@ class DenseDemFromFiles(DenseDem):
 
         # Ensure all values outside the exents are nan as that defines the dense extents
         # and clip the dense dem to the catchment extents to ensure performance
-        dense_dem = dense_dem.rio.clip(extents.geometry, drop=True)
         dense_dem = dense_dem.rio.clip(catchment_geometry.catchment.geometry, drop=True)
 
         # Setup the DenseDem class

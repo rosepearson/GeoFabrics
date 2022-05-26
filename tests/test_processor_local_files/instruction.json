@@ -1,27 +1,27 @@
 {
-"output": {
-	"crs": {
-		"horizontal": 2193,
-		"vertical": 7839
+	"output": {
+		"crs": {
+			"horizontal": 2193,
+			"vertical": 7839
+		},
+		"grid_params": {
+			"resolution": 10
+		}
 	},
-	"grid_params": {
-		"resolution": 10
+	"data_paths": {
+		"local_cache": "tests/test_processor_local_files/data",
+		"catchment_boundary": "catchment_boundary.geojson",
+		"land": "land.geojson",
+		"lidars": ["lidar.laz"],
+		"reference_dems": ["reference_dem.nc"],
+		"bathymetry_contours": ["bathymetry.geojson"],
+		"result_dem": "test_dem.nc",
+		"benchmark_dem": "benchmark_dem.nc"
+	},
+	"general": {
+		"set_dem_shoreline": true,
+		"drop_offshore_lidar": false,
+		"lidar_classifications_to_keep": [2],
+		"interpolation_method": "linear"
 	}
-},
-"data_paths": {
-	"local_cache": "tests/test_processor_local_files/data",
-	"catchment_boundary": "catchment_boundary.geojson",
-	"land": "land.geojson",
-	"lidars": ["lidar.laz"],
-	"reference_dems": ["reference_dem.nc"],
-	"bathymetry_contours": ["bathymetry.geojson"],
-	"result_dem": "test_dem.nc",
-	"benchmark_dem": "benchmark_dem.nc"
-},
-"general": {
-	"set_dem_shoreline": true,
-	"drop_offshore_lidar": false,
-	"lidar_classifications_to_keep": [2],
-	"interpolation_method": "linear"
-}
 }

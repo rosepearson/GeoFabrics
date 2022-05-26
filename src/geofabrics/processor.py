@@ -463,135 +463,19 @@ class BaseProcessor(abc.ABC):
         raise NotImplementedError("NETLOC_API must be instantiated in the child class")
 
 
-class BathymetryDemGenerator(BaseProcessor):
-    """BathymetryDemGenerator executes a pipeline for loading in a Dense DEM and extents
-    before interpolating offshore DEM values. The data and pipeline logic is defined in
-    the json_instructions file.
-
-    The `BathymetryDemGenerator` class contains several important class members:
-     * catchment_geometry - Defines all relevant regions in a catchment required in the
-       generation of a DEM as polygons.
-     * dense_dem - Defines the hydrologically conditioned DEM as a combination of tiles
-       from LiDAR and interpolated from bathymetry.
-     * bathy_contours - This object defines the bathymetry vectors used by the dense_dem
-       to define the DEM offshore.
-
-    See the README.md for usage examples or GeoFabrics/tests/ for examples of usage and
-    an instruction file
-    """
-
-    def __init__(self, json_instructions: json):
-
-        super(BathymetryDemGenerator, self).__init__(
-            json_instructions=json_instructions
-        )
-
-        self.dense_dem = None
-        self.bathy_contours = None
-
-    def add_bathymetry(self, area_threshold: float, catchment_dirs: pathlib.Path):
-        """Add in any bathymetry data - ocean or river"""
-
-        # Load in bathymetry and interpolate offshore if significant offshore is not
-        # covered by LiDAR
-        area_without_lidar = self.catchment_geometry.offshore_without_lidar(
-            self.dense_dem.extents
-        ).geometry.area.sum()
-        if (
-            self.check_vector("bathymetry_contours")
-            and area_without_lidar
-            > self.catchment_geometry.offshore.area.sum() * area_threshold
-        ):
-
-            # Get the bathymetry data directory
-            bathy_contour_dirs = self.get_vector_paths("bathymetry_contours")
-            assert len(bathy_contour_dirs) == 1, (
-                f"{len(bathy_contour_dirs)} bathymetry_contours's provided. "
-                f"Specficially {catchment_dirs}. Support has not yet been added for "
-                "multiple datasets."
-            )
-
-            logging.info(f"Incorporating Bathymetry: {bathy_contour_dirs}")
-
-            # Load in bathymetry
-            self.bathy_contours = geometry.BathymetryContours(
-                bathy_contour_dirs[0],
-                self.catchment_geometry,
-                z_label=self.get_instruction_general("bathymetry_contours_z_label"),
-                exclusion_extent=self.dense_dem.extents,
-            )
-
-            # interpolate
-            self.dense_dem.interpolate_offshore(self.bathy_contours)
-        # Load in river bathymetry and incorporate where discernable at the resolution
-        if self.check_vector("river_polygons") and self.check_vector(
-            "river_bathymetry"
-        ):
-
-            # Get the polygons and bathymetry and can be multiple
-            bathy_dirs = self.get_vector_paths("river_bathymetry")
-            poly_dirs = self.get_vector_paths("river_polygons")
-
-            logging.info(f"Incorporating river Bathymetry: {bathy_dirs}")
-
-            # Load in bathymetry
-            self.river_bathy = geometry.RiverBathymetryPoints(
-                points_files=bathy_dirs,
-                polygon_files=poly_dirs,
-                catchment_geometry=self.catchment_geometry,
-                z_labels=self.get_instruction_general("river_bathy_z_label"),
-            )
-
-            # Call interpolate river on the DEM - the class checks to see if any pixels
-            # actually fall inside the polygon
-            self.dense_dem.interpolate_river_bathymetry(
-                river_bathymetry=self.river_bathy
-            )
-
-    def run(self):
-        """This method executes the geofabrics generation pipeline to produce geofabric
-        derivatives."""
-
-        # Only include data in addition to LiDAR if the area_threshold is not covered
-        area_threshold = 10.0 / 100  # Used to decide if bathymetry should be included
-
-        # create the catchment geometry object
-        self.catchment_geometry = self.create_catchment()
-
-        # setup dense DEM and catchment LiDAR objects
-        self.dense_dem = dem.DenseDemFromFiles(
-            catchment_geometry=self.catchment_geometry,
-            dense_dem_path=self.get_instruction_path("dense_dem"),
-            extents_path=self.get_instruction_path("dense_dem_extents"),
-            interpolation_method=self.get_instruction_general("interpolation_method"),
-        )
-
-        # Check for and add any bathymetry information
-        self.add_bathymetry(
-            area_threshold=area_threshold,
-            catchment_dirs=self.get_instruction_path("catchment_boundary"),
-        )
-
-        # fill combined dem - save results
-        self.dense_dem.dem.to_netcdf(
-            self.get_instruction_path("result_dem"), format="NETCDF4", engine="netcdf4"
-        )
-
-
-class LidarDemGenerator(BathymetryDemGenerator):
-    """LidarDemGenerator executes a pipeline for creating a hydrologically conditioned
-    DEM from LiDAR and optionally a reference DEM and/or bathymetry contours. The data
-    and pipeline logic is defined in the json_instructions file.
+class RawLidarDemGenerator(BaseProcessor):
+    """RawLidarDemGenerator executes a pipeline for creating a DEM from LiDAR and
+    optionally a reference DEM. The data sources and pipeline logic is defined in the
+    json_instructions file.
 
     The `DemGenerator` class contains several important class members:
+     * instructions - Defines the pipeline execution instructions
      * catchment_geometry - Defines all relevant regions in a catchment required in the
        generation of a DEM as polygons.
      * dense_dem - Defines the hydrologically conditioned DEM as a combination of tiles
        from LiDAR and interpolated from bathymetry.
      * reference_dem - This optional object defines a background DEM that may be used to
        fill on land gaps in the LiDAR.
-     * bathy_contours - This optional object defines the bathymetry vectors used by the
-       dense_dem to define the DEM offshore.
 
     See the README.md for usage examples or GeoFabrics/tests/ for examples of usage and
     an instruction file.
@@ -599,11 +483,10 @@ class LidarDemGenerator(BathymetryDemGenerator):
 
     def __init__(self, json_instructions: json):
 
-        super(LidarDemGenerator, self).__init__(json_instructions=json_instructions)
+        super(RawLidarDemGenerator, self).__init__(json_instructions=json_instructions)
 
         self.dense_dem = None
         self.reference_dem = None
-        self.bathy_contours = None
 
     def create_metadata(self) -> dict:
         """A clase to create metadata to be added as netCDF attributes."""
@@ -715,6 +598,111 @@ class LidarDemGenerator(BathymetryDemGenerator):
                 "In processor.DemGenerator - no LiDAR extents exist so no extents file "
                 "written"
             )
+
+
+class BathymetryDemGenerator(BaseProcessor):
+    """BathymetryDemGenerator executes a pipeline for loading in a Dense DEM and extents
+    before interpolating offshore DEM values. The data and pipeline logic is defined in
+    the json_instructions file.
+
+    The `BathymetryDemGenerator` class contains several important class members:
+     * catchment_geometry - Defines all relevant regions in a catchment required in the
+       generation of a DEM as polygons.
+     * dense_dem - Defines the hydrologically conditioned DEM as a combination of tiles
+       from LiDAR and interpolated from bathymetry.
+     * bathy_contours - This object defines the bathymetry vectors used by the dense_dem
+       to define the DEM offshore.
+
+    See the README.md for usage examples or GeoFabrics/tests/ for examples of usage and
+    an instruction file
+    """
+
+    def __init__(self, json_instructions: json):
+
+        super(BathymetryDemGenerator, self).__init__(
+            json_instructions=json_instructions
+        )
+
+        self.dense_dem = None
+        self.bathy_contours = None
+
+    def add_bathymetry(self, area_threshold: float, catchment_dirs: pathlib.Path):
+        """Add in any bathymetry data - ocean or river"""
+
+        # Load in bathymetry and interpolate offshore if significant offshore is not
+        # covered by LiDAR
+        area_without_lidar = self.catchment_geometry.offshore_without_lidar(
+            self.dense_dem.extents
+        ).geometry.area.sum()
+        if (
+            self.check_vector("bathymetry_contours")
+            and area_without_lidar
+            > self.catchment_geometry.offshore.area.sum() * area_threshold
+        ):
+
+            # Get the bathymetry data directory
+            bathy_contour_dirs = self.get_vector_paths("bathymetry_contours")
+            assert len(bathy_contour_dirs) == 1, (
+                f"{len(bathy_contour_dirs)} bathymetry_contours's provided. "
+                f"Specficially {catchment_dirs}. Support has not yet been added for "
+                "multiple datasets."
+            )
+
+            logging.info(f"Incorporating Bathymetry: {bathy_contour_dirs}")
+
+            # Load in bathymetry
+            self.bathy_contours = geometry.BathymetryContours(
+                bathy_contour_dirs[0],
+                self.catchment_geometry,
+                z_label=self.get_instruction_general("bathymetry_contours_z_label"),
+                exclusion_extent=self.dense_dem.extents,
+            )
+
+            # interpolate
+            self.dense_dem.interpolate_offshore(self.bathy_contours)
+        # Load in river bathymetry and incorporate where discernable at the resolution
+        if self.check_vector("river_polygons") and self.check_vector(
+            "river_bathymetry"
+        ):
+
+            # Get the polygons and bathymetry and can be multiple
+            bathy_dirs = self.get_vector_paths("river_bathymetry")
+            poly_dirs = self.get_vector_paths("river_polygons")
+
+            logging.info(f"Incorporating river Bathymetry: {bathy_dirs}")
+
+            # Load in bathymetry
+            self.river_bathy = geometry.RiverBathymetryPoints(
+                points_files=bathy_dirs,
+                polygon_files=poly_dirs,
+                catchment_geometry=self.catchment_geometry,
+                z_labels=self.get_instruction_general("river_bathy_z_label"),
+            )
+
+            # Call interpolate river on the DEM - the class checks to see if any pixels
+            # actually fall inside the polygon
+            self.dense_dem.interpolate_river_bathymetry(
+                river_bathymetry=self.river_bathy
+            )
+
+    def run(self):
+        """This method executes the geofabrics generation pipeline to produce geofabric
+        derivatives."""
+
+        # Only include data in addition to LiDAR if the area_threshold is not covered
+        area_threshold = 10.0 / 100  # Used to decide if bathymetry should be included
+
+        # create the catchment geometry object
+        self.catchment_geometry = self.create_catchment()
+
+        # setup dense DEM and catchment LiDAR objects
+        self.dense_dem = dem.DenseDemFromFiles(
+            catchment_geometry=self.catchment_geometry,
+            dense_dem_path=self.get_instruction_path("dense_dem"),
+            extents_path=self.get_instruction_path("dense_dem_extents"),
+            interpolation_method=self.get_instruction_general("interpolation_method"),
+        )
+
         # Check for and add any bathymetry information
         self.add_bathymetry(
             area_threshold=area_threshold,
@@ -940,7 +928,7 @@ class RiverBathymetryGenerator(BaseProcessor):
             )
             instruction_paths["dense_dem"] = "dense_gnd_dem.nc"
             instruction_paths["dense_dem_extents"] = "dense_gnd_extents.geojson"
-            runner = LidarDemGenerator(self.instructions)
+            runner = RawLidarDemGenerator(self.instructions)
             runner.run()
             gnd_dem = runner.dense_dem.dem
             instruction_paths.pop("dense_dem")
@@ -963,7 +951,7 @@ class RiverBathymetryGenerator(BaseProcessor):
             ] = self.get_bathymetry_instruction("veg_lidar_classifications_to_keep")
             instruction_paths["dense_dem"] = "dense_veg_dem.nc"
             instruction_paths["dense_dem_extents"] = "dense_veg_extents.geojson"
-            runner = LidarDemGenerator(self.instructions)
+            runner = RawLidarDemGenerator(self.instructions)
             runner.run()
             veg_dem = runner.dense_dem.dem
             instruction_paths.pop("dense_dem")
@@ -1674,7 +1662,7 @@ class DrainBathymetryGenerator(BaseProcessor):
 
             # Create the ground DEM file if this has not be created yet!
             print("Generating drain DEM.")
-            runner = LidarDemGenerator(self.instructions)
+            runner = RawLidarDemGenerator(self.instructions)
             runner.run()
             dem = runner.dense_dem.dem
         return dem

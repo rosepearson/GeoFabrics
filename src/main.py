@@ -143,6 +143,9 @@ def launch_processor(args):
             print("Run processor.LidarDemGenerator")
             runner = processor.LidarDemGenerator(run_instructions)
             runner.run()
+            print("Run processor.BathymetryDemGenerator")
+            runner = processor.BathymetryDemGenerator(run_instructions)
+            runner.run()
         check_for_benchmarks(run_instructions, runner)
     end_time = time.time()
 

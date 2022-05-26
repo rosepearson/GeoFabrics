@@ -17,7 +17,7 @@
 		"bathymetry_contours": ["bathymetry.geojson"],
 		"dense_dem_extents": "extents.geojson",
 		"result_dem": "dense_dem.nc",
-		"final_result_dem": "test_dem.nc",
+		"result_dem": "test_dem.nc",
 		"benchmark_dem": "benchmark_dem.nc"
 	},
 	"general": {

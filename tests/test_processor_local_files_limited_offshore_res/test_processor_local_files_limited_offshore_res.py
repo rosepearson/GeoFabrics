@@ -145,7 +145,9 @@ class ProcessorLocalFilesOffshoreResTest(unittest.TestCase):
         pdal_pipeline.execute()
 
         # Run geofabrics processing pipeline
-        runner = processor.LidarDemGenerator(cls.instructions)
+        runner = processor.RawLidarDemGenerator(cls.instructions)
+        runner.run()
+        runner = processor.BathymetryDemGenerator(cls.instructions)
         runner.run()
 
     @classmethod

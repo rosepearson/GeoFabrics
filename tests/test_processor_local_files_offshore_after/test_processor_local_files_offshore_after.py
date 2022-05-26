@@ -15,7 +15,6 @@ import numpy
 import shapely
 import geopandas
 import pdal
-import copy
 import logging
 import gc
 
@@ -23,19 +22,21 @@ from src.geofabrics import processor
 
 
 class ProcessorLocalFilesOffshoreTest(unittest.TestCase):
-    """A class to test the basic DemGenerator processor class for a simple example with land, offshore, a reference DEM
-    and LiDAR using the data specified in the instruction.json
+    """A class to test the basic DemGenerator processor class for a simple example with
+    land, offshore, a reference DEM and LiDAR using the data specified in the
+    instruction.json
 
     Tests run include:
-        1. test_result_dem  Check the generated DEM matches the benchmark DEM within a tolerance
+        1. test_result_dem  Check the generated DEM matches the benchmark DEM within a
+        tolerance
     """
 
     LAS_GROUND = 2
 
     @classmethod
     def setUpClass(cls):
-        """Create a cache directory and CatchmentGeometry object for use in the tests and also download the files used
-        in the tests."""
+        """Create a cache directory and CatchmentGeometry object for use in the tests
+        and also download the files used in the tests."""
 
         test_path = pathlib.Path().cwd() / pathlib.Path(
             "tests/test_processor_local_files_offshore_after"
@@ -169,9 +170,16 @@ class ProcessorLocalFilesOffshoreTest(unittest.TestCase):
         )
         pdal_pipeline.execute()
 
+        # Run geofabrics processing pipeline
+        runner = processor.RawLidarDemGenerator(cls.instructions)
+        runner.run()
+        runner = processor.BathymetryDemGenerator(cls.instructions)
+        runner.run()
+
     @classmethod
     def tearDownClass(cls):
-        """Remove created files in the cache directory as part of the testing process at the end of the test."""
+        """Remove created files in the cache directory as part of the testing process at
+        the end of the test."""
 
         cls.clean_data_folder()
 
@@ -194,29 +202,6 @@ class ProcessorLocalFilesOffshoreTest(unittest.TestCase):
     def test_result_dem(self):
         """A basic comparison between the generated and benchmark DEM"""
 
-        # Run dense DEM generation pipeline
-        dense_instructions = copy.deepcopy(self.instructions)
-        dense_instructions["data_paths"].pop("bathymetry_contours")
-        dense_instructions["data_paths"].pop("final_result_dem")
-        dense_instructions["data_paths"].pop("benchmark_dem")
-        runner = processor.LidarDemGenerator(dense_instructions)
-        runner.run()
-
-        # Run offshore DEM generation pipeline
-        self.instructions["data_paths"]["dense_dem"] = self.instructions["data_paths"][
-            "result_dem"
-        ]
-        self.instructions["data_paths"]["result_dem"] = self.instructions["data_paths"][
-            "final_result_dem"
-        ]
-        self.instructions["data_paths"].pop("lidars")
-        self.instructions["data_paths"].pop("reference_dems")
-        self.instructions["data_paths"].pop("final_result_dem")
-        runner = processor.BathymetryDemGenerator(self.instructions)
-        runner.run()
-        del runner
-        gc.collect()
-
         # Load in benchmark DEM
         file_path = self.cache_dir / self.instructions["data_paths"]["benchmark_dem"]
         with rioxarray.rioxarray.open_rasterio(file_path, masked=True) as benchmark_dem:
@@ -225,7 +210,8 @@ class ProcessorLocalFilesOffshoreTest(unittest.TestCase):
         file_path = self.cache_dir / self.instructions["data_paths"]["result_dem"]
         with rioxarray.rioxarray.open_rasterio(file_path, masked=True) as test_dem:
             test_dem.load()
-        # Compare DEMs - load both from file as rioxarray.rioxarray.open_rasterio ignores index order
+        # Compare DEMs - load both from file as rioxarray.rioxarray.open_rasterio
+        # ignores index order
         diff_array = (
             test_dem.z.data[~numpy.isnan(test_dem.z.data)]
             - benchmark_dem.z.data[~numpy.isnan(benchmark_dem.z.data)]
