@@ -541,7 +541,8 @@ class DenseDemFromFiles(DenseDem):
 
     Logic controlling behaviour
         interpolation_method
-            If not None, interpolate using that method. Valid options are 'linear', 'nearest', and 'cubic'
+            If not None, interpolate using that method. Valid options are 'linear',
+            'nearest', and 'cubic'
     """
 
     def __init__(
@@ -551,7 +552,8 @@ class DenseDemFromFiles(DenseDem):
         extents_path: typing.Union[str, pathlib.Path],
         interpolation_method: str,
     ):
-        """Load in the extents and dense DEM. Ensure the dense DEM is clipped within the extents"""
+        """Load in the extents and dense DEM. Ensure the dense DEM is clipped within the
+        extents"""
 
         extents = geopandas.read_file(pathlib.Path(extents_path))
 
@@ -560,7 +562,8 @@ class DenseDemFromFiles(DenseDem):
             pathlib.Path(dense_dem_path), masked=True, parse_coordinates=True
         )
 
-        # Deep copy to ensure the opened file is properly unlocked; Squeeze as rasterio.open() adds band coordinate
+        # Deep copy to ensure the opened file is properly unlocked; Squeeze as
+        # rasterio.open() adds band coordinate
         dense_dem = dense_dem.squeeze("band", drop=True)
         self._write_netcdf_conventions_in_place(dense_dem, catchment_geometry.crs)
 
@@ -578,9 +581,11 @@ class DenseDemFromFiles(DenseDem):
 
 
 class DenseDemFromTiles(DenseDem):
-    """A class to manage the population of the DenseDem's dense_dem from LiDAR tiles, and/or a reference DEM.
+    """A class to manage the population of the DenseDem's dense_dem from LiDAR tiles,
+    and/or a reference DEM.
 
-    The dense DEM is made up of tiles created from dense point data - Either LiDAR point clouds, or a reference DEM.
+    The dense DEM is made up of tiles created from dense point data - Either LiDAR point
+    clouds, or a reference DEM.
 
     DenseDemFromTiles logic can be controlled by the constructor inputs.
 
@@ -588,12 +593,13 @@ class DenseDemFromTiles(DenseDem):
     ----------
 
     drop_offshore_lidar
-        If True only keep LiDAR values within the foreshore and land regions defined by the catchment_geometry.
-        If False keep all LiDAR values.
+        If True only keep LiDAR values within the foreshore and land regions defined by
+        the catchment_geometry. If False keep all LiDAR values.
     interpolation_method
-        If not None, interpolate using that method. Valid options are 'linear', 'nearest', and 'cubic'.
+        If not None, interpolate using that method. Valid options are 'linear',
+        'nearest', and 'cubic'.
     lidar_interpolation_method
-        The interpolation method to apply to point clouds. Options are: mean, median, IDW
+        The interpolation method to apply to LiDAR. Options are: mean, median, IDW.
     """
 
     def __init__(
@@ -712,7 +718,8 @@ class DenseDemFromTiles(DenseDem):
             crs=self.catchment_geometry.crs["horizontal"],
         )
 
-        # Define region to rasterise inside the chunk area - remove any subpixel polygons
+        # Define region to rasterise inside the chunk area - remove any subpixel
+        # polygons
         chunk_region_to_tile = geopandas.GeoDataFrame(
             geometry=region_to_rasterise.buffer(radius).clip(
                 chunk_geometry, keep_geom_type=True
@@ -738,7 +745,8 @@ class DenseDemFromTiles(DenseDem):
         ]
         dense_extents = shapely.ops.unary_union(dense_extents)
 
-        # Remove any internal holes for select types as these may cause self intersection errors
+        # Remove any internal holes for select types as these may cause self
+        # intersection errors
         if type(dense_extents) is shapely.geometry.Polygon:
             dense_extents = shapely.geometry.Polygon(dense_extents.exterior)
         elif type(dense_extents) is shapely.geometry.MultiPolygon:
@@ -753,7 +761,8 @@ class DenseDemFromTiles(DenseDem):
             {"geometry": [dense_extents]}, crs=self.catchment_geometry.crs["horizontal"]
         )
 
-        # Apply a transform so in the same space as the dense DEM - buffer(0) to reduce self intersection warnings
+        # Apply a transform so in the same space as the dense DEM - buffer(0) to reduce
+        # self intersection warnings
         dense_dem_affine = self.dense_dem.z.rio.transform()
         dense_extents = dense_extents.affine_transform(
             [
@@ -783,7 +792,8 @@ class DenseDemFromTiles(DenseDem):
         )
         tile_index_name_column = None
 
-        # If there is a tile_index_file - remove tiles outside the catchment & get the 'file name' column
+        # If there is a tile_index_file - remove tiles outside the catchment & get the
+        # 'file name' column
         if tile_index_extents is not None:
             tile_index_extents = tile_index_extents.to_crs(
                 self.catchment_geometry.crs["horizontal"]
@@ -830,7 +840,8 @@ class DenseDemFromTiles(DenseDem):
             [[grid_x.flatten()], [grid_y.flatten()]], axis=0
         ).transpose()
 
-        # Perform the specified averaging over the dense DEM within the extents of this point cloud tile
+        # Perform the specified averaging over the dense DEM within the extents of this
+        # point cloud tile
         z_flat = rasterise_points(
             point_cloud=tile_points, xy_out=xy_out, options=options
         )
@@ -856,25 +867,30 @@ class DenseDemFromTiles(DenseDem):
         ----------
 
         source_crs
-            Specify if the CRS encoded in the LiDAR files are incorrect/only partially defined
-            (i.e. missing vertical CRS) and need to be overwritten.
+            Specify if the CRS encoded in the LiDAR files are incorrect/only partially
+            defined (i.e. missing vertical CRS) and need to be overwritten.
         drop_offshore_lidar
-            If True, trim any LiDAR values that are offshore as specified by the catchment_geometry
+            If True, trim any LiDAR values that are offshore as specified by the
+            catchment_geometry.
         lidar_classifications_to_keep
-            A list of LiDAR classifications to keep - '2' for ground, '9' for water. See
-            https://www.asprs.org/wp-content/uploads/2010/12/LAS_1_4_r13.pdf for standard list
+            A list of LiDAR classifications to keep - '2' for ground, '9' for water.
+            See https://www.asprs.org/wp-content/uploads/2010/12/LAS_1_4_r13.pdf for
+            standard list
         tile_index_file
-            Must exist if there are many LiDAR files. This is used to determine chunking.
+            Must exist if there are many LiDAR files. This is used to determine
+            chunking.
         """
 
         if source_crs is not None:
             assert "horizontal" in source_crs, (
-                "The horizontal component of the source CRS is not specified. "
-                + f"Both horizontal and vertical CRS need to be defined. The source_crs specified is: {self.source_crs}"
+                "The horizontal component of the source CRS is not specified. Both "
+                "horizontal and vertical CRS need to be defined. The source_crs "
+                f"specified is: {self.source_crs}"
             )
             assert "vertical" in source_crs, (
-                "The vertical component of the source CRS is not specified. "
-                + f"Both horizontal and vertical CRS need to be defined. The source_crs specified is: {self.source_crs}"
+                "The vertical component of the source CRS is not specified. Both "
+                "horizontal and vertical CRS need to be defined. The source_crs "
+                f"specified is: {self.source_crs}"
             )
         if drop_offshore_lidar:
             region_to_rasterise = self.catchment_geometry.land_and_foreshore
@@ -904,8 +920,9 @@ class DenseDemFromTiles(DenseDem):
             ), "A tile index file is required for multiple tile files added together"
             assert chunk_size > 0 and chunk_size is not None, (
                 "The chunk size should be set when reading in tiled LiDAR "
-                "files. Ideally it should include as many tiles can easily be read in by on core. You will have to equate"
-                " The tile extents with chunk size by extents / resolution. "
+                "files. Ideally it should include as many tiles can easily be read in "
+                "by on core. You will have to equate The tile extents with chunk size "
+                "by extents / resolution. "
             )
             assert len(lidar_files) > 1, "There are no LiDAR files specified"
             self._dense_dem = self._add_tiled_lidar_chunked(
@@ -946,7 +963,8 @@ class DenseDemFromTiles(DenseDem):
             tile_index_file
         )
 
-        # get chunking information - if negative, 0 or None chunk_size then default to a single chunk
+        # get chunking information - if negative, 0 or None chunk_size then default to a
+        # single chunk
         chunked_dim_x, chunked_dim_y = self._set_up_chunks(chunk_size)
 
         # cycle through index chunks - and collect in a delayed array
@@ -997,7 +1015,8 @@ class DenseDemFromTiles(DenseDem):
         logging.info("Computing chunks")
         chunked_dem = chunked_dem.compute()
 
-        # Clip result to within the catchment - removing NaN filled chunked areas outside the catchment
+        # Clip result to within the catchment - removing NaN filled chunked areas
+        # outside the catchment
         logging.debug("Chunked DEM computed and ready to be cut")
         dense_dem = chunked_dem.rio.clip(self.catchment_geometry.catchment.geometry)
         return dense_dem
@@ -1072,7 +1091,8 @@ class DenseDemFromTiles(DenseDem):
                     {
                         "units": "m",
                         "long_name": "ground elevation",
-                        "vertical_datum": f"EPSG:{self.catchment_geometry.crs['vertical']}",
+                        "vertical_datum": "EPSG:"
+                        f"{self.catchment_geometry.crs['vertical']}",
                     },
                 ),
                 source_class=(
@@ -1088,11 +1108,13 @@ class DenseDemFromTiles(DenseDem):
             coords=dict(x=(["x"], x), y=(["y"], y)),
             attrs={
                 "title": "Geofabric representing elevation and roughness",
-                "source": f"{metadata['library_name']} version {metadata['library_version']}",
-                "description": f"{metadata['library_name']}:{metadata['class_name']} resolution"
-                + f" {self.catchment_geometry.resolution}",
-                "history": f"{metadata['utc_time']}: {metadata['library_name']}:{metadata['class_name']} "
-                + f"resolution {self.catchment_geometry.resolution};",
+                "source": f"{metadata['library_name']} version "
+                f"{metadata['library_version']}",
+                "description": f"{metadata['library_name']}:{metadata['class_name']} "
+                f"resolution {self.catchment_geometry.resolution}",
+                "history": f"{metadata['utc_time']}: {metadata['library_name']}:"
+                f"{metadata['class_name']} resolution "
+                f"{self.catchment_geometry.resolution};",
                 "geofabrics_instructions": f"{metadata['instructions']}",
             },
         )
@@ -1111,12 +1133,14 @@ class DenseDemFromTiles(DenseDem):
 
         if len(tile_points) == 0:
             logging.warning(
-                "DenseDem.add_tile: the latest reference DEM has no data and is being ignored."
+                "DenseDem.add_tile: the latest reference DEM has no data and is being"
+                " ignored."
             )
             return
         elif mask.sum() == 0:
             logging.warning(
-                "DenseDem.add_tile: LiDAR covers all raster values so the reference DEM is being ignored."
+                "DenseDem.add_tile: LiDAR covers all raster values so the reference DEM"
+                " is being ignored."
             )
             return
         # create dictionary defining raster options
@@ -1133,7 +1157,8 @@ class DenseDemFromTiles(DenseDem):
         xy_out[:, 0] = grid_x[mask]
         xy_out[:, 1] = grid_y[mask]
 
-        # Perform the specified averaging over the dense DEM within the extents of this point cloud tile
+        # Perform the specified averaging over the dense DEM within the extents of this
+        # point cloud tile
         z_flat = rasterise_points(
             point_cloud=tile_points, xy_out=xy_out, options=raster_options
         )
@@ -1161,7 +1186,8 @@ def read_file_with_pdal(
     # Define instructions for loading in LiDAR
     pdal_pipeline_instructions = [{"type": "readers.las", "filename": str(lidar_file)}]
 
-    # Specify reprojection - if a source_crs is specified use this to define the 'in_srs'
+    # Specify reprojection - if a source_crs is specified use this to define the
+    # 'in_srs'
     if source_crs is None:
         pdal_pipeline_instructions.append(
             {
@@ -1361,7 +1387,8 @@ def rasterise_chunk(
     # Check again - if no points return an array of NaN
     if len(tile_points) == 0:
         return grid_z
-    # Perform the specified averaging method over the dense DEM within the extents of this point cloud tile
+    # Perform the specified averaging method over the dense DEM within the extents of
+    # this point cloud tile
     z_flat = rasterise_points(point_cloud=tile_points, xy_out=xy_out, options=options)
     grid_z = z_flat.reshape(grid_x.shape)
 
