@@ -297,7 +297,7 @@ class HydrologicallyConditionedDem(DenseDemBase):
         )
 
         # Set attributes
-        self._dense_dem = raw_dem
+        self._raw_dem = raw_dem
         self.interpolation_method = interpolation_method
 
         # DEMs for hydrologically conditioning
@@ -309,9 +309,9 @@ class HydrologicallyConditionedDem(DenseDemBase):
         """Ensure the memory associated with netCDF files is properly freed."""
 
         # The dense DEM - may be opened from memory
-        if self._dense_dem is not None:
-            self._dense_dem.close()
-            del self._dense_dem
+        if self._raw_dem is not None:
+            self._raw_dem.close()
+            del self._raw_dem
         # The offshore DEM
         if self._offshore_dem is not None:
             self._offshore_dem.close()
@@ -329,46 +329,44 @@ class HydrologicallyConditionedDem(DenseDemBase):
     def dem(self):
         """Return the combined DEM from tiles and any interpolated offshore values"""
 
-        if self._dem is None:
-            self._dem = self.combine_dem_parts()
+        self._dem = self.combine_dem_parts()
 
-            # Ensure valid name and increasing dimension indexing for the dem
-            if (
-                self.interpolation_method is not None
-            ):  # methods are 'nearest', 'linear' and 'cubic'
-                self._dem.source_class.data[
-                    numpy.isnan(self._dem.z.data)
-                ] = self.SOURCE_CLASSIFICATION["interpolated"]
-                self._dem["z"] = self._dem.z.rio.interpolate_na(
-                    method=self.interpolation_method
-                )
-            self._dem = self._dem.rio.clip(
-                self.catchment_geometry.catchment.geometry, drop=False
+        # Ensure valid name and increasing dimension indexing for the dem
+        if (
+            self.interpolation_method is not None
+        ):  # methods are 'nearest', 'linear' and 'cubic'
+            self._dem.source_class.data[
+                numpy.isnan(self._dem.z.data)
+            ] = self.SOURCE_CLASSIFICATION["interpolated"]
+            self._dem["z"] = self._dem.z.rio.interpolate_na(
+                method=self.interpolation_method
             )
-            self._dem = self._ensure_positive_indexing(
-                self._dem
-            )  # Some programs require positively increasing indices
+        self._dem = self._dem.rio.clip(
+            self.catchment_geometry.catchment.geometry, drop=True
+        )
+        # Some programs require positively increasing indices
+        self._dem = self._ensure_positive_indexing(self._dem)
         return self._dem
 
     def combine_dem_parts(self):
         """Return the combined DEM from tiles and any interpolated offshore values"""
 
         if self._offshore_dem is None and self._river_dem is None:
-            combined_dem = self._dense_dem
+            combined_dem = self._raw_dem
         elif self._river_dem is None:
             # method="first"/"last"; "first" -> raw_dem top, then offshore
             combined_dem = rioxarray.merge.merge_datasets(
-                [self._dense_dem, self._offshore_dem], method="first"
+                [self._raw_dem, self._offshore_dem], method="first"
             )
         elif self._offshore_dem is None:
             # method="first"/"last"; "first" -> river top, then raw_dem
             combined_dem = rioxarray.merge.merge_datasets(
-                [self._river_dem, self._dense_dem], method="first"
+                [self._river_dem, self._raw_dem], method="first"
             )
         else:
             # method="first"/"last"; "first" -> river top, then raw_dem, then offshore
             combined_dem = rioxarray.merge.merge_datasets(
-                [self._river_dem, self._dense_dem, self._offshore_dem], method="first"
+                [self._river_dem, self._raw_dem, self._offshore_dem], method="first"
             )
         return combined_dem
 
@@ -386,7 +384,7 @@ class HydrologicallyConditionedDem(DenseDemBase):
         offshore_dense_data_edge = self.catchment_geometry.offshore_dense_data_edge(
             self._extents
         )
-        offshore_edge_dem = self._dense_dem.rio.clip(offshore_dense_data_edge.geometry)
+        offshore_edge_dem = self._raw_dem.rio.clip(offshore_dense_data_edge.geometry)
 
         # If the sampling resolution is coaser than the catchment_geometry resolution
         # resample the DEM
@@ -426,6 +424,9 @@ class HydrologicallyConditionedDem(DenseDemBase):
         """Performs interpolation offshore outside LiDAR extents using the SciPy RBF
         function."""
 
+        # Reset the offshore DEM
+        self._offshore_dem = None
+
         offshore_edge_points = self._sample_offshore_edge(
             self.catchment_geometry.resolution
         )
@@ -462,7 +463,7 @@ class HydrologicallyConditionedDem(DenseDemBase):
         offshore_no_dense_data = self.catchment_geometry.offshore_no_dense_data(
             self._extents
         )
-        self._offshore_dem = self._dense_dem.rio.clip(
+        self._offshore_dem = self._raw_dem.rio.clip(
             self.catchment_geometry.offshore.geometry
         )
 
@@ -502,15 +503,11 @@ class HydrologicallyConditionedDem(DenseDemBase):
         flat_z[mask_z] = flat_z_masked
         self._offshore_dem.z.data = flat_z.reshape(self._offshore_dem.z.data.shape)
 
-        # Ensure the DEM is recalculated to include the interpolated offshore region
-        self._dem = None
-
     def interpolate_river_bathymetry(self, river_bathymetry):
         """Performs interpolation with a river polygon using the SciPy RBF function."""
 
-        # Reset the river and overall DEM
+        # Reset the river DEM
         self._river_dem = None
-        self._dem = None
 
         # combined DEM
         combined_dem = self.combine_dem_parts()
@@ -570,9 +567,6 @@ class HydrologicallyConditionedDem(DenseDemBase):
         # Set the interpolated value in the DEM
         flat_z[mask_z] = flat_z_masked
         self._river_dem.z.data = flat_z.reshape(self._river_dem.z.data.shape)
-
-        # Ensure the DEM will be recalculated to include the newly interpolated region
-        self._dem = None
 
 
 class RawDem(DenseDemBase):
