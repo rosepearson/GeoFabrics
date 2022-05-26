@@ -157,7 +157,7 @@ class ReferenceDem:
         return self._extents
 
 
-class DenseDem(abc.ABC):
+class DenseDemBase(abc.ABC):
     """An abstract class to manage the dense DEM in a catchment context.
 
     The dense DEM is made up of a dense DEM that is loaded in, and an offshore DEM that
@@ -532,7 +532,7 @@ class DenseDem(abc.ABC):
         self._dem = None
 
 
-class DenseDemFromFiles(DenseDem):
+class HydrologicallyConditionedDem(DenseDemBase):
     """A class to manage loading in an already created and saved dense DEM that has yet
     to have an offshore DEM associated with it.
 
@@ -573,7 +573,7 @@ class DenseDemFromFiles(DenseDem):
         dense_dem = dense_dem.rio.clip(extents.geometry, drop=False)
 
         # Setup the DenseDem class
-        super(DenseDemFromFiles, self).__init__(
+        super(HydrologicallyConditionedDem, self).__init__(
             catchment_geometry=catchment_geometry,
             dense_dem=dense_dem,
             extents=extents,
@@ -581,7 +581,7 @@ class DenseDemFromFiles(DenseDem):
         )
 
 
-class DenseDemFromTiles(DenseDem):
+class RawDenseDem(DenseDemBase):
     """A class to manage the population of the DenseDem's dense_dem from LiDAR tiles,
     and/or a reference DEM.
 
@@ -623,7 +623,7 @@ class DenseDemFromTiles(DenseDem):
 
         self.lidar_interpolation_method = lidar_interpolation_method
 
-        super(DenseDemFromTiles, self).__init__(
+        super(RawDenseDem, self).__init__(
             catchment_geometry=catchment_geometry,
             dense_dem=None,
             extents=None,

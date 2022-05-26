@@ -516,7 +516,7 @@ class RawLidarDemGenerator(BaseProcessor):
         lidar_dataset_info = self.get_lidar_file_list("open_topography")
 
         # setup dense DEM and catchment LiDAR objects
-        self.dense_dem = dem.DenseDemFromTiles(
+        self.dense_dem = dem.RawDenseDem(
             catchment_geometry=self.catchment_geometry,
             drop_offshore_lidar=self.get_instruction_general("drop_offshore_lidar"),
             interpolation_method=self.get_instruction_general("interpolation_method"),
@@ -696,7 +696,7 @@ class BathymetryDemGenerator(BaseProcessor):
         self.catchment_geometry = self.create_catchment()
 
         # setup dense DEM and catchment LiDAR objects
-        self.dense_dem = dem.DenseDemFromFiles(
+        self.dense_dem = dem.HydrologicallyConditionedDem(
             catchment_geometry=self.catchment_geometry,
             dense_dem_path=self.get_instruction_path("dense_dem"),
             extents_path=self.get_instruction_path("dense_dem_extents"),
