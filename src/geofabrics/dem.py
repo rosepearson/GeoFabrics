@@ -265,7 +265,7 @@ class HydrologicallyConditionedDem(DenseDemBase):
     def __init__(
         self,
         catchment_geometry: geometry.CatchmentGeometry,
-        dense_dem_path: typing.Union[str, pathlib.Path],
+        raw_dem_path: typing.Union[str, pathlib.Path],
         extents_path: typing.Union[str, pathlib.Path],
         interpolation_method: str,
     ):
@@ -277,7 +277,7 @@ class HydrologicallyConditionedDem(DenseDemBase):
 
         # Read in the dense DEM raster - and free up file by performing a deep copy.
         raw_dem = rioxarray.rioxarray.open_rasterio(
-            pathlib.Path(dense_dem_path), masked=True, parse_coordinates=True
+            pathlib.Path(raw_dem_path), masked=True, parse_coordinates=True
         )
 
         # Deep copy to ensure the opened file is properly unlocked; Squeeze as

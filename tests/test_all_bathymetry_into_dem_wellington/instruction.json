@@ -116,7 +116,7 @@
 		"data_paths": {
 		  "local_cache": "tests/test_all_bathymetry_into_dem_wellington/data",
 		  "catchment_boundary": "catchment.geojson",
-		  "dense_dem": "dense_dem.nc",
+		  "raw_dem": "raw_dem.nc",
 		  "river_polygons": ["river_polygon.geojson",
 							 "fan_polygon.geojson",
 							 "closed_drain_polygon_5m_width.geojson",

@@ -46,8 +46,8 @@ class BaseProcessor(abc.ABC):
 
         defaults = {
             "result_dem": "generated_dem.nc",
-            "dense_dem": "dense_dem.nc",
-            "dense_dem_extents": "dense_extents.geojson",
+            "raw_dem": "raw_dem.nc",
+            "raw_dem_extents": "raw_extents.geojson",
         }
 
         path_instructions = self.instructions["data_paths"]
@@ -91,7 +91,7 @@ class BaseProcessor(abc.ABC):
             "local_cache" in self.instructions["data_paths"]
         ), "local_cache is a required 'data_paths' entry"
 
-        defaults = ["result_dem", "dense_dem_extents", "dense_dem"]
+        defaults = ["result_dem", "raw_dem_extents", "raw_dem"]
 
         if key in self.instructions["data_paths"]:
             return True
@@ -472,7 +472,7 @@ class RawLidarDemGenerator(BaseProcessor):
      * instructions - Defines the pipeline execution instructions
      * catchment_geometry - Defines all relevant regions in a catchment required in the
        generation of a DEM as polygons.
-     * dense_dem - Defines the hydrologically conditioned DEM as a combination of tiles
+     * raw_dem - A combination of LiDAR tiles and any referecnce DEM
        from LiDAR and interpolated from bathymetry.
      * reference_dem - This optional object defines a background DEM that may be used to
        fill on land gaps in the LiDAR.
@@ -485,7 +485,7 @@ class RawLidarDemGenerator(BaseProcessor):
 
         super(RawLidarDemGenerator, self).__init__(json_instructions=json_instructions)
 
-        self.dense_dem = None
+        self.raw_dem = None
         self.reference_dem = None
 
     def create_metadata(self) -> dict:
@@ -515,8 +515,8 @@ class RawLidarDemGenerator(BaseProcessor):
         # Get LiDAR data file-list - this may involve downloading lidar files
         lidar_dataset_info = self.get_lidar_file_list("open_topography")
 
-        # setup dense DEM and catchment LiDAR objects
-        self.dense_dem = dem.RawDem(
+        # setup the raw DEM object
+        self.raw_dem = dem.RawDem(
             catchment_geometry=self.catchment_geometry,
             drop_offshore_lidar=self.get_instruction_general("drop_offshore_lidar"),
             lidar_interpolation_method=self.get_instruction_general(
@@ -536,7 +536,7 @@ class RawLidarDemGenerator(BaseProcessor):
         ) as client:
             print(client)
             # Load in LiDAR tiles
-            self.dense_dem.add_lidar(
+            self.raw_dem.add_lidar(
                 lidar_files=lidar_dataset_info["file_paths"],
                 source_crs=lidar_dataset_info["crs"],
                 drop_offshore_lidar=self.get_instruction_general("drop_offshore_lidar"),
@@ -551,7 +551,7 @@ class RawLidarDemGenerator(BaseProcessor):
         if self.check_instruction_path("reference_dems"):
             area_without_lidar = (
                 self.catchment_geometry.land_and_foreshore_without_lidar(
-                    self.dense_dem.extents
+                    self.raw_dem.extents
                 ).geometry.area.sum()
             )
             if (
@@ -575,23 +575,20 @@ class RawLidarDemGenerator(BaseProcessor):
                     dem_file=self.get_instruction_path("reference_dems")[0],
                     catchment_geometry=self.catchment_geometry,
                     set_foreshore=self.get_instruction_general("set_dem_shoreline"),
-                    exclusion_extent=self.dense_dem.extents,
+                    exclusion_extent=self.raw_dem.extents,
                 )
 
-                # Add the reference DEM patch where there's no LiDAR to the dense DEM
-                # without updting the extents
-                self.dense_dem.add_reference_dem(
+                # Add the reference DEM data where there's no LiDAR updating the extents
+                self.raw_dem.add_reference_dem(
                     tile_points=self.reference_dem.points,
                     tile_extent=self.reference_dem.extents,
                 )
-        # save dense DEM and extents
-        self.dense_dem.dem.to_netcdf(
-            self.get_instruction_path("dense_dem"), format="NETCDF4", engine="netcdf4"
+        # save raw DEM and extents
+        self.raw_dem.dem.to_netcdf(
+            self.get_instruction_path("raw_dem"), format="NETCDF4", engine="netcdf4"
         )
-        if self.dense_dem.extents is not None:
-            self.dense_dem.extents.to_file(
-                self.get_instruction_path("dense_dem_extents")
-            )
+        if self.raw_dem.extents is not None:
+            self.raw_dem.extents.to_file(self.get_instruction_path("raw_dem_extents"))
         else:
             logging.warning(
                 "In processor.DemGenerator - no LiDAR extents exist so no extents file "
@@ -600,17 +597,18 @@ class RawLidarDemGenerator(BaseProcessor):
 
 
 class BathymetryDemGenerator(BaseProcessor):
-    """BathymetryDemGenerator executes a pipeline for loading in a Dense DEM and extents
-    before interpolating offshore DEM values. The data and pipeline logic is defined in
+    """BathymetryDemGenerator executes a pipeline for loading in a raw DEM and extents
+    before incorporating bathymetry (offshore, rivers and drains) to produce a
+    hydrologically conditioned DEM. The data and pipeline logic is defined in
     the json_instructions file.
 
     The `BathymetryDemGenerator` class contains several important class members:
      * catchment_geometry - Defines all relevant regions in a catchment required in the
        generation of a DEM as polygons.
-     * dense_dem - Defines the hydrologically conditioned DEM as a combination of tiles
-       from LiDAR and interpolated from bathymetry.
-     * bathy_contours - This object defines the bathymetry vectors used by the dense_dem
-       to define the DEM offshore.
+     * hydrologic_dem - Defines the hydrologically conditioned DEM as a combination of
+       tiles from LiDAR and interpolated from bathymetry.
+     * bathy_contours - This object defines the bathymetry vectors used to define the
+       DEM values offshore.
 
     See the README.md for usage examples or GeoFabrics/tests/ for examples of usage and
     an instruction file
@@ -622,7 +620,7 @@ class BathymetryDemGenerator(BaseProcessor):
             json_instructions=json_instructions
         )
 
-        self.dense_dem = None
+        self.hydrologic_dem = None
         self.bathy_contours = None
 
     def add_bathymetry(self, area_threshold: float, catchment_dirs: pathlib.Path):
@@ -631,7 +629,7 @@ class BathymetryDemGenerator(BaseProcessor):
         # Load in bathymetry and interpolate offshore if significant offshore is not
         # covered by LiDAR
         area_without_lidar = self.catchment_geometry.offshore_without_lidar(
-            self.dense_dem.extents
+            self.hydrologic_dem.extents
         ).geometry.area.sum()
         if (
             self.check_vector("bathymetry_contours")
@@ -654,11 +652,11 @@ class BathymetryDemGenerator(BaseProcessor):
                 bathy_contour_dirs[0],
                 self.catchment_geometry,
                 z_label=self.get_instruction_general("bathymetry_contours_z_label"),
-                exclusion_extent=self.dense_dem.extents,
+                exclusion_extent=self.hydrologic_dem.extents,
             )
 
             # interpolate
-            self.dense_dem.interpolate_offshore(self.bathy_contours)
+            self.hydrologic_dem.interpolate_offshore(self.bathy_contours)
         # Load in river bathymetry and incorporate where discernable at the resolution
         if self.check_vector("river_polygons") and self.check_vector(
             "river_bathymetry"
@@ -680,7 +678,7 @@ class BathymetryDemGenerator(BaseProcessor):
 
             # Call interpolate river on the DEM - the class checks to see if any pixels
             # actually fall inside the polygon
-            self.dense_dem.interpolate_river_bathymetry(
+            self.hydrologic_dem.interpolate_river_bathymetry(
                 river_bathymetry=self.river_bathy
             )
 
@@ -694,11 +692,11 @@ class BathymetryDemGenerator(BaseProcessor):
         # create the catchment geometry object
         self.catchment_geometry = self.create_catchment()
 
-        # setup dense DEM and catchment LiDAR objects
-        self.dense_dem = dem.HydrologicallyConditionedDem(
+        # setup the hydrologically conditioned DEM
+        self.hydrologic_dem = dem.HydrologicallyConditionedDem(
             catchment_geometry=self.catchment_geometry,
-            dense_dem_path=self.get_instruction_path("dense_dem"),
-            extents_path=self.get_instruction_path("dense_dem_extents"),
+            raw_dem_path=self.get_instruction_path("raw_dem"),
+            extents_path=self.get_instruction_path("raw_dem_extents"),
             interpolation_method=self.get_instruction_general("interpolation_method"),
         )
 
@@ -709,7 +707,7 @@ class BathymetryDemGenerator(BaseProcessor):
         )
 
         # fill combined dem - save results
-        self.dense_dem.dem.to_netcdf(
+        self.hydrologic_dem.dem.to_netcdf(
             self.get_instruction_path("result_dem"), format="NETCDF4", engine="netcdf4"
         )
 
@@ -925,13 +923,13 @@ class RiverBathymetryGenerator(BaseProcessor):
             instruction_paths["result_dem"] = str(
                 self.get_result_file_name(key="gnd_dem")
             )
-            instruction_paths["dense_dem"] = "dense_gnd_dem.nc"
-            instruction_paths["dense_dem_extents"] = "dense_gnd_extents.geojson"
+            instruction_paths["raw_dem"] = "raw_gnd_dem.nc"
+            instruction_paths["raw_dem_extents"] = "raw_gnd_extents.geojson"
             runner = RawLidarDemGenerator(self.instructions)
             runner.run()
-            gnd_dem = runner.dense_dem.dem
-            instruction_paths.pop("dense_dem")
-            instruction_paths.pop("dense_dem_extents")
+            gnd_dem = runner.raw_dem.dem
+            instruction_paths.pop("raw_dem")
+            instruction_paths.pop("raw_dem_extents")
             instruction_paths.pop("result_dem")
         else:
             print("Loading ground DEM.")  # drop band added by rasterio.open()
@@ -948,13 +946,13 @@ class RiverBathymetryGenerator(BaseProcessor):
             self.instructions["general"][
                 "lidar_classifications_to_keep"
             ] = self.get_bathymetry_instruction("veg_lidar_classifications_to_keep")
-            instruction_paths["dense_dem"] = "dense_veg_dem.nc"
-            instruction_paths["dense_dem_extents"] = "dense_veg_extents.geojson"
+            instruction_paths["raw_dem"] = "raw_veg_dem.nc"
+            instruction_paths["raw_dem_extents"] = "raw_veg_extents.geojson"
             runner = RawLidarDemGenerator(self.instructions)
             runner.run()
-            veg_dem = runner.dense_dem.dem
-            instruction_paths.pop("dense_dem")
-            instruction_paths.pop("dense_dem_extents")
+            veg_dem = runner.raw_dem.dem
+            instruction_paths.pop("raw_dem")
+            instruction_paths.pop("raw_dem_extents")
             instruction_paths.pop("result_dem")
         else:
             print("Loading the vegetation DEM.")  # drop band added by rasterio.open()
@@ -1420,8 +1418,8 @@ class DrainBathymetryGenerator(BaseProcessor):
         # key to output name mapping
         name_dictionary = {
             "dem": f"dem_{tag}.nc",
-            "dense_dem": f"dense_dem_{tag}.nc",
-            "dense_dem_extents": f"dense_extents_{drain_width}m_width.geojson",
+            "raw_dem": f"raw_dem_{tag}.nc",
+            "raw_dem_extents": f"raw_extents_{drain_width}m_width.geojson",
             "open_polygon": f"open_drain_polygon_{tag}.geojson",
             "open_elevation": f"open_drain_elevation_{tag}.geojson",
             "closed_polygon": f"closed_drain_polygon_{tag}.geojson",
@@ -1652,18 +1650,16 @@ class DrainBathymetryGenerator(BaseProcessor):
                 key="drain_polygon"
             )
             dem_instruction_paths["result_dem"] = self.get_result_file_name(key="dem")
-            dem_instruction_paths["dense_dem"] = self.get_result_file_name(
-                key="dense_dem"
-            )
-            dem_instruction_paths["dense_dem_extents"] = self.get_result_file_name(
-                "dense_dem_extents"
+            dem_instruction_paths["raw_dem"] = self.get_result_file_name(key="raw_dem")
+            dem_instruction_paths["raw_dem_extents"] = self.get_result_file_name(
+                "raw_dem_extents"
             )
 
             # Create the ground DEM file if this has not be created yet!
             print("Generating drain DEM.")
             runner = RawLidarDemGenerator(self.instructions)
             runner.run()
-            dem = runner.dense_dem.dem
+            dem = runner.raw_dem.dem
         return dem
 
     def download_osm_values(self) -> bool:
