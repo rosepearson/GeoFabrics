@@ -711,6 +711,70 @@ class BathymetryDemGenerator(BaseProcessor):
         )
 
 
+class RoughnessGenerator(BaseProcessor):
+    """RoughnessGenerator executes a pipeline for loading in a hydrologically
+    conditioned DEM and LiDAR tiles to produce a roughness layer that is added to the
+    Hydrologically conditioned DEM. The data and pipeline logic is defined in
+    the json_instructions file.
+
+    The `RoughnessGenerator` class contains several important class members:
+     * catchment_geometry - Defines all relevant regions in a catchment required in the
+       generation of a DEM as polygons.
+     * roughness_dem - Adds a roughness layer to the hydrologically conditioned DEM.
+
+    """
+
+    def __init__(self, json_instructions: json):
+
+        super(RoughnessGenerator, self).__init__(json_instructions=json_instructions)
+
+        self.roughness_dem = None
+
+    def run(self):
+        """This method executes the geofabrics generation pipeline to produce geofabric
+        derivatives."""
+
+        # create the catchment geometry object
+        self.catchment_geometry = self.create_catchment()
+
+        # Get LiDAR data file-list - this may involve downloading lidar files
+        lidar_dataset_info = self.get_lidar_file_list("open_topography")
+
+        # setup the roughness DEM generator
+        self.roughness_dem = dem.RoughnessDem(
+            catchment_geometry=self.catchment_geometry,
+            hydrological_dem_path=self.get_instruction_path("result_dem"),
+            elevation_range=self.get_instruction_general("elevation_range"),
+            interpolation_method=self.get_instruction_general("interpolation_method"),
+        )
+
+        # Setup Dask cluster and client
+        cluster_kwargs = {
+            "n_workers": self.get_processing_instructions("number_of_cores"),
+            "threads_per_worker": 1,
+            "processes": True,
+        }
+        with distributed.LocalCluster(**cluster_kwargs) as cluster, distributed.Client(
+            cluster
+        ) as client:
+            print(client)
+            # Load in LiDAR tiles
+            self.roughness_dem.add_lidar(
+                lidar_files=lidar_dataset_info["file_paths"],
+                source_crs=lidar_dataset_info["crs"],
+                lidar_classifications_to_keep=self.get_instruction_general(
+                    "lidar_classifications_to_keep"
+                ),
+                tile_index_file=lidar_dataset_info["tile_index_file"],
+                chunk_size=self.get_processing_instructions("chunk_size"),
+                metadata=self.create_metadata(),
+            )  # Note must be called after all others if it is to be complete
+        # save results
+        self.roughness_dem.dem.to_netcdf(
+            self.get_instruction_path("result_dem"), format="NETCDF4", engine="netcdf4"
+        )
+
+
 class RiverBathymetryGenerator(BaseProcessor):
     """RiverbathymetryGenerator executes a pipeline to estimate river
     bathymetry depths from flows, slopes, friction and widths along a main
