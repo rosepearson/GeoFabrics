@@ -157,7 +157,7 @@ class ReferenceDem:
         return self._extents
 
 
-class DenseDemBase(abc.ABC):
+class DemBase(abc.ABC):
     """An abstract class to manage the dense DEM in a catchment context.
 
     The dense DEM is made up of a dense DEM that is loaded in, and an offshore DEM that
@@ -206,7 +206,7 @@ class DenseDemBase(abc.ABC):
     @property
     def dem(self) -> xarray.Dataset:
         """Return the DEM over the catchment region"""
-        raise NotImplementedError("NETLOC_API must be instantiated in the child class")
+        raise NotImplementedError("dem must be instantiated in the child class")
 
     @staticmethod
     def _ensure_positive_indexing(
@@ -249,7 +249,7 @@ class DenseDemBase(abc.ABC):
         dem.source_class.rio.write_nodata(numpy.nan, encoded=True, inplace=True)
 
 
-class HydrologicallyConditionedDem(DenseDemBase):
+class HydrologicallyConditionedDem(DemBase):
     """A class to manage loading in an already created and saved dense DEM that has yet
     to have an offshore DEM associated with it.
 
@@ -569,7 +569,243 @@ class HydrologicallyConditionedDem(DenseDemBase):
         self._river_dem.z.data = flat_z.reshape(self._river_dem.z.data.shape)
 
 
-class RawDem(DenseDemBase):
+class LidarBase(DemBase):
+    """A class with some base methods for reading in LiDAR data.
+
+    Parameters
+    ----------
+
+    catchment_geometry
+        Defines the geometry of the catchment
+    elevation_range
+        The range of valid LiDAR elevations. i.e. define elevation filtering to apply.
+    """
+
+    def __init__(
+        self,
+        catchment_geometry: geometry.CatchmentGeometry,
+        elevation_range: list = None,
+    ):
+        """Setup base DEM to add future tiles too"""
+
+        self.elevation_range = elevation_range
+        assert elevation_range is None or (
+            type(elevation_range) == list and len(elevation_range) == 2
+        ), "Error the 'elevation_range' must either be none, or a two entry list"
+
+        self.raster_type = numpy.float64
+        self._dem = None
+
+        super(LidarBase, self).__init__(
+            catchment_geometry=catchment_geometry,
+            extents=None,
+        )
+
+    def __del__(self):
+        """Ensure the memory associated with netCDF files is properly freed."""
+
+        # The dense DEM - may be opened from memory
+        if self._dem is not None:
+            self._dem.close()
+            del self._dem
+
+    @property
+    def dem(self):
+        """Return the combined DEM from tiles and any interpolated offshore values"""
+
+        # Ensure valid name and increasing dimension indexing for the dem
+        self._dem = self._dem.rio.clip(self.catchment_geometry.catchment.geometry)
+        # Some programs require positively increasing indices
+        self._dem = self._ensure_positive_indexing(self._dem)
+        return self._dem
+
+    def _extents_from_mask(self, mask: numpy.ndarray, dem: xarray.Dataset):
+        """Calculate the extents of the current dense DEM. Remove holes as these can
+        cause self intersection warnings."""
+
+        dense_extents = [
+            shapely.geometry.shape(polygon[0])
+            for polygon in rasterio.features.shapes(numpy.uint8(mask))
+            if polygon[1] == 1.0
+        ]
+        dense_extents = shapely.ops.unary_union(dense_extents)
+
+        # Remove any internal holes for select types as these may cause self
+        # intersection errors
+        if type(dense_extents) is shapely.geometry.Polygon:
+            dense_extents = shapely.geometry.Polygon(dense_extents.exterior)
+        elif type(dense_extents) is shapely.geometry.MultiPolygon:
+            dense_extents = shapely.geometry.MultiPolygon(
+                [
+                    shapely.geometry.Polygon(polygon.exterior)
+                    for polygon in dense_extents
+                ]
+            )
+        # Convert into a Geopandas dataframe
+        dense_extents = geopandas.GeoDataFrame(
+            {"geometry": [dense_extents]}, crs=self.catchment_geometry.crs["horizontal"]
+        )
+
+        # Apply a transform so in the same space as the dense DEM - buffer(0) to reduce
+        # self intersection warnings
+        dense_dem_affine = dem.z.rio.transform()
+        dense_extents = dense_extents.affine_transform(
+            [
+                dense_dem_affine.a,
+                dense_dem_affine.b,
+                dense_dem_affine.d,
+                dense_dem_affine.e,
+                dense_dem_affine.xoff,
+                dense_dem_affine.yoff,
+            ]
+        ).buffer(0)
+
+        # And make our GeoSeries into a GeoDataFrame
+        dense_extents = geopandas.GeoDataFrame(geometry=dense_extents)
+
+        return dense_extents
+
+    def _set_up_chunks(self, chunk_size: int) -> (list, list):
+        """Define the chunked coordinates to cover the catchment"""
+
+        raise NotImplementedError(
+            "_set_up_chunks must be instantiated in the child " "class"
+        )
+
+    def _define_chunk_region(
+        self,
+        region_to_rasterise: geopandas.GeoDataFrame,
+        dim_x: numpy.ndarray,
+        dim_y: numpy.ndarray,
+        radius: float,
+    ):
+        """Define the region to rasterise within a single chunk."""
+        # Define the region to tile
+        chunk_geometry = geopandas.GeoDataFrame(
+            {
+                "geometry": [
+                    shapely.geometry.Polygon(
+                        [
+                            (numpy.min(dim_x) - radius, numpy.min(dim_y) - radius),
+                            (numpy.max(dim_x) + radius, numpy.min(dim_y) - radius),
+                            (numpy.max(dim_x) + radius, numpy.max(dim_y) + radius),
+                            (numpy.min(dim_x) - radius, numpy.max(dim_y) + radius),
+                        ]
+                    )
+                ]
+            },
+            crs=self.catchment_geometry.crs["horizontal"],
+        )
+
+        # Define region to rasterise inside the chunk area - remove any subpixel
+        # polygons
+        chunk_region_to_tile = geopandas.GeoDataFrame(
+            geometry=region_to_rasterise.buffer(radius).clip(
+                chunk_geometry, keep_geom_type=True
+            )
+        )
+        chunk_region_to_tile = chunk_region_to_tile[
+            chunk_region_to_tile.area
+            > self.catchment_geometry.resolution * self.catchment_geometry.resolution
+        ]
+
+        return chunk_region_to_tile
+
+    def _tile_index_column_name(
+        self, tile_index_file: typing.Union[str, pathlib.Path] = None
+    ):
+        """Read in tile index file and determine the column name of the tile
+        geometries"""
+        # Check to see if a extents file was added
+        tile_index_extents = (
+            geopandas.read_file(tile_index_file)
+            if tile_index_file is not None
+            else None
+        )
+        tile_index_name_column = None
+
+        # If there is a tile_index_file - remove tiles outside the catchment & get the
+        # 'file name' column
+        if tile_index_extents is not None:
+            tile_index_extents = tile_index_extents.to_crs(
+                self.catchment_geometry.crs["horizontal"]
+            )
+            tile_index_extents = geopandas.sjoin(
+                tile_index_extents, self.catchment_geometry.catchment
+            )
+            tile_index_extents = tile_index_extents.reset_index(drop=True)
+
+            column_names = tile_index_extents.columns
+            tile_index_name_column = column_names[
+                [
+                    "filename" == name.lower() or "file_name" == name.lower()
+                    for name in column_names
+                ]
+            ][0]
+        return tile_index_extents, tile_index_name_column
+
+    def add_lidar(
+        self,
+        lidar_files: typing.List[typing.Union[str, pathlib.Path]],
+        tile_index_file: typing.Union[str, pathlib.Path],
+        chunk_size: int,
+        lidar_classifications_to_keep: list,
+        source_crs: dict,
+        metadata: dict,
+    ):
+        """Read in all LiDAR files and use to create a dense DEM.
+
+        Parameters
+        ----------
+
+        source_crs
+            Specify if the CRS encoded in the LiDAR files are incorrect/only partially
+            defined (i.e. missing vertical CRS) and need to be overwritten.
+        drop_offshore_lidar
+            If True, trim any LiDAR values that are offshore as specified by the
+            catchment_geometry.
+        lidar_classifications_to_keep
+            A list of LiDAR classifications to keep - '2' for ground, '9' for water.
+            See https://www.asprs.org/wp-content/uploads/2010/12/LAS_1_4_r13.pdf for
+            standard list
+        tile_index_file
+            Must exist if there are many LiDAR files. This is used to determine
+            chunking.
+        """
+
+        raise NotImplementedError("add_lidar must be instantiated in the child class")
+
+    def _add_tiled_lidar_chunked(
+        self,
+        lidar_files: typing.List[typing.Union[str, pathlib.Path]],
+        tile_index_file: typing.Union[str, pathlib.Path],
+        source_crs: dict,
+        region_to_rasterise: geopandas.GeoDataFrame,
+        chunk_size: int,
+        metadata: dict,
+        raster_options: dict,
+    ) -> xarray.Dataset:
+        """Create/Update dataset from a set of tiled LiDAR files. Read these in over
+        non-overlapping chunks and then combine"""
+
+        raise NotImplementedError(
+            "_add_tiled_lidar_chunked must be instantiated in the" " child class"
+        )
+
+    def _add_file(
+        self,
+        lidar_file: typing.Union[str, pathlib.Path],
+        region_to_rasterise: geopandas.GeoDataFrame,
+        options: dict,
+        source_crs: dict,
+        metadata: dict,
+    ) -> xarray.Dataset:
+        """Create/Update dataset from a single LiDAR file."""
+
+        raise NotImplementedError("_add_file must be instantiated in the child class")
+
+
+class RawDem(LidarBase):
     """A class to manage the population of the DenseDem's dem from LiDAR tiles,
     and/or a reference DEM.
 
@@ -601,37 +837,13 @@ class RawDem(DenseDemBase):
         """Setup base DEM to add future tiles too"""
 
         self.drop_offshore_lidar = drop_offshore_lidar
-        self.elevation_range = elevation_range
-        assert elevation_range is None or (
-            type(elevation_range) == list and len(elevation_range) == 2
-        ), "Error the 'elevation_range' must either be none, or a two entry list"
-
-        self.raster_type = numpy.float64
         self.lidar_interpolation_method = lidar_interpolation_method
         self._dem = None
 
         super(RawDem, self).__init__(
             catchment_geometry=catchment_geometry,
-            extents=None,
+            elevation_range=elevation_range,
         )
-
-    def __del__(self):
-        """Ensure the memory associated with netCDF files is properly freed."""
-
-        # The dense DEM - may be opened from memory
-        if self._dem is not None:
-            self._dem.close()
-            del self._dem
-
-    @property
-    def dem(self):
-        """Return the combined DEM from tiles and any interpolated offshore values"""
-
-        # Ensure valid name and increasing dimension indexing for the dem
-        self._dem = self._dem.rio.clip(self.catchment_geometry.catchment.geometry)
-        # Some programs require positively increasing indices
-        self._dem = self._ensure_positive_indexing(self._dem)
-        return self._dem
 
     def _set_up_chunks(self, chunk_size: int) -> (list, list):
         """Define the chunked coordinates to cover the catchment"""
@@ -697,163 +909,14 @@ class RawDem(DenseDemBase):
             ]
         return dim_x, dim_y
 
-    def _define_chunk_region(
-        self,
-        region_to_rasterise: geopandas.GeoDataFrame,
-        dim_x: numpy.ndarray,
-        dim_y: numpy.ndarray,
-        radius: float,
-    ):
-        """Define the region to rasterise within a single chunk."""
-        # Define the region to tile
-        chunk_geometry = geopandas.GeoDataFrame(
-            {
-                "geometry": [
-                    shapely.geometry.Polygon(
-                        [
-                            (numpy.min(dim_x) - radius, numpy.min(dim_y) - radius),
-                            (numpy.max(dim_x) + radius, numpy.min(dim_y) - radius),
-                            (numpy.max(dim_x) + radius, numpy.max(dim_y) + radius),
-                            (numpy.min(dim_x) - radius, numpy.max(dim_y) + radius),
-                        ]
-                    )
-                ]
-            },
-            crs=self.catchment_geometry.crs["horizontal"],
-        )
-
-        # Define region to rasterise inside the chunk area - remove any subpixel
-        # polygons
-        chunk_region_to_tile = geopandas.GeoDataFrame(
-            geometry=region_to_rasterise.buffer(radius).clip(
-                chunk_geometry, keep_geom_type=True
-            )
-        )
-        chunk_region_to_tile = chunk_region_to_tile[
-            chunk_region_to_tile.area
-            > self.catchment_geometry.resolution * self.catchment_geometry.resolution
-        ]
-
-        return chunk_region_to_tile
-
-    def _calculate_dense_extents(self):
+    def _calculate_raw_extents(self):
         """Calculate the extents of the current dense DEM. Remove holes as these can
         cause self intersection warnings."""
 
-        dense_extents = [
-            shapely.geometry.shape(polygon[0])
-            for polygon in rasterio.features.shapes(
-                numpy.uint8(numpy.logical_not(numpy.isnan(self._dem.z.data)))
-            )
-            if polygon[1] == 1.0
-        ]
-        dense_extents = shapely.ops.unary_union(dense_extents)
-
-        # Remove any internal holes for select types as these may cause self
-        # intersection errors
-        if type(dense_extents) is shapely.geometry.Polygon:
-            dense_extents = shapely.geometry.Polygon(dense_extents.exterior)
-        elif type(dense_extents) is shapely.geometry.MultiPolygon:
-            dense_extents = shapely.geometry.MultiPolygon(
-                [
-                    shapely.geometry.Polygon(polygon.exterior)
-                    for polygon in dense_extents
-                ]
-            )
-        # Convert into a Geopandas dataframe
-        dense_extents = geopandas.GeoDataFrame(
-            {"geometry": [dense_extents]}, crs=self.catchment_geometry.crs["horizontal"]
-        )
-
-        # Apply a transform so in the same space as the dense DEM - buffer(0) to reduce
-        # self intersection warnings
-        dense_dem_affine = self._dem.z.rio.transform()
-        dense_extents = dense_extents.affine_transform(
-            [
-                dense_dem_affine.a,
-                dense_dem_affine.b,
-                dense_dem_affine.d,
-                dense_dem_affine.e,
-                dense_dem_affine.xoff,
-                dense_dem_affine.yoff,
-            ]
-        ).buffer(0)
-
-        # And make our GeoSeries into a GeoDataFrame
-        dense_extents = geopandas.GeoDataFrame(geometry=dense_extents)
-
-        return dense_extents
-
-    def _tile_index_column_name(
-        self, tile_index_file: typing.Union[str, pathlib.Path] = None
-    ):
-        """Read in tile index file and determine the column name of the tile geometries"""
-        # Check to see if a extents file was added
-        tile_index_extents = (
-            geopandas.read_file(tile_index_file)
-            if tile_index_file is not None
-            else None
-        )
-        tile_index_name_column = None
-
-        # If there is a tile_index_file - remove tiles outside the catchment & get the
-        # 'file name' column
-        if tile_index_extents is not None:
-            tile_index_extents = tile_index_extents.to_crs(
-                self.catchment_geometry.crs["horizontal"]
-            )
-            tile_index_extents = geopandas.sjoin(
-                tile_index_extents, self.catchment_geometry.catchment
-            )
-            tile_index_extents = tile_index_extents.reset_index(drop=True)
-
-            column_names = tile_index_extents.columns
-            tile_index_name_column = column_names[
-                [
-                    "filename" == name.lower() or "file_name" == name.lower()
-                    for name in column_names
-                ]
-            ][0]
-        return tile_index_extents, tile_index_name_column
-
-    def _rasterise_tile(
-        self,
-        dim_x: numpy.ndarray,
-        dim_y: numpy.ndarray,
-        tile_points: numpy.ndarray,
-        options: dict,
-    ):
-        """Rasterise all points within a tile."""
-
-        # keep only the selected classification points for averaging calculations
-        classification_mask = numpy.zeros_like(
-            tile_points["Classification"], dtype=bool
-        )
-        for classification in options["lidar_classifications_to_keep"]:
-            classification_mask[tile_points["Classification"] == classification] = True
-        tile_points = tile_points[classification_mask]
-
-        if len(tile_points) == 0:
-            logging.warning(
-                "In DenseDem._rasterise_tile the tile has no data and is being ignored."
-            )
-            return
-        # Get the indicies overwhich to perform IDW
-        grid_x, grid_y = numpy.meshgrid(dim_x, dim_y)
-        xy_out = numpy.concatenate(
-            [[grid_x.flatten()], [grid_y.flatten()]], axis=0
-        ).transpose()
-
-        # Perform the specified averaging over the dense DEM within the extents of this
-        # point cloud tile
-        z_flat = rasterise_points(
-            point_cloud=tile_points, xy_out=xy_out, options=options
-        )
-        grid_z = z_flat.reshape(grid_x.shape)
-
-        # TODO - add roughness calculation
-
-        return grid_z
+        # Defines extents where raw DEM values exist
+        mask = numpy.logical_not(numpy.isnan(self._dem.z.data))
+        extents = self._extents_from_mask(mask, self._dem)
+        return extents
 
     def add_lidar(
         self,
@@ -862,7 +925,6 @@ class RawDem(DenseDemBase):
         chunk_size: int,
         lidar_classifications_to_keep: list,
         source_crs: dict,
-        drop_offshore_lidar: bool,
         metadata: dict,
     ):
         """Read in all LiDAR files and use to create a dense DEM.
@@ -873,9 +935,6 @@ class RawDem(DenseDemBase):
         source_crs
             Specify if the CRS encoded in the LiDAR files are incorrect/only partially
             defined (i.e. missing vertical CRS) and need to be overwritten.
-        drop_offshore_lidar
-            If True, trim any LiDAR values that are offshore as specified by the
-            catchment_geometry.
         lidar_classifications_to_keep
             A list of LiDAR classifications to keep - '2' for ground, '9' for water.
             See https://www.asprs.org/wp-content/uploads/2010/12/LAS_1_4_r13.pdf for
@@ -896,7 +955,7 @@ class RawDem(DenseDemBase):
                 "horizontal and vertical CRS need to be defined. The source_crs "
                 f"specified is: {self.source_crs}"
             )
-        if drop_offshore_lidar:
+        if self.drop_offshore_lidar:
             region_to_rasterise = self.catchment_geometry.land_and_foreshore
         else:
             region_to_rasterise = self.catchment_geometry.catchment
@@ -943,7 +1002,7 @@ class RawDem(DenseDemBase):
         self._dem = dem.rio.clip(region_to_rasterise.geometry, drop=False)
 
         # Create a polygon defining the region where there are dense DEM values
-        self._extents = self._calculate_dense_extents()
+        self._extents = self._calculate_raw_extents()
 
     def _add_tiled_lidar_chunked(
         self,
@@ -1057,6 +1116,42 @@ class RawDem(DenseDemBase):
 
         return dem
 
+    def _rasterise_tile(
+        self,
+        dim_x: numpy.ndarray,
+        dim_y: numpy.ndarray,
+        tile_points: numpy.ndarray,
+        options: dict,
+    ):
+        """Rasterise all points within a tile."""
+
+        # keep only the selected classification points for averaging calculations
+        classification_mask = numpy.zeros_like(
+            tile_points["Classification"], dtype=bool
+        )
+        for classification in options["lidar_classifications_to_keep"]:
+            classification_mask[tile_points["Classification"] == classification] = True
+        tile_points = tile_points[classification_mask]
+
+        if len(tile_points) == 0:
+            logging.warning(
+                "In DenseDem._rasterise_tile the tile has no data and is being ignored."
+            )
+            return
+        # Get the indicies overwhich to perform IDW
+        grid_x, grid_y = numpy.meshgrid(dim_x, dim_y)
+        xy_out = numpy.concatenate(
+            [[grid_x.flatten()], [grid_y.flatten()]], axis=0
+        ).transpose()
+
+        # Perform the specified rasterisation within the extents of the tile
+        z_flat = rasterise_points(
+            point_cloud=tile_points, xy_out=xy_out, options=options
+        )
+        grid_z = z_flat.reshape(grid_x.shape)
+
+        return grid_z
+
     def _create_data_set(
         self, x: numpy.ndarray, y: numpy.ndarray, z: numpy.ndarray, metadata: dict
     ) -> xarray.Dataset:
@@ -1162,7 +1257,7 @@ class RawDem(DenseDemBase):
         ] = self.SOURCE_CLASSIFICATION["reference DEM"]
 
         # Update the dense DEM extents
-        self._extents = self._calculate_dense_extents()
+        self._extents = self._calculate_raw_extents()
 
 
 def read_file_with_pdal(

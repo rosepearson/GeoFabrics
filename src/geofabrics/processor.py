@@ -515,7 +515,7 @@ class RawLidarDemGenerator(BaseProcessor):
         # Get LiDAR data file-list - this may involve downloading lidar files
         lidar_dataset_info = self.get_lidar_file_list("open_topography")
 
-        # setup the raw DEM object
+        # setup the raw DEM generator
         self.raw_dem = dem.RawDem(
             catchment_geometry=self.catchment_geometry,
             drop_offshore_lidar=self.get_instruction_general("drop_offshore_lidar"),
@@ -539,7 +539,6 @@ class RawLidarDemGenerator(BaseProcessor):
             self.raw_dem.add_lidar(
                 lidar_files=lidar_dataset_info["file_paths"],
                 source_crs=lidar_dataset_info["crs"],
-                drop_offshore_lidar=self.get_instruction_general("drop_offshore_lidar"),
                 lidar_classifications_to_keep=self.get_instruction_general(
                     "lidar_classifications_to_keep"
                 ),
@@ -692,7 +691,7 @@ class BathymetryDemGenerator(BaseProcessor):
         # create the catchment geometry object
         self.catchment_geometry = self.create_catchment()
 
-        # setup the hydrologically conditioned DEM
+        # setup the hydrologically conditioned DEM generator
         self.hydrologic_dem = dem.HydrologicallyConditionedDem(
             catchment_geometry=self.catchment_geometry,
             raw_dem_path=self.get_instruction_path("raw_dem"),
