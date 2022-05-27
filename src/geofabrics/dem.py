@@ -618,15 +618,16 @@ class LidarBase(DemBase):
     def dem(self):
         """Return the combined DEM from tiles and any interpolated offshore values"""
 
-        # Ensure valid name and increasing dimension indexing for the dem
-        self._dem = self._dem.rio.clip(self.catchment_geometry.catchment.geometry)
-        # Some programs require positively increasing indices
+        # Ensure positively increasing indices as required by some programs
         self._dem = self._ensure_positive_indexing(self._dem)
         return self._dem
 
     def _extents_from_mask(self, mask: numpy.ndarray, dem: xarray.Dataset):
-        """Calculate the extents of the current dense DEM. Remove holes as these can
-        cause self intersection warnings."""
+        """Define the spatial extents of the pixels in the DEM as defined by the mask
+        (i.e. what are the spatial extents of pixels in the DEM that are marked True in
+         the mask).
+
+         Remove holes as these can cause self intersection warnings."""
 
         dense_extents = [
             shapely.geometry.shape(polygon[0])
@@ -749,6 +750,49 @@ class LidarBase(DemBase):
             ][0]
         return tile_index_extents, tile_index_name_column
 
+    def _check_valid_inputs(self, source_crs, chunk_size, lidar_files, tile_index_file):
+        """Check the combination of inputs for adding LiDAR is valid.
+
+        Parameters
+        ----------
+
+        source_crs
+            Coordinate reference system information
+        chunk_size
+            The chunk size in pixels for parallel/staged processing
+        lidar_files
+            The list of LiDAR files to read in
+        tile_index_file
+            A file specifying the spatial extents of the LiDAR files.
+        """
+
+        # Check the source_crs is valid
+        if source_crs is not None:
+            assert "horizontal" in source_crs, (
+                "The horizontal component of the source CRS is not specified. Both "
+                "horizontal and vertical CRS need to be defined. The source_crs "
+                f"specified is: {self.source_crs}"
+            )
+            assert "vertical" in source_crs, (
+                "The vertical component of the source CRS is not specified. Both "
+                "horizontal and vertical CRS need to be defined. The source_crs "
+                f"specified is: {self.source_crs}"
+            )
+        # Check some LiDAR files are soecified
+        assert len(lidar_files) >= 1, "There are no LiDAR files specified"
+        # Check the combination of chunk_size, lidar_files and tile_index_file are valid
+        if chunk_size is None:
+            assert (
+                len(lidar_files) == 1
+            ), "If there is no chunking there must be only one LiDAR file"
+        else:
+            assert (
+                chunk_size > 0 and type(chunk_size) is int
+            ), "chunk_size must be a positive integer"
+            assert (
+                tile_index_file is not None
+            ), "A tile index file must be provided if chunking is defined"
+
     def add_lidar(
         self,
         lidar_files: typing.List[typing.Union[str, pathlib.Path]],
@@ -764,18 +808,19 @@ class LidarBase(DemBase):
         ----------
 
         source_crs
-            Specify if the CRS encoded in the LiDAR files are incorrect/only partially
-            defined (i.e. missing vertical CRS) and need to be overwritten.
-        drop_offshore_lidar
-            If True, trim any LiDAR values that are offshore as specified by the
-            catchment_geometry.
+            Coordinate reference system information
+        chunk_size
+            The chunk size in pixels for parallel/staged processing
+        lidar_files
+            The list of LiDAR files to read in
+        tile_index_file
+            A file specifying the spatial extents of the LiDAR files.
         lidar_classifications_to_keep
             A list of LiDAR classifications to keep - '2' for ground, '9' for water.
             See https://www.asprs.org/wp-content/uploads/2010/12/LAS_1_4_r13.pdf for
             standard list
-        tile_index_file
-            Must exist if there are many LiDAR files. This is used to determine
-            chunking.
+        meta_data
+            Information to include in the created DEM.
         """
 
         raise NotImplementedError("add_lidar must be instantiated in the child class")
@@ -811,13 +856,8 @@ class LidarBase(DemBase):
 
 
 class RawDem(LidarBase):
-    """A class to manage the population of the DenseDem's dem from LiDAR tiles,
-    and/or a reference DEM.
-
-    The dense DEM is made up of tiles created from dense point data - Either LiDAR point
-    clouds, or a reference DEM.
-
-    DenseDemFromTiles logic can be controlled by the constructor inputs.
+    """A class to manage the creation of a 'raw' DEM from LiDAR tiles, and/or a
+    reference DEM.
 
     Parameters
     ----------
@@ -825,11 +865,12 @@ class RawDem(LidarBase):
     drop_offshore_lidar
         If True only keep LiDAR values within the foreshore and land regions defined by
         the catchment_geometry. If False keep all LiDAR values.
-    interpolation_method
-        If not None, interpolate using that method. Valid options are 'linear',
-        'nearest', and 'cubic'.
+    elevation_range
+        Optitionally specify a range of valid elevations. Any LiDAR points with
+        elevations outside this range will be filtered out.
     lidar_interpolation_method
-        The interpolation method to apply to LiDAR. Options are: mean, median, IDW.
+        The interpolation method to apply to LiDAR during downsampling/averaging.
+        Options are: mean, median, IDW, max, min, STD.
     """
 
     def __init__(
@@ -851,72 +892,56 @@ class RawDem(LidarBase):
         )
 
     def _set_up_chunks(self, chunk_size: int) -> (list, list):
-        """Define the chunked coordinates to cover the catchment"""
+        """Define the chunks to break the catchment into when reading in and
+        downsampling LiDAR.
 
-        catchment_bounds = self.catchment_geometry.catchment.loc[0].geometry.bounds
+        Parameters
+        ----------
+
+        chunk_size
+            The size in pixels of each chunk.
+        """
+
+        bounds = self.catchment_geometry.catchment.geometry.bounds
         resolution = self.catchment_geometry.resolution
 
         # Determine the number of chunks
-        if chunk_size is None or chunk_size <= 0:
-            # Determine x and y coordinates for no chunks
-            dim_x = [
-                numpy.arange(
-                    catchment_bounds[0] + resolution / 2,
-                    catchment_bounds[2],
-                    resolution,
-                    dtype=self.raster_type,
-                )
-            ]
-            dim_y = [
-                numpy.arange(
-                    catchment_bounds[3] - resolution / 2,
-                    catchment_bounds[1],
-                    -resolution,
-                    dtype=self.raster_type,
-                )
-            ]
-        else:
-            n_chunks_x = int(
-                numpy.ceil(
-                    (catchment_bounds[2] - catchment_bounds[0])
-                    / (chunk_size * resolution)
-                )
+        n_chunks_x = int(
+            numpy.ceil(
+                (bounds.maxx.max() - bounds.minx.min()) / (chunk_size * resolution)
             )
-            n_chunks_y = int(
-                numpy.ceil(
-                    (catchment_bounds[3] - catchment_bounds[1])
-                    / (chunk_size * resolution)
-                )
+        )
+        n_chunks_y = int(
+            numpy.ceil(
+                (bounds.maxy.max() - bounds.miny.min()) / (chunk_size * resolution)
             )
+        )
 
-            # Determine x and y coordinates rounded up to the nearest chunk
-            dim_x = [
-                numpy.arange(
-                    catchment_bounds[0] + resolution / 2 + i * chunk_size * resolution,
-                    catchment_bounds[0]
-                    + resolution / 2
-                    + (i + 1) * chunk_size * resolution,
-                    resolution,
-                    dtype=self.raster_type,
-                )
-                for i in range(n_chunks_x)
-            ]
-            dim_y = [
-                numpy.arange(
-                    catchment_bounds[3] - resolution / 2 - i * chunk_size * resolution,
-                    catchment_bounds[3]
-                    - resolution / 2
-                    - (i + 1) * chunk_size * resolution,
-                    -resolution,
-                    dtype=self.raster_type,
-                )
-                for i in range(n_chunks_y)
-            ]
+        # The x coordinates rounded up to the nearest chunk
+        dim_x = [
+            numpy.arange(
+                bounds.minx.min() + resolution / 2 + i * chunk_size * resolution,
+                bounds.minx.min() + resolution / 2 + (i + 1) * chunk_size * resolution,
+                resolution,
+                dtype=self.raster_type,
+            )
+            for i in range(n_chunks_x)
+        ]
+        # The y coordinates rounded up to the nearest chunk
+        dim_y = [
+            numpy.arange(
+                bounds.maxy.max() - resolution / 2 - i * chunk_size * resolution,
+                bounds.maxy.max() - resolution / 2 - (i + 1) * chunk_size * resolution,
+                -resolution,
+                dtype=self.raster_type,
+            )
+            for i in range(n_chunks_y)
+        ]
         return dim_x, dim_y
 
     def _calculate_raw_extents(self):
-        """Calculate the extents of the current dense DEM. Remove holes as these can
-        cause self intersection warnings."""
+        """Define the extents of the DEM with values (i.e. what are the spatial extents
+        of pixels in the DEM that are defined from LiDAR or a reference DEM)."""
 
         # Defines extents where raw DEM values exist
         mask = numpy.logical_not(numpy.isnan(self._dem.z.data))
@@ -932,34 +957,36 @@ class RawDem(LidarBase):
         source_crs: dict,
         metadata: dict,
     ):
-        """Read in all LiDAR files and use to create a dense DEM.
+        """Read in all LiDAR files and use to define a 'raw' DEM with elevations in
+        pixels where there is LiDAR or reference  DEM information.
 
         Parameters
         ----------
 
         source_crs
-            Specify if the CRS encoded in the LiDAR files are incorrect/only partially
-            defined (i.e. missing vertical CRS) and need to be overwritten.
+            Coordinate reference system information
+        chunk_size
+            The chunk size in pixels for parallel/staged processing
+        lidar_files
+            The list of LiDAR files to read in
+        tile_index_file
+            A file specifying the spatial extents of the LiDAR files.
         lidar_classifications_to_keep
             A list of LiDAR classifications to keep - '2' for ground, '9' for water.
             See https://www.asprs.org/wp-content/uploads/2010/12/LAS_1_4_r13.pdf for
             standard list
-        tile_index_file
-            Must exist if there are many LiDAR files. This is used to determine
-            chunking.
+        meta_data
+            Information to include in the created DEM.
         """
 
-        if source_crs is not None:
-            assert "horizontal" in source_crs, (
-                "The horizontal component of the source CRS is not specified. Both "
-                "horizontal and vertical CRS need to be defined. The source_crs "
-                f"specified is: {self.source_crs}"
-            )
-            assert "vertical" in source_crs, (
-                "The vertical component of the source CRS is not specified. Both "
-                "horizontal and vertical CRS need to be defined. The source_crs "
-                f"specified is: {self.source_crs}"
-            )
+        # Check valid inputs
+        self._check_valid_inputs(
+            source_crs=source_crs,
+            chunk_size=chunk_size,
+            lidar_files=lidar_files,
+            tile_index_file=tile_index_file,
+        )
+        # Define the region to rasterise over
         if self.drop_offshore_lidar:
             region_to_rasterise = self.catchment_geometry.land_and_foreshore
         else:
@@ -973,8 +1000,8 @@ class RawDem(LidarBase):
             "method": self.lidar_interpolation_method,
         }
 
-        # Determine if adding a single file or tiles
-        if len(lidar_files) == 1:  # If one file it's ok if there is no tile_index
+        # Don't use dask delayed if there is no chunking
+        if chunk_size is None:
             dem = self._add_file(
                 lidar_file=lidar_files[0],
                 region_to_rasterise=region_to_rasterise,
@@ -983,16 +1010,6 @@ class RawDem(LidarBase):
                 metadata=metadata,
             )
         else:
-            assert (
-                tile_index_file is not None
-            ), "A tile index file is required for multiple tile files added together"
-            assert chunk_size > 0 and chunk_size is not None, (
-                "The chunk size should be set when reading in tiled LiDAR "
-                "files. Ideally it should include as many tiles can easily be read in "
-                "by on core. You will have to equate The tile extents with chunk size "
-                "by extents / resolution. "
-            )
-            assert len(lidar_files) > 1, "There are no LiDAR files specified"
             dem = self._add_tiled_lidar_chunked(
                 lidar_files=lidar_files,
                 tile_index_file=tile_index_file,
@@ -1090,7 +1107,7 @@ class RawDem(LidarBase):
         source_crs: dict,
         metadata: dict,
     ) -> xarray.Dataset:
-        """Create the dense DEM region from a single LiDAR file."""
+        """Create the dense DEM region from a single LiDAR file with no chunking."""
 
         logging.info(f"On LiDAR tile 1 of 1: {lidar_file}")
 
@@ -1106,11 +1123,23 @@ class RawDem(LidarBase):
         # Load LiDAR points from pipeline
         tile_array = pdal_pipeline.arrays[0]
 
-        # Get the raster indicies
-        dim_x, dim_y = self._set_up_chunks(chunk_size=None)
-        dim_x = dim_x[0]
-        dim_y = dim_y[0]
+        # define the raster/DEM dimensions
+        bounds = self.catchment_geometry.catchment.geometry.bounds
+        resolution = self.catchment_geometry.resolution
+        dim_x = numpy.arange(
+            bounds.minx.min() + resolution / 2,
+            bounds.maxx.max(),
+            resolution,
+            dtype=self.raster_type,
+        )
+        dim_y = numpy.arange(
+            bounds.maxy.max() - resolution / 2,
+            bounds.miny.min(),
+            -resolution,
+            dtype=self.raster_type,
+        )
 
+        # Create elevation raster
         raster_values = self._rasterise_tile(
             dim_x=dim_x, dim_y=dim_y, tile_points=tile_array, options=options
         )
@@ -1352,44 +1381,47 @@ class RoughnessDem(LidarBase):
         return extents
 
     def _set_up_chunks(self, chunk_size: int) -> (list, list):
-        """Define the chunked coordinates to cover the catchment"""
+        """Define the chunks to break the catchment into when reading in and
+        downsampling LiDAR.
+
+        Parameters
+        ----------
+
+        chunk_size
+            The size in pixels of each chunk.
+        """
 
         dim_x_all = self._hydrological_dem.x.data
         dim_y_all = self._hydrological_dem.y.data
         resolution = self.catchment_geometry.resolution
 
         # Determine the number of chunks
-        if chunk_size is None or chunk_size <= 0:
-            # Determine x and y coordinates for no chunks
-            dim_x = [dim_x_all]
-            dim_y = [dim_y_all]
-        else:
-            n_chunks_x = int(
-                numpy.ceil((dim_x_all[-1] - dim_x_all[0]) / (chunk_size * resolution))
-            )
-            n_chunks_y = int(
-                numpy.ceil((dim_y_all[-1] - dim_y_all[0]) / (chunk_size * resolution))
-            )
+        n_chunks_x = int(
+            numpy.ceil((dim_x_all[-1] - dim_x_all[0]) / (chunk_size * resolution))
+        )
+        n_chunks_y = int(
+            numpy.ceil((dim_y_all[-1] - dim_y_all[0]) / (chunk_size * resolution))
+        )
 
-            # Determine x and y coordinates rounded up to the nearest chunk
-            dim_x = [
-                numpy.arange(
-                    dim_x_all[0] + resolution / 2 + i * chunk_size * resolution,
-                    dim_x_all[0] + resolution / 2 + (i + 1) * chunk_size * resolution,
-                    resolution,
-                    dtype=self.raster_type,
-                )
-                for i in range(n_chunks_x)
-            ]
-            dim_y = [
-                numpy.arange(
-                    dim_y_all[0] - resolution / 2 - i * chunk_size * resolution,
-                    dim_y_all[0] - resolution / 2 - (i + 1) * chunk_size * resolution,
-                    -resolution,
-                    dtype=self.raster_type,
-                )
-                for i in range(n_chunks_y)
-            ]
+        # Determine x and y coordinates rounded up to the nearest chunk
+        dim_x = [
+            numpy.arange(
+                dim_x_all[0] + resolution / 2 + i * chunk_size * resolution,
+                dim_x_all[0] + resolution / 2 + (i + 1) * chunk_size * resolution,
+                resolution,
+                dtype=self.raster_type,
+            )
+            for i in range(n_chunks_x)
+        ]
+        dim_y = [
+            numpy.arange(
+                dim_y_all[0] - resolution / 2 - i * chunk_size * resolution,
+                dim_y_all[0] - resolution / 2 - (i + 1) * chunk_size * resolution,
+                -resolution,
+                dtype=self.raster_type,
+            )
+            for i in range(n_chunks_y)
+        ]
         return dim_x, dim_y
 
     def add_lidar(
@@ -1418,17 +1450,14 @@ class RoughnessDem(LidarBase):
             chunking.
         """
 
-        if source_crs is not None:
-            assert "horizontal" in source_crs, (
-                "The horizontal component of the source CRS is not specified. Both "
-                "horizontal and vertical CRS need to be defined. The source_crs "
-                f"specified is: {self.source_crs}"
-            )
-            assert "vertical" in source_crs, (
-                "The vertical component of the source CRS is not specified. Both "
-                "horizontal and vertical CRS need to be defined. The source_crs "
-                f"specified is: {self.source_crs}"
-            )
+        # Check valid inputs
+        self._check_valid_inputs(
+            source_crs=source_crs,
+            chunk_size=chunk_size,
+            lidar_files=lidar_files,
+            tile_index_file=tile_index_file,
+        )
+
         # Calculate roughness from LiDAR
         region_to_rasterise = self._calculate_lidar_extents()
 
@@ -1441,7 +1470,7 @@ class RoughnessDem(LidarBase):
         }
 
         # Determine if adding a single file or tiles
-        if len(lidar_files) == 1:  # If one file it's ok if there is no tile_index
+        if chunk_size is None:  # If one file it's ok if there is no tile_index
             dem = self._add_file(
                 lidar_file=lidar_files[0],
                 region_to_rasterise=region_to_rasterise,
@@ -1450,16 +1479,6 @@ class RoughnessDem(LidarBase):
                 metadata=metadata,
             )
         else:
-            assert (
-                tile_index_file is not None
-            ), "A tile index file is required for multiple tile files added together"
-            assert chunk_size > 0 and chunk_size is not None, (
-                "The chunk size should be set when reading in tiled LiDAR "
-                "files. Ideally it should include as many tiles can easily be read in "
-                "by on core. You will have to equate The tile extents with chunk size "
-                "by extents / resolution. "
-            )
-            assert len(lidar_files) > 1, "There are no LiDAR files specified"
             dem = self._add_tiled_lidar_chunked(
                 lidar_files=lidar_files,
                 tile_index_file=tile_index_file,
@@ -1586,9 +1605,8 @@ class RoughnessDem(LidarBase):
         tile_array = pdal_pipeline.arrays[0]
 
         # Get the raster indicies
-        dim_x, dim_y = self._set_up_chunks(chunk_size=None)
-        dim_x = dim_x[0]
-        dim_y = dim_y[0]
+        dim_x = self._hydrological_dem.x.data
+        dim_y = self._hydrological_dem.y.data
 
         # Estimate roughness over the region
         raster_values = self._rasterise_tile(
