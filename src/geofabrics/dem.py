@@ -884,14 +884,14 @@ class RawDem(LidarBase):
     ):
         """Setup base DEM to add future tiles too"""
 
-        self.drop_offshore_lidar = drop_offshore_lidar
-        self.lidar_interpolation_method = lidar_interpolation_method
-        self._dem = None
-
         super(RawDem, self).__init__(
             catchment_geometry=catchment_geometry,
             elevation_range=elevation_range,
         )
+
+        self.drop_offshore_lidar = drop_offshore_lidar
+        self.lidar_interpolation_method = lidar_interpolation_method
+        self._dem = None
 
     def _set_up_chunks(self, chunk_size: int) -> (list, list):
         """Define the chunks to break the catchment into when reading in and
@@ -989,10 +989,11 @@ class RawDem(LidarBase):
             tile_index_file=tile_index_file,
         )
         # Define the region to rasterise over
-        if self.drop_offshore_lidar:
-            region_to_rasterise = self.catchment_geometry.land_and_foreshore
-        else:
-            region_to_rasterise = self.catchment_geometry.catchment
+        region_to_rasterise = (
+            self.catchment_geometry.land_and_foreshore
+            if self.drop_offshore_lidar
+            else self.catchment_geometry.catchment
+        )
         # create dictionary defining raster options
         raster_options = {
             "lidar_classifications_to_keep": lidar_classifications_to_keep,
@@ -1038,7 +1039,7 @@ class RawDem(LidarBase):
         metadata: dict,
         raster_options: dict,
     ) -> xarray.Dataset:
-        """Create a dense DEM from a set of tiled LiDAR files. Read these in over
+        """Create a 'raw'' DEM from a set of tiled LiDAR files. Read these in over
         non-overlapping chunks and then combine"""
 
         # Remove all tiles entirely outside the region to raserise
@@ -1046,8 +1047,7 @@ class RawDem(LidarBase):
             tile_index_file
         )
 
-        # get chunking information - if negative, 0 or None chunk_size then default to a
-        # single chunk
+        # get chunking information
         chunked_dim_x, chunked_dim_y = self._set_up_chunks(chunk_size)
 
         # cycle through index chunks - and collect in a delayed array
@@ -1066,7 +1066,7 @@ class RawDem(LidarBase):
                     radius=raster_options["radius"],
                 )
 
-                # Load in files and rasterise
+                # Load in files into tiles
                 chunk_points = delayed_load_tiles_in_chunk(
                     dim_x=dim_x,
                     dim_y=dim_y,
@@ -1077,9 +1077,10 @@ class RawDem(LidarBase):
                     chunk_region_to_tile=chunk_region_to_tile,
                     catchment_geometry=self.catchment_geometry,
                 )
+                # Rasterise tiles
                 delayed_chunked_x.append(
                     dask.array.from_delayed(
-                        delayed_rasterise_chunk(
+                        delayed_elevation_over_chunk(
                             dim_x=dim_x,
                             dim_y=dim_y,
                             tile_points=chunk_points,
@@ -1092,9 +1093,12 @@ class RawDem(LidarBase):
             delayed_chunked_matrix.append(delayed_chunked_x)
         # Combine chunks into a dataset
         elevation = dask.array.block(delayed_chunked_matrix)
-        x = numpy.concatenate(chunked_dim_x)
-        y = numpy.concatenate(chunked_dim_y)
-        chunked_dem = self._create_data_set(x=x, y=y, z=elevation, metadata=metadata)
+        chunked_dem = self._create_data_set(
+            x=numpy.concatenate(chunked_dim_x),
+            y=numpy.concatenate(chunked_dim_y),
+            z=elevation,
+            metadata=metadata,
+        )
         logging.info("Computing chunks")
         chunked_dem = chunked_dem.compute()
         logging.debug("Chunked DEM computed")
@@ -1109,7 +1113,7 @@ class RawDem(LidarBase):
         source_crs: dict,
         metadata: dict,
     ) -> xarray.Dataset:
-        """Create the dense DEM region from a single LiDAR file with no chunking."""
+        """Create a 'raw' DEM from a single LiDAR file with no chunking."""
 
         logging.info(f"On LiDAR tile 1 of 1: {lidar_file}")
 
@@ -1123,7 +1127,7 @@ class RawDem(LidarBase):
         )
 
         # Load LiDAR points from pipeline
-        tile_array = pdal_pipeline.arrays[0]
+        tile_points = pdal_pipeline.arrays[0]
 
         # define the raster/DEM dimensions
         bounds = self.catchment_geometry.catchment.geometry.bounds
@@ -1142,8 +1146,8 @@ class RawDem(LidarBase):
         )
 
         # Create elevation raster
-        raster_values = self._rasterise_tile(
-            dim_x=dim_x, dim_y=dim_y, tile_points=tile_array, options=options
+        raster_values = self._elevation_over_tile(
+            dim_x=dim_x, dim_y=dim_y, tile_points=tile_points, options=options
         )
         elevation = raster_values.reshape((len(dim_y), len(dim_x)))
 
@@ -1152,16 +1156,17 @@ class RawDem(LidarBase):
 
         return dem
 
-    def _rasterise_tile(
+    def _elevation_over_tile(
         self,
         dim_x: numpy.ndarray,
         dim_y: numpy.ndarray,
         tile_points: numpy.ndarray,
         options: dict,
     ):
-        """Rasterise all points within a tile."""
+        """Rasterise all points within a tile to give elevation. Does not require a tile
+        index file."""
 
-        # keep only the selected classification points for averaging calculations
+        # keep only the specified classifications (should be ground / water)
         classification_mask = numpy.zeros_like(
             tile_points["Classification"], dtype=bool
         )
@@ -1171,17 +1176,18 @@ class RawDem(LidarBase):
 
         if len(tile_points) == 0:
             logging.warning(
-                "In DenseDem._rasterise_tile the tile has no data and is being ignored."
+                "In RawDem._elevation_over_tile the tile has no data and is being "
+                "ignored."
             )
             return
-        # Get the indicies overwhich to perform IDW
+        # Get the grided locations overwhich to perform IDW
         grid_x, grid_y = numpy.meshgrid(dim_x, dim_y)
         xy_out = numpy.concatenate(
             [[grid_x.flatten()], [grid_y.flatten()]], axis=0
         ).transpose()
 
-        # Perform the specified rasterisation within the extents of the tile
-        z_flat = rasterise_points(
+        # Perform the specified rasterisation over the grid locations
+        z_flat = elevation_from_points(
             point_cloud=tile_points, xy_out=xy_out, options=options
         )
         grid_z = z_flat.reshape(grid_x.shape)
@@ -1252,21 +1258,21 @@ class RawDem(LidarBase):
     def add_reference_dem(
         self, tile_points: numpy.ndarray, tile_extent: geopandas.GeoDataFrame
     ):
-        """Update gaps in dense DEM from areas with no LiDAR with the reference DEM."""
+        """Fill gaps in dense DEM from areas with no LiDAR with the reference DEM."""
 
         # Areas not covered by LiDAR values
         mask = numpy.isnan(self._dem.z.data)
 
         if len(tile_points) == 0:
             logging.warning(
-                "DenseDem.add_tile: the latest reference DEM has no data and is being"
-                " ignored."
+                "RawDem.add_reference_dem: the latest reference DEM has no data and is "
+                "being ignored."
             )
             return
         elif mask.sum() == 0:
             logging.warning(
-                "DenseDem.add_tile: LiDAR covers all raster values so the reference DEM"
-                " is being ignored."
+                "RawDem.add_reference_dem: LiDAR covers all raster values so the "
+                "reference DEM is being ignored."
             )
             return
         # create dictionary defining raster options
@@ -1276,17 +1282,20 @@ class RawDem(LidarBase):
             "method": self.lidar_interpolation_method,
         }
 
-        # Get the indicies overwhich to perform averaging
+        # Get the grid locations overwhich to perform averaging
         grid_x, grid_y = numpy.meshgrid(self._dem.x, self._dem.y)
 
+        # Mask to only rasterise where there aren't already LiDAR derived values
         xy_out = numpy.empty((mask.sum(), 2))
         xy_out[:, 0] = grid_x[mask]
         xy_out[:, 1] = grid_y[mask]
 
         # Perform specified averaging from the reference DEM where there is no data
-        z_flat = rasterise_points(
+        z_flat = elevation_from_points(
             point_cloud=tile_points, xy_out=xy_out, options=raster_options
         )
+
+        # Update the DEM
         self._dem.z.data[mask] = z_flat
         self._dem.source_class.data[
             mask & numpy.logical_not(numpy.isnan(self._dem.z.data))
@@ -1297,17 +1306,21 @@ class RawDem(LidarBase):
 
 
 class RoughnessDem(LidarBase):
-    """A class to manage the population of the DenseDem's dem from LiDAR tiles,
-    and/or a reference DEM.
+    """A class to add a roughness (zo) layer to a hydrologically conditioned DEM.
 
-    The dense DEM is made up of tiles created from dense point data - Either LiDAR point
-    clouds, or a reference DEM.
+    They STD and mean height of ground cover classified points are calculated from the
+    LiDAR data and z (elevation) layer of the hydrologically conditioned DEM, and used
+    to estimate roughness emperically.
 
-    DenseDemFromTiles logic can be controlled by the constructor inputs.
+    RoughnessDem logic can be controlled by the constructor inputs.
 
     Parameters
     ----------
 
+    catchment_geometry
+        Defines the geometry of the catchment
+    hydrological_dem_path
+        The path to the hydrologically conditioned DEM.
     interpolation_method
         If not None, interpolate using that method. Valid options are 'linear',
         'nearest', and 'cubic'.
@@ -1359,14 +1372,14 @@ class RoughnessDem(LidarBase):
 
         self.interpolation_method = interpolation_method
         self._hydrological_dem = hydrological_dem
+        self._dem = None
 
     def __del__(self):
         """Ensure the memory associated with netCDF files is properly freed."""
 
-        # The dense DEM - may be opened from memory
-        if self._dem is not None:
-            self._dem.close()
-            del self._dem
+        # Remove the self._dem
+        super(RoughnessDem, self).__del__()
+        # Remove the opened hydrologically conditioned dem
         if self._hydrological_dem is not None:
             self._hydrological_dem.close()
             del self._hydrological_dem
@@ -1405,7 +1418,7 @@ class RoughnessDem(LidarBase):
             numpy.ceil((dim_y_all[-1] - dim_y_all[0]) / (chunk_size * resolution))
         )
 
-        # Determine x and y coordinates rounded up to the nearest chunk
+        # Determine x coordinates rounded up to the nearest chunk
         dim_x = [
             numpy.arange(
                 dim_x_all[0] + resolution / 2 + i * chunk_size * resolution,
@@ -1415,6 +1428,7 @@ class RoughnessDem(LidarBase):
             )
             for i in range(n_chunks_x)
         ]
+        # Determine y coordinates rounded up to the nearest chunk
         dim_y = [
             numpy.arange(
                 dim_y_all[0] - resolution / 2 - i * chunk_size * resolution,
@@ -1435,21 +1449,27 @@ class RoughnessDem(LidarBase):
         source_crs: dict,
         metadata: dict,
     ):
-        """Read in all LiDAR files and use to create a dense DEM.
+        """Read in all LiDAR files and use the point cloud distribution, source_class
+        information, and hydrologiaclly conditioned elevations to estimate the roughness
+        across the DEM.
 
         Parameters
         ----------
 
         source_crs
-            Specify if the CRS encoded in the LiDAR files are incorrect/only partially
-            defined (i.e. missing vertical CRS) and need to be overwritten.
+            Coordinate reference system information
+        chunk_size
+            The chunk size in pixels for parallel/staged processing
+        lidar_files
+            The list of LiDAR files to read in
+        tile_index_file
+            A file specifying the spatial extents of the LiDAR files.
         lidar_classifications_to_keep
             A list of LiDAR classifications to keep - '2' for ground, '9' for water.
             See https://www.asprs.org/wp-content/uploads/2010/12/LAS_1_4_r13.pdf for
             standard list
-        tile_index_file
-            Must exist if there are many LiDAR files. This is used to determine
-            chunking.
+        meta_data
+            Information to include in the created DEM.
         """
 
         # Check valid inputs
@@ -1471,7 +1491,7 @@ class RoughnessDem(LidarBase):
             "radius": self.catchment_geometry.resolution * numpy.sqrt(2),
         }
 
-        # Determine if adding a single file or tiles
+        # Set roughness where LiDAR
         if chunk_size is None:  # If one file it's ok if there is no tile_index
             dem = self._add_lidar_no_chunking(
                 lidar_file=lidar_files[0],
@@ -1490,15 +1510,12 @@ class RoughnessDem(LidarBase):
                 chunk_size=chunk_size,
                 metadata=metadata,
             )
-        # Clip DEM to Catchment and ensure NaN outside region to rasterise
-        dem = dem.rio.clip(self.catchment_geometry.catchment.geometry, drop=True)
-        dem.zo.data = dem.zo.rio.clip(region_to_rasterise.geometry, drop=False)
-
         # Set roughness where water
         dem.zo.data[
             (dem.source_class.data == self.SOURCE_CLASSIFICATION["ocean bathymetry"])
             | (dem.source_class.data == self.SOURCE_CLASSIFICATION["river bathymetry"])
         ] = self.ROUGHNESS_DEFAULTS["water"]
+        # Set roughness where land and no LiDAR
         dem.zo.data[
             dem.source_class.data == self.SOURCE_CLASSIFICATION["reference DEM"]
         ] = self.ROUGHNESS_DEFAULTS["land"]
@@ -1517,19 +1534,19 @@ class RoughnessDem(LidarBase):
         metadata: dict,
         raster_options: dict,
     ) -> xarray.Dataset:
-        """Create a dense DEM from a set of tiled LiDAR files. Read these in over
-        non-overlapping chunks and then combine"""
+        """Create a roughness layer with estimates where there is LiDAR from a set of
+        tiled LiDAR files. Read these in over non-overlapping chunks and then combine.
+        """
 
         # Remove all tiles entirely outside the region to raserise
         tile_index_extents, tile_index_name_column = self._tile_index_column_name(
             tile_index_file
         )
 
-        # get chunking information - if negative, 0 or None chunk_size then default to a
-        # single chunk
+        # get chunks to tile over
         chunked_dim_x, chunked_dim_y = self._set_up_chunks(chunk_size)
 
-        # cycle through index chunks - and collect in a delayed array
+        # cycle through chunks - and collect in a delayed array
         logging.info(f"Preparing {[len(chunked_dim_x), len(chunked_dim_y)]} chunks")
         delayed_chunked_matrix = []
         for i, dim_y in enumerate(chunked_dim_y):
@@ -1545,7 +1562,7 @@ class RoughnessDem(LidarBase):
                     radius=raster_options["radius"],
                 )
 
-                # Load in files and rasterise
+                # Load in files into tiles
                 chunk_points = delayed_load_tiles_in_chunk(
                     dim_x=dim_x,
                     dim_y=dim_y,
@@ -1556,6 +1573,7 @@ class RoughnessDem(LidarBase):
                     chunk_region_to_tile=chunk_region_to_tile,
                     catchment_geometry=self.catchment_geometry,
                 )
+                # Rasterise tiles
                 xy_ground = self._hydrological_dem.z.rio.clip(chunk_region_to_tile).data
                 delayed_chunked_x.append(
                     dask.array.from_delayed(
@@ -1571,11 +1589,15 @@ class RoughnessDem(LidarBase):
                     )
                 )
             delayed_chunked_matrix.append(delayed_chunked_x)
-        # Combine chunks into a dataset
-        elevation = dask.array.block(delayed_chunked_matrix)
-        x = numpy.concatenate(chunked_dim_x)
-        y = numpy.concatenate(chunked_dim_y)
-        chunked_dem = self._create_data_set(x=x, y=y, z=elevation, metadata=metadata)
+        # Combine chunks and add to dataset
+        zo = dask.array.block(delayed_chunked_matrix)
+        chunked_dem = self._add_roughness_to_data_set(
+            x=numpy.concatenate(chunked_dim_x),
+            y=numpy.concatenate(chunked_dim_y),
+            zo=zo,
+            metadata=metadata,
+            region_to_rasterise=region_to_rasterise,
+        )
         logging.info("Computing chunks")
         chunked_dem = chunked_dem.compute()
         logging.debug("Chunked DEM computed")
@@ -1590,7 +1612,8 @@ class RoughnessDem(LidarBase):
         source_crs: dict,
         metadata: dict,
     ) -> xarray.Dataset:
-        """Create the dense DEM region from a single LiDAR file."""
+        """Create a roughness layer with estimates where there is LiDAR from a single
+        LiDAR file with no chunking."""
 
         logging.info(f"On LiDAR tile 1 of 1: {lidar_file}")
 
@@ -1606,12 +1629,12 @@ class RoughnessDem(LidarBase):
         # Load LiDAR points from pipeline
         tile_array = pdal_pipeline.arrays[0]
 
-        # Get the raster indicies
+        # Get the locations to rasterise
         dim_x = self._hydrological_dem.x.data
         dim_y = self._hydrological_dem.y.data
 
         # Estimate roughness over the region
-        raster_values = self._rasterise_tile(
+        raster_values = self._roughness_over_tile(
             dim_x=dim_x,
             dim_y=dim_y,
             tile_points=tile_array,
@@ -1622,12 +1645,16 @@ class RoughnessDem(LidarBase):
 
         # Create xarray
         dem = self._add_roughness_to_data_set(
-            x=dim_x, y=dim_y, zo=roughness, metadata=metadata
+            x=dim_x,
+            y=dim_y,
+            zo=roughness,
+            metadata=metadata,
+            region_to_rasterise=region_to_rasterise,
         )
 
         return dem
 
-    def _rasterise_tile(
+    def _roughness_over_tile(
         self,
         dim_x: numpy.ndarray,
         dim_y: numpy.ndarray,
@@ -1635,9 +1662,10 @@ class RoughnessDem(LidarBase):
         tile_points: numpy.ndarray,
         options: dict,
     ):
-        """Rasterise all points within a tile."""
+        """Rasterise all points within a tile to give roughness. Does not require a tile
+        index file."""
 
-        # keep only the selected classification points for averaging calculations
+        # keep only the specified classifications (should be ground cover)
         classification_mask = numpy.zeros_like(
             tile_points["Classification"], dtype=bool
         )
@@ -1647,17 +1675,17 @@ class RoughnessDem(LidarBase):
 
         if len(tile_points) == 0:
             logging.warning(
-                "In RoughnessDem._rasterise_tile the tile has no data and is being"
+                "In RoughnessDem._roughness_over_tile the tile has no data and is being"
                 " ignored."
             )
             return
-        # Get the indicies overwhich to perform IDW
+        # Get the locations overwhich to estimate roughness
         grid_x, grid_y = numpy.meshgrid(dim_x, dim_y)
         xy_out = numpy.concatenate(
             [[grid_x.flatten()], [grid_y.flatten()]], axis=0
         ).transpose()
 
-        # Perform the specified rasterisation within the extents of the tile
+        # Perform roughness estimation within the extents of the tile
         z_flat = roughness_from_points(
             point_cloud=tile_points,
             xy_out=xy_out,
@@ -1669,7 +1697,12 @@ class RoughnessDem(LidarBase):
         return grid_z
 
     def _add_roughness_to_data_set(
-        self, x: numpy.ndarray, y: numpy.ndarray, zo: numpy.ndarray, metadata: dict
+        self,
+        x: numpy.ndarray,
+        y: numpy.ndarray,
+        zo: numpy.ndarray,
+        metadata: dict,
+        region_to_rasterise: geopandas.GeoDataFrame,
     ) -> xarray.Dataset:
         """A function to create a new dataset from x, y and z arrays.
 
@@ -1729,6 +1762,9 @@ class RoughnessDem(LidarBase):
                 "geofabrics_instructions": f"{metadata['instructions']}",
             },
         )
+
+        # Ensure roughness is NaN where there is no LiDAR information
+        dem.zo.data = dem.zo.rio.clip(region_to_rasterise.geometry, drop=False)
 
         # ensure the expected CF conventions are followed
         self._write_netcdf_conventions_in_place(dem, self.catchment_geometry.crs)
@@ -1816,7 +1852,7 @@ def roughness_from_points(
     return z_out
 
 
-def rasterise_points(
+def elevation_from_points(
     point_cloud: numpy.ndarray,
     xy_out,
     options: dict,
@@ -1968,10 +2004,11 @@ def roughness_over_chunk(
     # If no points return an array of NaN
     if len(tile_points) == 0:
         logging.warning(
-            "In dem.rasterise_chunk the latest chunk has no data and is being ignored."
+            "In dem.roughness_over_chunk the latest chunk has no data and is being "
+            "ignored."
         )
         return grid_z
-    # keep only the selected classification points for averaging calculations
+    # keep only the specified classifications (should be ground cover)
     classification_mask = numpy.zeros_like(tile_points["Classification"], dtype=bool)
     for classification in options["lidar_classifications_to_keep"]:
         classification_mask[tile_points["Classification"] == classification] = True
@@ -1998,7 +2035,7 @@ def roughness_over_chunk(
     return grid_z
 
 
-def rasterise_chunk(
+def elevation_over_chunk(
     dim_x: numpy.ndarray,
     dim_y: numpy.ndarray,
     tile_points: numpy.ndarray,
@@ -2016,10 +2053,11 @@ def rasterise_chunk(
     # If no points return an array of NaN
     if len(tile_points) == 0:
         logging.warning(
-            "In dem.rasterise_chunk the latest chunk has no data and is being ignored."
+            "In dem.elevation_over_chunk the latest chunk has no data and is being "
+            "ignored."
         )
         return grid_z
-    # keep only the selected classification points for averaging calculations
+    # keep only the specified classifications (should be ground / water)
     classification_mask = numpy.zeros_like(tile_points["Classification"], dtype=bool)
     for classification in options["lidar_classifications_to_keep"]:
         classification_mask[tile_points["Classification"] == classification] = True
@@ -2035,7 +2073,9 @@ def rasterise_chunk(
         return grid_z
     # Perform the specified averaging method over the dense DEM within the extents of
     # this point cloud tile
-    z_flat = rasterise_points(point_cloud=tile_points, xy_out=xy_out, options=options)
+    z_flat = elevation_from_points(
+        point_cloud=tile_points, xy_out=xy_out, options=options
+    )
     grid_z = z_flat.reshape(grid_x.shape)
 
     return grid_z
@@ -2045,7 +2085,7 @@ def rasterise_chunk(
 delayed_roughness_over_chunk = dask.delayed(roughness_over_chunk)
 
 """ Wrap the `rasterise_chunk` routine in dask.delayed """
-delayed_rasterise_chunk = dask.delayed(rasterise_chunk)
+delayed_elevation_over_chunk = dask.delayed(elevation_over_chunk)
 
 
 """ Wrap the `load_tiles_in_chunk` routine in dask.delayed """
