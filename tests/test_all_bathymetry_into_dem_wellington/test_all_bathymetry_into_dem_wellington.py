@@ -97,6 +97,8 @@ class ProcessorRiverBathymetryTest(unittest.TestCase):
         runner.run()
         runner = processor.RawLidarDemGenerator(cls.instructions["dem"])
         runner.run()
+        runner = processor.BathymetryDemGenerator(cls.instructions["dem"])
+        runner.run()
 
     @classmethod
     def tearDownClass(cls):
