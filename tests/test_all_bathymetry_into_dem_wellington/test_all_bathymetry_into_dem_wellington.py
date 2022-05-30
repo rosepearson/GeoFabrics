@@ -95,7 +95,7 @@ class ProcessorRiverBathymetryTest(unittest.TestCase):
             cls.instructions["drains"], debug=False
         )
         runner.run()
-        runner = processor.LidarDemGenerator(cls.instructions["dem"])
+        runner = processor.RawLidarDemGenerator(cls.instructions["dem"])
         runner.run()
 
     @classmethod
