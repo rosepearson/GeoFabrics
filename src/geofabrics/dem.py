@@ -842,7 +842,7 @@ class LidarBase(DemBase):
             "_add_tiled_lidar_chunked must be instantiated in the" " child class"
         )
 
-    def _add_file(
+    def _add_lidar_no_chunking(
         self,
         lidar_file: typing.Union[str, pathlib.Path],
         region_to_rasterise: geopandas.GeoDataFrame,
@@ -852,7 +852,9 @@ class LidarBase(DemBase):
     ) -> xarray.Dataset:
         """Create/Update dataset from a single LiDAR file."""
 
-        raise NotImplementedError("_add_file must be instantiated in the child class")
+        raise NotImplementedError(
+            "_add_lidar_no_chunking must be instantiated in the " "child class"
+        )
 
 
 class RawDem(LidarBase):
@@ -1002,7 +1004,7 @@ class RawDem(LidarBase):
 
         # Don't use dask delayed if there is no chunking
         if chunk_size is None:
-            dem = self._add_file(
+            dem = self._add_lidar_no_chunking(
                 lidar_file=lidar_files[0],
                 region_to_rasterise=region_to_rasterise,
                 source_crs=source_crs,
@@ -1099,7 +1101,7 @@ class RawDem(LidarBase):
 
         return chunked_dem
 
-    def _add_file(
+    def _add_lidar_no_chunking(
         self,
         lidar_file: typing.Union[str, pathlib.Path],
         region_to_rasterise: geopandas.GeoDataFrame,
@@ -1471,7 +1473,7 @@ class RoughnessDem(LidarBase):
 
         # Determine if adding a single file or tiles
         if chunk_size is None:  # If one file it's ok if there is no tile_index
-            dem = self._add_file(
+            dem = self._add_lidar_no_chunking(
                 lidar_file=lidar_files[0],
                 region_to_rasterise=region_to_rasterise,
                 source_crs=source_crs,
@@ -1580,7 +1582,7 @@ class RoughnessDem(LidarBase):
 
         return chunked_dem
 
-    def _add_file(
+    def _add_lidar_no_chunking(
         self,
         lidar_file: typing.Union[str, pathlib.Path],
         region_to_rasterise: geopandas.GeoDataFrame,
