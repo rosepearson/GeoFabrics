@@ -128,24 +128,20 @@ def launch_processor(args):
         run_instructions = instructions["dem"]
         setup_logging_for_run(run_instructions)
         dem_paths = run_instructions["data_paths"]
-        if "dense_dem" in dem_paths and (
+        if "dense_dem" not in dem_paths or not (
             pathlib.Path(dem_paths["dense_dem"]).is_file()
             or (
                 pathlib.Path(dem_paths["local_cache"]) / dem_paths["dense_dem"]
             ).is_file()
         ):
-            # Update a dense DEM with offshore values
-            print("Run processor.BathymetryDemGenerator")
-            runner = processor.BathymetryDemGenerator(run_instructions)
-            runner.run()
-        else:
-            # Create a DEM from LiDAR, and specified reference DEM and bathymetry
+            # Create a raw DEM from LiDAR / reference DEM
             print("Run processor.LidarDemGenerator")
             runner = processor.LidarDemGenerator(run_instructions)
             runner.run()
-            print("Run processor.BathymetryDemGenerator")
-            runner = processor.BathymetryDemGenerator(run_instructions)
-            runner.run()
+        # Add bathymetry information to a raw DEM
+        print("Run processor.BathymetryDemGenerator")
+        runner = processor.BathymetryDemGenerator(run_instructions)
+        runner.run()
         check_for_benchmarks(run_instructions, runner)
     end_time = time.time()
 
