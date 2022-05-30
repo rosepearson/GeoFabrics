@@ -1574,7 +1574,9 @@ class RoughnessDem(LidarBase):
                     catchment_geometry=self.catchment_geometry,
                 )
                 # Rasterise tiles
-                xy_ground = self._hydrological_dem.z.rio.clip(chunk_region_to_tile).data
+                xy_ground = self._hydrological_dem.z.rio.clip(
+                    chunk_region_to_tile
+                ).data.flatten()
                 delayed_chunked_x.append(
                     dask.array.from_delayed(
                         delayed_roughness_over_chunk(
@@ -1638,7 +1640,7 @@ class RoughnessDem(LidarBase):
             dim_x=dim_x,
             dim_y=dim_y,
             tile_points=tile_array,
-            xy_ground=self._hydrological_dem.z.data,
+            xy_ground=self._hydrological_dem.z.data.flatten(),
             options=options,
         )
         roughness = raster_values.reshape((len(dim_y), len(dim_x)))
@@ -1763,11 +1765,11 @@ class RoughnessDem(LidarBase):
             },
         )
 
-        # Ensure roughness is NaN where there is no LiDAR information
-        dem.zo.data = dem.zo.rio.clip(region_to_rasterise.geometry, drop=False)
-
         # ensure the expected CF conventions are followed
         self._write_netcdf_conventions_in_place(dem, self.catchment_geometry.crs)
+
+        # Ensure roughness is NaN where there is no LiDAR information
+        dem.zo.data = dem.zo.rio.clip(region_to_rasterise.geometry, drop=False)
         return dem
 
 
