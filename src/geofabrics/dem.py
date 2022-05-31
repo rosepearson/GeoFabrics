@@ -1725,23 +1725,18 @@ class RoughnessDem(LidarBase):
                 Roughness over the x, and y coordiantes.
         """
 
-        # Add zo to the existing DEM as a new variable - TODO
-
-        zo = xarray.Dataset(
-            data_vars=dict(
-                zo=(
-                    ["y", "x"],
-                    zo,
-                    {
-                        "units": "",
-                        "long_name": "ground roughness",
-                    },
-                ),
-            ),
+        # Create a DataArray of zo
+        zo = xarray.DataArray(
+            data=zo,
+            dims=["y", "x"],
             coords=dict(x=(["x"], x), y=(["y"], y)),
+            attrs=dict(
+                long_name="ground roughness",
+                units="",
+            ),
         )
-
-        self._hydrological_dem["zo"] = zo.zo.sel(
+        # Resize zo to share the same dimensions at the DEM
+        self._hydrological_dem["zo"] = zo.sel(
             x=self._hydrological_dem.x, y=self._hydrological_dem.y, method="nearest"
         )
         dem = self._hydrological_dem
