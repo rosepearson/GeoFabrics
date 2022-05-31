@@ -1371,28 +1371,14 @@ class RoughnessDem(LidarBase):
         )
 
         self.interpolation_method = interpolation_method
-        self._hydrological_dem = hydrological_dem
-        self._dem = None
-
-    def __del__(self):
-        """Ensure the memory associated with netCDF files is properly freed."""
-
-        # Remove the self._dem
-        super(RoughnessDem, self).__del__()
-        # Remove the opened hydrologically conditioned dem
-        if self._hydrological_dem is not None:
-            self._hydrological_dem.close()
-            del self._hydrological_dem
+        self._dem = hydrological_dem
 
     def _calculate_lidar_extents(self):
         """Calculate the extents of the LiDAR data."""
 
         # Defines extents where raw DEM values exist
-        mask = (
-            self._hydrological_dem.source_class.data
-            == self.SOURCE_CLASSIFICATION["LiDAR"]
-        )
-        extents = self._extents_from_mask(mask, self._hydrological_dem)
+        mask = self._dem.source_class.data == self.SOURCE_CLASSIFICATION["LiDAR"]
+        extents = self._extents_from_mask(mask, self._dem)
         return extents
 
     def _set_up_chunks(self, chunk_size: int) -> (list, list):
@@ -1406,8 +1392,8 @@ class RoughnessDem(LidarBase):
             The size in pixels of each chunk.
         """
 
-        dim_x_all = self._hydrological_dem.x.data
-        dim_y_all = self._hydrological_dem.y.data
+        dim_x_all = self._dem.x.data
+        dim_y_all = self._dem.y.data
         resolution = self.catchment_geometry.resolution
 
         # Check dims x and y are ordered in expected direction
@@ -1497,7 +1483,7 @@ class RoughnessDem(LidarBase):
 
         # Set roughness where LiDAR
         if chunk_size is None:  # If one file it's ok if there is no tile_index
-            dem = self._add_lidar_no_chunking(
+            self._dem = self._add_lidar_no_chunking(
                 lidar_file=lidar_files[0],
                 region_to_rasterise=region_to_rasterise,
                 source_crs=source_crs,
@@ -1505,7 +1491,7 @@ class RoughnessDem(LidarBase):
                 metadata=metadata,
             )
         else:
-            dem = self._add_tiled_lidar_chunked(
+            self._dem = self._add_tiled_lidar_chunked(
                 lidar_files=lidar_files,
                 tile_index_file=tile_index_file,
                 source_crs=source_crs,
@@ -1515,20 +1501,27 @@ class RoughnessDem(LidarBase):
                 metadata=metadata,
             )
         # Set roughness where water
-        dem.zo.data[
-            (dem.source_class.data == self.SOURCE_CLASSIFICATION["ocean bathymetry"])
-            | (dem.source_class.data == self.SOURCE_CLASSIFICATION["river bathymetry"])
+        self._dem.zo.data[
+            (
+                self._dem.source_class.data
+                == self.SOURCE_CLASSIFICATION["ocean bathymetry"]
+            )
+            | (
+                self._dem.source_class.data
+                == self.SOURCE_CLASSIFICATION["river bathymetry"]
+            )
         ] = self.ROUGHNESS_DEFAULTS["water"]
         # Set roughness where land and no LiDAR
-        dem.zo.data[
-            dem.source_class.data == self.SOURCE_CLASSIFICATION["reference DEM"]
+        self._dem.zo.data[
+            self._dem.source_class.data == self.SOURCE_CLASSIFICATION["reference DEM"]
         ] = self.ROUGHNESS_DEFAULTS[
             "land"
         ]  # or LiDAR with no roughness estimate
         # Interpolate any missing roughness values
         if self.interpolation_method is not None:
-            dem["zo"] = dem.zo.rio.interpolate_na(method=self.interpolation_method)
-        self._dem = dem
+            self._dem["zo"] = self._dem.zo.rio.interpolate_na(
+                method=self.interpolation_method
+            )
 
     def _add_tiled_lidar_chunked(
         self,
@@ -1580,7 +1573,7 @@ class RoughnessDem(LidarBase):
                     catchment_geometry=self.catchment_geometry,
                 )
                 # Rasterise tiles
-                xy_ground = self._hydrological_dem.z.sel(
+                xy_ground = self._dem.z.sel(
                     x=dim_x, y=dim_y, method="nearest"
                 ).data.flatten()
                 delayed_chunked_x.append(
@@ -1638,15 +1631,15 @@ class RoughnessDem(LidarBase):
         tile_array = pdal_pipeline.arrays[0]
 
         # Get the locations to rasterise
-        dim_x = self._hydrological_dem.x.data
-        dim_y = self._hydrological_dem.y.data
+        dim_x = self._dem.x.data
+        dim_y = self._dem.y.data
 
         # Estimate roughness over the region
         raster_values = self._roughness_over_tile(
             dim_x=dim_x,
             dim_y=dim_y,
             tile_points=tile_array,
-            xy_ground=self._hydrological_dem.z.data.flatten(),
+            xy_ground=self._dem.z.data.flatten(),
             options=options,
         )
         roughness = raster_values.reshape((len(dim_y), len(dim_x)))
@@ -1712,7 +1705,7 @@ class RoughnessDem(LidarBase):
         metadata: dict,
         region_to_rasterise: geopandas.GeoDataFrame,
     ) -> xarray.Dataset:
-        """A function to create a new dataset from x, y and z arrays.
+        """A function to add zo to the existing DEM as a new variable.
 
         Parameters
         ----------
@@ -1736,17 +1729,14 @@ class RoughnessDem(LidarBase):
             ),
         )
         # Resize zo to share the same dimensions at the DEM
-        self._hydrological_dem["zo"] = zo.sel(
-            x=self._hydrological_dem.x, y=self._hydrological_dem.y, method="nearest"
-        )
-        dem = self._hydrological_dem
+        self._dem["zo"] = zo.sel(x=self._dem.x, y=self._dem.y, method="nearest")
 
         # ensure the expected CF conventions are followed
-        self._write_netcdf_conventions_in_place(dem, self.catchment_geometry.crs)
+        self._write_netcdf_conventions_in_place(self._dem, self.catchment_geometry.crs)
 
         """# Ensure roughness is NaN where there is no LiDAR information
         dem.zo.data = dem.zo.rio.clip(region_to_rasterise.geometry, drop=False)"""
-        return dem
+        return self._dem
 
 
 def read_file_with_pdal(
