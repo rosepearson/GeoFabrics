@@ -155,11 +155,11 @@ class ProcessorRiverBathymetryTest(unittest.TestCase):
             test.z.data[~numpy.isnan(test.z.data)]
             - benchmark.z.data[~numpy.isnan(benchmark.z.data)]
         )
-        logging.info(f"DEM array diff is: {diff_array[diff_array != 0]}")
+        logging.info(f"DEM elevation diff is: {diff_array[diff_array != 0]}")
         numpy.testing.assert_array_almost_equal(
             test.z.data,
             benchmark.z.data,
-            err_msg="The generated result_geofabric has different *elevation data from "
+            err_msg="The generated result_geofabric has different elevation data from "
             "the benchmark_dem",
         )
         # Compare the generated and benchmark roughness
@@ -167,7 +167,7 @@ class ProcessorRiverBathymetryTest(unittest.TestCase):
             test.zo.data[~numpy.isnan(test.zo.data)]
             - benchmark.zo.data[~numpy.isnan(benchmark.zo.data)]
         )
-        logging.info(f"Roughness array diff is: {diff_array[diff_array != 0]}")
+        logging.info(f"Roughness diff is: {diff_array[diff_array != 0]}")
         numpy.testing.assert_array_almost_equal(
             test.zo.data,
             benchmark.zo.data,
@@ -227,13 +227,13 @@ class ProcessorRiverBathymetryTest(unittest.TestCase):
             f"{number_above_threshold / len(diff_array.flatten()) * 100}%",
         )
         # Compare the generated and benchmark roughnesses
-        lidar_diff = test.zo.data - benchmark.zo.data
+        diff_array = test.zo.data - benchmark.zo.data
         numpy.testing.assert_array_almost_equal(
             test.zo.data,
             benchmark.zo.data,
             decimal=6,
             err_msg="The generated test has significantly different roughness from the "
-            f"benchmark where there is LiDAR: {lidar_diff}",
+            f"benchmark where there is LiDAR: {diff_array}",
         )
 
         # explicitly free memory as xarray seems to be hanging onto memory
