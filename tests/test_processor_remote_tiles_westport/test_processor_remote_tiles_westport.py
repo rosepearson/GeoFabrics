@@ -226,7 +226,7 @@ class ProcessorRemoteTilesWestportTest(unittest.TestCase):
             test_dem.z.data[~numpy.isnan(test_dem.z.data)],
             benchmark_dem.z.data[~numpy.isnan(benchmark_dem.z.data)],
             err_msg="The generated result_dem has different data from the "
-            + "benchmark_dem",
+            "benchmark_dem",
         )
 
         # explicitly free memory as xarray seems to be hanging onto memory

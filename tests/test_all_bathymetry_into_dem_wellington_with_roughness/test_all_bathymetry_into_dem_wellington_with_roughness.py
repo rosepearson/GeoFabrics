@@ -169,8 +169,8 @@ class ProcessorRiverBathymetryTest(unittest.TestCase):
         )
         logging.info(f"Roughness array diff is: {diff_array[diff_array != 0]}")
         numpy.testing.assert_array_almost_equal(
-            test.z.data,
-            benchmark.z.data,
+            test.zo.data,
+            benchmark.zo.data,
             err_msg="The generated result_geofabric has different roughness data from "
             "the benchmark_dem",
         )
@@ -209,7 +209,7 @@ class ProcessorRiverBathymetryTest(unittest.TestCase):
             test.z.data[test.source_class.data == 1],
             benchmark.z.data[test.source_class.data == 1],
             decimal=6,
-            err_msg="The generated test has significantly different data from the "
+            err_msg="The generated test has significantly different elevation from the "
             f"benchmark where there is LiDAR: {lidar_diff}",
         )
 
@@ -227,12 +227,12 @@ class ProcessorRiverBathymetryTest(unittest.TestCase):
             f"{number_above_threshold / len(diff_array.flatten()) * 100}%",
         )
         # Compare the generated and benchmark roughnesses
-        lidar_diff = test.z.data - benchmark.z.data
+        lidar_diff = test.zo.data - benchmark.zo.data
         numpy.testing.assert_array_almost_equal(
-            test.z.data,
-            benchmark.z.data,
+            test.zo.data,
+            benchmark.zo.data,
             decimal=6,
-            err_msg="The generated test has significantly different data from the "
+            err_msg="The generated test has significantly different roughness from the "
             f"benchmark where there is LiDAR: {lidar_diff}",
         )
 

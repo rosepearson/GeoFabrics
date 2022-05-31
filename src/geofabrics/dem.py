@@ -1329,8 +1329,8 @@ class RoughnessDem(LidarBase):
     """
 
     ROUGHNESS_DEFAULTS = {
-        "land": 0.5,
-        "water": 0.001,
+        "land": 0.014,
+        "water": 0.004,
     }
 
     def __init__(
@@ -1819,7 +1819,7 @@ def roughness_from_points(
 
             # if building/plantation - set value based on classification
             # Emperical relationship between mean and std above the ground
-            z_out[i] = max(std / 3, height / 10)
+            z_out[i] = max(std / 3, height / 10) / 10
     return z_out
 
 
