@@ -692,10 +692,10 @@ class LidarBase(DemBase):
                 "geometry": [
                     shapely.geometry.Polygon(
                         [
-                            (numpy.min(dim_x) - radius, numpy.min(dim_y) - radius),
-                            (numpy.max(dim_x) + radius, numpy.min(dim_y) - radius),
-                            (numpy.max(dim_x) + radius, numpy.max(dim_y) + radius),
-                            (numpy.min(dim_x) - radius, numpy.max(dim_y) + radius),
+                            (dim_x.min(), dim_y.min()),
+                            (dim_x.max(), dim_y.min()),
+                            (dim_x.max(), dim_y.max()),
+                            (dim_x.min(), dim_y.max()),
                         ]
                     )
                 ]
@@ -703,13 +703,13 @@ class LidarBase(DemBase):
             crs=self.catchment_geometry.crs["horizontal"],
         )
 
-        # Define region to rasterise inside the chunk area - remove any subpixel
-        # polygons
+        # Define region to rasterise inside the chunk area
         chunk_region_to_tile = geopandas.GeoDataFrame(
             geometry=region_to_rasterise.buffer(radius).clip(
-                chunk_geometry, keep_geom_type=True
+                chunk_geometry.buffer(radius), keep_geom_type=True
             )
         )
+        # remove any subpixel polygons
         chunk_region_to_tile = chunk_region_to_tile[
             chunk_region_to_tile.area
             > self.catchment_geometry.resolution * self.catchment_geometry.resolution
@@ -1410,19 +1410,23 @@ class RoughnessDem(LidarBase):
         dim_y_all = self._hydrological_dem.y.data
         resolution = self.catchment_geometry.resolution
 
+        # Check dims x and y are ordered in expected direction
+        assert dim_x_all[-1] > dim_x_all[0], "dim_x should be increasing along length"
+        assert dim_y_all[-1] < dim_y_all[0], "dim_y should be decreasing along length"
+
         # Determine the number of chunks
         n_chunks_x = int(
             numpy.ceil((dim_x_all[-1] - dim_x_all[0]) / (chunk_size * resolution))
         )
         n_chunks_y = int(
-            numpy.ceil((dim_y_all[-1] - dim_y_all[0]) / (chunk_size * resolution))
+            numpy.ceil((dim_y_all[0] - dim_y_all[-1]) / (chunk_size * resolution))
         )
 
         # Determine x coordinates rounded up to the nearest chunk
         dim_x = [
             numpy.arange(
-                dim_x_all[0] + resolution / 2 + i * chunk_size * resolution,
-                dim_x_all[0] + resolution / 2 + (i + 1) * chunk_size * resolution,
+                dim_x_all[0] + i * chunk_size * resolution,
+                dim_x_all[0] + (i + 1) * chunk_size * resolution,
                 resolution,
                 dtype=self.raster_type,
             )
@@ -1431,8 +1435,8 @@ class RoughnessDem(LidarBase):
         # Determine y coordinates rounded up to the nearest chunk
         dim_y = [
             numpy.arange(
-                dim_y_all[0] - resolution / 2 - i * chunk_size * resolution,
-                dim_y_all[0] - resolution / 2 - (i + 1) * chunk_size * resolution,
+                dim_y_all[0] - i * chunk_size * resolution,
+                dim_y_all[0] - (i + 1) * chunk_size * resolution,
                 -resolution,
                 dtype=self.raster_type,
             )
@@ -1518,7 +1522,9 @@ class RoughnessDem(LidarBase):
         # Set roughness where land and no LiDAR
         dem.zo.data[
             dem.source_class.data == self.SOURCE_CLASSIFICATION["reference DEM"]
-        ] = self.ROUGHNESS_DEFAULTS["land"]
+        ] = self.ROUGHNESS_DEFAULTS[
+            "land"
+        ]  # or LiDAR with no roughness estimate
         # Interpolate any missing roughness values
         if self.interpolation_method is not None:
             dem["zo"] = dem.zo.rio.interpolate_na(method=self.interpolation_method)
@@ -1574,8 +1580,8 @@ class RoughnessDem(LidarBase):
                     catchment_geometry=self.catchment_geometry,
                 )
                 # Rasterise tiles
-                xy_ground = self._hydrological_dem.z.rio.clip(
-                    chunk_region_to_tile
+                xy_ground = self._hydrological_dem.z.sel(
+                    x=dim_x, y=dim_y, method="nearest"
                 ).data.flatten()
                 delayed_chunked_x.append(
                     dask.array.from_delayed(
@@ -1721,18 +1727,8 @@ class RoughnessDem(LidarBase):
 
         # Add zo to the existing DEM as a new variable - TODO
 
-        dem = xarray.Dataset(
+        zo = xarray.Dataset(
             data_vars=dict(
-                z=(
-                    ["y", "x"],
-                    self._hydrological_dem.z.data,
-                    {
-                        "units": "m",
-                        "long_name": "ground elevation",
-                        "vertical_datum": "EPSG:"
-                        f"{self.catchment_geometry.crs['vertical']}",
-                    },
-                ),
                 zo=(
                     ["y", "x"],
                     zo,
@@ -1741,35 +1737,20 @@ class RoughnessDem(LidarBase):
                         "long_name": "ground roughness",
                     },
                 ),
-                source_class=(
-                    ["y", "x"],
-                    self._hydrological_dem.source_class.data,
-                    {
-                        "units": "",
-                        "long_name": "source data classification",
-                        "classifications": f"{self.SOURCE_CLASSIFICATION}",
-                    },
-                ),
             ),
             coords=dict(x=(["x"], x), y=(["y"], y)),
-            attrs={
-                "title": "Geofabric representing elevation and roughness",
-                "source": f"{metadata['library_name']} version "
-                f"{metadata['library_version']}",
-                "description": f"{metadata['library_name']}:{metadata['class_name']} "
-                f"resolution {self.catchment_geometry.resolution}",
-                "history": f"{metadata['utc_time']}: {metadata['library_name']}:"
-                f"{metadata['class_name']} resolution "
-                f"{self.catchment_geometry.resolution};",
-                "geofabrics_instructions": f"{metadata['instructions']}",
-            },
         )
+
+        self._hydrological_dem["zo"] = zo.zo.sel(
+            x=self._hydrological_dem.x, y=self._hydrological_dem.y, method="nearest"
+        )
+        dem = self._hydrological_dem
 
         # ensure the expected CF conventions are followed
         self._write_netcdf_conventions_in_place(dem, self.catchment_geometry.crs)
 
-        # Ensure roughness is NaN where there is no LiDAR information
-        dem.zo.data = dem.zo.rio.clip(region_to_rasterise.geometry, drop=False)
+        """# Ensure roughness is NaN where there is no LiDAR information
+        dem.zo.data = dem.zo.rio.clip(region_to_rasterise.geometry, drop=False)"""
         return dem
 
 
@@ -1825,20 +1806,23 @@ def roughness_from_points(
     options: dict,
     eps: float = 0,
     leaf_size: int = 10,
-):
+) -> numpy.ndarray:
     """Calculate DEM elevation values at the specified locations using the selected
     approach. Options include: mean, median, and inverse distance weighing (IDW). This
     implementation is based on the scipy.spatial.KDTree"""
+
+    assert len(xy_out) == len(xy_ground), (
+        f"xy_out and xy_ground arrays differ in length: {len(xy_out)} vs "
+        "{len(xy_ground)}"
+    )
 
     xy_in = numpy.empty((len(point_cloud), 2))
     xy_in[:, 0] = point_cloud["X"]
     xy_in[:, 1] = point_cloud["Y"]
 
     tree = scipy.spatial.KDTree(xy_in, leafsize=leaf_size)  # build the tree
-    tree_index_list = tree.query_ball_point(
-        xy_out, r=options["radius"], eps=eps
-    )  # , eps=0.2)
-    z_out = numpy.ones(len(xy_out), dtype=options["raster_type"]) * numpy.nan
+    tree_index_list = tree.query_ball_point(xy_out, r=options["radius"], eps=eps)
+    z_out = numpy.zeros(len(xy_out), dtype=options["raster_type"])
 
     for i, (near_indicies, ground) in enumerate(zip(tree_index_list, xy_ground)):
 
@@ -1860,7 +1844,7 @@ def elevation_from_points(
     options: dict,
     eps: float = 0,
     leaf_size: int = 10,
-):
+) -> numpy.ndarray:
     """Calculate DEM elevation values at the specified locations using the selected
     approach. Options include: mean, median, and inverse distance weighing (IDW). This
     implementation is based on the scipy.spatial.KDTree"""
@@ -1993,7 +1977,7 @@ def roughness_over_chunk(
     tile_points: numpy.ndarray,
     xy_ground: numpy.ndarray,
     options: dict,
-):
+) -> numpy.ndarray:
     """Rasterise all points within a chunk."""
 
     # Get the indicies overwhich to perform IDW
@@ -2024,8 +2008,7 @@ def roughness_over_chunk(
     # Check again - if no points return an array of NaN
     if len(tile_points) == 0:
         return grid_z
-    # Perform the specified averaging method over the dense DEM within the extents of
-    # this point cloud tile
+    # Perform the point cloud roughness estimation method over chunk
     z_flat = roughness_from_points(
         point_cloud=tile_points,
         xy_out=xy_out,
@@ -2042,7 +2025,7 @@ def elevation_over_chunk(
     dim_y: numpy.ndarray,
     tile_points: numpy.ndarray,
     options: dict,
-):
+) -> numpy.ndarray:
     """Rasterise all points within a chunk."""
 
     # Get the indicies overwhich to perform IDW
