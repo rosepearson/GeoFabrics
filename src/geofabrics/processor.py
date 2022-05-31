@@ -46,6 +46,7 @@ class BaseProcessor(abc.ABC):
 
         defaults = {
             "result_dem": "generated_dem.nc",
+            "result_geofabric": "generated_geofabric.nc",
             "raw_dem": "raw_dem.nc",
             "raw_dem_extents": "raw_extents.geojson",
         }
@@ -771,7 +772,9 @@ class RoughnessGenerator(BaseProcessor):
             )  # Note must be called after all others if it is to be complete
         # save results
         self.roughness_dem.dem.to_netcdf(
-            self.get_instruction_path("result_dem"), format="NETCDF4", engine="netcdf4"
+            self.get_instruction_path("result_geofabric"),
+            format="NETCDF4",
+            engine="netcdf4",
         )
 
 
