@@ -136,7 +136,7 @@ def launch_processor(args):
         ):
             # Create a raw DEM from LiDAR / reference DEM
             print("Run processor.LidarDemGenerator")
-            runner = processor.LidarDemGenerator(run_instructions)
+            runner = processor.RawLidarDemGenerator(run_instructions)
             runner.run()
         # Add bathymetry information to a raw DEM
         print("Run processor.BathymetryDemGenerator")
@@ -148,7 +148,7 @@ def launch_processor(args):
         setup_logging_for_run(run_instructions)
         # Create a roughness map and add to the hydrological DEM
         print("Run processor.RoughnessGenerator")
-        runner = processor.BathymetryDemGenerator(run_instructions)
+        runner = processor.RoughnessGenerator(run_instructions)
         runner.run()
     end_time = time.time()
 
