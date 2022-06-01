@@ -1491,6 +1491,7 @@ class DrainBathymetryGenerator(BaseProcessor):
             "closed_polygon": f"closed_drain_polygon_{tag}.geojson",
             "closed_elevation": f"closed_drain_elevation_{tag}.geojson",
             "drain_polygon": f"drain_polygon_{tag}.geojson",
+            "drain_lines": "drains.geojson",
         }
         return name_dictionary[key]
 
@@ -1705,9 +1706,7 @@ class DrainBathymetryGenerator(BaseProcessor):
                 crs=drain_polygon.crs,
             )
             drain_polygon = drain_polygon.clip(self.catchment_geometry.catchment)
-            drain_polygon.to_file(
-                drain_polygon_file
-            )  # gpd.overlay(g1, g1, how='union')
+            drain_polygon.to_file(drain_polygon_file)
 
             # Create DEM generation instructions
             dem_instructions = self.instructions
@@ -1731,49 +1730,54 @@ class DrainBathymetryGenerator(BaseProcessor):
     def download_osm_values(self) -> bool:
         """Download OpenStreetMap drains and tunnels within the catchment BBox."""
 
-        # Create area to query within
-        self.catchment_geometry = self.create_catchment()
-        bbox_lat_long = self.catchment_geometry.catchment.to_crs(self.OSM_CRS)
+        drains_file_path = self.get_result_file_path(key="drain_lines")
 
-        # Construct query
-        query = OSMPythonTools.overpass.overpassQueryBuilder(
-            bbox=[
-                bbox_lat_long.bounds.miny[0],
-                bbox_lat_long.bounds.minx[0],
-                bbox_lat_long.bounds.maxy[0],
-                bbox_lat_long.bounds.maxx[0],
-            ],
-            elementType="way",
-            selector="waterway",
-            out="body",
-            includeGeometry=True,
-        )
+        if drains_file_path.is_file():  # already created. Load in.
+            drains = geopandas.read_file(drains_file_path)
+        else:  # Download from OSM
 
-        # Perform query
-        overpass = OSMPythonTools.overpass.Overpass()
-        rivers = overpass.query(query)
+            # Create area to query within
+            bbox_lat_long = self.catchment_geometry.catchment.to_crs(self.OSM_CRS)
 
-        # Extract information
-        element_dict = {
-            "geometry": [],
-            "OSM_id": [],
-            "waterway": [],
-            "tunnel": [],
-        }
+            # Construct query
+            query = OSMPythonTools.overpass.overpassQueryBuilder(
+                bbox=[
+                    bbox_lat_long.bounds.miny[0],
+                    bbox_lat_long.bounds.minx[0],
+                    bbox_lat_long.bounds.maxy[0],
+                    bbox_lat_long.bounds.maxx[0],
+                ],
+                elementType="way",
+                selector="waterway",
+                out="body",
+                includeGeometry=True,
+            )
 
-        for element in rivers.elements():
-            element_dict["geometry"].append(element.geometry())
-            element_dict["OSM_id"].append(element.id())
-            element_dict["waterway"].append(element.tags()["waterway"])
-            element_dict["tunnel"].append("tunnel" in element.tags().keys())
-        drains = geopandas.GeoDataFrame(element_dict, crs=self.OSM_CRS).to_crs(
-            self.catchment_geometry.crs["horizontal"]
-        )
+            # Perform query
+            overpass = OSMPythonTools.overpass.Overpass()
+            rivers = overpass.query(query)
 
-        # Remove rivers and polygons
-        drains = drains[drains["waterway"] != "river"]
-        drains = drains[drains.geometry.type == "LineString"]
+            # Extract information
+            element_dict = {
+                "geometry": [],
+                "OSM_id": [],
+                "waterway": [],
+                "tunnel": [],
+            }
 
+            for element in rivers.elements():
+                element_dict["geometry"].append(element.geometry())
+                element_dict["OSM_id"].append(element.id())
+                element_dict["waterway"].append(element.tags()["waterway"])
+                element_dict["tunnel"].append("tunnel" in element.tags().keys())
+            drains = geopandas.GeoDataFrame(element_dict, crs=self.OSM_CRS).to_crs(
+                self.catchment_geometry.crs["horizontal"]
+            )
+
+            # Remove rivers and polygons
+            drains = drains[drains["waterway"] != "river"]
+            drains = drains[drains.geometry.type == "LineString"]
+            drains.to_file(drains_file_path)
         return drains
 
     def run(self, instruction_parameters: pathlib.Path = None):
@@ -1784,6 +1788,9 @@ class DrainBathymetryGenerator(BaseProcessor):
         * saves out extents and bed elevations of the drain and tunnel network"""
 
         logging.info("Estimating drain and tunnel bed elevation from OpenStreetMap.")
+
+        # Load in catchment
+        self.catchment_geometry = self.create_catchment()
 
         # Download drains and tunnels from OSM
         drains = self.download_osm_values()
