@@ -28,9 +28,8 @@ class ProcessorRiverBathymetryTest(unittest.TestCase):
     contained in processor.RiverBathymetryGenerator.
 
     Tests run include:
-        1. test_river_polygon - Test that the expected river polygon is created
-        2. test_river_bathymetry - Test that the expected river bathymetry is created
-        3. test_fan - Test that the expected fan polygon and geometry are created
+        1. test_result_geofabric_linux - Test the geofabric layers are as expected
+        2. test_result_geofabric_windows - Test the geofabric layers are as expected
     """
 
     @classmethod
@@ -133,7 +132,7 @@ class ProcessorRiverBathymetryTest(unittest.TestCase):
                     shutil.rmtree(file)
 
     @pytest.mark.skipif(sys.platform != "win32", reason="Windows test - this is strict")
-    def test_result_dem_windows(self):
+    def test_result_geofabric_windows(self):
         """A basic comparison between the generated and benchmark DEM"""
 
         # Load in benchmark
@@ -183,7 +182,7 @@ class ProcessorRiverBathymetryTest(unittest.TestCase):
     @pytest.mark.skipif(
         sys.platform != "linux", reason="Linux test - this is less strict"
     )
-    def test_result_dem_linux(self):
+    def test_result_geofabric_linux(self):
         """A basic comparison between the generated and benchmark DEM"""
 
         # load in benchmark
