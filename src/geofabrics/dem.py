@@ -1814,12 +1814,12 @@ def roughness_from_points(
         if len(near_indicies) == 0:  # Set NaN if no values in search region
             z_out[i] = numpy.nan
         else:
-            height = ground - numpy.mean(point_cloud["Z"][near_indicies])
+            height = numpy.mean(point_cloud["Z"][near_indicies]) - ground
             std = numpy.std(point_cloud["Z"][near_indicies])
 
             # if building/plantation - set value based on classification
             # Emperical relationship between mean and std above the ground
-            z_out[i] = max(std / 3, height / 10) / 10
+            z_out[i] = max(std / 3, height / 6) / 10
     return z_out
 
 
