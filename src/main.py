@@ -121,7 +121,7 @@ def launch_processor(args):
         setup_logging_for_run(run_instructions)
         runner = processor.DrainBathymetryGenerator(run_instructions)
         runner.run(
-            pathlib.Path(instructions["drains"]["data_paths"]["local_cache"])
+            pathlib.Path(run_instructions["data_paths"]["local_cache"])
             / "drain_parameters.json"
         )
     if "dem" in instructions:
@@ -143,6 +143,13 @@ def launch_processor(args):
         runner = processor.BathymetryDemGenerator(run_instructions)
         runner.run()
         check_for_benchmarks(run_instructions, runner)
+    if "roughness" in instructions:
+        run_instructions = instructions["roughness"]
+        setup_logging_for_run(run_instructions)
+        # Create a roughness map and add to the hydrological DEM
+        print("Run processor.RoughnessGenerator")
+        runner = processor.BathymetryDemGenerator(run_instructions)
+        runner.run()
     end_time = time.time()
 
     print(f"Execution time is {end_time - start_time}")
