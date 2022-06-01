@@ -39,6 +39,17 @@ class BaseProcessor(abc.ABC):
 
         self.catchment_geometry = None
 
+    def create_metadata(self) -> dict:
+        """A clase to create metadata to be added as netCDF attributes."""
+        metadata = {
+            "library_name": "GeoFabrics",
+            "library_version": version.__version__,
+            "class_name": self.__class__.__name__,
+            "utc_time": datetime.datetime.now(datetime.timezone.utc).isoformat(),
+            "instructions": self.instructions,
+        }
+        return metadata
+
     def get_instruction_path(self, key: str) -> str:
         """Return the file path from the instruction file, or default if there
         is a default value and the local cache is specified. Raise an error if
@@ -488,17 +499,6 @@ class RawLidarDemGenerator(BaseProcessor):
 
         self.raw_dem = None
         self.reference_dem = None
-
-    def create_metadata(self) -> dict:
-        """A clase to create metadata to be added as netCDF attributes."""
-        metadata = {
-            "library_name": "GeoFabrics",
-            "library_version": version.__version__,
-            "class_name": self.__class__.__name__,
-            "utc_time": datetime.datetime.now(datetime.timezone.utc).isoformat(),
-            "instructions": self.instructions,
-        }
-        return metadata
 
     def run(self):
         """This method executes the geofabrics generation pipeline to produce geofabric
