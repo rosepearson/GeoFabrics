@@ -18,6 +18,7 @@ dependencies:
   - pip:
     - git+https://github.com/niwa/geoapis
     - netcdf4
+    - s3transfer==0.5.2
     - osmpythontools
 
 prefix: C:\ProgramData\Anaconda3\envs\geofabrics
