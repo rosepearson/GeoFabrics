@@ -99,7 +99,7 @@ class ProcessorRiverBathymetryTest(unittest.TestCase):
         runner.run()
         runner = processor.HydrologicDemGenerator(cls.instructions["dem"])
         runner.run()
-        runner = processor.RoughnessGenerator(cls.instructions["roughness"])
+        runner = processor.RoughnessLengthGenerator(cls.instructions["roughness"])
         runner.run()
 
     @classmethod

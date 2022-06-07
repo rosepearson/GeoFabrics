@@ -712,13 +712,13 @@ class HydrologicDemGenerator(BaseProcessor):
         )
 
 
-class RoughnessGenerator(BaseProcessor):
-    """RoughnessGenerator executes a pipeline for loading in a hydrologically
-    conditioned DEM and LiDAR tiles to produce a roughness layer that is added to the
-    Hydrologically conditioned DEM. The data and pipeline logic is defined in
+class RoughnessLengthGenerator(BaseProcessor):
+    """RoughnessLengthGenerator executes a pipeline for loading in a hydrologically
+    conditioned DEM and LiDAR tiles to produce a roughness length layer that is added to
+    the Hydrologically conditioned DEM. The data and pipeline logic is defined in
     the json_instructions file.
 
-    The `RoughnessGenerator` class contains several important class members:
+    The `RoughnessLengthGenerator` class contains several important class members:
      * catchment_geometry - Defines all relevant regions in a catchment required in the
        generation of a DEM as polygons.
      * roughness_dem - Adds a roughness layer to the hydrologically conditioned DEM.
@@ -727,7 +727,9 @@ class RoughnessGenerator(BaseProcessor):
 
     def __init__(self, json_instructions: json):
 
-        super(RoughnessGenerator, self).__init__(json_instructions=json_instructions)
+        super(RoughnessLengthGenerator, self).__init__(
+            json_instructions=json_instructions
+        )
 
         self.roughness_dem = None
 
