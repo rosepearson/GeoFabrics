@@ -18,10 +18,6 @@ dependencies:
   - pip:
     - git+https://github.com/niwa/geoapis
     - netcdf4
-    - boto3==1.23.10
-    - botocore==1.26.10
-    - lxml==4.8.0
-    - s3transfer==0.5.2
-    - osmpythontools
+    - git+https://github.com/niwa/mocnik-science/osm-python-tools
 
 prefix: C:\ProgramData\Anaconda3\envs\geofabrics
