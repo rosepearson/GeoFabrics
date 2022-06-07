@@ -17,9 +17,6 @@ For detailed instructions on installation, usage, and testing please check out t
 ### API documentation
 For auto-generated API documentation, checkout the repo [pages](https://rosepearson.github.io/GeoFabrics).
 
-## Related material
-Scripts used as part of the development of this project are included in a separate repo. See https://github.com/rosepearson/Hydrologic-DEMs-scripts for an example.
-
 ## Contributions
 Please see our [Issue Tracker](https://github.com/rosepearson/GeoFabrics/issues) for details on coming features and additions to the software.
 
@@ -30,3 +27,6 @@ Maintainer: Rose Pearson @rosepearson rose.pearson@niwa.co.nz
 
 ## License
 [GNU GPL](https://github.com/rosepearson/GeoFabrics/LICENSE)
+
+## Related material
+Scripts used as part of the development of this project are included in a separate repo. See https://github.com/rosepearson/Hydrologic-DEMs-scripts for an example.
