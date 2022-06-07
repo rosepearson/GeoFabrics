@@ -18,6 +18,7 @@ dependencies:
   - pip:
     - git+https://github.com/niwa/geoapis
     - netcdf4
+    - lxml==4.8.0
     - s3transfer==0.5.2
     - osmpythontools
 
