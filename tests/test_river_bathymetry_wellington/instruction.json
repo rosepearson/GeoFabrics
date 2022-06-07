@@ -10,7 +10,7 @@
 	},
 	"processing": {
 		"chunk_size": 1000,
-		"number_of_cores": 3
+		"number_of_cores": 2
 	},
 	"data_paths": {
 		"local_cache": "tests/test_river_bathymetry_wellington/data",

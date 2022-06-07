@@ -10,7 +10,7 @@
 	},
 	"processing": {
 		"chunk_size": 100,
-		"number_of_cores": 1
+		"number_of_cores": 2
 	},
 	"data_paths": {
 	  "local_cache": "tests/test_processor_remote_tiles_wellington_ground_only/data",

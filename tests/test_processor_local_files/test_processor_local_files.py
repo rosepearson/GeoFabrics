@@ -175,7 +175,7 @@ class ProcessorLocalFilesTest(unittest.TestCase):
         # Run pipeline
         runner = processor.RawLidarDemGenerator(cls.instructions)
         runner.run()
-        runner = processor.BathymetryDemGenerator(cls.instructions)
+        runner = processor.HydrologicDemGenerator(cls.instructions)
         runner.run()
 
     @classmethod

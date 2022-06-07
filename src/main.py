@@ -96,7 +96,7 @@ def check_for_benchmarks(instructions: dict, runner: processor.BaseProcessor):
 
 
 def launch_processor(args):
-    """Run the DEM generation pipeline given the specified instructions.
+    """Run the DEM generation pipeline(s) given the specified instructions.
     If a benchmark is specified compare the result to the benchmark"""
 
     # Load the instructions
@@ -139,8 +139,8 @@ def launch_processor(args):
             runner = processor.RawLidarDemGenerator(run_instructions)
             runner.run()
         # Add bathymetry information to a raw DEM
-        print("Run processor.BathymetryDemGenerator")
-        runner = processor.BathymetryDemGenerator(run_instructions)
+        print("Run processor.HydrologicDemGenerator")
+        runner = processor.HydrologicDemGenerator(run_instructions)
         runner.run()
         check_for_benchmarks(run_instructions, runner)
     if "roughness" in instructions:

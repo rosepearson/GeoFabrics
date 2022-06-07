@@ -596,13 +596,13 @@ class RawLidarDemGenerator(BaseProcessor):
             )
 
 
-class BathymetryDemGenerator(BaseProcessor):
-    """BathymetryDemGenerator executes a pipeline for loading in a raw DEM and extents
+class HydrologicDemGenerator(BaseProcessor):
+    """HydrologicDemGenerator executes a pipeline for loading in a raw DEM and extents
     before incorporating bathymetry (offshore, rivers and drains) to produce a
     hydrologically conditioned DEM. The data and pipeline logic is defined in
     the json_instructions file.
 
-    The `BathymetryDemGenerator` class contains several important class members:
+    The `HydrologicDemGenerator` class contains several important class members:
      * catchment_geometry - Defines all relevant regions in a catchment required in the
        generation of a DEM as polygons.
      * hydrologic_dem - Defines the hydrologically conditioned DEM as a combination of
@@ -616,7 +616,7 @@ class BathymetryDemGenerator(BaseProcessor):
 
     def __init__(self, json_instructions: json):
 
-        super(BathymetryDemGenerator, self).__init__(
+        super(HydrologicDemGenerator, self).__init__(
             json_instructions=json_instructions
         )
 
