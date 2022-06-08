@@ -549,11 +549,9 @@ class RawLidarDemGenerator(BaseProcessor):
             )  # Note must be called after all others if it is to be complete
         # Load in reference DEM if any significant land/foreshore not covered by LiDAR
         if self.check_instruction_path("reference_dems"):
-            area_without_lidar = (
-                self.catchment_geometry.land_and_foreshore_without_lidar(
-                    self.raw_dem.extents
-                ).geometry.area.sum()
-            )
+            area_without_lidar = self.catchment_geometry.land_and_foreshore_without_lidar(
+                self.raw_dem.extents
+            ).geometry.area.sum()
             if (
                 area_without_lidar
                 > self.catchment_geometry.land_and_foreshore.area.sum() * area_threshold
@@ -1485,9 +1483,8 @@ class DrainBathymetryGenerator(BaseProcessor):
 
         # key to output name mapping
         name_dictionary = {
-            "dem": f"dem_{tag}.nc",
-            "raw_dem": f"raw_dem_{tag}.nc",
-            "raw_dem_extents": f"raw_extents_{drain_width}m_width.geojson",
+            "raw_dem": f"drain_raw_dem_{tag}.nc",
+            "raw_dem_extents": f"drain_raw_extents_{drain_width}m_width.geojson",
             "open_polygon": f"open_drain_polygon_{tag}.geojson",
             "open_elevation": f"open_drain_elevation_{tag}.geojson",
             "closed_polygon": f"closed_drain_polygon_{tag}.geojson",
@@ -1581,11 +1578,7 @@ class DrainBathymetryGenerator(BaseProcessor):
             )
         )
         points = geopandas.GeoDataFrame(
-            {
-                "elevation": elevations,
-                "geometry": points,
-            },
-            crs=2193,
+            {"elevation": elevations, "geometry": points,}, crs=2193,
         )
 
         # Save bathymetry
@@ -1676,10 +1669,7 @@ class DrainBathymetryGenerator(BaseProcessor):
                 )
             bathymetries.extend(row_bathymetries)
         points = geopandas.GeoDataFrame(
-            {
-                "elevation": bathymetries,
-                "geometry": points.explode(ignore_index=True),
-            },
+            {"elevation": bathymetries, "geometry": points.explode(ignore_index=True),},
             crs=open_drains.crs,
         )
 
@@ -1689,7 +1679,7 @@ class DrainBathymetryGenerator(BaseProcessor):
     def create_dem(self, drains: geopandas.GeoDataFrame) -> xarray.Dataset:
         """Create and return a DEM at a resolution 1.5x the drain width."""
 
-        dem_file = self.get_result_file_path(key="dem")
+        dem_file = self.get_result_file_path(key="raw_dem")
 
         # Load already created DEM file in
         if dem_file.is_file():
@@ -1716,7 +1706,6 @@ class DrainBathymetryGenerator(BaseProcessor):
             dem_instruction_paths["catchment_boundary"] = self.get_result_file_name(
                 key="drain_polygon"
             )
-            dem_instruction_paths["result_dem"] = self.get_result_file_name(key="dem")
             dem_instruction_paths["raw_dem"] = self.get_result_file_name(key="raw_dem")
             dem_instruction_paths["raw_dem_extents"] = self.get_result_file_name(
                 "raw_dem_extents"
