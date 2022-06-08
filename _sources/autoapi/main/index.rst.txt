@@ -45,7 +45,7 @@ Functions
 
 .. py:function:: launch_processor(args)
 
-   Run the DEM generation pipeline given the specified instructions.
+   Run the DEM generation pipeline(s) given the specified instructions.
    If a benchmark is specified compare the result to the benchmark
 
 

@@ -21,8 +21,9 @@ Classes
 .. autoapisummary::
 
    geofabrics.processor.BaseProcessor
-   geofabrics.processor.BathymetryDemGenerator
-   geofabrics.processor.LidarDemGenerator
+   geofabrics.processor.RawLidarDemGenerator
+   geofabrics.processor.HydrologicDemGenerator
+   geofabrics.processor.RoughnessLengthGenerator
    geofabrics.processor.RiverBathymetryGenerator
    geofabrics.processor.DrainBathymetryGenerator
 
@@ -37,6 +38,11 @@ Classes
    instruction files including populating default values. Also contains
    functions for downloading remote data using geopais, and constructing data
    file lists.
+
+   .. py:method:: create_metadata(self)
+
+      A clase to create metadata to be added as netCDF attributes.
+
 
    .. py:method:: get_instruction_path(self, key)
 
@@ -135,21 +141,52 @@ Classes
 
 
 
-.. py:class:: BathymetryDemGenerator(json_instructions)
+.. py:class:: RawLidarDemGenerator(json_instructions)
 
    Bases: :py:obj:`BaseProcessor`
 
-   BathymetryDemGenerator executes a pipeline for loading in a Dense DEM and extents
-   before interpolating offshore DEM values. The data and pipeline logic is defined in
-   the json_instructions file.
+   RawLidarDemGenerator executes a pipeline for creating a DEM from LiDAR and
+   optionally a reference DEM. The data sources and pipeline logic is defined in the
+   json_instructions file.
 
-   The `BathymetryDemGenerator` class contains several important class members:
+   The `DemGenerator` class contains several important class members:
+    * instructions - Defines the pipeline execution instructions
     * catchment_geometry - Defines all relevant regions in a catchment required in the
       generation of a DEM as polygons.
-    * dense_dem - Defines the hydrologically conditioned DEM as a combination of tiles
+    * raw_dem - A combination of LiDAR tiles and any referecnce DEM
       from LiDAR and interpolated from bathymetry.
-    * bathy_contours - This object defines the bathymetry vectors used by the dense_dem
-      to define the DEM offshore.
+    * reference_dem - This optional object defines a background DEM that may be used to
+      fill on land gaps in the LiDAR.
+
+   See the README.md for usage examples or GeoFabrics/tests/ for examples of usage and
+   an instruction file.
+
+   .. py:method:: run(self)
+
+      This method executes the geofabrics generation pipeline to produce geofabric
+      derivatives.
+
+      Note it currently only considers one LiDAR dataset that can have many tiles.
+      See 'get_lidar_file_list' for where to change this.
+
+
+
+.. py:class:: HydrologicDemGenerator(json_instructions)
+
+   Bases: :py:obj:`BaseProcessor`
+
+   HydrologicDemGenerator executes a pipeline for loading in a raw DEM and extents
+   before incorporating bathymetry (offshore, rivers and drains) to produce a
+   hydrologically conditioned DEM. The data and pipeline logic is defined in
+   the json_instructions file.
+
+   The `HydrologicDemGenerator` class contains several important class members:
+    * catchment_geometry - Defines all relevant regions in a catchment required in the
+      generation of a DEM as polygons.
+    * hydrologic_dem - Defines the hydrologically conditioned DEM as a combination of
+      tiles from LiDAR and interpolated from bathymetry.
+    * bathy_contours - This object defines the bathymetry vectors used to define the
+      DEM values offshore.
 
    See the README.md for usage examples or GeoFabrics/tests/ for examples of usage and
    an instruction file
@@ -166,39 +203,25 @@ Classes
 
 
 
-.. py:class:: LidarDemGenerator(json_instructions)
+.. py:class:: RoughnessLengthGenerator(json_instructions)
 
-   Bases: :py:obj:`BathymetryDemGenerator`
+   Bases: :py:obj:`BaseProcessor`
 
-   LidarDemGenerator executes a pipeline for creating a hydrologically conditioned
-   DEM from LiDAR and optionally a reference DEM and/or bathymetry contours. The data
-   and pipeline logic is defined in the json_instructions file.
+   RoughnessLengthGenerator executes a pipeline for loading in a hydrologically
+   conditioned DEM and LiDAR tiles to produce a roughness length layer that is added to
+   the Hydrologically conditioned DEM. The data and pipeline logic is defined in
+   the json_instructions file.
 
-   The `DemGenerator` class contains several important class members:
+   The `RoughnessLengthGenerator` class contains several important class members:
     * catchment_geometry - Defines all relevant regions in a catchment required in the
       generation of a DEM as polygons.
-    * dense_dem - Defines the hydrologically conditioned DEM as a combination of tiles
-      from LiDAR and interpolated from bathymetry.
-    * reference_dem - This optional object defines a background DEM that may be used to
-      fill on land gaps in the LiDAR.
-    * bathy_contours - This optional object defines the bathymetry vectors used by the
-      dense_dem to define the DEM offshore.
-
-   See the README.md for usage examples or GeoFabrics/tests/ for examples of usage and
-   an instruction file.
-
-   .. py:method:: create_metadata(self)
-
-      A clase to create metadata to be added as netCDF attributes.
+    * roughness_dem - Adds a roughness layer to the hydrologically conditioned DEM.
 
 
    .. py:method:: run(self)
 
       This method executes the geofabrics generation pipeline to produce geofabric
       derivatives.
-
-      Note it currently only considers one LiDAR dataset that can have many tiles.
-      See 'get_lidar_file_list' for where to change this.
 
 
 

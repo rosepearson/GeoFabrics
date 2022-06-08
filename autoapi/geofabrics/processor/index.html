@@ -83,16 +83,19 @@ LiDAR and bathymetry contours based on the instructions contained in a JSON file
 <tr class="row-odd"><td><p><a class="reference internal" href="#geofabrics.processor.BaseProcessor" title="geofabrics.processor.BaseProcessor"><code class="xref py py-obj docutils literal notranslate"><span class="pre">BaseProcessor</span></code></a></p></td>
 <td><p>An abstract class with general methods for accessing elements in</p></td>
 </tr>
-<tr class="row-even"><td><p><a class="reference internal" href="#geofabrics.processor.BathymetryDemGenerator" title="geofabrics.processor.BathymetryDemGenerator"><code class="xref py py-obj docutils literal notranslate"><span class="pre">BathymetryDemGenerator</span></code></a></p></td>
-<td><p>BathymetryDemGenerator executes a pipeline for loading in a Dense DEM and extents</p></td>
+<tr class="row-even"><td><p><a class="reference internal" href="#geofabrics.processor.RawLidarDemGenerator" title="geofabrics.processor.RawLidarDemGenerator"><code class="xref py py-obj docutils literal notranslate"><span class="pre">RawLidarDemGenerator</span></code></a></p></td>
+<td><p>RawLidarDemGenerator executes a pipeline for creating a DEM from LiDAR and</p></td>
 </tr>
-<tr class="row-odd"><td><p><a class="reference internal" href="#geofabrics.processor.LidarDemGenerator" title="geofabrics.processor.LidarDemGenerator"><code class="xref py py-obj docutils literal notranslate"><span class="pre">LidarDemGenerator</span></code></a></p></td>
-<td><p>LidarDemGenerator executes a pipeline for creating a hydrologically conditioned</p></td>
+<tr class="row-odd"><td><p><a class="reference internal" href="#geofabrics.processor.HydrologicDemGenerator" title="geofabrics.processor.HydrologicDemGenerator"><code class="xref py py-obj docutils literal notranslate"><span class="pre">HydrologicDemGenerator</span></code></a></p></td>
+<td><p>HydrologicDemGenerator executes a pipeline for loading in a raw DEM and extents</p></td>
 </tr>
-<tr class="row-even"><td><p><a class="reference internal" href="#geofabrics.processor.RiverBathymetryGenerator" title="geofabrics.processor.RiverBathymetryGenerator"><code class="xref py py-obj docutils literal notranslate"><span class="pre">RiverBathymetryGenerator</span></code></a></p></td>
+<tr class="row-even"><td><p><a class="reference internal" href="#geofabrics.processor.RoughnessLengthGenerator" title="geofabrics.processor.RoughnessLengthGenerator"><code class="xref py py-obj docutils literal notranslate"><span class="pre">RoughnessLengthGenerator</span></code></a></p></td>
+<td><p>RoughnessLengthGenerator executes a pipeline for loading in a hydrologically</p></td>
+</tr>
+<tr class="row-odd"><td><p><a class="reference internal" href="#geofabrics.processor.RiverBathymetryGenerator" title="geofabrics.processor.RiverBathymetryGenerator"><code class="xref py py-obj docutils literal notranslate"><span class="pre">RiverBathymetryGenerator</span></code></a></p></td>
 <td><p>RiverbathymetryGenerator executes a pipeline to estimate river</p></td>
 </tr>
-<tr class="row-odd"><td><p><a class="reference internal" href="#geofabrics.processor.DrainBathymetryGenerator" title="geofabrics.processor.DrainBathymetryGenerator"><code class="xref py py-obj docutils literal notranslate"><span class="pre">DrainBathymetryGenerator</span></code></a></p></td>
+<tr class="row-even"><td><p><a class="reference internal" href="#geofabrics.processor.DrainBathymetryGenerator" title="geofabrics.processor.DrainBathymetryGenerator"><code class="xref py py-obj docutils literal notranslate"><span class="pre">DrainBathymetryGenerator</span></code></a></p></td>
 <td><p>DrainBathymetryGenerator executes a pipeline to pull in OpenStreetMap drain and</p></td>
 </tr>
 </tbody>
@@ -110,6 +113,17 @@ file lists.</p>
 <dd class="field-odd"><p><strong>json_instructions</strong> (<em>json</em>) – </p>
 </dd>
 </dl>
+<dl class="py method">
+<dt class="sig sig-object py" id="geofabrics.processor.BaseProcessor.create_metadata">
+<span class="sig-name descname"><span class="pre">create_metadata</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">self</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#geofabrics.processor.BaseProcessor.create_metadata" title="Permalink to this definition"></a></dt>
+<dd><p>A clase to create metadata to be added as netCDF attributes.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Return type</dt>
+<dd class="field-odd"><p>dict</p>
+</dd>
+</dl>
+</dd></dl>
+
 <dl class="py method">
 <dt class="sig sig-object py" id="geofabrics.processor.BaseProcessor.get_instruction_path">
 <span class="sig-name descname"><span class="pre">get_instruction_path</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">self</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">key</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#geofabrics.processor.BaseProcessor.get_instruction_path" title="Permalink to this definition"></a></dt>
@@ -278,20 +292,58 @@ the instruction ‘data_paths’ is checked for ‘lidars’ and these are retur
 </dd></dl>
 
 <dl class="py class">
-<dt class="sig sig-object py" id="geofabrics.processor.BathymetryDemGenerator">
-<em class="property"><span class="pre">class</span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">geofabrics.processor.</span></span><span class="sig-name descname"><span class="pre">BathymetryDemGenerator</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">json_instructions</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#geofabrics.processor.BathymetryDemGenerator" title="Permalink to this definition"></a></dt>
+<dt class="sig sig-object py" id="geofabrics.processor.RawLidarDemGenerator">
+<em class="property"><span class="pre">class</span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">geofabrics.processor.</span></span><span class="sig-name descname"><span class="pre">RawLidarDemGenerator</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">json_instructions</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#geofabrics.processor.RawLidarDemGenerator" title="Permalink to this definition"></a></dt>
 <dd><p>Bases: <a class="reference internal" href="#geofabrics.processor.BaseProcessor" title="geofabrics.processor.BaseProcessor"><code class="xref py py-obj docutils literal notranslate"><span class="pre">BaseProcessor</span></code></a></p>
-<p>BathymetryDemGenerator executes a pipeline for loading in a Dense DEM and extents
-before interpolating offshore DEM values. The data and pipeline logic is defined in
-the json_instructions file.</p>
+<p>RawLidarDemGenerator executes a pipeline for creating a DEM from LiDAR and
+optionally a reference DEM. The data sources and pipeline logic is defined in the
+json_instructions file.</p>
 <dl class="simple">
-<dt>The <cite>BathymetryDemGenerator</cite> class contains several important class members:</dt><dd><ul class="simple">
+<dt>The <cite>DemGenerator</cite> class contains several important class members:</dt><dd><ul class="simple">
+<li><p>instructions - Defines the pipeline execution instructions</p></li>
 <li><p>catchment_geometry - Defines all relevant regions in a catchment required in the
 generation of a DEM as polygons.</p></li>
-<li><p>dense_dem - Defines the hydrologically conditioned DEM as a combination of tiles
+<li><p>raw_dem - A combination of LiDAR tiles and any referecnce DEM
 from LiDAR and interpolated from bathymetry.</p></li>
-<li><p>bathy_contours - This object defines the bathymetry vectors used by the dense_dem
-to define the DEM offshore.</p></li>
+<li><p>reference_dem - This optional object defines a background DEM that may be used to
+fill on land gaps in the LiDAR.</p></li>
+</ul>
+</dd>
+</dl>
+<p>See the README.md for usage examples or GeoFabrics/tests/ for examples of usage and
+an instruction file.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters</dt>
+<dd class="field-odd"><p><strong>json_instructions</strong> (<em>json</em>) – </p>
+</dd>
+</dl>
+<dl class="py method">
+<dt class="sig sig-object py" id="geofabrics.processor.RawLidarDemGenerator.run">
+<span class="sig-name descname"><span class="pre">run</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">self</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#geofabrics.processor.RawLidarDemGenerator.run" title="Permalink to this definition"></a></dt>
+<dd><p>This method executes the geofabrics generation pipeline to produce geofabric
+derivatives.</p>
+<p>Note it currently only considers one LiDAR dataset that can have many tiles.
+See ‘get_lidar_file_list’ for where to change this.</p>
+</dd></dl>
+
+</dd></dl>
+
+<dl class="py class">
+<dt class="sig sig-object py" id="geofabrics.processor.HydrologicDemGenerator">
+<em class="property"><span class="pre">class</span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">geofabrics.processor.</span></span><span class="sig-name descname"><span class="pre">HydrologicDemGenerator</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">json_instructions</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#geofabrics.processor.HydrologicDemGenerator" title="Permalink to this definition"></a></dt>
+<dd><p>Bases: <a class="reference internal" href="#geofabrics.processor.BaseProcessor" title="geofabrics.processor.BaseProcessor"><code class="xref py py-obj docutils literal notranslate"><span class="pre">BaseProcessor</span></code></a></p>
+<p>HydrologicDemGenerator executes a pipeline for loading in a raw DEM and extents
+before incorporating bathymetry (offshore, rivers and drains) to produce a
+hydrologically conditioned DEM. The data and pipeline logic is defined in
+the json_instructions file.</p>
+<dl class="simple">
+<dt>The <cite>HydrologicDemGenerator</cite> class contains several important class members:</dt><dd><ul class="simple">
+<li><p>catchment_geometry - Defines all relevant regions in a catchment required in the
+generation of a DEM as polygons.</p></li>
+<li><p>hydrologic_dem - Defines the hydrologically conditioned DEM as a combination of
+tiles from LiDAR and interpolated from bathymetry.</p></li>
+<li><p>bathy_contours - This object defines the bathymetry vectors used to define the
+DEM values offshore.</p></li>
 </ul>
 </dd>
 </dl>
@@ -303,8 +355,8 @@ an instruction file</p>
 </dd>
 </dl>
 <dl class="py method">
-<dt class="sig sig-object py" id="geofabrics.processor.BathymetryDemGenerator.add_bathymetry">
-<span class="sig-name descname"><span class="pre">add_bathymetry</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">self</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">area_threshold</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">catchment_dirs</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#geofabrics.processor.BathymetryDemGenerator.add_bathymetry" title="Permalink to this definition"></a></dt>
+<dt class="sig sig-object py" id="geofabrics.processor.HydrologicDemGenerator.add_bathymetry">
+<span class="sig-name descname"><span class="pre">add_bathymetry</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">self</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">area_threshold</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">catchment_dirs</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#geofabrics.processor.HydrologicDemGenerator.add_bathymetry" title="Permalink to this definition"></a></dt>
 <dd><p>Add in any bathymetry data - ocean or river</p>
 <dl class="field-list simple">
 <dt class="field-odd">Parameters</dt>
@@ -317,8 +369,8 @@ an instruction file</p>
 </dd></dl>
 
 <dl class="py method">
-<dt class="sig sig-object py" id="geofabrics.processor.BathymetryDemGenerator.run">
-<span class="sig-name descname"><span class="pre">run</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">self</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#geofabrics.processor.BathymetryDemGenerator.run" title="Permalink to this definition"></a></dt>
+<dt class="sig sig-object py" id="geofabrics.processor.HydrologicDemGenerator.run">
+<span class="sig-name descname"><span class="pre">run</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">self</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#geofabrics.processor.HydrologicDemGenerator.run" title="Permalink to this definition"></a></dt>
 <dd><p>This method executes the geofabrics generation pipeline to produce geofabric
 derivatives.</p>
 </dd></dl>
@@ -326,50 +378,31 @@ derivatives.</p>
 </dd></dl>
 
 <dl class="py class">
-<dt class="sig sig-object py" id="geofabrics.processor.LidarDemGenerator">
-<em class="property"><span class="pre">class</span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">geofabrics.processor.</span></span><span class="sig-name descname"><span class="pre">LidarDemGenerator</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">json_instructions</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#geofabrics.processor.LidarDemGenerator" title="Permalink to this definition"></a></dt>
-<dd><p>Bases: <a class="reference internal" href="#geofabrics.processor.BathymetryDemGenerator" title="geofabrics.processor.BathymetryDemGenerator"><code class="xref py py-obj docutils literal notranslate"><span class="pre">BathymetryDemGenerator</span></code></a></p>
-<p>LidarDemGenerator executes a pipeline for creating a hydrologically conditioned
-DEM from LiDAR and optionally a reference DEM and/or bathymetry contours. The data
-and pipeline logic is defined in the json_instructions file.</p>
+<dt class="sig sig-object py" id="geofabrics.processor.RoughnessLengthGenerator">
+<em class="property"><span class="pre">class</span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">geofabrics.processor.</span></span><span class="sig-name descname"><span class="pre">RoughnessLengthGenerator</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">json_instructions</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#geofabrics.processor.RoughnessLengthGenerator" title="Permalink to this definition"></a></dt>
+<dd><p>Bases: <a class="reference internal" href="#geofabrics.processor.BaseProcessor" title="geofabrics.processor.BaseProcessor"><code class="xref py py-obj docutils literal notranslate"><span class="pre">BaseProcessor</span></code></a></p>
+<p>RoughnessLengthGenerator executes a pipeline for loading in a hydrologically
+conditioned DEM and LiDAR tiles to produce a roughness length layer that is added to
+the Hydrologically conditioned DEM. The data and pipeline logic is defined in
+the json_instructions file.</p>
 <dl class="simple">
-<dt>The <cite>DemGenerator</cite> class contains several important class members:</dt><dd><ul class="simple">
+<dt>The <cite>RoughnessLengthGenerator</cite> class contains several important class members:</dt><dd><ul class="simple">
 <li><p>catchment_geometry - Defines all relevant regions in a catchment required in the
 generation of a DEM as polygons.</p></li>
-<li><p>dense_dem - Defines the hydrologically conditioned DEM as a combination of tiles
-from LiDAR and interpolated from bathymetry.</p></li>
-<li><p>reference_dem - This optional object defines a background DEM that may be used to
-fill on land gaps in the LiDAR.</p></li>
-<li><p>bathy_contours - This optional object defines the bathymetry vectors used by the
-dense_dem to define the DEM offshore.</p></li>
+<li><p>roughness_dem - Adds a roughness layer to the hydrologically conditioned DEM.</p></li>
 </ul>
 </dd>
 </dl>
-<p>See the README.md for usage examples or GeoFabrics/tests/ for examples of usage and
-an instruction file.</p>
 <dl class="field-list simple">
 <dt class="field-odd">Parameters</dt>
 <dd class="field-odd"><p><strong>json_instructions</strong> (<em>json</em>) – </p>
 </dd>
 </dl>
 <dl class="py method">
-<dt class="sig sig-object py" id="geofabrics.processor.LidarDemGenerator.create_metadata">
-<span class="sig-name descname"><span class="pre">create_metadata</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">self</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#geofabrics.processor.LidarDemGenerator.create_metadata" title="Permalink to this definition"></a></dt>
-<dd><p>A clase to create metadata to be added as netCDF attributes.</p>
-<dl class="field-list simple">
-<dt class="field-odd">Return type</dt>
-<dd class="field-odd"><p>dict</p>
-</dd>
-</dl>
-</dd></dl>
-
-<dl class="py method">
-<dt class="sig sig-object py" id="geofabrics.processor.LidarDemGenerator.run">
-<span class="sig-name descname"><span class="pre">run</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">self</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#geofabrics.processor.LidarDemGenerator.run" title="Permalink to this definition"></a></dt>
+<dt class="sig sig-object py" id="geofabrics.processor.RoughnessLengthGenerator.run">
+<span class="sig-name descname"><span class="pre">run</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">self</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#geofabrics.processor.RoughnessLengthGenerator.run" title="Permalink to this definition"></a></dt>
 <dd><p>This method executes the geofabrics generation pipeline to produce geofabric
 derivatives.</p>
-<p>Note it currently only considers one LiDAR dataset that can have many tiles.
-See ‘get_lidar_file_list’ for where to change this.</p>
 </dd></dl>
 
 </dd></dl>

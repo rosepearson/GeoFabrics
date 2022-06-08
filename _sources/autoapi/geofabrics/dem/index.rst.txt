@@ -19,9 +19,11 @@ Classes
 .. autoapisummary::
 
    geofabrics.dem.ReferenceDem
-   geofabrics.dem.DenseDem
-   geofabrics.dem.DenseDemFromFiles
-   geofabrics.dem.DenseDemFromTiles
+   geofabrics.dem.DemBase
+   geofabrics.dem.HydrologicallyConditionedDem
+   geofabrics.dem.LidarBase
+   geofabrics.dem.RawDem
+   geofabrics.dem.RoughnessDem
 
 
 
@@ -31,10 +33,12 @@ Functions
 .. autoapisummary::
 
    geofabrics.dem.read_file_with_pdal
-   geofabrics.dem.rasterise_points
+   geofabrics.dem.roughness_from_points
+   geofabrics.dem.elevation_from_points
    geofabrics.dem.calculate_idw
    geofabrics.dem.load_tiles_in_chunk
-   geofabrics.dem.rasterise_chunk
+   geofabrics.dem.roughness_over_chunk
+   geofabrics.dem.elevation_over_chunk
 
 
 
@@ -43,7 +47,8 @@ Attributes
 
 .. autoapisummary::
 
-   geofabrics.dem.delayed_rasterise_chunk
+   geofabrics.dem.delayed_roughness_over_chunk
+   geofabrics.dem.delayed_elevation_over_chunk
 
 
 .. py:class:: ReferenceDem(dem_file, catchment_geometry, set_foreshore = True, exclusion_extent = None)
@@ -75,7 +80,7 @@ Attributes
 
 
 
-.. py:class:: DenseDem(catchment_geometry, extents, dense_dem, interpolation_method)
+.. py:class:: DemBase(catchment_geometry, extents)
 
    Bases: :py:obj:`abc.ABC`
 
@@ -87,14 +92,6 @@ Attributes
    :param catchment_geometry: Defines the spatial extents of the catchment, land, foreshore, and offshore
                               regions
    :param extents: Defines the extents of any dense (LiDAR or refernence DEM) values already added.
-   :param dense_dem: The dense portion of the DEM
-   :param interpolation_method: If not None, interpolate using that method. Valid options are 'linear',
-                                'nearest', and 'cubic'
-
-   .. py:method:: __del__(self)
-
-      Ensure the memory associated with netCDF files is properly freed.
-
 
    .. py:method:: extents(self)
       :property:
@@ -102,10 +99,28 @@ Attributes
       The combined extents for all added LiDAR tiles
 
 
-   .. py:method:: dense_dem(self)
+   .. py:method:: dem(self)
       :property:
 
-      Return the dense DEM from tiles and any interpolated offshore values
+      Return the DEM over the catchment region
+
+
+
+.. py:class:: HydrologicallyConditionedDem(catchment_geometry, raw_dem_path, extents_path, interpolation_method)
+
+   Bases: :py:obj:`DemBase`
+
+   A class to manage loading in an already created and saved dense DEM that has yet
+   to have an offshore DEM associated with it.
+
+   :param Logic controlling behaviour:
+                                       interpolation_method
+                                           If not None, interpolate using that method. Valid options are 'linear',
+                                           'nearest', and 'cubic'
+
+   .. py:method:: __del__(self)
+
+      Ensure the memory associated with netCDF files is properly freed.
 
 
    .. py:method:: dem(self)
@@ -131,48 +146,109 @@ Attributes
 
 
 
-.. py:class:: DenseDemFromFiles(catchment_geometry, dense_dem_path, extents_path, interpolation_method)
+.. py:class:: LidarBase(catchment_geometry, elevation_range = None)
 
-   Bases: :py:obj:`DenseDem`
+   Bases: :py:obj:`DemBase`
 
-   A class to manage loading in an already created and saved dense DEM that has yet
-   to have an offshore DEM associated with it.
+   A class with some base methods for reading in LiDAR data.
 
-   :param Logic controlling behaviour:
-                                       interpolation_method
-                                           If not None, interpolate using that method. Valid options are 'linear', 'nearest', and 'cubic'
+   :param catchment_geometry: Defines the geometry of the catchment
+   :param elevation_range: The range of valid LiDAR elevations. i.e. define elevation filtering to apply.
+
+   .. py:method:: __del__(self)
+
+      Ensure the memory associated with netCDF files is properly freed.
 
 
-.. py:class:: DenseDemFromTiles(catchment_geometry, interpolation_method, lidar_interpolation_method, drop_offshore_lidar = True, elevation_range = None)
+   .. py:method:: dem(self)
+      :property:
 
-   Bases: :py:obj:`DenseDem`
+      Return the combined DEM from tiles and any interpolated offshore values
 
-   A class to manage the population of the DenseDem's dense_dem from LiDAR tiles, and/or a reference DEM.
 
-   The dense DEM is made up of tiles created from dense point data - Either LiDAR point clouds, or a reference DEM.
-
-   DenseDemFromTiles logic can be controlled by the constructor inputs.
-
-   :param drop_offshore_lidar: If True only keep LiDAR values within the foreshore and land regions defined by the catchment_geometry.
-                               If False keep all LiDAR values.
-   :param interpolation_method: If not None, interpolate using that method. Valid options are 'linear', 'nearest', and 'cubic'.
-   :param lidar_interpolation_method: The interpolation method to apply to point clouds. Options are: mean, median, IDW
-
-   .. py:method:: add_lidar(self, lidar_files, tile_index_file, chunk_size, lidar_classifications_to_keep, source_crs, drop_offshore_lidar, metadata)
+   .. py:method:: add_lidar(self, lidar_files, tile_index_file, chunk_size, lidar_classifications_to_keep, source_crs, metadata)
+      :abstractmethod:
 
       Read in all LiDAR files and use to create a dense DEM.
 
-      :param source_crs: Specify if the CRS encoded in the LiDAR files are incorrect/only partially defined
-                         (i.e. missing vertical CRS) and need to be overwritten.
-      :param drop_offshore_lidar: If True, trim any LiDAR values that are offshore as specified by the catchment_geometry
-      :param lidar_classifications_to_keep: A list of LiDAR classifications to keep - '2' for ground, '9' for water. See
-                                            https://www.asprs.org/wp-content/uploads/2010/12/LAS_1_4_r13.pdf for standard list
-      :param tile_index_file: Must exist if there are many LiDAR files. This is used to determine chunking.
+      :param source_crs: Coordinate reference system information
+      :param chunk_size: The chunk size in pixels for parallel/staged processing
+      :param lidar_files: The list of LiDAR files to read in
+      :param tile_index_file: A file specifying the spatial extents of the LiDAR files.
+      :param lidar_classifications_to_keep: A list of LiDAR classifications to keep - '2' for ground, '9' for water.
+                                            See https://www.asprs.org/wp-content/uploads/2010/12/LAS_1_4_r13.pdf for
+                                            standard list
+      :param meta_data: Information to include in the created DEM.
+
+
+
+.. py:class:: RawDem(catchment_geometry, lidar_interpolation_method, drop_offshore_lidar = True, elevation_range = None)
+
+   Bases: :py:obj:`LidarBase`
+
+   A class to manage the creation of a 'raw' DEM from LiDAR tiles, and/or a
+   reference DEM.
+
+   :param drop_offshore_lidar: If True only keep LiDAR values within the foreshore and land regions defined by
+                               the catchment_geometry. If False keep all LiDAR values.
+   :param elevation_range: Optitionally specify a range of valid elevations. Any LiDAR points with
+                           elevations outside this range will be filtered out.
+   :param lidar_interpolation_method: The interpolation method to apply to LiDAR during downsampling/averaging.
+                                      Options are: mean, median, IDW, max, min, STD.
+
+   .. py:method:: add_lidar(self, lidar_files, tile_index_file, chunk_size, lidar_classifications_to_keep, source_crs, metadata)
+
+      Read in all LiDAR files and use to define a 'raw' DEM with elevations in
+      pixels where there is LiDAR or reference  DEM information.
+
+      :param source_crs: Coordinate reference system information
+      :param chunk_size: The chunk size in pixels for parallel/staged processing
+      :param lidar_files: The list of LiDAR files to read in
+      :param tile_index_file: A file specifying the spatial extents of the LiDAR files.
+      :param lidar_classifications_to_keep: A list of LiDAR classifications to keep - '2' for ground, '9' for water.
+                                            See https://www.asprs.org/wp-content/uploads/2010/12/LAS_1_4_r13.pdf for
+                                            standard list
+      :param meta_data: Information to include in the created DEM.
 
 
    .. py:method:: add_reference_dem(self, tile_points, tile_extent)
 
-      Update gaps in dense DEM from areas with no LiDAR with the reference DEM.
+      Fill gaps in dense DEM from areas with no LiDAR with the reference DEM.
+
+
+
+.. py:class:: RoughnessDem(catchment_geometry, hydrological_dem_path, interpolation_method, elevation_range = None)
+
+   Bases: :py:obj:`LidarBase`
+
+   A class to add a roughness (zo) layer to a hydrologically conditioned DEM.
+
+   They STD and mean height of ground cover classified points are calculated from the
+   LiDAR data and z (elevation) layer of the hydrologically conditioned DEM, and used
+   to estimate roughness emperically.
+
+   RoughnessDem logic can be controlled by the constructor inputs.
+
+   :param catchment_geometry: Defines the geometry of the catchment
+   :param hydrological_dem_path: The path to the hydrologically conditioned DEM.
+   :param interpolation_method: If not None, interpolate using that method. Valid options are 'linear',
+                                'nearest', and 'cubic'.
+   :param lidar_interpolation_method: The interpolation method to apply to LiDAR. Options are: mean, median, IDW.
+
+   .. py:method:: add_lidar(self, lidar_files, tile_index_file, chunk_size, lidar_classifications_to_keep, source_crs, metadata)
+
+      Read in all LiDAR files and use the point cloud distribution, source_class
+      information, and hydrologiaclly conditioned elevations to estimate the roughness
+      across the DEM.
+
+      :param source_crs: Coordinate reference system information
+      :param chunk_size: The chunk size in pixels for parallel/staged processing
+      :param lidar_files: The list of LiDAR files to read in
+      :param tile_index_file: A file specifying the spatial extents of the LiDAR files.
+      :param lidar_classifications_to_keep: A list of LiDAR classifications to keep - '2' for ground, '9' for water.
+                                            See https://www.asprs.org/wp-content/uploads/2010/12/LAS_1_4_r13.pdf for
+                                            standard list
+      :param meta_data: Information to include in the created DEM.
 
 
 
@@ -181,7 +257,14 @@ Attributes
    Read a tile file in using PDAL
 
 
-.. py:function:: rasterise_points(point_cloud, xy_out, options, eps = 0, leaf_size = 10)
+.. py:function:: roughness_from_points(point_cloud, xy_out, xy_ground, options, eps = 0, leaf_size = 10)
+
+   Calculate DEM elevation values at the specified locations using the selected
+   approach. Options include: mean, median, and inverse distance weighing (IDW). This
+   implementation is based on the scipy.spatial.KDTree
+
+
+.. py:function:: elevation_from_points(point_cloud, xy_out, options, eps = 0, leaf_size = 10)
 
    Calculate DEM elevation values at the specified locations using the selected
    approach. Options include: mean, median, and inverse distance weighing (IDW). This
@@ -201,12 +284,22 @@ Attributes
    within which to rasterise.
 
 
-.. py:function:: rasterise_chunk(dim_x, dim_y, tile_points, options)
+.. py:function:: roughness_over_chunk(dim_x, dim_y, tile_points, xy_ground, options)
 
    Rasterise all points within a chunk.
 
 
-.. py:data:: delayed_rasterise_chunk
+.. py:function:: elevation_over_chunk(dim_x, dim_y, tile_points, options)
+
+   Rasterise all points within a chunk.
+
+
+.. py:data:: delayed_roughness_over_chunk
+   
+
+   Wrap the `rasterise_chunk` routine in dask.delayed
+
+.. py:data:: delayed_elevation_over_chunk
    
 
    Wrap the `load_tiles_in_chunk` routine in dask.delayed

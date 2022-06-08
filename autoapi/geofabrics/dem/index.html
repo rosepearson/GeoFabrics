@@ -82,14 +82,20 @@ DEMs.</p>
 <tr class="row-odd"><td><p><a class="reference internal" href="#geofabrics.dem.ReferenceDem" title="geofabrics.dem.ReferenceDem"><code class="xref py py-obj docutils literal notranslate"><span class="pre">ReferenceDem</span></code></a></p></td>
 <td><p>A class to manage reference or background DEMs in the catchment context</p></td>
 </tr>
-<tr class="row-even"><td><p><a class="reference internal" href="#geofabrics.dem.DenseDem" title="geofabrics.dem.DenseDem"><code class="xref py py-obj docutils literal notranslate"><span class="pre">DenseDem</span></code></a></p></td>
+<tr class="row-even"><td><p><a class="reference internal" href="#geofabrics.dem.DemBase" title="geofabrics.dem.DemBase"><code class="xref py py-obj docutils literal notranslate"><span class="pre">DemBase</span></code></a></p></td>
 <td><p>An abstract class to manage the dense DEM in a catchment context.</p></td>
 </tr>
-<tr class="row-odd"><td><p><a class="reference internal" href="#geofabrics.dem.DenseDemFromFiles" title="geofabrics.dem.DenseDemFromFiles"><code class="xref py py-obj docutils literal notranslate"><span class="pre">DenseDemFromFiles</span></code></a></p></td>
+<tr class="row-odd"><td><p><a class="reference internal" href="#geofabrics.dem.HydrologicallyConditionedDem" title="geofabrics.dem.HydrologicallyConditionedDem"><code class="xref py py-obj docutils literal notranslate"><span class="pre">HydrologicallyConditionedDem</span></code></a></p></td>
 <td><p>A class to manage loading in an already created and saved dense DEM that has yet</p></td>
 </tr>
-<tr class="row-even"><td><p><a class="reference internal" href="#geofabrics.dem.DenseDemFromTiles" title="geofabrics.dem.DenseDemFromTiles"><code class="xref py py-obj docutils literal notranslate"><span class="pre">DenseDemFromTiles</span></code></a></p></td>
-<td><p>A class to manage the population of the DenseDem's dense_dem from LiDAR tiles, and/or a reference DEM.</p></td>
+<tr class="row-even"><td><p><a class="reference internal" href="#geofabrics.dem.LidarBase" title="geofabrics.dem.LidarBase"><code class="xref py py-obj docutils literal notranslate"><span class="pre">LidarBase</span></code></a></p></td>
+<td><p>A class with some base methods for reading in LiDAR data.</p></td>
+</tr>
+<tr class="row-odd"><td><p><a class="reference internal" href="#geofabrics.dem.RawDem" title="geofabrics.dem.RawDem"><code class="xref py py-obj docutils literal notranslate"><span class="pre">RawDem</span></code></a></p></td>
+<td><p>A class to manage the creation of a 'raw' DEM from LiDAR tiles, and/or a</p></td>
+</tr>
+<tr class="row-even"><td><p><a class="reference internal" href="#geofabrics.dem.RoughnessDem" title="geofabrics.dem.RoughnessDem"><code class="xref py py-obj docutils literal notranslate"><span class="pre">RoughnessDem</span></code></a></p></td>
+<td><p>A class to add a roughness (zo) layer to a hydrologically conditioned DEM.</p></td>
 </tr>
 </tbody>
 </table>
@@ -105,16 +111,22 @@ DEMs.</p>
 <tr class="row-odd"><td><p><a class="reference internal" href="#geofabrics.dem.read_file_with_pdal" title="geofabrics.dem.read_file_with_pdal"><code class="xref py py-obj docutils literal notranslate"><span class="pre">read_file_with_pdal</span></code></a>(lidar_file, region_to_tile, catchment_geometry, source_crs = None, get_extents = False)</p></td>
 <td><p>Read a tile file in using PDAL</p></td>
 </tr>
-<tr class="row-even"><td><p><a class="reference internal" href="#geofabrics.dem.rasterise_points" title="geofabrics.dem.rasterise_points"><code class="xref py py-obj docutils literal notranslate"><span class="pre">rasterise_points</span></code></a>(point_cloud, xy_out, options, eps = 0, leaf_size = 10)</p></td>
+<tr class="row-even"><td><p><a class="reference internal" href="#geofabrics.dem.roughness_from_points" title="geofabrics.dem.roughness_from_points"><code class="xref py py-obj docutils literal notranslate"><span class="pre">roughness_from_points</span></code></a>(point_cloud, xy_out, xy_ground, options, eps = 0, leaf_size = 10)</p></td>
 <td><p>Calculate DEM elevation values at the specified locations using the selected</p></td>
 </tr>
-<tr class="row-odd"><td><p><a class="reference internal" href="#geofabrics.dem.calculate_idw" title="geofabrics.dem.calculate_idw"><code class="xref py py-obj docutils literal notranslate"><span class="pre">calculate_idw</span></code></a>(near_indicies, point, tree, point_cloud, smoothing = 0, power = 2)</p></td>
+<tr class="row-odd"><td><p><a class="reference internal" href="#geofabrics.dem.elevation_from_points" title="geofabrics.dem.elevation_from_points"><code class="xref py py-obj docutils literal notranslate"><span class="pre">elevation_from_points</span></code></a>(point_cloud, xy_out, options, eps = 0, leaf_size = 10)</p></td>
+<td><p>Calculate DEM elevation values at the specified locations using the selected</p></td>
+</tr>
+<tr class="row-even"><td><p><a class="reference internal" href="#geofabrics.dem.calculate_idw" title="geofabrics.dem.calculate_idw"><code class="xref py py-obj docutils literal notranslate"><span class="pre">calculate_idw</span></code></a>(near_indicies, point, tree, point_cloud, smoothing = 0, power = 2)</p></td>
 <td><p>Calculate DEM elevation values at the specified locations by</p></td>
 </tr>
-<tr class="row-even"><td><p><a class="reference internal" href="#geofabrics.dem.load_tiles_in_chunk" title="geofabrics.dem.load_tiles_in_chunk"><code class="xref py py-obj docutils literal notranslate"><span class="pre">load_tiles_in_chunk</span></code></a>(dim_x, dim_y, tile_index_extents, tile_index_name_column, lidar_files, source_crs, chunk_region_to_tile, catchment_geometry)</p></td>
+<tr class="row-odd"><td><p><a class="reference internal" href="#geofabrics.dem.load_tiles_in_chunk" title="geofabrics.dem.load_tiles_in_chunk"><code class="xref py py-obj docutils literal notranslate"><span class="pre">load_tiles_in_chunk</span></code></a>(dim_x, dim_y, tile_index_extents, tile_index_name_column, lidar_files, source_crs, chunk_region_to_tile, catchment_geometry)</p></td>
 <td><p>Read in all LiDAR files within the chunked region - clipped to within the region</p></td>
 </tr>
-<tr class="row-odd"><td><p><a class="reference internal" href="#geofabrics.dem.rasterise_chunk" title="geofabrics.dem.rasterise_chunk"><code class="xref py py-obj docutils literal notranslate"><span class="pre">rasterise_chunk</span></code></a>(dim_x, dim_y, tile_points, options)</p></td>
+<tr class="row-even"><td><p><a class="reference internal" href="#geofabrics.dem.roughness_over_chunk" title="geofabrics.dem.roughness_over_chunk"><code class="xref py py-obj docutils literal notranslate"><span class="pre">roughness_over_chunk</span></code></a>(dim_x, dim_y, tile_points, xy_ground, options)</p></td>
+<td><p>Rasterise all points within a chunk.</p></td>
+</tr>
+<tr class="row-odd"><td><p><a class="reference internal" href="#geofabrics.dem.elevation_over_chunk" title="geofabrics.dem.elevation_over_chunk"><code class="xref py py-obj docutils literal notranslate"><span class="pre">elevation_over_chunk</span></code></a>(dim_x, dim_y, tile_points, options)</p></td>
 <td><p>Rasterise all points within a chunk.</p></td>
 </tr>
 </tbody>
@@ -128,7 +140,10 @@ DEMs.</p>
 <col style="width: 90%" />
 </colgroup>
 <tbody>
-<tr class="row-odd"><td><p><a class="reference internal" href="#geofabrics.dem.delayed_rasterise_chunk" title="geofabrics.dem.delayed_rasterise_chunk"><code class="xref py py-obj docutils literal notranslate"><span class="pre">delayed_rasterise_chunk</span></code></a></p></td>
+<tr class="row-odd"><td><p><a class="reference internal" href="#geofabrics.dem.delayed_roughness_over_chunk" title="geofabrics.dem.delayed_roughness_over_chunk"><code class="xref py py-obj docutils literal notranslate"><span class="pre">delayed_roughness_over_chunk</span></code></a></p></td>
+<td><p>Wrap the <cite>rasterise_chunk</cite> routine in dask.delayed</p></td>
+</tr>
+<tr class="row-even"><td><p><a class="reference internal" href="#geofabrics.dem.delayed_elevation_over_chunk" title="geofabrics.dem.delayed_elevation_over_chunk"><code class="xref py py-obj docutils literal notranslate"><span class="pre">delayed_elevation_over_chunk</span></code></a></p></td>
 <td><p>Wrap the <cite>load_tiles_in_chunk</cite> routine in dask.delayed</p></td>
 </tr>
 </tbody>
@@ -182,8 +197,8 @@ filtering.</p>
 </dd></dl>
 
 <dl class="py class">
-<dt class="sig sig-object py" id="geofabrics.dem.DenseDem">
-<em class="property"><span class="pre">class</span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">geofabrics.dem.</span></span><span class="sig-name descname"><span class="pre">DenseDem</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">catchment_geometry</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">extents</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">dense_dem</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">interpolation_method</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#geofabrics.dem.DenseDem" title="Permalink to this definition"></a></dt>
+<dt class="sig sig-object py" id="geofabrics.dem.DemBase">
+<em class="property"><span class="pre">class</span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">geofabrics.dem.</span></span><span class="sig-name descname"><span class="pre">DemBase</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">catchment_geometry</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">extents</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#geofabrics.dem.DemBase" title="Permalink to this definition"></a></dt>
 <dd><p>Bases: <code class="xref py py-obj docutils literal notranslate"><span class="pre">abc.ABC</span></code></p>
 <p>An abstract class to manage the dense DEM in a catchment context.</p>
 <p>The dense DEM is made up of a dense DEM that is loaded in, and an offshore DEM that
@@ -194,114 +209,166 @@ is interpolated from bathymetry contours offshore and outside all LiDAR tiles.</
 <li><p><strong>catchment_geometry</strong> (<a class="reference internal" href="../geometry/index.html#geofabrics.geometry.CatchmentGeometry" title="geofabrics.geometry.CatchmentGeometry"><em>geofabrics.geometry.CatchmentGeometry</em></a>) – Defines the spatial extents of the catchment, land, foreshore, and offshore
 regions</p></li>
 <li><p><strong>extents</strong> (<em>geopandas.GeoDataFrame</em>) – Defines the extents of any dense (LiDAR or refernence DEM) values already added.</p></li>
-<li><p><strong>dense_dem</strong> (<em>xarray.core.dataarray.DataArray</em>) – The dense portion of the DEM</p></li>
-<li><p><strong>interpolation_method</strong> (<em>str</em>) – If not None, interpolate using that method. Valid options are ‘linear’,
-‘nearest’, and ‘cubic’</p></li>
 </ul>
 </dd>
 </dl>
 <dl class="py method">
-<dt class="sig sig-object py" id="geofabrics.dem.DenseDem.__del__">
-<span class="sig-name descname"><span class="pre">__del__</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">self</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#geofabrics.dem.DenseDem.__del__" title="Permalink to this definition"></a></dt>
-<dd><p>Ensure the memory associated with netCDF files is properly freed.</p>
-</dd></dl>
-
-<dl class="py method">
-<dt class="sig sig-object py" id="geofabrics.dem.DenseDem.extents">
-<em class="property"><span class="pre">property</span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">extents</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">self</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#geofabrics.dem.DenseDem.extents" title="Permalink to this definition"></a></dt>
+<dt class="sig sig-object py" id="geofabrics.dem.DemBase.extents">
+<em class="property"><span class="pre">property</span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">extents</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">self</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#geofabrics.dem.DemBase.extents" title="Permalink to this definition"></a></dt>
 <dd><p>The combined extents for all added LiDAR tiles</p>
 </dd></dl>
 
 <dl class="py method">
-<dt class="sig sig-object py" id="geofabrics.dem.DenseDem.dense_dem">
-<em class="property"><span class="pre">property</span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">dense_dem</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">self</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#geofabrics.dem.DenseDem.dense_dem" title="Permalink to this definition"></a></dt>
-<dd><p>Return the dense DEM from tiles and any interpolated offshore values</p>
-</dd></dl>
-
-<dl class="py method">
-<dt class="sig sig-object py" id="geofabrics.dem.DenseDem.dem">
-<em class="property"><span class="pre">property</span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">dem</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">self</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#geofabrics.dem.DenseDem.dem" title="Permalink to this definition"></a></dt>
-<dd><p>Return the combined DEM from tiles and any interpolated offshore values</p>
-</dd></dl>
-
-<dl class="py method">
-<dt class="sig sig-object py" id="geofabrics.dem.DenseDem.combine_dem_parts">
-<span class="sig-name descname"><span class="pre">combine_dem_parts</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">self</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#geofabrics.dem.DenseDem.combine_dem_parts" title="Permalink to this definition"></a></dt>
-<dd><p>Return the combined DEM from tiles and any interpolated offshore values</p>
-</dd></dl>
-
-<dl class="py method">
-<dt class="sig sig-object py" id="geofabrics.dem.DenseDem.interpolate_offshore">
-<span class="sig-name descname"><span class="pre">interpolate_offshore</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">self</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">bathy_contours</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#geofabrics.dem.DenseDem.interpolate_offshore" title="Permalink to this definition"></a></dt>
-<dd><p>Performs interpolation offshore outside LiDAR extents using the SciPy RBF
-function.</p>
-</dd></dl>
-
-<dl class="py method">
-<dt class="sig sig-object py" id="geofabrics.dem.DenseDem.interpolate_river_bathymetry">
-<span class="sig-name descname"><span class="pre">interpolate_river_bathymetry</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">self</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">river_bathymetry</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#geofabrics.dem.DenseDem.interpolate_river_bathymetry" title="Permalink to this definition"></a></dt>
-<dd><p>Performs interpolation with a river polygon using the SciPy RBF function.</p>
+<dt class="sig sig-object py" id="geofabrics.dem.DemBase.dem">
+<em class="property"><span class="pre">property</span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">dem</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">self</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#geofabrics.dem.DemBase.dem" title="Permalink to this definition"></a></dt>
+<dd><p>Return the DEM over the catchment region</p>
+<dl class="field-list simple">
+<dt class="field-odd">Return type</dt>
+<dd class="field-odd"><p>xarray.Dataset</p>
+</dd>
+</dl>
 </dd></dl>
 
 </dd></dl>
 
 <dl class="py class">
-<dt class="sig sig-object py" id="geofabrics.dem.DenseDemFromFiles">
-<em class="property"><span class="pre">class</span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">geofabrics.dem.</span></span><span class="sig-name descname"><span class="pre">DenseDemFromFiles</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">catchment_geometry</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">dense_dem_path</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">extents_path</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">interpolation_method</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#geofabrics.dem.DenseDemFromFiles" title="Permalink to this definition"></a></dt>
-<dd><p>Bases: <a class="reference internal" href="#geofabrics.dem.DenseDem" title="geofabrics.dem.DenseDem"><code class="xref py py-obj docutils literal notranslate"><span class="pre">DenseDem</span></code></a></p>
+<dt class="sig sig-object py" id="geofabrics.dem.HydrologicallyConditionedDem">
+<em class="property"><span class="pre">class</span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">geofabrics.dem.</span></span><span class="sig-name descname"><span class="pre">HydrologicallyConditionedDem</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">catchment_geometry</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">raw_dem_path</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">extents_path</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">interpolation_method</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#geofabrics.dem.HydrologicallyConditionedDem" title="Permalink to this definition"></a></dt>
+<dd><p>Bases: <a class="reference internal" href="#geofabrics.dem.DemBase" title="geofabrics.dem.DemBase"><code class="xref py py-obj docutils literal notranslate"><span class="pre">DemBase</span></code></a></p>
 <p>A class to manage loading in an already created and saved dense DEM that has yet
 to have an offshore DEM associated with it.</p>
 <dl class="field-list simple">
 <dt class="field-odd">Parameters</dt>
 <dd class="field-odd"><ul class="simple">
 <li><p><strong>behaviour</strong> (<em>Logic controlling</em>) – <dl class="simple">
-<dt>interpolation_method</dt><dd><p>If not None, interpolate using that method. Valid options are ‘linear’, ‘nearest’, and ‘cubic’</p>
+<dt>interpolation_method</dt><dd><p>If not None, interpolate using that method. Valid options are ‘linear’,
+‘nearest’, and ‘cubic’</p>
 </dd>
 </dl>
 </p></li>
 <li><p><strong>catchment_geometry</strong> (<a class="reference internal" href="../geometry/index.html#geofabrics.geometry.CatchmentGeometry" title="geofabrics.geometry.CatchmentGeometry"><em>geofabrics.geometry.CatchmentGeometry</em></a>) – </p></li>
-<li><p><strong>dense_dem_path</strong> (<em>Union</em><em>[</em><em>str</em><em>, </em><em>pathlib.Path</em><em>]</em>) – </p></li>
+<li><p><strong>raw_dem_path</strong> (<em>Union</em><em>[</em><em>str</em><em>, </em><em>pathlib.Path</em><em>]</em>) – </p></li>
 <li><p><strong>extents_path</strong> (<em>Union</em><em>[</em><em>str</em><em>, </em><em>pathlib.Path</em><em>]</em>) – </p></li>
 <li><p><strong>interpolation_method</strong> (<em>str</em>) – </p></li>
 </ul>
 </dd>
 </dl>
+<dl class="py method">
+<dt class="sig sig-object py" id="geofabrics.dem.HydrologicallyConditionedDem.__del__">
+<span class="sig-name descname"><span class="pre">__del__</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">self</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#geofabrics.dem.HydrologicallyConditionedDem.__del__" title="Permalink to this definition"></a></dt>
+<dd><p>Ensure the memory associated with netCDF files is properly freed.</p>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="geofabrics.dem.HydrologicallyConditionedDem.dem">
+<em class="property"><span class="pre">property</span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">dem</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">self</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#geofabrics.dem.HydrologicallyConditionedDem.dem" title="Permalink to this definition"></a></dt>
+<dd><p>Return the combined DEM from tiles and any interpolated offshore values</p>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="geofabrics.dem.HydrologicallyConditionedDem.combine_dem_parts">
+<span class="sig-name descname"><span class="pre">combine_dem_parts</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">self</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#geofabrics.dem.HydrologicallyConditionedDem.combine_dem_parts" title="Permalink to this definition"></a></dt>
+<dd><p>Return the combined DEM from tiles and any interpolated offshore values</p>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="geofabrics.dem.HydrologicallyConditionedDem.interpolate_offshore">
+<span class="sig-name descname"><span class="pre">interpolate_offshore</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">self</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">bathy_contours</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#geofabrics.dem.HydrologicallyConditionedDem.interpolate_offshore" title="Permalink to this definition"></a></dt>
+<dd><p>Performs interpolation offshore outside LiDAR extents using the SciPy RBF
+function.</p>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="geofabrics.dem.HydrologicallyConditionedDem.interpolate_river_bathymetry">
+<span class="sig-name descname"><span class="pre">interpolate_river_bathymetry</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">self</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">river_bathymetry</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#geofabrics.dem.HydrologicallyConditionedDem.interpolate_river_bathymetry" title="Permalink to this definition"></a></dt>
+<dd><p>Performs interpolation with a river polygon using the SciPy RBF function.</p>
+</dd></dl>
+
 </dd></dl>
 
 <dl class="py class">
-<dt class="sig sig-object py" id="geofabrics.dem.DenseDemFromTiles">
-<em class="property"><span class="pre">class</span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">geofabrics.dem.</span></span><span class="sig-name descname"><span class="pre">DenseDemFromTiles</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">catchment_geometry</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">interpolation_method</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">lidar_interpolation_method</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">drop_offshore_lidar</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">True</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">elevation_range</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#geofabrics.dem.DenseDemFromTiles" title="Permalink to this definition"></a></dt>
-<dd><p>Bases: <a class="reference internal" href="#geofabrics.dem.DenseDem" title="geofabrics.dem.DenseDem"><code class="xref py py-obj docutils literal notranslate"><span class="pre">DenseDem</span></code></a></p>
-<p>A class to manage the population of the DenseDem’s dense_dem from LiDAR tiles, and/or a reference DEM.</p>
-<p>The dense DEM is made up of tiles created from dense point data - Either LiDAR point clouds, or a reference DEM.</p>
-<p>DenseDemFromTiles logic can be controlled by the constructor inputs.</p>
+<dt class="sig sig-object py" id="geofabrics.dem.LidarBase">
+<em class="property"><span class="pre">class</span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">geofabrics.dem.</span></span><span class="sig-name descname"><span class="pre">LidarBase</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">catchment_geometry</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">elevation_range</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#geofabrics.dem.LidarBase" title="Permalink to this definition"></a></dt>
+<dd><p>Bases: <a class="reference internal" href="#geofabrics.dem.DemBase" title="geofabrics.dem.DemBase"><code class="xref py py-obj docutils literal notranslate"><span class="pre">DemBase</span></code></a></p>
+<p>A class with some base methods for reading in LiDAR data.</p>
 <dl class="field-list simple">
 <dt class="field-odd">Parameters</dt>
 <dd class="field-odd"><ul class="simple">
-<li><p><strong>drop_offshore_lidar</strong> (<em>bool</em>) – If True only keep LiDAR values within the foreshore and land regions defined by the catchment_geometry.
-If False keep all LiDAR values.</p></li>
-<li><p><strong>interpolation_method</strong> (<em>str</em>) – If not None, interpolate using that method. Valid options are ‘linear’, ‘nearest’, and ‘cubic’.</p></li>
-<li><p><strong>lidar_interpolation_method</strong> (<em>str</em>) – The interpolation method to apply to point clouds. Options are: mean, median, IDW</p></li>
-<li><p><strong>catchment_geometry</strong> (<a class="reference internal" href="../geometry/index.html#geofabrics.geometry.CatchmentGeometry" title="geofabrics.geometry.CatchmentGeometry"><em>geofabrics.geometry.CatchmentGeometry</em></a>) – </p></li>
-<li><p><strong>elevation_range</strong> (<em>list</em>) – </p></li>
+<li><p><strong>catchment_geometry</strong> (<a class="reference internal" href="../geometry/index.html#geofabrics.geometry.CatchmentGeometry" title="geofabrics.geometry.CatchmentGeometry"><em>geofabrics.geometry.CatchmentGeometry</em></a>) – Defines the geometry of the catchment</p></li>
+<li><p><strong>elevation_range</strong> (<em>list</em>) – The range of valid LiDAR elevations. i.e. define elevation filtering to apply.</p></li>
 </ul>
 </dd>
 </dl>
 <dl class="py method">
-<dt class="sig sig-object py" id="geofabrics.dem.DenseDemFromTiles.add_lidar">
-<span class="sig-name descname"><span class="pre">add_lidar</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">self</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">lidar_files</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">tile_index_file</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">chunk_size</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">lidar_classifications_to_keep</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">source_crs</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">drop_offshore_lidar</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">metadata</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#geofabrics.dem.DenseDemFromTiles.add_lidar" title="Permalink to this definition"></a></dt>
+<dt class="sig sig-object py" id="geofabrics.dem.LidarBase.__del__">
+<span class="sig-name descname"><span class="pre">__del__</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">self</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#geofabrics.dem.LidarBase.__del__" title="Permalink to this definition"></a></dt>
+<dd><p>Ensure the memory associated with netCDF files is properly freed.</p>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="geofabrics.dem.LidarBase.dem">
+<em class="property"><span class="pre">property</span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">dem</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">self</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#geofabrics.dem.LidarBase.dem" title="Permalink to this definition"></a></dt>
+<dd><p>Return the combined DEM from tiles and any interpolated offshore values</p>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="geofabrics.dem.LidarBase.add_lidar">
+<em class="property"><span class="pre">abstract</span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">add_lidar</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">self</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">lidar_files</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">tile_index_file</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">chunk_size</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">lidar_classifications_to_keep</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">source_crs</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">metadata</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#geofabrics.dem.LidarBase.add_lidar" title="Permalink to this definition"></a></dt>
 <dd><p>Read in all LiDAR files and use to create a dense DEM.</p>
 <dl class="field-list simple">
 <dt class="field-odd">Parameters</dt>
 <dd class="field-odd"><ul class="simple">
-<li><p><strong>source_crs</strong> (<em>dict</em>) – Specify if the CRS encoded in the LiDAR files are incorrect/only partially defined
-(i.e. missing vertical CRS) and need to be overwritten.</p></li>
-<li><p><strong>drop_offshore_lidar</strong> (<em>bool</em>) – If True, trim any LiDAR values that are offshore as specified by the catchment_geometry</p></li>
-<li><p><strong>lidar_classifications_to_keep</strong> (<em>list</em>) – A list of LiDAR classifications to keep - ‘2’ for ground, ‘9’ for water. See
-<a class="reference external" href="https://www.asprs.org/wp-content/uploads/2010/12/LAS_1_4_r13.pdf">https://www.asprs.org/wp-content/uploads/2010/12/LAS_1_4_r13.pdf</a> for standard list</p></li>
-<li><p><strong>tile_index_file</strong> (<em>Union</em><em>[</em><em>str</em><em>, </em><em>pathlib.Path</em><em>]</em>) – Must exist if there are many LiDAR files. This is used to determine chunking.</p></li>
-<li><p><strong>lidar_files</strong> (<em>List</em><em>[</em><em>Union</em><em>[</em><em>str</em><em>, </em><em>pathlib.Path</em><em>]</em><em>]</em>) – </p></li>
-<li><p><strong>chunk_size</strong> (<em>int</em>) – </p></li>
+<li><p><strong>source_crs</strong> (<em>dict</em>) – Coordinate reference system information</p></li>
+<li><p><strong>chunk_size</strong> (<em>int</em>) – The chunk size in pixels for parallel/staged processing</p></li>
+<li><p><strong>lidar_files</strong> (<em>List</em><em>[</em><em>Union</em><em>[</em><em>str</em><em>, </em><em>pathlib.Path</em><em>]</em><em>]</em>) – The list of LiDAR files to read in</p></li>
+<li><p><strong>tile_index_file</strong> (<em>Union</em><em>[</em><em>str</em><em>, </em><em>pathlib.Path</em><em>]</em>) – A file specifying the spatial extents of the LiDAR files.</p></li>
+<li><p><strong>lidar_classifications_to_keep</strong> (<em>list</em>) – A list of LiDAR classifications to keep - ‘2’ for ground, ‘9’ for water.
+See <a class="reference external" href="https://www.asprs.org/wp-content/uploads/2010/12/LAS_1_4_r13.pdf">https://www.asprs.org/wp-content/uploads/2010/12/LAS_1_4_r13.pdf</a> for
+standard list</p></li>
+<li><p><strong>meta_data</strong> – Information to include in the created DEM.</p></li>
+<li><p><strong>metadata</strong> (<em>dict</em>) – </p></li>
+</ul>
+</dd>
+</dl>
+</dd></dl>
+
+</dd></dl>
+
+<dl class="py class">
+<dt class="sig sig-object py" id="geofabrics.dem.RawDem">
+<em class="property"><span class="pre">class</span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">geofabrics.dem.</span></span><span class="sig-name descname"><span class="pre">RawDem</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">catchment_geometry</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">lidar_interpolation_method</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">drop_offshore_lidar</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">True</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">elevation_range</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#geofabrics.dem.RawDem" title="Permalink to this definition"></a></dt>
+<dd><p>Bases: <a class="reference internal" href="#geofabrics.dem.LidarBase" title="geofabrics.dem.LidarBase"><code class="xref py py-obj docutils literal notranslate"><span class="pre">LidarBase</span></code></a></p>
+<p>A class to manage the creation of a ‘raw’ DEM from LiDAR tiles, and/or a
+reference DEM.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters</dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>drop_offshore_lidar</strong> (<em>bool</em>) – If True only keep LiDAR values within the foreshore and land regions defined by
+the catchment_geometry. If False keep all LiDAR values.</p></li>
+<li><p><strong>elevation_range</strong> (<em>list</em>) – Optitionally specify a range of valid elevations. Any LiDAR points with
+elevations outside this range will be filtered out.</p></li>
+<li><p><strong>lidar_interpolation_method</strong> (<em>str</em>) – The interpolation method to apply to LiDAR during downsampling/averaging.
+Options are: mean, median, IDW, max, min, STD.</p></li>
+<li><p><strong>catchment_geometry</strong> (<a class="reference internal" href="../geometry/index.html#geofabrics.geometry.CatchmentGeometry" title="geofabrics.geometry.CatchmentGeometry"><em>geofabrics.geometry.CatchmentGeometry</em></a>) – </p></li>
+</ul>
+</dd>
+</dl>
+<dl class="py method">
+<dt class="sig sig-object py" id="geofabrics.dem.RawDem.add_lidar">
+<span class="sig-name descname"><span class="pre">add_lidar</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">self</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">lidar_files</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">tile_index_file</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">chunk_size</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">lidar_classifications_to_keep</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">source_crs</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">metadata</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#geofabrics.dem.RawDem.add_lidar" title="Permalink to this definition"></a></dt>
+<dd><p>Read in all LiDAR files and use to define a ‘raw’ DEM with elevations in
+pixels where there is LiDAR or reference  DEM information.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters</dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>source_crs</strong> (<em>dict</em>) – Coordinate reference system information</p></li>
+<li><p><strong>chunk_size</strong> (<em>int</em>) – The chunk size in pixels for parallel/staged processing</p></li>
+<li><p><strong>lidar_files</strong> (<em>List</em><em>[</em><em>Union</em><em>[</em><em>str</em><em>, </em><em>pathlib.Path</em><em>]</em><em>]</em>) – The list of LiDAR files to read in</p></li>
+<li><p><strong>tile_index_file</strong> (<em>Union</em><em>[</em><em>str</em><em>, </em><em>pathlib.Path</em><em>]</em>) – A file specifying the spatial extents of the LiDAR files.</p></li>
+<li><p><strong>lidar_classifications_to_keep</strong> (<em>list</em>) – A list of LiDAR classifications to keep - ‘2’ for ground, ‘9’ for water.
+See <a class="reference external" href="https://www.asprs.org/wp-content/uploads/2010/12/LAS_1_4_r13.pdf">https://www.asprs.org/wp-content/uploads/2010/12/LAS_1_4_r13.pdf</a> for
+standard list</p></li>
+<li><p><strong>meta_data</strong> – Information to include in the created DEM.</p></li>
 <li><p><strong>metadata</strong> (<em>dict</em>) – </p></li>
 </ul>
 </dd>
@@ -309,14 +376,60 @@ If False keep all LiDAR values.</p></li>
 </dd></dl>
 
 <dl class="py method">
-<dt class="sig sig-object py" id="geofabrics.dem.DenseDemFromTiles.add_reference_dem">
-<span class="sig-name descname"><span class="pre">add_reference_dem</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">self</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">tile_points</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">tile_extent</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#geofabrics.dem.DenseDemFromTiles.add_reference_dem" title="Permalink to this definition"></a></dt>
-<dd><p>Update gaps in dense DEM from areas with no LiDAR with the reference DEM.</p>
+<dt class="sig sig-object py" id="geofabrics.dem.RawDem.add_reference_dem">
+<span class="sig-name descname"><span class="pre">add_reference_dem</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">self</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">tile_points</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">tile_extent</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#geofabrics.dem.RawDem.add_reference_dem" title="Permalink to this definition"></a></dt>
+<dd><p>Fill gaps in dense DEM from areas with no LiDAR with the reference DEM.</p>
 <dl class="field-list simple">
 <dt class="field-odd">Parameters</dt>
 <dd class="field-odd"><ul class="simple">
 <li><p><strong>tile_points</strong> (<em>numpy.ndarray</em>) – </p></li>
 <li><p><strong>tile_extent</strong> (<em>geopandas.GeoDataFrame</em>) – </p></li>
+</ul>
+</dd>
+</dl>
+</dd></dl>
+
+</dd></dl>
+
+<dl class="py class">
+<dt class="sig sig-object py" id="geofabrics.dem.RoughnessDem">
+<em class="property"><span class="pre">class</span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">geofabrics.dem.</span></span><span class="sig-name descname"><span class="pre">RoughnessDem</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">catchment_geometry</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">hydrological_dem_path</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">interpolation_method</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">elevation_range</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#geofabrics.dem.RoughnessDem" title="Permalink to this definition"></a></dt>
+<dd><p>Bases: <a class="reference internal" href="#geofabrics.dem.LidarBase" title="geofabrics.dem.LidarBase"><code class="xref py py-obj docutils literal notranslate"><span class="pre">LidarBase</span></code></a></p>
+<p>A class to add a roughness (zo) layer to a hydrologically conditioned DEM.</p>
+<p>They STD and mean height of ground cover classified points are calculated from the
+LiDAR data and z (elevation) layer of the hydrologically conditioned DEM, and used
+to estimate roughness emperically.</p>
+<p>RoughnessDem logic can be controlled by the constructor inputs.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters</dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>catchment_geometry</strong> (<a class="reference internal" href="../geometry/index.html#geofabrics.geometry.CatchmentGeometry" title="geofabrics.geometry.CatchmentGeometry"><em>geofabrics.geometry.CatchmentGeometry</em></a>) – Defines the geometry of the catchment</p></li>
+<li><p><strong>hydrological_dem_path</strong> (<em>Union</em><em>[</em><em>str</em><em>, </em><em>pathlib.Path</em><em>]</em>) – The path to the hydrologically conditioned DEM.</p></li>
+<li><p><strong>interpolation_method</strong> (<em>str</em>) – If not None, interpolate using that method. Valid options are ‘linear’,
+‘nearest’, and ‘cubic’.</p></li>
+<li><p><strong>lidar_interpolation_method</strong> – The interpolation method to apply to LiDAR. Options are: mean, median, IDW.</p></li>
+<li><p><strong>elevation_range</strong> (<em>list</em>) – </p></li>
+</ul>
+</dd>
+</dl>
+<dl class="py method">
+<dt class="sig sig-object py" id="geofabrics.dem.RoughnessDem.add_lidar">
+<span class="sig-name descname"><span class="pre">add_lidar</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">self</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">lidar_files</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">tile_index_file</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">chunk_size</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">lidar_classifications_to_keep</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">source_crs</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">metadata</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#geofabrics.dem.RoughnessDem.add_lidar" title="Permalink to this definition"></a></dt>
+<dd><p>Read in all LiDAR files and use the point cloud distribution, source_class
+information, and hydrologiaclly conditioned elevations to estimate the roughness
+across the DEM.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters</dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>source_crs</strong> (<em>dict</em>) – Coordinate reference system information</p></li>
+<li><p><strong>chunk_size</strong> (<em>int</em>) – The chunk size in pixels for parallel/staged processing</p></li>
+<li><p><strong>lidar_files</strong> (<em>List</em><em>[</em><em>Union</em><em>[</em><em>str</em><em>, </em><em>pathlib.Path</em><em>]</em><em>]</em>) – The list of LiDAR files to read in</p></li>
+<li><p><strong>tile_index_file</strong> (<em>Union</em><em>[</em><em>str</em><em>, </em><em>pathlib.Path</em><em>]</em>) – A file specifying the spatial extents of the LiDAR files.</p></li>
+<li><p><strong>lidar_classifications_to_keep</strong> (<em>list</em>) – A list of LiDAR classifications to keep - ‘2’ for ground, ‘9’ for water.
+See <a class="reference external" href="https://www.asprs.org/wp-content/uploads/2010/12/LAS_1_4_r13.pdf">https://www.asprs.org/wp-content/uploads/2010/12/LAS_1_4_r13.pdf</a> for
+standard list</p></li>
+<li><p><strong>meta_data</strong> – Information to include in the created DEM.</p></li>
+<li><p><strong>metadata</strong> (<em>dict</em>) – </p></li>
 </ul>
 </dd>
 </dl>
@@ -342,8 +455,31 @@ If False keep all LiDAR values.</p></li>
 </dd></dl>
 
 <dl class="py function">
-<dt class="sig sig-object py" id="geofabrics.dem.rasterise_points">
-<span class="sig-prename descclassname"><span class="pre">geofabrics.dem.</span></span><span class="sig-name descname"><span class="pre">rasterise_points</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">point_cloud</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">xy_out</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">options</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">eps</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">0</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">leaf_size</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">10</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#geofabrics.dem.rasterise_points" title="Permalink to this definition"></a></dt>
+<dt class="sig sig-object py" id="geofabrics.dem.roughness_from_points">
+<span class="sig-prename descclassname"><span class="pre">geofabrics.dem.</span></span><span class="sig-name descname"><span class="pre">roughness_from_points</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">point_cloud</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">xy_out</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">xy_ground</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">options</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">eps</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">0</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">leaf_size</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">10</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#geofabrics.dem.roughness_from_points" title="Permalink to this definition"></a></dt>
+<dd><p>Calculate DEM elevation values at the specified locations using the selected
+approach. Options include: mean, median, and inverse distance weighing (IDW). This
+implementation is based on the scipy.spatial.KDTree</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters</dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>point_cloud</strong> (<em>numpy.ndarray</em>) – </p></li>
+<li><p><strong>xy_out</strong> (<em>numpy.ndarray</em>) – </p></li>
+<li><p><strong>xy_ground</strong> (<em>numpy.ndarray</em>) – </p></li>
+<li><p><strong>options</strong> (<em>dict</em>) – </p></li>
+<li><p><strong>eps</strong> (<em>float</em>) – </p></li>
+<li><p><strong>leaf_size</strong> (<em>int</em>) – </p></li>
+</ul>
+</dd>
+<dt class="field-even">Return type</dt>
+<dd class="field-even"><p>numpy.ndarray</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py" id="geofabrics.dem.elevation_from_points">
+<span class="sig-prename descclassname"><span class="pre">geofabrics.dem.</span></span><span class="sig-name descname"><span class="pre">elevation_from_points</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">point_cloud</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">xy_out</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">options</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">eps</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">0</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">leaf_size</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">10</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#geofabrics.dem.elevation_from_points" title="Permalink to this definition"></a></dt>
 <dd><p>Calculate DEM elevation values at the specified locations using the selected
 approach. Options include: mean, median, and inverse distance weighing (IDW). This
 implementation is based on the scipy.spatial.KDTree</p>
@@ -355,6 +491,9 @@ implementation is based on the scipy.spatial.KDTree</p>
 <li><p><strong>eps</strong> (<em>float</em>) – </p></li>
 <li><p><strong>leaf_size</strong> (<em>int</em>) – </p></li>
 </ul>
+</dd>
+<dt class="field-even">Return type</dt>
+<dd class="field-even"><p>numpy.ndarray</p>
 </dd>
 </dl>
 </dd></dl>
@@ -401,8 +540,28 @@ within which to rasterise.</p>
 </dd></dl>
 
 <dl class="py function">
-<dt class="sig sig-object py" id="geofabrics.dem.rasterise_chunk">
-<span class="sig-prename descclassname"><span class="pre">geofabrics.dem.</span></span><span class="sig-name descname"><span class="pre">rasterise_chunk</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">dim_x</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">dim_y</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">tile_points</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">options</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#geofabrics.dem.rasterise_chunk" title="Permalink to this definition"></a></dt>
+<dt class="sig sig-object py" id="geofabrics.dem.roughness_over_chunk">
+<span class="sig-prename descclassname"><span class="pre">geofabrics.dem.</span></span><span class="sig-name descname"><span class="pre">roughness_over_chunk</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">dim_x</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">dim_y</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">tile_points</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">xy_ground</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">options</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#geofabrics.dem.roughness_over_chunk" title="Permalink to this definition"></a></dt>
+<dd><p>Rasterise all points within a chunk.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters</dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>dim_x</strong> (<em>numpy.ndarray</em>) – </p></li>
+<li><p><strong>dim_y</strong> (<em>numpy.ndarray</em>) – </p></li>
+<li><p><strong>tile_points</strong> (<em>numpy.ndarray</em>) – </p></li>
+<li><p><strong>xy_ground</strong> (<em>numpy.ndarray</em>) – </p></li>
+<li><p><strong>options</strong> (<em>dict</em>) – </p></li>
+</ul>
+</dd>
+<dt class="field-even">Return type</dt>
+<dd class="field-even"><p>numpy.ndarray</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py" id="geofabrics.dem.elevation_over_chunk">
+<span class="sig-prename descclassname"><span class="pre">geofabrics.dem.</span></span><span class="sig-name descname"><span class="pre">elevation_over_chunk</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">dim_x</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">dim_y</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">tile_points</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">options</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#geofabrics.dem.elevation_over_chunk" title="Permalink to this definition"></a></dt>
 <dd><p>Rasterise all points within a chunk.</p>
 <dl class="field-list simple">
 <dt class="field-odd">Parameters</dt>
@@ -413,12 +572,21 @@ within which to rasterise.</p>
 <li><p><strong>options</strong> (<em>dict</em>) – </p></li>
 </ul>
 </dd>
+<dt class="field-even">Return type</dt>
+<dd class="field-even"><p>numpy.ndarray</p>
+</dd>
 </dl>
 </dd></dl>
 
 <dl class="py data">
-<dt class="sig sig-object py" id="geofabrics.dem.delayed_rasterise_chunk">
-<span class="sig-prename descclassname"><span class="pre">geofabrics.dem.</span></span><span class="sig-name descname"><span class="pre">delayed_rasterise_chunk</span></span><a class="headerlink" href="#geofabrics.dem.delayed_rasterise_chunk" title="Permalink to this definition"></a></dt>
+<dt class="sig sig-object py" id="geofabrics.dem.delayed_roughness_over_chunk">
+<span class="sig-prename descclassname"><span class="pre">geofabrics.dem.</span></span><span class="sig-name descname"><span class="pre">delayed_roughness_over_chunk</span></span><a class="headerlink" href="#geofabrics.dem.delayed_roughness_over_chunk" title="Permalink to this definition"></a></dt>
+<dd><p>Wrap the <cite>rasterise_chunk</cite> routine in dask.delayed</p>
+</dd></dl>
+
+<dl class="py data">
+<dt class="sig sig-object py" id="geofabrics.dem.delayed_elevation_over_chunk">
+<span class="sig-prename descclassname"><span class="pre">geofabrics.dem.</span></span><span class="sig-name descname"><span class="pre">delayed_elevation_over_chunk</span></span><a class="headerlink" href="#geofabrics.dem.delayed_elevation_over_chunk" title="Permalink to this definition"></a></dt>
 <dd><p>Wrap the <cite>load_tiles_in_chunk</cite> routine in dask.delayed</p>
 </dd></dl>
 
