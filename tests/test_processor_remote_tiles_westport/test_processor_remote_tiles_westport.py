@@ -107,7 +107,9 @@ class ProcessorRemoteTilesWestportTest(unittest.TestCase):
         catchment.to_file(catchment_file)
 
         # Run pipeline - download files and generated DEM
-        runner = processor.LidarDemGenerator(cls.instructions)
+        runner = processor.RawLidarDemGenerator(cls.instructions)
+        runner.run()
+        runner = processor.HydrologicDemGenerator(cls.instructions)
         runner.run()
 
     @classmethod
@@ -224,7 +226,7 @@ class ProcessorRemoteTilesWestportTest(unittest.TestCase):
             test_dem.z.data[~numpy.isnan(test_dem.z.data)],
             benchmark_dem.z.data[~numpy.isnan(benchmark_dem.z.data)],
             err_msg="The generated result_dem has different data from the "
-            + "benchmark_dem",
+            "benchmark_dem",
         )
 
         # explicitly free memory as xarray seems to be hanging onto memory

@@ -172,6 +172,12 @@ class ProcessorLocalFilesTest(unittest.TestCase):
         )
         pdal_pipeline.execute()
 
+        # Run pipeline
+        runner = processor.RawLidarDemGenerator(cls.instructions)
+        runner.run()
+        runner = processor.HydrologicDemGenerator(cls.instructions)
+        runner.run()
+
     @classmethod
     def tearDownClass(cls):
         """Remove created files in the cache directory as part of the testing process at
@@ -197,10 +203,6 @@ class ProcessorLocalFilesTest(unittest.TestCase):
 
     def test_result_dem(self):
         """A basic comparison between the generated and benchmark DEM"""
-
-        # Run pipeline
-        runner = processor.LidarDemGenerator(self.instructions)
-        runner.run()
 
         # Load in benchmark DEM
         file_path = self.cache_dir / self.instructions["data_paths"]["benchmark_dem"]

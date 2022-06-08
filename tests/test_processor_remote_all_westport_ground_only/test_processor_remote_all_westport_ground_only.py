@@ -24,22 +24,29 @@ from src.geofabrics import processor
 
 
 class ProcessorRemoteAllWestportTest(unittest.TestCase):
-    """A class to test the basic processor class DemGenerator functionality for remote LiDAR tiles and remote
-    Bathymetry contours and coast contours by downloading files from OpenTopography and the LINZ data portal within a
-    small region and then generating a DEM. All files are deleted after checking the DEM.
+    """A class to test the basic processor class DemGenerator functionality for remote
+    LiDAR tiles and remote Bathymetry contours and coast contours by downloading files
+    from OpenTopography and the LINZ data portal within a small region and then
+    generating a DEM. All files are deleted after checking the DEM.
 
-    Note in comparison to the companion `test_processor_remote_tiles_westport` test hedges and the like
-    are removed on land. Offshore values match the inbounds contours provided by bathymetry layer 50448.
+    Note in comparison to the companion `test_processor_remote_tiles_westport` test
+    hedges and the like are removed on land. Offshore values match the inbounds contours
+    provided by bathymetry layer 50448.
 
     Tests run include:
-        1. test_correct_datasets - Test that the expected datasets are downloaded from OpenTopography and LINZ
-        2. test_correct_lidar_files_downloaded - Test the downloaded LIDAR files have the expected names
-        3. test_correct_lidar_file_size - Test the downloaded LIDAR files have the expected file sizes
-        4. test_result_dem_windows/linux - Check the generated DEM matches the benchmark DEM, where the
-            rigor of the test depends on the operating system (windows or Linux)
+        1. test_correct_datasets - Test that the expected datasets are downloaded from
+           OpenTopography and LINZ
+        2. test_correct_lidar_files_downloaded - Test the downloaded LIDAR files have
+           the expected names
+        3. test_correct_lidar_file_size - Test the downloaded LIDAR files have the
+           expected file sizes
+        4. test_result_dem_windows/linux - Check the generated DEM matches the benchmark
+           DEM, where the rigor of the test depends on the operating system (windows or
+                                                                             Linux)
     """
 
-    # The expected datasets and files to be downloaded - used for comparison in the later tests
+    # The expected datasets and files to be downloaded - used for comparison in the
+    # later tests
     DATASETS = ["NZ20_Westport", "51153", "50448"]
     LIDAR_SIZES = {
         "CL2_BR20_2020_1000_4012.laz": 2636961,
@@ -54,8 +61,8 @@ class ProcessorRemoteAllWestportTest(unittest.TestCase):
 
     @classmethod
     def setUpClass(cls):
-        """Create a CatchmentGeometry object and then run the DemGenerator processing chain to download remote
-        files and produce a DEM prior to testing."""
+        """Create a CatchmentGeometry object and then run the DemGenerator processing
+        chain to download remote files and produce a DEM prior to testing."""
 
         test_path = pathlib.Path().cwd() / pathlib.Path(
             "tests/test_processor_remote_all_westport_ground_only"
@@ -82,7 +89,8 @@ class ProcessorRemoteAllWestportTest(unittest.TestCase):
         # Define cache location - and catchment directory
         cls.cache_dir = pathlib.Path(cls.instructions["data_paths"]["local_cache"])
 
-        # Ensure the cache directory doesn't exist - i.e. clean up from last test occurred correctly
+        # Ensure the cache directory doesn't exist - i.e. clean up from last test
+        # occurred correctly
         cls.clean_data_folder()
 
         # Create fake catchment boundary
@@ -113,12 +121,15 @@ class ProcessorRemoteAllWestportTest(unittest.TestCase):
         catchment.to_file(catchment_file)
 
         # Run pipeline - download files and generated DEM
-        runner = processor.LidarDemGenerator(cls.instructions)
+        runner = processor.RawLidarDemGenerator(cls.instructions)
+        runner.run()
+        runner = processor.HydrologicDemGenerator(cls.instructions)
         runner.run()
 
     @classmethod
     def tearDownClass(cls):
-        """Remove created cache directory and included created and downloaded files at the end of the test."""
+        """Remove created cache directory and included created and downloaded files at
+        the end of the test."""
 
         cls.clean_data_folder()
 
@@ -147,8 +158,9 @@ class ProcessorRemoteAllWestportTest(unittest.TestCase):
         self.assertEqual(
             len(list(self.cache_dir.glob("*/**"))),
             len(dataset_dirs),
-            f"There should only be {len(dataset_dirs)} datasets named {dataset_dirs} instead there are "
-            + f"{len(list(self.cache_dir.glob('*/**')))} list {list(self.cache_dir.glob('*/**'))}",
+            f"There should only be {len(dataset_dirs)} datasets named {dataset_dirs} "
+            f"instead there are {len(list(self.cache_dir.glob('*/**')))} list "
+            " {list(self.cache_dir.glob('*/**'))}",
         )
 
         self.assertEqual(
@@ -160,8 +172,8 @@ class ProcessorRemoteAllWestportTest(unittest.TestCase):
                 ]
             ),
             len(dataset_dirs),
-            f"Only the {dataset_dirs} directories should have been downloaded. "
-            + f"Instead we have: {[file for file in self.cache_dir.iterdir() if file.is_dir()]}",
+            f"Only the {dataset_dirs} directories should have been downloaded. Instead "
+            f"we have: {[file for file in self.cache_dir.iterdir() if file.is_dir()]}",
         )
 
     def test_correct_lidar_files_downloaded(self):
@@ -175,15 +187,15 @@ class ProcessorRemoteAllWestportTest(unittest.TestCase):
         self.assertEqual(
             len(list(dataset_dir.glob("*"))),
             len(downloaded_files),
-            "There should have been "
-            + f"{len(downloaded_files)} files downloaded into the {self.DATASETS[0]} directory, instead "
-            + f"there are {len(list(dataset_dir.glob('*')))} files/dirs in the directory",
+            f"There should have been {len(downloaded_files)} files downloaded into the "
+            f"{self.DATASETS[0]} directory, instead there are "
+            f" {len(list(dataset_dir.glob('*')))} files/dirs in the directory",
         )
 
         self.assertTrue(
             numpy.all([file in downloaded_files for file in dataset_dir.glob("*")]),
-            "The downloaded files"
-            + f" {list(dataset_dir.glob('*'))} do not match the expected files {downloaded_files}",
+            f"The downloaded files {list(dataset_dir.glob('*'))} do not match the "
+            f"expected files {downloaded_files}",
         )
 
     def test_correct_lidar_file_size(self):
@@ -201,9 +213,9 @@ class ProcessorRemoteAllWestportTest(unittest.TestCase):
                     for downloaded_file in downloaded_files
                 ]
             ),
-            "There is a miss-match between the size of "
-            + f"the downloaded files {[file.stat().st_size for file in downloaded_files]} and the expected "
-            + f"sizes of {self.LIDAR_SIZES.values()}",
+            "There is a miss-match between the size of the downloaded files "
+            f"{[file.stat().st_size for file in downloaded_files]} and the expected "
+            f"sizes of {self.LIDAR_SIZES.values()}",
         )
 
     @pytest.mark.skipif(sys.platform != "win32", reason="Windows test - this is strict")
@@ -269,8 +281,9 @@ class ProcessorRemoteAllWestportTest(unittest.TestCase):
         threshold = 10e-6
         self.assertTrue(
             len(diff_array[numpy.abs(diff_array) > threshold]) < len(diff_array) / 100,
-            f"{len(diff_array[numpy.abs(diff_array) > threshold])} or more than 1% of DEM values differ by"
-            + f" more than {threshold} on Linux test run: {diff_array[numpy.abs(diff_array) > threshold]}",
+            f"{len(diff_array[numpy.abs(diff_array) > threshold])} or more than 1% of "
+            f"DEM values differ by more than {threshold} on Linux test run: "
+            f" {diff_array[numpy.abs(diff_array) > threshold]}",
         )
 
         # explicitly free memory as xarray seems to be hanging onto memory

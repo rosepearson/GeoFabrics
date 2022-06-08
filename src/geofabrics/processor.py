@@ -39,6 +39,17 @@ class BaseProcessor(abc.ABC):
 
         self.catchment_geometry = None
 
+    def create_metadata(self) -> dict:
+        """A clase to create metadata to be added as netCDF attributes."""
+        metadata = {
+            "library_name": "GeoFabrics",
+            "library_version": version.__version__,
+            "class_name": self.__class__.__name__,
+            "utc_time": datetime.datetime.now(datetime.timezone.utc).isoformat(),
+            "instructions": self.instructions,
+        }
+        return metadata
+
     def get_instruction_path(self, key: str) -> str:
         """Return the file path from the instruction file, or default if there
         is a default value and the local cache is specified. Raise an error if
@@ -46,8 +57,9 @@ class BaseProcessor(abc.ABC):
 
         defaults = {
             "result_dem": "generated_dem.nc",
-            "dense_dem": "dense_dem.nc",
-            "dense_dem_extents": "dense_extents.geojson",
+            "result_geofabric": "generated_geofabric.nc",
+            "raw_dem": "raw_dem.nc",
+            "raw_dem_extents": "raw_extents.geojson",
         }
 
         path_instructions = self.instructions["data_paths"]
@@ -91,7 +103,7 @@ class BaseProcessor(abc.ABC):
             "local_cache" in self.instructions["data_paths"]
         ), "local_cache is a required 'data_paths' entry"
 
-        defaults = ["result_dem", "dense_dem_extents", "dense_dem"]
+        defaults = ["result_dem", "raw_dem_extents", "raw_dem"]
 
         if key in self.instructions["data_paths"]:
             return True
@@ -463,135 +475,19 @@ class BaseProcessor(abc.ABC):
         raise NotImplementedError("NETLOC_API must be instantiated in the child class")
 
 
-class BathymetryDemGenerator(BaseProcessor):
-    """BathymetryDemGenerator executes a pipeline for loading in a Dense DEM and extents
-    before interpolating offshore DEM values. The data and pipeline logic is defined in
-    the json_instructions file.
-
-    The `BathymetryDemGenerator` class contains several important class members:
-     * catchment_geometry - Defines all relevant regions in a catchment required in the
-       generation of a DEM as polygons.
-     * dense_dem - Defines the hydrologically conditioned DEM as a combination of tiles
-       from LiDAR and interpolated from bathymetry.
-     * bathy_contours - This object defines the bathymetry vectors used by the dense_dem
-       to define the DEM offshore.
-
-    See the README.md for usage examples or GeoFabrics/tests/ for examples of usage and
-    an instruction file
-    """
-
-    def __init__(self, json_instructions: json):
-
-        super(BathymetryDemGenerator, self).__init__(
-            json_instructions=json_instructions
-        )
-
-        self.dense_dem = None
-        self.bathy_contours = None
-
-    def add_bathymetry(self, area_threshold: float, catchment_dirs: pathlib.Path):
-        """Add in any bathymetry data - ocean or river"""
-
-        # Load in bathymetry and interpolate offshore if significant offshore is not
-        # covered by LiDAR
-        area_without_lidar = self.catchment_geometry.offshore_without_lidar(
-            self.dense_dem.extents
-        ).geometry.area.sum()
-        if (
-            self.check_vector("bathymetry_contours")
-            and area_without_lidar
-            > self.catchment_geometry.offshore.area.sum() * area_threshold
-        ):
-
-            # Get the bathymetry data directory
-            bathy_contour_dirs = self.get_vector_paths("bathymetry_contours")
-            assert len(bathy_contour_dirs) == 1, (
-                f"{len(bathy_contour_dirs)} bathymetry_contours's provided. "
-                f"Specficially {catchment_dirs}. Support has not yet been added for "
-                "multiple datasets."
-            )
-
-            logging.info(f"Incorporating Bathymetry: {bathy_contour_dirs}")
-
-            # Load in bathymetry
-            self.bathy_contours = geometry.BathymetryContours(
-                bathy_contour_dirs[0],
-                self.catchment_geometry,
-                z_label=self.get_instruction_general("bathymetry_contours_z_label"),
-                exclusion_extent=self.dense_dem.extents,
-            )
-
-            # interpolate
-            self.dense_dem.interpolate_offshore(self.bathy_contours)
-        # Load in river bathymetry and incorporate where discernable at the resolution
-        if self.check_vector("river_polygons") and self.check_vector(
-            "river_bathymetry"
-        ):
-
-            # Get the polygons and bathymetry and can be multiple
-            bathy_dirs = self.get_vector_paths("river_bathymetry")
-            poly_dirs = self.get_vector_paths("river_polygons")
-
-            logging.info(f"Incorporating river Bathymetry: {bathy_dirs}")
-
-            # Load in bathymetry
-            self.river_bathy = geometry.RiverBathymetryPoints(
-                points_files=bathy_dirs,
-                polygon_files=poly_dirs,
-                catchment_geometry=self.catchment_geometry,
-                z_labels=self.get_instruction_general("river_bathy_z_label"),
-            )
-
-            # Call interpolate river on the DEM - the class checks to see if any pixels
-            # actually fall inside the polygon
-            self.dense_dem.interpolate_river_bathymetry(
-                river_bathymetry=self.river_bathy
-            )
-
-    def run(self):
-        """This method executes the geofabrics generation pipeline to produce geofabric
-        derivatives."""
-
-        # Only include data in addition to LiDAR if the area_threshold is not covered
-        area_threshold = 10.0 / 100  # Used to decide if bathymetry should be included
-
-        # create the catchment geometry object
-        self.catchment_geometry = self.create_catchment()
-
-        # setup dense DEM and catchment LiDAR objects
-        self.dense_dem = dem.DenseDemFromFiles(
-            catchment_geometry=self.catchment_geometry,
-            dense_dem_path=self.get_instruction_path("dense_dem"),
-            extents_path=self.get_instruction_path("dense_dem_extents"),
-            interpolation_method=self.get_instruction_general("interpolation_method"),
-        )
-
-        # Check for and add any bathymetry information
-        self.add_bathymetry(
-            area_threshold=area_threshold,
-            catchment_dirs=self.get_instruction_path("catchment_boundary"),
-        )
-
-        # fill combined dem - save results
-        self.dense_dem.dem.to_netcdf(
-            self.get_instruction_path("result_dem"), format="NETCDF4", engine="netcdf4"
-        )
-
-
-class LidarDemGenerator(BathymetryDemGenerator):
-    """LidarDemGenerator executes a pipeline for creating a hydrologically conditioned
-    DEM from LiDAR and optionally a reference DEM and/or bathymetry contours. The data
-    and pipeline logic is defined in the json_instructions file.
+class RawLidarDemGenerator(BaseProcessor):
+    """RawLidarDemGenerator executes a pipeline for creating a DEM from LiDAR and
+    optionally a reference DEM. The data sources and pipeline logic is defined in the
+    json_instructions file.
 
     The `DemGenerator` class contains several important class members:
+     * instructions - Defines the pipeline execution instructions
      * catchment_geometry - Defines all relevant regions in a catchment required in the
        generation of a DEM as polygons.
-     * dense_dem - Defines the hydrologically conditioned DEM as a combination of tiles
+     * raw_dem - A combination of LiDAR tiles and any referecnce DEM
        from LiDAR and interpolated from bathymetry.
      * reference_dem - This optional object defines a background DEM that may be used to
        fill on land gaps in the LiDAR.
-     * bathy_contours - This optional object defines the bathymetry vectors used by the
-       dense_dem to define the DEM offshore.
 
     See the README.md for usage examples or GeoFabrics/tests/ for examples of usage and
     an instruction file.
@@ -599,22 +495,10 @@ class LidarDemGenerator(BathymetryDemGenerator):
 
     def __init__(self, json_instructions: json):
 
-        super(LidarDemGenerator, self).__init__(json_instructions=json_instructions)
+        super(RawLidarDemGenerator, self).__init__(json_instructions=json_instructions)
 
-        self.dense_dem = None
+        self.raw_dem = None
         self.reference_dem = None
-        self.bathy_contours = None
-
-    def create_metadata(self) -> dict:
-        """A clase to create metadata to be added as netCDF attributes."""
-        metadata = {
-            "library_name": "GeoFabrics",
-            "library_version": version.__version__,
-            "class_name": self.__class__.__name__,
-            "utc_time": datetime.datetime.now(datetime.timezone.utc).isoformat(),
-            "instructions": self.instructions,
-        }
-        return metadata
 
     def run(self):
         """This method executes the geofabrics generation pipeline to produce geofabric
@@ -632,11 +516,10 @@ class LidarDemGenerator(BathymetryDemGenerator):
         # Get LiDAR data file-list - this may involve downloading lidar files
         lidar_dataset_info = self.get_lidar_file_list("open_topography")
 
-        # setup dense DEM and catchment LiDAR objects
-        self.dense_dem = dem.DenseDemFromTiles(
+        # setup the raw DEM generator
+        self.raw_dem = dem.RawDem(
             catchment_geometry=self.catchment_geometry,
             drop_offshore_lidar=self.get_instruction_general("drop_offshore_lidar"),
-            interpolation_method=self.get_instruction_general("interpolation_method"),
             lidar_interpolation_method=self.get_instruction_general(
                 "lidar_interpolation_method"
             ),
@@ -654,10 +537,9 @@ class LidarDemGenerator(BathymetryDemGenerator):
         ) as client:
             print(client)
             # Load in LiDAR tiles
-            self.dense_dem.add_lidar(
+            self.raw_dem.add_lidar(
                 lidar_files=lidar_dataset_info["file_paths"],
                 source_crs=lidar_dataset_info["crs"],
-                drop_offshore_lidar=self.get_instruction_general("drop_offshore_lidar"),
                 lidar_classifications_to_keep=self.get_instruction_general(
                     "lidar_classifications_to_keep"
                 ),
@@ -669,7 +551,7 @@ class LidarDemGenerator(BathymetryDemGenerator):
         if self.check_instruction_path("reference_dems"):
             area_without_lidar = (
                 self.catchment_geometry.land_and_foreshore_without_lidar(
-                    self.dense_dem.extents
+                    self.raw_dem.extents
                 ).geometry.area.sum()
             )
             if (
@@ -693,28 +575,131 @@ class LidarDemGenerator(BathymetryDemGenerator):
                     dem_file=self.get_instruction_path("reference_dems")[0],
                     catchment_geometry=self.catchment_geometry,
                     set_foreshore=self.get_instruction_general("set_dem_shoreline"),
-                    exclusion_extent=self.dense_dem.extents,
+                    exclusion_extent=self.raw_dem.extents,
                 )
 
-                # Add the reference DEM patch where there's no LiDAR to the dense DEM
-                # without updting the extents
-                self.dense_dem.add_reference_dem(
+                # Add the reference DEM data where there's no LiDAR updating the extents
+                self.raw_dem.add_reference_dem(
                     tile_points=self.reference_dem.points,
                     tile_extent=self.reference_dem.extents,
                 )
-        # save dense DEM and extents
-        self.dense_dem.dense_dem.to_netcdf(
-            self.get_instruction_path("dense_dem"), format="NETCDF4", engine="netcdf4"
+        # save raw DEM and extents
+        self.raw_dem.dem.to_netcdf(
+            self.get_instruction_path("raw_dem"), format="NETCDF4", engine="netcdf4"
         )
-        if self.dense_dem.extents is not None:
-            self.dense_dem.extents.to_file(
-                self.get_instruction_path("dense_dem_extents")
-            )
+        if self.raw_dem.extents is not None:
+            self.raw_dem.extents.to_file(self.get_instruction_path("raw_dem_extents"))
         else:
             logging.warning(
                 "In processor.DemGenerator - no LiDAR extents exist so no extents file "
                 "written"
             )
+
+
+class HydrologicDemGenerator(BaseProcessor):
+    """HydrologicDemGenerator executes a pipeline for loading in a raw DEM and extents
+    before incorporating bathymetry (offshore, rivers and drains) to produce a
+    hydrologically conditioned DEM. The data and pipeline logic is defined in
+    the json_instructions file.
+
+    The `HydrologicDemGenerator` class contains several important class members:
+     * catchment_geometry - Defines all relevant regions in a catchment required in the
+       generation of a DEM as polygons.
+     * hydrologic_dem - Defines the hydrologically conditioned DEM as a combination of
+       tiles from LiDAR and interpolated from bathymetry.
+     * bathy_contours - This object defines the bathymetry vectors used to define the
+       DEM values offshore.
+
+    See the README.md for usage examples or GeoFabrics/tests/ for examples of usage and
+    an instruction file
+    """
+
+    def __init__(self, json_instructions: json):
+
+        super(HydrologicDemGenerator, self).__init__(
+            json_instructions=json_instructions
+        )
+
+        self.hydrologic_dem = None
+        self.bathy_contours = None
+
+    def add_bathymetry(self, area_threshold: float, catchment_dirs: pathlib.Path):
+        """Add in any bathymetry data - ocean or river"""
+
+        # Load in bathymetry and interpolate offshore if significant offshore is not
+        # covered by LiDAR
+        area_without_lidar = self.catchment_geometry.offshore_without_lidar(
+            self.hydrologic_dem.extents
+        ).geometry.area.sum()
+        if (
+            self.check_vector("bathymetry_contours")
+            and area_without_lidar
+            > self.catchment_geometry.offshore.area.sum() * area_threshold
+        ):
+
+            # Get the bathymetry data directory
+            bathy_contour_dirs = self.get_vector_paths("bathymetry_contours")
+            assert len(bathy_contour_dirs) == 1, (
+                f"{len(bathy_contour_dirs)} bathymetry_contours's provided. "
+                f"Specficially {catchment_dirs}. Support has not yet been added for "
+                "multiple datasets."
+            )
+
+            logging.info(f"Incorporating Bathymetry: {bathy_contour_dirs}")
+
+            # Load in bathymetry
+            self.bathy_contours = geometry.BathymetryContours(
+                bathy_contour_dirs[0],
+                self.catchment_geometry,
+                z_label=self.get_instruction_general("bathymetry_contours_z_label"),
+                exclusion_extent=self.hydrologic_dem.extents,
+            )
+
+            # interpolate
+            self.hydrologic_dem.interpolate_offshore(self.bathy_contours)
+        # Load in river bathymetry and incorporate where discernable at the resolution
+        if self.check_vector("river_polygons") and self.check_vector(
+            "river_bathymetry"
+        ):
+
+            # Get the polygons and bathymetry and can be multiple
+            bathy_dirs = self.get_vector_paths("river_bathymetry")
+            poly_dirs = self.get_vector_paths("river_polygons")
+
+            logging.info(f"Incorporating river Bathymetry: {bathy_dirs}")
+
+            # Load in bathymetry
+            self.river_bathy = geometry.RiverBathymetryPoints(
+                points_files=bathy_dirs,
+                polygon_files=poly_dirs,
+                catchment_geometry=self.catchment_geometry,
+                z_labels=self.get_instruction_general("river_bathy_z_label"),
+            )
+
+            # Call interpolate river on the DEM - the class checks to see if any pixels
+            # actually fall inside the polygon
+            self.hydrologic_dem.interpolate_river_bathymetry(
+                river_bathymetry=self.river_bathy
+            )
+
+    def run(self):
+        """This method executes the geofabrics generation pipeline to produce geofabric
+        derivatives."""
+
+        # Only include data in addition to LiDAR if the area_threshold is not covered
+        area_threshold = 10.0 / 100  # Used to decide if bathymetry should be included
+
+        # create the catchment geometry object
+        self.catchment_geometry = self.create_catchment()
+
+        # setup the hydrologically conditioned DEM generator
+        self.hydrologic_dem = dem.HydrologicallyConditionedDem(
+            catchment_geometry=self.catchment_geometry,
+            raw_dem_path=self.get_instruction_path("raw_dem"),
+            extents_path=self.get_instruction_path("raw_dem_extents"),
+            interpolation_method=self.get_instruction_general("interpolation_method"),
+        )
+
         # Check for and add any bathymetry information
         self.add_bathymetry(
             area_threshold=area_threshold,
@@ -722,8 +707,76 @@ class LidarDemGenerator(BathymetryDemGenerator):
         )
 
         # fill combined dem - save results
-        self.dense_dem.dem.to_netcdf(
+        self.hydrologic_dem.dem.to_netcdf(
             self.get_instruction_path("result_dem"), format="NETCDF4", engine="netcdf4"
+        )
+
+
+class RoughnessLengthGenerator(BaseProcessor):
+    """RoughnessLengthGenerator executes a pipeline for loading in a hydrologically
+    conditioned DEM and LiDAR tiles to produce a roughness length layer that is added to
+    the Hydrologically conditioned DEM. The data and pipeline logic is defined in
+    the json_instructions file.
+
+    The `RoughnessLengthGenerator` class contains several important class members:
+     * catchment_geometry - Defines all relevant regions in a catchment required in the
+       generation of a DEM as polygons.
+     * roughness_dem - Adds a roughness layer to the hydrologically conditioned DEM.
+
+    """
+
+    def __init__(self, json_instructions: json):
+
+        super(RoughnessLengthGenerator, self).__init__(
+            json_instructions=json_instructions
+        )
+
+        self.roughness_dem = None
+
+    def run(self):
+        """This method executes the geofabrics generation pipeline to produce geofabric
+        derivatives."""
+
+        # create the catchment geometry object
+        self.catchment_geometry = self.create_catchment()
+
+        # Get LiDAR data file-list - this may involve downloading lidar files
+        lidar_dataset_info = self.get_lidar_file_list("open_topography")
+
+        # setup the roughness DEM generator
+        self.roughness_dem = dem.RoughnessDem(
+            catchment_geometry=self.catchment_geometry,
+            hydrological_dem_path=self.get_instruction_path("result_dem"),
+            elevation_range=self.get_instruction_general("elevation_range"),
+            interpolation_method=self.get_instruction_general("interpolation_method"),
+        )
+
+        # Setup Dask cluster and client
+        cluster_kwargs = {
+            "n_workers": self.get_processing_instructions("number_of_cores"),
+            "threads_per_worker": 1,
+            "processes": True,
+        }
+        with distributed.LocalCluster(**cluster_kwargs) as cluster, distributed.Client(
+            cluster
+        ) as client:
+            print(client)
+            # Load in LiDAR tiles
+            self.roughness_dem.add_lidar(
+                lidar_files=lidar_dataset_info["file_paths"],
+                source_crs=lidar_dataset_info["crs"],
+                lidar_classifications_to_keep=self.get_instruction_general(
+                    "lidar_classifications_to_keep"
+                ),
+                tile_index_file=lidar_dataset_info["tile_index_file"],
+                chunk_size=self.get_processing_instructions("chunk_size"),
+                metadata=self.create_metadata(),
+            )  # Note must be called after all others if it is to be complete
+        # save results
+        self.roughness_dem.dem.to_netcdf(
+            self.get_instruction_path("result_geofabric"),
+            format="NETCDF4",
+            engine="netcdf4",
         )
 
 
@@ -938,13 +991,13 @@ class RiverBathymetryGenerator(BaseProcessor):
             instruction_paths["result_dem"] = str(
                 self.get_result_file_name(key="gnd_dem")
             )
-            instruction_paths["dense_dem"] = "dense_gnd_dem.nc"
-            instruction_paths["dense_dem_extents"] = "dense_gnd_extents.geojson"
-            runner = LidarDemGenerator(self.instructions)
+            instruction_paths["raw_dem"] = "raw_gnd_dem.nc"
+            instruction_paths["raw_dem_extents"] = "raw_gnd_extents.geojson"
+            runner = RawLidarDemGenerator(self.instructions)
             runner.run()
-            gnd_dem = runner.dense_dem.dem
-            instruction_paths.pop("dense_dem")
-            instruction_paths.pop("dense_dem_extents")
+            gnd_dem = runner.raw_dem.dem
+            instruction_paths.pop("raw_dem")
+            instruction_paths.pop("raw_dem_extents")
             instruction_paths.pop("result_dem")
         else:
             print("Loading ground DEM.")  # drop band added by rasterio.open()
@@ -961,13 +1014,13 @@ class RiverBathymetryGenerator(BaseProcessor):
             self.instructions["general"][
                 "lidar_classifications_to_keep"
             ] = self.get_bathymetry_instruction("veg_lidar_classifications_to_keep")
-            instruction_paths["dense_dem"] = "dense_veg_dem.nc"
-            instruction_paths["dense_dem_extents"] = "dense_veg_extents.geojson"
-            runner = LidarDemGenerator(self.instructions)
+            instruction_paths["raw_dem"] = "raw_veg_dem.nc"
+            instruction_paths["raw_dem_extents"] = "raw_veg_extents.geojson"
+            runner = RawLidarDemGenerator(self.instructions)
             runner.run()
-            veg_dem = runner.dense_dem.dem
-            instruction_paths.pop("dense_dem")
-            instruction_paths.pop("dense_dem_extents")
+            veg_dem = runner.raw_dem.dem
+            instruction_paths.pop("raw_dem")
+            instruction_paths.pop("raw_dem_extents")
             instruction_paths.pop("result_dem")
         else:
             print("Loading the vegetation DEM.")  # drop band added by rasterio.open()
@@ -1433,13 +1486,14 @@ class DrainBathymetryGenerator(BaseProcessor):
         # key to output name mapping
         name_dictionary = {
             "dem": f"dem_{tag}.nc",
-            "dense_dem": f"dense_dem_{tag}.nc",
-            "dense_dem_extents": f"dense_extents_{drain_width}m_width.geojson",
+            "raw_dem": f"raw_dem_{tag}.nc",
+            "raw_dem_extents": f"raw_extents_{drain_width}m_width.geojson",
             "open_polygon": f"open_drain_polygon_{tag}.geojson",
             "open_elevation": f"open_drain_elevation_{tag}.geojson",
             "closed_polygon": f"closed_drain_polygon_{tag}.geojson",
             "closed_elevation": f"closed_drain_elevation_{tag}.geojson",
             "drain_polygon": f"drain_polygon_{tag}.geojson",
+            "drain_lines": "drains.geojson",
         }
         return name_dictionary[key]
 
@@ -1654,9 +1708,7 @@ class DrainBathymetryGenerator(BaseProcessor):
                 crs=drain_polygon.crs,
             )
             drain_polygon = drain_polygon.clip(self.catchment_geometry.catchment)
-            drain_polygon.to_file(
-                drain_polygon_file
-            )  # gpd.overlay(g1, g1, how='union')
+            drain_polygon.to_file(drain_polygon_file)
 
             # Create DEM generation instructions
             dem_instructions = self.instructions
@@ -1665,66 +1717,69 @@ class DrainBathymetryGenerator(BaseProcessor):
                 key="drain_polygon"
             )
             dem_instruction_paths["result_dem"] = self.get_result_file_name(key="dem")
-            dem_instruction_paths["dense_dem"] = self.get_result_file_name(
-                key="dense_dem"
-            )
-            dem_instruction_paths["dense_dem_extents"] = self.get_result_file_name(
-                "dense_dem_extents"
+            dem_instruction_paths["raw_dem"] = self.get_result_file_name(key="raw_dem")
+            dem_instruction_paths["raw_dem_extents"] = self.get_result_file_name(
+                "raw_dem_extents"
             )
 
             # Create the ground DEM file if this has not be created yet!
             print("Generating drain DEM.")
-            runner = LidarDemGenerator(self.instructions)
+            runner = RawLidarDemGenerator(self.instructions)
             runner.run()
-            dem = runner.dense_dem.dem
+            dem = runner.raw_dem.dem
         return dem
 
     def download_osm_values(self) -> bool:
         """Download OpenStreetMap drains and tunnels within the catchment BBox."""
 
-        # Create area to query within
-        self.catchment_geometry = self.create_catchment()
-        bbox_lat_long = self.catchment_geometry.catchment.to_crs(self.OSM_CRS)
+        drains_file_path = self.get_result_file_path(key="drain_lines")
 
-        # Construct query
-        query = OSMPythonTools.overpass.overpassQueryBuilder(
-            bbox=[
-                bbox_lat_long.bounds.miny[0],
-                bbox_lat_long.bounds.minx[0],
-                bbox_lat_long.bounds.maxy[0],
-                bbox_lat_long.bounds.maxx[0],
-            ],
-            elementType="way",
-            selector="waterway",
-            out="body",
-            includeGeometry=True,
-        )
+        if drains_file_path.is_file():  # already created. Load in.
+            drains = geopandas.read_file(drains_file_path)
+        else:  # Download from OSM
 
-        # Perform query
-        overpass = OSMPythonTools.overpass.Overpass()
-        rivers = overpass.query(query)
+            # Create area to query within
+            bbox_lat_long = self.catchment_geometry.catchment.to_crs(self.OSM_CRS)
 
-        # Extract information
-        element_dict = {
-            "geometry": [],
-            "OSM_id": [],
-            "waterway": [],
-            "tunnel": [],
-        }
+            # Construct query
+            query = OSMPythonTools.overpass.overpassQueryBuilder(
+                bbox=[
+                    bbox_lat_long.bounds.miny[0],
+                    bbox_lat_long.bounds.minx[0],
+                    bbox_lat_long.bounds.maxy[0],
+                    bbox_lat_long.bounds.maxx[0],
+                ],
+                elementType="way",
+                selector="waterway",
+                out="body",
+                includeGeometry=True,
+            )
 
-        for element in rivers.elements():
-            element_dict["geometry"].append(element.geometry())
-            element_dict["OSM_id"].append(element.id())
-            element_dict["waterway"].append(element.tags()["waterway"])
-            element_dict["tunnel"].append("tunnel" in element.tags().keys())
-        drains = geopandas.GeoDataFrame(element_dict, crs=self.OSM_CRS).to_crs(
-            self.catchment_geometry.crs["horizontal"]
-        )
+            # Perform query
+            overpass = OSMPythonTools.overpass.Overpass()
+            rivers = overpass.query(query)
 
-        # Remove rivers and polygons
-        drains = drains[drains["waterway"] != "river"]
-        drains = drains[drains.geometry.type == "LineString"]
+            # Extract information
+            element_dict = {
+                "geometry": [],
+                "OSM_id": [],
+                "waterway": [],
+                "tunnel": [],
+            }
 
+            for element in rivers.elements():
+                element_dict["geometry"].append(element.geometry())
+                element_dict["OSM_id"].append(element.id())
+                element_dict["waterway"].append(element.tags()["waterway"])
+                element_dict["tunnel"].append("tunnel" in element.tags().keys())
+            drains = geopandas.GeoDataFrame(element_dict, crs=self.OSM_CRS).to_crs(
+                self.catchment_geometry.crs["horizontal"]
+            )
+
+            # Remove rivers and polygons
+            drains = drains[drains["waterway"] != "river"]
+            drains = drains[drains.geometry.type == "LineString"]
+            drains.to_file(drains_file_path)
         return drains
 
     def run(self, instruction_parameters: pathlib.Path = None):
@@ -1735,6 +1790,9 @@ class DrainBathymetryGenerator(BaseProcessor):
         * saves out extents and bed elevations of the drain and tunnel network"""
 
         logging.info("Estimating drain and tunnel bed elevation from OpenStreetMap.")
+
+        # Load in catchment
+        self.catchment_geometry = self.create_catchment()
 
         # Download drains and tunnels from OSM
         drains = self.download_osm_values()

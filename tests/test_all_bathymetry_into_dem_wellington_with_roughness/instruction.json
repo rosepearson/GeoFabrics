@@ -15,7 +15,7 @@
 			"number_of_cores": 2
 		},
 		"data_paths": {
-			"local_cache": "tests/test_all_bathymetry_into_dem_wellington/data"
+			"local_cache": "tests/test_all_bathymetry_into_dem_wellington_with_roughness/data"
 		},
 		"apis": {
 			"open_topography": {
@@ -53,8 +53,8 @@
 			"channel_rec_id": 9253579,
 			"cross_section_spacing": 10,
 			"min_bank_height": 0.75,
-			"rec_file": "tests/test_all_bathymetry_into_dem_wellington/data/rec2_3.geojson",
-			"flow_file": "tests/test_all_bathymetry_into_dem_wellington/data/flow_and_friction.csv.gz"
+			"rec_file": "tests/test_all_bathymetry_into_dem_wellington_with_roughness/data/rec2_3.geojson",
+			"flow_file": "tests/test_all_bathymetry_into_dem_wellington_with_roughness/data/flow_and_friction.csv.gz"
 		}
 	},
 	"drains":
@@ -73,7 +73,7 @@
 			"number_of_cores": 2
 		},
 		"data_paths": {
-			"local_cache": "tests/test_all_bathymetry_into_dem_wellington/data",
+			"local_cache": "tests/test_all_bathymetry_into_dem_wellington_with_roughness/data",
 			"catchment_boundary": "catchment.geojson"
 		},
 		"apis": {
@@ -114,7 +114,7 @@
 			"number_of_cores": 2
 		},
 		"data_paths": {
-		  "local_cache": "tests/test_all_bathymetry_into_dem_wellington/data",
+		  "local_cache": "tests/test_all_bathymetry_into_dem_wellington_with_roughness/data",
 		  "catchment_boundary": "catchment.geojson",
 		  "raw_dem": "raw_dem.nc",
 		  "river_polygons": ["river_polygon.geojson",
@@ -125,8 +125,7 @@
 								 "fan_bathymetry.geojson",
 								 "closed_drain_elevation_5m_width.geojson",
 								 "open_drain_elevation_5m_width.geojson"],
-		  "result_dem": "test_dem.nc",
-		  "benchmark_dem": "benchmark_dem.nc"
+		  "result_dem": "test_dem.nc"
 		},
 		"apis": {
 			"open_topography": {
@@ -152,6 +151,53 @@
 			"bathymetry_contours_z_label": "valdco",
 			"river_bathy_z_label": ["bed_elevation_Rupp_and_Smart", "depths", "elevation", "elevation"],
 			"lidar_classifications_to_keep": [2, 9],
+			"interpolation_method": "linear"
+		}
+	},
+	"roughness": 
+	{
+		"output": {
+			"crs": {
+				"horizontal": 2193,
+				"vertical": 7839
+			},
+			"grid_params": {
+				"resolution": 10
+			}
+		},
+		"processing": {
+			"chunk_size": 100,
+			"number_of_cores": 2
+		},
+		"data_paths": {
+		  "local_cache": "tests/test_all_bathymetry_into_dem_wellington_with_roughness/data",
+		  "catchment_boundary": "catchment.geojson",
+		  "result_dem": "test_dem.nc",
+		  "result_geofabric": "test_geofabric.nc",
+		  "benchmark_geofabric": "benchmark_geofabric.nc"
+		},
+		"apis": {
+			"open_topography": {
+				"Wellington_2013": {
+					"crs": {
+						"horizontal": 2193,
+						"vertical": 7839
+					}
+				}
+			},
+			"linz": {
+				"land": {
+					"layers": [51153]
+				},
+				"bathymetry_contours": {
+					"layers": [50554]
+				}
+			}
+		},
+		"general": {
+			"set_dem_shoreline": true,
+			"drop_offshore_lidar": true,
+			"lidar_classifications_to_keep": [1, 2, 4, 9],
 			"interpolation_method": "linear"
 		}
 	}
