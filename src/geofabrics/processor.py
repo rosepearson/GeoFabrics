@@ -226,8 +226,8 @@ class BaseProcessor(abc.ABC):
 
     def check_vector(self, key) -> bool:
         """Check to see if vector key (i.e. land, bathymetry_contours, etc) is included
-        either as a file path, or
-        within any of the vector API's (i.e. LINZ or LRIS)."""
+        either as a file path, or within any of the vector API's (i.e. LINZ or LRIS).
+        """
 
         data_services = [
             "linz",
