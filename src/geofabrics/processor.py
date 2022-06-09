@@ -34,6 +34,8 @@ class BaseProcessor(abc.ABC):
     file lists.
     """
 
+    OSM_CRS = "EPSG:4326"
+
     def __init__(self, json_instructions: json):
         self.instructions = json_instructions
 
@@ -1156,9 +1158,7 @@ class RiverBathymetryGenerator(BaseProcessor):
                 columns
             ].to_file(self.get_result_file_path(name="final_flat_midpoints.geojson"))
 
-    def characterise_channel(
-        self, buffer: float
-    ) -> bathymetry_estimation.ChannelCharacteristics:
+    def characterise_channel(self, buffer: float):
         """Calculate the channel width, slope and other characteristics. This requires a
         ground and vegetation DEM. This also may require alignment of the channel
         centreline.
@@ -1169,6 +1169,29 @@ class RiverBathymetryGenerator(BaseProcessor):
         """
 
         logging.info("The channel hasn't been characerised. Charactreising now.")
+
+        # Decide if aligning frim REC (coarse river network), or OSM (closer alignment)
+        if "osm_id" in self.instructions["rivers"]:
+            channel_width, aligned_channel = self.align_channel_from_osm(buffer=buffer)
+        else:
+            channel_width, aligned_channel = self.align_channel_from_rec(buffer=buffer)
+        # calculate the channel width and save results
+        print("Characterising the aligned channel.")
+        self.calculate_channel_characteristics(
+            channel_width=channel_width, aligned_channel=aligned_channel, buffer=buffer
+        )
+
+    def align_channel_from_rec(self, buffer: float) -> tuple:
+        """Calculate the channel width, slope and other characteristics. This requires a
+        ground and vegetation DEM. This also may require alignment of the channel
+        centreline.
+
+
+        Parameters:
+            buffer  The amount of extra space to create around the river catchment
+        """
+
+        logging.info("Align from REC.")
 
         # Extract instructions
         cross_section_spacing = self.get_bathymetry_instruction("cross_section_spacing")
@@ -1200,11 +1223,101 @@ class RiverBathymetryGenerator(BaseProcessor):
         else:
             aligned_channel_file = self.get_result_file_path(key="aligned")
             aligned_channel = geopandas.read_file(aligned_channel_file)
-        # calculate the channel width and save results
-        print("Characterising the aligned channel.")
-        self.calculate_channel_characteristics(
-            channel_width=channel_width, aligned_channel=aligned_channel, buffer=buffer
+        return channel_width, aligned_channel
+
+    def align_channel_from_osm(
+        self, buffer: float
+    ) -> bathymetry_estimation.ChannelCharacteristics:
+        """Calculate the channel width, slope and other characteristics. This requires a
+        ground and vegetation DEM. This also may require alignment of the channel
+        centreline.
+
+
+        Parameters:
+            buffer  The amount of extra space to create around the river catchment
+        """
+
+        logging.info("Align from OSM.")
+
+        # Extract instructions
+        cross_section_spacing = self.get_bathymetry_instruction("cross_section_spacing")
+        resolution = self.get_resolution()
+
+        # Create REC defined channel
+        channel = self.get_rec_channel()
+        crs = self.get_crs()["horizontal"]
+
+        # Create OSM defined channel
+        osm_id = self.get_bathymetry_instruction("osm_id")
+        query = f"(way[waterway]({osm_id});); out body geom;"
+        overpass = OSMPythonTools.overpass.Overpass()
+        osm_channel = overpass.query(query)
+        osm_channel = osm_channel.elements()[0]
+        osm_channel = geopandas.GeoDataFrame(
+            {
+                "geometry": [osm_channel.geometry()],
+                "OSM_id": [osm_channel.id()],
+                "waterway": [osm_channel.tags()["waterway"]],
+            },
+            crs=self.OSM_CRS,
+        ).to_crs(crs)
+        if self.debug:
+            osm_channel.to_file(
+                self.get_result_file_path(name="osm_channel_full.geojson")
+            )
+        # cut to size
+        smoothed_rec_channel = channel.get_sampled_spline_fit()
+        rec_extents = smoothed_rec_channel.boundary.explode(index_parts=False)
+        rec_start, rec_end = (rec_extents.iloc[0], rec_extents.iloc[1])
+        end_split_length = float(osm_channel.project(rec_end))
+        start_split_length = float(osm_channel.project(rec_start))
+        osm_from_ocean = True if start_split_length < end_split_length else False
+        end_split_point = osm_channel.interpolate(end_split_length)
+        start_split_point = osm_channel.interpolate(start_split_length)
+        # Introduce point to the polyline so shapely slip works
+        osm_channel_with_point = shapely.ops.snap(
+            osm_channel.loc[0].geometry, end_split_point.loc[0], tolerance=0.1
         )
+        osm_channel_with_point = shapely.ops.snap(
+            osm_channel_with_point, start_split_point.loc[0], tolerance=0.1
+        )
+        lines = shapely.ops.split(
+            osm_channel_with_point,
+            shapely.geometry.MultiPoint(
+                [start_split_point.loc[0], end_split_point.loc[0]]
+            ),
+        )
+        osm_channel_cut = geopandas.GeoSeries(lines.geoms, crs=crs)
+        assert (
+            len(osm_channel_cut) == 3
+        ), "The OSM line does not stretch the full extents of the REC line"
+        osm_channel = osm_channel_cut.iloc[1:2]
+        if self.debug:
+            osm_channel.to_file(
+                self.get_result_file_path(name="osm_channel_cut.geojson")
+            )
+        # smooth
+        osm_channel = bathymetry_estimation.Channel(
+            channel=osm_channel,
+            resolution=cross_section_spacing,
+            sampling_direction=1 if osm_from_ocean else -1,
+        )
+        smoothed_osm_channel = osm_channel.get_sampled_spline_fit()
+        if self.debug:
+            smoothed_osm_channel.to_file(self.get_result_file_path(key="aligned"))
+        # Get DEMs - create and save if don't exist
+        gnd_dem, veg_dem = self.get_dems(buffer=buffer, channel=osm_channel)
+
+        # Create the channel width object
+        channel_width = bathymetry_estimation.ChannelCharacteristics(
+            gnd_dem=gnd_dem,
+            veg_dem=veg_dem,
+            cross_section_spacing=cross_section_spacing,
+            resolution=resolution,
+            debug=self.debug,
+        )
+
+        return channel_width, smoothed_osm_channel
 
     def calculate_river_bed_elevations(self):
         """Calculate and save depth estimates along the channel using various
@@ -1464,8 +1577,6 @@ class DrainBathymetryGenerator(BaseProcessor):
     unblock drains and tunnels.
 
     """
-
-    OSM_CRS = "EPSG:4326"
 
     def __init__(self, json_instructions: json, debug: bool = True):
 
