@@ -8,7 +8,7 @@ dependencies:
   - pyproj
   - pip
   - gdal
-  - geopandas
+  - geopandas >=0.10.2
   - rioxarray
   - pdal
   - python-pdal
@@ -27,6 +27,6 @@ dependencies:
   - pip:
     - git+https://github.com/niwa/geoapis
     - netcdf4
-    - osmpythontools
+    - osmpythontools >= 0.3.5
 
 prefix: C:\ProgramData\Anaconda3\envs\geofabrics
