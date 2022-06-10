@@ -110,20 +110,14 @@ def launch_processor(args):
         run_instructions = instructions["rivers"]
         setup_logging_for_run(run_instructions)
         runner = processor.RiverBathymetryGenerator(run_instructions)
-        runner.run(
-            pathlib.Path(run_instructions["data_paths"]["local_cache"])
-            / "river_parameters.json"
-        )
+        runner.run()
     if "drains" in instructions:
         # Estimate drain bathymetry
         print("Run processor.DrainsBathymetryGenerator")
         run_instructions = instructions["drains"]
         setup_logging_for_run(run_instructions)
         runner = processor.DrainBathymetryGenerator(run_instructions)
-        runner.run(
-            pathlib.Path(run_instructions["data_paths"]["local_cache"])
-            / "drain_parameters.json"
-        )
+        runner.run()
     if "dem" in instructions:
         run_instructions = instructions["dem"]
         setup_logging_for_run(run_instructions)

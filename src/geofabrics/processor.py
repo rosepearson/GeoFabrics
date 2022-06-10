@@ -62,14 +62,27 @@ class BaseProcessor(abc.ABC):
             "result_geofabric": "generated_geofabric.nc",
             "raw_dem": "raw_dem.nc",
             "raw_dem_extents": "raw_extents.geojson",
+            "subfolder": "results",
         }
 
         path_instructions = self.instructions["data_paths"]
-        local_cache = pathlib.Path(path_instructions["local_cache"])
 
+        # Return the local cache - for downloaded input data
+        local_cache = pathlib.Path(path_instructions["local_cache"])
         if key == "local_cache":
             return local_cache
-        elif key in path_instructions:
+        # Return the subfolder path - where results are stored
+        subfolder = (
+            path_instructions["subfolder"]
+            if "subfolder" in path_instructions
+            else defaults["subfolder"]
+        )
+
+        if key == "subfolder":
+            return local_cache / subfolder
+        # return the full path of the specified key
+        if key in path_instructions:
+
             # check if a list or single path
             if type(path_instructions[key]) == list:
                 absolute_file_paths = []
@@ -79,18 +92,20 @@ class BaseProcessor(abc.ABC):
                     file_path = (
                         file_path
                         if file_path.is_absolute()
-                        else local_cache / file_path
+                        else local_cache / subfolder / file_path
                     )
                     absolute_file_paths.append(str(file_path))
                 return absolute_file_paths
             else:
                 file_path = pathlib.Path(path_instructions[key])
                 file_path = (
-                    file_path if file_path.is_absolute() else local_cache / file_path
+                    file_path
+                    if file_path.is_absolute()
+                    else local_cache / subfolder / file_path
                 )
                 return file_path
         elif key in defaults.keys():
-            return local_cache.absolute() / defaults[key]
+            return local_cache.absolute() / subfolder / defaults[key]
         else:
             assert False, (
                 f"The key `{key}` is either missing from data "
@@ -105,7 +120,7 @@ class BaseProcessor(abc.ABC):
             "local_cache" in self.instructions["data_paths"]
         ), "local_cache is a required 'data_paths' entry"
 
-        defaults = ["result_dem", "raw_dem_extents", "raw_dem"]
+        defaults = ["result_dem", "raw_dem_extents", "raw_dem", "subfolder"]
 
         if key in self.instructions["data_paths"]:
             return True
@@ -551,11 +566,9 @@ class RawLidarDemGenerator(BaseProcessor):
             )  # Note must be called after all others if it is to be complete
         # Load in reference DEM if any significant land/foreshore not covered by LiDAR
         if self.check_instruction_path("reference_dems"):
-            area_without_lidar = (
-                self.catchment_geometry.land_and_foreshore_without_lidar(
-                    self.raw_dem.extents
-                ).geometry.area.sum()
-            )
+            area_without_lidar = self.catchment_geometry.land_and_foreshore_without_lidar(
+                self.raw_dem.extents
+            ).geometry.area.sum()
             if (
                 area_without_lidar
                 > self.catchment_geometry.land_and_foreshore.area.sum() * area_threshold
@@ -890,11 +903,11 @@ class RiverBathymetryGenerator(BaseProcessor):
             instructions  The json instructions defining the behaviour
         """
 
-        local_cache = pathlib.Path(self.instructions["data_paths"]["local_cache"])
+        subfolder = self.get_instruction_path("subfolder")
 
         name = self.get_result_file_name(key=key, name=name)
 
-        return local_cache / name
+        return subfolder / name
 
     def get_bathymetry_instruction(self, key: str):
         """Return true if the DEMs are required for later processing
@@ -1548,7 +1561,7 @@ class RiverBathymetryGenerator(BaseProcessor):
         fan_polygon.to_file(self.get_result_file_path(key="fan_polygon"))
         fan_bathymetry.to_file(self.get_result_file_path(key="fan_bathymetry"))
 
-    def run(self, instruction_parameters: pathlib.Path = None):
+    def run(self):
         """This method extracts a main channel then executes the DemGeneration
         pipeline to produce a DEM before sampling this to extimate width, slope
         and eventually depth."""
@@ -1567,9 +1580,11 @@ class RiverBathymetryGenerator(BaseProcessor):
             # Calculate and save river bathymetry depths
             self.calculate_river_bed_elevations()
             self.estimate_river_mouth_fan()
-        # Update parameter file - in time only update the bits that have been re-run
-        if instruction_parameters is not None:
-            with open(instruction_parameters, "w") as file_pointer:
+        if self.debug:
+            # Record the parameter used during execution - append to existing
+            with open(
+                self.get_instruction_path("subfolder") / "rivers_instructions.json", "a"
+            ) as file_pointer:
                 json.dump(self.instructions, file_pointer)
 
 
@@ -1614,11 +1629,11 @@ class DrainBathymetryGenerator(BaseProcessor):
             instructions  The json instructions defining the behaviour
         """
 
-        local_cache = pathlib.Path(self.instructions["data_paths"]["local_cache"])
+        subfolder = self.get_instruction_path("subfolder")
 
         name = self.get_result_file_name(key=key)
 
-        return local_cache / name
+        return subfolder / name
 
     # Get the min in each polygon
     def minimum_elevation_in_polygon(
@@ -1691,11 +1706,7 @@ class DrainBathymetryGenerator(BaseProcessor):
             )
         )
         points = geopandas.GeoDataFrame(
-            {
-                "elevation": elevations,
-                "geometry": points,
-            },
-            crs=2193,
+            {"elevation": elevations, "geometry": points,}, crs=2193,
         )
 
         # Save bathymetry
@@ -1786,10 +1797,7 @@ class DrainBathymetryGenerator(BaseProcessor):
                 )
             bathymetries.extend(row_bathymetries)
         points = geopandas.GeoDataFrame(
-            {
-                "elevation": bathymetries,
-                "geometry": points.explode(ignore_index=True),
-            },
+            {"elevation": bathymetries, "geometry": points.explode(ignore_index=True),},
             crs=open_drains.crs,
         )
 
@@ -1891,7 +1899,7 @@ class DrainBathymetryGenerator(BaseProcessor):
             drains.to_file(drains_file_path)
         return drains
 
-    def run(self, instruction_parameters: pathlib.Path = None):
+    def run(self):
         """This method runs a pipeline that:
         * downloads all tunnels and drains within a catchment.
         * creates and samples a DEM around each feature to estimate the bed
@@ -1913,7 +1921,9 @@ class DrainBathymetryGenerator(BaseProcessor):
         self.estimate_closed_bathymetry(drains=drains, dem=dem)
         self.estimate_open_bathymetry(drains=drains, dem=dem)
 
-        # print out parameters actually run
-        if instruction_parameters is not None:
-            with open(instruction_parameters, "w") as file_pointer:
+        if self.debug:
+            # Record the parameter used during execution - append to existing
+            with open(
+                self.get_instruction_path("subfolder") / "drains_instructions.json", "a"
+            ) as file_pointer:
                 json.dump(self.instructions, file_pointer)
