@@ -14,6 +14,7 @@
 	},
 	"data_paths": {
 		"local_cache": "tests/test_drain_bathymetry_wellington/data",
+		"subfolder": "results",
 		"catchment_boundary": "catchment.geojson",
 		"open_drain_polygon_benchmark": "open_drain_polygon_5m_width_benchmark.geojson",
 		"open_drain_bathymetry_benchmark": "open_drain_elevation_5m_width_benchmark.geojson",

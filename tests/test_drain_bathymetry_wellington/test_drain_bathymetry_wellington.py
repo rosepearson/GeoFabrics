@@ -57,12 +57,14 @@ class ProcessorDrainBathymetryWellingtonTest(unittest.TestCase):
         linz_key = os.environ.get("LINZ_API", None)
         cls.instructions["apis"]["linz"]["key"] = linz_key
 
-        # define cache location - and catchment dirs
-        cls.cache_dir = pathlib.Path(cls.instructions["data_paths"]["local_cache"])
+        # define the cache directory location - from the instruction file
+        path_instructions = cls.instructions["data_paths"]
+        cls.cache_dir = pathlib.Path(path_instructions["local_cache"])
 
-        # ensure the cache directory doesn't exist - i.e. clean up from last test
-        # occurred correctly
-        cls.clean_data_folder()
+        # Remove any files from last test, then create a results directory
+        cls.results_dir = cls.cache_dir / path_instructions["subfolder"]
+        cls.tearDownClass()
+        cls.results_dir.mkdir()
 
         # create fake catchment boundary
         x0 = 1770797
@@ -74,15 +76,12 @@ class ProcessorDrainBathymetryWellingtonTest(unittest.TestCase):
         catchment = catchment.set_crs(cls.instructions["output"]["crs"]["horizontal"])
 
         # save faked catchment boundary - used as land boundary as well
-        catchment_file = cls.cache_dir / "catchment.geojson"
+        catchment_file = cls.results_dir / "catchment.geojson"
         catchment.to_file(catchment_file)
 
         # Run pipeline - download files and generated DEM
         runner = processor.DrainBathymetryGenerator(cls.instructions, debug=False)
-        runner.run(
-            pathlib.Path(cls.instructions["data_paths"]["local_cache"])
-            / "drain_parameters.json"
-        )
+        runner.run()
 
     @classmethod
     def tearDownClass(cls):
@@ -95,27 +94,18 @@ class ProcessorDrainBathymetryWellingtonTest(unittest.TestCase):
     def clean_data_folder(cls):
         """Remove all generated or downloaded files from the data directory"""
 
-        files_to_keep = []
-        data_path_instructions = cls.instructions["data_paths"]
-        files_to_keep.append(
-            cls.cache_dir / data_path_instructions["open_drain_polygon_benchmark"]
-        )
-        files_to_keep.append(
-            cls.cache_dir / data_path_instructions["open_drain_bathymetry_benchmark"]
-        )
-        files_to_keep.append(
-            cls.cache_dir / data_path_instructions["closed_drain_polygon_benchmark"]
-        )
-        files_to_keep.append(
-            cls.cache_dir / data_path_instructions["closed_drain_bathymetry_benchmark"]
+        assert cls.cache_dir.exists(), (
+            "The data directory that should include the comparison benchmark dem file "
+            "doesn't exist"
         )
 
-        for file in cls.cache_dir.glob("*"):  # only files
-            if file not in files_to_keep:
-                if file.is_file():
-                    file.unlink()
-                elif file.is_dir():
-                    shutil.rmtree(file)
+        for file in cls.results_dir.glob("*"):  # only files
+            if file.is_file():
+                file.unlink()
+            elif file.is_dir():
+                shutil.rmtree(file)
+        if cls.results_dir.exists():
+            shutil.rmtree(cls.results_dir)
 
     @pytest.mark.skipif(sys.platform != "win32", reason="Windows test - this is strict")
     def test_open_drains_windows(self):
@@ -127,7 +117,7 @@ class ProcessorDrainBathymetryWellingtonTest(unittest.TestCase):
         print("Compare river polygon  - Windows")
 
         test = geopandas.read_file(
-            self.cache_dir / "open_drain_polygon_5m_width.geojson"
+            self.results_dir / "open_drain_polygon_5m_width.geojson"
         )
         benchmark = geopandas.read_file(
             self.cache_dir / data_path_instructions["open_drain_polygon_benchmark"]
@@ -143,7 +133,7 @@ class ProcessorDrainBathymetryWellingtonTest(unittest.TestCase):
         print("Compare open drain bathymetry - Windows")
 
         test = geopandas.read_file(
-            self.cache_dir / "open_drain_elevation_5m_width.geojson"
+            self.results_dir / "open_drain_elevation_5m_width.geojson"
         )
         benchmark = geopandas.read_file(
             self.cache_dir / data_path_instructions["open_drain_bathymetry_benchmark"]
@@ -169,7 +159,7 @@ class ProcessorDrainBathymetryWellingtonTest(unittest.TestCase):
 
         # Compare the polygons
         test = geopandas.read_file(
-            self.cache_dir / "open_drain_polygon_5m_width.geojson"
+            self.results_dir / "open_drain_polygon_5m_width.geojson"
         )
         benchmark = geopandas.read_file(
             self.cache_dir / data_path_instructions["open_drain_polygon_benchmark"]
@@ -191,7 +181,7 @@ class ProcessorDrainBathymetryWellingtonTest(unittest.TestCase):
         print("Compare open drain bathymetry - Linux")
 
         test = geopandas.read_file(
-            self.cache_dir / "open_drain_elevation_5m_width.geojson"
+            self.results_dir / "open_drain_elevation_5m_width.geojson"
         )
         benchmark = geopandas.read_file(
             self.cache_dir / data_path_instructions["open_drain_bathymetry_benchmark"]
@@ -238,7 +228,7 @@ class ProcessorDrainBathymetryWellingtonTest(unittest.TestCase):
 
         # Compare the polygons
         test = geopandas.read_file(
-            self.cache_dir / "closed_drain_polygon_5m_width.geojson"
+            self.results_dir / "closed_drain_polygon_5m_width.geojson"
         )
         benchmark = geopandas.read_file(
             self.cache_dir / data_path_instructions["closed_drain_polygon_benchmark"]
@@ -252,7 +242,7 @@ class ProcessorDrainBathymetryWellingtonTest(unittest.TestCase):
 
         # Compare the bathymetries
         test = geopandas.read_file(
-            self.cache_dir / "closed_drain_elevation_5m_width.geojson"
+            self.results_dir / "closed_drain_elevation_5m_width.geojson"
         )
         benchmark = geopandas.read_file(
             self.cache_dir / data_path_instructions["closed_drain_bathymetry_benchmark"]
@@ -277,7 +267,7 @@ class ProcessorDrainBathymetryWellingtonTest(unittest.TestCase):
 
         # Compare the polygons
         test = geopandas.read_file(
-            self.cache_dir / "closed_drain_polygon_5m_width.geojson"
+            self.results_dir / "closed_drain_polygon_5m_width.geojson"
         )
         benchmark = geopandas.read_file(
             self.cache_dir / data_path_instructions["closed_drain_polygon_benchmark"]
@@ -301,7 +291,7 @@ class ProcessorDrainBathymetryWellingtonTest(unittest.TestCase):
 
         # Compare the bathymetries
         test = geopandas.read_file(
-            self.cache_dir / "closed_drain_elevation_5m_width.geojson"
+            self.results_dir / "closed_drain_elevation_5m_width.geojson"
         )
         benchmark = geopandas.read_file(
             self.cache_dir / data_path_instructions["closed_drain_bathymetry_benchmark"]

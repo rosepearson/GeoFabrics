@@ -62,14 +62,11 @@ class ProcessorRiverBathymetryTest(unittest.TestCase):
         cls.instructions["drains"]["apis"]["linz"]["key"] = linz_key
         cls.instructions["dem"]["apis"]["linz"]["key"] = linz_key
 
-        # define cache location - and catchment dirs
-        cls.cache_dir = pathlib.Path(
-            cls.instructions["rivers"]["data_paths"]["local_cache"]
-        )
-
-        # ensure the cache directory doesn't exist - i.e. clean up from last test
-        # occurred correctly
-        cls.clean_data_folder()
+        # Remove any files from last test, then create a results directory
+        cls.cache_dir = test_path / "data"
+        cls.results_dir = cls.cache_dir / "results"
+        cls.tearDownClass()
+        cls.results_dir.mkdir()
 
         # create fake catchment boundary
         x0 = 1768072
@@ -83,7 +80,7 @@ class ProcessorRiverBathymetryTest(unittest.TestCase):
         )
 
         # save faked catchment boundary - used as land boundary as well
-        catchment_file = cls.cache_dir / "catchment.geojson"
+        catchment_file = cls.results_dir / "catchment.geojson"
         catchment.to_file(catchment_file)
 
         # Run pipeline - download files and generated DEM
@@ -113,21 +110,16 @@ class ProcessorRiverBathymetryTest(unittest.TestCase):
 
         assert cls.cache_dir.exists(), (
             "The data directory that should include the comparison benchmark dem file "
-            + "doesn't exist"
+            "doesn't exist"
         )
-        # Files not to delete
-        files_to_keep = []
-        river_instructions = cls.instructions["rivers"]
-        files_to_keep.append(pathlib.Path(river_instructions["rivers"]["rec_file"]))
-        files_to_keep.append(pathlib.Path(river_instructions["rivers"]["flow_file"]))
-        files_to_keep.append(cls.cache_dir / "benchmark_dem.nc")
-        # Loop through files
-        for file in cls.cache_dir.glob("*"):
-            if file not in files_to_keep:
-                if file.is_file():
-                    file.unlink()
-                elif file.is_dir():
-                    shutil.rmtree(file)
+
+        for file in cls.results_dir.glob("*"):  # only files
+            if file.is_file():
+                file.unlink()
+            elif file.is_dir():
+                shutil.rmtree(file)
+        if cls.results_dir.exists():
+            shutil.rmtree(cls.results_dir)
 
     @pytest.mark.skipif(sys.platform != "win32", reason="Windows test - this is strict")
     def test_result_dem_windows(self):
@@ -140,7 +132,7 @@ class ProcessorRiverBathymetryTest(unittest.TestCase):
             benchmark_dem.load()
         # Load in test DEM
         file_path = (
-            self.cache_dir / self.instructions["dem"]["data_paths"]["result_dem"]
+            self.results_dir / self.instructions["dem"]["data_paths"]["result_dem"]
         )
         with rioxarray.rioxarray.open_rasterio(file_path, masked=True) as test_dem:
             test_dem.load()
@@ -176,7 +168,7 @@ class ProcessorRiverBathymetryTest(unittest.TestCase):
             benchmark_dem.load()
         # Load in test DEM
         file_path = (
-            self.cache_dir / self.instructions["dem"]["data_paths"]["result_dem"]
+            self.results_dir / self.instructions["dem"]["data_paths"]["result_dem"]
         )
         with rioxarray.rioxarray.open_rasterio(file_path, masked=True) as test_dem:
             test_dem.load()

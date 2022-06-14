@@ -55,16 +55,14 @@ class ProcessorLocalFilesOffshoreTest(unittest.TestCase):
         instruction_file_path = test_path / "instruction.json"
         with open(instruction_file_path, "r") as file_pointer:
             cls.instructions = json.load(file_pointer)
-        # Remove any files from last test in the cache directory
+        # Remove any files from last test, then create a results directory
         cls.cache_dir = test_path / "data"
-        assert cls.cache_dir.exists(), (
-            "The data directory that should include the comparison benchmark dem file "
-            + "doesn't exist"
-        )
-        cls.clean_data_folder()
+        cls.results_dir = cls.cache_dir / "results"
+        cls.tearDownClass()
+        cls.results_dir.mkdir()
 
         # Generate catchment data
-        catchment_file = cls.cache_dir / "catchment_boundary.geojson"
+        catchment_file = cls.results_dir / "catchment_boundary.geojson"
         x0 = 250
         y0 = -250
         x1 = 1250
@@ -75,7 +73,7 @@ class ProcessorLocalFilesOffshoreTest(unittest.TestCase):
         catchment.to_file(catchment_file)
 
         # Generate land data
-        land_file = cls.cache_dir / "land.geojson"
+        land_file = cls.results_dir / "land.geojson"
         x0 = 0
         y0 = 0
         x1 = 1500
@@ -86,7 +84,7 @@ class ProcessorLocalFilesOffshoreTest(unittest.TestCase):
         land.to_file(land_file)
 
         # Generate bathymetry data
-        bathymetry_file = cls.cache_dir / "bathymetry.geojson"
+        bathymetry_file = cls.results_dir / "bathymetry.geojson"
         x0 = 0
         x1 = 1500
         y0 = -50
@@ -106,7 +104,7 @@ class ProcessorLocalFilesOffshoreTest(unittest.TestCase):
         contours.to_file(bathymetry_file)
 
         # Create a reference DEM
-        dem_file = cls.cache_dir / "reference_dem.nc"
+        dem_file = cls.results_dir / "reference_dem.nc"
         dxy = 15
         grid_dem_x, grid_dem_y = numpy.meshgrid(
             numpy.arange(200, 1300, dxy), numpy.arange(-25, 800, dxy)
@@ -126,14 +124,13 @@ class ProcessorLocalFilesOffshoreTest(unittest.TestCase):
             attrs={"scale_factor": 1.0, "add_offset": 0.0},
         )
         dem.rio.write_crs(
-            cls.instructions["output"]["crs"]["horizontal"],
-            inplace=True,
+            cls.instructions["output"]["crs"]["horizontal"], inplace=True,
         )
         dem.name = "z"
         dem.rio.to_raster(dem_file)
 
         # Create LiDAR
-        lidar_file = cls.cache_dir / "lidar.laz"
+        lidar_file = cls.results_dir / "lidar.laz"
         dxy = 1
         grid_lidar_x, grid_lidar_y = numpy.meshgrid(
             numpy.arange(500, 1000, dxy), numpy.arange(-25, 475, dxy)
@@ -189,15 +186,16 @@ class ProcessorLocalFilesOffshoreTest(unittest.TestCase):
 
         assert cls.cache_dir.exists(), (
             "The data directory that should include the comparison benchmark dem file "
-            + "doesn't exist"
+            "doesn't exist"
         )
 
-        benchmark_file = cls.cache_dir / "benchmark_dem.nc"
-        for file in cls.cache_dir.glob("*"):  # only files
-            if file != benchmark_file and file.is_file():
+        for file in cls.results_dir.glob("*"):  # only files
+            if file.is_file():
                 file.unlink()
-            elif file != benchmark_file and file.is_dir():
+            elif file.is_dir():
                 shutil.rmtree(file)
+        if cls.results_dir.exists():
+            shutil.rmtree(cls.results_dir)
 
     def test_result_dem(self):
         """A basic comparison between the generated and benchmark DEM"""
@@ -207,7 +205,7 @@ class ProcessorLocalFilesOffshoreTest(unittest.TestCase):
         with rioxarray.rioxarray.open_rasterio(file_path, masked=True) as benchmark_dem:
             benchmark_dem.load()
         # Load in result DEM
-        file_path = self.cache_dir / self.instructions["data_paths"]["result_dem"]
+        file_path = self.results_dir / self.instructions["data_paths"]["result_dem"]
         with rioxarray.rioxarray.open_rasterio(file_path, masked=True) as test_dem:
             test_dem.load()
         # Compare DEMs - load both from file as rioxarray.rioxarray.open_rasterio

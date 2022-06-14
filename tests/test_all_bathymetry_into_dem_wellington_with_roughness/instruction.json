@@ -15,7 +15,8 @@
 			"number_of_cores": 2
 		},
 		"data_paths": {
-			"local_cache": "tests/test_all_bathymetry_into_dem_wellington_with_roughness/data"
+			"local_cache": "tests/test_all_bathymetry_into_dem_wellington_with_roughness/data",
+			"subfolder": "results"
 		},
 		"apis": {
 			"open_topography": {

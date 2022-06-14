@@ -69,12 +69,11 @@ class ProcessorRemoteTilesWellingtonElevationFilterTest(unittest.TestCase):
         instruction_file_path = test_path / "instruction.json"
         with open(instruction_file_path, "r") as file_pointer:
             cls.instructions = json.load(file_pointer)
-        # define cache location - and catchment dirs
-        cls.cache_dir = pathlib.Path(cls.instructions["data_paths"]["local_cache"])
-
-        # ensure the cache directory doesn't exist - i.e. clean up from last test
-        # occurred correctly
-        cls.clean_data_folder()
+        # Remove any files from last test, then create a results directory
+        cls.cache_dir = test_path / "data"
+        cls.results_dir = cls.cache_dir / "results"
+        cls.tearDownClass()
+        cls.results_dir.mkdir()
 
         # create fake catchment boundary
         x0 = 1776358
@@ -86,7 +85,7 @@ class ProcessorRemoteTilesWellingtonElevationFilterTest(unittest.TestCase):
         catchment = catchment.set_crs(cls.instructions["output"]["crs"]["horizontal"])
 
         # save faked catchment boundary - used as land boundary as well
-        catchment_file = cls.cache_dir / "catchment.geojson"
+        catchment_file = cls.results_dir / "catchment.geojson"
         catchment.to_file(catchment_file)
 
         # Run pipeline - download files and generated DEM
@@ -107,15 +106,16 @@ class ProcessorRemoteTilesWellingtonElevationFilterTest(unittest.TestCase):
 
         assert cls.cache_dir.exists(), (
             "The data directory that should include the comparison benchmark dem file "
-            + "doesn't exist"
+            "doesn't exist"
         )
 
-        benchmark_file = cls.cache_dir / "benchmark_dem.nc"
-        for file in cls.cache_dir.glob("*"):  # only files
-            if file != benchmark_file and file.is_file():
+        for file in cls.results_dir.glob("*"):  # only files
+            if file.is_file():
                 file.unlink()
-            elif file != benchmark_file and file.is_dir():
+            elif file.is_dir():
                 shutil.rmtree(file)
+        if cls.results_dir.exists():
+            shutil.rmtree(cls.results_dir)
 
     def test_correct_dataset(self):
         """A test to see if the correct dataset is downloaded"""
@@ -125,8 +125,9 @@ class ProcessorRemoteTilesWellingtonElevationFilterTest(unittest.TestCase):
         # check the right dataset is downloaded - self.DATASET
         self.assertEqual(
             len(list(self.cache_dir.glob("*/**"))),
-            1,
-            f"There should only be one dataset named {self.DATASET} instead there are "
+            2,
+            f"There should only be one dataset named {self.DATASET} as well as the "
+            f" generated results folder {self.results_dir} instead there are "
             f"{len(list(self.cache_dir.glob('*/**')))} list "
             f"{list(self.cache_dir.glob('*/**'))}",
         )
@@ -193,7 +194,7 @@ class ProcessorRemoteTilesWellingtonElevationFilterTest(unittest.TestCase):
         with rioxarray.rioxarray.open_rasterio(file_path, masked=True) as benchmark_dem:
             benchmark_dem.load()
         # Load in test DEM
-        file_path = self.cache_dir / self.instructions["data_paths"]["result_dem"]
+        file_path = self.results_dir / self.instructions["data_paths"]["result_dem"]
         with rioxarray.rioxarray.open_rasterio(file_path, masked=True) as test_dem:
             test_dem.load()
         # compare the generated and benchmark DEMs
@@ -225,7 +226,7 @@ class ProcessorRemoteTilesWellingtonElevationFilterTest(unittest.TestCase):
         with rioxarray.rioxarray.open_rasterio(file_path, masked=True) as benchmark_dem:
             benchmark_dem.load()
         # Load in test DEM
-        file_path = self.cache_dir / self.instructions["data_paths"]["result_dem"]
+        file_path = self.results_dir / self.instructions["data_paths"]["result_dem"]
         with rioxarray.rioxarray.open_rasterio(file_path, masked=True) as test_dem:
             test_dem.load()
         # compare the generated and benchmark DEMs

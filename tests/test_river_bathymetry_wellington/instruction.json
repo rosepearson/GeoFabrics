@@ -14,6 +14,7 @@
 	},
 	"data_paths": {
 		"local_cache": "tests/test_river_bathymetry_wellington/data",
+		"subfolder": "results",
 		"river_polygon_benchmark": "river_polygon_benchmark.geojson",
 		"river_bathymetry_benchmark": "river_bathymetry_benchmark.geojson",
 		"fan_polygon_benchmark": "fan_polygon_benchmark.geojson",
