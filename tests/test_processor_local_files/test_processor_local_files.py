@@ -125,7 +125,8 @@ class ProcessorLocalFilesTest(unittest.TestCase):
             attrs={"scale_factor": 1.0, "add_offset": 0.0},
         )
         dem.rio.write_crs(
-            cls.instructions["output"]["crs"]["horizontal"], inplace=True,
+            cls.instructions["output"]["crs"]["horizontal"],
+            inplace=True,
         )
         dem.name = "z"
         dem.rio.to_raster(dem_file)
