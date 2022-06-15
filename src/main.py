@@ -48,6 +48,7 @@ def setup_logging_for_run(instructions: dict):
         force=True,
     )
     print(f"Log file is located at: {log_path / 'geofabrics.log'}")
+    logging.info(instructions)
 
 
 def check_for_benchmarks(instructions: dict, runner: processor.BaseProcessor):
@@ -120,7 +121,6 @@ def launch_processor(args):
         runner.run()
     if "dem" in instructions:
         run_instructions = instructions["dem"]
-        setup_logging_for_run(run_instructions)
         dem_paths = run_instructions["data_paths"]
         if "raw_dem" not in dem_paths or not (
             pathlib.Path(dem_paths["raw_dem"]).is_file()
@@ -132,10 +132,12 @@ def launch_processor(args):
         ):
             # Create a raw DEM from LiDAR / reference DEM
             print("Run processor.RawLidarDemGenerator")
+            setup_logging_for_run(run_instructions)
             runner = processor.RawLidarDemGenerator(run_instructions)
             runner.run()
         # Add bathymetry information to a raw DEM
         print("Run processor.HydrologicDemGenerator")
+        setup_logging_for_run(run_instructions)
         runner = processor.HydrologicDemGenerator(run_instructions)
         runner.run()
         check_for_benchmarks(run_instructions, runner)
