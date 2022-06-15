@@ -1,0 +1,8 @@
+{
+"type": "FeatureCollection",
+"crs": { "type": "name", "properties": { "name": "urn:ogc:def:crs:EPSG::2193" } },
+"features": [
+{ "type": "Feature", "properties": { "bed_elevation_Neal_et_al": -0.32862973056157258, "bed_elevation_Rupp_and_Smart": -0.61402500208371569, "widths": 71, "widths_mean_0.25km": 74.36, "flat_widths_mean_0.25km": 73.84, "depth_Neal_et_al": 0.18018529008141965, "depth_Rupp_and_Smart": 0.46558056160356281, "flood_depth_Neal_et_al": 1.0286499610038091, "flood_depth_Rupp_and_Smart": 1.3120494613964269 }, "geometry": { "type": "Point", "coordinates": [ 1769127.610239447560161, 5473496.758844952099025 ] } },
+{ "type": "Feature", "properties": { "bed_elevation_Neal_et_al": -0.32577861464369295, "bed_elevation_Rupp_and_Smart": -0.61050331082972942, "widths": 78, "widths_mean_0.25km": 74.64, "flat_widths_mean_0.25km": 74.16, "depth_Neal_et_al": 0.1773341737434346, "depth_Rupp_and_Smart": 0.46205886992947104, "flood_depth_Neal_et_al": 1.0263329315672989, "flood_depth_Rupp_and_Smart": 1.3092266007682161 }, "geometry": { "type": "Point", "coordinates": [ 1769141.158804059959948, 5473494.660645777359605 ] } }
+]
+}

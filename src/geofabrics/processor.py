@@ -566,11 +566,9 @@ class RawLidarDemGenerator(BaseProcessor):
             )  # Note must be called after all others if it is to be complete
         # Load in reference DEM if any significant land/foreshore not covered by LiDAR
         if self.check_instruction_path("reference_dems"):
-            area_without_lidar = (
-                self.catchment_geometry.land_and_foreshore_without_lidar(
-                    self.raw_dem.extents
-                ).geometry.area.sum()
-            )
+            area_without_lidar = self.catchment_geometry.land_and_foreshore_without_lidar(
+                self.raw_dem.extents
+            ).geometry.area.sum()
             if (
                 area_without_lidar
                 > self.catchment_geometry.land_and_foreshore.area.sum() * area_threshold
@@ -673,7 +671,7 @@ class HydrologicDemGenerator(BaseProcessor):
             )
 
             # interpolate
-            self.hydrologic_dem.interpolate_offshore(self.bathy_contours)
+            self.hydrologic_dem.interpolate_ocean_bathymetry(self.bathy_contours)
         # Load in river bathymetry and incorporate where discernable at the resolution
         if self.check_vector("river_polygons") and self.check_vector(
             "river_bathymetry"
@@ -1321,8 +1319,7 @@ class RiverBathymetryGenerator(BaseProcessor):
             sampling_direction=1 if osm_from_ocean else -1,
         )
         smoothed_osm_channel = osm_channel.get_sampled_spline_fit()
-        if self.debug:
-            smoothed_osm_channel.to_file(self.get_result_file_path(key="aligned"))
+        smoothed_osm_channel.to_file(self.get_result_file_path(key="aligned"))
         # Get DEMs - create and save if don't exist
         gnd_dem, veg_dem = self.get_dems(buffer=buffer, channel=osm_channel)
 
@@ -1727,11 +1724,7 @@ class DrainBathymetryGenerator(BaseProcessor):
             )
         )
         points = geopandas.GeoDataFrame(
-            {
-                "elevation": elevations,
-                "geometry": points,
-            },
-            crs=2193,
+            {"elevation": elevations, "geometry": points,}, crs=2193,
         )
 
         # Save bathymetry
@@ -1822,10 +1815,7 @@ class DrainBathymetryGenerator(BaseProcessor):
                 )
             bathymetries.extend(row_bathymetries)
         points = geopandas.GeoDataFrame(
-            {
-                "elevation": bathymetries,
-                "geometry": points.explode(ignore_index=True),
-            },
+            {"elevation": bathymetries, "geometry": points.explode(ignore_index=True),},
             crs=open_drains.crs,
         )
 
