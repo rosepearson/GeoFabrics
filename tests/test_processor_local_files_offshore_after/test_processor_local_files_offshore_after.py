@@ -124,8 +124,7 @@ class ProcessorLocalFilesOffshoreTest(unittest.TestCase):
             attrs={"scale_factor": 1.0, "add_offset": 0.0},
         )
         dem.rio.write_crs(
-            cls.instructions["output"]["crs"]["horizontal"],
-            inplace=True,
+            cls.instructions["output"]["crs"]["horizontal"], inplace=True,
         )
         dem.name = "z"
         dem.rio.to_raster(dem_file)
@@ -190,13 +189,15 @@ class ProcessorLocalFilesOffshoreTest(unittest.TestCase):
             "doesn't exist"
         )
 
-        for file in cls.results_dir.glob("*"):  # only files
-            if file.is_file():
-                file.unlink()
-            elif file.is_dir():
-                shutil.rmtree(file)
-        if cls.results_dir.exists():
-            shutil.rmtree(cls.results_dir)
+        # Cycle through all folders within the cache dir deleting their contents
+        for path in cls.cache_dir.iterdir():
+            if path.is_dir():
+                for file in path.glob("*"):  # only files
+                    if file.is_file():
+                        file.unlink()
+                    elif file.is_dir():
+                        shutil.rmtree(file)
+                shutil.rmtree(path)
 
     def test_result_dem(self):
         """A basic comparison between the generated and benchmark DEM"""
@@ -209,18 +210,29 @@ class ProcessorLocalFilesOffshoreTest(unittest.TestCase):
         file_path = self.results_dir / self.instructions["data_paths"]["result_dem"]
         with rioxarray.rioxarray.open_rasterio(file_path, masked=True) as test_dem:
             test_dem.load()
-        # Compare DEMs - load both from file as rioxarray.rioxarray.open_rasterio
-        # ignores index order
+        # Compare DEMs elevations
         diff_array = (
             test_dem.z.data[~numpy.isnan(test_dem.z.data)]
             - benchmark_dem.z.data[~numpy.isnan(benchmark_dem.z.data)]
         )
-        logging.info(f"DEM array diff is: {diff_array[diff_array != 0]}")
+        logging.info(f"DEM z diff is: {diff_array[diff_array != 0]}")
         numpy.testing.assert_array_almost_equal(
             test_dem.z.data,
             benchmark_dem.z.data,
             err_msg="The generated result_dem has different data from the "
             + "benchmark_dem",
+        )
+
+        # Compare DEMs source classification
+        diff_array = test_dem.source_class.data - benchmark_dem.source_class.data
+        logging.info(
+            f"DEM source classification array diff is: {diff_array[diff_array != 0]}"
+        )
+        numpy.testing.assert_array_almost_equal(
+            test_dem.source_class.data,
+            benchmark_dem.source_class.data,
+            err_msg="The generated result_dem source_class has different data "
+            "from the benchmark_dem",
         )
 
         # explicitly free memory as xarray seems to be hanging onto memory

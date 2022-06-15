@@ -125,8 +125,7 @@ class ProcessorLocalFilesTest(unittest.TestCase):
             attrs={"scale_factor": 1.0, "add_offset": 0.0},
         )
         dem.rio.write_crs(
-            cls.instructions["output"]["crs"]["horizontal"],
-            inplace=True,
+            cls.instructions["output"]["crs"]["horizontal"], inplace=True,
         )
         dem.name = "z"
         dem.rio.to_raster(dem_file)
@@ -192,13 +191,15 @@ class ProcessorLocalFilesTest(unittest.TestCase):
             "doesn't exist"
         )
 
-        for file in cls.results_dir.glob("*"):  # only files
-            if file.is_file():
-                file.unlink()
-            elif file.is_dir():
-                shutil.rmtree(file)
-        if cls.results_dir.exists():
-            shutil.rmtree(cls.results_dir)
+        # Cycle through all folders within the cache dir deleting their contents
+        for path in cls.cache_dir.iterdir():
+            if path.is_dir():
+                for file in path.glob("*"):  # only files
+                    if file.is_file():
+                        file.unlink()
+                    elif file.is_dir():
+                        shutil.rmtree(file)
+                shutil.rmtree(path)
 
     def test_result_dem(self):
         """A basic comparison between the generated and benchmark DEM"""

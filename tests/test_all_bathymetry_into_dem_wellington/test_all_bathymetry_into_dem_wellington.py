@@ -113,13 +113,15 @@ class ProcessorRiverBathymetryTest(unittest.TestCase):
             "doesn't exist"
         )
 
-        for file in cls.results_dir.glob("*"):  # only files
-            if file.is_file():
-                file.unlink()
-            elif file.is_dir():
-                shutil.rmtree(file)
-        if cls.results_dir.exists():
-            shutil.rmtree(cls.results_dir)
+        # Cycle through all folders within the cache dir deleting their contents
+        for path in cls.cache_dir.iterdir():
+            if path.is_dir():
+                for file in path.glob("*"):  # only files
+                    if file.is_file():
+                        file.unlink()
+                    elif file.is_dir():
+                        shutil.rmtree(file)
+                shutil.rmtree(path)
 
     @pytest.mark.skipif(sys.platform != "win32", reason="Windows test - this is strict")
     def test_result_dem_windows(self):
@@ -194,8 +196,8 @@ class ProcessorRiverBathymetryTest(unittest.TestCase):
         number_above_threshold = len(diff_array[numpy.abs(diff_array) > threshold])
         self.assertTrue(
             number_above_threshold < len(diff_array) * 0.25,
-            f"More than 2.5% of DEM values differ by more than {threshold} on Linux test"
-            f" run: {diff_array[numpy.abs(diff_array) > threshold]} or "
+            f"More than 2.5% of DEM values differ by more than {threshold} on Linux "
+            f"test run: {diff_array[numpy.abs(diff_array) > threshold]} or "
             f"{number_above_threshold / len(diff_array.flatten()) * 100}%",
         )
 

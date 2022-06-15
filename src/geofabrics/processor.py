@@ -327,7 +327,7 @@ class BaseProcessor(abc.ABC):
 
                 logging.info(
                     f"Downloading vector layers {vector_instruction['layers']} from the"
-                    " {data_service} data service"
+                    f" {data_service} data service"
                 )
 
                 # Cycle through all layers specified - save each & add to the path list
@@ -566,11 +566,9 @@ class RawLidarDemGenerator(BaseProcessor):
             )  # Note must be called after all others if it is to be complete
         # Load in reference DEM if any significant land/foreshore not covered by LiDAR
         if self.check_instruction_path("reference_dems"):
-            area_without_lidar = (
-                self.catchment_geometry.land_and_foreshore_without_lidar(
-                    self.raw_dem.extents
-                ).geometry.area.sum()
-            )
+            area_without_lidar = self.catchment_geometry.land_and_foreshore_without_lidar(
+                self.raw_dem.extents
+            ).geometry.area.sum()
             if (
                 area_without_lidar
                 > self.catchment_geometry.land_and_foreshore.area.sum() * area_threshold
@@ -686,17 +684,18 @@ class HydrologicDemGenerator(BaseProcessor):
             logging.info(f"Incorporating river Bathymetry: {bathy_dirs}")
 
             # Load in bathymetry
-            self.river_bathy = geometry.RiverBathymetryPoints(
+            self.estimated_bathymetry_points = geometry.EstimatedBathymetryPoints(
                 points_files=bathy_dirs,
                 polygon_files=poly_dirs,
                 catchment_geometry=self.catchment_geometry,
-                z_labels=self.get_instruction_general("river_bathy_z_label"),
+                z_labels=self.get_instruction_general("bathymetry_points_z_label"),
+                type_labels=self.get_instruction_general("bathymetry_points_type"),
             )
 
             # Call interpolate river on the DEM - the class checks to see if any pixels
             # actually fall inside the polygon
             self.hydrologic_dem.interpolate_river_bathymetry(
-                river_bathymetry=self.river_bathy
+                estimated_bathymetry=self.estimated_bathymetry_points
             )
 
     def run(self):
@@ -1637,12 +1636,30 @@ class DrainBathymetryGenerator(BaseProcessor):
 
         return subfolder / name
 
-    # Get the min in each polygon
+    def drain_bathymetry_exists(self):
+        """ Check to see if the drain and culvert bathymeties have already been
+        estimated. """
+
+        closed_polygon_file = self.get_result_file_path(key="closed_polygon")
+        closed_elevation_file = self.get_result_file_path(key="closed_elevation")
+        open_polygon_file = self.get_result_file_path(key="open_polygon")
+        open_elevation_file = self.get_result_file_path(key="open_elevation")
+        if (
+            closed_polygon_file.is_file()
+            and closed_elevation_file.is_file()
+            and open_polygon_file.is_file()
+            and open_elevation_file.is_file()
+        ):
+            return True
+        else:
+            return False
+
     def minimum_elevation_in_polygon(
         self, geometry: shapely.geometry.Polygon, dem: xarray.Dataset
     ):
-        """Select only coordinates within the polygon bounding box before clipping
-        to the bounding box and then returning the minimum elevation."""
+        """Determine the minimum value in each polygon. Select only coordinates
+        within the polygon bounding box before clipping to the bounding box and
+        then returning the minimum elevation."""
 
         # Index in polygon bbox
         bbox = geometry.bounds
@@ -1708,11 +1725,7 @@ class DrainBathymetryGenerator(BaseProcessor):
             )
         )
         points = geopandas.GeoDataFrame(
-            {
-                "elevation": elevations,
-                "geometry": points,
-            },
-            crs=2193,
+            {"elevation": elevations, "geometry": points,}, crs=2193,
         )
 
         # Save bathymetry
@@ -1803,10 +1816,7 @@ class DrainBathymetryGenerator(BaseProcessor):
                 )
             bathymetries.extend(row_bathymetries)
         points = geopandas.GeoDataFrame(
-            {
-                "elevation": bathymetries,
-                "geometry": points.explode(ignore_index=True),
-            },
+            {"elevation": bathymetries, "geometry": points.explode(ignore_index=True),},
             crs=open_drains.crs,
         )
 
@@ -1915,6 +1925,10 @@ class DrainBathymetryGenerator(BaseProcessor):
           elevation.
         * saves out extents and bed elevations of the drain and tunnel network"""
 
+        # Don't reprocess if already estimated
+        if self.drain_bathymetry_exists():
+            logging.info("Drain and tunnel bed elevations already estimated.")
+            return
         logging.info("Estimating drain and tunnel bed elevation from OpenStreetMap.")
 
         # Load in catchment

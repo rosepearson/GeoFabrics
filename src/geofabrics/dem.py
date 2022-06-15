@@ -177,8 +177,9 @@ class DemBase(abc.ABC):
     SOURCE_CLASSIFICATION = {
         "LiDAR": 1,
         "ocean bathymetry": 2,
-        "river bathymetry": 3,
-        "reference DEM": 4,
+        "rivers": 3,
+        "drains": 4,
+        "reference DEM": 5,
         "interpolated": 0,
         "no data": -1,
     }
@@ -297,8 +298,7 @@ class HydrologicallyConditionedDem(DemBase):
 
         # Setup the DenseDemBase class
         super(HydrologicallyConditionedDem, self).__init__(
-            catchment_geometry=catchment_geometry,
-            extents=extents,
+            catchment_geometry=catchment_geometry, extents=extents,
         )
 
         # Set attributes
@@ -308,6 +308,7 @@ class HydrologicallyConditionedDem(DemBase):
         # DEMs for hydrologically conditioning
         self._offshore_dem = None
         self._river_dem = None
+        self._drain_dem = None
         self._dem = None
 
     def __del__(self):
@@ -325,6 +326,9 @@ class HydrologicallyConditionedDem(DemBase):
         if self._river_dem is not None:
             self._river_dem.close()
             del self._river_dem
+        if self._drain_dem is not None:
+            self._drain_dem.close()
+            del self._drain_dem
         # The overall DEM
         if self._dem is not None:
             self._dem.close()
@@ -356,23 +360,24 @@ class HydrologicallyConditionedDem(DemBase):
     def combine_dem_parts(self):
         """Return the combined DEM from tiles and any interpolated offshore values"""
 
-        if self._offshore_dem is None and self._river_dem is None:
+        if (
+            self._offshore_dem is None
+            and self._river_dem is None
+            and self._drain_dem is None
+        ):
             combined_dem = self._raw_dem
-        elif self._river_dem is None:
-            # method="first"/"last"; "first" -> raw_dem top, then offshore
-            combined_dem = rioxarray.merge.merge_datasets(
-                [self._raw_dem, self._offshore_dem], method="first"
-            )
-        elif self._offshore_dem is None:
-            # method="first"/"last"; "first" -> river top, then raw_dem
-            combined_dem = rioxarray.merge.merge_datasets(
-                [self._river_dem, self._raw_dem], method="first"
-            )
         else:
-            # method="first"/"last"; "first" -> river top, then raw_dem, then offshore
-            combined_dem = rioxarray.merge.merge_datasets(
-                [self._river_dem, self._raw_dem, self._offshore_dem], method="first"
-            )
+            # Combine DEM layers that have been created
+            dems = []
+            if self._river_dem is not None:
+                dems.append(self._river_dem)
+            if self._drain_dem is not None:
+                dems.append(self._drain_dem)
+            dems.append(self._raw_dem)
+            if self._offshore_dem is not None:
+                dems.append(self._offshore_dem)
+            # combine the merged DEMs
+            combined_dem = rioxarray.merge.merge_datasets(dems, method="first",)
         return combined_dem
 
     def _sample_offshore_edge(self, resolution) -> numpy.ndarray:
@@ -425,6 +430,60 @@ class HydrologicallyConditionedDem(DemBase):
 
         return offshore_edge
 
+    def interpolate_bathymetry_points(
+        self,
+        bathymetry_points: numpy.ndarray,
+        flat_x_array: numpy.ndarray,
+        flat_y_array: numpy.ndarray,
+        method: str,
+    ) -> numpy.ndarray:
+        """ Interpolate the bathymetry points at the specified locations using the
+        specified method. """
+
+        if method == "rbf":
+            # Ensure the number of points is not too great for RBF interpolation
+            assert len(bathymetry_points) < self.CACHE_SIZE, (
+                f"need less that {self.CACHE_SIZE}, if going to use RBF. "
+                f"Currently there are {len(bathymetry_points)}"
+            )
+            # Create RBF function
+            logging.info("Creating RBF interpolant")
+            rbf_function = scipy.interpolate.Rbf(
+                bathymetry_points["X"],
+                bathymetry_points["Y"],
+                bathymetry_points["Z"],
+                function="linear",
+            )
+            # Tile area - this limits the maximum memory required at any one time
+            flat_z_array = numpy.ones_like(flat_x_array) * numpy.nan
+            number_offshore_tiles = math.ceil(len(flat_x_array) / self.CACHE_SIZE)
+            for i in range(number_offshore_tiles):
+                logging.info(
+                    f"Offshore intepolant tile {i+1} of {number_offshore_tiles}"
+                )
+                start_index = int(i * self.CACHE_SIZE)
+                end_index = (
+                    int((i + 1) * self.CACHE_SIZE)
+                    if i + 1 != number_offshore_tiles
+                    else len(flat_x_array)
+                )
+
+                flat_z_array[start_index:end_index] = rbf_function(
+                    flat_x_array[start_index:end_index],
+                    flat_y_array[start_index:end_index],
+                )
+        elif method == "linear" or method == "cubic":
+            # Interpolate river area - use cubic or linear interpolation
+            flat_z_array = scipy.interpolate.griddata(
+                points=(bathymetry_points["X"], bathymetry_points["Y"]),
+                values=bathymetry_points["Z"],
+                xi=(flat_x_array, flat_y_array),
+                method=method,  # linear or cubic
+            )
+        else:
+            raise ValueError("method must be rbf, linear or cubic")
+        return flat_z_array
+
     def interpolate_offshore(self, bathy_contours):
         """Performs interpolation offshore outside LiDAR extents using the SciPy RBF
         function."""
@@ -455,15 +514,6 @@ class HydrologicallyConditionedDem(DemBase):
             offshore_edge_points = self._sample_offshore_edge(reduced_resolution)
             bathy_points = bathy_contours.sample_contours(reduced_resolution)
             offshore_points = numpy.concatenate([offshore_edge_points, bathy_points])
-        # Set up the interpolation function
-        logging.info("Creating offshore interpolant")
-        rbf_function = scipy.interpolate.Rbf(
-            offshore_points["X"],
-            offshore_points["Y"],
-            offshore_points["Z"],
-            function="linear",
-        )
-
         # Setup the empty offshore area ready for interpolation
         offshore_no_dense_data = self.catchment_geometry.offshore_no_dense_data(
             self._extents
@@ -488,42 +538,63 @@ class HydrologicallyConditionedDem(DemBase):
 
         flat_x_masked = grid_x.flatten()[mask_z]
         flat_y_masked = grid_y.flatten()[mask_z]
-        flat_z_masked = flat_z[mask_z]
 
-        # Tile offshore area - this limits the maximum memory required at any one time
-        number_offshore_tiles = math.ceil(len(flat_x_masked) / self.CACHE_SIZE)
-        for i in range(number_offshore_tiles):
-            logging.info(f"Offshore intepolant tile {i+1} of {number_offshore_tiles}")
-            start_index = int(i * self.CACHE_SIZE)
-            end_index = (
-                int((i + 1) * self.CACHE_SIZE)
-                if i + 1 != number_offshore_tiles
-                else len(flat_x_masked)
-            )
-
-            flat_z_masked[start_index:end_index] = rbf_function(
-                flat_x_masked[start_index:end_index],
-                flat_y_masked[start_index:end_index],
-            )
+        # Set up the interpolation function
+        logging.info("Offshore interpolation")
+        flat_z_masked = self.interpolate_bathymetry_points(
+            bathymetry_points=offshore_points,
+            flat_x_array=flat_x_masked,
+            flat_y_array=flat_y_masked,
+            method="rbf",
+        )
         flat_z[mask_z] = flat_z_masked
         self._offshore_dem.z.data = flat_z.reshape(self._offshore_dem.z.data.shape)
 
-    def interpolate_river_bathymetry(self, river_bathymetry):
-        """Performs interpolation with a river polygon using the SciPy RBF function."""
+    def interpolate_river_bathymetry(
+        self, estimated_bathymetry: geometry.EstimatedBathymetryPoints
+    ):
+        """Performs interpolation with the over drains, rivers and river fan
+        polygons using various interpolation techniques."""
 
+        # First interpolated over open and closed drains using linear interpolation
+        self._drain_dem = None
+        self._drain_dem = self.interpolate_estimated_bathymetry(
+            estimated_bathymetry=estimated_bathymetry,
+            method="cubic",
+            type_label="drains",
+        )
         # Reset the river DEM
         self._river_dem = None
+        self._river_dem = self.interpolate_estimated_bathymetry(
+            estimated_bathymetry=estimated_bathymetry,
+            method="rbf",
+            type_label="rivers",
+        )
+
+    def interpolate_estimated_bathymetry(
+        self,
+        estimated_bathymetry: geometry.EstimatedBathymetryPoints,
+        method: str,
+        type_label: str,
+    ) -> xarray.Dataset:
+        """Performs interpolation from estimated bathymetry points within a polygon
+        using the specified interpolation approach."""
+
+        # extract points and polygon
+        estimated_points = estimated_bathymetry.filtered_points(type_label=type_label)
+        estimated_polygons = estimated_bathymetry.filtered_polygons(
+            type_label=type_label
+        )
 
         # combined DEM
         combined_dem = self.combine_dem_parts()
 
         # Get edge points
         edge_dem = combined_dem.rio.clip(
-            river_bathymetry.polygon.buffer(self.catchment_geometry.resolution),
-            drop=True,
+            estimated_polygons.buffer(self.catchment_geometry.resolution), drop=True,
         )
         edge_dem = edge_dem.rio.clip(
-            river_bathymetry.polygon.geometry, invert=True, drop=True
+            estimated_polygons.geometry, invert=True, drop=True,
         )
         grid_x, grid_y = numpy.meshgrid(edge_dem.x, edge_dem.y)
         flat_z = edge_dem.z.data.flatten()
@@ -537,22 +608,18 @@ class HydrologicallyConditionedDem(DemBase):
         edge_points["Y"] = grid_y.flatten()[mask_z]
         edge_points["Z"] = flat_z[mask_z]
 
-        # Get Bathy Points then concatenate
-        bathy_points = river_bathymetry.points_array()
-        river_points = numpy.concatenate([edge_points, bathy_points])
+        # Combine the estimated and edge points
+        bathy_points = numpy.concatenate([edge_points, estimated_points])
 
         # Setup the empty river area ready for interpolation
-        self._river_dem = combined_dem.rio.clip(river_bathymetry.polygon.geometry)
-        # set all zero (or to ocean bathy classification) then clip out dense region
-        # where we don't need to interpolate
-        self._river_dem.z.data[:] = 0
-        self._river_dem.source_class.data[:] = self.SOURCE_CLASSIFICATION[
-            "river bathymetry"
-        ]
-        self._river_dem = self._river_dem.rio.clip(river_bathymetry.polygon.geometry)
+        estimated_dem = combined_dem.rio.clip(estimated_polygons.geometry)
+        # Set value for all, then use clip to set regions outside polygon to NaN
+        estimated_dem.z.data[:] = 0
+        estimated_dem.source_class.data[:] = self.SOURCE_CLASSIFICATION[type_label]
+        estimated_dem = estimated_dem.rio.clip(estimated_polygons.geometry)
 
-        grid_x, grid_y = numpy.meshgrid(self._river_dem.x, self._river_dem.y)
-        flat_z = self._river_dem.z.data[:].flatten()
+        grid_x, grid_y = numpy.meshgrid(estimated_dem.x, estimated_dem.y)
+        flat_z = estimated_dem.z.data[:].flatten()
         mask_z = ~numpy.isnan(flat_z)
 
         flat_x_masked = grid_x.flatten()[mask_z]
@@ -560,18 +627,22 @@ class HydrologicallyConditionedDem(DemBase):
         flat_z_masked = flat_z[mask_z]
 
         # check there are actually pixels in the river
-        logging.info(f"There are {len(flat_z_masked)} pixels in the river")
+        logging.info(f"There are {len(flat_z_masked)} estimated points")
 
         # Interpolate river area - use cubic or linear interpolation
-        flat_z_masked = scipy.interpolate.griddata(
-            points=(river_points["X"], river_points["Y"]),
-            values=river_points["Z"],
-            xi=(flat_x_masked, flat_y_masked),
-            method="cubic",  # cubic, linear
+        logging.info("Offshore interpolation")
+        flat_z_masked = self.interpolate_bathymetry_points(
+            bathymetry_points=bathy_points,
+            flat_x_array=flat_x_masked,
+            flat_y_array=flat_y_masked,
+            method=method,
         )
+
         # Set the interpolated value in the DEM
         flat_z[mask_z] = flat_z_masked
-        self._river_dem.z.data = flat_z.reshape(self._river_dem.z.data.shape)
+        estimated_dem.z.data = flat_z.reshape(estimated_dem.z.data.shape)
+
+        return estimated_dem
 
 
 class LidarBase(DemBase):
@@ -602,8 +673,7 @@ class LidarBase(DemBase):
         self._dem = None
 
         super(LidarBase, self).__init__(
-            catchment_geometry=catchment_geometry,
-            extents=None,
+            catchment_geometry=catchment_geometry, extents=None,
         )
 
     def __del__(self):
@@ -885,8 +955,7 @@ class RawDem(LidarBase):
         """Setup base DEM to add future tiles too"""
 
         super(RawDem, self).__init__(
-            catchment_geometry=catchment_geometry,
-            elevation_range=elevation_range,
+            catchment_geometry=catchment_geometry, elevation_range=elevation_range,
         )
 
         self.drop_offshore_lidar = drop_offshore_lidar
@@ -1343,8 +1412,7 @@ class RoughnessDem(LidarBase):
         """Setup base DEM to add future tiles too"""
 
         super(RoughnessDem, self).__init__(
-            catchment_geometry=catchment_geometry,
-            elevation_range=elevation_range,
+            catchment_geometry=catchment_geometry, elevation_range=elevation_range,
         )
 
         # Load hyrdological DEM. Squeeze as rasterio.open() adds band coordinate.
@@ -1506,10 +1574,7 @@ class RoughnessDem(LidarBase):
                 self._dem.source_class.data
                 == self.SOURCE_CLASSIFICATION["ocean bathymetry"]
             )
-            | (
-                self._dem.source_class.data
-                == self.SOURCE_CLASSIFICATION["river bathymetry"]
-            )
+            | (self._dem.source_class.data == self.SOURCE_CLASSIFICATION["rivers"])
         ] = self.ROUGHNESS_DEFAULTS["water"]
         # Set roughness where land and no LiDAR
         self._dem.zo.data[
@@ -1723,10 +1788,7 @@ class RoughnessDem(LidarBase):
             data=zo,
             dims=["y", "x"],
             coords=dict(x=(["x"], x), y=(["y"], y)),
-            attrs=dict(
-                long_name="ground roughness",
-                units="",
-            ),
+            attrs=dict(long_name="ground roughness", units="",),
         )
         # Resize zo to share the same dimensions at the DEM
         self._dem["zo"] = zo.sel(x=self._dem.x, y=self._dem.y, method="nearest")
@@ -1890,14 +1952,14 @@ def calculate_idw(
 
     distance_vectors = point - tree.data[near_indicies]
     smoothed_distances = numpy.sqrt(
-        ((distance_vectors**2).sum(axis=1) + smoothing**2)
+        ((distance_vectors ** 2).sum(axis=1) + smoothing ** 2)
     )
     if smoothed_distances.min() == 0:  # in the case of an exact match
         idw = point_cloud["Z"][tree.query(point, k=1)[1]]
     else:
-        idw = (point_cloud["Z"][near_indicies] / (smoothed_distances**power)).sum(
+        idw = (point_cloud["Z"][near_indicies] / (smoothed_distances ** power)).sum(
             axis=0
-        ) / (1 / (smoothed_distances**power)).sum(axis=0)
+        ) / (1 / (smoothed_distances ** power)).sum(axis=0)
     return idw
 
 
@@ -1995,10 +2057,7 @@ def roughness_over_chunk(
         return grid_z
     # Perform the point cloud roughness estimation method over chunk
     z_flat = roughness_from_points(
-        point_cloud=tile_points,
-        xy_out=xy_out,
-        xy_ground=xy_ground,
-        options=options,
+        point_cloud=tile_points, xy_out=xy_out, xy_ground=xy_ground, options=options,
     )
     grid_z = z_flat.reshape(grid_x.shape)
 
