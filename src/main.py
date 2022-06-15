@@ -122,10 +122,12 @@ def launch_processor(args):
         run_instructions = instructions["dem"]
         setup_logging_for_run(run_instructions)
         dem_paths = run_instructions["data_paths"]
-        if "dense_dem" not in dem_paths or not (
-            pathlib.Path(dem_paths["dense_dem"]).is_file()
+        if "raw_dem" not in dem_paths or not (
+            pathlib.Path(dem_paths["raw_dem"]).is_file()
             or (
-                pathlib.Path(dem_paths["local_cache"]) / dem_paths["dense_dem"]
+                pathlib.Path(dem_paths["local_cache"])
+                / dem_paths["subfolder"]
+                / dem_paths["raw_dem"]
             ).is_file()
         ):
             # Create a raw DEM from LiDAR / reference DEM
