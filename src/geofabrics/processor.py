@@ -120,7 +120,13 @@ class BaseProcessor(abc.ABC):
             "local_cache" in self.instructions["data_paths"]
         ), "local_cache is a required 'data_paths' entry"
 
-        defaults = ["result_dem", "raw_dem_extents", "raw_dem", "subfolder"]
+        defaults = [
+            "result_dem",
+            "raw_dem_extents",
+            "raw_dem",
+            "subfolder",
+            "result_geofabric",
+        ]
 
         if key in self.instructions["data_paths"]:
             return True
