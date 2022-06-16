@@ -268,20 +268,46 @@ to have an offshore DEM associated with it.</p>
 <dl class="py method">
 <dt class="sig sig-object py" id="geofabrics.dem.HydrologicallyConditionedDem.combine_dem_parts">
 <span class="sig-name descname"><span class="pre">combine_dem_parts</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">self</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#geofabrics.dem.HydrologicallyConditionedDem.combine_dem_parts" title="Permalink to this definition"></a></dt>
-<dd><p>Return the combined DEM from tiles and any interpolated offshore values</p>
+<dd><p>Return the combined DEM from all layers that exist.</p>
 </dd></dl>
 
 <dl class="py method">
-<dt class="sig sig-object py" id="geofabrics.dem.HydrologicallyConditionedDem.interpolate_offshore">
-<span class="sig-name descname"><span class="pre">interpolate_offshore</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">self</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">bathy_contours</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#geofabrics.dem.HydrologicallyConditionedDem.interpolate_offshore" title="Permalink to this definition"></a></dt>
+<dt class="sig sig-object py" id="geofabrics.dem.HydrologicallyConditionedDem.interpolate_bathymetry_points">
+<span class="sig-name descname"><span class="pre">interpolate_bathymetry_points</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">self</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">bathymetry_points</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">flat_x_array</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">flat_y_array</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">method</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#geofabrics.dem.HydrologicallyConditionedDem.interpolate_bathymetry_points" title="Permalink to this definition"></a></dt>
+<dd><p>Interpolate the bathymetry points at the specified locations using the
+specified method.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters</dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>bathymetry_points</strong> (<em>numpy.ndarray</em>) – </p></li>
+<li><p><strong>flat_x_array</strong> (<em>numpy.ndarray</em>) – </p></li>
+<li><p><strong>flat_y_array</strong> (<em>numpy.ndarray</em>) – </p></li>
+<li><p><strong>method</strong> (<em>str</em>) – </p></li>
+</ul>
+</dd>
+<dt class="field-even">Return type</dt>
+<dd class="field-even"><p>numpy.ndarray</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="geofabrics.dem.HydrologicallyConditionedDem.interpolate_ocean_bathymetry">
+<span class="sig-name descname"><span class="pre">interpolate_ocean_bathymetry</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">self</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">bathy_contours</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#geofabrics.dem.HydrologicallyConditionedDem.interpolate_ocean_bathymetry" title="Permalink to this definition"></a></dt>
 <dd><p>Performs interpolation offshore outside LiDAR extents using the SciPy RBF
 function.</p>
 </dd></dl>
 
 <dl class="py method">
 <dt class="sig sig-object py" id="geofabrics.dem.HydrologicallyConditionedDem.interpolate_river_bathymetry">
-<span class="sig-name descname"><span class="pre">interpolate_river_bathymetry</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">self</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">river_bathymetry</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#geofabrics.dem.HydrologicallyConditionedDem.interpolate_river_bathymetry" title="Permalink to this definition"></a></dt>
-<dd><p>Performs interpolation with a river polygon using the SciPy RBF function.</p>
+<span class="sig-name descname"><span class="pre">interpolate_river_bathymetry</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">self</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">estimated_bathymetry</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#geofabrics.dem.HydrologicallyConditionedDem.interpolate_river_bathymetry" title="Permalink to this definition"></a></dt>
+<dd><p>Performs interpolation over drains, culverts, rivers and river fan
+polygons using various interpolation techniques.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters</dt>
+<dd class="field-odd"><p><strong>estimated_bathymetry</strong> (<a class="reference internal" href="../geometry/index.html#geofabrics.geometry.EstimatedBathymetryPoints" title="geofabrics.geometry.EstimatedBathymetryPoints"><em>geofabrics.geometry.EstimatedBathymetryPoints</em></a>) – </p>
+</dd>
+</dl>
 </dd></dl>
 
 </dd></dl>

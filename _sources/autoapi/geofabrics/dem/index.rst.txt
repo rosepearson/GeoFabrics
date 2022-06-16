@@ -131,18 +131,25 @@ Attributes
 
    .. py:method:: combine_dem_parts(self)
 
-      Return the combined DEM from tiles and any interpolated offshore values
+      Return the combined DEM from all layers that exist.
 
 
-   .. py:method:: interpolate_offshore(self, bathy_contours)
+   .. py:method:: interpolate_bathymetry_points(self, bathymetry_points, flat_x_array, flat_y_array, method)
+
+      Interpolate the bathymetry points at the specified locations using the
+      specified method.
+
+
+   .. py:method:: interpolate_ocean_bathymetry(self, bathy_contours)
 
       Performs interpolation offshore outside LiDAR extents using the SciPy RBF
       function.
 
 
-   .. py:method:: interpolate_river_bathymetry(self, river_bathymetry)
+   .. py:method:: interpolate_river_bathymetry(self, estimated_bathymetry)
 
-      Performs interpolation with a river polygon using the SciPy RBF function.
+      Performs interpolation over drains, culverts, rivers and river fan
+      polygons using various interpolation techniques.
 
 
 

@@ -20,7 +20,7 @@ Classes
    geofabrics.geometry.CatchmentGeometry
    geofabrics.geometry.BathymetryContours
    geofabrics.geometry.MarineBathymetryPoints
-   geofabrics.geometry.RiverBathymetryPoints
+   geofabrics.geometry.EstimatedBathymetryPoints
    geofabrics.geometry.TileInfo
    geofabrics.geometry.RiverMouthFan
 
@@ -153,15 +153,20 @@ Classes
 
 
 
-.. py:class:: RiverBathymetryPoints(points_files, polygon_files, catchment_geometry, z_labels = None)
+.. py:class:: EstimatedBathymetryPoints(points_files, polygon_files, catchment_geometry, type_labels, z_labels = None)
 
    A class for accessing river and mouth bathymetry points. Paired river
    and mouth elevation and polygon files are expected. These depths can be
    used to interpolate elevations within the river and mouth polygon.
 
-   .. py:method:: points_array(self)
+   .. py:method:: filtered_polygons(self, type_label = None)
 
-      Sample the contours at the specified resolution.
+      Return the polygon filtered by any type label.
+
+
+   .. py:method:: filtered_points(self, type_label = None)
+
+      Return the points as a single array.
 
 
    .. py:method:: points(self)

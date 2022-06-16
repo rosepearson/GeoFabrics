@@ -96,8 +96,7 @@ Classes
    .. py:method:: check_vector(self, key)
 
       Check to see if vector key (i.e. land, bathymetry_contours, etc) is included
-      either as a file path, or
-      within any of the vector API's (i.e. LINZ or LRIS).
+      either as a file path, or within any of the vector API's (i.e. LINZ or LRIS).
 
 
    .. py:method:: get_vector_paths(self, key)
@@ -341,6 +340,26 @@ Classes
       :param buffer  The amount of extra space to create around the river catchment:
 
 
+   .. py:method:: align_channel_from_rec(self, buffer)
+
+      Calculate the channel width, slope and other characteristics. This requires a
+      ground and vegetation DEM. This also may require alignment of the channel
+      centreline.
+
+
+      :param buffer  The amount of extra space to create around the river catchment:
+
+
+   .. py:method:: align_channel_from_osm(self, buffer)
+
+      Calculate the channel width, slope and other characteristics. This requires a
+      ground and vegetation DEM. This also may require alignment of the channel
+      centreline.
+
+
+      :param buffer  The amount of extra space to create around the river catchment:
+
+
    .. py:method:: calculate_river_bed_elevations(self)
 
       Calculate and save depth estimates along the channel using various
@@ -353,7 +372,7 @@ Classes
       Calculate and save depth estimates along the river mouth fan.
 
 
-   .. py:method:: run(self, instruction_parameters = None)
+   .. py:method:: run(self)
 
       This method extracts a main channel then executes the DemGeneration
       pipeline to produce a DEM before sampling this to extimate width, slope
@@ -382,10 +401,17 @@ Classes
       :param instructions  The json instructions defining the behaviour:
 
 
+   .. py:method:: drain_bathymetry_exists(self)
+
+      Check to see if the drain and culvert bathymeties have already been
+      estimated.
+
+
    .. py:method:: minimum_elevation_in_polygon(self, geometry, dem)
 
-      Select only coordinates within the polygon bounding box before clipping
-      to the bounding box and then returning the minimum elevation.
+      Determine the minimum value in each polygon. Select only coordinates
+      within the polygon bounding box before clipping to the bounding box and
+      then returning the minimum elevation.
 
 
    .. py:method:: estimate_closed_bathymetry(self, drains, dem)
@@ -408,7 +434,7 @@ Classes
       Download OpenStreetMap drains and tunnels within the catchment BBox.
 
 
-   .. py:method:: run(self, instruction_parameters = None)
+   .. py:method:: run(self)
 
       This method runs a pipeline that:
       * downloads all tunnels and drains within a catchment.
