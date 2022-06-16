@@ -20,7 +20,7 @@ import numpy
 from src.geofabrics import processor
 
 
-class ProcessorRiverBathymetryTest(unittest.TestCase):
+class ProcessorRiverBathymetryOsmTest(unittest.TestCase):
     """A class to test the basic river bathymetry estimation functionality
     contained in processor.RiverBathymetryGenerator.
 
@@ -36,7 +36,7 @@ class ProcessorRiverBathymetryTest(unittest.TestCase):
         chain to download remote files and produce a DEM prior to testing."""
 
         test_path = pathlib.Path().cwd() / pathlib.Path(
-            "tests/test_river_bathymetry_wellington"
+            "tests/test_river_bathymetry_osm_wellington"
         )
 
         # Setup logging
@@ -46,7 +46,7 @@ class ProcessorRiverBathymetryTest(unittest.TestCase):
             level=logging.INFO,
             force=True,
         )
-        logging.info("In test_river_bathymetry_wellington.py")
+        logging.info("In test_river_bathymetry_osm_wellington.py")
 
         # load in the test instructions
         instruction_file_path = test_path / "instruction.json"

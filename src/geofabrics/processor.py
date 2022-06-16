@@ -34,6 +34,8 @@ class BaseProcessor(abc.ABC):
     file lists.
     """
 
+    OSM_CRS = "EPSG:4326"
+
     def __init__(self, json_instructions: json):
         self.instructions = json_instructions
 
@@ -60,14 +62,27 @@ class BaseProcessor(abc.ABC):
             "result_geofabric": "generated_geofabric.nc",
             "raw_dem": "raw_dem.nc",
             "raw_dem_extents": "raw_extents.geojson",
+            "subfolder": "results",
         }
 
         path_instructions = self.instructions["data_paths"]
-        local_cache = pathlib.Path(path_instructions["local_cache"])
 
+        # Return the local cache - for downloaded input data
+        local_cache = pathlib.Path(path_instructions["local_cache"])
         if key == "local_cache":
             return local_cache
-        elif key in path_instructions:
+        # Return the subfolder path - where results are stored
+        subfolder = (
+            path_instructions["subfolder"]
+            if "subfolder" in path_instructions
+            else defaults["subfolder"]
+        )
+
+        if key == "subfolder":
+            return local_cache / subfolder
+        # return the full path of the specified key
+        if key in path_instructions:
+
             # check if a list or single path
             if type(path_instructions[key]) == list:
                 absolute_file_paths = []
@@ -77,18 +92,20 @@ class BaseProcessor(abc.ABC):
                     file_path = (
                         file_path
                         if file_path.is_absolute()
-                        else local_cache / file_path
+                        else local_cache / subfolder / file_path
                     )
                     absolute_file_paths.append(str(file_path))
                 return absolute_file_paths
             else:
                 file_path = pathlib.Path(path_instructions[key])
                 file_path = (
-                    file_path if file_path.is_absolute() else local_cache / file_path
+                    file_path
+                    if file_path.is_absolute()
+                    else local_cache / subfolder / file_path
                 )
                 return file_path
         elif key in defaults.keys():
-            return local_cache.absolute() / defaults[key]
+            return local_cache.absolute() / subfolder / defaults[key]
         else:
             assert False, (
                 f"The key `{key}` is either missing from data "
@@ -103,7 +120,13 @@ class BaseProcessor(abc.ABC):
             "local_cache" in self.instructions["data_paths"]
         ), "local_cache is a required 'data_paths' entry"
 
-        defaults = ["result_dem", "raw_dem_extents", "raw_dem"]
+        defaults = [
+            "result_dem",
+            "raw_dem_extents",
+            "raw_dem",
+            "subfolder",
+            "result_geofabric",
+        ]
 
         if key in self.instructions["data_paths"]:
             return True
@@ -178,6 +201,8 @@ class BaseProcessor(abc.ABC):
         defaults = {
             "set_dem_shoreline": True,
             "bathymetry_contours_z_label": None,
+            "bathymetry_points_z_label": None,
+            "bathymetry_points_type": None,
             "drop_offshore_lidar": True,
             "lidar_classifications_to_keep": [2],
             "interpolation_method": None,
@@ -226,8 +251,8 @@ class BaseProcessor(abc.ABC):
 
     def check_vector(self, key) -> bool:
         """Check to see if vector key (i.e. land, bathymetry_contours, etc) is included
-        either as a file path, or
-        within any of the vector API's (i.e. LINZ or LRIS)."""
+        either as a file path, or within any of the vector API's (i.e. LINZ or LRIS).
+        """
 
         data_services = [
             "linz",
@@ -310,7 +335,7 @@ class BaseProcessor(abc.ABC):
 
                 logging.info(
                     f"Downloading vector layers {vector_instruction['layers']} from the"
-                    " {data_service} data service"
+                    f" {data_service} data service"
                 )
 
                 # Cycle through all layers specified - save each & add to the path list
@@ -656,7 +681,7 @@ class HydrologicDemGenerator(BaseProcessor):
             )
 
             # interpolate
-            self.hydrologic_dem.interpolate_offshore(self.bathy_contours)
+            self.hydrologic_dem.interpolate_ocean_bathymetry(self.bathy_contours)
         # Load in river bathymetry and incorporate where discernable at the resolution
         if self.check_vector("river_polygons") and self.check_vector(
             "river_bathymetry"
@@ -669,17 +694,18 @@ class HydrologicDemGenerator(BaseProcessor):
             logging.info(f"Incorporating river Bathymetry: {bathy_dirs}")
 
             # Load in bathymetry
-            self.river_bathy = geometry.RiverBathymetryPoints(
+            self.estimated_bathymetry_points = geometry.EstimatedBathymetryPoints(
                 points_files=bathy_dirs,
                 polygon_files=poly_dirs,
                 catchment_geometry=self.catchment_geometry,
-                z_labels=self.get_instruction_general("river_bathy_z_label"),
+                z_labels=self.get_instruction_general("bathymetry_points_z_label"),
+                type_labels=self.get_instruction_general("bathymetry_points_type"),
             )
 
             # Call interpolate river on the DEM - the class checks to see if any pixels
             # actually fall inside the polygon
             self.hydrologic_dem.interpolate_river_bathymetry(
-                river_bathymetry=self.river_bathy
+                estimated_bathymetry=self.estimated_bathymetry_points
             )
 
     def run(self):
@@ -800,6 +826,8 @@ class RiverBathymetryGenerator(BaseProcessor):
             samples of the DEM values
     """
 
+    MIN_RIVER_GRADIENT = 0.0001  #  0.01% river slope
+
     def __init__(self, json_instructions: json, debug: bool = True):
 
         super(RiverBathymetryGenerator, self).__init__(
@@ -888,11 +916,11 @@ class RiverBathymetryGenerator(BaseProcessor):
             instructions  The json instructions defining the behaviour
         """
 
-        local_cache = pathlib.Path(self.instructions["data_paths"]["local_cache"])
+        subfolder = self.get_instruction_path("subfolder")
 
         name = self.get_result_file_name(key=key, name=name)
 
-        return local_cache / name
+        return subfolder / name
 
     def get_bathymetry_instruction(self, key: str):
         """Return true if the DEMs are required for later processing
@@ -1158,9 +1186,7 @@ class RiverBathymetryGenerator(BaseProcessor):
                 columns
             ].to_file(self.get_result_file_path(name="final_flat_midpoints.geojson"))
 
-    def characterise_channel(
-        self, buffer: float
-    ) -> bathymetry_estimation.ChannelCharacteristics:
+    def characterise_channel(self, buffer: float):
         """Calculate the channel width, slope and other characteristics. This requires a
         ground and vegetation DEM. This also may require alignment of the channel
         centreline.
@@ -1171,6 +1197,29 @@ class RiverBathymetryGenerator(BaseProcessor):
         """
 
         logging.info("The channel hasn't been characerised. Charactreising now.")
+
+        # Decide if aligning frim REC (coarse river network), or OSM (closer alignment)
+        if "osm_id" in self.instructions["rivers"]:
+            channel_width, aligned_channel = self.align_channel_from_osm(buffer=buffer)
+        else:
+            channel_width, aligned_channel = self.align_channel_from_rec(buffer=buffer)
+        # calculate the channel width and save results
+        print("Characterising the aligned channel.")
+        self.calculate_channel_characteristics(
+            channel_width=channel_width, aligned_channel=aligned_channel, buffer=buffer
+        )
+
+    def align_channel_from_rec(self, buffer: float) -> tuple:
+        """Calculate the channel width, slope and other characteristics. This requires a
+        ground and vegetation DEM. This also may require alignment of the channel
+        centreline.
+
+
+        Parameters:
+            buffer  The amount of extra space to create around the river catchment
+        """
+
+        logging.info("Align from REC.")
 
         # Extract instructions
         cross_section_spacing = self.get_bathymetry_instruction("cross_section_spacing")
@@ -1202,11 +1251,100 @@ class RiverBathymetryGenerator(BaseProcessor):
         else:
             aligned_channel_file = self.get_result_file_path(key="aligned")
             aligned_channel = geopandas.read_file(aligned_channel_file)
-        # calculate the channel width and save results
-        print("Characterising the aligned channel.")
-        self.calculate_channel_characteristics(
-            channel_width=channel_width, aligned_channel=aligned_channel, buffer=buffer
+        return channel_width, aligned_channel
+
+    def align_channel_from_osm(
+        self, buffer: float
+    ) -> bathymetry_estimation.ChannelCharacteristics:
+        """Calculate the channel width, slope and other characteristics. This requires a
+        ground and vegetation DEM. This also may require alignment of the channel
+        centreline.
+
+
+        Parameters:
+            buffer  The amount of extra space to create around the river catchment
+        """
+
+        logging.info("Align from OSM.")
+
+        # Extract instructions
+        cross_section_spacing = self.get_bathymetry_instruction("cross_section_spacing")
+        resolution = self.get_resolution()
+
+        # Create REC defined channel
+        channel = self.get_rec_channel()
+        crs = self.get_crs()["horizontal"]
+
+        # Create OSM defined channel
+        osm_id = self.get_bathymetry_instruction("osm_id")
+        query = f"(way[waterway]({osm_id});); out body geom;"
+        overpass = OSMPythonTools.overpass.Overpass()
+        osm_channel = overpass.query(query)
+        osm_channel = osm_channel.elements()[0]
+        osm_channel = geopandas.GeoDataFrame(
+            {
+                "geometry": [osm_channel.geometry()],
+                "OSM_id": [osm_channel.id()],
+                "waterway": [osm_channel.tags()["waterway"]],
+            },
+            crs=self.OSM_CRS,
+        ).to_crs(crs)
+        if self.debug:
+            osm_channel.to_file(
+                self.get_result_file_path(name="osm_channel_full.geojson")
+            )
+        # cut to size
+        smoothed_rec_channel = channel.get_sampled_spline_fit()
+        rec_extents = smoothed_rec_channel.boundary.explode(index_parts=False)
+        rec_start, rec_end = (rec_extents.iloc[0], rec_extents.iloc[1])
+        end_split_length = float(osm_channel.project(rec_end))
+        start_split_length = float(osm_channel.project(rec_start))
+        osm_from_ocean = True if start_split_length < end_split_length else False
+        end_split_point = osm_channel.interpolate(end_split_length)
+        start_split_point = osm_channel.interpolate(start_split_length)
+        # Introduce point to the polyline so shapely slip works
+        osm_channel_with_point = shapely.ops.snap(
+            osm_channel.loc[0].geometry, end_split_point.loc[0], tolerance=0.1
         )
+        osm_channel_with_point = shapely.ops.snap(
+            osm_channel_with_point, start_split_point.loc[0], tolerance=0.1
+        )
+        lines = shapely.ops.split(
+            osm_channel_with_point,
+            shapely.geometry.MultiPoint(
+                [start_split_point.loc[0], end_split_point.loc[0]]
+            ),
+        )
+        osm_channel_cut = geopandas.GeoSeries(lines.geoms, crs=crs)
+        assert (
+            len(osm_channel_cut) == 3
+        ), "The OSM line does not stretch the full extents of the REC line"
+        osm_channel = osm_channel_cut.iloc[1:2]
+        if self.debug:
+            osm_channel.to_file(
+                self.get_result_file_path(name="osm_channel_cut.geojson")
+            )
+        # smooth
+        osm_channel = bathymetry_estimation.Channel(
+            channel=osm_channel,
+            resolution=cross_section_spacing,
+            sampling_direction=1 if osm_from_ocean else -1,
+        )
+        smoothed_osm_channel = osm_channel.get_sampled_spline_fit()
+        smoothed_osm_channel.to_file(self.get_result_file_path(key="aligned"))
+        # Get DEMs - create and save if don't exist
+        gnd_dem, veg_dem = self.get_dems(buffer=buffer, channel=osm_channel)
+
+        # Create the channel width object
+        channel_width = bathymetry_estimation.ChannelCharacteristics(
+            gnd_dem=gnd_dem,
+            veg_dem=veg_dem,
+            cross_section_spacing=cross_section_spacing,
+            resolution=resolution,
+            debug=self.debug,
+        )
+
+        return channel_width, smoothed_osm_channel
 
     def calculate_river_bed_elevations(self):
         """Calculate and save depth estimates along the channel using various
@@ -1256,6 +1394,11 @@ class RiverBathymetryGenerator(BaseProcessor):
         width_name = "widths_mean_0.25km"
         flat_width_name = "flat_widths_mean_0.25km"
         threshold_name = "thresholds_mean_0.25km"
+
+        # Adjust slope to ensure positive
+        width_values.loc[
+            width_values[slope_name] < self.MIN_RIVER_GRADIENT, slope_name
+        ] = self.MIN_RIVER_GRADIENT
 
         # Calculate depths and bed elevation using the Neal et al approach (Uniform flow
         # theory)
@@ -1435,7 +1578,7 @@ class RiverBathymetryGenerator(BaseProcessor):
         fan_polygon.to_file(self.get_result_file_path(key="fan_polygon"))
         fan_bathymetry.to_file(self.get_result_file_path(key="fan_bathymetry"))
 
-    def run(self, instruction_parameters: pathlib.Path = None):
+    def run(self):
         """This method extracts a main channel then executes the DemGeneration
         pipeline to produce a DEM before sampling this to extimate width, slope
         and eventually depth."""
@@ -1454,9 +1597,11 @@ class RiverBathymetryGenerator(BaseProcessor):
             # Calculate and save river bathymetry depths
             self.calculate_river_bed_elevations()
             self.estimate_river_mouth_fan()
-        # Update parameter file - in time only update the bits that have been re-run
-        if instruction_parameters is not None:
-            with open(instruction_parameters, "w") as file_pointer:
+        if self.debug:
+            # Record the parameter used during execution - append to existing
+            with open(
+                self.get_instruction_path("subfolder") / "rivers_instructions.json", "a"
+            ) as file_pointer:
                 json.dump(self.instructions, file_pointer)
 
 
@@ -1466,8 +1611,6 @@ class DrainBathymetryGenerator(BaseProcessor):
     unblock drains and tunnels.
 
     """
-
-    OSM_CRS = "EPSG:4326"
 
     def __init__(self, json_instructions: json, debug: bool = True):
 
@@ -1485,9 +1628,8 @@ class DrainBathymetryGenerator(BaseProcessor):
 
         # key to output name mapping
         name_dictionary = {
-            "dem": f"dem_{tag}.nc",
-            "raw_dem": f"raw_dem_{tag}.nc",
-            "raw_dem_extents": f"raw_extents_{drain_width}m_width.geojson",
+            "raw_dem": f"drain_raw_dem_{tag}.nc",
+            "raw_dem_extents": f"drain_raw_extents_{drain_width}m_width.geojson",
             "open_polygon": f"open_drain_polygon_{tag}.geojson",
             "open_elevation": f"open_drain_elevation_{tag}.geojson",
             "closed_polygon": f"closed_drain_polygon_{tag}.geojson",
@@ -1504,18 +1646,36 @@ class DrainBathymetryGenerator(BaseProcessor):
             instructions  The json instructions defining the behaviour
         """
 
-        local_cache = pathlib.Path(self.instructions["data_paths"]["local_cache"])
+        subfolder = self.get_instruction_path("subfolder")
 
         name = self.get_result_file_name(key=key)
 
-        return local_cache / name
+        return subfolder / name
 
-    # Get the min in each polygon
+    def drain_bathymetry_exists(self):
+        """Check to see if the drain and culvert bathymeties have already been
+        estimated."""
+
+        closed_polygon_file = self.get_result_file_path(key="closed_polygon")
+        closed_elevation_file = self.get_result_file_path(key="closed_elevation")
+        open_polygon_file = self.get_result_file_path(key="open_polygon")
+        open_elevation_file = self.get_result_file_path(key="open_elevation")
+        if (
+            closed_polygon_file.is_file()
+            and closed_elevation_file.is_file()
+            and open_polygon_file.is_file()
+            and open_elevation_file.is_file()
+        ):
+            return True
+        else:
+            return False
+
     def minimum_elevation_in_polygon(
         self, geometry: shapely.geometry.Polygon, dem: xarray.Dataset
     ):
-        """Select only coordinates within the polygon bounding box before clipping
-        to the bounding box and then returning the minimum elevation."""
+        """Determine the minimum value in each polygon. Select only coordinates
+        within the polygon bounding box before clipping to the bounding box and
+        then returning the minimum elevation."""
 
         # Index in polygon bbox
         bbox = geometry.bounds
@@ -1689,7 +1849,7 @@ class DrainBathymetryGenerator(BaseProcessor):
     def create_dem(self, drains: geopandas.GeoDataFrame) -> xarray.Dataset:
         """Create and return a DEM at a resolution 1.5x the drain width."""
 
-        dem_file = self.get_result_file_path(key="dem")
+        dem_file = self.get_result_file_path(key="raw_dem")
 
         # Load already created DEM file in
         if dem_file.is_file():
@@ -1716,7 +1876,6 @@ class DrainBathymetryGenerator(BaseProcessor):
             dem_instruction_paths["catchment_boundary"] = self.get_result_file_name(
                 key="drain_polygon"
             )
-            dem_instruction_paths["result_dem"] = self.get_result_file_name(key="dem")
             dem_instruction_paths["raw_dem"] = self.get_result_file_name(key="raw_dem")
             dem_instruction_paths["raw_dem_extents"] = self.get_result_file_name(
                 "raw_dem_extents"
@@ -1782,13 +1941,17 @@ class DrainBathymetryGenerator(BaseProcessor):
             drains.to_file(drains_file_path)
         return drains
 
-    def run(self, instruction_parameters: pathlib.Path = None):
+    def run(self):
         """This method runs a pipeline that:
         * downloads all tunnels and drains within a catchment.
         * creates and samples a DEM around each feature to estimate the bed
           elevation.
         * saves out extents and bed elevations of the drain and tunnel network"""
 
+        # Don't reprocess if already estimated
+        if self.drain_bathymetry_exists():
+            logging.info("Drain and tunnel bed elevations already estimated.")
+            return
         logging.info("Estimating drain and tunnel bed elevation from OpenStreetMap.")
 
         # Load in catchment
@@ -1804,7 +1967,9 @@ class DrainBathymetryGenerator(BaseProcessor):
         self.estimate_closed_bathymetry(drains=drains, dem=dem)
         self.estimate_open_bathymetry(drains=drains, dem=dem)
 
-        # print out parameters actually run
-        if instruction_parameters is not None:
-            with open(instruction_parameters, "w") as file_pointer:
+        if self.debug:
+            # Record the parameter used during execution - append to existing
+            with open(
+                self.get_instruction_path("subfolder") / "drains_instructions.json", "a"
+            ) as file_pointer:
                 json.dump(self.instructions, file_pointer)

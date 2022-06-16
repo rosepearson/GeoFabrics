@@ -82,12 +82,11 @@ class ProcessorRemoteAllWestportTest(unittest.TestCase):
         linz_key = os.environ.get("LINZ_API", None)
         cls.instructions["apis"]["linz"]["key"] = linz_key
 
-        # Define cache location - and catchment directory
-        cls.cache_dir = pathlib.Path(cls.instructions["data_paths"]["local_cache"])
-
-        # Ensure the cache directory doesn't exist - i.e. clean up from last test
-        # occurred correctly
-        cls.clean_data_folder()
+        # Remove any files from last test, then create a results directory
+        cls.cache_dir = test_path / "data"
+        cls.results_dir = cls.cache_dir / "results"
+        cls.tearDownClass()
+        cls.results_dir.mkdir()
 
         # Create fake catchment boundary
         x0 = 1473354
@@ -113,7 +112,7 @@ class ProcessorRemoteAllWestportTest(unittest.TestCase):
         catchment = catchment.set_crs(cls.instructions["output"]["crs"]["horizontal"])
 
         # Save faked catchment boundary - used as land boundary as well
-        catchment_file = cls.cache_dir / "catchment.geojson"
+        catchment_file = cls.results_dir / "catchment.geojson"
         catchment.to_file(catchment_file)
 
         # Run pipeline - download files and generated DEM
@@ -134,16 +133,19 @@ class ProcessorRemoteAllWestportTest(unittest.TestCase):
         """Remove all generated or downloaded files from the data directory"""
 
         assert cls.cache_dir.exists(), (
-            "The data directory that should include the comparison benchmark file "
-            + "doesn't exist"
+            "The data directory that should include the comparison benchmark dem file "
+            "doesn't exist"
         )
 
-        benchmark_file = cls.cache_dir / "benchmark_dem.nc"
-        for file in cls.cache_dir.glob("*"):  # only files
-            if file != benchmark_file and file.is_file():
-                file.unlink()
-            elif file != benchmark_file and file.is_dir():
-                shutil.rmtree(file)
+        # Cycle through all folders within the cache dir deleting their contents
+        for path in cls.cache_dir.iterdir():
+            if path.is_dir():
+                for file in path.glob("*"):  # only files
+                    if file.is_file():
+                        file.unlink()
+                    elif file.is_dir():
+                        shutil.rmtree(file)
+                shutil.rmtree(path)
 
     def test_correct_datasets(self):
         """A test to see if the correct datasets were downloaded"""
@@ -153,10 +155,11 @@ class ProcessorRemoteAllWestportTest(unittest.TestCase):
         # Check the right dataset is downloaded - self.DATASET
         self.assertEqual(
             len(list(self.cache_dir.glob("*/**"))),
-            len(dataset_dirs),
+            len(dataset_dirs) + 1,
             f"There should only be {len(dataset_dirs)} datasets named {dataset_dirs} "
-            f"instead there are {len(list(self.cache_dir.glob('*/**')))} list "
-            f" {list(self.cache_dir.glob('*/**'))}",
+            f"and the results dir {self.results_dir}, but instead there are "
+            f" {len(list(self.cache_dir.glob('*/**')))} list "
+            f"{list(self.cache_dir.glob('*/**'))}",
         )
 
         self.assertEqual(
@@ -223,7 +226,7 @@ class ProcessorRemoteAllWestportTest(unittest.TestCase):
         with rioxarray.rioxarray.open_rasterio(file_path, masked=True) as benchmark_dem:
             benchmark_dem.load()
         # Load in test DEM
-        file_path = self.cache_dir / self.instructions["data_paths"]["result_dem"]
+        file_path = self.results_dir / self.instructions["data_paths"]["result_dem"]
         with rioxarray.rioxarray.open_rasterio(file_path, masked=True) as test_dem:
             test_dem.load()
         # Compare DEMs - load both from file as rioxarray.rioxarray.open_rasterio
@@ -256,7 +259,7 @@ class ProcessorRemoteAllWestportTest(unittest.TestCase):
         with rioxarray.rioxarray.open_rasterio(file_path, masked=True) as benchmark_dem:
             benchmark_dem.load()
         # Load in test DEM
-        file_path = self.cache_dir / self.instructions["data_paths"]["result_dem"]
+        file_path = self.results_dir / self.instructions["data_paths"]["result_dem"]
         with rioxarray.rioxarray.open_rasterio(file_path, masked=True) as test_dem:
             test_dem.load()
         # Compare the generated and benchmark DEMs

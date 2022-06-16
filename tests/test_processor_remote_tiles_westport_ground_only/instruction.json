@@ -14,6 +14,7 @@
 	},
 	"data_paths": {
 		"local_cache": "tests/test_processor_remote_tiles_westport_ground_only/data",
+		"subfolder": "results",
 		"catchment_boundary": "catchment.geojson",
 		"land": "catchment.geojson",
 		"result_dem": "test_dem.nc",

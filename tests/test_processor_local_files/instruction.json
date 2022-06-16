@@ -10,6 +10,7 @@
 	},
 	"data_paths": {
 		"local_cache": "tests/test_processor_local_files/data",
+		"subfolder": "results",
 		"catchment_boundary": "catchment_boundary.geojson",
 		"land": "land.geojson",
 		"lidars": ["lidar.laz"],

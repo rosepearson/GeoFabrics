@@ -48,6 +48,7 @@ def setup_logging_for_run(instructions: dict):
         force=True,
     )
     print(f"Log file is located at: {log_path / 'geofabrics.log'}")
+    logging.info(instructions)
 
 
 def check_for_benchmarks(instructions: dict, runner: processor.BaseProcessor):
@@ -110,36 +111,33 @@ def launch_processor(args):
         run_instructions = instructions["rivers"]
         setup_logging_for_run(run_instructions)
         runner = processor.RiverBathymetryGenerator(run_instructions)
-        runner.run(
-            pathlib.Path(run_instructions["data_paths"]["local_cache"])
-            / "river_parameters.json"
-        )
+        runner.run()
     if "drains" in instructions:
         # Estimate drain bathymetry
         print("Run processor.DrainsBathymetryGenerator")
         run_instructions = instructions["drains"]
         setup_logging_for_run(run_instructions)
         runner = processor.DrainBathymetryGenerator(run_instructions)
-        runner.run(
-            pathlib.Path(run_instructions["data_paths"]["local_cache"])
-            / "drain_parameters.json"
-        )
+        runner.run()
     if "dem" in instructions:
         run_instructions = instructions["dem"]
-        setup_logging_for_run(run_instructions)
         dem_paths = run_instructions["data_paths"]
-        if "dense_dem" not in dem_paths or not (
-            pathlib.Path(dem_paths["dense_dem"]).is_file()
+        if "raw_dem" not in dem_paths or not (
+            pathlib.Path(dem_paths["raw_dem"]).is_file()
             or (
-                pathlib.Path(dem_paths["local_cache"]) / dem_paths["dense_dem"]
+                pathlib.Path(dem_paths["local_cache"])
+                / dem_paths["subfolder"]
+                / dem_paths["raw_dem"]
             ).is_file()
         ):
             # Create a raw DEM from LiDAR / reference DEM
-            print("Run processor.LidarDemGenerator")
+            print("Run processor.RawLidarDemGenerator")
+            setup_logging_for_run(run_instructions)
             runner = processor.RawLidarDemGenerator(run_instructions)
             runner.run()
         # Add bathymetry information to a raw DEM
         print("Run processor.HydrologicDemGenerator")
+        setup_logging_for_run(run_instructions)
         runner = processor.HydrologicDemGenerator(run_instructions)
         runner.run()
         check_for_benchmarks(run_instructions, runner)
@@ -147,8 +145,8 @@ def launch_processor(args):
         run_instructions = instructions["roughness"]
         setup_logging_for_run(run_instructions)
         # Create a roughness map and add to the hydrological DEM
-        print("Run processor.RoughnessGenerator")
-        runner = processor.RoughnessGenerator(run_instructions)
+        print("Run processor.RoughnessLengthGenerator")
+        runner = processor.RoughnessLengthGenerator(run_instructions)
         runner.run()
     end_time = time.time()
 

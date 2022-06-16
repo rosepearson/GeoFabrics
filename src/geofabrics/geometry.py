@@ -468,32 +468,36 @@ class MarineBathymetryPoints:
         return self._z
 
 
-class RiverBathymetryPoints:
+class EstimatedBathymetryPoints:
     """A class for accessing river and mouth bathymetry points. Paired river
     and mouth elevation and polygon files are expected. These depths can be
     used to interpolate elevations within the river and mouth polygon.
     """
 
     DEPTH_LABEL = "depths"
+    TYPE_LABEL = "type"
 
     def __init__(
         self,
-        points_files: str,
-        polygon_files: str,
+        points_files: list,
+        polygon_files: list,
         catchment_geometry: CatchmentGeometry,
-        z_labels: str = None,
+        type_labels: list,
+        z_labels: list = None,
     ):
 
         self.catchment_geometry = catchment_geometry
 
         self.z_label = z_labels is not None
         self._points = None
-        self.polygon = None
+        self._polygon = None
 
-        self._set_up(points_files, polygon_files, z_labels)
+        self._set_up(points_files, polygon_files, z_labels, type_labels)
 
-    def _set_up(self, points_files, polygon_files, z_labels):
-        """Set CRS and clip to catchment and within the flat water polygon"""
+    def _set_up(
+        self, points_files: list, polygon_files: list, z_labels: list, type_labels: list
+    ):
+        """Load point and polygon files and concatentate and clip to the catchment."""
 
         assert len(points_files) == len(polygon_files), (
             "The polygon and point lists should all be the same length. Instead there "
@@ -503,55 +507,75 @@ class RiverBathymetryPoints:
         assert z_labels is None or len(points_files) == len(
             z_labels
         ), "Either all points should include z-values, or all have a label."
+        assert len(points_files) == len(
+            type_labels
+        ), "All bathy points should have a type label.Instead there are "
+        f"{len(points_files)} points files and {len(type_labels)} type labels"
 
         points = geopandas.read_file(points_files[0])
+        points[self.TYPE_LABEL] = type_labels[0]
         if z_labels is not None:
-            points = points.rename(columns={z_labels[0]: self.DEPTH_LABEL})[
-                [self.DEPTH_LABEL, "geometry"]
-            ]
+            points = points.rename(columns={z_labels[0]: self.DEPTH_LABEL})
+        points = points[[self.DEPTH_LABEL, self.TYPE_LABEL, "geometry"]]
         polygon = geopandas.read_file(polygon_files[0])
+        polygon[self.TYPE_LABEL] = type_labels[0]
         for i in range(1, len(points_files)):
             points_i = geopandas.read_file(points_files[i])
+            points_i[self.TYPE_LABEL] = type_labels[i]
             if z_labels is not None and z_labels[i] != self.DEPTH_LABEL:
-                points_i = points_i.rename(columns={z_labels[i]: self.DEPTH_LABEL})[
-                    [self.DEPTH_LABEL, "geometry"]
-                ]
+                points_i = points_i.rename(columns={z_labels[i]: self.DEPTH_LABEL})
+            points_i = points_i[[self.DEPTH_LABEL, self.TYPE_LABEL, "geometry"]]
             points = points.append(points_i)
             polygon_i = geopandas.read_file(polygon_files[i])
+            polygon_i[self.TYPE_LABEL] = type_labels[i]
             polygon = polygon.append(polygon_i)
+        # Set CRS, clip to size and reset index
+        points = points.to_crs(self.catchment_geometry.crs["horizontal"])
+        polygon = polygon.to_crs(self.catchment_geometry.crs["horizontal"])
+        points = points.clip(polygon.buffer(0), keep_geom_type=True)
+        points = points.clip(self.catchment_geometry.catchment, keep_geom_type=True)
+        points = points.reset_index(drop=True)
+
+        # Set to class members
         self._points = points
-        self.polygon = polygon
+        self._polygon = polygon
 
-        self._points = self._points.to_crs(self.catchment_geometry.crs["horizontal"])
-        self.polygon = self.polygon.to_crs(self.catchment_geometry.crs["horizontal"])
-
-        self._points = self._points.clip(self.polygon.buffer(0), keep_geom_type=True)
-        self._points = self._points.clip(
-            self.catchment_geometry.catchment, keep_geom_type=True
+    def filtered_polygons(self, type_label: str = None) -> geopandas.GeoDataFrame:
+        """Return the polygon filtered by any type label."""
+        polygon = (
+            self._polygon
+            if type_label is None
+            else self._polygon[self._polygon["type"] == type_label]
         )
-        self._points = self._points.reset_index(drop=True)
+        return polygon
 
-    def points_array(self) -> numpy.ndarray:
-        """Sample the contours at the specified resolution."""
+    def filtered_points(self, type_label: str = None) -> numpy.ndarray:
+        """Return the points as a single array."""
 
-        points = numpy.empty(
-            [len(self._points)],
+        points = (
+            self._points
+            if type_label is None
+            else self._points[self._points["type"] == type_label]
+        )
+
+        points_array = numpy.empty(
+            [len(points)],
             dtype=[("X", numpy.float64), ("Y", numpy.float64), ("Z", numpy.float64)],
         )
 
         # Extract the x, y and z values from the Shapely MultiPoints and possibly a
         # depth column
-        points["X"] = self._points.apply(lambda row: row.geometry.x, axis=1).to_list()
-        points["Y"] = self._points.apply(lambda row: row.geometry.y, axis=1).to_list()
+        points_array["X"] = points.apply(lambda row: row.geometry.x, axis=1).to_list()
+        points_array["Y"] = points.apply(lambda row: row.geometry.y, axis=1).to_list()
         if self.z_label:
-            points["Z"] = self._points.apply(
+            points_array["Z"] = points.apply(
                 lambda row: row[self.DEPTH_LABEL], axis=1
             ).to_list()
         else:
-            points["Z"] = self._points.apply(
+            points_array["Z"] = points.apply(
                 lambda row: row.geometry.z, axis=1
             ).to_list()
-        return points
+        return points_array
 
     @property
     def points(self):
