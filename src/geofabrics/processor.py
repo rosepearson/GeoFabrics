@@ -818,7 +818,7 @@ class RiverBathymetryGenerator(BaseProcessor):
             samples of the DEM values
     """
 
-    MIN_RIVER_GRADIENT = 0.005
+    MIN_RIVER_GRADIENT = 0.0001  #  0.01% river slope
 
     def __init__(self, json_instructions: json, debug: bool = True):
 
