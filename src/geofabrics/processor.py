@@ -195,6 +195,8 @@ class BaseProcessor(abc.ABC):
         defaults = {
             "set_dem_shoreline": True,
             "bathymetry_contours_z_label": None,
+            "bathymetry_points_z_label": None,
+            "bathymetry_points_type": None,
             "drop_offshore_lidar": True,
             "lidar_classifications_to_keep": [2],
             "interpolation_method": None,
