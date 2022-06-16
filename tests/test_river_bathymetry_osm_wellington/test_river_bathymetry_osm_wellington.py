@@ -64,7 +64,7 @@ class ProcessorRiverBathymetryOsmTest(unittest.TestCase):
         cls.results_dir.mkdir()
 
         # Run pipeline - download files and generated DEM
-        runner = processor.RiverBathymetryGenerator(cls.instructions, debug=True)
+        runner = processor.RiverBathymetryGenerator(cls.instructions, debug=False)
         runner.run()
 
     @classmethod

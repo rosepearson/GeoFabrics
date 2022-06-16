@@ -818,6 +818,8 @@ class RiverBathymetryGenerator(BaseProcessor):
             samples of the DEM values
     """
 
+    MIN_RIVER_GRADIENT = 0.005
+
     def __init__(self, json_instructions: json, debug: bool = True):
 
         super(RiverBathymetryGenerator, self).__init__(
@@ -1384,6 +1386,11 @@ class RiverBathymetryGenerator(BaseProcessor):
         width_name = "widths_mean_0.25km"
         flat_width_name = "flat_widths_mean_0.25km"
         threshold_name = "thresholds_mean_0.25km"
+
+        # Adjust slope to ensure positive
+        width_values.loc[
+            width_values[slope_name] < self.MIN_RIVER_GRADIENT, slope_name
+        ] = self.MIN_RIVER_GRADIENT
 
         # Calculate depths and bed elevation using the Neal et al approach (Uniform flow
         # theory)
