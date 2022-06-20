@@ -6,15 +6,15 @@ channels:
   - defaults
 dependencies:
   - pip
-  - gdal
-  - geopandas >=0.10.2
-  - rioxarray
-  - pdal >=2.3
   - dask
   - distributed
-  - python-pdal
-  - python-dotenv
+  - gdal
+  - geopandas >=0.10.2
+  - pdal >=2.3
   - pytest
+  - python-dotenv
+  - python-pdal
+  - rioxarray
   - pip:
     - git+https://github.com/niwa/geoapis
     - netcdf4
