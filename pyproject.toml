@@ -7,7 +7,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "geofabrics"
-version = "0.9.2"
+version = "0.9.3a0"
 description = "A package for creating geofabrics for flood modelling."
 readme = "README.md"
 authors = [{ name = "Rose pearson", email = "rose.pearson@niwa.co.nz" }]
@@ -27,7 +27,6 @@ dependencies = [
     "gdal",
     "geopandas>=0.10",
     "pdal",
-    "python-pdal",
     "rioxarray",
     "geoapis",
     "netcdf4",
