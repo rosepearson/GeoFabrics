@@ -7,5 +7,6 @@ Created on Wed Jun 30 11:22:08 2021
 import setuptools
 
 setuptools.setup(
-    package_dir={"": "src"}, packages=setuptools.find_packages(where="src"),
+    package_dir={"": "src"},
+    packages=setuptools.find_packages(where="src"),
 )
