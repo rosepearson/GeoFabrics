@@ -358,23 +358,23 @@ class BathymetryContours:
         )
 
         points = numpy.empty(
-            [points_df.apply(lambda row: len(row)).sum()],
+            [points_df.apply(lambda row: len(row.geoms)).sum()],
             dtype=[("X", numpy.float64), ("Y", numpy.float64), ("Z", numpy.float64)],
         )
 
         # Extract the x, y and z values from the Shapely MultiPoints and possibly a
         # depth column
         points["X"] = numpy.concatenate(
-            points_df.apply(lambda row: [row[i].x for i in range(len(row))]).to_list()
+            points_df.apply(lambda row: [row_i.x for row_i in row.geoms]).to_list()
         )
         points["Y"] = numpy.concatenate(
-            points_df.apply(lambda row: [row[i].y for i in range(len(row))]).to_list()
+            points_df.apply(lambda row: [row_i.y for row_i in row.geoms]).to_list()
         )
         if self.z_label is None:
             points["Z"] = (
                 numpy.concatenate(
                     points_df.apply(
-                        lambda row: [row[i].z for i in range(len(row))]
+                        lambda row: [row_i.z for row_i in row.geoms]
                     ).to_list()
                 )
                 * -1
@@ -383,7 +383,7 @@ class BathymetryContours:
             points["Z"] = (
                 numpy.concatenate(
                     [
-                        numpy.ones(len(points_df.loc[i]))
+                        numpy.ones(len(points_df.loc[i].geoms))
                         * self._contour[self.z_label].loc[i]
                         for i in range(len(points_df))
                     ]
