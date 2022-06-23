@@ -358,7 +358,7 @@ class BathymetryContours:
         )
 
         points = numpy.empty(
-            [points_df.apply(lambda row: len(row)).sum()],
+            [points_df.apply(lambda row: len(row.geoms)).sum()],
             dtype=[("X", numpy.float64), ("Y", numpy.float64), ("Z", numpy.float64)],
         )
 
