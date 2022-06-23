@@ -57,6 +57,11 @@ Classes
       if there is a default value and the local cache is specified.
 
 
+   .. py:method:: create_results_folder(self)
+
+      Ensure the results folder has been created.
+
+
    .. py:method:: get_resolution(self)
 
       Return the resolution from the instruction file. Raise an error if
