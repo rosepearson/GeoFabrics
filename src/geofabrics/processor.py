@@ -134,7 +134,7 @@ class BaseProcessor(abc.ABC):
             return key in defaults
 
     def create_results_folder(self):
-        """ Ensure the results folder has been created. """
+        """Ensure the results folder has been created."""
 
         results_folder = self.get_instruction_path("subfolder")
         results_folder.mkdir(parents=True, exist_ok=True)
@@ -585,9 +585,11 @@ class RawLidarDemGenerator(BaseProcessor):
             )  # Note must be called after all others if it is to be complete
         # Load in reference DEM if any significant land/foreshore not covered by LiDAR
         if self.check_instruction_path("reference_dems"):
-            area_without_lidar = self.catchment_geometry.land_and_foreshore_without_lidar(
-                self.raw_dem.extents
-            ).geometry.area.sum()
+            area_without_lidar = (
+                self.catchment_geometry.land_and_foreshore_without_lidar(
+                    self.raw_dem.extents
+                ).geometry.area.sum()
+            )
             if (
                 area_without_lidar
                 > self.catchment_geometry.land_and_foreshore.area.sum() * area_threshold
@@ -1761,7 +1763,11 @@ class DrainBathymetryGenerator(BaseProcessor):
             )
         )
         points = geopandas.GeoDataFrame(
-            {"elevation": elevations, "geometry": points,}, crs=2193,
+            {
+                "elevation": elevations,
+                "geometry": points,
+            },
+            crs=2193,
         )
 
         # Save bathymetry
@@ -1852,7 +1858,10 @@ class DrainBathymetryGenerator(BaseProcessor):
                 )
             bathymetries.extend(row_bathymetries)
         points = geopandas.GeoDataFrame(
-            {"elevation": bathymetries, "geometry": points.explode(ignore_index=True),},
+            {
+                "elevation": bathymetries,
+                "geometry": points.explode(ignore_index=True),
+            },
             crs=open_drains.crs,
         )
 
