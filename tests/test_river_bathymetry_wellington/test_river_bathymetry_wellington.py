@@ -61,7 +61,6 @@ class ProcessorRiverBathymetryTest(unittest.TestCase):
         cls.cache_dir = test_path / "data"
         cls.results_dir = cls.cache_dir / "results"
         cls.tearDownClass()
-        cls.results_dir.mkdir()
 
         # Run pipeline - download files and generated DEM
         runner = processor.RiverBathymetryGenerator(cls.instructions, debug=False)

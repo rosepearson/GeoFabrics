@@ -723,7 +723,7 @@ class LidarBase(DemBase):
             dense_extents = shapely.geometry.MultiPolygon(
                 [
                     shapely.geometry.Polygon(polygon.exterior)
-                    for polygon in dense_extents
+                    for polygon in dense_extents.geoms
                 ]
             )
         # Convert into a Geopandas dataframe
