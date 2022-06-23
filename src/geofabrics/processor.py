@@ -1849,7 +1849,7 @@ class DrainBathymetryGenerator(BaseProcessor):
                     open_drains.iloc[drain_index]["end_elevation"],
                 )
             ]
-            for point in row.geoms[1:]:
+            for point in list(row.geoms)[1:]:
                 elevation = float(dem.z.sel(x=point.x, y=point.y, method="nearest"))
                 row_bathymetries.append(
                     elevation
