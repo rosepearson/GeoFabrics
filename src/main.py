@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
 """
 A convenience script for running the DEM generation pipelines contained in the processor
- module of geofabrics.
+module of geofabrics.
 """
 from geofabrics import processor
 import json
