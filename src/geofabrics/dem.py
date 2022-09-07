@@ -91,7 +91,31 @@ class ReferenceDem:
     def _extract_points(self):
         """Create a points list from the DEM"""
 
-        if self.catchment_geometry.land.area.sum() > 0:
+        # Get the DEM bounding box
+        dem_bounds = self._dem.rio.bounds()
+        dem_bounds = geopandas.GeoDataFrame(
+            {
+                "geometry": [
+                    shapely.geometry.Polygon(
+                        [
+                            [dem_bounds[0], dem_bounds[1]],
+                            [dem_bounds[2], dem_bounds[1]],
+                            [dem_bounds[2], dem_bounds[3]],
+                            [dem_bounds[0], dem_bounds[3]],
+                        ]
+                    )
+                ]
+            },
+            crs=self.catchment_geometry.crs["horizontal"],
+        )
+
+        if (
+            self.catchment_geometry.land.area.sum() > 0
+            and dem_bounds.overlay(
+                self.catchment_geometry.land, how="intersection"
+            ).area.sum()
+            > 0
+        ):
             land_dem = self._dem.rio.clip(self.catchment_geometry.land.geometry)
             # get reference DEM points on land
             land_flat_z = land_dem.data.flatten()
@@ -105,7 +129,13 @@ class ReferenceDem:
             land_x = []
             land_y = []
             land_z = []
-        if self.catchment_geometry.foreshore.area.sum() > 0:
+        if (
+            self.catchment_geometry.foreshore.area.sum() > 0
+            and dem_bounds.overlay(
+                self.catchment_geometry.foreshore, how="intersection"
+            ).area.sum()
+            > 0
+        ):
             foreshore_dem = self._dem.rio.clip(
                 self.catchment_geometry.foreshore.geometry
             )
