@@ -63,6 +63,11 @@ class ReferenceDem:
             self._dem.close()
             del self._dem
 
+    @property
+    def dem(self) -> xarray.Dataset:
+        """Return the DEM over the catchment region"""
+        return self._dem
+
     def _set_up(self, exclusion_extent):
         """Set DEM CRS and trim the DEM to size"""
 
@@ -328,8 +333,7 @@ class HydrologicallyConditionedDem(DemBase):
 
         # Setup the DenseDemBase class
         super(HydrologicallyConditionedDem, self).__init__(
-            catchment_geometry=catchment_geometry,
-            extents=extents,
+            catchment_geometry=catchment_geometry, extents=extents,
         )
 
         # Set attributes
@@ -408,10 +412,7 @@ class HydrologicallyConditionedDem(DemBase):
             if self._offshore_dem is not None:
                 dems.append(self._offshore_dem)
             # combine the merged DEMs
-            combined_dem = rioxarray.merge.merge_datasets(
-                dems,
-                method="first",
-            )
+            combined_dem = rioxarray.merge.merge_datasets(dems, method="first",)
         return combined_dem
 
     def _sample_offshore_edge(self, resolution) -> numpy.ndarray:
@@ -626,13 +627,10 @@ class HydrologicallyConditionedDem(DemBase):
 
         # Get edge points
         edge_dem = combined_dem.rio.clip(
-            estimated_polygons.buffer(self.catchment_geometry.resolution),
-            drop=True,
+            estimated_polygons.buffer(self.catchment_geometry.resolution), drop=True,
         )
         edge_dem = edge_dem.rio.clip(
-            estimated_polygons.geometry,
-            invert=True,
-            drop=True,
+            estimated_polygons.geometry, invert=True, drop=True,
         )
         grid_x, grid_y = numpy.meshgrid(edge_dem.x, edge_dem.y)
         flat_z = edge_dem.z.data.flatten()
@@ -711,8 +709,7 @@ class LidarBase(DemBase):
         self._dem = None
 
         super(LidarBase, self).__init__(
-            catchment_geometry=catchment_geometry,
-            extents=None,
+            catchment_geometry=catchment_geometry, extents=None,
         )
 
     def __del__(self):
@@ -994,8 +991,7 @@ class RawDem(LidarBase):
         """Setup base DEM to add future tiles too"""
 
         super(RawDem, self).__init__(
-            catchment_geometry=catchment_geometry,
-            elevation_range=elevation_range,
+            catchment_geometry=catchment_geometry, elevation_range=elevation_range,
         )
 
         self.drop_offshore_lidar = drop_offshore_lidar
@@ -1364,46 +1360,39 @@ class RawDem(LidarBase):
         self._write_netcdf_conventions_in_place(dem, self.catchment_geometry.crs)
         return dem
 
-    def add_reference_dem(
-        self, tile_points: numpy.ndarray, tile_extent: geopandas.GeoDataFrame
-    ):
-        """Fill gaps in dense DEM from areas with no LiDAR with the reference DEM."""
+    def add_reference_dem(self, reference_dem: ReferenceDem):
+        """Fill gaps in dense DEM from areas with no LiDAR with the reference DEM.
+        Perform linear interpolation.
 
-        # Areas not covered by LiDAR values
-        mask = numpy.isnan(self._dem.z.data)
+        Note expects only a few locations to interplate. Will not be efficient if lots
+        missing. """
 
-        if len(tile_points) == 0:
-            logging.warning(
-                "RawDem.add_reference_dem: the latest reference DEM has no data and is "
-                "being ignored."
+        # Areas not covered by LiDAR values - as outside extents - use extents
+        # Should already be clipped to size
+        z = self._dem.z.copy(deep=True)
+        z.data[:] = 0
+        no_lidar_mask = numpy.isnan(z.rio.clip(self._extents.geometry, drop=False).data)
+        z.data[:] = 0
+        in_catchment_mask = numpy.logical_not(
+            numpy.isnan(
+                z.rio.clip(self.catchment_geometry.catchment.geometry, drop=False).data
             )
-            return
-        elif mask.sum() == 0:
+        )
+        mask = no_lidar_mask & in_catchment_mask
+
+        if mask.sum() == 0:
             logging.warning(
                 "RawDem.add_reference_dem: LiDAR covers all raster values so the "
                 "reference DEM is being ignored."
             )
             return
-        # create dictionary defining raster options
-        raster_options = {
-            "raster_type": self.raster_type,
-            "radius": self.catchment_geometry.resolution * numpy.sqrt(2),
-            "method": self.lidar_interpolation_method,
-        }
-
         # Get the grid locations overwhich to perform averaging
         grid_x, grid_y = numpy.meshgrid(self._dem.x, self._dem.y)
 
         # Mask to only rasterise where there aren't already LiDAR derived values
-        xy_out = numpy.empty((mask.sum(), 2))
-        xy_out[:, 0] = grid_x[mask]
-        xy_out[:, 1] = grid_y[mask]
-
-        # Perform specified averaging from the reference DEM where there is no data
-        z_flat = elevation_from_points(
-            point_cloud=tile_points, xy_out=xy_out, options=raster_options
-        )
-
+        z_flat = numpy.empty(mask.sum())
+        for index, (x, y) in enumerate(zip(grid_x[mask], grid_y[mask])):
+            z_flat[index] = reference_dem.dem.interp(x=x, y=y, method="linear")
         # Update the DEM
         self._dem.z.data[mask] = z_flat
         self._dem.source_class.data[
@@ -1452,8 +1441,7 @@ class RoughnessDem(LidarBase):
         """Setup base DEM to add future tiles too"""
 
         super(RoughnessDem, self).__init__(
-            catchment_geometry=catchment_geometry,
-            elevation_range=elevation_range,
+            catchment_geometry=catchment_geometry, elevation_range=elevation_range,
         )
 
         # Load hyrdological DEM. Squeeze as rasterio.open() adds band coordinate.
@@ -1829,10 +1817,7 @@ class RoughnessDem(LidarBase):
             data=zo,
             dims=["y", "x"],
             coords=dict(x=(["x"], x), y=(["y"], y)),
-            attrs=dict(
-                long_name="ground roughness",
-                units="",
-            ),
+            attrs=dict(long_name="ground roughness", units="",),
         )
         # Resize zo to share the same dimensions at the DEM
         self._dem["zo"] = zo.sel(x=self._dem.x, y=self._dem.y, method="nearest")
@@ -1996,14 +1981,14 @@ def calculate_idw(
 
     distance_vectors = point - tree.data[near_indicies]
     smoothed_distances = numpy.sqrt(
-        ((distance_vectors**2).sum(axis=1) + smoothing**2)
+        ((distance_vectors ** 2).sum(axis=1) + smoothing ** 2)
     )
     if smoothed_distances.min() == 0:  # in the case of an exact match
         idw = point_cloud["Z"][tree.query(point, k=1)[1]]
     else:
-        idw = (point_cloud["Z"][near_indicies] / (smoothed_distances**power)).sum(
+        idw = (point_cloud["Z"][near_indicies] / (smoothed_distances ** power)).sum(
             axis=0
-        ) / (1 / (smoothed_distances**power)).sum(axis=0)
+        ) / (1 / (smoothed_distances ** power)).sum(axis=0)
     return idw
 
 
@@ -2101,10 +2086,7 @@ def roughness_over_chunk(
         return grid_z
     # Perform the point cloud roughness estimation method over chunk
     z_flat = roughness_from_points(
-        point_cloud=tile_points,
-        xy_out=xy_out,
-        xy_ground=xy_ground,
-        options=options,
+        point_cloud=tile_points, xy_out=xy_out, xy_ground=xy_ground, options=options,
     )
     grid_z = z_flat.reshape(grid_x.shape)
 
