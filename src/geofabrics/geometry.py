@@ -3,6 +3,7 @@
 This module contains classes associated with manipulating vector data.
 """
 import geopandas
+import pandas
 import shapely
 import numpy
 import pathlib
@@ -510,25 +511,37 @@ class EstimatedBathymetryPoints:
         ), "All bathy points should have a type label.Instead there are "
         f"{len(points_files)} points files and {len(type_labels)} type labels"
 
-        points = geopandas.read_file(points_files[0])
-        points[self.TYPE_LABEL] = type_labels[0]
+        # Points - rename depth labels to standard if a non standard one is specified
+        points_i = geopandas.read_file(points_files[0])
+        points_i[self.TYPE_LABEL] = type_labels[0]
         if z_labels is not None:
-            points = points.rename(columns={z_labels[0]: self.DEPTH_LABEL})
-        points = points[[self.DEPTH_LABEL, self.TYPE_LABEL, "geometry"]]
-        polygon = geopandas.read_file(polygon_files[0])
-        polygon[self.TYPE_LABEL] = type_labels[0]
+            points_i = points_i.rename(columns={z_labels[0]: self.DEPTH_LABEL})
+        points_i = points_i[[self.DEPTH_LABEL, self.TYPE_LABEL, "geometry"]]
+        points_list = [points_i]
+        # Polygon where the points are relevent
+        polygon_i = geopandas.read_file(polygon_files[0])
+        polygon_i[self.TYPE_LABEL] = type_labels[0]
+        polygon_list = [polygon_i]
         for i in range(1, len(points_files)):
+            # Points - rename depth labels to standard if  specified
             points_i = geopandas.read_file(points_files[i])
             points_i[self.TYPE_LABEL] = type_labels[i]
             if z_labels is not None and z_labels[i] != self.DEPTH_LABEL:
                 points_i = points_i.rename(columns={z_labels[i]: self.DEPTH_LABEL})
             points_i = points_i[[self.DEPTH_LABEL, self.TYPE_LABEL, "geometry"]]
-            points = points.append(points_i)
+            points_list.append(points_i)
+            # Polygon where the points are relevent
             polygon_i = geopandas.read_file(polygon_files[i])
             polygon_i[self.TYPE_LABEL] = type_labels[i]
-            polygon = polygon.append(polygon_i)
+            polygon_list.append(polygon_i)
         # Set CRS, clip to size and reset index
+        points = geopandas.GeoDataFrame(
+            pandas.concat(points_list, ignore_index=True), crs=points_list[0].crs
+        )
         points = points.to_crs(self.catchment_geometry.crs["horizontal"])
+        polygon = geopandas.GeoDataFrame(
+            pandas.concat(polygon_list, ignore_index=True), crs=polygon_list[0].crs
+        )
         polygon = polygon.to_crs(self.catchment_geometry.crs["horizontal"])
         points = points.clip(polygon.buffer(0), keep_geom_type=True)
         points = points.clip(self.catchment_geometry.catchment, keep_geom_type=True)
