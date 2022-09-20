@@ -742,8 +742,7 @@ class LidarBase(DemBase):
         ]
         dense_extents = shapely.ops.unary_union(dense_extents)
 
-        # Remove any internal holes for select types as these may cause self
-        # intersection errors
+        # Remove internal holes for select types as these may cause self-intersections
         if type(dense_extents) is shapely.geometry.Polygon:
             dense_extents = shapely.geometry.Polygon(dense_extents.exterior)
         elif type(dense_extents) is shapely.geometry.MultiPolygon:
@@ -758,8 +757,7 @@ class LidarBase(DemBase):
             {"geometry": [dense_extents]}, crs=self.catchment_geometry.crs["horizontal"]
         )
 
-        # Apply a transform so in the same space as the dense DEM - buffer(0) to reduce
-        # self intersection warnings
+        # Move from image to the dem space & buffer(0) to reduce self-intersections
         dense_dem_affine = dem.z.rio.transform()
         dense_extents = dense_extents.affine_transform(
             [
@@ -1367,16 +1365,21 @@ class RawDem(LidarBase):
         Note expects only a few locations to interplate. Will not be efficient if lots
         missing. """
 
-        # Areas not covered by LiDAR values - as outside extents - use extents
-        # Should already be clipped to size
+        logging.info("Add a reference DEM to fill areas outside the LiDAR extents")
+        # Define the region to rasterise over
+        region_to_rasterise = (
+            self.catchment_geometry.land_and_foreshore
+            if self.drop_offshore_lidar
+            else self.catchment_geometry.catchment
+        )
+
+        # Create a mask of area not covered by LiDAR (excludes holes in LiDAR tiles)
         z = self._dem.z.copy(deep=True)
         z.data[:] = 0
         no_lidar_mask = numpy.isnan(z.rio.clip(self._extents.geometry, drop=False).data)
         z.data[:] = 0
         in_catchment_mask = numpy.logical_not(
-            numpy.isnan(
-                z.rio.clip(self.catchment_geometry.catchment.geometry, drop=False).data
-            )
+            numpy.isnan(z.rio.clip(region_to_rasterise.geometry, drop=False).data)
         )
         mask = no_lidar_mask & in_catchment_mask
 
