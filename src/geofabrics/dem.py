@@ -593,18 +593,22 @@ class HydrologicallyConditionedDem(DemBase):
 
         # First interpolated over open and closed drains using linear interpolation
         self._drain_dem = None
-        self._drain_dem = self._interpolate_estimated_bathymetry(
-            estimated_bathymetry=estimated_bathymetry,
-            method="cubic",
-            type_label="drains",
-        )
+        type_label = "drains"
+        if (estimated_bathymetry.points["type"] == type_label).any():
+            self._drain_dem = self._interpolate_estimated_bathymetry(
+                estimated_bathymetry=estimated_bathymetry,
+                method="cubic",
+                type_label=type_label,
+            )
         # Reset the river DEM
         self._river_dem = None
-        self._river_dem = self._interpolate_estimated_bathymetry(
-            estimated_bathymetry=estimated_bathymetry,
-            method="rbf",
-            type_label="rivers",
-        )
+        type_label = "rivers"
+        if (estimated_bathymetry.points["type"] == type_label).any():
+            self._river_dem = self._interpolate_estimated_bathymetry(
+                estimated_bathymetry=estimated_bathymetry,
+                method="rbf",
+                type_label=type_label,
+            )
 
     def _interpolate_estimated_bathymetry(
         self,
