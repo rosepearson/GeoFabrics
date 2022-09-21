@@ -1115,7 +1115,7 @@ class RawDem(LidarBase):
             "lidar_classifications_to_keep": lidar_classifications_to_keep,
             "raster_type": self.raster_type,
             "elevation_range": self.elevation_range,
-            "radius": self.catchment_geometry.resolution * numpy.sqrt(2),
+            "radius": self.catchment_geometry.resolution / numpy.sqrt(2),
             "method": self.lidar_interpolation_method,
         }
 
@@ -1592,7 +1592,7 @@ class RoughnessDem(LidarBase):
             "lidar_classifications_to_keep": lidar_classifications_to_keep,
             "raster_type": self.raster_type,
             "elevation_range": self.elevation_range,
-            "radius": self.catchment_geometry.resolution * numpy.sqrt(2),
+            "radius": self.catchment_geometry.resolution / numpy.sqrt(2),
         }
 
         # Set roughness where LiDAR
