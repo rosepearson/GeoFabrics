@@ -59,7 +59,7 @@ class ProcessorLocalFilesTest(unittest.TestCase):
         # Remove any files from last test, then create a results directory
         cls.cache_dir = test_path / "data"
         cls.results_dir = cls.cache_dir / "results"
-        cls.tearDownClass()
+        cls.clean_data_folder()
         cls.results_dir.mkdir()
 
         # Generate catchment data
@@ -125,11 +125,15 @@ class ProcessorLocalFilesTest(unittest.TestCase):
             attrs={"scale_factor": 1.0, "add_offset": 0.0},
         )
         dem.rio.write_crs(
-            cls.instructions["output"]["crs"]["horizontal"],
-            inplace=True,
+            cls.instructions["output"]["crs"]["horizontal"], inplace=True,
         )
+        dem.rio.write_transform(inplace=True)
+        dem.rio.write_nodata(numpy.nan, encoded=True, inplace=True)
         dem.name = "z"
-        dem.rio.to_raster(dem_file)
+        dem.to_netcdf(dem_file, format="NETCDF4", engine="netcdf4")
+        # explicitly free memory as xarray seems to be hanging onto memory
+        dem.close()
+        del dem
 
         # Create LiDAR
         lidar_file = cls.results_dir / "lidar.laz"
@@ -235,6 +239,8 @@ class ProcessorLocalFilesTest(unittest.TestCase):
         )
 
         # explicitly free memory as xarray seems to be hanging onto memory
+        test_dem.close()
+        benchmark_dem.close()
         del test_dem
         del benchmark_dem
         gc.collect()
