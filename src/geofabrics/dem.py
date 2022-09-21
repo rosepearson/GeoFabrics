@@ -1389,12 +1389,14 @@ class RawDem(LidarBase):
         # Create a mask of area not covered by LiDAR (excludes holes in LiDAR tiles)
         z = self._dem.z.copy(deep=True)
         z.data[:] = 0
-        no_lidar_mask = numpy.isnan(z.rio.clip(self._extents.geometry, drop=False).data)
+        outside_lidar_mask = numpy.isnan(
+            z.rio.clip(self._extents.geometry, drop=False).data
+        )
         z.data[:] = 0
         in_catchment_mask = numpy.logical_not(
             numpy.isnan(z.rio.clip(region_to_rasterise.geometry, drop=False).data)
         )
-        mask = no_lidar_mask & in_catchment_mask
+        mask = outside_lidar_mask & in_catchment_mask
 
         if mask.sum() == 0:
             logging.warning(
@@ -1402,13 +1404,29 @@ class RawDem(LidarBase):
                 "reference DEM is being ignored."
             )
             return
+        # create dictionary defining raster options
+        reference_resolution = reference_dem.dem.rio.resolution()
+        reference_resolution = max(
+            abs(reference_resolution[0]), abs(reference_resolution[1])
+        )
+        raster_options = {
+            "raster_type": self.raster_type,
+            "radius": reference_resolution / numpy.sqrt(2),
+            "method": "linear",  # Closest to linear interpolation
+        }
         # Get the grid locations overwhich to perform averaging
         grid_x, grid_y = numpy.meshgrid(self._dem.x, self._dem.y)
 
         # Mask to only rasterise where there aren't already LiDAR derived values
-        z_flat = numpy.empty(mask.sum())
-        for index, (x, y) in enumerate(zip(grid_x[mask], grid_y[mask])):
-            z_flat[index] = reference_dem.dem.interp(x=x, y=y, method="linear")
+        xy_out = numpy.empty((mask.sum(), 2))
+        xy_out[:, 0] = grid_x[mask]
+        xy_out[:, 1] = grid_y[mask]
+
+        # Perform specified averaging from the reference DEM where there is no data
+        z_flat = elevation_from_points(
+            point_cloud=reference_dem.points, xy_out=xy_out, options=raster_options
+        )
+
         # Update the DEM
         self._dem.z.data[mask] = z_flat
         self._dem.source_class.data[
@@ -1971,6 +1989,13 @@ def elevation_from_points(
                     tree=tree,
                     point_cloud=point_cloud,
                 )
+            elif options["method"] == "linear":
+                z_out[i] = scipy.interpolate.griddata(
+                    points=tree.data[near_indicies],
+                    values=point_cloud["Z"][near_indicies],
+                    xi=point,
+                    method="linear",
+                )
             elif options["method"] == "min":
                 z_out[i] = numpy.min(point_cloud["Z"][near_indicies])
             elif options["method"] == "max":
@@ -1996,7 +2021,7 @@ def calculate_idw(
     power: int = 2,
 ):
     """Calculate DEM elevation values at the specified locations by
-    calculating the mean. This implementation is based on the
+    calculating the IDW mean. This implementation is based on the
     scipy.spatial.KDTree"""
 
     distance_vectors = point - tree.data[near_indicies]
