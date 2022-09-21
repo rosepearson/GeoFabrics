@@ -97,7 +97,8 @@ class ReferenceDem:
             ]
             # Keep the reference DEM where there's no LiDAR & trim outside buffered area
             self._extents = buffered_land_and_foreshore.overlay(
-                exclusion_extent, how="difference",
+                exclusion_extent,
+                how="difference",
             )
         else:
             # If no LiDAR - only use the reference DEM on land
@@ -2056,14 +2057,14 @@ def calculate_idw(
 
     distance_vectors = point - tree.data[near_indices]
     smoothed_distances = numpy.sqrt(
-        ((distance_vectors ** 2).sum(axis=1) + smoothing ** 2)
+        ((distance_vectors**2).sum(axis=1) + smoothing**2)
     )
     if smoothed_distances.min() == 0:  # in the case of an exact match
         idw = point_cloud["Z"][tree.query(point, k=1)[1]]
     else:
-        idw = (point_cloud["Z"][near_indices] / (smoothed_distances ** power)).sum(
+        idw = (point_cloud["Z"][near_indices] / (smoothed_distances**power)).sum(
             axis=0
-        ) / (1 / (smoothed_distances ** power)).sum(axis=0)
+        ) / (1 / (smoothed_distances**power)).sum(axis=0)
     return idw
 
 
