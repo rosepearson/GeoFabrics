@@ -124,11 +124,12 @@ class ProcessorLocalFilesOffshoreTest(unittest.TestCase):
             attrs={"scale_factor": 1.0, "add_offset": 0.0},
         )
         dem.rio.write_crs(
-            cls.instructions["output"]["crs"]["horizontal"],
-            inplace=True,
+            cls.instructions["output"]["crs"]["horizontal"], inplace=True,
         )
+        dem.rio.write_transform(inplace=True)
+        dem.rio.write_nodata(numpy.nan, encoded=True, inplace=True)
         dem.name = "z"
-        dem.rio.to_raster(dem_file)
+        dem.to_netcdf(dem_file, format="NETCDF4", engine="netcdf4")
 
         # Create LiDAR
         lidar_file = cls.results_dir / "lidar.laz"
