@@ -53,6 +53,7 @@ class CatchmentGeometry:
 
         # values set in setup once land has been specified
         self._land = None
+        self._full_land = None
         self._foreshore = None
         self._land_and_foreshore = None
         self._foreshore_and_offshore = None
@@ -62,10 +63,10 @@ class CatchmentGeometry:
         """Define the main catchment regions and ensure the CRS is set for
         each region"""
 
-        self._land = self._land.to_crs(self.crs["horizontal"])
+        self._full_land = self._full_land.to_crs(self.crs["horizontal"])
 
         # Clip and remove any sub pixel regions
-        self._land = self._catchment.clip(self._land, keep_geom_type=True)
+        self._land = self._catchment.clip(self._full_land, keep_geom_type=True)
         self._land = self._land[self._land.area > self.resolution * self.resolution]
 
         self._foreshore_and_offshore = self.catchment.overlay(
@@ -115,11 +116,18 @@ class CatchmentGeometry:
         self._assert_land_set()
         return self._land
 
+    @property
+    def full_land(self):
+        """Return the catchment land region"""
+
+        self._assert_land_set()
+        return self._full_land
+
     @land.setter
     def land(self, land_file: typing.Union[str, pathlib.Path]):
         """Set the land region and finish setup."""
 
-        self._land = geopandas.read_file(land_file)
+        self._full_land = geopandas.read_file(land_file)
 
         self._set_up()
 

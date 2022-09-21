@@ -68,29 +68,41 @@ class ReferenceDem:
         """Return the DEM over the catchment region"""
         return self._dem
 
+    @property
+    def resolution(self) -> float:
+        """Return the largest dimension of the reference DEM resolution"""
+
+        resolution = self._dem.rio.resolution()
+        resolution = max(abs(resolution[0]), abs(resolution[1]))
+        return resolution
+
     def _set_up(self, exclusion_extent):
         """Set DEM CRS and trim the DEM to size"""
 
         self._dem.rio.set_crs(self.catchment_geometry.crs["horizontal"])
 
-        if exclusion_extent is not None:
-            # Clip within land & foreshore and remove any sub-pixel polygons
-            exclusion_extent = exclusion_extent.clip(
-                self.catchment_geometry.land_and_foreshore, keep_geom_type=True
+        # Define a buffered land & foreshore
+        buffered_land_and_foreshore = geopandas.GeoDataFrame(
+            geometry=self.catchment_geometry.land_and_foreshore.buffer(
+                self.resolution * numpy.sqrt(2)
             )
+        )
+
+        if exclusion_extent is not None:
+            # Remove any sub-pixel polygons
             exclusion_extent = exclusion_extent[
                 exclusion_extent.area
                 > self.catchment_geometry.resolution
                 * self.catchment_geometry.resolution
             ]
-            self._extents = geopandas.overlay(
-                self.catchment_geometry.land_and_foreshore,
-                exclusion_extent,
-                how="difference",
+            # Keep the reference DEM where there's no LiDAR & trim outside buffered area
+            self._extents = buffered_land_and_foreshore.overlay(
+                exclusion_extent, how="difference",
             )
         else:
-            self._extents = self.catchment_geometry.land_and_foreshore
-        self._dem = self._dem.rio.clip(self._extents.geometry)
+            # If no LiDAR - only use the reference DEM on land
+            self._extents = buffered_land_and_foreshore
+        self._dem = self._dem.rio.clip(self._extents.geometry, drop=True)
         self._extract_points()
 
     def _extract_points(self):
@@ -114,6 +126,7 @@ class ReferenceDem:
             crs=self.catchment_geometry.crs["horizontal"],
         )
 
+        # Take the values on land only - separately consider the buffered foreshore area
         if (
             self.catchment_geometry.land.area.sum() > 0
             and dem_bounds.overlay(
@@ -121,7 +134,22 @@ class ReferenceDem:
             ).area.sum()
             > 0
         ):
-            land_dem = self._dem.rio.clip(self.catchment_geometry.land.geometry)
+            # Define buffered land region - buffer to avoid edge effects
+            buffered_land = geopandas.GeoDataFrame(
+                geometry=self.catchment_geometry.land.buffer(
+                    self.resolution * numpy.sqrt(2)
+                )
+            )
+            buffered_land = buffered_land.overlay(
+                self.catchment_geometry.foreshore_and_offshore, how="difference"
+            )
+            buffered_land = buffered_land.overlay(
+                self.catchment_geometry.full_land,
+                how="intersection",
+                keep_geom_type=True,
+            )
+            # Clip DEM to buffered lanzd
+            land_dem = self._dem.rio.clip(buffered_land.geometry, drop=True)
             # get reference DEM points on land
             land_flat_z = land_dem.data.flatten()
             land_mask_z = ~numpy.isnan(land_flat_z)
@@ -134,6 +162,7 @@ class ReferenceDem:
             land_x = []
             land_y = []
             land_z = []
+        # Take the values on foreshore only - separately consider the buffered land area
         if (
             self.catchment_geometry.foreshore.area.sum() > 0
             and dem_bounds.overlay(
@@ -141,14 +170,25 @@ class ReferenceDem:
             ).area.sum()
             > 0
         ):
-            foreshore_dem = self._dem.rio.clip(
-                self.catchment_geometry.foreshore.geometry
+            # Define buffered foreshore region - buffer to avoid edge effects
+            buffered_foreshore = geopandas.GeoDataFrame(
+                geometry=self.catchment_geometry.foreshore.buffer(
+                    self.resolution * numpy.sqrt(2)
+                )
             )
+            buffered_foreshore = buffered_foreshore.overlay(
+                self.catchment_geometry.land, how="difference"
+            )
+            buffered_foreshore = buffered_foreshore.overlay(
+                self.catchment_geometry.full_land, how="difference", keep_geom_type=True
+            )
+            # Clip DEM to buffered foreshore
+            foreshore_dem = self._dem.rio.clip(buffered_foreshore.geometry, drop=True)
 
-            # get reference DEM points on the foreshore
+            # get reference DEM points on the foreshore - with any positive set to zero
             if self.set_foreshore:
-                foreshore_dem.data[0][foreshore_dem.data[0] > 0] = 0
-            foreshore_flat_z = foreshore_dem.data[0].flatten()
+                foreshore_dem.data[foreshore_dem.data > 0] = 0
+            foreshore_flat_z = foreshore_dem.data.flatten()
             foreshore_mask_z = ~numpy.isnan(foreshore_flat_z)
             foreshore_grid_x, foreshore_grid_y = numpy.meshgrid(
                 foreshore_dem.x, foreshore_dem.y
@@ -1379,24 +1419,17 @@ class RawDem(LidarBase):
         missing."""
 
         logging.info("Add a reference DEM to fill areas outside the LiDAR extents")
-        # Define the region to rasterise over
-        region_to_rasterise = (
-            self.catchment_geometry.land_and_foreshore
-            if self.drop_offshore_lidar
-            else self.catchment_geometry.catchment
+        # Only rasterise on land/foreshore and outside where there is LiDAR
+        region_to_rasterise = self.catchment_geometry.land_and_foreshore.overlay(
+            self._extents, how="difference"
         )
 
         # Create a mask of area not covered by LiDAR (excludes holes in LiDAR tiles)
         z = self._dem.z.copy(deep=True)
         z.data[:] = 0
-        outside_lidar_mask = numpy.isnan(
-            z.rio.clip(self._extents.geometry, drop=False).data
-        )
-        z.data[:] = 0
-        in_catchment_mask = numpy.logical_not(
+        mask = numpy.logical_not(
             numpy.isnan(z.rio.clip(region_to_rasterise.geometry, drop=False).data)
         )
-        mask = outside_lidar_mask & in_catchment_mask
 
         if mask.sum() == 0:
             logging.warning(
@@ -1405,13 +1438,10 @@ class RawDem(LidarBase):
             )
             return
         # create dictionary defining raster options
-        reference_resolution = reference_dem.dem.rio.resolution()
-        reference_resolution = max(
-            abs(reference_resolution[0]), abs(reference_resolution[1])
-        )
+        # Set search radius to diagonal reference cell length to ensure corners covered
         raster_options = {
             "raster_type": self.raster_type,
-            "radius": reference_resolution / numpy.sqrt(2),
+            "radius": reference_dem.resolution * numpy.sqrt(2),
             "method": "linear",  # Closest to linear interpolation
         }
         # Get the grid locations overwhich to perform averaging
@@ -1973,37 +2003,37 @@ def elevation_from_points(
     )  # , eps=0.2)
     z_out = numpy.zeros(len(xy_out), dtype=options["raster_type"])
 
-    for i, (near_indicies, point) in enumerate(zip(tree_index_list, xy_out)):
+    for i, (near_indices, point) in enumerate(zip(tree_index_list, xy_out)):
 
-        if len(near_indicies) == 0:  # Set NaN if no values in search region
+        if len(near_indices) == 0:  # Set NaN if no values in search region
             z_out[i] = numpy.nan
         else:
             if options["method"] == "mean":
-                z_out[i] = numpy.mean(point_cloud["Z"][near_indicies])
+                z_out[i] = numpy.mean(point_cloud["Z"][near_indices])
             elif options["method"] == "median":
-                z_out[i] = numpy.median(point_cloud["Z"][near_indicies])
+                z_out[i] = numpy.median(point_cloud["Z"][near_indices])
             elif options["method"] == "idw":
                 z_out[i] = calculate_idw(
-                    near_indicies=near_indicies,
+                    near_indices=near_indices,
                     point=point,
                     tree=tree,
                     point_cloud=point_cloud,
                 )
             elif options["method"] == "linear":
-                z_out[i] = scipy.interpolate.griddata(
-                    points=tree.data[near_indicies],
-                    values=point_cloud["Z"][near_indicies],
-                    xi=point,
-                    method="linear",
+                z_out[i] = calculate_linear(
+                    near_indices=near_indices,
+                    point=point,
+                    tree=tree,
+                    point_cloud=point_cloud,
                 )
             elif options["method"] == "min":
-                z_out[i] = numpy.min(point_cloud["Z"][near_indicies])
+                z_out[i] = numpy.min(point_cloud["Z"][near_indices])
             elif options["method"] == "max":
-                z_out[i] = numpy.max(point_cloud["Z"][near_indicies])
+                z_out[i] = numpy.max(point_cloud["Z"][near_indices])
             elif options["method"] == "std":
-                z_out[i] = numpy.std(point_cloud["Z"][near_indicies])
+                z_out[i] = numpy.std(point_cloud["Z"][near_indices])
             elif options["method"] == "count":
-                z_out[i] = numpy.len(point_cloud["Z"][near_indicies])
+                z_out[i] = numpy.len(point_cloud["Z"][near_indices])
             else:
                 assert (
                     False
@@ -2013,7 +2043,7 @@ def elevation_from_points(
 
 
 def calculate_idw(
-    near_indicies: list,
+    near_indices: list,
     point: numpy.ndarray,
     tree: scipy.spatial.KDTree,
     point_cloud: numpy.ndarray,
@@ -2024,17 +2054,44 @@ def calculate_idw(
     calculating the IDW mean. This implementation is based on the
     scipy.spatial.KDTree"""
 
-    distance_vectors = point - tree.data[near_indicies]
+    distance_vectors = point - tree.data[near_indices]
     smoothed_distances = numpy.sqrt(
-        ((distance_vectors**2).sum(axis=1) + smoothing**2)
+        ((distance_vectors ** 2).sum(axis=1) + smoothing ** 2)
     )
     if smoothed_distances.min() == 0:  # in the case of an exact match
         idw = point_cloud["Z"][tree.query(point, k=1)[1]]
     else:
-        idw = (point_cloud["Z"][near_indicies] / (smoothed_distances**power)).sum(
+        idw = (point_cloud["Z"][near_indices] / (smoothed_distances ** power)).sum(
             axis=0
-        ) / (1 / (smoothed_distances**power)).sum(axis=0)
+        ) / (1 / (smoothed_distances ** power)).sum(axis=0)
     return idw
+
+
+def calculate_linear(
+    near_indices: list,
+    point: numpy.ndarray,
+    tree: scipy.spatial.KDTree,
+    point_cloud: numpy.ndarray,
+):
+    """Calculate DEM elevation values at the specified locations by
+    linear interpolation. Take the straight mean if note enough points for linear
+    interpolation or if points are colinear."""
+
+    if len(near_indices) > 3:  # There are enough points for a linear interpolation
+        linear = scipy.interpolate.griddata(
+            points=tree.data[near_indices],
+            values=point_cloud["Z"][near_indices],
+            xi=point,
+            method="linear",
+        )[0]
+    elif len(near_indices) == 1:
+        linear = point_cloud["Z"][near_indices][0]
+    elif len(near_indices) == 0:
+        linear = numpy.nan
+    # NaN will have occured if colinear points - replace with straight mean
+    if numpy.isnan(linear) and len(near_indices) > 0:
+        linear = numpy.mean(point_cloud["Z"][near_indices])
+    return linear
 
 
 def load_tiles_in_chunk(
