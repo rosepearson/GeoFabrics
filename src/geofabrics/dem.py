@@ -421,12 +421,15 @@ class HydrologicallyConditionedDem(DemBase):
         if (
             self.interpolation_method is not None
         ):  # methods are 'nearest', 'linear' and 'cubic'
-            self._dem.source_class.data[
-                numpy.isnan(self._dem.z.data)
-            ] = self.SOURCE_CLASSIFICATION["interpolated"]
+            interpolation_mask = numpy.isnan(self._dem.z.data)
             self._dem["z"] = self._dem.z.rio.interpolate_na(
                 method=self.interpolation_method
             )
+            # Only set areas with successful interpolation as interpolated
+            interpolation_mask &= numpy.logical_not(numpy.isnan(self._dem.z.data))
+            self._dem.source_class.data[
+                interpolation_mask
+            ] = self.SOURCE_CLASSIFICATION["interpolated"]
         self._dem = self._dem.rio.clip(
             self.catchment_geometry.catchment.geometry, drop=True
         )
