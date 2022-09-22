@@ -39,36 +39,36 @@ Classes
    functions for downloading remote data using geopais, and constructing data
    file lists.
 
-   .. py:method:: create_metadata(self)
+   .. py:method:: create_metadata()
 
       A clase to create metadata to be added as netCDF attributes.
 
 
-   .. py:method:: get_instruction_path(self, key)
+   .. py:method:: get_instruction_path(key)
 
       Return the file path from the instruction file, or default if there
       is a default value and the local cache is specified. Raise an error if
       the key is not in the instructions.
 
 
-   .. py:method:: check_instruction_path(self, key)
+   .. py:method:: check_instruction_path(key)
 
       Return True if the file path exists in the instruction file, or True
       if there is a default value and the local cache is specified.
 
 
-   .. py:method:: create_results_folder(self)
+   .. py:method:: create_results_folder()
 
       Ensure the results folder has been created.
 
 
-   .. py:method:: get_resolution(self)
+   .. py:method:: get_resolution()
 
       Return the resolution from the instruction file. Raise an error if
       not in the instructions.
 
 
-   .. py:method:: get_crs(self)
+   .. py:method:: get_crs()
 
       Return the CRS projection information (horiztonal and vertical) from
       the instruction file. Raise an error if 'output' is not in the instructions. If
@@ -77,7 +77,7 @@ Classes
       added to the instructions.
 
 
-   .. py:method:: get_instruction_general(self, key)
+   .. py:method:: get_instruction_general(key)
 
       Return the general instruction from the instruction file or return
       the default value if not specified in the instruction file. Raise an
@@ -85,40 +85,40 @@ Classes
       value. If the default is used it is added to the instructions.
 
 
-   .. py:method:: get_processing_instructions(self, key)
+   .. py:method:: get_processing_instructions(key)
 
       Return the processing instruction from the instruction file or
       return the default value if not specified in the instruction file. If
       the default is used it is added to the instructions.
 
 
-   .. py:method:: check_apis(self, key)
+   .. py:method:: check_apis(key)
 
       Check to see if APIs are included in the instructions and if the key is
       included in specified apis
 
 
-   .. py:method:: check_vector(self, key)
+   .. py:method:: check_vector(key)
 
       Check to see if vector key (i.e. land, bathymetry_contours, etc) is included
       either as a file path, or within any of the vector API's (i.e. LINZ or LRIS).
 
 
-   .. py:method:: get_vector_paths(self, key)
+   .. py:method:: get_vector_paths(key)
 
       Get the path to the vector key data included either as a file path or as a
       LINZ API. Return all paths where the vector key is specified. In the case that
       an API is specified ensure the data is fetched as well.
 
 
-   .. py:method:: get_lidar_dataset_crs(self, data_service, dataset_name)
+   .. py:method:: get_lidar_dataset_crs(data_service, dataset_name)
 
       Checks to see if source CRS of an associated LiDAR datasets has be specified
       in the instruction file. If it has been specified, this CRS is returned, and
       will later be used to override the CRS encoded in the LAS files.
 
 
-   .. py:method:: get_lidar_file_list(self, data_service)
+   .. py:method:: get_lidar_file_list(data_service)
 
       Return a dictionary with three enties 'file_paths', 'crs' and
       'tile_index_file'. The 'file_paths' contains a list of LiDAR tiles to process.
@@ -138,7 +138,7 @@ Classes
       the instruction 'data_paths' is checked for 'lidars' and these are returned.
 
 
-   .. py:method:: run(self)
+   .. py:method:: run()
       :abstractmethod:
 
       This method controls the processor execution and code-flow.
@@ -165,7 +165,7 @@ Classes
    See the README.md for usage examples or GeoFabrics/tests/ for examples of usage and
    an instruction file.
 
-   .. py:method:: run(self)
+   .. py:method:: run()
 
       This method executes the geofabrics generation pipeline to produce geofabric
       derivatives.
@@ -195,12 +195,12 @@ Classes
    See the README.md for usage examples or GeoFabrics/tests/ for examples of usage and
    an instruction file
 
-   .. py:method:: add_bathymetry(self, area_threshold, catchment_dirs)
+   .. py:method:: add_bathymetry(area_threshold, catchment_dirs)
 
       Add in any bathymetry data - ocean or river
 
 
-   .. py:method:: run(self)
+   .. py:method:: run()
 
       This method executes the geofabrics generation pipeline to produce geofabric
       derivatives.
@@ -222,7 +222,7 @@ Classes
     * roughness_dem - Adds a roughness layer to the hydrologically conditioned DEM.
 
 
-   .. py:method:: run(self)
+   .. py:method:: run()
 
       This method executes the geofabrics generation pipeline to produce geofabric
       derivatives.
@@ -259,17 +259,17 @@ Classes
 
       samples of the DEM values
 
-   .. py:method:: channel_characteristics_exist(self)
+   .. py:method:: channel_characteristics_exist()
 
       Return true if the DEMs are required for later processing
 
 
-   .. py:method:: channel_bathymetry_exist(self)
+   .. py:method:: channel_bathymetry_exist()
 
       Return true if the river channel and bathymetry files exist.
 
 
-   .. py:method:: alignment_exists(self)
+   .. py:method:: alignment_exists()
 
       Return true if the DEMs are required for later processing
 
@@ -277,7 +277,7 @@ Classes
       :param instructions  The json instructions defining the behaviour:
 
 
-   .. py:method:: get_result_file_name(self, key = None, name = None)
+   .. py:method:: get_result_file_name(key = None, name = None)
 
       Return the file name of the file to save.
 
@@ -285,7 +285,7 @@ Classes
       :param instructions  The json instructions defining the behaviour:
 
 
-   .. py:method:: get_result_file_path(self, key = None, name = None)
+   .. py:method:: get_result_file_path(key = None, name = None)
 
       Return the file name of the file to save with the local cache path.
 
@@ -293,7 +293,7 @@ Classes
       :param instructions  The json instructions defining the behaviour:
 
 
-   .. py:method:: get_bathymetry_instruction(self, key)
+   .. py:method:: get_bathymetry_instruction(key)
 
       Return true if the DEMs are required for later processing
 
@@ -301,12 +301,12 @@ Classes
       :param instructions  The json instructions defining the behaviour:
 
 
-   .. py:method:: get_rec_channel(self)
+   .. py:method:: get_rec_channel()
 
       Read in or create a rec channel.
 
 
-   .. py:method:: get_dems(self, buffer, channel)
+   .. py:method:: get_dems(buffer, channel)
 
       Allow selection of the ground or vegetation DEM, and either create
       or load it.
@@ -315,7 +315,7 @@ Classes
       :param instructions  The json instructions defining the behaviour:
 
 
-   .. py:method:: align_channel(self, channel_width, channel, buffer)
+   .. py:method:: align_channel(channel_width, channel, buffer)
 
       Align the REC defined channel based on LiDAR and save the aligned
       channel.
@@ -325,7 +325,7 @@ Classes
       :param channel  The REC defined channel alignment:
 
 
-   .. py:method:: calculate_channel_characteristics(self, channel_width, aligned_channel, buffer)
+   .. py:method:: calculate_channel_characteristics(channel_width, aligned_channel, buffer)
 
       Align the REC defined channel based on LiDAR and save the aligned
       channel.
@@ -335,7 +335,7 @@ Classes
       :param channel  The REC defined channel alignment:
 
 
-   .. py:method:: characterise_channel(self, buffer)
+   .. py:method:: characterise_channel(buffer)
 
       Calculate the channel width, slope and other characteristics. This requires a
       ground and vegetation DEM. This also may require alignment of the channel
@@ -345,7 +345,7 @@ Classes
       :param buffer  The amount of extra space to create around the river catchment:
 
 
-   .. py:method:: align_channel_from_rec(self, buffer)
+   .. py:method:: align_channel_from_rec(buffer)
 
       Calculate the channel width, slope and other characteristics. This requires a
       ground and vegetation DEM. This also may require alignment of the channel
@@ -355,7 +355,7 @@ Classes
       :param buffer  The amount of extra space to create around the river catchment:
 
 
-   .. py:method:: align_channel_from_osm(self, buffer)
+   .. py:method:: align_channel_from_osm(buffer)
 
       Calculate the channel width, slope and other characteristics. This requires a
       ground and vegetation DEM. This also may require alignment of the channel
@@ -365,19 +365,19 @@ Classes
       :param buffer  The amount of extra space to create around the river catchment:
 
 
-   .. py:method:: calculate_river_bed_elevations(self)
+   .. py:method:: calculate_river_bed_elevations()
 
       Calculate and save depth estimates along the channel using various
       approaches.
 
 
 
-   .. py:method:: estimate_river_mouth_fan(self)
+   .. py:method:: estimate_river_mouth_fan()
 
       Calculate and save depth estimates along the river mouth fan.
 
 
-   .. py:method:: run(self)
+   .. py:method:: run()
 
       This method extracts a main channel then executes the DemGeneration
       pipeline to produce a DEM before sampling this to extimate width, slope
@@ -394,52 +394,52 @@ Classes
    unblock drains and tunnels.
 
 
-   .. py:method:: get_result_file_name(self, key)
+   .. py:method:: get_result_file_name(key)
 
       Return the name of the file to save.
 
 
-   .. py:method:: get_result_file_path(self, key)
+   .. py:method:: get_result_file_path(key)
 
       Return the file name of the file to save with the local cache path.
 
       :param instructions  The json instructions defining the behaviour:
 
 
-   .. py:method:: drain_bathymetry_exists(self)
+   .. py:method:: drain_bathymetry_exists()
 
       Check to see if the drain and culvert bathymeties have already been
       estimated.
 
 
-   .. py:method:: minimum_elevation_in_polygon(self, geometry, dem)
+   .. py:method:: minimum_elevation_in_polygon(geometry, dem)
 
       Determine the minimum value in each polygon. Select only coordinates
       within the polygon bounding box before clipping to the bounding box and
       then returning the minimum elevation.
 
 
-   .. py:method:: estimate_closed_bathymetry(self, drains, dem)
+   .. py:method:: estimate_closed_bathymetry(drains, dem)
 
       Sample the DEM around the tunnels to estimate the bed elevation.
 
 
-   .. py:method:: estimate_open_bathymetry(self, drains, dem)
+   .. py:method:: estimate_open_bathymetry(drains, dem)
 
       Sample the DEM along the open waterways to enforce a decreasing elevation.
 
 
-   .. py:method:: create_dem(self, drains)
+   .. py:method:: create_dem(drains)
 
       Create and return a DEM at a resolution 1.5x the drain width.
 
 
-   .. py:method:: download_osm_values(self)
+   .. py:method:: download_osm_values()
 
       Download OpenStreetMap drains and tunnels within the catchment BBox.
 
 
-   .. py:method:: run(self)
+   .. py:method:: run()
 
       This method runs a pipeline that:
       * downloads all tunnels and drains within a catchment.

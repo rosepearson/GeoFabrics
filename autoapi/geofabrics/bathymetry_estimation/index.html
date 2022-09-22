@@ -102,7 +102,7 @@ information.</p>
 </dl>
 <dl class="py method">
 <dt class="sig sig-object py" id="geofabrics.bathymetry_estimation.Channel.from_rec">
-<em class="property"><span class="pre">classmethod</span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">from_rec</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">cls</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">rec_network</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">reach_id</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">resolution</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">area_threshold</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">max_iterations</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">10000</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#geofabrics.bathymetry_estimation.Channel.from_rec" title="Permalink to this definition"></a></dt>
+<em class="property"><span class="pre">classmethod</span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">from_rec</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">rec_network</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">reach_id</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">resolution</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">area_threshold</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">max_iterations</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">10000</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#geofabrics.bathymetry_estimation.Channel.from_rec" title="Permalink to this definition"></a></dt>
 <dd><p>Create a channel object from a REC file.</p>
 <dl class="field-list simple">
 <dt class="field-odd">Parameters</dt>
@@ -122,7 +122,7 @@ upstream.</p></li>
 
 <dl class="py method">
 <dt class="sig sig-object py" id="geofabrics.bathymetry_estimation.Channel.get_sampled_spline_fit">
-<span class="sig-name descname"><span class="pre">get_sampled_spline_fit</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">self</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#geofabrics.bathymetry_estimation.Channel.get_sampled_spline_fit" title="Permalink to this definition"></a></dt>
+<span class="sig-name descname"><span class="pre">get_sampled_spline_fit</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="headerlink" href="#geofabrics.bathymetry_estimation.Channel.get_sampled_spline_fit" title="Permalink to this definition"></a></dt>
 <dd><p>Return the smoothed channel sampled at the resolution after it has
 been fit with a spline between corner points.</p>
 <dl class="field-list simple">
@@ -135,7 +135,7 @@ the channel catchment.</p>
 
 <dl class="py method">
 <dt class="sig sig-object py" id="geofabrics.bathymetry_estimation.Channel.get_smoothed_spline_fit">
-<span class="sig-name descname"><span class="pre">get_smoothed_spline_fit</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">self</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">smoothing_multiplier</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#geofabrics.bathymetry_estimation.Channel.get_smoothed_spline_fit" title="Permalink to this definition"></a></dt>
+<span class="sig-name descname"><span class="pre">get_smoothed_spline_fit</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">smoothing_multiplier</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#geofabrics.bathymetry_estimation.Channel.get_smoothed_spline_fit" title="Permalink to this definition"></a></dt>
 <dd><p>Return the spline smoothed aligned_centreline sampled at the
 resolution.</p>
 <dl class="field-list simple">
@@ -147,7 +147,7 @@ resolution.</p>
 
 <dl class="py method">
 <dt class="sig sig-object py" id="geofabrics.bathymetry_estimation.Channel.get_channel_catchment">
-<span class="sig-name descname"><span class="pre">get_channel_catchment</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">self</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">corridor_radius</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#geofabrics.bathymetry_estimation.Channel.get_channel_catchment" title="Permalink to this definition"></a></dt>
+<span class="sig-name descname"><span class="pre">get_channel_catchment</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">corridor_radius</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#geofabrics.bathymetry_estimation.Channel.get_channel_catchment" title="Permalink to this definition"></a></dt>
 <dd><p>Create a catchment from the smooth channel and the specified
 radius.</p>
 <dl class="field-list simple">
@@ -160,7 +160,7 @@ the channel catchment.</p>
 
 <dl class="py method">
 <dt class="sig sig-object py" id="geofabrics.bathymetry_estimation.Channel.get_spaced_points">
-<span class="sig-name descname"><span class="pre">get_spaced_points</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">self</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">channel</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">spacing</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">sampling_direction</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#geofabrics.bathymetry_estimation.Channel.get_spaced_points" title="Permalink to this definition"></a></dt>
+<span class="sig-name descname"><span class="pre">get_spaced_points</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">channel</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">spacing</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">sampling_direction</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#geofabrics.bathymetry_estimation.Channel.get_spaced_points" title="Permalink to this definition"></a></dt>
 <dd><p>Sample at the specified spacing along the entire line.</p>
 <dl class="field-list simple">
 <dt class="field-odd">Parameters</dt>
@@ -180,7 +180,7 @@ the channel catchment.</p>
 
 <dl class="py method">
 <dt class="sig sig-object py" id="geofabrics.bathymetry_estimation.Channel.get_spaced_points_with_corners">
-<span class="sig-name descname"><span class="pre">get_spaced_points_with_corners</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">self</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">channel</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">spacing</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">sampling_direction</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#geofabrics.bathymetry_estimation.Channel.get_spaced_points_with_corners" title="Permalink to this definition"></a></dt>
+<span class="sig-name descname"><span class="pre">get_spaced_points_with_corners</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">channel</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">spacing</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">sampling_direction</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#geofabrics.bathymetry_estimation.Channel.get_spaced_points_with_corners" title="Permalink to this definition"></a></dt>
 <dd><p>Sample at the specified spacing along each straight segment.</p>
 <dl class="field-list simple">
 <dt class="field-odd">Parameters</dt>
@@ -218,7 +218,7 @@ channel from a detailed DEM and a river network.</p>
 </dl>
 <dl class="py method">
 <dt class="sig sig-object py" id="geofabrics.bathymetry_estimation.ChannelCharacteristics.number_of_samples">
-<em class="property"><span class="pre">property</span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">number_of_samples</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">self</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#geofabrics.bathymetry_estimation.ChannelCharacteristics.number_of_samples" title="Permalink to this definition"></a></dt>
+<em class="property"><span class="pre">property</span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">number_of_samples</span></span><a class="headerlink" href="#geofabrics.bathymetry_estimation.ChannelCharacteristics.number_of_samples" title="Permalink to this definition"></a></dt>
 <dd><p>Return the number of samples to take along cross_sections. This should
 be an odd number. Subtract 1 instead of adding to ensure within the
 generated DEM.</p>
@@ -231,7 +231,7 @@ generated DEM.</p>
 
 <dl class="py method">
 <dt class="sig sig-object py" id="geofabrics.bathymetry_estimation.ChannelCharacteristics.calculate_min_z_start_i">
-<span class="sig-name descname"><span class="pre">calculate_min_z_start_i</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">self</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">min_z_search_radius</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#geofabrics.bathymetry_estimation.ChannelCharacteristics.calculate_min_z_start_i" title="Permalink to this definition"></a></dt>
+<span class="sig-name descname"><span class="pre">calculate_min_z_start_i</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">min_z_search_radius</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#geofabrics.bathymetry_estimation.ChannelCharacteristics.calculate_min_z_start_i" title="Permalink to this definition"></a></dt>
 <dd><p>Return the starting index of samples along each transect to begin
 looking for the minimum z.</p>
 <dl class="field-list simple">
@@ -246,7 +246,7 @@ looking for the minimum z.</p>
 
 <dl class="py method">
 <dt class="sig sig-object py" id="geofabrics.bathymetry_estimation.ChannelCharacteristics.calculate_min_z_stop_i">
-<span class="sig-name descname"><span class="pre">calculate_min_z_stop_i</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">self</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">min_z_search_radius</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#geofabrics.bathymetry_estimation.ChannelCharacteristics.calculate_min_z_stop_i" title="Permalink to this definition"></a></dt>
+<span class="sig-name descname"><span class="pre">calculate_min_z_stop_i</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">min_z_search_radius</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#geofabrics.bathymetry_estimation.ChannelCharacteristics.calculate_min_z_stop_i" title="Permalink to this definition"></a></dt>
 <dd><p>Return the stopping index of samples along each transect to begin
 looking for the minimum z.</p>
 <dl class="field-list simple">
@@ -261,7 +261,7 @@ looking for the minimum z.</p>
 
 <dl class="py method">
 <dt class="sig sig-object py" id="geofabrics.bathymetry_estimation.ChannelCharacteristics.centre_index">
-<em class="property"><span class="pre">property</span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">centre_index</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">self</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#geofabrics.bathymetry_estimation.ChannelCharacteristics.centre_index" title="Permalink to this definition"></a></dt>
+<em class="property"><span class="pre">property</span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">centre_index</span></span><a class="headerlink" href="#geofabrics.bathymetry_estimation.ChannelCharacteristics.centre_index" title="Permalink to this definition"></a></dt>
 <dd><p>Return the centre index for samples taken along a transect.</p>
 <dl class="field-list simple">
 <dt class="field-odd">Return type</dt>
@@ -272,7 +272,7 @@ looking for the minimum z.</p>
 
 <dl class="py method">
 <dt class="sig sig-object py" id="geofabrics.bathymetry_estimation.ChannelCharacteristics.node_centred_reach_cross_section">
-<span class="sig-name descname"><span class="pre">node_centred_reach_cross_section</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">self</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">sampled_channel</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#geofabrics.bathymetry_estimation.ChannelCharacteristics.node_centred_reach_cross_section" title="Permalink to this definition"></a></dt>
+<span class="sig-name descname"><span class="pre">node_centred_reach_cross_section</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">sampled_channel</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#geofabrics.bathymetry_estimation.ChannelCharacteristics.node_centred_reach_cross_section" title="Permalink to this definition"></a></dt>
 <dd><p>Calculate cross_sections along a channel at the midpoint of each
 segment.</p>
 <dl class="field-list simple">
@@ -285,7 +285,7 @@ separately.</p>
 
 <dl class="py method">
 <dt class="sig sig-object py" id="geofabrics.bathymetry_estimation.ChannelCharacteristics.sample_cross_sections">
-<span class="sig-name descname"><span class="pre">sample_cross_sections</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">self</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">cross_sections</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">min_z_search_radius</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#geofabrics.bathymetry_estimation.ChannelCharacteristics.sample_cross_sections" title="Permalink to this definition"></a></dt>
+<span class="sig-name descname"><span class="pre">sample_cross_sections</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">cross_sections</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">min_z_search_radius</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#geofabrics.bathymetry_estimation.ChannelCharacteristics.sample_cross_sections" title="Permalink to this definition"></a></dt>
 <dd><p>Return the elevations along the cross_section sampled at the
 sampling resolution. Also add the measured ‘min_z_centre’ values to
 the cross_sections.</p>
@@ -301,7 +301,7 @@ the cross_sections.</p>
 
 <dl class="py method">
 <dt class="sig sig-object py" id="geofabrics.bathymetry_estimation.ChannelCharacteristics.fixed_thresholded_widths_from_centre_within_radius">
-<span class="sig-name descname"><span class="pre">fixed_thresholded_widths_from_centre_within_radius</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">self</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">cross_sections</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">cross_section_elevations</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">threshold</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">resolution</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">search_radius</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">min_channel_width</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#geofabrics.bathymetry_estimation.ChannelCharacteristics.fixed_thresholded_widths_from_centre_within_radius" title="Permalink to this definition"></a></dt>
+<span class="sig-name descname"><span class="pre">fixed_thresholded_widths_from_centre_within_radius</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">cross_sections</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">cross_section_elevations</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">threshold</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">resolution</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">search_radius</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">min_channel_width</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#geofabrics.bathymetry_estimation.ChannelCharacteristics.fixed_thresholded_widths_from_centre_within_radius" title="Permalink to this definition"></a></dt>
 <dd><p>Estimate width based on a thresbold of bank height above water level.
 Start in the centre and work out. Doesn’t detect banks until a value
 less than the threshold has been detected. Takes the widest channel within
@@ -322,7 +322,7 @@ the radius.’</p>
 
 <dl class="py method">
 <dt class="sig sig-object py" id="geofabrics.bathymetry_estimation.ChannelCharacteristics.variable_thresholded_widths_from_centre_within_radius">
-<span class="sig-name descname"><span class="pre">variable_thresholded_widths_from_centre_within_radius</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">self</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">cross_sections</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">cross_section_elevations</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">threshold</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">resolution</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">search_radius</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">maximum_threshold</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">min_channel_width</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">float</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#geofabrics.bathymetry_estimation.ChannelCharacteristics.variable_thresholded_widths_from_centre_within_radius" title="Permalink to this definition"></a></dt>
+<span class="sig-name descname"><span class="pre">variable_thresholded_widths_from_centre_within_radius</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">cross_sections</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">cross_section_elevations</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">threshold</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">resolution</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">search_radius</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">maximum_threshold</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">min_channel_width</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">float</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#geofabrics.bathymetry_estimation.ChannelCharacteristics.variable_thresholded_widths_from_centre_within_radius" title="Permalink to this definition"></a></dt>
 <dd><p>Estimate width based on a thresbold of bank height above water level.
 Start in the centre and work out. Doesn’t detect banks until a value
 less than the threshold has been detected. Takes the widest channel within
@@ -344,7 +344,7 @@ the radius.’</p>
 
 <dl class="py method">
 <dt class="sig sig-object py" id="geofabrics.bathymetry_estimation.ChannelCharacteristics.fixed_threshold_width">
-<span class="sig-name descname"><span class="pre">fixed_threshold_width</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">self</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">gnd_samples</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">veg_samples</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">start_index</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">z_water</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">threshold</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">search_radius_index</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">min_channel_width</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#geofabrics.bathymetry_estimation.ChannelCharacteristics.fixed_threshold_width" title="Permalink to this definition"></a></dt>
+<span class="sig-name descname"><span class="pre">fixed_threshold_width</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">gnd_samples</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">veg_samples</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">start_index</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">z_water</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">threshold</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">search_radius_index</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">min_channel_width</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#geofabrics.bathymetry_estimation.ChannelCharacteristics.fixed_threshold_width" title="Permalink to this definition"></a></dt>
 <dd><p>Calculate the maximum width for a cross section given a fixed
 threshold - checking outwards, forwards and backwards within the
 search radius.</p>
@@ -366,7 +366,7 @@ from the start_index</p></li>
 
 <dl class="py method">
 <dt class="sig sig-object py" id="geofabrics.bathymetry_estimation.ChannelCharacteristics.fixed_threshold_width_outwards">
-<span class="sig-name descname"><span class="pre">fixed_threshold_width_outwards</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">self</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">gnd_samples</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">veg_samples</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">start_index</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">z_water</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">threshold</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#geofabrics.bathymetry_estimation.ChannelCharacteristics.fixed_threshold_width_outwards" title="Permalink to this definition"></a></dt>
+<span class="sig-name descname"><span class="pre">fixed_threshold_width_outwards</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">gnd_samples</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">veg_samples</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">start_index</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">z_water</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">threshold</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#geofabrics.bathymetry_estimation.ChannelCharacteristics.fixed_threshold_width_outwards" title="Permalink to this definition"></a></dt>
 <dd><p>If the start_index is nan or less than the threshold, then cycle
 outwards until each side has gone above the threshold.</p>
 <dl class="field-list simple">
@@ -384,7 +384,7 @@ outwards until each side has gone above the threshold.</p>
 
 <dl class="py method">
 <dt class="sig sig-object py" id="geofabrics.bathymetry_estimation.ChannelCharacteristics.fixed_threshold_width_forwards">
-<span class="sig-name descname"><span class="pre">fixed_threshold_width_forwards</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">self</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">gnd_samples</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">veg_samples</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">start_index</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">z_water</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">threshold</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">stop_index</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#geofabrics.bathymetry_estimation.ChannelCharacteristics.fixed_threshold_width_forwards" title="Permalink to this definition"></a></dt>
+<span class="sig-name descname"><span class="pre">fixed_threshold_width_forwards</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">gnd_samples</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">veg_samples</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">start_index</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">z_water</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">threshold</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">stop_index</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#geofabrics.bathymetry_estimation.ChannelCharacteristics.fixed_threshold_width_forwards" title="Permalink to this definition"></a></dt>
 <dd><p>Check for channels approaching forward.</p>
 <dl class="field-list simple">
 <dt class="field-odd">Parameters</dt>
@@ -402,7 +402,7 @@ outwards until each side has gone above the threshold.</p>
 
 <dl class="py method">
 <dt class="sig sig-object py" id="geofabrics.bathymetry_estimation.ChannelCharacteristics.fixed_threshold_width_backwards">
-<span class="sig-name descname"><span class="pre">fixed_threshold_width_backwards</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">self</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">gnd_samples</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">veg_samples</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">start_index</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">z_water</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">threshold</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">stop_index</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#geofabrics.bathymetry_estimation.ChannelCharacteristics.fixed_threshold_width_backwards" title="Permalink to this definition"></a></dt>
+<span class="sig-name descname"><span class="pre">fixed_threshold_width_backwards</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">gnd_samples</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">veg_samples</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">start_index</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">z_water</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">threshold</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">stop_index</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#geofabrics.bathymetry_estimation.ChannelCharacteristics.fixed_threshold_width_backwards" title="Permalink to this definition"></a></dt>
 <dd><p>Check for channels approaching backwards.</p>
 <dl class="field-list simple">
 <dt class="field-odd">Parameters</dt>
@@ -420,7 +420,7 @@ outwards until each side has gone above the threshold.</p>
 
 <dl class="py method">
 <dt class="sig sig-object py" id="geofabrics.bathymetry_estimation.ChannelCharacteristics.align_channel">
-<span class="sig-name descname"><span class="pre">align_channel</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">self</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">threshold</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">search_radius</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">min_channel_width</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">initial_channel</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">width_centre_smoothing_multiplier</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">cross_section_radius</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#geofabrics.bathymetry_estimation.ChannelCharacteristics.align_channel" title="Permalink to this definition"></a></dt>
+<span class="sig-name descname"><span class="pre">align_channel</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">threshold</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">search_radius</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">min_channel_width</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">initial_channel</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">width_centre_smoothing_multiplier</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">cross_section_radius</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#geofabrics.bathymetry_estimation.ChannelCharacteristics.align_channel" title="Permalink to this definition"></a></dt>
 <dd><p>Estimate the channel centre from transect samples</p>
 <dl class="field-list simple">
 <dt class="field-odd">Parameters</dt>
@@ -440,7 +440,7 @@ sample.</p></li>
 
 <dl class="py method">
 <dt class="sig sig-object py" id="geofabrics.bathymetry_estimation.ChannelCharacteristics.estimate_width_and_slope">
-<span class="sig-name descname"><span class="pre">estimate_width_and_slope</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">self</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">aligned_channel</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">threshold</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">max_threshold</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">cross_section_radius</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">search_radius</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">min_channel_width</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">river_polygon_smoothing_multiplier</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#geofabrics.bathymetry_estimation.ChannelCharacteristics.estimate_width_and_slope" title="Permalink to this definition"></a></dt>
+<span class="sig-name descname"><span class="pre">estimate_width_and_slope</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">aligned_channel</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">threshold</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">max_threshold</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">cross_section_radius</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">search_radius</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">min_channel_width</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">river_polygon_smoothing_multiplier</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#geofabrics.bathymetry_estimation.ChannelCharacteristics.estimate_width_and_slope" title="Permalink to this definition"></a></dt>
 <dd><p>Estimate the channel centre from transect samples</p>
 <dl class="field-list simple">
 <dt class="field-odd">Parameters</dt>

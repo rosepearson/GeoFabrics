@@ -36,6 +36,7 @@ Functions
    geofabrics.dem.roughness_from_points
    geofabrics.dem.elevation_from_points
    geofabrics.dem.calculate_idw
+   geofabrics.dem.calculate_linear
    geofabrics.dem.load_tiles_in_chunk
    geofabrics.dem.roughness_over_chunk
    geofabrics.dem.elevation_over_chunk
@@ -61,19 +62,31 @@ Attributes
 
    If set_foreshore is True all positive DEM values in the foreshore are set to zero.
 
-   .. py:method:: __del__(self)
+   .. py:method:: __del__()
 
       Ensure the memory associated with netCDF files is properly freed.
 
 
-   .. py:method:: points(self)
+   .. py:method:: dem()
+      :property:
+
+      Return the DEM over the catchment region
+
+
+   .. py:method:: resolution()
+      :property:
+
+      Return the largest dimension of the reference DEM resolution
+
+
+   .. py:method:: points()
       :property:
 
       The reference DEM points after any extent or foreshore value
       filtering.
 
 
-   .. py:method:: extents(self)
+   .. py:method:: extents()
       :property:
 
       The extents for the reference DEM
@@ -93,13 +106,13 @@ Attributes
                               regions
    :param extents: Defines the extents of any dense (LiDAR or refernence DEM) values already added.
 
-   .. py:method:: extents(self)
+   .. py:method:: extents()
       :property:
 
       The combined extents for all added LiDAR tiles
 
 
-   .. py:method:: dem(self)
+   .. py:method:: dem()
       :property:
 
       Return the DEM over the catchment region
@@ -118,35 +131,35 @@ Attributes
                                            If not None, interpolate using that method. Valid options are 'linear',
                                            'nearest', and 'cubic'
 
-   .. py:method:: __del__(self)
+   .. py:method:: __del__()
 
       Ensure the memory associated with netCDF files is properly freed.
 
 
-   .. py:method:: dem(self)
+   .. py:method:: dem()
       :property:
 
       Return the combined DEM from tiles and any interpolated offshore values
 
 
-   .. py:method:: combine_dem_parts(self)
+   .. py:method:: combine_dem_parts()
 
       Return the combined DEM from all layers that exist.
 
 
-   .. py:method:: interpolate_bathymetry_points(self, bathymetry_points, flat_x_array, flat_y_array, method)
+   .. py:method:: interpolate_bathymetry_points(bathymetry_points, flat_x_array, flat_y_array, method)
 
       Interpolate the bathymetry points at the specified locations using the
       specified method.
 
 
-   .. py:method:: interpolate_ocean_bathymetry(self, bathy_contours)
+   .. py:method:: interpolate_ocean_bathymetry(bathy_contours)
 
       Performs interpolation offshore outside LiDAR extents using the SciPy RBF
       function.
 
 
-   .. py:method:: interpolate_river_bathymetry(self, estimated_bathymetry)
+   .. py:method:: interpolate_river_bathymetry(estimated_bathymetry)
 
       Performs interpolation over drains, culverts, rivers and river fan
       polygons using various interpolation techniques.
@@ -162,18 +175,18 @@ Attributes
    :param catchment_geometry: Defines the geometry of the catchment
    :param elevation_range: The range of valid LiDAR elevations. i.e. define elevation filtering to apply.
 
-   .. py:method:: __del__(self)
+   .. py:method:: __del__()
 
       Ensure the memory associated with netCDF files is properly freed.
 
 
-   .. py:method:: dem(self)
+   .. py:method:: dem()
       :property:
 
       Return the combined DEM from tiles and any interpolated offshore values
 
 
-   .. py:method:: add_lidar(self, lidar_files, tile_index_file, chunk_size, lidar_classifications_to_keep, source_crs, metadata)
+   .. py:method:: add_lidar(lidar_files, tile_index_file, chunk_size, lidar_classifications_to_keep, source_crs, metadata)
       :abstractmethod:
 
       Read in all LiDAR files and use to create a dense DEM.
@@ -203,7 +216,7 @@ Attributes
    :param lidar_interpolation_method: The interpolation method to apply to LiDAR during downsampling/averaging.
                                       Options are: mean, median, IDW, max, min, STD.
 
-   .. py:method:: add_lidar(self, lidar_files, tile_index_file, chunk_size, lidar_classifications_to_keep, source_crs, metadata)
+   .. py:method:: add_lidar(lidar_files, tile_index_file, chunk_size, lidar_classifications_to_keep, source_crs, metadata)
 
       Read in all LiDAR files and use to define a 'raw' DEM with elevations in
       pixels where there is LiDAR or reference  DEM information.
@@ -218,9 +231,13 @@ Attributes
       :param meta_data: Information to include in the created DEM.
 
 
-   .. py:method:: add_reference_dem(self, tile_points, tile_extent)
+   .. py:method:: add_reference_dem(reference_dem)
 
       Fill gaps in dense DEM from areas with no LiDAR with the reference DEM.
+      Perform linear interpolation.
+
+      Currently doesn't use chunking - this may be required if a large area is covered
+      by the reference DEM.
 
 
 
@@ -242,7 +259,7 @@ Attributes
                                 'nearest', and 'cubic'.
    :param lidar_interpolation_method: The interpolation method to apply to LiDAR. Options are: mean, median, IDW.
 
-   .. py:method:: add_lidar(self, lidar_files, tile_index_file, chunk_size, lidar_classifications_to_keep, source_crs, metadata)
+   .. py:method:: add_lidar(lidar_files, tile_index_file, chunk_size, lidar_classifications_to_keep, source_crs, metadata)
 
       Read in all LiDAR files and use the point cloud distribution, source_class
       information, and hydrologiaclly conditioned elevations to estimate the roughness
@@ -278,11 +295,16 @@ Attributes
    implementation is based on the scipy.spatial.KDTree
 
 
-.. py:function:: calculate_idw(near_indicies, point, tree, point_cloud, smoothing = 0, power = 2)
+.. py:function:: calculate_idw(near_indices, point, tree, point_cloud, smoothing = 0, power = 2)
 
-   Calculate DEM elevation values at the specified locations by
-   calculating the mean. This implementation is based on the
-   scipy.spatial.KDTree
+   Calculate the IDW mean of the 'near_indices' points. This implementation is based
+   on the scipy.spatial.KDTree
+
+
+.. py:function:: calculate_linear(near_indices, point, tree, point_cloud)
+
+   Calculate linear interpolation of the 'near_indices' points. Take the straight
+   mean if the points are co-linear or too few for linear interpolation.
 
 
 .. py:function:: load_tiles_in_chunk(dim_x, dim_y, tile_index_extents, tile_index_name_column, lidar_files, source_crs, chunk_region_to_tile, catchment_geometry)

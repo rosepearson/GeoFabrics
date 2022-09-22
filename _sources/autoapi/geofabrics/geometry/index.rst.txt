@@ -53,59 +53,65 @@ Classes
    (i.e. land, offshore,
    foreshore, etc) can be accessed.
 
-   .. py:method:: catchment(self)
+   .. py:method:: catchment()
       :property:
 
       Return the catchment region
 
 
-   .. py:method:: land(self)
+   .. py:method:: land()
       :property:
 
       Return the catchment land region
 
 
-   .. py:method:: foreshore(self)
+   .. py:method:: full_land()
+      :property:
+
+      Return the full land region
+
+
+   .. py:method:: foreshore()
       :property:
 
       Return the catchment foreshore region
 
 
-   .. py:method:: land_and_foreshore(self)
+   .. py:method:: land_and_foreshore()
       :property:
 
       Return the catchment land and foreshore region
 
 
-   .. py:method:: foreshore_and_offshore(self)
+   .. py:method:: foreshore_and_offshore()
       :property:
 
       Return the catchment foreshore and offshore region
 
 
-   .. py:method:: offshore(self)
+   .. py:method:: offshore()
       :property:
 
       Return the catchment offshore region
 
 
-   .. py:method:: land_and_foreshore_without_lidar(self, dense_extents)
+   .. py:method:: land_and_foreshore_without_lidar(dense_extents)
 
       Return the land and foreshore region without LiDAR
 
 
-   .. py:method:: offshore_without_lidar(self, dense_extents)
+   .. py:method:: offshore_without_lidar(dense_extents)
 
       Return the offshore region without LiDAR
 
 
-   .. py:method:: offshore_dense_data_edge(self, dense_extents)
+   .. py:method:: offshore_dense_data_edge(dense_extents)
 
       Return the offshore edge of where there is 'dense data' i.e. LiDAR or
       reference DEM
 
 
-   .. py:method:: offshore_no_dense_data(self, lidar_extents)
+   .. py:method:: offshore_no_dense_data(lidar_extents)
 
       Return the offshore area where there is no 'dense data' i.e. LiDAR
 
@@ -117,7 +123,7 @@ Classes
 
    Assumes contours to be sampled to the catchment_geometry resolution
 
-   .. py:method:: sample_contours(self, resolution)
+   .. py:method:: sample_contours(resolution)
 
       Sample the contours at the specified resolution.
 
@@ -128,25 +134,25 @@ Classes
    A class for accesing marine bathymetry points. These can be used as
    depths to interpolate elevations offshore.
 
-   .. py:method:: points(self)
+   .. py:method:: points()
       :property:
 
       Return the points
 
 
-   .. py:method:: x(self)
+   .. py:method:: x()
       :property:
 
       The x values
 
 
-   .. py:method:: y(self)
+   .. py:method:: y()
       :property:
 
       The y values
 
 
-   .. py:method:: z(self)
+   .. py:method:: z()
       :property:
 
       The z values
@@ -159,35 +165,35 @@ Classes
    and mouth elevation and polygon files are expected. These depths can be
    used to interpolate elevations within the river and mouth polygon.
 
-   .. py:method:: filtered_polygons(self, type_label = None)
+   .. py:method:: filtered_polygons(type_label = None)
 
       Return the polygon filtered by any type label.
 
 
-   .. py:method:: filtered_points(self, type_label = None)
+   .. py:method:: filtered_points(type_label = None)
 
       Return the points as a single array.
 
 
-   .. py:method:: points(self)
+   .. py:method:: points()
       :property:
 
       Return the points
 
 
-   .. py:method:: x(self)
+   .. py:method:: x()
       :property:
 
       The x values
 
 
-   .. py:method:: y(self)
+   .. py:method:: y()
       :property:
 
       The y values
 
 
-   .. py:method:: z(self)
+   .. py:method:: z()
       :property:
 
       The z values
@@ -198,7 +204,7 @@ Classes
 
    A class for working with tiling information.
 
-   .. py:method:: tile_names(self)
+   .. py:method:: tile_names()
       :property:
 
       Return the names of all tiles within the catchment
@@ -244,7 +250,7 @@ Classes
 
       
 
-   .. py:method:: polygon_and_bathymetry(self)
+   .. py:method:: polygon_and_bathymetry()
 
       Calculate and return the fan polygon values.
 
