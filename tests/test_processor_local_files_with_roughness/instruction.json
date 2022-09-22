@@ -17,6 +17,7 @@
 		"reference_dems": ["reference_dem.nc"],
 		"bathymetry_contours": ["bathymetry.geojson"],
 		"result_dem": "test_dem.nc",
+		"result_geofabric": "test_geofabric.nc",
 		"benchmark_dem": "benchmark_dem.nc"
 	},
 	"general": {

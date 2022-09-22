@@ -216,7 +216,9 @@ class ProcessorLocalFilesTest(unittest.TestCase):
         with rioxarray.rioxarray.open_rasterio(file_path, masked=True) as benchmark_dem:
             benchmark_dem = benchmark_dem.squeeze("band", drop=True)
         # Load in result DEM
-        file_path = self.results_dir / self.instructions["data_paths"]["result_dem"]
+        file_path = (
+            self.results_dir / self.instructions["data_paths"]["result_geofabric"]
+        )
         with rioxarray.rioxarray.open_rasterio(file_path, masked=True) as test_dem:
             test_dem = test_dem.squeeze("band", drop=True)
         # Compare DEMs z - load both from file as rioxarray.rioxarray.open_rasterio
@@ -232,11 +234,21 @@ class ProcessorLocalFilesTest(unittest.TestCase):
 
         # Compare DEMs source classification
         diff_array = test_dem.source_class.data - benchmark_dem.source_class.data
-        logging.info(f"DEM z array diff is: {diff_array[diff_array != 0]}")
+        logging.info(f"DEM source class array diff is: {diff_array[diff_array != 0]}")
         numpy.testing.assert_array_almost_equal(
             test_dem.source_class.data,
             benchmark_dem.source_class.data,
             err_msg="The generated result_dem source_class has different data "
+            "from the benchmark_dem",
+        )
+
+        # Compare DEMs roughness
+        diff_array = test_dem.zo.data - benchmark_dem.zo.data
+        logging.info(f"DEM zo array diff is: {diff_array[diff_array != 0]}")
+        numpy.testing.assert_array_almost_equal(
+            test_dem.source_class.data,
+            benchmark_dem.source_class.data,
+            err_msg="The generated result_dem zo has different data "
             "from the benchmark_dem",
         )
 
