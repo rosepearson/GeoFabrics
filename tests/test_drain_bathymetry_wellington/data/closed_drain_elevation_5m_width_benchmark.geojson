@@ -2,8 +2,8 @@
 "type": "FeatureCollection",
 "crs": { "type": "name", "properties": { "name": "urn:ogc:def:crs:EPSG::2193" } },
 "features": [
-{ "type": "Feature", "properties": { "elevation": 1.4372527800094819 }, "geometry": { "type": "Point", "coordinates": [ 1770855.148882067296654, 5472804.545030660927296 ] } },
-{ "type": "Feature", "properties": { "elevation": 1.4372527800094819 }, "geometry": { "type": "Point", "coordinates": [ 1770854.702774988487363, 5472808.942902527749538 ] } },
-{ "type": "Feature", "properties": { "elevation": 1.4372527800094819 }, "geometry": { "type": "Point", "coordinates": [ 1770854.256667909910902, 5472813.340774394571781 ] } }
+{ "type": "Feature", "properties": { "elevation": 1.21 }, "geometry": { "type": "Point", "coordinates": [ 1770855.148882067296654, 5472804.545030660927296 ] } },
+{ "type": "Feature", "properties": { "elevation": 1.21 }, "geometry": { "type": "Point", "coordinates": [ 1770854.702774988487363, 5472808.942902527749538 ] } },
+{ "type": "Feature", "properties": { "elevation": 1.21 }, "geometry": { "type": "Point", "coordinates": [ 1770854.256667909910902, 5472813.340774394571781 ] } }
 ]
 }
