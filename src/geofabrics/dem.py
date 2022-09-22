@@ -2094,7 +2094,7 @@ def calculate_linear(
         )[0]
     elif len(near_indices) == 1:
         linear = point_cloud["Z"][near_indices][0]
-    elif len(near_indices) == 0:
+    else:
         linear = numpy.nan
     # NaN will have occured if colinear points - replace with straight mean
     if numpy.isnan(linear) and len(near_indices) > 0:
