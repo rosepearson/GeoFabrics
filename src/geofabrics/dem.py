@@ -430,6 +430,10 @@ class HydrologicallyConditionedDem(DemBase):
             self._dem.source_class.data[
                 interpolation_mask
             ] = self.SOURCE_CLASSIFICATION["interpolated"]
+        # Ensure all area's with NaN values are marked as no-data
+        self._dem.source_class.data[
+            numpy.isnan(self._dem.z.data)
+        ] = self.SOURCE_CLASSIFICATION["no data"]
         self._dem = self._dem.rio.clip(
             self.catchment_geometry.catchment.geometry, drop=True
         )
