@@ -3,6 +3,7 @@
 This module contains classes associated with manipulating vector data.
 """
 import geopandas
+import pandas
 import shapely
 import numpy
 import pathlib
@@ -52,6 +53,7 @@ class CatchmentGeometry:
 
         # values set in setup once land has been specified
         self._land = None
+        self._full_land = None
         self._foreshore = None
         self._land_and_foreshore = None
         self._foreshore_and_offshore = None
@@ -61,10 +63,10 @@ class CatchmentGeometry:
         """Define the main catchment regions and ensure the CRS is set for
         each region"""
 
-        self._land = self._land.to_crs(self.crs["horizontal"])
+        self._full_land = self._full_land.to_crs(self.crs["horizontal"])
 
         # Clip and remove any sub pixel regions
-        self._land = self._catchment.clip(self._land, keep_geom_type=True)
+        self._land = self._catchment.clip(self._full_land, keep_geom_type=True)
         self._land = self._land[self._land.area > self.resolution * self.resolution]
 
         self._foreshore_and_offshore = self.catchment.overlay(
@@ -114,11 +116,18 @@ class CatchmentGeometry:
         self._assert_land_set()
         return self._land
 
+    @property
+    def full_land(self):
+        """Return the full land region"""
+
+        self._assert_land_set()
+        return self._full_land
+
     @land.setter
     def land(self, land_file: typing.Union[str, pathlib.Path]):
         """Set the land region and finish setup."""
 
-        self._land = geopandas.read_file(land_file)
+        self._full_land = geopandas.read_file(land_file)
 
         self._set_up()
 
@@ -218,7 +227,7 @@ class CatchmentGeometry:
         offshore_foreshore_dense_data_extents = geopandas.GeoDataFrame(
             {
                 "geometry": [
-                    shapely.ops.cascaded_union(
+                    shapely.ops.unary_union(
                         [self.foreshore.loc[0].geometry, dense_extents.loc[0].geometry]
                     )
                 ]
@@ -512,25 +521,37 @@ class EstimatedBathymetryPoints:
         ), "All bathy points should have a type label.Instead there are "
         f"{len(points_files)} points files and {len(type_labels)} type labels"
 
-        points = geopandas.read_file(points_files[0])
-        points[self.TYPE_LABEL] = type_labels[0]
+        # Points - rename depth labels to standard if a non standard one is specified
+        points_i = geopandas.read_file(points_files[0])
+        points_i[self.TYPE_LABEL] = type_labels[0]
         if z_labels is not None:
-            points = points.rename(columns={z_labels[0]: self.DEPTH_LABEL})
-        points = points[[self.DEPTH_LABEL, self.TYPE_LABEL, "geometry"]]
-        polygon = geopandas.read_file(polygon_files[0])
-        polygon[self.TYPE_LABEL] = type_labels[0]
+            points_i = points_i.rename(columns={z_labels[0]: self.DEPTH_LABEL})
+        points_i = points_i[[self.DEPTH_LABEL, self.TYPE_LABEL, "geometry"]]
+        points_list = [points_i]
+        # Polygon where the points are relevent
+        polygon_i = geopandas.read_file(polygon_files[0])
+        polygon_i[self.TYPE_LABEL] = type_labels[0]
+        polygon_list = [polygon_i]
         for i in range(1, len(points_files)):
+            # Points - rename depth labels to standard if  specified
             points_i = geopandas.read_file(points_files[i])
             points_i[self.TYPE_LABEL] = type_labels[i]
             if z_labels is not None and z_labels[i] != self.DEPTH_LABEL:
                 points_i = points_i.rename(columns={z_labels[i]: self.DEPTH_LABEL})
             points_i = points_i[[self.DEPTH_LABEL, self.TYPE_LABEL, "geometry"]]
-            points = points.append(points_i)
+            points_list.append(points_i)
+            # Polygon where the points are relevent
             polygon_i = geopandas.read_file(polygon_files[i])
             polygon_i[self.TYPE_LABEL] = type_labels[i]
-            polygon = polygon.append(polygon_i)
+            polygon_list.append(polygon_i)
         # Set CRS, clip to size and reset index
+        points = geopandas.GeoDataFrame(
+            pandas.concat(points_list, ignore_index=True), crs=points_list[0].crs
+        )
         points = points.to_crs(self.catchment_geometry.crs["horizontal"])
+        polygon = geopandas.GeoDataFrame(
+            pandas.concat(polygon_list, ignore_index=True), crs=polygon_list[0].crs
+        )
         polygon = polygon.to_crs(self.catchment_geometry.crs["horizontal"])
         points = points.clip(polygon.buffer(0), keep_geom_type=True)
         points = points.clip(self.catchment_geometry.catchment, keep_geom_type=True)

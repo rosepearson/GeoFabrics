@@ -13,6 +13,11 @@ import time
 import logging
 import pathlib
 
+import warnings
+
+# Turn off future warnings
+warnings.simplefilter(action="ignore", category=FutureWarning)
+
 
 def parse_args():
     """Expect a command line argument of the form:

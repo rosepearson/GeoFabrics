@@ -52,7 +52,7 @@ class ProcessorRemoteTilesWestportTest(unittest.TestCase):
         "CL2_BR20_2020_1000_4212.laz": 8340310,
         "CL2_BR20_2020_1000_4213.laz": 6094309,
         "CL2_BR20_2020_1000_4214.laz": 8492543,
-        DATASET + "_TileIndex.zip": 109069,
+        DATASET + "_TileIndex.zip": 1125874,
     }
 
     @classmethod

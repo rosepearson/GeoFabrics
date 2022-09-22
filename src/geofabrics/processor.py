@@ -615,10 +615,7 @@ class RawLidarDemGenerator(BaseProcessor):
                 )
 
                 # Add the reference DEM data where there's no LiDAR updating the extents
-                self.raw_dem.add_reference_dem(
-                    tile_points=self.reference_dem.points,
-                    tile_extent=self.reference_dem.extents,
-                )
+                self.raw_dem.add_reference_dem(reference_dem=self.reference_dem)
         # save raw DEM and extents
         self.raw_dem.dem.to_netcdf(
             self.get_instruction_path("raw_dem"), format="NETCDF4", engine="netcdf4"
@@ -845,7 +842,7 @@ class RiverBathymetryGenerator(BaseProcessor):
             samples of the DEM values
     """
 
-    MIN_RIVER_GRADIENT = 0.0001  #  0.01% river slope
+    MIN_RIVER_GRADIENT = 0.0001  # 0.01% river slope
 
     def __init__(self, json_instructions: json, debug: bool = True):
 

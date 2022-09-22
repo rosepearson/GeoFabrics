@@ -63,36 +63,94 @@ class ReferenceDem:
             self._dem.close()
             del self._dem
 
+    @property
+    def dem(self) -> xarray.Dataset:
+        """Return the DEM over the catchment region"""
+        return self._dem
+
+    @property
+    def resolution(self) -> float:
+        """Return the largest dimension of the reference DEM resolution"""
+
+        resolution = self._dem.rio.resolution()
+        resolution = max(abs(resolution[0]), abs(resolution[1]))
+        return resolution
+
     def _set_up(self, exclusion_extent):
         """Set DEM CRS and trim the DEM to size"""
 
         self._dem.rio.set_crs(self.catchment_geometry.crs["horizontal"])
 
-        if exclusion_extent is not None:
-            # Clip within land & foreshore and remove any sub-pixel polygons
-            exclusion_extent = exclusion_extent.clip(
-                self.catchment_geometry.land_and_foreshore, keep_geom_type=True
+        # Define a buffered land & foreshore
+        buffered_land_and_foreshore = geopandas.GeoDataFrame(
+            geometry=self.catchment_geometry.land_and_foreshore.buffer(
+                self.resolution * numpy.sqrt(2)
             )
+        )
+
+        if exclusion_extent is not None:
+            # Remove any sub-pixel polygons
             exclusion_extent = exclusion_extent[
                 exclusion_extent.area
                 > self.catchment_geometry.resolution
                 * self.catchment_geometry.resolution
             ]
-            self._extents = geopandas.overlay(
-                self.catchment_geometry.land_and_foreshore,
+            # Keep the reference DEM where there's no LiDAR & trim outside buffered area
+            self._extents = buffered_land_and_foreshore.overlay(
                 exclusion_extent,
                 how="difference",
             )
         else:
-            self._extents = self.catchment_geometry.land_and_foreshore
-        self._dem = self._dem.rio.clip(self._extents.geometry)
+            # If no LiDAR - only use the reference DEM on land
+            self._extents = buffered_land_and_foreshore
+        self._dem = self._dem.rio.clip(self._extents.geometry, drop=True)
         self._extract_points()
 
     def _extract_points(self):
         """Create a points list from the DEM"""
 
-        if self.catchment_geometry.land.area.sum() > 0:
-            land_dem = self._dem.rio.clip(self.catchment_geometry.land.geometry)
+        # Get the DEM bounding box
+        dem_bounds = self._dem.rio.bounds()
+        dem_bounds = geopandas.GeoDataFrame(
+            {
+                "geometry": [
+                    shapely.geometry.Polygon(
+                        [
+                            [dem_bounds[0], dem_bounds[1]],
+                            [dem_bounds[2], dem_bounds[1]],
+                            [dem_bounds[2], dem_bounds[3]],
+                            [dem_bounds[0], dem_bounds[3]],
+                        ]
+                    )
+                ]
+            },
+            crs=self.catchment_geometry.crs["horizontal"],
+        )
+
+        # Take the values on land only - separately consider the buffered foreshore area
+        if (
+            self.catchment_geometry.land.area.sum() > 0
+            and dem_bounds.overlay(
+                self.catchment_geometry.land, how="intersection"
+            ).area.sum()
+            > 0
+        ):
+            # Define buffered land region - buffer to avoid edge effects
+            buffered_land = geopandas.GeoDataFrame(
+                geometry=self.catchment_geometry.land.buffer(
+                    self.resolution * numpy.sqrt(2)
+                )
+            )
+            buffered_land = buffered_land.overlay(
+                self.catchment_geometry.foreshore_and_offshore, how="difference"
+            )
+            buffered_land = buffered_land.overlay(
+                self.catchment_geometry.full_land,
+                how="intersection",
+                keep_geom_type=True,
+            )
+            # Clip DEM to buffered lanzd
+            land_dem = self._dem.rio.clip(buffered_land.geometry, drop=True)
             # get reference DEM points on land
             land_flat_z = land_dem.data.flatten()
             land_mask_z = ~numpy.isnan(land_flat_z)
@@ -105,15 +163,33 @@ class ReferenceDem:
             land_x = []
             land_y = []
             land_z = []
-        if self.catchment_geometry.foreshore.area.sum() > 0:
-            foreshore_dem = self._dem.rio.clip(
-                self.catchment_geometry.foreshore.geometry
+        # Take the values on foreshore only - separately consider the buffered land area
+        if (
+            self.catchment_geometry.foreshore.area.sum() > 0
+            and dem_bounds.overlay(
+                self.catchment_geometry.foreshore, how="intersection"
+            ).area.sum()
+            > 0
+        ):
+            # Define buffered foreshore region - buffer to avoid edge effects
+            buffered_foreshore = geopandas.GeoDataFrame(
+                geometry=self.catchment_geometry.foreshore.buffer(
+                    self.resolution * numpy.sqrt(2)
+                )
             )
+            buffered_foreshore = buffered_foreshore.overlay(
+                self.catchment_geometry.land, how="difference"
+            )
+            buffered_foreshore = buffered_foreshore.overlay(
+                self.catchment_geometry.full_land, how="difference", keep_geom_type=True
+            )
+            # Clip DEM to buffered foreshore
+            foreshore_dem = self._dem.rio.clip(buffered_foreshore.geometry, drop=True)
 
-            # get reference DEM points on the foreshore
+            # get reference DEM points on the foreshore - with any positive set to zero
             if self.set_foreshore:
-                foreshore_dem.data[0][foreshore_dem.data[0] > 0] = 0
-            foreshore_flat_z = foreshore_dem.data[0].flatten()
+                foreshore_dem.data[foreshore_dem.data > 0] = 0
+            foreshore_flat_z = foreshore_dem.data.flatten()
             foreshore_mask_z = ~numpy.isnan(foreshore_flat_z)
             foreshore_grid_x, foreshore_grid_y = numpy.meshgrid(
                 foreshore_dem.x, foreshore_dem.y
@@ -345,12 +421,19 @@ class HydrologicallyConditionedDem(DemBase):
         if (
             self.interpolation_method is not None
         ):  # methods are 'nearest', 'linear' and 'cubic'
-            self._dem.source_class.data[
-                numpy.isnan(self._dem.z.data)
-            ] = self.SOURCE_CLASSIFICATION["interpolated"]
+            interpolation_mask = numpy.isnan(self._dem.z.data)
             self._dem["z"] = self._dem.z.rio.interpolate_na(
                 method=self.interpolation_method
             )
+            # Only set areas with successful interpolation as interpolated
+            interpolation_mask &= numpy.logical_not(numpy.isnan(self._dem.z.data))
+            self._dem.source_class.data[
+                interpolation_mask
+            ] = self.SOURCE_CLASSIFICATION["interpolated"]
+        # Ensure all area's with NaN values are marked as no-data
+        self._dem.source_class.data[
+            numpy.isnan(self._dem.z.data)
+        ] = self.SOURCE_CLASSIFICATION["no data"]
         self._dem = self._dem.rio.clip(
             self.catchment_geometry.catchment.geometry, drop=True
         )
@@ -562,18 +645,22 @@ class HydrologicallyConditionedDem(DemBase):
 
         # First interpolated over open and closed drains using linear interpolation
         self._drain_dem = None
-        self._drain_dem = self._interpolate_estimated_bathymetry(
-            estimated_bathymetry=estimated_bathymetry,
-            method="cubic",
-            type_label="drains",
-        )
+        type_label = "drains"
+        if (estimated_bathymetry.points["type"] == type_label).any():
+            self._drain_dem = self._interpolate_estimated_bathymetry(
+                estimated_bathymetry=estimated_bathymetry,
+                method="cubic",
+                type_label=type_label,
+            )
         # Reset the river DEM
         self._river_dem = None
-        self._river_dem = self._interpolate_estimated_bathymetry(
-            estimated_bathymetry=estimated_bathymetry,
-            method="rbf",
-            type_label="rivers",
-        )
+        type_label = "rivers"
+        if (estimated_bathymetry.points["type"] == type_label).any():
+            self._river_dem = self._interpolate_estimated_bathymetry(
+                estimated_bathymetry=estimated_bathymetry,
+                method="rbf",
+                type_label=type_label,
+            )
 
     def _interpolate_estimated_bathymetry(
         self,
@@ -715,8 +802,7 @@ class LidarBase(DemBase):
         ]
         dense_extents = shapely.ops.unary_union(dense_extents)
 
-        # Remove any internal holes for select types as these may cause self
-        # intersection errors
+        # Remove internal holes for select types as these may cause self-intersections
         if type(dense_extents) is shapely.geometry.Polygon:
             dense_extents = shapely.geometry.Polygon(dense_extents.exterior)
         elif type(dense_extents) is shapely.geometry.MultiPolygon:
@@ -731,8 +817,7 @@ class LidarBase(DemBase):
             {"geometry": [dense_extents]}, crs=self.catchment_geometry.crs["horizontal"]
         )
 
-        # Apply a transform so in the same space as the dense DEM - buffer(0) to reduce
-        # self intersection warnings
+        # Move from image to the dem space & buffer(0) to reduce self-intersections
         dense_dem_affine = dem.z.rio.transform()
         dense_extents = dense_extents.affine_transform(
             [
@@ -1078,7 +1163,7 @@ class RawDem(LidarBase):
             "lidar_classifications_to_keep": lidar_classifications_to_keep,
             "raster_type": self.raster_type,
             "elevation_range": self.elevation_range,
-            "radius": self.catchment_geometry.resolution * numpy.sqrt(2),
+            "radius": self.catchment_geometry.resolution / numpy.sqrt(2),
             "method": self.lidar_interpolation_method,
         }
 
@@ -1334,33 +1419,39 @@ class RawDem(LidarBase):
         self._write_netcdf_conventions_in_place(dem, self.catchment_geometry.crs)
         return dem
 
-    def add_reference_dem(
-        self, tile_points: numpy.ndarray, tile_extent: geopandas.GeoDataFrame
-    ):
-        """Fill gaps in dense DEM from areas with no LiDAR with the reference DEM."""
+    def add_reference_dem(self, reference_dem: ReferenceDem):
+        """Fill gaps in dense DEM from areas with no LiDAR with the reference DEM.
+        Perform linear interpolation.
 
-        # Areas not covered by LiDAR values
-        mask = numpy.isnan(self._dem.z.data)
+        Currently doesn't use chunking - this may be required if a large area is covered
+        by the reference DEM."""
 
-        if len(tile_points) == 0:
-            logging.warning(
-                "RawDem.add_reference_dem: the latest reference DEM has no data and is "
-                "being ignored."
-            )
-            return
-        elif mask.sum() == 0:
+        logging.info("Add a reference DEM to fill areas outside the LiDAR extents")
+        # Only rasterise on land/foreshore and outside where there is LiDAR
+        region_to_rasterise = self.catchment_geometry.land_and_foreshore.overlay(
+            self._extents, how="difference"
+        )
+
+        # Create a mask of area not covered by LiDAR (excludes holes in LiDAR tiles)
+        z = self._dem.z.copy(deep=True)
+        z.data[:] = 0
+        mask = numpy.logical_not(
+            numpy.isnan(z.rio.clip(region_to_rasterise.geometry, drop=False).data)
+        )
+
+        if mask.sum() == 0:
             logging.warning(
                 "RawDem.add_reference_dem: LiDAR covers all raster values so the "
                 "reference DEM is being ignored."
             )
             return
         # create dictionary defining raster options
+        # Set search radius to diagonal reference cell length to ensure corners covered
         raster_options = {
             "raster_type": self.raster_type,
-            "radius": self.catchment_geometry.resolution * numpy.sqrt(2),
-            "method": self.lidar_interpolation_method,
+            "radius": reference_dem.resolution * numpy.sqrt(2),
+            "method": "linear",
         }
-
         # Get the grid locations overwhich to perform averaging
         grid_x, grid_y = numpy.meshgrid(self._dem.x, self._dem.y)
 
@@ -1371,7 +1462,7 @@ class RawDem(LidarBase):
 
         # Perform specified averaging from the reference DEM where there is no data
         z_flat = elevation_from_points(
-            point_cloud=tile_points, xy_out=xy_out, options=raster_options
+            point_cloud=reference_dem.points, xy_out=xy_out, options=raster_options
         )
 
         # Update the DEM
@@ -1557,7 +1648,7 @@ class RoughnessDem(LidarBase):
             "lidar_classifications_to_keep": lidar_classifications_to_keep,
             "raster_type": self.raster_type,
             "elevation_range": self.elevation_range,
-            "radius": self.catchment_geometry.resolution * numpy.sqrt(2),
+            "radius": self.catchment_geometry.resolution / numpy.sqrt(2),
         }
 
         # Set roughness where LiDAR
@@ -1920,30 +2011,37 @@ def elevation_from_points(
     )  # , eps=0.2)
     z_out = numpy.zeros(len(xy_out), dtype=options["raster_type"])
 
-    for i, (near_indicies, point) in enumerate(zip(tree_index_list, xy_out)):
+    for i, (near_indices, point) in enumerate(zip(tree_index_list, xy_out)):
 
-        if len(near_indicies) == 0:  # Set NaN if no values in search region
+        if len(near_indices) == 0:  # Set NaN if no values in search region
             z_out[i] = numpy.nan
         else:
             if options["method"] == "mean":
-                z_out[i] = numpy.mean(point_cloud["Z"][near_indicies])
+                z_out[i] = numpy.mean(point_cloud["Z"][near_indices])
             elif options["method"] == "median":
-                z_out[i] = numpy.median(point_cloud["Z"][near_indicies])
+                z_out[i] = numpy.median(point_cloud["Z"][near_indices])
             elif options["method"] == "idw":
                 z_out[i] = calculate_idw(
-                    near_indicies=near_indicies,
+                    near_indices=near_indices,
+                    point=point,
+                    tree=tree,
+                    point_cloud=point_cloud,
+                )
+            elif options["method"] == "linear":
+                z_out[i] = calculate_linear(
+                    near_indices=near_indices,
                     point=point,
                     tree=tree,
                     point_cloud=point_cloud,
                 )
             elif options["method"] == "min":
-                z_out[i] = numpy.min(point_cloud["Z"][near_indicies])
+                z_out[i] = numpy.min(point_cloud["Z"][near_indices])
             elif options["method"] == "max":
-                z_out[i] = numpy.max(point_cloud["Z"][near_indicies])
+                z_out[i] = numpy.max(point_cloud["Z"][near_indices])
             elif options["method"] == "std":
-                z_out[i] = numpy.std(point_cloud["Z"][near_indicies])
+                z_out[i] = numpy.std(point_cloud["Z"][near_indices])
             elif options["method"] == "count":
-                z_out[i] = numpy.len(point_cloud["Z"][near_indicies])
+                z_out[i] = numpy.len(point_cloud["Z"][near_indices])
             else:
                 assert (
                     False
@@ -1953,28 +2051,53 @@ def elevation_from_points(
 
 
 def calculate_idw(
-    near_indicies: list,
+    near_indices: list,
     point: numpy.ndarray,
     tree: scipy.spatial.KDTree,
     point_cloud: numpy.ndarray,
     smoothing: float = 0,
     power: int = 2,
 ):
-    """Calculate DEM elevation values at the specified locations by
-    calculating the mean. This implementation is based on the
-    scipy.spatial.KDTree"""
+    """Calculate the IDW mean of the 'near_indices' points. This implementation is based
+    on the scipy.spatial.KDTree"""
 
-    distance_vectors = point - tree.data[near_indicies]
+    distance_vectors = point - tree.data[near_indices]
     smoothed_distances = numpy.sqrt(
         ((distance_vectors**2).sum(axis=1) + smoothing**2)
     )
     if smoothed_distances.min() == 0:  # in the case of an exact match
         idw = point_cloud["Z"][tree.query(point, k=1)[1]]
     else:
-        idw = (point_cloud["Z"][near_indicies] / (smoothed_distances**power)).sum(
+        idw = (point_cloud["Z"][near_indices] / (smoothed_distances**power)).sum(
             axis=0
         ) / (1 / (smoothed_distances**power)).sum(axis=0)
     return idw
+
+
+def calculate_linear(
+    near_indices: list,
+    point: numpy.ndarray,
+    tree: scipy.spatial.KDTree,
+    point_cloud: numpy.ndarray,
+):
+    """Calculate linear interpolation of the 'near_indices' points. Take the straight
+    mean if the points are co-linear or too few for linear interpolation."""
+
+    if len(near_indices) > 3:  # There are enough points for a linear interpolation
+        linear = scipy.interpolate.griddata(
+            points=tree.data[near_indices],
+            values=point_cloud["Z"][near_indices],
+            xi=point,
+            method="linear",
+        )[0]
+    elif len(near_indices) == 1:
+        linear = point_cloud["Z"][near_indices][0]
+    else:
+        linear = numpy.nan
+    # NaN will have occured if colinear points - replace with straight mean
+    if numpy.isnan(linear) and len(near_indices) > 0:
+        linear = numpy.mean(point_cloud["Z"][near_indices])
+    return linear
 
 
 def load_tiles_in_chunk(
