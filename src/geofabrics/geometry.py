@@ -118,7 +118,7 @@ class CatchmentGeometry:
 
     @property
     def full_land(self):
-        """Return the catchment land region"""
+        """Return the full land region"""
 
         self._assert_land_set()
         return self._full_land
@@ -203,7 +203,7 @@ class CatchmentGeometry:
         # any sub-pixel polygons.
         offshore_with_lidar = dense_extents.clip(self.offshore, keep_geom_type=True)
         offshore_with_lidar = offshore_with_lidar[
-            offshore_with_lidar.area > self.resolution**2
+            offshore_with_lidar.area > self.resolution ** 2
         ]
         offshore_without_lidar = geopandas.overlay(
             self.offshore, offshore_with_lidar, how="difference"
@@ -234,10 +234,8 @@ class CatchmentGeometry:
             },
             crs=self.crs["horizontal"],
         )
-        offshore_foreshore_dense_data_extents = (
-            offshore_foreshore_dense_data_extents.clip(
-                self.foreshore_and_offshore, keep_geom_type=True
-            )
+        offshore_foreshore_dense_data_extents = offshore_foreshore_dense_data_extents.clip(
+            self.foreshore_and_offshore, keep_geom_type=True
         )
 
         # deflate this - this will be taken away from the
@@ -319,7 +317,7 @@ class BathymetryContours:
                 self.catchment_geometry.offshore, keep_geom_type=True
             )
             exclusion_extent = exclusion_extent[
-                exclusion_extent.area > self.catchment_geometry.resolution**2
+                exclusion_extent.area > self.catchment_geometry.resolution ** 2
             ]
             self._extent = self.catchment_geometry.offshore.overlay(
                 exclusion_extent, how="difference"
@@ -735,7 +733,7 @@ class RiverMouthFan:
         # Calculate the normal and tangent to the channel segment at the mouth
         segment_dx = x[0] - x[1]
         segment_dy = y[0] - y[1]
-        segment_length = numpy.sqrt(segment_dx**2 + segment_dy**2)
+        segment_length = numpy.sqrt(segment_dx ** 2 + segment_dy ** 2)
         mouth_tangent = shapely.geometry.Point(
             [segment_dx / segment_length, segment_dy / segment_length]
         )

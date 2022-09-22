@@ -1423,8 +1423,8 @@ class RawDem(LidarBase):
         """Fill gaps in dense DEM from areas with no LiDAR with the reference DEM.
         Perform linear interpolation.
 
-        Note expects only a few locations to interplate. Will not be efficient if lots
-        missing."""
+        Currently doesn't use chunking - this may be required if a large area is covered
+        by the reference DEM."""
 
         logging.info("Add a reference DEM to fill areas outside the LiDAR extents")
         # Only rasterise on land/foreshore and outside where there is LiDAR
@@ -1450,7 +1450,7 @@ class RawDem(LidarBase):
         raster_options = {
             "raster_type": self.raster_type,
             "radius": reference_dem.resolution * numpy.sqrt(2),
-            "method": "linear",  # Closest to linear interpolation
+            "method": "linear",
         }
         # Get the grid locations overwhich to perform averaging
         grid_x, grid_y = numpy.meshgrid(self._dem.x, self._dem.y)
@@ -2058,9 +2058,8 @@ def calculate_idw(
     smoothing: float = 0,
     power: int = 2,
 ):
-    """Calculate DEM elevation values at the specified locations by
-    calculating the IDW mean. This implementation is based on the
-    scipy.spatial.KDTree"""
+    """Calculate the IDW mean of the 'near_indices' points. This implementation is based
+    on the scipy.spatial.KDTree"""
 
     distance_vectors = point - tree.data[near_indices]
     smoothed_distances = numpy.sqrt(
@@ -2081,9 +2080,8 @@ def calculate_linear(
     tree: scipy.spatial.KDTree,
     point_cloud: numpy.ndarray,
 ):
-    """Calculate DEM elevation values at the specified locations by
-    linear interpolation. Take the straight mean if note enough points for linear
-    interpolation or if points are colinear."""
+    """Calculate linear interpolation of the 'near_indices' points. Take the straight
+    mean if the points are co-linear or too few for linear interpolation."""
 
     if len(near_indices) > 3:  # There are enough points for a linear interpolation
         linear = scipy.interpolate.griddata(
