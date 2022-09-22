@@ -617,10 +617,12 @@ class RawLidarDemGenerator(BaseProcessor):
                 # Add the reference DEM data where there's no LiDAR updating the extents
                 self.raw_dem.add_reference_dem(reference_dem=self.reference_dem)
         # save raw DEM and extents
+        logging.info("In processor.DemGenerator - write out the raw DEM")
         self.raw_dem.dem.to_netcdf(
             self.get_instruction_path("raw_dem"), format="NETCDF4", engine="netcdf4"
         )
         if self.raw_dem.extents is not None:
+            logging.info("In processor.DemGenerator - write out the raw DEM extents")
             self.raw_dem.extents.to_file(self.get_instruction_path("raw_dem_extents"))
         else:
             logging.warning(
@@ -1877,11 +1879,26 @@ class DrainBathymetryGenerator(BaseProcessor):
             )
         else:  # Create DEM over the drain region
 
-            drain_width = self.instructions["drains"]["width"]
+            drain_widths = self.instructions["drains"]["widths"]
 
             # Save out the drain polygons as a file with a single multipolygon
             drain_polygon_file = self.get_result_file_path(key="drain_polygon")
-            drain_polygon = drains.buffer(drain_width)
+            drain_polygon = geopandas.GeoDataFrame(
+                pandas.concat(
+                    [
+                        drains[drains["waterway"] == "drain"].buffer(
+                            drain_widths["drain"]
+                        ),
+                        drains[drains["waterway"] == "river"].buffer(
+                            drain_widths["river"]
+                        ),
+                        drains[drains["waterway"] == "stream"].buffer(
+                            drain_widths["stream"]
+                        ),
+                    ]
+                ),
+                drains.crs,
+            )
             drain_polygon = geopandas.GeoDataFrame(
                 geometry=[shapely.ops.unary_union(drain_polygon.geometry.array)],
                 crs=drain_polygon.crs,
@@ -1955,7 +1972,6 @@ class DrainBathymetryGenerator(BaseProcessor):
             )
 
             # Remove rivers and polygons
-            drains = drains[drains["waterway"] != "river"]
             drains = drains[drains.geometry.type == "LineString"]
             drains.to_file(drains_file_path)
         return drains
