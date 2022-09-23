@@ -16,10 +16,10 @@
 		"local_cache": "tests/test_drain_bathymetry_wellington/data",
 		"subfolder": "results",
 		"catchment_boundary": "catchment.geojson",
-		"open_drain_polygon_benchmark": "open_drain_polygon_5m_width_benchmark.geojson",
-		"open_drain_bathymetry_benchmark": "open_drain_elevation_5m_width_benchmark.geojson",
-		"closed_drain_polygon_benchmark": "closed_drain_polygon_5m_width_benchmark.geojson",
-		"closed_drain_bathymetry_benchmark": "closed_drain_elevation_5m_width_benchmark.geojson"
+		"open_drain_polygon_benchmark": "open_drain_polygon_benchmark.geojson",
+		"open_drain_bathymetry_benchmark": "open_drain_elevation_benchmark.geojson",
+		"closed_drain_polygon_benchmark": "closed_drain_polygon_benchmark.geojson",
+		"closed_drain_bathymetry_benchmark": "closed_drain_elevation_benchmark.geojson"
 	},
 	"apis": {
 		"open_topography": {
@@ -40,7 +40,7 @@
 		"lidar_classifications_to_keep": [2, 9]
 	},
 	"drains": {
-		"width": 5
+		"widths": {"drain": 5, "stream": 7.5, "river": 10}
 	}
 }
 

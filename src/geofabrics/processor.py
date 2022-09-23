@@ -1644,18 +1644,15 @@ class DrainBathymetryGenerator(BaseProcessor):
     def get_result_file_name(self, key: str) -> str:
         """Return the name of the file to save."""
 
-        drain_width = self.instructions["drains"]["width"]
-        tag = f"{drain_width}m_width"
-
         # key to output name mapping
         name_dictionary = {
-            "raw_dem": f"drain_raw_dem_{tag}.nc",
-            "raw_dem_extents": f"drain_raw_extents_{drain_width}m_width.geojson",
-            "open_polygon": f"open_drain_polygon_{tag}.geojson",
-            "open_elevation": f"open_drain_elevation_{tag}.geojson",
-            "closed_polygon": f"closed_drain_polygon_{tag}.geojson",
-            "closed_elevation": f"closed_drain_elevation_{tag}.geojson",
-            "drain_polygon": f"drain_polygon_{tag}.geojson",
+            "raw_dem": "drain_raw_dem.nc",
+            "raw_dem_extents": "drain_raw_extents.geojson",
+            "open_polygon": "open_drain_polygon.geojson",
+            "open_elevation": "open_drain_elevation.geojson",
+            "closed_polygon": "closed_drain_polygon.geojson",
+            "closed_elevation": "closed_drain_elevation.geojson",
+            "drain_polygon": "drain_polygon.geojson",
             "drain_lines": "drains.geojson",
         }
         return name_dictionary[key]
@@ -1731,14 +1728,12 @@ class DrainBathymetryGenerator(BaseProcessor):
                 "Estimating closed drain and tunnel bed elevation from OpenStreetMap."
             )
             return
-        drain_width = self.instructions["drains"]["width"]
-
         closed_drains = drains[drains["tunnel"]]
         closed_drains = closed_drains.clip(self.catchment_geometry.catchment)
-        closed_drains["polygon"] = closed_drains.buffer(drain_width)
+        closed_drains["polygon"] = closed_drains.buffer(closed_drains["width"])
 
         # save out the polygons
-        closed_drains.set_geometry("polygon", drop=True)[["geometry"]].to_file(
+        closed_drains.set_geometry("polygon", drop=True)[["geometry", "width"]].to_file(
             polygon_file
         )
 
@@ -1755,18 +1750,18 @@ class DrainBathymetryGenerator(BaseProcessor):
                 [
                     # Ensure even spacing across the length of the drain
                     row.interpolate(
-                        i * row.length / int(numpy.ceil(row.length / drain_width))
+                        i
+                        * row.length
+                        / int(numpy.ceil(row.length / self.get_resolution()))
                     )
-                    for i in range(int(numpy.ceil(row.length / drain_width)) + 1)
+                    for i in range(
+                        int(numpy.ceil(row.length / self.get_resolution())) + 1
+                    )
                 ]
             )
         )
         points = geopandas.GeoDataFrame(
-            {
-                "elevation": elevations,
-                "geometry": points,
-            },
-            crs=2193,
+            {"elevation": elevations, "geometry": points,}, crs=2193,
         )
 
         # Save bathymetry
@@ -1786,22 +1781,22 @@ class DrainBathymetryGenerator(BaseProcessor):
                 "Estimating open drain and tunnel bed elevation from OpenStreetMap."
             )
             return
-        drain_width = self.instructions["drains"]["width"]
-
         open_drains = drains[numpy.logical_not(drains["tunnel"])]
         open_drains = open_drains.clip(self.catchment_geometry.catchment)
 
         # save out the polygons
-        open_drains.buffer(drain_width).to_file(polygon_file)
+        open_drains.buffer(open_drains["width"]).to_file(polygon_file)
 
         # sample the ends of the drain - sample over a polygon at each end
-        polygons = open_drains.interpolate(0).buffer(drain_width)
+        polygons = open_drains.interpolate(0).buffer(open_drains["width"])
         open_drains["start_elevation"] = polygons.apply(
             lambda geometry: self.minimum_elevation_in_polygon(
                 geometry=geometry, dem=dem
             )
         )
-        polygons = open_drains.interpolate(open_drains.length).buffer(drain_width)
+        polygons = open_drains.interpolate(open_drains.length).buffer(
+            open_drains["width"]
+        )
         open_drains["end_elevation"] = polygons.geometry.apply(
             lambda geometry: self.minimum_elevation_in_polygon(
                 geometry=geometry, dem=dem
@@ -1809,63 +1804,55 @@ class DrainBathymetryGenerator(BaseProcessor):
         )
 
         # Sample down-slope location along each line
-        def sample_location_down_slope(row, drain_width):
+        def sample_location_down_slope(row):
             """Sample evenly space poinst along polylines in the downslope direction"""
 
             if row["start_elevation"] > row["end_elevation"]:
                 sample_range = range(
-                    int(numpy.ceil(row.geometry.length / drain_width)) + 1
+                    int(numpy.ceil(row.geometry.length / self.get_resolution())) + 1
                 )
             else:
                 sample_range = range(
-                    int(numpy.ceil(row.geometry.length / drain_width)), -1, -1
+                    int(numpy.ceil(row.geometry.length / self.get_resolution())), -1, -1
                 )
+            sampled_sampled_multipoints = [
+                # Ensure even spacing across the length of the drain
+                row.geometry.interpolate(
+                    i
+                    * row.geometry.length
+                    / int(numpy.ceil(row.geometry.length / self.get_resolution()))
+                )
+                for i in sample_range
+            ]
             sampled_multipoints = shapely.geometry.MultiPoint(
-                [
-                    # Ensure even spacing across the length of the drain
-                    row.geometry.interpolate(
-                        i
-                        * row.geometry.length
-                        / int(numpy.ceil(row.geometry.length / drain_width))
-                    )
-                    for i in sample_range
-                ]
+                sampled_sampled_multipoints
             )
 
             return sampled_multipoints
 
-        points = open_drains.apply(
-            lambda row: sample_location_down_slope(row=row, drain_width=drain_width),
-            axis=1,
+        open_drains["points"] = open_drains.apply(
+            lambda row: sample_location_down_slope(row=row), axis=1,
         )
-
-        # Sample elevation enforcing no local elevation gain
-        bathymetries = []
-        for drain_index, row in enumerate(points):
-            row_bathymetries = [
-                max(
-                    open_drains.iloc[drain_index]["start_elevation"],
-                    open_drains.iloc[drain_index]["end_elevation"],
-                )
-            ]
-            for point in list(row.geoms)[1:]:
-                elevation = float(dem.z.sel(x=point.x, y=point.y, method="nearest"))
-                row_bathymetries.append(
-                    elevation
-                    if elevation < row_bathymetries[-1]
-                    else row_bathymetries[-1]
-                )
-            bathymetries.extend(row_bathymetries)
-        points = geopandas.GeoDataFrame(
-            {
-                "elevation": bathymetries,
-                "geometry": points.explode(ignore_index=True),
-            },
-            crs=open_drains.crs,
+        # open_drains = open_drains.set_index(['OSM_id'], drop=True)
+        drains_points = open_drains.set_geometry("points", drop=True)[
+            ["geometry", "width"]
+        ]
+        print(drains_points)
+        drains_points = drains_points.sort_index(ascending=True).explode(
+            ignore_index=False, index_parts=True, column="geometry"
         )
-
+        drains_points["polygons"] = drains_points.buffer(drains_points["width"])
+        drains_points["elevation"] = drains_points["polygons"].apply(
+            lambda geometry: self.minimum_elevation_in_polygon(
+                geometry=geometry, dem=dem
+            )
+        )
+        for index, drain_points in drains_points.groupby(level=0):
+            drains_points.loc[(index,), ("elevation")] = numpy.minimum.accumulate(
+                drain_points["elevation"]
+            )
         # Save bathymetry
-        points.to_file(elevation_file)
+        drains_points[["geometry", "elevation"]].to_file(elevation_file)
 
     def create_dem(self, drains: geopandas.GeoDataFrame) -> xarray.Dataset:
         """Create and return a DEM at a resolution 1.5x the drain width."""
@@ -1879,26 +1866,9 @@ class DrainBathymetryGenerator(BaseProcessor):
             )
         else:  # Create DEM over the drain region
 
-            drain_widths = self.instructions["drains"]["widths"]
-
             # Save out the drain polygons as a file with a single multipolygon
             drain_polygon_file = self.get_result_file_path(key="drain_polygon")
-            drain_polygon = geopandas.GeoDataFrame(
-                pandas.concat(
-                    [
-                        drains[drains["waterway"] == "drain"].buffer(
-                            drain_widths["drain"]
-                        ),
-                        drains[drains["waterway"] == "river"].buffer(
-                            drain_widths["river"]
-                        ),
-                        drains[drains["waterway"] == "stream"].buffer(
-                            drain_widths["stream"]
-                        ),
-                    ]
-                ),
-                drains.crs,
-            )
+            drain_polygon = drains.buffer(drains["width"])
             drain_polygon = geopandas.GeoDataFrame(
                 geometry=[shapely.ops.unary_union(drain_polygon.geometry.array)],
                 crs=drain_polygon.crs,
@@ -1971,8 +1941,15 @@ class DrainBathymetryGenerator(BaseProcessor):
                 self.catchment_geometry.crs["horizontal"]
             )
 
-            # Remove rivers and polygons
+            # Remove polygons
             drains = drains[drains.geometry.type == "LineString"]
+            # Add width label
+            widths = self.instructions["drains"]["widths"]
+            widths["ditch"] = widths["drain"]
+            drains["width"] = drains["waterway"].apply(
+                lambda waterway: widths[waterway]
+            )
+            # Save file
             drains.to_file(drains_file_path)
         return drains
 
