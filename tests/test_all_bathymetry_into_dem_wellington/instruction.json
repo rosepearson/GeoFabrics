@@ -58,7 +58,7 @@
 			"flow_file": "tests/test_all_bathymetry_into_dem_wellington/data/flow_and_friction.csv.gz"
 		}
 	},
-	"drains":
+	"waterways":
 	{
 		"output": {
 			"crs": {
@@ -120,12 +120,12 @@
 		  "raw_dem": "raw_dem.nc",
 		  "river_polygons": ["river_polygon.geojson",
 							 "fan_polygon.geojson",
-							 "closed_drain_polygon_5m_width.geojson",
-							 "open_drain_polygon_5m_width.geojson"],
+							 "closed_drain_polygon.geojson",
+							 "open_drain_polygon.geojson"],
 			"river_bathymetry": ["river_bathymetry.geojson",
 								 "fan_bathymetry.geojson",
-								 "closed_drain_elevation_5m_width.geojson",
-								 "open_drain_elevation_5m_width.geojson"],
+								 "closed_drain_elevation.geojson",
+								 "open_drain_elevation.geojson"],
 		  "result_dem": "test_dem.nc",
 		  "benchmark_dem": "benchmark_dem.nc"
 		},
