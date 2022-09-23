@@ -1733,10 +1733,6 @@ class DrainBathymetryGenerator(BaseProcessor):
         closed_drains = closed_drains.clip(self.catchment_geometry.catchment)
         closed_drains["polygon"] = closed_drains.buffer(closed_drains["width"])
 
-        # save out the polygons
-        closed_drains.set_geometry("polygon", drop=True)[["geometry", "width"]].to_file(
-            polygon_file
-        )
         # Sample the minimum elevation at each tunnel
         elevations = closed_drains.apply(
             lambda row: self.minimum_elevation_in_polygon(
@@ -1765,8 +1761,23 @@ class DrainBathymetryGenerator(BaseProcessor):
             {"elevation": elevations, "geometry": points,}, crs=2193,
         )
 
-        # Save elevations
-        points.explode(ignore_index=True).to_file(elevation_file)
+        # Remove any NaN areas (where no LiDAR data to estimate elevations)
+        nan_filter = (
+            points.explode(ignore_index=False)["elevation"].notnull().all(level=0).array
+        )
+        if not nan_filter.all():
+            logging.warning(
+                "Some open waterways are being ignored as there is not enough data to "
+                "estimate their elevations."
+            )
+        points_exploded = points[nan_filter].explode(ignore_index=False)
+        closed_drains = closed_drains[nan_filter]
+
+        # Save out polygons and elevations
+        closed_drains.set_geometry("polygon", drop=True)[["geometry", "width"]].to_file(
+            polygon_file
+        )
+        points_exploded.to_file(elevation_file)
 
     def estimate_open_elevations(
         self, drains: geopandas.GeoDataFrame, dem: xarray.Dataset
@@ -1786,9 +1797,6 @@ class DrainBathymetryGenerator(BaseProcessor):
         open_drains = drains[numpy.logical_not(drains["tunnel"])]
         open_drains = open_drains.clip(self.catchment_geometry.catchment)
 
-        # save out the polygons
-        open_drains.buffer(open_drains["width"]).to_file(polygon_file)
-
         # sample the ends of the drain - sample over a polygon at each end
         polygons = open_drains.interpolate(0).buffer(open_drains["width"])
         open_drains["start_elevation"] = polygons.apply(
@@ -1804,6 +1812,23 @@ class DrainBathymetryGenerator(BaseProcessor):
                 geometry=geometry, dem=dem
             )
         )
+
+        # Remove any waterways without data to assess elevations
+        nan_filter = (
+            open_drains[["start_elevation", "end_elevation"]]
+            .notnull()
+            .all(axis=1)
+            .array
+        )
+        if not nan_filter.all():
+            logging.warning(
+                "Some open waterways are being ignored as there is not enough data to "
+                "estimate their elevations."
+            )
+        open_drains = open_drains[nan_filter]
+
+        # save out the polygons
+        open_drains.buffer(open_drains["width"]).to_file(polygon_file)
 
         # Sample down-slope location along each line
         def sample_location_down_slope(row):
