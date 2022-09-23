@@ -80,7 +80,7 @@ class ProcessorDrainBathymetryWellingtonTest(unittest.TestCase):
         catchment.to_file(catchment_file)
 
         # Run pipeline - download files and generated DEM
-        runner = processor.DrainBathymetryGenerator(cls.instructions, debug=False)
+        runner = processor.WaterwayBedElevationEstimator(cls.instructions, debug=False)
         runner.run()
 
     @classmethod
