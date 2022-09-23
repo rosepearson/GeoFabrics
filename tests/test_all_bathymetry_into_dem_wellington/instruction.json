@@ -96,7 +96,7 @@
 			"lidar_classifications_to_keep": [2, 9]
 		},
 		"drains": {
-			"width": 5
+			"widths": {"drain": 5, "stream": 7.5, "river": 10}
 		}
 	},
 	"dem": 

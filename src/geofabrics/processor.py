@@ -1714,7 +1714,7 @@ class DrainBathymetryGenerator(BaseProcessor):
         # clip to polygon and return minimum elevation
         return float(small_z.rio.clip([geometry]).min())
 
-    def estimate_closed_bathymetry(
+    def estimate_closed_elevations(
         self, drains: geopandas.GeoDataFrame, dem: xarray.Dataset
     ):
         """Sample the DEM around the tunnels to estimate the bed elevation."""
@@ -1728,6 +1728,7 @@ class DrainBathymetryGenerator(BaseProcessor):
                 "Estimating closed drain and tunnel bed elevation from OpenStreetMap."
             )
             return
+        # If not - estimate elevations along close drains
         closed_drains = drains[drains["tunnel"]]
         closed_drains = closed_drains.clip(self.catchment_geometry.catchment)
         closed_drains["polygon"] = closed_drains.buffer(closed_drains["width"])
@@ -1736,7 +1737,7 @@ class DrainBathymetryGenerator(BaseProcessor):
         closed_drains.set_geometry("polygon", drop=True)[["geometry", "width"]].to_file(
             polygon_file
         )
-
+        # Sample the minimum elevation at each tunnel
         elevations = closed_drains.apply(
             lambda row: self.minimum_elevation_in_polygon(
                 geometry=row["polygon"], dem=dem
@@ -1744,7 +1745,7 @@ class DrainBathymetryGenerator(BaseProcessor):
             axis=1,
         )
 
-        # Create sampled points
+        # Create sampled points to go with the sampled elevations
         points = closed_drains["geometry"].apply(
             lambda row: shapely.geometry.MultiPoint(
                 [
@@ -1764,10 +1765,10 @@ class DrainBathymetryGenerator(BaseProcessor):
             {"elevation": elevations, "geometry": points,}, crs=2193,
         )
 
-        # Save bathymetry
+        # Save elevations
         points.explode(ignore_index=True).to_file(elevation_file)
 
-    def estimate_open_bathymetry(
+    def estimate_open_elevations(
         self, drains: geopandas.GeoDataFrame, dem: xarray.Dataset
     ):
         """Sample the DEM along the open waterways to enforce a decreasing elevation."""
@@ -1781,6 +1782,7 @@ class DrainBathymetryGenerator(BaseProcessor):
                 "Estimating open drain and tunnel bed elevation from OpenStreetMap."
             )
             return
+        # If not - estimate the elevations along the open waterways
         open_drains = drains[numpy.logical_not(drains["tunnel"])]
         open_drains = open_drains.clip(self.catchment_geometry.catchment)
 
@@ -1842,11 +1844,13 @@ class DrainBathymetryGenerator(BaseProcessor):
             ignore_index=False, index_parts=True, column="geometry"
         )
         open_drains["polygons"] = open_drains.buffer(open_drains["width"])
+        # Sample the minimum elevations along each  open waterway
         open_drains["elevation"] = open_drains["polygons"].apply(
             lambda geometry: self.minimum_elevation_in_polygon(
                 geometry=geometry, dem=dem
             )
         )
+        # Ensure the sampled elevations monotonically decrease
         for index, drain_points in open_drains.groupby(level=0):
             open_drains.loc[(index,), ("elevation")] = numpy.minimum.accumulate(
                 drain_points["elevation"]
@@ -1979,8 +1983,8 @@ class DrainBathymetryGenerator(BaseProcessor):
         dem = self.create_dem(drains)
 
         # Estimate the drain and tunnel bed elevations from the DEM
-        self.estimate_closed_bathymetry(drains=drains, dem=dem)
-        self.estimate_open_bathymetry(drains=drains, dem=dem)
+        self.estimate_closed_elevations(drains=drains, dem=dem)
+        self.estimate_open_elevations(drains=drains, dem=dem)
 
         if self.debug:
             # Record the parameter used during execution - append to existing
