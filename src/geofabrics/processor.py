@@ -1761,7 +1761,11 @@ class DrainBathymetryGenerator(BaseProcessor):
             )
         )
         points = geopandas.GeoDataFrame(
-            {"elevation": elevations, "geometry": points,}, crs=2193,
+            {
+                "elevation": elevations,
+                "geometry": points,
+            },
+            crs=2193,
         )
 
         # Save bathymetry
@@ -1831,7 +1835,8 @@ class DrainBathymetryGenerator(BaseProcessor):
             return sampled_multipoints
 
         open_drains["points"] = open_drains.apply(
-            lambda row: sample_location_down_slope(row=row), axis=1,
+            lambda row: sample_location_down_slope(row=row),
+            axis=1,
         )
 
         open_drains = open_drains.set_geometry("points", drop=True)[
