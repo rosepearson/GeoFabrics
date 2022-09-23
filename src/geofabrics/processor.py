@@ -1833,26 +1833,26 @@ class DrainBathymetryGenerator(BaseProcessor):
         open_drains["points"] = open_drains.apply(
             lambda row: sample_location_down_slope(row=row), axis=1,
         )
-        # open_drains = open_drains.set_index(['OSM_id'], drop=True)
-        drains_points = open_drains.set_geometry("points", drop=True)[
+
+        open_drains = open_drains.set_geometry("points", drop=True)[
             ["geometry", "width"]
         ]
-        print(drains_points)
-        drains_points = drains_points.sort_index(ascending=True).explode(
+        # sort index needed to ensure correct behaviour of the explode function
+        open_drains = open_drains.sort_index(ascending=True).explode(
             ignore_index=False, index_parts=True, column="geometry"
         )
-        drains_points["polygons"] = drains_points.buffer(drains_points["width"])
-        drains_points["elevation"] = drains_points["polygons"].apply(
+        open_drains["polygons"] = open_drains.buffer(open_drains["width"])
+        open_drains["elevation"] = open_drains["polygons"].apply(
             lambda geometry: self.minimum_elevation_in_polygon(
                 geometry=geometry, dem=dem
             )
         )
-        for index, drain_points in drains_points.groupby(level=0):
-            drains_points.loc[(index,), ("elevation")] = numpy.minimum.accumulate(
+        for index, drain_points in open_drains.groupby(level=0):
+            open_drains.loc[(index,), ("elevation")] = numpy.minimum.accumulate(
                 drain_points["elevation"]
             )
         # Save bathymetry
-        drains_points[["geometry", "elevation"]].to_file(elevation_file)
+        open_drains[["geometry", "elevation"]].to_file(elevation_file)
 
     def create_dem(self, drains: geopandas.GeoDataFrame) -> xarray.Dataset:
         """Create and return a DEM at a resolution 1.5x the drain width."""
