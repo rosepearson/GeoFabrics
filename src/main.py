@@ -117,12 +117,12 @@ def launch_processor(args):
         setup_logging_for_run(run_instructions)
         runner = processor.RiverBathymetryGenerator(run_instructions)
         runner.run()
-    if "drains" in instructions:
+    if "waterways" in instructions:
         # Estimate drain bathymetry
-        print("Run processor.DrainsBathymetryGenerator")
+        print("Run processor.WaterwayBedElevationEstimator")
         run_instructions = instructions["drains"]
         setup_logging_for_run(run_instructions)
-        runner = processor.DrainBathymetryGenerator(run_instructions)
+        runner = processor.WaterwayBedElevationEstimator(run_instructions)
         runner.run()
     if "dem" in instructions:
         run_instructions = instructions["dem"]

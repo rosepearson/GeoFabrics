@@ -1626,16 +1626,17 @@ class RiverBathymetryGenerator(BaseProcessor):
                 json.dump(self.instructions, file_pointer)
 
 
-class DrainBathymetryGenerator(BaseProcessor):
-    """DrainBathymetryGenerator executes a pipeline to pull in OpenStreetMap drain and
-    tunnel information. A DEM is generated of the surrounding area and this used to
-    unblock drains and tunnels.
+class WaterwayBedElevationEstimator(BaseProcessor):
+    """DrainBathymetryGenerator executes a pipeline to pull in OpenStreetMap waterway
+    and tunnel information. A DEM is generated of the surrounding area and this used to
+    unblock drains and tunnels - by taking the lowest value in the area around a tunnel
+    to be the tunnel elevation, and ensuring opne waterways flow downhill.
 
     """
 
     def __init__(self, json_instructions: json, debug: bool = True):
 
-        super(DrainBathymetryGenerator, self).__init__(
+        super(WaterwayBedElevationEstimator, self).__init__(
             json_instructions=json_instructions
         )
 
