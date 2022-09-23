@@ -118,9 +118,7 @@ class ProcessorDrainBathymetryWellingtonTest(unittest.TestCase):
 
         print("Compare river polygon  - Windows")
 
-        test = geopandas.read_file(
-            self.results_dir / "open_drain_polygon_5m_width.geojson"
-        )
+        test = geopandas.read_file(self.results_dir / "open_drain_polygon.geojson")
         benchmark = geopandas.read_file(
             self.cache_dir / data_path_instructions["open_drain_polygon_benchmark"]
         )
@@ -134,9 +132,7 @@ class ProcessorDrainBathymetryWellingtonTest(unittest.TestCase):
 
         print("Compare open drain bathymetry - Windows")
 
-        test = geopandas.read_file(
-            self.results_dir / "open_drain_elevation_5m_width.geojson"
-        )
+        test = geopandas.read_file(self.results_dir / "open_drain_elevation.geojson")
         benchmark = geopandas.read_file(
             self.cache_dir / data_path_instructions["open_drain_bathymetry_benchmark"]
         )
@@ -160,9 +156,7 @@ class ProcessorDrainBathymetryWellingtonTest(unittest.TestCase):
         print("Compare river polygon  - Linux")
 
         # Compare the polygons
-        test = geopandas.read_file(
-            self.results_dir / "open_drain_polygon_5m_width.geojson"
-        )
+        test = geopandas.read_file(self.results_dir / "open_drain_polygon.geojson")
         benchmark = geopandas.read_file(
             self.cache_dir / data_path_instructions["open_drain_polygon_benchmark"]
         )
@@ -182,9 +176,7 @@ class ProcessorDrainBathymetryWellingtonTest(unittest.TestCase):
 
         print("Compare open drain bathymetry - Linux")
 
-        test = geopandas.read_file(
-            self.results_dir / "open_drain_elevation_5m_width.geojson"
-        )
+        test = geopandas.read_file(self.results_dir / "open_drain_elevation.geojson")
         benchmark = geopandas.read_file(
             self.cache_dir / data_path_instructions["open_drain_bathymetry_benchmark"]
         )
@@ -229,9 +221,7 @@ class ProcessorDrainBathymetryWellingtonTest(unittest.TestCase):
         data_path_instructions = self.instructions["data_paths"]
 
         # Compare the polygons
-        test = geopandas.read_file(
-            self.results_dir / "closed_drain_polygon_5m_width.geojson"
-        )
+        test = geopandas.read_file(self.results_dir / "closed_drain_polygon.geojson")
         benchmark = geopandas.read_file(
             self.cache_dir / data_path_instructions["closed_drain_polygon_benchmark"]
         )
@@ -243,9 +233,7 @@ class ProcessorDrainBathymetryWellingtonTest(unittest.TestCase):
         )
 
         # Compare the bathymetries
-        test = geopandas.read_file(
-            self.results_dir / "closed_drain_elevation_5m_width.geojson"
-        )
+        test = geopandas.read_file(self.results_dir / "closed_drain_elevation.geojson")
         benchmark = geopandas.read_file(
             self.cache_dir / data_path_instructions["closed_drain_bathymetry_benchmark"]
         )
@@ -268,9 +256,7 @@ class ProcessorDrainBathymetryWellingtonTest(unittest.TestCase):
         data_path_instructions = self.instructions["data_paths"]
 
         # Compare the polygons
-        test = geopandas.read_file(
-            self.results_dir / "closed_drain_polygon_5m_width.geojson"
-        )
+        test = geopandas.read_file(self.results_dir / "closed_drain_polygon.geojson")
         benchmark = geopandas.read_file(
             self.cache_dir / data_path_instructions["closed_drain_polygon_benchmark"]
         )
@@ -292,9 +278,7 @@ class ProcessorDrainBathymetryWellingtonTest(unittest.TestCase):
         )
 
         # Compare the bathymetries
-        test = geopandas.read_file(
-            self.results_dir / "closed_drain_elevation_5m_width.geojson"
-        )
+        test = geopandas.read_file(self.results_dir / "closed_drain_elevation.geojson")
         benchmark = geopandas.read_file(
             self.cache_dir / data_path_instructions["closed_drain_bathymetry_benchmark"]
         )
