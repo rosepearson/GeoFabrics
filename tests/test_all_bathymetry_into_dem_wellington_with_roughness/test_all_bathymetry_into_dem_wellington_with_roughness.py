@@ -58,7 +58,7 @@ class ProcessorRiverBathymetryTest(unittest.TestCase):
         dotenv.load_dotenv()
         linz_key = os.environ.get("LINZ_API", None)
         cls.instructions["rivers"]["apis"]["linz"]["key"] = linz_key
-        cls.instructions["drains"]["apis"]["linz"]["key"] = linz_key
+        cls.instructions["waterways"]["apis"]["linz"]["key"] = linz_key
         cls.instructions["dem"]["apis"]["linz"]["key"] = linz_key
         cls.instructions["roughness"]["apis"]["linz"]["key"] = linz_key
 
@@ -88,8 +88,8 @@ class ProcessorRiverBathymetryTest(unittest.TestCase):
             cls.instructions["rivers"], debug=False
         )
         runner.run()
-        runner = processor.DrainBathymetryGenerator(
-            cls.instructions["drains"], debug=False
+        runner = processor.WaterwayBedElevationEstimator(
+            cls.instructions["waterways"], debug=False
         )
         runner.run()
         runner = processor.RawLidarDemGenerator(cls.instructions["dem"])
@@ -116,14 +116,14 @@ class ProcessorRiverBathymetryTest(unittest.TestCase):
         )
 
         # Cycle through all folders within the cache dir deleting their contents
-        for path in cls.cache_dir.iterdir():
+        """for path in cls.cache_dir.iterdir():
             if path.is_dir():
                 for file in path.glob("*"):  # only files
                     if file.is_file():
                         file.unlink()
                     elif file.is_dir():
                         shutil.rmtree(file)
-                shutil.rmtree(path)
+                shutil.rmtree(path)"""
 
     @pytest.mark.skipif(sys.platform != "win32", reason="Windows test - this is strict")
     def test_result_geofabric_windows(self):
