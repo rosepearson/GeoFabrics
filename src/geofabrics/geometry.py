@@ -485,6 +485,7 @@ class EstimatedBathymetryPoints:
 
     DEPTH_LABEL = "depths"
     TYPE_LABEL = "type"
+    BANK_HEIGHT_LABEL = "bank_height"
 
     def __init__(
         self,
@@ -526,7 +527,12 @@ class EstimatedBathymetryPoints:
         points_i[self.TYPE_LABEL] = type_labels[0]
         if z_labels is not None:
             points_i = points_i.rename(columns={z_labels[0]: self.DEPTH_LABEL})
-        points_i = points_i[[self.DEPTH_LABEL, self.TYPE_LABEL, "geometry"]]
+        columns_i = (
+            [self.DEPTH_LABEL, self.TYPE_LABEL, self.BANK_HEIGHT_LABEL, "geometry"]
+            if self.BANK_HEIGHT_LABEL in points_i.columns
+            else [self.DEPTH_LABEL, self.TYPE_LABEL, "geometry"]
+        )
+        points_i = points_i[columns_i]
         points_list = [points_i]
         # Polygon where the points are relevent
         polygon_i = geopandas.read_file(polygon_files[0])
@@ -538,7 +544,12 @@ class EstimatedBathymetryPoints:
             points_i[self.TYPE_LABEL] = type_labels[i]
             if z_labels is not None and z_labels[i] != self.DEPTH_LABEL:
                 points_i = points_i.rename(columns={z_labels[i]: self.DEPTH_LABEL})
-            points_i = points_i[[self.DEPTH_LABEL, self.TYPE_LABEL, "geometry"]]
+            columns_i = (
+                [self.DEPTH_LABEL, self.TYPE_LABEL, self.BANK_HEIGHT_LABEL, "geometry"]
+                if self.BANK_HEIGHT_LABEL in points_i.columns
+                else [self.DEPTH_LABEL, self.TYPE_LABEL, "geometry"]
+            )
+            points_i = points_i[columns_i]
             points_list.append(points_i)
             # Polygon where the points are relevent
             polygon_i = geopandas.read_file(polygon_files[i])
@@ -597,6 +608,20 @@ class EstimatedBathymetryPoints:
                 lambda row: row.geometry.z, axis=1
             ).to_list()
         return points_array
+
+    def filtered_bank_heights(self, type_label: str = None) -> numpy.ndarray:
+        """Return the points as a single array."""
+
+        # Filter the points by the type label
+        points = (
+            self._points
+            if type_label is None
+            else self._points[self._points["type"] == type_label]
+        )
+
+        # Pull out the bank heights
+        bank_heights = points.apply(lambda row: row["bank height"], axis=1).to_list()
+        return bank_heights
 
     @property
     def points(self):
