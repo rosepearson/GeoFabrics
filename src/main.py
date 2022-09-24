@@ -118,9 +118,9 @@ def launch_processor(args):
         runner = processor.RiverBathymetryGenerator(run_instructions)
         runner.run()
     if "waterways" in instructions:
-        # Estimate drain bathymetry
+        # Estimate waterway elevations
         print("Run processor.WaterwayBedElevationEstimator")
-        run_instructions = instructions["drains"]
+        run_instructions = instructions["waterways"]
         setup_logging_for_run(run_instructions)
         runner = processor.WaterwayBedElevationEstimator(run_instructions)
         runner.run()
