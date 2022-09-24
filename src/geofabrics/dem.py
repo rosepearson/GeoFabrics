@@ -254,7 +254,7 @@ class DemBase(abc.ABC):
         "LiDAR": 1,
         "ocean bathymetry": 2,
         "rivers": 3,
-        "drains": 4,
+        "waterways": 4,
         "reference DEM": 5,
         "interpolated": 0,
         "no data": -1,
@@ -710,7 +710,7 @@ class HydrologicallyConditionedDem(DemBase):
         # For rivers check the estimated bank heights are aren't lower
         if type_label == "rivers":
             # Estimate with linear interpolation
-            estimated_bank_heights = estimated_bathymetry.filtered_bank_height(
+            estimated_bank_heights = estimated_bathymetry.filtered_bank_heights(
                 type_label=type_label
             )
             edge_z_estimated = scipy.interpolate.griddata(
