@@ -25,7 +25,7 @@ Classes
    geofabrics.processor.HydrologicDemGenerator
    geofabrics.processor.RoughnessLengthGenerator
    geofabrics.processor.RiverBathymetryGenerator
-   geofabrics.processor.DrainBathymetryGenerator
+   geofabrics.processor.WaterwayBedElevationEstimator
 
 
 
@@ -385,13 +385,14 @@ Classes
 
 
 
-.. py:class:: DrainBathymetryGenerator(json_instructions, debug = True)
+.. py:class:: WaterwayBedElevationEstimator(json_instructions, debug = True)
 
    Bases: :py:obj:`BaseProcessor`
 
-   DrainBathymetryGenerator executes a pipeline to pull in OpenStreetMap drain and
-   tunnel information. A DEM is generated of the surrounding area and this used to
-   unblock drains and tunnels.
+   DrainBathymetryGenerator executes a pipeline to pull in OpenStreetMap waterway
+   and tunnel information. A DEM is generated of the surrounding area and this used to
+   unblock drains and tunnels - by taking the lowest value in the area around a tunnel
+   to be the tunnel elevation, and ensuring opne waterways flow downhill.
 
 
    .. py:method:: get_result_file_name(key)
@@ -406,7 +407,7 @@ Classes
       :param instructions  The json instructions defining the behaviour:
 
 
-   .. py:method:: drain_bathymetry_exists()
+   .. py:method:: waterway_elevations_exists()
 
       Check to see if the drain and culvert bathymeties have already been
       estimated.
@@ -419,17 +420,17 @@ Classes
       then returning the minimum elevation.
 
 
-   .. py:method:: estimate_closed_bathymetry(drains, dem)
+   .. py:method:: estimate_closed_elevations(waterways, dem)
 
       Sample the DEM around the tunnels to estimate the bed elevation.
 
 
-   .. py:method:: estimate_open_bathymetry(drains, dem)
+   .. py:method:: estimate_open_elevations(waterways, dem)
 
       Sample the DEM along the open waterways to enforce a decreasing elevation.
 
 
-   .. py:method:: create_dem(drains)
+   .. py:method:: create_dem(waterways)
 
       Create and return a DEM at a resolution 1.5x the drain width.
 
