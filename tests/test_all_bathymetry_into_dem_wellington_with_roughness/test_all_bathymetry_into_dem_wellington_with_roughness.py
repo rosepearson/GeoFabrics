@@ -58,7 +58,7 @@ class ProcessorRiverBathymetryTest(unittest.TestCase):
         dotenv.load_dotenv()
         linz_key = os.environ.get("LINZ_API", None)
         cls.instructions["rivers"]["apis"]["linz"]["key"] = linz_key
-        cls.instructions["drains"]["apis"]["linz"]["key"] = linz_key
+        cls.instructions["waterways"]["apis"]["linz"]["key"] = linz_key
         cls.instructions["dem"]["apis"]["linz"]["key"] = linz_key
         cls.instructions["roughness"]["apis"]["linz"]["key"] = linz_key
 
@@ -88,8 +88,8 @@ class ProcessorRiverBathymetryTest(unittest.TestCase):
             cls.instructions["rivers"], debug=False
         )
         runner.run()
-        runner = processor.DrainBathymetryGenerator(
-            cls.instructions["drains"], debug=False
+        runner = processor.WaterwayBedElevationEstimator(
+            cls.instructions["waterways"], debug=False
         )
         runner.run()
         runner = processor.RawLidarDemGenerator(cls.instructions["dem"])
@@ -224,7 +224,7 @@ class ProcessorRiverBathymetryTest(unittest.TestCase):
         numpy.testing.assert_array_almost_equal(
             test.zo.data,
             benchmark.zo.data,
-            decimal=6,
+            decimal=3,
             err_msg="The generated test has significantly different roughness from the "
             f"benchmark where there is LiDAR: {diff_array}",
         )

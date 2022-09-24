@@ -59,7 +59,7 @@ class ProcessorRiverBathymetryTest(unittest.TestCase):
         dotenv.load_dotenv()
         linz_key = os.environ.get("LINZ_API", None)
         cls.instructions["rivers"]["apis"]["linz"]["key"] = linz_key
-        cls.instructions["drains"]["apis"]["linz"]["key"] = linz_key
+        cls.instructions["waterways"]["apis"]["linz"]["key"] = linz_key
         cls.instructions["dem"]["apis"]["linz"]["key"] = linz_key
 
         # Remove any files from last test, then create a results directory
@@ -88,8 +88,8 @@ class ProcessorRiverBathymetryTest(unittest.TestCase):
             cls.instructions["rivers"], debug=False
         )
         runner.run()
-        runner = processor.DrainBathymetryGenerator(
-            cls.instructions["drains"], debug=False
+        runner = processor.WaterwayBedElevationEstimator(
+            cls.instructions["waterways"], debug=False
         )
         runner.run()
         runner = processor.RawLidarDemGenerator(cls.instructions["dem"])
