@@ -1467,6 +1467,7 @@ class RiverBathymetryGenerator(BaseProcessor):
             "geometry",
             "bed_elevation_Neal_et_al",
             "bed_elevation_Rupp_and_Smart",
+            min_z_name,
             "widths",
             width_name,
             flat_width_name,
@@ -1482,9 +1483,9 @@ class RiverBathymetryGenerator(BaseProcessor):
                 ]
             )
         # Save the widths and depths
-        width_values[values_to_save].to_file(
-            self.get_result_file_path(key="river_bathymetry")
-        )
+        width_values[values_to_save].rename(
+            columns={min_z_name: "bank_height"}
+        ).to_file(self.get_result_file_path(key="river_bathymetry"))
 
     def _calculate_neal_et_al_depth(
         self, width_values, width_name, slope_name, threshold_name

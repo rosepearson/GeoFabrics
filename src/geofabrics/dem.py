@@ -254,7 +254,7 @@ class DemBase(abc.ABC):
         "LiDAR": 1,
         "ocean bathymetry": 2,
         "rivers": 3,
-        "drains": 4,
+        "waterways": 4,
         "reference DEM": 5,
         "interpolated": 0,
         "no data": -1,
@@ -645,7 +645,7 @@ class HydrologicallyConditionedDem(DemBase):
 
         # First interpolated over open and closed drains using linear interpolation
         self._drain_dem = None
-        type_label = "drains"
+        type_label = "waterways"
         if (estimated_bathymetry.points["type"] == type_label).any():
             self._drain_dem = self._interpolate_estimated_bathymetry(
                 estimated_bathymetry=estimated_bathymetry,
@@ -681,16 +681,21 @@ class HydrologicallyConditionedDem(DemBase):
         # combined DEM
         combined_dem = self.combine_dem_parts()
 
-        # Get edge points
+        # Get edge points - from DEM
         edge_dem = combined_dem.rio.clip(
-            estimated_polygons.buffer(self.catchment_geometry.resolution),
+            estimated_polygons.dissolve().buffer(
+                self.catchment_geometry.resolution / 2
+            ),
             drop=True,
         )
         edge_dem = edge_dem.rio.clip(
-            estimated_polygons.geometry,
+            estimated_polygons.dissolve().buffer(
+                -self.catchment_geometry.resolution / 2
+            ),
             invert=True,
             drop=True,
         )
+        # Define the edge points
         grid_x, grid_y = numpy.meshgrid(edge_dem.x, edge_dem.y)
         flat_z = edge_dem.z.data.flatten()
         mask_z = ~numpy.isnan(flat_z)
@@ -698,11 +703,25 @@ class HydrologicallyConditionedDem(DemBase):
             [mask_z.sum().sum()],
             dtype=[("X", numpy.float64), ("Y", numpy.float64), ("Z", numpy.float64)],
         )
-
+        # Define edge points and heights
         edge_points["X"] = grid_x.flatten()[mask_z]
         edge_points["Y"] = grid_y.flatten()[mask_z]
         edge_points["Z"] = flat_z[mask_z]
-
+        # For rivers check the estimated bank heights are aren't lower
+        if type_label == "rivers":
+            # Estimate with linear interpolation
+            estimated_bank_heights = estimated_bathymetry.filtered_bank_heights(
+                type_label=type_label
+            )
+            edge_z_estimated = scipy.interpolate.griddata(
+                points=(estimated_points["X"], estimated_points["Y"]),
+                values=estimated_bank_heights,
+                xi=(edge_points["X"], edge_points["Y"]),
+                method="linear",
+            )
+            # Take the lowest at each edge pixel
+            mask_z = edge_points["Z"] > edge_z_estimated
+            edge_points["Z"][mask_z] = edge_z_estimated[mask_z]
         # Combine the estimated and edge points
         bathy_points = numpy.concatenate([edge_points, estimated_points])
 
