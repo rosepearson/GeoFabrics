@@ -620,7 +620,9 @@ class EstimatedBathymetryPoints:
         )
 
         # Pull out the bank heights
-        bank_heights = points.apply(lambda row: row["bank height"], axis=1).to_list()
+        bank_heights = points.apply(
+            lambda row: row[self.BANK_HEIGHT_LABEL], axis=1
+        ).to_list()
         return bank_heights
 
     @property
