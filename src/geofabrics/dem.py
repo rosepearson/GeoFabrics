@@ -12,6 +12,7 @@ import math
 import typing
 import pathlib
 import geopandas
+import pandas
 import shapely
 import dask
 import dask.array
@@ -97,8 +98,7 @@ class ReferenceDem:
             ]
             # Keep the reference DEM where there's no LiDAR & trim outside buffered area
             self._extents = buffered_land_and_foreshore.overlay(
-                exclusion_extent,
-                how="difference",
+                exclusion_extent, how="difference",
             )
         else:
             # If no LiDAR - only use the reference DEM on land
@@ -253,7 +253,7 @@ class DemBase(abc.ABC):
     SOURCE_CLASSIFICATION = {
         "LiDAR": 1,
         "ocean bathymetry": 2,
-        "rivers": 3,
+        "rivers and fans": 3,
         "waterways": 4,
         "reference DEM": 5,
         "interpolated": 0,
@@ -374,8 +374,7 @@ class HydrologicallyConditionedDem(DemBase):
 
         # Setup the DenseDemBase class
         super(HydrologicallyConditionedDem, self).__init__(
-            catchment_geometry=catchment_geometry,
-            extents=extents,
+            catchment_geometry=catchment_geometry, extents=extents,
         )
 
         # Set attributes
@@ -461,10 +460,7 @@ class HydrologicallyConditionedDem(DemBase):
             if self._offshore_dem is not None:
                 dems.append(self._offshore_dem)
             # combine the merged DEMs
-            combined_dem = rioxarray.merge.merge_datasets(
-                dems,
-                method="first",
-            )
+            combined_dem = rioxarray.merge.merge_datasets(dems, method="first",)
         return combined_dem
 
     def _sample_offshore_edge(self, resolution) -> numpy.ndarray:
@@ -647,30 +643,25 @@ class HydrologicallyConditionedDem(DemBase):
         self._drain_dem = None
         type_label = "waterways"
         if (estimated_bathymetry.points["type"] == type_label).any():
-            self._drain_dem = self._interpolate_estimated_bathymetry(
-                estimated_bathymetry=estimated_bathymetry,
-                method="cubic",
-                type_label=type_label,
+            self._drain_dem = self._interpolate_estimated_waterways(
+                estimated_bathymetry=estimated_bathymetry, method="cubic",
             )
         # Reset the river DEM
         self._river_dem = None
         type_label = "rivers"
         if (estimated_bathymetry.points["type"] == type_label).any():
-            self._river_dem = self._interpolate_estimated_bathymetry(
-                estimated_bathymetry=estimated_bathymetry,
-                method="rbf",
-                type_label=type_label,
+            self._river_dem = self._interpolate_estimated_rivers_and_fans(
+                estimated_bathymetry=estimated_bathymetry, method="rbf",
             )
 
-    def _interpolate_estimated_bathymetry(
-        self,
-        estimated_bathymetry: geometry.EstimatedBathymetryPoints,
-        method: str,
-        type_label: str,
+    def _interpolate_estimated_waterways(
+        self, estimated_bathymetry: geometry.EstimatedBathymetryPoints, method: str,
     ) -> xarray.Dataset:
-        """Performs interpolation from estimated bathymetry points within a polygon
-        using the specified interpolation approach after filtering the points based
-        on the type label. The type_label also determines the source classification."""
+        """Performs interpolation of the estimated bed elevations with the waterways
+        type_label within a polygon using the specified interpolation approach. The
+        type_label also determines the source classification."""
+
+        type_label = "waterways"
 
         # extract points and polygon
         estimated_points = estimated_bathymetry.filtered_points(type_label=type_label)
@@ -683,49 +674,29 @@ class HydrologicallyConditionedDem(DemBase):
 
         # Get edge points - from DEM
         edge_dem = combined_dem.rio.clip(
-            estimated_polygons.dissolve().buffer(
-                self.catchment_geometry.resolution / 2
-            ),
+            estimated_polygons.dissolve().buffer(self.catchment_geometry.resolution),
             drop=True,
         )
         edge_dem = edge_dem.rio.clip(
-            estimated_polygons.dissolve().buffer(
-                -self.catchment_geometry.resolution / 2
-            ),
-            invert=True,
-            drop=True,
+            estimated_polygons.dissolve().geometry, invert=True, drop=True,
         )
         # Define the edge points
         grid_x, grid_y = numpy.meshgrid(edge_dem.x, edge_dem.y)
         flat_z = edge_dem.z.data.flatten()
         mask_z = ~numpy.isnan(flat_z)
+        # Define edge points and heights
         edge_points = numpy.empty(
             [mask_z.sum().sum()],
             dtype=[("X", numpy.float64), ("Y", numpy.float64), ("Z", numpy.float64)],
         )
-        # Define edge points and heights
         edge_points["X"] = grid_x.flatten()[mask_z]
         edge_points["Y"] = grid_y.flatten()[mask_z]
         edge_points["Z"] = flat_z[mask_z]
-        # For rivers check the estimated bank heights are aren't lower
-        if type_label == "rivers":
-            # Estimate with linear interpolation
-            estimated_bank_heights = estimated_bathymetry.filtered_bank_heights(
-                type_label=type_label
-            )
-            edge_z_estimated = scipy.interpolate.griddata(
-                points=(estimated_points["X"], estimated_points["Y"]),
-                values=estimated_bank_heights,
-                xi=(edge_points["X"], edge_points["Y"]),
-                method="linear",
-            )
-            # Take the lowest at each edge pixel
-            mask_z = edge_points["Z"] > edge_z_estimated
-            edge_points["Z"][mask_z] = edge_z_estimated[mask_z]
+
         # Combine the estimated and edge points
         bathy_points = numpy.concatenate([edge_points, estimated_points])
 
-        # Setup the empty river area ready for interpolation
+        # Setup the empty area ready for interpolation
         estimated_dem = combined_dem.rio.clip(estimated_polygons.geometry)
         # Set value for all, then use clip to set regions outside polygon to NaN
         estimated_dem.z.data[:] = 0
@@ -744,6 +715,117 @@ class HydrologicallyConditionedDem(DemBase):
         logging.info(f"There are {len(flat_z_masked)} estimated points")
 
         # Interpolate river area - use cubic or linear interpolation
+        logging.info("Offshore interpolation")
+        flat_z_masked = self.interpolate_bathymetry_points(
+            bathymetry_points=bathy_points,
+            flat_x_array=flat_x_masked,
+            flat_y_array=flat_y_masked,
+            method=method,
+        )
+
+        # Set the interpolated value in the DEM
+        flat_z[mask_z] = flat_z_masked
+        estimated_dem.z.data = flat_z.reshape(estimated_dem.z.data.shape)
+
+        return estimated_dem
+
+    def _interpolate_estimated_rivers_and_fans(
+        self, estimated_bathymetry: geometry.EstimatedBathymetryPoints, method: str,
+    ) -> xarray.Dataset:
+        """Performs interpolation from estimated bathymetry points within a polygon
+        using the specified interpolation approach after filtering the points based
+        on the type label. The type_label also determines the source classification."""
+
+        # extract points and polygon
+        river_points = estimated_bathymetry.filtered_points(type_label="rivers")
+        river_polygons = estimated_bathymetry.filtered_polygons(type_label="rivers")
+        fan_points = estimated_bathymetry.filtered_points(type_label="fans")
+        fan_polygons = estimated_bathymetry.filtered_polygons(type_label="fans")
+        river_and_fan_points = numpy.concatenate([river_points, fan_points])
+        river_and_fan_polygons = geopandas.GeoDataFrame(
+            pandas.concat([river_polygons, fan_polygons], ignore_index=True),
+            crs=river_polygons.crs,
+        )
+
+        # combined DEM
+        combined_dem = self.combine_dem_parts()
+
+        # Get the river and fan edge points - from DEM
+        edge_dem = combined_dem.rio.clip(
+            river_and_fan_polygons.dissolve().buffer(
+                self.catchment_geometry.resolution
+            ),
+            drop=True,
+        )
+        edge_dem = edge_dem.rio.clip(
+            river_and_fan_polygons.dissolve().geometry, invert=True, drop=True,
+        )
+        # Define the river and mouth edge points
+        grid_x, grid_y = numpy.meshgrid(edge_dem.x, edge_dem.y)
+        flat_x = grid_x.flatten()
+        flat_y = grid_y.flatten()
+        flat_z = edge_dem.z.data.flatten()
+        mask_z = ~numpy.isnan(flat_z)
+
+        # Interpolate the estimated river bank heights along the river
+        # Create a mask defining the river points within the edge_points
+        edge_dem = edge_dem.rio.clip(
+            river_polygons.dissolve().buffer(self.catchment_geometry.resolution),
+            drop=False,
+        )
+        mask_z_river = ~numpy.isnan(edge_dem.z.data.flatten())
+
+        # Get the estimated river bank heights
+        estimated_river_bank_heights = estimated_bathymetry.filtered_bank_heights(
+            type_label="rivers"
+        )
+        # Interpolate the estimated river bank heights along the river
+        print(estimated_river_bank_heights)
+        edge_dem.z.plot()
+        estimated_river_edge_z = scipy.interpolate.griddata(
+            points=(river_points["X"], river_points["Y"]),
+            values=estimated_river_bank_heights,
+            xi=(flat_x[mask_z_river], flat_y[mask_z_river]),
+            method="linear",
+        )
+
+        # Take the estimated bank heights where lower than the DEM edge values
+        flat_z[mask_z_river][
+            flat_z[mask_z_river] > estimated_river_edge_z
+        ] = estimated_river_edge_z[flat_z[mask_z_river] > estimated_river_edge_z]
+
+        # Use the flat_x/y/z to define edge points and heights
+        edge_points = numpy.empty(
+            [mask_z.sum().sum()],
+            dtype=[("X", numpy.float64), ("Y", numpy.float64), ("Z", numpy.float64)],
+        )
+        edge_points["X"] = flat_x[mask_z]
+        edge_points["Y"] = flat_y[mask_z]
+        edge_points["Z"] = flat_z[mask_z]
+        # Combine the estimated and edge points
+        bathy_points = numpy.concatenate([edge_points, river_and_fan_points])
+
+        # Setup the empty river area ready for interpolation
+        estimated_dem = combined_dem.rio.clip(river_and_fan_polygons.geometry)
+        # Set value for all, then use clip to set regions outside polygon to NaN
+        estimated_dem.z.data[:] = 0
+        estimated_dem.source_class.data[:] = self.SOURCE_CLASSIFICATION[
+            "rivers and fans"
+        ]
+        estimated_dem = estimated_dem.rio.clip(river_and_fan_polygons.geometry)
+
+        grid_x, grid_y = numpy.meshgrid(estimated_dem.x, estimated_dem.y)
+        flat_z = estimated_dem.z.data[:].flatten()
+        mask_z = ~numpy.isnan(flat_z)
+
+        flat_x_masked = grid_x.flatten()[mask_z]
+        flat_y_masked = grid_y.flatten()[mask_z]
+        flat_z_masked = flat_z[mask_z]
+
+        # check there are actually pixels in the river
+        logging.info(f"There are {len(flat_z_masked)} estimated points")
+
+        # Interpolate river area - use specified interpolation
         logging.info("Offshore interpolation")
         flat_z_masked = self.interpolate_bathymetry_points(
             bathymetry_points=bathy_points,
@@ -787,8 +869,7 @@ class LidarBase(DemBase):
         self._dem = None
 
         super(LidarBase, self).__init__(
-            catchment_geometry=catchment_geometry,
-            extents=None,
+            catchment_geometry=catchment_geometry, extents=None,
         )
 
     def __del__(self):
@@ -1068,8 +1149,7 @@ class RawDem(LidarBase):
         """Setup base DEM to add future tiles too"""
 
         super(RawDem, self).__init__(
-            catchment_geometry=catchment_geometry,
-            elevation_range=elevation_range,
+            catchment_geometry=catchment_geometry, elevation_range=elevation_range,
         )
 
         self.drop_offshore_lidar = drop_offshore_lidar
@@ -1532,8 +1612,7 @@ class RoughnessDem(LidarBase):
         """Setup base DEM to add future tiles too"""
 
         super(RoughnessDem, self).__init__(
-            catchment_geometry=catchment_geometry,
-            elevation_range=elevation_range,
+            catchment_geometry=catchment_geometry, elevation_range=elevation_range,
         )
 
         # Load hyrdological DEM. Squeeze as rasterio.open() adds band coordinate.
@@ -1909,10 +1988,7 @@ class RoughnessDem(LidarBase):
             data=zo,
             dims=["y", "x"],
             coords=dict(x=(["x"], x), y=(["y"], y)),
-            attrs=dict(
-                long_name="ground roughness",
-                units="",
-            ),
+            attrs=dict(long_name="ground roughness", units="",),
         )
         # Resize zo to share the same dimensions at the DEM
         self._dem["zo"] = zo.sel(x=self._dem.x, y=self._dem.y, method="nearest")
@@ -2082,14 +2158,14 @@ def calculate_idw(
 
     distance_vectors = point - tree.data[near_indices]
     smoothed_distances = numpy.sqrt(
-        ((distance_vectors**2).sum(axis=1) + smoothing**2)
+        ((distance_vectors ** 2).sum(axis=1) + smoothing ** 2)
     )
     if smoothed_distances.min() == 0:  # in the case of an exact match
         idw = point_cloud["Z"][tree.query(point, k=1)[1]]
     else:
-        idw = (point_cloud["Z"][near_indices] / (smoothed_distances**power)).sum(
+        idw = (point_cloud["Z"][near_indices] / (smoothed_distances ** power)).sum(
             axis=0
-        ) / (1 / (smoothed_distances**power)).sum(axis=0)
+        ) / (1 / (smoothed_distances ** power)).sum(axis=0)
     return idw
 
 
@@ -2213,10 +2289,7 @@ def roughness_over_chunk(
         return grid_z
     # Perform the point cloud roughness estimation method over chunk
     z_flat = roughness_from_points(
-        point_cloud=tile_points,
-        xy_out=xy_out,
-        xy_ground=xy_ground,
-        options=options,
+        point_cloud=tile_points, xy_out=xy_out, xy_ground=xy_ground, options=options,
     )
     grid_z = z_flat.reshape(grid_x.shape)
 
