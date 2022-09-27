@@ -602,6 +602,11 @@ class EstimatedBathymetryPoints:
             dtype=[("X", numpy.float64), ("Y", numpy.float64), ("Z", numpy.float64)],
         )
 
+        if len(points_array) == 0:
+            logging.warning(
+                f"No estimated waterway points with type label {type_label}"
+            )
+            return points_array
         # Extract the x, y and z values from the Shapely MultiPoints and possibly a
         # depth column
         points_array["X"] = points.apply(lambda row: row.geometry.x, axis=1).to_list()
@@ -616,7 +621,7 @@ class EstimatedBathymetryPoints:
             ).to_list()
         return points_array
 
-    def filtered_bank_heights(self, type_label: str = None) -> numpy.ndarray:
+    def filtered_bank_height_points(self, type_label: str = None) -> numpy.ndarray:
         """Return the points as a single array."""
 
         # Filter the points by the type label
@@ -749,7 +754,8 @@ class RiverMouthFan:
 
     FAN_ANGLE = 30
     FAN_MAX_LENGTH = 10_000
-    ELEVATION_LABEL = "elevation"
+    ELEVATION_LABEL_1 = "bed_elevation_Neal_et_al"
+    ELEVATION_LABEL_2 = "bed_elevation_Rupp_and_Smart"
 
     def __init__(
         self,
@@ -792,9 +798,10 @@ class RiverMouthFan:
         """Get the width and depth at the river mouth."""
 
         river_bathymetry = geopandas.read_file(self.river_bathymetry_file)
-        river_mouth_depth = river_bathymetry["bed_elevation_Rupp_and_Smart"].iloc[0]
+        river_mouth_elevation_1 = river_bathymetry[self.ELEVATION_LABEL_1].iloc[0]
+        river_mouth_elevation_2 = river_bathymetry[self.ELEVATION_LABEL_2].iloc[0]
         river_mouth_width = river_bathymetry["width"].iloc[0]
-        return river_mouth_depth, river_mouth_width
+        return river_mouth_width, [river_mouth_elevation_1, river_mouth_elevation_2]
 
     def _get_ocean_contours(
         self, river_mouth_depth, depth_sign: int = -1, depth_multiplier: int = 2
@@ -834,7 +841,7 @@ class RiverMouthFan:
     def _bathymetry(
         self,
         intersection_line: shapely.geometry.LineString,
-        river_mouth_depth: float,
+        river_mouth_elevations: list,
         end_depth: float,
         mouth_point: shapely.geometry.Point,
         mouth_tangent: shapely.geometry.Point,
@@ -862,9 +869,16 @@ class RiverMouthFan:
         distance = fan_centre.intersection(intersection_line).distance(mouth_point)
 
         # Setup the fan data values
-        fan_depths = {"geometry": [], self.ELEVATION_LABEL: []}
+        fan_depths = {
+            "geometry": [],
+            self.ELEVATION_LABEL_1: [],
+            self.ELEVATION_LABEL_2: [],
+        }
         number_of_samples = int(distance / self.cross_section_spacing)
-        depth_increment = (-1 * end_depth - river_mouth_depth) / number_of_samples
+        depth_increments = [
+            (-1 * end_depth - river_mouth_elevations[0]) / number_of_samples,
+            (-1 * end_depth - river_mouth_elevations[1]) / number_of_samples,
+        ]
 
         # Iterate through creating fan bathymetry
         for i in range(1, number_of_samples):
@@ -878,8 +892,11 @@ class RiverMouthFan:
                     ]
                 )
             )
-            fan_depths[self.ELEVATION_LABEL].append(
-                river_mouth_depth + i * depth_increment
+            fan_depths[self.ELEVATION_LABEL_1].append(
+                river_mouth_elevations[0] + i * depth_increments[0]
+            )
+            fan_depths[self.ELEVATION_LABEL_2].append(
+                river_mouth_elevations[1] + i * depth_increments[1]
             )
         fan_depths = geopandas.GeoDataFrame(fan_depths, crs=self.crs)
         return fan_depths
@@ -938,7 +955,7 @@ class RiverMouthFan:
 
         # Load in river mouth alignment and bathymetry
         mouth_point, mouth_tangent, mouth_normal = self._get_mouth_alignment()
-        river_mouth_depth, river_mouth_width = self._get_mouth_bathymetry()
+        river_mouth_width, river_mouth_elevations = self._get_mouth_bathymetry()
 
         # Create maximum fan polygon
         fan_polygon = self._max_length_polygon(
@@ -949,7 +966,9 @@ class RiverMouthFan:
         )
 
         # Load in ocean depth contours
-        ocean_contours, end_depth = self._get_ocean_contours(river_mouth_depth)
+        ocean_contours, end_depth = self._get_ocean_contours(
+            max(river_mouth_elevations)
+        )
 
         # Cycle through contours finding the nearest contour to intersect the fan
         distance = numpy.inf
@@ -1017,7 +1036,7 @@ class RiverMouthFan:
         bathymetry = self._bathymetry(
             intersection_line=intersection_line,
             end_depth=end_depth,
-            river_mouth_depth=river_mouth_depth,
+            river_mouth_elevations=river_mouth_elevations,
             mouth_point=mouth_point,
             mouth_tangent=mouth_tangent,
         )

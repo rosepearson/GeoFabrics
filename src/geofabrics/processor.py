@@ -1468,7 +1468,6 @@ class RiverBathymetryGenerator(BaseProcessor):
             "bed_elevation_Neal_et_al",
             "bed_elevation_Rupp_and_Smart",
             min_z_name,
-            "widths",
             width_name,
             flat_width_name,
         ]
@@ -1484,7 +1483,7 @@ class RiverBathymetryGenerator(BaseProcessor):
             )
         # Save the widths and depths
         width_values[values_to_save].rename(
-            columns={min_z_name: "bank_height"}
+            columns={min_z_name: "bank_height", width_name: "width"}
         ).to_file(self.get_result_file_path(key="river_bathymetry"))
 
     def _calculate_neal_et_al_depth(
@@ -1763,6 +1762,7 @@ class WaterwayBedElevationEstimator(BaseProcessor):
             {
                 "elevation": elevations,
                 "geometry": points,
+                "width": closed_drains["width"],
             },
             crs=2193,
         )
@@ -1888,7 +1888,7 @@ class WaterwayBedElevationEstimator(BaseProcessor):
                 drain_points["elevation"]
             )
         # Save bathymetry
-        open_drains[["geometry", "elevation"]].to_file(elevation_file)
+        open_drains[["geometry", "width", "elevation"]].to_file(elevation_file)
 
     def create_dem(self, waterways: geopandas.GeoDataFrame) -> xarray.Dataset:
         """Create and return a DEM at a resolution 1.5x the drain width."""
