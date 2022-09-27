@@ -483,9 +483,10 @@ class EstimatedBathymetryPoints:
     used to interpolate elevations within the river and mouth polygon.
     """
 
-    DEPTH_LABEL = "depths"
+    DEPTH_LABEL = "elevation"
     TYPE_LABEL = "type"
     BANK_HEIGHT_LABEL = "bank_height"
+    WIDTH_LABEL = "width"
 
     def __init__(
         self,
@@ -528,9 +529,15 @@ class EstimatedBathymetryPoints:
         if z_labels is not None:
             points_i = points_i.rename(columns={z_labels[0]: self.DEPTH_LABEL})
         columns_i = (
-            [self.DEPTH_LABEL, self.TYPE_LABEL, self.BANK_HEIGHT_LABEL, "geometry"]
+            [
+                self.DEPTH_LABEL,
+                self.TYPE_LABEL,
+                self.WIDTH_LABEL,
+                self.BANK_HEIGHT_LABEL,
+                "geometry",
+            ]
             if self.BANK_HEIGHT_LABEL in points_i.columns
-            else [self.DEPTH_LABEL, self.TYPE_LABEL, "geometry"]
+            else [self.DEPTH_LABEL, self.TYPE_LABEL, self.WIDTH_LABEL, "geometry"]
         )
         points_i = points_i[columns_i]
         points_list = [points_i]
@@ -619,11 +626,21 @@ class EstimatedBathymetryPoints:
             else self._points[self._points["type"] == type_label]
         )
 
+        points_array = numpy.empty(
+            [len(points)],
+            dtype=[("X", numpy.float64), ("Y", numpy.float64), ("Z", numpy.float64)],
+        )
+
+        # Extract the x, y and z values from the Shapely MultiPoints and possibly a
+        # depth column
+        points_array["X"] = points.apply(lambda row: row.geometry.x, axis=1).to_list()
+        points_array["Y"] = points.apply(lambda row: row.geometry.y, axis=1).to_list()
+
         # Pull out the bank heights
-        bank_heights = points.apply(
+        points_array["Z"] = points.apply(
             lambda row: row[self.BANK_HEIGHT_LABEL], axis=1
         ).to_list()
-        return bank_heights
+        return points_array
 
     @property
     def points(self):
@@ -732,6 +749,7 @@ class RiverMouthFan:
 
     FAN_ANGLE = 30
     FAN_MAX_LENGTH = 10_000
+    ELEVATION_LABEL = "elevation"
 
     def __init__(
         self,
@@ -775,7 +793,7 @@ class RiverMouthFan:
 
         river_bathymetry = geopandas.read_file(self.river_bathymetry_file)
         river_mouth_depth = river_bathymetry["bed_elevation_Rupp_and_Smart"].iloc[0]
-        river_mouth_width = river_bathymetry["widths"].iloc[0]
+        river_mouth_width = river_bathymetry["width"].iloc[0]
         return river_mouth_depth, river_mouth_width
 
     def _get_ocean_contours(
@@ -844,7 +862,7 @@ class RiverMouthFan:
         distance = fan_centre.intersection(intersection_line).distance(mouth_point)
 
         # Setup the fan data values
-        fan_depths = {"geometry": [], "depths": []}
+        fan_depths = {"geometry": [], self.ELEVATION_LABEL: []}
         number_of_samples = int(distance / self.cross_section_spacing)
         depth_increment = (-1 * end_depth - river_mouth_depth) / number_of_samples
 
@@ -860,7 +878,9 @@ class RiverMouthFan:
                     ]
                 )
             )
-            fan_depths["depths"].append(river_mouth_depth + i * depth_increment)
+            fan_depths[self.ELEVATION_LABEL].append(
+                river_mouth_depth + i * depth_increment
+            )
         fan_depths = geopandas.GeoDataFrame(fan_depths, crs=self.crs)
         return fan_depths
 

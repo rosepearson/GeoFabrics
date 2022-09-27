@@ -634,7 +634,7 @@ class HydrologicallyConditionedDem(DemBase):
         self._offshore_dem.z.data = flat_z.reshape(self._offshore_dem.z.data.shape)
 
     def interpolate_river_bathymetry(
-        self, estimated_bathymetry: geometry.EstimatedBathymetryPoints
+        self, estimated_bathymetry: geometry.EstimatedBathymetryPoints,
     ):
         """Performs interpolation over drains, culverts, rivers and river fan
         polygons using various interpolation techniques."""
@@ -776,23 +776,28 @@ class HydrologicallyConditionedDem(DemBase):
         mask_z_river = ~numpy.isnan(edge_dem.z.data.flatten())
 
         # Get the estimated river bank heights
-        estimated_river_bank_heights = estimated_bathymetry.filtered_bank_heights(
+        river_bank_points = estimated_bathymetry.filtered_bank_height_points(
             type_label="rivers"
         )
         # Interpolate the estimated river bank heights along the river
-        print(estimated_river_bank_heights)
-        edge_dem.z.plot()
-        estimated_river_edge_z = scipy.interpolate.griddata(
-            points=(river_points["X"], river_points["Y"]),
-            values=estimated_river_bank_heights,
-            xi=(flat_x[mask_z_river], flat_y[mask_z_river]),
-            method="linear",
+        xy_out = numpy.concatenate(
+            [[flat_x[mask_z_river]], [flat_y[mask_z_river]]], axis=0
+        ).transpose()
+        options = {
+            "radius": estimated_bathymetry.points["width"].max(),
+            "raster_type": numpy.float64,
+            "method": "linear",
+        }
+        estimated_river_edge_z = elevation_from_points(
+            point_cloud=river_bank_points, xy_out=xy_out, options=options
         )
 
         # Take the estimated bank heights where lower than the DEM edge values
-        flat_z[mask_z_river][
-            flat_z[mask_z_river] > estimated_river_edge_z
-        ] = estimated_river_edge_z[flat_z[mask_z_river] > estimated_river_edge_z]
+        river_edge_z = estimated_river_edge_z.copy()
+        river_edge_z[flat_z[mask_z_river] < estimated_river_edge_z] = flat_z[
+            mask_z_river
+        ][flat_z[mask_z_river] < estimated_river_edge_z]
+        flat_z[mask_z_river] = river_edge_z
 
         # Use the flat_x/y/z to define edge points and heights
         edge_points = numpy.empty(
