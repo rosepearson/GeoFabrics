@@ -739,7 +739,7 @@ class RiverMouthFan:
     The fan begins with the most downstream river width estimate, and ends with the
     first contour of either more than 2x the depth of the mouth. This aims to ensure
     their is a defined fan that is slightly deeper than the surrounding during
-    the transition.
+    the transition. A fan is caculated for both river bed elevation approach.
     TODO In future,it may move to defining the width as 10x the mouth width.
     TODO deal with no width at the mouth and work upstream.
 
@@ -846,7 +846,8 @@ class RiverMouthFan:
         mouth_point: shapely.geometry.Point,
         mouth_tangent: shapely.geometry.Point,
     ):
-        """Calculate and return the fan bathymetry values.
+        """Calculate and return the fan bathymetry values for both river bed
+        estimation approaches.
 
         Parameters:
             intersection_line  The contour line defining the end of the fan
@@ -951,7 +952,9 @@ class RiverMouthFan:
         return fan_polygon
 
     def polygon_and_bathymetry(self):
-        """Calculate and return the fan polygon values."""
+        """Calculate and return the fan polygon values. Perform calculations for both
+        rive bed estimation approaches, so both have a smooth transition to offshore
+        bathyemtry. """
 
         # Load in river mouth alignment and bathymetry
         mouth_point, mouth_tangent, mouth_normal = self._get_mouth_alignment()
