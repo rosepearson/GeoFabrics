@@ -622,8 +622,7 @@ class EstimatedBathymetryPoints:
         return points_array
 
     def filtered_bank_height_points(self, type_label: str = None) -> numpy.ndarray:
-        """Return the points with 'Z' being the estimated bank height as a single array.
-        """
+        """Return the points with 'Z' being the estimated bank height as a single array."""
 
         # Filter the points by the type label
         points = (
