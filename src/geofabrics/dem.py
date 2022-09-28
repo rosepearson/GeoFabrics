@@ -98,8 +98,7 @@ class ReferenceDem:
             ]
             # Keep the reference DEM where there's no LiDAR & trim outside buffered area
             self._extents = buffered_land_and_foreshore.overlay(
-                exclusion_extent,
-                how="difference",
+                exclusion_extent, how="difference",
             )
         else:
             # If no LiDAR - only use the reference DEM on land
@@ -375,8 +374,7 @@ class HydrologicallyConditionedDem(DemBase):
 
         # Setup the DenseDemBase class
         super(HydrologicallyConditionedDem, self).__init__(
-            catchment_geometry=catchment_geometry,
-            extents=extents,
+            catchment_geometry=catchment_geometry, extents=extents,
         )
 
         # Set attributes
@@ -462,10 +460,7 @@ class HydrologicallyConditionedDem(DemBase):
             if self._offshore_dem is not None:
                 dems.append(self._offshore_dem)
             # combine the merged DEMs
-            combined_dem = rioxarray.merge.merge_datasets(
-                dems,
-                method="first",
-            )
+            combined_dem = rioxarray.merge.merge_datasets(dems, method="first",)
         return combined_dem
 
     def _sample_offshore_edge(self, resolution) -> numpy.ndarray:
@@ -639,33 +634,38 @@ class HydrologicallyConditionedDem(DemBase):
         self._offshore_dem.z.data = flat_z.reshape(self._offshore_dem.z.data.shape)
 
     def interpolate_river_bathymetry(
-        self,
-        estimated_bathymetry: geometry.EstimatedBathymetryPoints,
+        self, estimated_bathymetry: geometry.EstimatedBathymetryPoints,
     ):
         """Performs interpolation over drains, culverts, rivers and river fan
         polygons using various interpolation techniques."""
 
         # First interpolated over open and closed drains using linear interpolation
         self._drain_dem = None
-        type_label = "waterways"
-        if (estimated_bathymetry.points["type"] == type_label).any():
+        if (estimated_bathymetry.points["type"] == "waterways").any():
             self._drain_dem = self._interpolate_estimated_waterways(
-                estimated_bathymetry=estimated_bathymetry,
-                method="cubic",
+                estimated_bathymetry=estimated_bathymetry, method="cubic",
             )
         # Reset the river DEM
         self._river_dem = None
-        type_label = "rivers"
-        if (estimated_bathymetry.points["type"] == type_label).any():
+        if (estimated_bathymetry.points["type"] == "rivers").any() and (
+            estimated_bathymetry.points["type"] == "fans"
+        ).any():
             self._river_dem = self._interpolate_estimated_rivers_and_fans(
-                estimated_bathymetry=estimated_bathymetry,
-                method="rbf",
+                estimated_bathymetry=estimated_bathymetry, method="rbf",
+            )
+        elif (estimated_bathymetry.points["type"] == "rivers").any():
+            logging.warning(
+                "'rivers' included but no 'fans'. GeoFabrics currently "
+                "requires both to include for hydrological conditioning"
+            )
+        elif (estimated_bathymetry.points["type"] == "fans").any():
+            logging.warning(
+                "'fans' included but no 'rivers'. GeoFabrics currently "
+                "requires both to include for hydrological conditioning"
             )
 
     def _interpolate_estimated_waterways(
-        self,
-        estimated_bathymetry: geometry.EstimatedBathymetryPoints,
-        method: str,
+        self, estimated_bathymetry: geometry.EstimatedBathymetryPoints, method: str,
     ) -> xarray.Dataset:
         """Performs interpolation of the estimated bed elevations with the waterways
         type_label within a polygon using the specified interpolation approach. The
@@ -688,9 +688,7 @@ class HydrologicallyConditionedDem(DemBase):
             drop=True,
         )
         edge_dem = edge_dem.rio.clip(
-            estimated_polygons.dissolve().geometry,
-            invert=True,
-            drop=True,
+            estimated_polygons.dissolve().geometry, invert=True, drop=True,
         )
         # Define the edge points
         grid_x, grid_y = numpy.meshgrid(edge_dem.x, edge_dem.y)
@@ -742,9 +740,7 @@ class HydrologicallyConditionedDem(DemBase):
         return estimated_dem
 
     def _interpolate_estimated_rivers_and_fans(
-        self,
-        estimated_bathymetry: geometry.EstimatedBathymetryPoints,
-        method: str,
+        self, estimated_bathymetry: geometry.EstimatedBathymetryPoints, method: str,
     ) -> xarray.Dataset:
         """Performs interpolation from estimated bathymetry points within a polygon
         using the specified interpolation approach after filtering the points based
@@ -772,9 +768,7 @@ class HydrologicallyConditionedDem(DemBase):
             drop=True,
         )
         edge_dem = edge_dem.rio.clip(
-            river_and_fan_polygons.dissolve().geometry,
-            invert=True,
-            drop=True,
+            river_and_fan_polygons.dissolve().geometry, invert=True, drop=True,
         )
         # Define the river and mouth edge points
         grid_x, grid_y = numpy.meshgrid(edge_dem.x, edge_dem.y)
@@ -890,8 +884,7 @@ class LidarBase(DemBase):
         self._dem = None
 
         super(LidarBase, self).__init__(
-            catchment_geometry=catchment_geometry,
-            extents=None,
+            catchment_geometry=catchment_geometry, extents=None,
         )
 
     def __del__(self):
@@ -1171,8 +1164,7 @@ class RawDem(LidarBase):
         """Setup base DEM to add future tiles too"""
 
         super(RawDem, self).__init__(
-            catchment_geometry=catchment_geometry,
-            elevation_range=elevation_range,
+            catchment_geometry=catchment_geometry, elevation_range=elevation_range,
         )
 
         self.drop_offshore_lidar = drop_offshore_lidar
@@ -1635,8 +1627,7 @@ class RoughnessDem(LidarBase):
         """Setup base DEM to add future tiles too"""
 
         super(RoughnessDem, self).__init__(
-            catchment_geometry=catchment_geometry,
-            elevation_range=elevation_range,
+            catchment_geometry=catchment_geometry, elevation_range=elevation_range,
         )
 
         # Load hyrdological DEM. Squeeze as rasterio.open() adds band coordinate.
@@ -2015,10 +2006,7 @@ class RoughnessDem(LidarBase):
             data=zo,
             dims=["y", "x"],
             coords=dict(x=(["x"], x), y=(["y"], y)),
-            attrs=dict(
-                long_name="ground roughness",
-                units="",
-            ),
+            attrs=dict(long_name="ground roughness", units="",),
         )
         # Resize zo to share the same dimensions at the DEM
         self._dem["zo"] = zo.sel(x=self._dem.x, y=self._dem.y, method="nearest")
@@ -2188,14 +2176,14 @@ def calculate_idw(
 
     distance_vectors = point - tree.data[near_indices]
     smoothed_distances = numpy.sqrt(
-        ((distance_vectors**2).sum(axis=1) + smoothing**2)
+        ((distance_vectors ** 2).sum(axis=1) + smoothing ** 2)
     )
     if smoothed_distances.min() == 0:  # in the case of an exact match
         idw = point_cloud["Z"][tree.query(point, k=1)[1]]
     else:
-        idw = (point_cloud["Z"][near_indices] / (smoothed_distances**power)).sum(
+        idw = (point_cloud["Z"][near_indices] / (smoothed_distances ** power)).sum(
             axis=0
-        ) / (1 / (smoothed_distances**power)).sum(axis=0)
+        ) / (1 / (smoothed_distances ** power)).sum(axis=0)
     return idw
 
 
@@ -2319,10 +2307,7 @@ def roughness_over_chunk(
         return grid_z
     # Perform the point cloud roughness estimation method over chunk
     z_flat = roughness_from_points(
-        point_cloud=tile_points,
-        xy_out=xy_out,
-        xy_ground=xy_ground,
-        options=options,
+        point_cloud=tile_points, xy_out=xy_out, xy_ground=xy_ground, options=options,
     )
     grid_z = z_flat.reshape(grid_x.shape)
 
