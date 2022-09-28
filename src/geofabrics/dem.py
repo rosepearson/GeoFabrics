@@ -12,6 +12,7 @@ import math
 import typing
 import pathlib
 import geopandas
+import pandas
 import shapely
 import dask
 import dask.array
@@ -253,8 +254,8 @@ class DemBase(abc.ABC):
     SOURCE_CLASSIFICATION = {
         "LiDAR": 1,
         "ocean bathymetry": 2,
-        "rivers": 3,
-        "drains": 4,
+        "rivers and fans": 3,
+        "waterways": 4,
         "reference DEM": 5,
         "interpolated": 0,
         "no data": -1,
@@ -638,39 +639,49 @@ class HydrologicallyConditionedDem(DemBase):
         self._offshore_dem.z.data = flat_z.reshape(self._offshore_dem.z.data.shape)
 
     def interpolate_river_bathymetry(
-        self, estimated_bathymetry: geometry.EstimatedBathymetryPoints
+        self,
+        estimated_bathymetry: geometry.EstimatedBathymetryPoints,
     ):
         """Performs interpolation over drains, culverts, rivers and river fan
         polygons using various interpolation techniques."""
 
         # First interpolated over open and closed drains using linear interpolation
         self._drain_dem = None
-        type_label = "drains"
-        if (estimated_bathymetry.points["type"] == type_label).any():
-            self._drain_dem = self._interpolate_estimated_bathymetry(
+        if (estimated_bathymetry.points["type"] == "waterways").any():
+            self._drain_dem = self._interpolate_estimated_waterways(
                 estimated_bathymetry=estimated_bathymetry,
                 method="cubic",
-                type_label=type_label,
             )
         # Reset the river DEM
         self._river_dem = None
-        type_label = "rivers"
-        if (estimated_bathymetry.points["type"] == type_label).any():
-            self._river_dem = self._interpolate_estimated_bathymetry(
+        if (estimated_bathymetry.points["type"] == "rivers").any() and (
+            estimated_bathymetry.points["type"] == "fans"
+        ).any():
+            self._river_dem = self._interpolate_estimated_rivers_and_fans(
                 estimated_bathymetry=estimated_bathymetry,
                 method="rbf",
-                type_label=type_label,
+            )
+        elif (estimated_bathymetry.points["type"] == "rivers").any():
+            logging.warning(
+                "'rivers' included but no 'fans'. GeoFabrics currently "
+                "requires both to include for hydrological conditioning"
+            )
+        elif (estimated_bathymetry.points["type"] == "fans").any():
+            logging.warning(
+                "'fans' included but no 'rivers'. GeoFabrics currently "
+                "requires both to include for hydrological conditioning"
             )
 
-    def _interpolate_estimated_bathymetry(
+    def _interpolate_estimated_waterways(
         self,
         estimated_bathymetry: geometry.EstimatedBathymetryPoints,
         method: str,
-        type_label: str,
     ) -> xarray.Dataset:
-        """Performs interpolation from estimated bathymetry points within a polygon
-        using the specified interpolation approach after filtering the points based
-        on the type label. The type_label also determines the source classification."""
+        """Performs interpolation of the estimated bed elevations with the waterways
+        type_label within a polygon using the specified interpolation approach. The
+        type_label also determines the source classification."""
+
+        type_label = "waterways"
 
         # extract points and polygon
         estimated_points = estimated_bathymetry.filtered_points(type_label=type_label)
@@ -681,24 +692,25 @@ class HydrologicallyConditionedDem(DemBase):
         # combined DEM
         combined_dem = self.combine_dem_parts()
 
-        # Get edge points
+        # Get edge points - from DEM
         edge_dem = combined_dem.rio.clip(
-            estimated_polygons.buffer(self.catchment_geometry.resolution),
+            estimated_polygons.dissolve().buffer(self.catchment_geometry.resolution),
             drop=True,
         )
         edge_dem = edge_dem.rio.clip(
-            estimated_polygons.geometry,
+            estimated_polygons.dissolve().geometry,
             invert=True,
             drop=True,
         )
+        # Define the edge points
         grid_x, grid_y = numpy.meshgrid(edge_dem.x, edge_dem.y)
         flat_z = edge_dem.z.data.flatten()
         mask_z = ~numpy.isnan(flat_z)
+        # Define edge points and heights
         edge_points = numpy.empty(
             [mask_z.sum().sum()],
             dtype=[("X", numpy.float64), ("Y", numpy.float64), ("Z", numpy.float64)],
         )
-
         edge_points["X"] = grid_x.flatten()[mask_z]
         edge_points["Y"] = grid_y.flatten()[mask_z]
         edge_points["Z"] = flat_z[mask_z]
@@ -706,7 +718,7 @@ class HydrologicallyConditionedDem(DemBase):
         # Combine the estimated and edge points
         bathy_points = numpy.concatenate([edge_points, estimated_points])
 
-        # Setup the empty river area ready for interpolation
+        # Setup the empty area ready for interpolation
         estimated_dem = combined_dem.rio.clip(estimated_polygons.geometry)
         # Set value for all, then use clip to set regions outside polygon to NaN
         estimated_dem.z.data[:] = 0
@@ -725,6 +737,126 @@ class HydrologicallyConditionedDem(DemBase):
         logging.info(f"There are {len(flat_z_masked)} estimated points")
 
         # Interpolate river area - use cubic or linear interpolation
+        logging.info("Offshore interpolation")
+        flat_z_masked = self.interpolate_bathymetry_points(
+            bathymetry_points=bathy_points,
+            flat_x_array=flat_x_masked,
+            flat_y_array=flat_y_masked,
+            method=method,
+        )
+
+        # Set the interpolated value in the DEM
+        flat_z[mask_z] = flat_z_masked
+        estimated_dem.z.data = flat_z.reshape(estimated_dem.z.data.shape)
+
+        return estimated_dem
+
+    def _interpolate_estimated_rivers_and_fans(
+        self,
+        estimated_bathymetry: geometry.EstimatedBathymetryPoints,
+        method: str,
+    ) -> xarray.Dataset:
+        """Performs interpolation from estimated bathymetry points within a polygon
+        using the specified interpolation approach after filtering the points based
+        on the type label. The type_label also determines the source classification."""
+
+        # extract points and polygon
+        river_points = estimated_bathymetry.filtered_points(type_label="rivers")
+        river_polygons = estimated_bathymetry.filtered_polygons(type_label="rivers")
+        fan_points = estimated_bathymetry.filtered_points(type_label="fans")
+        fan_polygons = estimated_bathymetry.filtered_polygons(type_label="fans")
+        river_and_fan_points = numpy.concatenate([river_points, fan_points])
+        river_and_fan_polygons = geopandas.GeoDataFrame(
+            pandas.concat([river_polygons, fan_polygons], ignore_index=True),
+            crs=river_polygons.crs,
+        )
+
+        # combined DEM
+        combined_dem = self.combine_dem_parts()
+
+        # Get the river and fan edge points - from DEM
+        edge_dem = combined_dem.rio.clip(
+            river_and_fan_polygons.dissolve().buffer(
+                self.catchment_geometry.resolution
+            ),
+            drop=True,
+        )
+        edge_dem = edge_dem.rio.clip(
+            river_and_fan_polygons.dissolve().geometry,
+            invert=True,
+            drop=True,
+        )
+        # Define the river and mouth edge points
+        grid_x, grid_y = numpy.meshgrid(edge_dem.x, edge_dem.y)
+        flat_x = grid_x.flatten()
+        flat_y = grid_y.flatten()
+        flat_z = edge_dem.z.data.flatten()
+        mask_z = ~numpy.isnan(flat_z)
+
+        # Interpolate the estimated river bank heights along the river
+        # Create a mask defining the river points within the edge_points
+        edge_dem = edge_dem.rio.clip(
+            river_polygons.dissolve().buffer(self.catchment_geometry.resolution),
+            drop=False,
+        )
+        mask_z_river = ~numpy.isnan(edge_dem.z.data.flatten())
+
+        # Get the estimated river bank heights
+        river_bank_points = estimated_bathymetry.filtered_bank_height_points(
+            type_label="rivers"
+        )
+        # Interpolate the estimated river bank heights along the river
+        xy_out = numpy.concatenate(
+            [[flat_x[mask_z_river]], [flat_y[mask_z_river]]], axis=0
+        ).transpose()
+        options = {
+            "radius": estimated_bathymetry.points["width"].max(),
+            "raster_type": numpy.float64,
+            "method": "linear",
+        }
+        estimated_river_edge_z = elevation_from_points(
+            point_cloud=river_bank_points, xy_out=xy_out, options=options
+        )
+
+        # Take the estimated bank heights where lower than the DEM edge values
+        river_edge_z = estimated_river_edge_z.copy()
+        river_edge_z[flat_z[mask_z_river] < estimated_river_edge_z] = flat_z[
+            mask_z_river
+        ][flat_z[mask_z_river] < estimated_river_edge_z]
+        flat_z[mask_z_river] = river_edge_z
+
+        # Use the flat_x/y/z to define edge points and heights
+        edge_points = numpy.empty(
+            [mask_z.sum().sum()],
+            dtype=[("X", numpy.float64), ("Y", numpy.float64), ("Z", numpy.float64)],
+        )
+        edge_points["X"] = flat_x[mask_z]
+        edge_points["Y"] = flat_y[mask_z]
+        edge_points["Z"] = flat_z[mask_z]
+        # Combine the estimated and edge points
+        bathy_points = numpy.concatenate([edge_points, river_and_fan_points])
+
+        # Setup the empty river area ready for interpolation
+        estimated_dem = combined_dem.rio.clip(river_and_fan_polygons.geometry)
+        # Set value for all, then use clip to set regions outside polygon to NaN
+        estimated_dem.z.data[:] = 0
+        estimated_dem.source_class.data[:] = self.SOURCE_CLASSIFICATION[
+            "rivers and fans"
+        ]
+        estimated_dem = estimated_dem.rio.clip(river_and_fan_polygons.geometry)
+
+        grid_x, grid_y = numpy.meshgrid(estimated_dem.x, estimated_dem.y)
+        flat_z = estimated_dem.z.data[:].flatten()
+        mask_z = ~numpy.isnan(flat_z)
+
+        flat_x_masked = grid_x.flatten()[mask_z]
+        flat_y_masked = grid_y.flatten()[mask_z]
+        flat_z_masked = flat_z[mask_z]
+
+        # check there are actually pixels in the river
+        logging.info(f"There are {len(flat_z_masked)} estimated points")
+
+        # Interpolate river area - use specified interpolation
         logging.info("Offshore interpolation")
         flat_z_masked = self.interpolate_bathymetry_points(
             bathymetry_points=bathy_points,
@@ -1676,7 +1808,10 @@ class RoughnessDem(LidarBase):
                 self._dem.source_class.data
                 == self.SOURCE_CLASSIFICATION["ocean bathymetry"]
             )
-            | (self._dem.source_class.data == self.SOURCE_CLASSIFICATION["rivers"])
+            | (
+                self._dem.source_class.data
+                == self.SOURCE_CLASSIFICATION["rivers and fans"]
+            )
         ] = self.ROUGHNESS_DEFAULTS["water"]
         # Set roughness where land and no LiDAR
         self._dem.zo.data[

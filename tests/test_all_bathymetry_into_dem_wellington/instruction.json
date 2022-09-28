@@ -151,8 +151,8 @@
 			"set_dem_shoreline": true,
 			"drop_offshore_lidar": true,
 			"bathymetry_contours_z_label": "valdco",
-			"bathymetry_points_type": ["rivers", "rivers", "drains", "drains"],
-			"bathymetry_points_z_label": ["bed_elevation_Rupp_and_Smart", "depths", "elevation", "elevation"],
+			"bathymetry_points_type": ["rivers", "fans", "waterways", "waterways"],
+			"bathymetry_points_z_label": ["bed_elevation_Rupp_and_Smart", "bed_elevation_Rupp_and_Smart", "elevation", "elevation"],
 			"lidar_classifications_to_keep": [2, 9],
 			"interpolation_method": "linear"
 		}

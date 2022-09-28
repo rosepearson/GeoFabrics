@@ -168,7 +168,7 @@ class ProcessorRiverBathymetryOsmTest(unittest.TestCase):
             f" match the benchmark. {test_comparison} vs "
             f"{benchmark_comparison}",
         )
-        column_name = "widths"
+        column_name = "width"
         test_comparison = test[column_name].array
         benchmark_comparison = benchmark[column_name].array
         print(
@@ -270,8 +270,24 @@ class ProcessorRiverBathymetryOsmTest(unittest.TestCase):
             self.cache_dir / data_path_instructions["fan_bathymetry_benchmark"]
         )
 
-        # check some of the bathymetrt columns match
-        column_name = "depths"
+        # check some of the bathymetry columns match
+        column_name = "bed_elevation_Neal_et_al"
+        test_comparison = test[column_name].array
+        benchmark_comparison = benchmark[column_name].array
+        print(
+            f"{column_name} difference "
+            "{numpy.array(test_comparison) - numpy.array(benchmark_comparison)}"
+        )
+        self.assertAlmostEqual(
+            test_comparison,
+            benchmark_comparison,
+            places=7,
+            msg="The geneated  river {column_name} does"
+            f" not match the benchmark. {test_comparison} "
+            f"vs {benchmark_comparison}",
+        )
+
+        column_name = "bed_elevation_Rupp_and_Smart"
         test_comparison = test[column_name].array
         benchmark_comparison = benchmark[column_name].array
         print(
