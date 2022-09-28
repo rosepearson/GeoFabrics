@@ -109,22 +109,37 @@ def launch_processor(args):
     with open(args.instructions, "r") as file_pointer:
         instructions = json.load(file_pointer)
     # Run the pipeline
-    start_time = time.time()
+    initial_start_time = time.time()
     if "rivers" in instructions:
         # Estimate river channel bathymetry
-        print("Run processor.RiverBathymetryGenerator")
+        start_time = time.time()
+        print(f"Run processor.RiverBathymetryGenerator at {start_time}")
         run_instructions = instructions["rivers"]
         setup_logging_for_run(run_instructions)
         runner = processor.RiverBathymetryGenerator(run_instructions)
         runner.run()
+        message = (
+            f"Execution time is {time.time() - start_time} for "
+            "processor.RiverBathymetryGenerator"
+        )
+        print(message)
+        logging.info(message)
     if "waterways" in instructions:
         # Estimate waterway elevations
+        start_time = time.time()
         print("Run processor.WaterwayBedElevationEstimator")
         run_instructions = instructions["waterways"]
         setup_logging_for_run(run_instructions)
         runner = processor.WaterwayBedElevationEstimator(run_instructions)
         runner.run()
+        message = (
+            f"Execution time is {time.time() - start_time} for "
+            "processor.WaterwayBedElevationEstimator"
+        )
+        print(message)
+        logging.info(message)
     if "dem" in instructions:
+        start_time = time.time()
         run_instructions = instructions["dem"]
         dem_paths = run_instructions["data_paths"]
         if "raw_dem" not in dem_paths or not (
@@ -136,26 +151,45 @@ def launch_processor(args):
             ).is_file()
         ):
             # Create a raw DEM from LiDAR / reference DEM
+            start_time = time.time()
             print("Run processor.RawLidarDemGenerator")
             setup_logging_for_run(run_instructions)
             runner = processor.RawLidarDemGenerator(run_instructions)
             runner.run()
+            message = (
+                f"Execution time is {time.time() - start_time} for "
+                "processor.RawLidarDemGenerator"
+            )
+            print(message)
+            logging.info(message)
         # Add bathymetry information to a raw DEM
+        start_time = time.time()
         print("Run processor.HydrologicDemGenerator")
         setup_logging_for_run(run_instructions)
         runner = processor.HydrologicDemGenerator(run_instructions)
         runner.run()
+        message = (
+            f"Execution time is {time.time() - start_time} for "
+            "processor.HydrologicDemGenerator"
+        )
+        print(message)
+        logging.info(message)
         check_for_benchmarks(run_instructions, runner)
     if "roughness" in instructions:
+        # Create a roughness map and add to the hydrological DEM
+        start_time = time.time()
+        print("Run processor.RoughnessLengthGenerator")
         run_instructions = instructions["roughness"]
         setup_logging_for_run(run_instructions)
-        # Create a roughness map and add to the hydrological DEM
-        print("Run processor.RoughnessLengthGenerator")
         runner = processor.RoughnessLengthGenerator(run_instructions)
         runner.run()
-    end_time = time.time()
-
-    print(f"Execution time is {end_time - start_time}")
+        message = (
+            f"Execution time is {time.time() - start_time} for "
+            "processor.RoughnessLengthGenerator"
+        )
+        print(message)
+        logging.info(message)
+    print(f"Total execution time is {time.time() - initial_start_time}")
 
 
 def main():
