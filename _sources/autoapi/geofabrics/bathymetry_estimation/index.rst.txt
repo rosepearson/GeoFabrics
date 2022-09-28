@@ -92,13 +92,17 @@ Classes
    A class to estimate the width, slope and other characteristics of a
    channel from a detailed DEM and a river network.
 
-   .. py:method:: number_of_samples()
-      :property:
+   .. py:property:: number_of_samples
+      :type: int
 
       Return the number of samples to take along cross_sections. This should
       be an odd number. Subtract 1 instead of adding to ensure within the
       generated DEM.
 
+   .. py:property:: centre_index
+      :type: int
+
+      Return the centre index for samples taken along a transect.
 
    .. py:method:: calculate_min_z_start_i(min_z_search_radius)
 
@@ -114,12 +118,6 @@ Classes
       looking for the minimum z.
 
       :param min_z_search_radius: The distance to search from the centre.
-
-
-   .. py:method:: centre_index()
-      :property:
-
-      Return the centre index for samples taken along a transect.
 
 
    .. py:method:: node_centred_reach_cross_section(sampled_channel)

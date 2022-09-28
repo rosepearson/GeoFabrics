@@ -62,34 +62,30 @@ Attributes
 
    If set_foreshore is True all positive DEM values in the foreshore are set to zero.
 
-   .. py:method:: __del__()
-
-      Ensure the memory associated with netCDF files is properly freed.
-
-
-   .. py:method:: dem()
-      :property:
+   .. py:property:: dem
+      :type: xarray.Dataset
 
       Return the DEM over the catchment region
 
-
-   .. py:method:: resolution()
-      :property:
+   .. py:property:: resolution
+      :type: float
 
       Return the largest dimension of the reference DEM resolution
 
-
-   .. py:method:: points()
-      :property:
+   .. py:property:: points
+      :type: numpy.ndarray
 
       The reference DEM points after any extent or foreshore value
       filtering.
 
-
-   .. py:method:: extents()
-      :property:
+   .. py:property:: extents
+      :type: geopandas.GeoDataFrame
 
       The extents for the reference DEM
+
+   .. py:method:: __del__()
+
+      Ensure the memory associated with netCDF files is properly freed.
 
 
 
@@ -106,17 +102,15 @@ Attributes
                               regions
    :param extents: Defines the extents of any dense (LiDAR or refernence DEM) values already added.
 
-   .. py:method:: extents()
-      :property:
+   .. py:property:: extents
 
       The combined extents for all added LiDAR tiles
 
-
-   .. py:method:: dem()
-      :property:
+   .. py:property:: dem
+      :type: xarray.Dataset
+      :abstractmethod:
 
       Return the DEM over the catchment region
-
 
 
 .. py:class:: HydrologicallyConditionedDem(catchment_geometry, raw_dem_path, extents_path, interpolation_method)
@@ -131,15 +125,13 @@ Attributes
                                            If not None, interpolate using that method. Valid options are 'linear',
                                            'nearest', and 'cubic'
 
+   .. py:property:: dem
+
+      Return the combined DEM from tiles and any interpolated offshore values
+
    .. py:method:: __del__()
 
       Ensure the memory associated with netCDF files is properly freed.
-
-
-   .. py:method:: dem()
-      :property:
-
-      Return the combined DEM from tiles and any interpolated offshore values
 
 
    .. py:method:: combine_dem_parts()
@@ -175,15 +167,13 @@ Attributes
    :param catchment_geometry: Defines the geometry of the catchment
    :param elevation_range: The range of valid LiDAR elevations. i.e. define elevation filtering to apply.
 
+   .. py:property:: dem
+
+      Return the combined DEM from tiles and any interpolated offshore values
+
    .. py:method:: __del__()
 
       Ensure the memory associated with netCDF files is properly freed.
-
-
-   .. py:method:: dem()
-      :property:
-
-      Return the combined DEM from tiles and any interpolated offshore values
 
 
    .. py:method:: add_lidar(lidar_files, tile_index_file, chunk_size, lidar_classifications_to_keep, source_crs, metadata)

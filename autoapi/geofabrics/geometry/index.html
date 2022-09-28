@@ -17,6 +17,7 @@
         <script src="../../../_static/underscore.js"></script>
         <script src="../../../_static/_sphinx_javascript_frameworks_compat.js"></script>
         <script src="../../../_static/doctools.js"></script>
+        <script src="../../../_static/sphinx_highlight.js"></script>
     <script src="../../../_static/js/theme.js"></script>
     <link rel="index" title="Index" href="../../../genindex.html" />
     <link rel="search" title="Search" href="../../../search.html" /> 
@@ -129,43 +130,43 @@ foreshore, etc) can be accessed.</p>
 </ul>
 </dd>
 </dl>
-<dl class="py method">
+<dl class="py property">
 <dt class="sig sig-object py" id="geofabrics.geometry.CatchmentGeometry.catchment">
 <em class="property"><span class="pre">property</span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">catchment</span></span><a class="headerlink" href="#geofabrics.geometry.CatchmentGeometry.catchment" title="Permalink to this definition"></a></dt>
 <dd><p>Return the catchment region</p>
 </dd></dl>
 
-<dl class="py method">
+<dl class="py property">
 <dt class="sig sig-object py" id="geofabrics.geometry.CatchmentGeometry.land">
 <em class="property"><span class="pre">property</span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">land</span></span><a class="headerlink" href="#geofabrics.geometry.CatchmentGeometry.land" title="Permalink to this definition"></a></dt>
 <dd><p>Return the catchment land region</p>
 </dd></dl>
 
-<dl class="py method">
+<dl class="py property">
 <dt class="sig sig-object py" id="geofabrics.geometry.CatchmentGeometry.full_land">
 <em class="property"><span class="pre">property</span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">full_land</span></span><a class="headerlink" href="#geofabrics.geometry.CatchmentGeometry.full_land" title="Permalink to this definition"></a></dt>
 <dd><p>Return the full land region</p>
 </dd></dl>
 
-<dl class="py method">
+<dl class="py property">
 <dt class="sig sig-object py" id="geofabrics.geometry.CatchmentGeometry.foreshore">
 <em class="property"><span class="pre">property</span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">foreshore</span></span><a class="headerlink" href="#geofabrics.geometry.CatchmentGeometry.foreshore" title="Permalink to this definition"></a></dt>
 <dd><p>Return the catchment foreshore region</p>
 </dd></dl>
 
-<dl class="py method">
+<dl class="py property">
 <dt class="sig sig-object py" id="geofabrics.geometry.CatchmentGeometry.land_and_foreshore">
 <em class="property"><span class="pre">property</span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">land_and_foreshore</span></span><a class="headerlink" href="#geofabrics.geometry.CatchmentGeometry.land_and_foreshore" title="Permalink to this definition"></a></dt>
 <dd><p>Return the catchment land and foreshore region</p>
 </dd></dl>
 
-<dl class="py method">
+<dl class="py property">
 <dt class="sig sig-object py" id="geofabrics.geometry.CatchmentGeometry.foreshore_and_offshore">
 <em class="property"><span class="pre">property</span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">foreshore_and_offshore</span></span><a class="headerlink" href="#geofabrics.geometry.CatchmentGeometry.foreshore_and_offshore" title="Permalink to this definition"></a></dt>
 <dd><p>Return the catchment foreshore and offshore region</p>
 </dd></dl>
 
-<dl class="py method">
+<dl class="py property">
 <dt class="sig sig-object py" id="geofabrics.geometry.CatchmentGeometry.offshore">
 <em class="property"><span class="pre">property</span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">offshore</span></span><a class="headerlink" href="#geofabrics.geometry.CatchmentGeometry.offshore" title="Permalink to this definition"></a></dt>
 <dd><p>Return the catchment offshore region</p>
@@ -255,25 +256,25 @@ depths to interpolate elevations offshore.</p>
 </ul>
 </dd>
 </dl>
-<dl class="py method">
+<dl class="py property">
 <dt class="sig sig-object py" id="geofabrics.geometry.MarineBathymetryPoints.points">
 <em class="property"><span class="pre">property</span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">points</span></span><a class="headerlink" href="#geofabrics.geometry.MarineBathymetryPoints.points" title="Permalink to this definition"></a></dt>
 <dd><p>Return the points</p>
 </dd></dl>
 
-<dl class="py method">
+<dl class="py property">
 <dt class="sig sig-object py" id="geofabrics.geometry.MarineBathymetryPoints.x">
 <em class="property"><span class="pre">property</span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">x</span></span><a class="headerlink" href="#geofabrics.geometry.MarineBathymetryPoints.x" title="Permalink to this definition"></a></dt>
 <dd><p>The x values</p>
 </dd></dl>
 
-<dl class="py method">
+<dl class="py property">
 <dt class="sig sig-object py" id="geofabrics.geometry.MarineBathymetryPoints.y">
 <em class="property"><span class="pre">property</span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">y</span></span><a class="headerlink" href="#geofabrics.geometry.MarineBathymetryPoints.y" title="Permalink to this definition"></a></dt>
 <dd><p>The y values</p>
 </dd></dl>
 
-<dl class="py method">
+<dl class="py property">
 <dt class="sig sig-object py" id="geofabrics.geometry.MarineBathymetryPoints.z">
 <em class="property"><span class="pre">property</span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">z</span></span><a class="headerlink" href="#geofabrics.geometry.MarineBathymetryPoints.z" title="Permalink to this definition"></a></dt>
 <dd><p>The z values</p>
@@ -298,6 +299,30 @@ used to interpolate elevations within the river and mouth polygon.</p>
 </ul>
 </dd>
 </dl>
+<dl class="py property">
+<dt class="sig sig-object py" id="geofabrics.geometry.EstimatedBathymetryPoints.points">
+<em class="property"><span class="pre">property</span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">points</span></span><a class="headerlink" href="#geofabrics.geometry.EstimatedBathymetryPoints.points" title="Permalink to this definition"></a></dt>
+<dd><p>Return the points</p>
+</dd></dl>
+
+<dl class="py property">
+<dt class="sig sig-object py" id="geofabrics.geometry.EstimatedBathymetryPoints.x">
+<em class="property"><span class="pre">property</span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">x</span></span><a class="headerlink" href="#geofabrics.geometry.EstimatedBathymetryPoints.x" title="Permalink to this definition"></a></dt>
+<dd><p>The x values</p>
+</dd></dl>
+
+<dl class="py property">
+<dt class="sig sig-object py" id="geofabrics.geometry.EstimatedBathymetryPoints.y">
+<em class="property"><span class="pre">property</span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">y</span></span><a class="headerlink" href="#geofabrics.geometry.EstimatedBathymetryPoints.y" title="Permalink to this definition"></a></dt>
+<dd><p>The y values</p>
+</dd></dl>
+
+<dl class="py property">
+<dt class="sig sig-object py" id="geofabrics.geometry.EstimatedBathymetryPoints.z">
+<em class="property"><span class="pre">property</span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">z</span></span><a class="headerlink" href="#geofabrics.geometry.EstimatedBathymetryPoints.z" title="Permalink to this definition"></a></dt>
+<dd><p>The z values</p>
+</dd></dl>
+
 <dl class="py method">
 <dt class="sig sig-object py" id="geofabrics.geometry.EstimatedBathymetryPoints.filtered_polygons">
 <span class="sig-name descname"><span class="pre">filtered_polygons</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">type_label</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#geofabrics.geometry.EstimatedBathymetryPoints.filtered_polygons" title="Permalink to this definition"></a></dt>
@@ -327,27 +352,17 @@ used to interpolate elevations within the river and mouth polygon.</p>
 </dd></dl>
 
 <dl class="py method">
-<dt class="sig sig-object py" id="geofabrics.geometry.EstimatedBathymetryPoints.points">
-<em class="property"><span class="pre">property</span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">points</span></span><a class="headerlink" href="#geofabrics.geometry.EstimatedBathymetryPoints.points" title="Permalink to this definition"></a></dt>
-<dd><p>Return the points</p>
-</dd></dl>
-
-<dl class="py method">
-<dt class="sig sig-object py" id="geofabrics.geometry.EstimatedBathymetryPoints.x">
-<em class="property"><span class="pre">property</span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">x</span></span><a class="headerlink" href="#geofabrics.geometry.EstimatedBathymetryPoints.x" title="Permalink to this definition"></a></dt>
-<dd><p>The x values</p>
-</dd></dl>
-
-<dl class="py method">
-<dt class="sig sig-object py" id="geofabrics.geometry.EstimatedBathymetryPoints.y">
-<em class="property"><span class="pre">property</span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">y</span></span><a class="headerlink" href="#geofabrics.geometry.EstimatedBathymetryPoints.y" title="Permalink to this definition"></a></dt>
-<dd><p>The y values</p>
-</dd></dl>
-
-<dl class="py method">
-<dt class="sig sig-object py" id="geofabrics.geometry.EstimatedBathymetryPoints.z">
-<em class="property"><span class="pre">property</span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">z</span></span><a class="headerlink" href="#geofabrics.geometry.EstimatedBathymetryPoints.z" title="Permalink to this definition"></a></dt>
-<dd><p>The z values</p>
+<dt class="sig sig-object py" id="geofabrics.geometry.EstimatedBathymetryPoints.filtered_bank_height_points">
+<span class="sig-name descname"><span class="pre">filtered_bank_height_points</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">type_label</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#geofabrics.geometry.EstimatedBathymetryPoints.filtered_bank_height_points" title="Permalink to this definition"></a></dt>
+<dd><p>Return the points with ‘Z’ being the estimated bank height as a single array.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters</dt>
+<dd class="field-odd"><p><strong>type_label</strong> (<em>str</em>) – </p>
+</dd>
+<dt class="field-even">Return type</dt>
+<dd class="field-even"><p>numpy.ndarray</p>
+</dd>
+</dl>
 </dd></dl>
 
 </dd></dl>
@@ -364,7 +379,7 @@ used to interpolate elevations within the river and mouth polygon.</p>
 </ul>
 </dd>
 </dl>
-<dl class="py method">
+<dl class="py property">
 <dt class="sig sig-object py" id="geofabrics.geometry.TileInfo.tile_names">
 <em class="property"><span class="pre">property</span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">tile_names</span></span><a class="headerlink" href="#geofabrics.geometry.TileInfo.tile_names" title="Permalink to this definition"></a></dt>
 <dd><p>Return the names of all tiles within the catchment</p>
@@ -384,7 +399,7 @@ transition from river to coast within a fan shaped polygon (15 degrees on each</
 <p>The fan begins with the most downstream river width estimate, and ends with the
 first contour of either more than 2x the depth of the mouth. This aims to ensure
 their is a defined fan that is slightly deeper than the surrounding during
-the transition.
+the transition. A fan is caculated for both river bed elevation approach.
 TODO In future,it may move to defining the width as 10x the mouth width.
 TODO deal with no width at the mouth and work upstream.</p>
 <dl class="field-list simple">
@@ -438,7 +453,9 @@ TODO deal with no width at the mouth and work upstream.</p>
 <dl class="py method">
 <dt class="sig sig-object py" id="geofabrics.geometry.RiverMouthFan.polygon_and_bathymetry">
 <span class="sig-name descname"><span class="pre">polygon_and_bathymetry</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="headerlink" href="#geofabrics.geometry.RiverMouthFan.polygon_and_bathymetry" title="Permalink to this definition"></a></dt>
-<dd><p>Calculate and return the fan polygon values.</p>
+<dd><p>Calculate and return the fan polygon values. Perform calculations for both
+rive bed estimation approaches, so both have a smooth transition to offshore
+bathyemtry.</p>
 </dd></dl>
 
 </dd></dl>

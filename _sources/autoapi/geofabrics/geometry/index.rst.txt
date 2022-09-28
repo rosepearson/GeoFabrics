@@ -53,47 +53,33 @@ Classes
    (i.e. land, offshore,
    foreshore, etc) can be accessed.
 
-   .. py:method:: catchment()
-      :property:
+   .. py:property:: catchment
 
       Return the catchment region
 
-
-   .. py:method:: land()
-      :property:
+   .. py:property:: land
 
       Return the catchment land region
 
-
-   .. py:method:: full_land()
-      :property:
+   .. py:property:: full_land
 
       Return the full land region
 
-
-   .. py:method:: foreshore()
-      :property:
+   .. py:property:: foreshore
 
       Return the catchment foreshore region
 
-
-   .. py:method:: land_and_foreshore()
-      :property:
+   .. py:property:: land_and_foreshore
 
       Return the catchment land and foreshore region
 
-
-   .. py:method:: foreshore_and_offshore()
-      :property:
+   .. py:property:: foreshore_and_offshore
 
       Return the catchment foreshore and offshore region
 
-
-   .. py:method:: offshore()
-      :property:
+   .. py:property:: offshore
 
       Return the catchment offshore region
-
 
    .. py:method:: land_and_foreshore_without_lidar(dense_extents)
 
@@ -134,29 +120,21 @@ Classes
    A class for accesing marine bathymetry points. These can be used as
    depths to interpolate elevations offshore.
 
-   .. py:method:: points()
-      :property:
+   .. py:property:: points
 
       Return the points
 
-
-   .. py:method:: x()
-      :property:
+   .. py:property:: x
 
       The x values
 
-
-   .. py:method:: y()
-      :property:
+   .. py:property:: y
 
       The y values
 
-
-   .. py:method:: z()
-      :property:
+   .. py:property:: z
 
       The z values
-
 
 
 .. py:class:: EstimatedBathymetryPoints(points_files, polygon_files, catchment_geometry, type_labels, z_labels = None)
@@ -164,6 +142,22 @@ Classes
    A class for accessing river and mouth bathymetry points. Paired river
    and mouth elevation and polygon files are expected. These depths can be
    used to interpolate elevations within the river and mouth polygon.
+
+   .. py:property:: points
+
+      Return the points
+
+   .. py:property:: x
+
+      The x values
+
+   .. py:property:: y
+
+      The y values
+
+   .. py:property:: z
+
+      The z values
 
    .. py:method:: filtered_polygons(type_label = None)
 
@@ -175,28 +169,9 @@ Classes
       Return the points as a single array.
 
 
-   .. py:method:: points()
-      :property:
+   .. py:method:: filtered_bank_height_points(type_label = None)
 
-      Return the points
-
-
-   .. py:method:: x()
-      :property:
-
-      The x values
-
-
-   .. py:method:: y()
-      :property:
-
-      The y values
-
-
-   .. py:method:: z()
-      :property:
-
-      The z values
+      Return the points with 'Z' being the estimated bank height as a single array.
 
 
 
@@ -204,11 +179,9 @@ Classes
 
    A class for working with tiling information.
 
-   .. py:method:: tile_names()
-      :property:
+   .. py:property:: tile_names
 
       Return the names of all tiles within the catchment
-
 
 
 .. py:class:: RiverMouthFan(aligned_channel_file, river_bathymetry_file, ocean_contour_file, crs, cross_section_spacing, ocean_contour_depth_label = None)
@@ -220,7 +193,7 @@ Classes
    The fan begins with the most downstream river width estimate, and ends with the
    first contour of either more than 2x the depth of the mouth. This aims to ensure
    their is a defined fan that is slightly deeper than the surrounding during
-   the transition.
+   the transition. A fan is caculated for both river bed elevation approach.
    TODO In future,it may move to defining the width as 10x the mouth width.
    TODO deal with no width at the mouth and work upstream.
 
@@ -252,7 +225,9 @@ Classes
 
    .. py:method:: polygon_and_bathymetry()
 
-      Calculate and return the fan polygon values.
+      Calculate and return the fan polygon values. Perform calculations for both
+      rive bed estimation approaches, so both have a smooth transition to offshore
+      bathyemtry.
 
 
 
