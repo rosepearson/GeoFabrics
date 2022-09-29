@@ -1731,7 +1731,6 @@ class WaterwayBedElevationEstimator(BaseProcessor):
             return
         # If not - estimate elevations along close drains
         closed_drains = waterways[waterways["tunnel"]]
-        closed_drains = closed_drains.clip(self.catchment_geometry.catchment)
         closed_drains["polygon"] = closed_drains.buffer(closed_drains["width"])
 
         # Sample the minimum elevation at each tunnel
@@ -1801,7 +1800,6 @@ class WaterwayBedElevationEstimator(BaseProcessor):
             return
         # If not - estimate the elevations along the open waterways
         open_drains = waterways[numpy.logical_not(waterways["tunnel"])]
-        open_drains = open_drains.clip(self.catchment_geometry.catchment)
 
         # sample the ends of the drain - sample over a polygon at each end
         polygons = open_drains.interpolate(0).buffer(open_drains["width"])
@@ -1909,9 +1907,6 @@ class WaterwayBedElevationEstimator(BaseProcessor):
                 geometry=[shapely.ops.unary_union(waterways_polygon.geometry.array)],
                 crs=waterways_polygon.crs,
             )
-            waterways_polygon = waterways_polygon.clip(
-                self.catchment_geometry.catchment
-            )
             waterways_polygon.to_file(waterways_polygon_file)
 
             # Create DEM generation instructions
@@ -1991,6 +1986,8 @@ class WaterwayBedElevationEstimator(BaseProcessor):
             waterways["width"] = waterways["waterway"].apply(
                 lambda waterway: widths[waterway]
             )
+            # Clip to land
+            waterways = waterways.clip(self.catchment_geometry.land)
             # Save file
             waterways.to_file(waterways_file_path)
         return waterways
