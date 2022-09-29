@@ -22,6 +22,7 @@ Functions
    main.parse_args
    main.setup_logging_for_run
    main.check_for_benchmarks
+   main.run_processor_class
    main.launch_processor
    main.main
 
@@ -33,7 +34,7 @@ Functions
    '--instructions path/to/json/instruction/file'
 
 
-.. py:function:: setup_logging_for_run(instructions)
+.. py:function:: setup_logging_for_run(instructions, label)
 
    Setup logging for the current processor run
 
@@ -41,6 +42,12 @@ Functions
 .. py:function:: check_for_benchmarks(instructions, runner)
 
    Compare against a benchmark DEM if one is specified
+
+
+.. py:function:: run_processor_class(processor_class, processor_label, instructions)
+
+   Run a processor class recording outputs in a unique log file and timing the
+   execution.
 
 
 .. py:function:: launch_processor(args)

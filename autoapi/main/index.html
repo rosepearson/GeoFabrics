@@ -85,16 +85,19 @@
 <tr class="row-odd"><td><p><a class="reference internal" href="#main.parse_args" title="main.parse_args"><code class="xref py py-obj docutils literal notranslate"><span class="pre">parse_args</span></code></a>()</p></td>
 <td><p>Expect a command line argument of the form:</p></td>
 </tr>
-<tr class="row-even"><td><p><a class="reference internal" href="#main.setup_logging_for_run" title="main.setup_logging_for_run"><code class="xref py py-obj docutils literal notranslate"><span class="pre">setup_logging_for_run</span></code></a>(instructions)</p></td>
+<tr class="row-even"><td><p><a class="reference internal" href="#main.setup_logging_for_run" title="main.setup_logging_for_run"><code class="xref py py-obj docutils literal notranslate"><span class="pre">setup_logging_for_run</span></code></a>(instructions, label)</p></td>
 <td><p>Setup logging for the current processor run</p></td>
 </tr>
 <tr class="row-odd"><td><p><a class="reference internal" href="#main.check_for_benchmarks" title="main.check_for_benchmarks"><code class="xref py py-obj docutils literal notranslate"><span class="pre">check_for_benchmarks</span></code></a>(instructions, runner)</p></td>
 <td><p>Compare against a benchmark DEM if one is specified</p></td>
 </tr>
-<tr class="row-even"><td><p><a class="reference internal" href="#main.launch_processor" title="main.launch_processor"><code class="xref py py-obj docutils literal notranslate"><span class="pre">launch_processor</span></code></a>(args)</p></td>
+<tr class="row-even"><td><p><a class="reference internal" href="#main.run_processor_class" title="main.run_processor_class"><code class="xref py py-obj docutils literal notranslate"><span class="pre">run_processor_class</span></code></a>(processor_class, processor_label, ...)</p></td>
+<td><p>Run a processor class recording outputs in a unique log file and timing the</p></td>
+</tr>
+<tr class="row-odd"><td><p><a class="reference internal" href="#main.launch_processor" title="main.launch_processor"><code class="xref py py-obj docutils literal notranslate"><span class="pre">launch_processor</span></code></a>(args)</p></td>
 <td><p>Run the DEM generation pipeline(s) given the specified instructions.</p></td>
 </tr>
-<tr class="row-odd"><td><p><a class="reference internal" href="#main.main" title="main.main"><code class="xref py py-obj docutils literal notranslate"><span class="pre">main</span></code></a>()</p></td>
+<tr class="row-even"><td><p><a class="reference internal" href="#main.main" title="main.main"><code class="xref py py-obj docutils literal notranslate"><span class="pre">main</span></code></a>()</p></td>
 <td><p>The entry point to geofabrics.</p></td>
 </tr>
 </tbody>
@@ -108,11 +111,14 @@
 
 <dl class="py function">
 <dt class="sig sig-object py" id="main.setup_logging_for_run">
-<span class="sig-prename descclassname"><span class="pre">main.</span></span><span class="sig-name descname"><span class="pre">setup_logging_for_run</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">instructions</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#main.setup_logging_for_run" title="Permalink to this definition"></a></dt>
+<span class="sig-prename descclassname"><span class="pre">main.</span></span><span class="sig-name descname"><span class="pre">setup_logging_for_run</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">instructions</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">label</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#main.setup_logging_for_run" title="Permalink to this definition"></a></dt>
 <dd><p>Setup logging for the current processor run</p>
 <dl class="field-list simple">
 <dt class="field-odd">Parameters</dt>
-<dd class="field-odd"><p><strong>instructions</strong> (<em>dict</em>) – </p>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>instructions</strong> (<em>dict</em>) – </p></li>
+<li><p><strong>label</strong> (<em>str</em>) – </p></li>
+</ul>
 </dd>
 </dl>
 </dd></dl>
@@ -126,6 +132,21 @@
 <dd class="field-odd"><ul class="simple">
 <li><p><strong>instructions</strong> (<em>dict</em>) – </p></li>
 <li><p><strong>runner</strong> (<a class="reference internal" href="../geofabrics/processor/index.html#geofabrics.processor.BaseProcessor" title="geofabrics.processor.BaseProcessor"><em>geofabrics.processor.BaseProcessor</em></a>) – </p></li>
+</ul>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py" id="main.run_processor_class">
+<span class="sig-prename descclassname"><span class="pre">main.</span></span><span class="sig-name descname"><span class="pre">run_processor_class</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">processor_class</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">processor_label</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">instructions</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#main.run_processor_class" title="Permalink to this definition"></a></dt>
+<dd><p>Run a processor class recording outputs in a unique log file and timing the
+execution.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters</dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>processor_label</strong> (<em>str</em>) – </p></li>
+<li><p><strong>instructions</strong> (<em>dict</em>) – </p></li>
 </ul>
 </dd>
 </dl>
