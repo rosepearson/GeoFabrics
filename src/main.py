@@ -108,7 +108,7 @@ def check_for_benchmarks(instructions: dict, runner: processor.BaseProcessor):
 
 def run_processor_class(processor_class, processor_label: str, instructions: dict):
     """Run a processor class recording outputs in a unique log file and timing the
-    execution. """
+    execution."""
 
     start_time = time.time()
     print(f"Run {processor_class.__name__} at {datetime.datetime.now()}")
