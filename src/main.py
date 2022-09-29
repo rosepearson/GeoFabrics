@@ -10,6 +10,7 @@ import rioxarray
 import numpy
 import matplotlib
 import time
+import datetime
 import logging
 import pathlib
 
@@ -110,13 +111,13 @@ def run_processor_class(processor_class, processor_label: str, instructions: dic
     execution. """
 
     start_time = time.time()
-    print(f"Run {processor_class.__name__} at {start_time}")
+    print(f"Run {processor_class.__name__} at {datetime.datetime.now()}")
     run_instructions = instructions[processor_label]
     setup_logging_for_run(instructions=run_instructions, label=processor_label)
     runner = processor_class(run_instructions)
     runner.run()
     message = (
-        f"Execution time is {time.time() - start_time} for "
+        f"Execution time is {datetime.timedelta(time.time() - start_time)} for the "
         f"{processor_class.__name__}"
     )
     print(message)
