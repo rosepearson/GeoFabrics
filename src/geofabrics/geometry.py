@@ -10,6 +10,8 @@ import pathlib
 import typing
 import logging
 
+RASTER_TYPE = numpy.float32
+
 
 class CatchmentGeometry:
     """A class defining revelant catchment regions by polygons.
@@ -368,7 +370,7 @@ class BathymetryContours:
 
         points = numpy.empty(
             [points_df.apply(lambda row: len(row.geoms)).sum()],
-            dtype=[("X", numpy.float64), ("Y", numpy.float64), ("Z", numpy.float64)],
+            dtype=[("X", RASTER_TYPE), ("Y", RASTER_TYPE), ("Z", RASTER_TYPE)],
         )
 
         # Extract the x, y and z values from the Shapely MultiPoints and possibly a
@@ -599,7 +601,7 @@ class EstimatedBathymetryPoints:
 
         points_array = numpy.empty(
             [len(points)],
-            dtype=[("X", numpy.float64), ("Y", numpy.float64), ("Z", numpy.float64)],
+            dtype=[("X", RASTER_TYPE), ("Y", RASTER_TYPE), ("Z", RASTER_TYPE)],
         )
 
         if len(points_array) == 0:
@@ -633,7 +635,7 @@ class EstimatedBathymetryPoints:
 
         points_array = numpy.empty(
             [len(points)],
-            dtype=[("X", numpy.float64), ("Y", numpy.float64), ("Z", numpy.float64)],
+            dtype=[("X", RASTER_TYPE), ("Y", RASTER_TYPE), ("Z", RASTER_TYPE)],
         )
 
         # Extract the x, y and z values from the Shapely MultiPoints and possibly a

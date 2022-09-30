@@ -210,7 +210,11 @@ class ReferenceDem:
         # combine in an single array
         self._points = numpy.empty(
             [len(land_x) + len(foreshore_x)],
-            dtype=[("X", numpy.float64), ("Y", numpy.float64), ("Z", numpy.float64)],
+            dtype=[
+                ("X", geometry.RASTER_TYPE),
+                ("Y", geometry.RASTER_TYPE),
+                ("Z", geometry.RASTER_TYPE),
+            ],
         )
         self._points["X"][: len(land_x)] = land_x
         self._points["Y"][: len(land_x)] = land_y
@@ -509,7 +513,11 @@ class HydrologicallyConditionedDem(DemBase):
 
         offshore_edge = numpy.empty(
             [offshore_mask_z.sum().sum()],
-            dtype=[("X", numpy.float64), ("Y", numpy.float64), ("Z", numpy.float64)],
+            dtype=[
+                ("X", geometry.RASTER_TYPE),
+                ("Y", geometry.RASTER_TYPE),
+                ("Z", geometry.RASTER_TYPE),
+            ],
         )
 
         offshore_edge["X"] = offshore_grid_x.flatten()[offshore_mask_z]
@@ -709,7 +717,11 @@ class HydrologicallyConditionedDem(DemBase):
         # Define edge points and heights
         edge_points = numpy.empty(
             [mask_z.sum().sum()],
-            dtype=[("X", numpy.float64), ("Y", numpy.float64), ("Z", numpy.float64)],
+            dtype=[
+                ("X", geometry.RASTER_TYPE),
+                ("Y", geometry.RASTER_TYPE),
+                ("Z", geometry.RASTER_TYPE),
+            ],
         )
         edge_points["X"] = grid_x.flatten()[mask_z]
         edge_points["Y"] = grid_y.flatten()[mask_z]
@@ -811,7 +823,7 @@ class HydrologicallyConditionedDem(DemBase):
         ).transpose()
         options = {
             "radius": estimated_bathymetry.points["width"].max(),
-            "raster_type": numpy.float64,
+            "raster_type": geometry.RASTER_TYPE,
             "method": "linear",
         }
         estimated_river_edge_z = elevation_from_points(
@@ -828,7 +840,11 @@ class HydrologicallyConditionedDem(DemBase):
         # Use the flat_x/y/z to define edge points and heights
         edge_points = numpy.empty(
             [mask_z.sum().sum()],
-            dtype=[("X", numpy.float64), ("Y", numpy.float64), ("Z", numpy.float64)],
+            dtype=[
+                ("X", geometry.RASTER_TYPE),
+                ("Y", geometry.RASTER_TYPE),
+                ("Z", geometry.RASTER_TYPE),
+            ],
         )
         edge_points["X"] = flat_x[mask_z]
         edge_points["Y"] = flat_y[mask_z]
@@ -896,7 +912,6 @@ class LidarBase(DemBase):
             type(elevation_range) == list and len(elevation_range) == 2
         ), "Error the 'elevation_range' must either be none, or a two entry list"
 
-        self.raster_type = numpy.float64
         self._dem = None
 
         super(LidarBase, self).__init__(
@@ -1221,7 +1236,7 @@ class RawDem(LidarBase):
                 bounds.minx.min() + resolution / 2 + i * chunk_size * resolution,
                 bounds.minx.min() + resolution / 2 + (i + 1) * chunk_size * resolution,
                 resolution,
-                dtype=self.raster_type,
+                dtype=geometry.RASTER_TYPE,
             )
             for i in range(n_chunks_x)
         ]
@@ -1231,7 +1246,7 @@ class RawDem(LidarBase):
                 bounds.maxy.max() - resolution / 2 - i * chunk_size * resolution,
                 bounds.maxy.max() - resolution / 2 - (i + 1) * chunk_size * resolution,
                 -resolution,
-                dtype=self.raster_type,
+                dtype=geometry.RASTER_TYPE,
             )
             for i in range(n_chunks_y)
         ]
@@ -1293,7 +1308,7 @@ class RawDem(LidarBase):
         # create dictionary defining raster options
         raster_options = {
             "lidar_classifications_to_keep": lidar_classifications_to_keep,
-            "raster_type": self.raster_type,
+            "raster_type": geometry.RASTER_TYPE,
             "elevation_range": self.elevation_range,
             "radius": self.catchment_geometry.resolution / numpy.sqrt(2),
             "method": self.lidar_interpolation_method,
@@ -1432,13 +1447,13 @@ class RawDem(LidarBase):
             bounds.minx.min() + resolution / 2,
             bounds.maxx.max(),
             resolution,
-            dtype=self.raster_type,
+            dtype=geometry.RASTER_TYPE,
         )
         dim_y = numpy.arange(
             bounds.maxy.max() - resolution / 2,
             bounds.miny.min(),
             -resolution,
-            dtype=self.raster_type,
+            dtype=geometry.RASTER_TYPE,
         )
 
         # Create elevation raster
@@ -1580,7 +1595,7 @@ class RawDem(LidarBase):
         # create dictionary defining raster options
         # Set search radius to diagonal reference cell length to ensure corners covered
         raster_options = {
-            "raster_type": self.raster_type,
+            "raster_type": geometry.RASTER_TYPE,
             "radius": reference_dem.resolution * numpy.sqrt(2),
             "method": "linear",
         }
@@ -1716,7 +1731,7 @@ class RoughnessDem(LidarBase):
                 dim_x_all[0] + i * chunk_size * resolution,
                 dim_x_all[0] + (i + 1) * chunk_size * resolution,
                 resolution,
-                dtype=self.raster_type,
+                dtype=geometry.RASTER_TYPE,
             )
             for i in range(n_chunks_x)
         ]
@@ -1726,7 +1741,7 @@ class RoughnessDem(LidarBase):
                 dim_y_all[0] - i * chunk_size * resolution,
                 dim_y_all[0] - (i + 1) * chunk_size * resolution,
                 -resolution,
-                dtype=self.raster_type,
+                dtype=geometry.RASTER_TYPE,
             )
             for i in range(n_chunks_y)
         ]
@@ -1778,7 +1793,7 @@ class RoughnessDem(LidarBase):
         # create dictionary defining raster options
         raster_options = {
             "lidar_classifications_to_keep": lidar_classifications_to_keep,
-            "raster_type": self.raster_type,
+            "raster_type": geometry.RASTER_TYPE,
             "elevation_range": self.elevation_range,
             "radius": self.catchment_geometry.resolution / numpy.sqrt(2),
         }
