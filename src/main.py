@@ -9,7 +9,6 @@ import argparse
 import rioxarray
 import numpy
 import matplotlib
-import time
 import datetime
 import logging
 import pathlib
@@ -133,7 +132,7 @@ def launch_processor(args):
     with open(args.instructions, "r") as file_pointer:
         instructions = json.load(file_pointer)
     # Run the pipeline
-    initial_start_time = time.time()
+    initial_start_time = datetime.datetime.now()
     if "rivers" in instructions:
         # Estimate river channel bathymetry
         run_processor_class(
@@ -179,7 +178,7 @@ def launch_processor(args):
             processor_label="roughness",
             instructions=instructions,
         )
-    print(f"Total execution time is {time.time() - initial_start_time}")
+    print(f"Total execution time is {datetime.datetime.now() - initial_start_time}")
 
 
 def main():
