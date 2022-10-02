@@ -110,14 +110,14 @@ def run_processor_class(processor_class, processor_label: str, instructions: dic
     """Run a processor class recording outputs in a unique log file and timing the
     execution."""
 
-    start_time = time.time()
-    print(f"Run {processor_class.__name__} at {datetime.datetime.now()}")
+    start_time = datetime.datetime.now()
+    print(f"Run {processor_class.__name__} at {start_time}")
     run_instructions = instructions[processor_label]
     setup_logging_for_run(instructions=run_instructions, label=processor_label)
     runner = processor_class(run_instructions)
     runner.run()
     message = (
-        f"Execution time is {datetime.timedelta(time.time() - start_time)} for the "
+        f"Execution time is {datetime.datetime.now() - start_time} for the "
         f"{processor_class.__name__}"
     )
     print(message)
