@@ -585,9 +585,11 @@ class RawLidarDemGenerator(BaseProcessor):
             )  # Note must be called after all others if it is to be complete
         # Load in reference DEM if any significant land/foreshore not covered by LiDAR
         if self.check_instruction_path("reference_dems"):
-            area_without_lidar = self.catchment_geometry.land_and_foreshore_without_lidar(
-                self.raw_dem.extents
-            ).geometry.area.sum()
+            area_without_lidar = (
+                self.catchment_geometry.land_and_foreshore_without_lidar(
+                    self.raw_dem.extents
+                ).geometry.area.sum()
+            )
             if (
                 area_without_lidar
                 > self.catchment_geometry.land_and_foreshore.area.sum() * area_threshold
@@ -1860,7 +1862,8 @@ class WaterwayBedElevationEstimator(BaseProcessor):
             return sampled_multipoints
 
         open_drains["points"] = open_drains.apply(
-            lambda row: sample_location_down_slope(row=row), axis=1,
+            lambda row: sample_location_down_slope(row=row),
+            axis=1,
         )
 
         open_drains = open_drains.set_geometry("points", drop=True)[
