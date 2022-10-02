@@ -1882,7 +1882,7 @@ class WaterwayBedElevationEstimator(BaseProcessor):
         )
         # Ensure the sampled elevations monotonically decrease
         for index, drain_points in open_drains.groupby(level=0):
-            open_drains.loc[(index,), ("elevation")] = numpy.minimum.accumulate(
+            open_drains.loc[(index,), ("elevation")] = numpy.fmin.accumulate(
                 drain_points["elevation"]
             )
         # Save bathymetry

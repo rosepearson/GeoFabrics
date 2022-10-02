@@ -9,7 +9,6 @@ import argparse
 import rioxarray
 import numpy
 import matplotlib
-import time
 import datetime
 import logging
 import pathlib
@@ -110,14 +109,14 @@ def run_processor_class(processor_class, processor_label: str, instructions: dic
     """Run a processor class recording outputs in a unique log file and timing the
     execution."""
 
-    start_time = time.time()
-    print(f"Run {processor_class.__name__} at {datetime.datetime.now()}")
+    start_time = datetime.datetime.now()
+    print(f"Run {processor_class.__name__} at {start_time}")
     run_instructions = instructions[processor_label]
     setup_logging_for_run(instructions=run_instructions, label=processor_label)
     runner = processor_class(run_instructions)
     runner.run()
     message = (
-        f"Execution time is {datetime.timedelta(time.time() - start_time)} for the "
+        f"Execution time is {datetime.datetime.now() - start_time} for the "
         f"{processor_class.__name__}"
     )
     print(message)
@@ -133,7 +132,7 @@ def launch_processor(args):
     with open(args.instructions, "r") as file_pointer:
         instructions = json.load(file_pointer)
     # Run the pipeline
-    initial_start_time = time.time()
+    initial_start_time = datetime.datetime.now()
     if "rivers" in instructions:
         # Estimate river channel bathymetry
         run_processor_class(
@@ -179,7 +178,7 @@ def launch_processor(args):
             processor_label="roughness",
             instructions=instructions,
         )
-    print(f"Total execution time is {time.time() - initial_start_time}")
+    print(f"Total execution time is {datetime.datetime.now() - initial_start_time}")
 
 
 def main():
