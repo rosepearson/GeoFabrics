@@ -1728,11 +1728,11 @@ class WaterwayBedElevationEstimator(BaseProcessor):
             )
             return
         # If not - estimate elevations along close drains
-        closed_drains = waterways[waterways["tunnel"]]
-        closed_drains["polygon"] = closed_drains.buffer(closed_drains["width"])
+        closed_waterways = waterways[waterways["tunnel"]]
+        closed_waterways["polygon"] = closed_waterways.buffer(closed_waterways["width"])
 
         # Sample the minimum elevation at each tunnel
-        elevations = closed_drains.apply(
+        elevations = closed_waterways.apply(
             lambda row: self.minimum_elevation_in_polygon(
                 geometry=row["polygon"], dem=dem
             ),
@@ -1740,7 +1740,7 @@ class WaterwayBedElevationEstimator(BaseProcessor):
         )
 
         # Create sampled points to go with the sampled elevations
-        points = closed_drains["geometry"].apply(
+        points = closed_waterways["geometry"].apply(
             lambda row: shapely.geometry.MultiPoint(
                 [
                     # Ensure even spacing across the length of the drain
@@ -1759,11 +1759,11 @@ class WaterwayBedElevationEstimator(BaseProcessor):
             {
                 "elevation": elevations,
                 "geometry": points,
-                "width": closed_drains["width"],
+                "width": closed_waterways["width"],
             },
             crs=2193,
         )
-        closed_drains["elevation"] = elevations
+        closed_waterways["elevation"] = elevations
         # Remove any NaN areas (where no LiDAR data to estimate elevations)
         nan_filter = (
             points.explode(ignore_index=False)["elevation"].notnull().all(level=0).array
@@ -1774,10 +1774,10 @@ class WaterwayBedElevationEstimator(BaseProcessor):
                 "estimate their elevations."
             )
         points_exploded = points[nan_filter].explode(ignore_index=False)
-        closed_drains = closed_drains[nan_filter]
+        closed_waterways = closed_waterways[nan_filter]
 
         # Save out polygons and elevations
-        closed_drains.set_geometry("polygon", drop=True)[
+        closed_waterways.set_geometry("polygon", drop=True)[
             ["geometry", "width", "elevation"]
         ].to_file(polygon_file)
         points_exploded.to_file(elevation_file)
@@ -1797,19 +1797,19 @@ class WaterwayBedElevationEstimator(BaseProcessor):
             )
             return
         # If not - estimate the elevations along the open waterways
-        open_drains = waterways[numpy.logical_not(waterways["tunnel"])]
+        open_waterways = waterways[numpy.logical_not(waterways["tunnel"])]
 
         # sample the ends of the drain - sample over a polygon at each end
-        polygons = open_drains.interpolate(0).buffer(open_drains["width"])
-        open_drains["start_elevation"] = polygons.apply(
+        polygons = open_waterways.interpolate(0).buffer(open_waterways["width"])
+        open_waterways["start_elevation"] = polygons.apply(
             lambda geometry: self.minimum_elevation_in_polygon(
                 geometry=geometry, dem=dem
             )
         )
-        polygons = open_drains.interpolate(open_drains.length).buffer(
-            open_drains["width"]
+        polygons = open_waterways.interpolate(open_waterways.length).buffer(
+            open_waterways["width"]
         )
-        open_drains["end_elevation"] = polygons.geometry.apply(
+        open_waterways["end_elevation"] = polygons.geometry.apply(
             lambda geometry: self.minimum_elevation_in_polygon(
                 geometry=geometry, dem=dem
             )
@@ -1817,7 +1817,7 @@ class WaterwayBedElevationEstimator(BaseProcessor):
 
         # Remove any waterways without data to assess elevations
         nan_filter = (
-            open_drains[["start_elevation", "end_elevation"]]
+            open_waterways[["start_elevation", "end_elevation"]]
             .notnull()
             .all(axis=1)
             .array
@@ -1827,10 +1827,10 @@ class WaterwayBedElevationEstimator(BaseProcessor):
                 "Some open waterways are being ignored as there is not enough data to "
                 "estimate their elevations."
             )
-        open_drains = open_drains[nan_filter]
+        open_waterways = open_waterways[nan_filter]
 
         # save out the polygons
-        open_drains.buffer(open_drains["width"]).to_file(polygon_file)
+        open_waterways.buffer(open_waterways["width"]).to_file(polygon_file)
 
         # Sample down-slope location along each line
         def sample_location_down_slope(row):
@@ -1859,28 +1859,25 @@ class WaterwayBedElevationEstimator(BaseProcessor):
 
             return sampled_multipoints
 
-        open_drains["points"] = open_drains.apply(
+        open_waterways["points"] = open_waterways.apply(
             lambda row: sample_location_down_slope(row=row), axis=1,
         )
 
-        open_drains = open_drains.set_geometry("points", drop=True)[
+        open_waterways = open_waterways.set_geometry("points", drop=True)[
             ["geometry", "width"]
         ]
         # sort index needed to ensure correct behaviour of the explode function
-        open_drains = open_drains.sort_index(ascending=True).explode(
+        open_waterways = open_waterways.sort_index(ascending=True).explode(
             ignore_index=False, index_parts=True, column="geometry"
         )
-        open_drains["polygons"] = open_drains.buffer(open_drains["width"])
+        open_waterways["polygons"] = open_waterways.buffer(open_waterways["width"])
         # Sample the minimum elevations along each  open waterway
-        open_drains["elevation"] = open_drains["polygons"].apply(
+        open_waterways["elevation"] = open_waterways["polygons"].apply(
             lambda geometry: self.minimum_elevation_in_polygon(
                 geometry=geometry, dem=dem
             )
         )
         # Check open waterways take into account culvert bed elevations
-        closed_elevations = geopandas.read_file(
-            self.get_result_file_path(key="closed_elevation")
-        )
         closed_polygons = geopandas.read_file(
             self.get_result_file_path(key="closed_polygon")
         )
@@ -1889,18 +1886,18 @@ class WaterwayBedElevationEstimator(BaseProcessor):
             closed_polygons["geometry"], closed_polygons["elevation"]
         ):
             # Take the nearest closed elevation if lower
-            elevations_near_culvert = open_drains.clip(closed_polygon)
+            elevations_near_culvert = open_waterways.clip(closed_polygon)
             indices_to_replace = elevations_near_culvert.index[
                 elevations_near_culvert["elevation"] > closed_elevation
             ]
-            open_drains.loc[indices_to_replace, "elevation"] = closed_elevation
+            open_waterways.loc[indices_to_replace, "elevation"] = closed_elevation
         # Ensure the sampled elevations monotonically decrease
-        for index, drain_points in open_drains.groupby(level=0):
-            open_drains.loc[(index,), ("elevation")] = numpy.fmin.accumulate(
+        for index, drain_points in open_waterways.groupby(level=0):
+            open_waterways.loc[(index,), ("elevation")] = numpy.fmin.accumulate(
                 drain_points["elevation"]
             )
         # Save bathymetry
-        open_drains[["geometry", "width", "elevation"]].to_file(elevation_file)
+        open_waterways[["geometry", "width", "elevation"]].to_file(elevation_file)
 
     def create_dem(self, waterways: geopandas.GeoDataFrame) -> xarray.Dataset:
         """Create and return a DEM at a resolution 1.5x the drain width."""
