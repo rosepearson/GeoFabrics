@@ -135,16 +135,16 @@ class Channel:
                 )
         return reaches, iteration
 
-    def get_sampled_spline_fit(self):
-        """Return the smoothed channel sampled at the resolution after it has
-        been fit with a spline between corner points.
+    def get_sampled_spline_fit(self, k: int = 3):
+        """Return the spline smoothed polyline created from two splines defining a
+        parametric curve fit to evenly spaced points along the channel at 10x the
+        channel resolution.
 
         Parameters
         ----------
 
-        catchment_corridor_radius
-            The radius of the channel corridor. This will determine the width of
-            the channel catchment.
+        k
+            The polynomial degree. Should be off. 1 <= k <= 5.
         """
 
         # Use spaced points as the insures consistent distance between sampled points
@@ -155,16 +155,22 @@ class Channel:
             spacing=self.resolution * 10,
         )
         if len(xy[0]) > 3:  # default k= 3, must be greater to fit with knots
-            xy = self._fit_spline_between_xy(xy)
+            xy = self._fit_spline_between_xy(xy, k)
         spline_channel = shapely.geometry.LineString(xy.T)
         spline_channel = geopandas.GeoDataFrame(
             geometry=[spline_channel], crs=self.channel.crs
         )
         return spline_channel
 
-    def get_smoothed_spline_fit(self, smoothing_multiplier) -> numpy.ndarray:
-        """Return the spline smoothed aligned_centreline sampled at the
-        resolution.
+    def get_smoothed_spline_fit(self, smoothing_multiplier: int = 50) -> numpy.ndarray:
+        """Return the spline smoothed polyline created using a B-spline fit to corner
+        points.
+
+        Parameters
+        ----------
+
+        smoothing_multiplier
+            The polynomial degree. Should be off. 1 <= k <= 5.
         """
 
         xy = self._get_corner_points(
@@ -313,10 +319,9 @@ class Channel:
 
         return xy
 
-    def _fit_spline_through_xy(
-        self, xy, smoothing_multiplier: int = 50
-    ) -> numpy.ndarray:
-        """Fit a spline to the aligned centreline points and sampled at the resolution.
+    def _fit_spline_through_xy(self, xy, smoothing_multiplier) -> numpy.ndarray:
+        """Fits a B-spline representation of the curve represented by xy. This is
+        sampled at the channel resolution.
 
         Parameters
         ----------
@@ -342,8 +347,11 @@ class Channel:
 
         return xy_sampled
 
-    def _fit_spline_between_xy(self, xy, k=3) -> numpy.ndarray:
-        """Fit a spline to the aligned centreline points and sampled at the resolution.
+    def _fit_spline_between_xy(self, xy: numpy.ndarry, k: int) -> numpy.ndarray:
+        """Fits two splines using knots to define a parametric curve made of x(t) and
+        y(t) curves.
+        Note that the xy points must be evenly spaced if the output points are to be
+        evenly spaced.
 
         Parameters
         ----------
