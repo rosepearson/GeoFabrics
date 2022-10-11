@@ -205,7 +205,7 @@ class CatchmentGeometry:
         # any sub-pixel polygons.
         offshore_with_lidar = dense_extents.clip(self.offshore, keep_geom_type=True)
         offshore_with_lidar = offshore_with_lidar[
-            offshore_with_lidar.area > self.resolution**2
+            offshore_with_lidar.area > self.resolution ** 2
         ]
         offshore_without_lidar = geopandas.overlay(
             self.offshore, offshore_with_lidar, how="difference"
@@ -236,10 +236,8 @@ class CatchmentGeometry:
             },
             crs=self.crs["horizontal"],
         )
-        offshore_foreshore_dense_data_extents = (
-            offshore_foreshore_dense_data_extents.clip(
-                self.foreshore_and_offshore, keep_geom_type=True
-            )
+        offshore_foreshore_dense_data_extents = offshore_foreshore_dense_data_extents.clip(
+            self.foreshore_and_offshore, keep_geom_type=True
         )
 
         # deflate this - this will be taken away from the
@@ -321,7 +319,7 @@ class BathymetryContours:
                 self.catchment_geometry.offshore, keep_geom_type=True
             )
             exclusion_extent = exclusion_extent[
-                exclusion_extent.area > self.catchment_geometry.resolution**2
+                exclusion_extent.area > self.catchment_geometry.resolution ** 2
             ]
             self._extent = self.catchment_geometry.offshore.overlay(
                 exclusion_extent, how="difference"
@@ -530,17 +528,11 @@ class EstimatedBathymetryPoints:
         points_i[self.TYPE_LABEL] = type_labels[0]
         if z_labels is not None:
             points_i = points_i.rename(columns={z_labels[0]: self.DEPTH_LABEL})
-        columns_i = (
-            [
-                self.DEPTH_LABEL,
-                self.TYPE_LABEL,
-                self.WIDTH_LABEL,
-                self.BANK_HEIGHT_LABEL,
-                "geometry",
-            ]
-            if self.BANK_HEIGHT_LABEL in points_i.columns
-            else [self.DEPTH_LABEL, self.TYPE_LABEL, self.WIDTH_LABEL, "geometry"]
-        )
+        columns_i = [self.DEPTH_LABEL, self.TYPE_LABEL, "geometry"]
+        if self.BANK_HEIGHT_LABEL in points_i.columns:
+            columns_i.append(self.BANK_HEIGHT_LABEL)
+        if self.WIDTH_LABEL in points_i.columns:
+            columns_i.append(self.WIDTH_LABEL)
         points_i = points_i[columns_i]
         points_list = [points_i]
         # Polygon where the points are relevent
@@ -553,11 +545,11 @@ class EstimatedBathymetryPoints:
             points_i[self.TYPE_LABEL] = type_labels[i]
             if z_labels is not None and z_labels[i] != self.DEPTH_LABEL:
                 points_i = points_i.rename(columns={z_labels[i]: self.DEPTH_LABEL})
-            columns_i = (
-                [self.DEPTH_LABEL, self.TYPE_LABEL, self.BANK_HEIGHT_LABEL, "geometry"]
-                if self.BANK_HEIGHT_LABEL in points_i.columns
-                else [self.DEPTH_LABEL, self.TYPE_LABEL, "geometry"]
-            )
+            columns_i = [self.DEPTH_LABEL, self.TYPE_LABEL, "geometry"]
+            if self.BANK_HEIGHT_LABEL in points_i.columns:
+                columns_i.append(self.BANK_HEIGHT_LABEL)
+            if self.WIDTH_LABEL in points_i.columns:
+                columns_i.append(self.WIDTH_LABEL)
             points_i = points_i[columns_i]
             points_list.append(points_i)
             # Polygon where the points are relevent
@@ -786,7 +778,7 @@ class RiverMouthFan:
         # Calculate the normal and tangent to the channel segment at the mouth
         segment_dx = x[0] - x[1]
         segment_dy = y[0] - y[1]
-        segment_length = numpy.sqrt(segment_dx**2 + segment_dy**2)
+        segment_length = numpy.sqrt(segment_dx ** 2 + segment_dy ** 2)
         mouth_tangent = shapely.geometry.Point(
             [segment_dx / segment_length, segment_dy / segment_length]
         )
