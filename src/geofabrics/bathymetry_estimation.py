@@ -347,7 +347,7 @@ class Channel:
 
         return xy_sampled
 
-    def _fit_spline_between_xy(self, xy: numpy.ndarry, k: int) -> numpy.ndarray:
+    def _fit_spline_between_xy(self, xy: numpy.ndarray, k: int) -> numpy.ndarray:
         """Fits two splines using knots to define a parametric curve made of x(t) and
         y(t) curves.
         Note that the xy points must be evenly spaced if the output points are to be
