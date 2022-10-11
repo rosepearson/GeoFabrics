@@ -135,24 +135,28 @@ class Channel:
                 )
         return reaches, iteration
 
-    def get_sampled_spline_fit(self, k: int = 3):
+    def get_sampled_spline_fit(self, k: int = 3, spacing: float = None):
         """Return the spline smoothed polyline created from two splines defining a
-        parametric curve fit to evenly spaced points along the channel at 10x the
-        channel resolution.
+        parametric curve fit to evenly spaced points along the channel. The default
+        spacing is 10x the channel resolution.
 
         Parameters
         ----------
 
         k
             The polynomial degree. Should be off. 1 <= k <= 5.
+        spacing
+            The spacing between sampled points along straight segments
         """
 
+        if spacing is None:
+            spacing = self.resolution * 10
         # Use spaced points as the insures consistent distance between sampled points
         # along the spline
         xy = self.get_spaced_points(
             channel=self.channel,
             sampling_direction=self.sampling_direction,
-            spacing=self.resolution * 10,
+            spacing=spacing,
         )
         if len(xy[0]) > 3:  # default k= 3, must be greater to fit with knots
             xy = self._fit_spline_between_xy(xy, k)
@@ -162,7 +166,9 @@ class Channel:
         )
         return spline_channel
 
-    def get_smoothed_spline_fit(self, smoothing_multiplier: int = 50) -> numpy.ndarray:
+    def get_smoothed_spline_fit(
+        self, smoothing_multiplier: float = 50
+    ) -> numpy.ndarray:
         """Return the spline smoothed polyline created using a B-spline fit to corner
         points.
 
@@ -180,7 +186,7 @@ class Channel:
             xy = self._fit_spline_through_xy(xy, smoothing_multiplier)
         return xy.T
 
-    def get_channel_catchment(self, corridor_radius: float):
+    def get_channel_catchment(self, corridor_radius: float) -> geopandas.GeoDataFrame:
         """Create a catchment from the smooth channel and the specified
         radius.
 
@@ -198,7 +204,7 @@ class Channel:
         )
         return channel_catchment
 
-    def _remove_duplicate_points(cls, xy):
+    def _remove_duplicate_points(cls, xy: numpy.ndarray) -> numpy.ndarray:
         """Remove duplicate xy pairs in a list of xy points.
 
         Parameters
@@ -236,7 +242,7 @@ class Channel:
         return xy
 
     def get_spaced_points(
-        self, channel, spacing, sampling_direction: int
+        self, channel, spacing: float, sampling_direction: int
     ) -> numpy.ndarray:
         """Sample at the specified spacing along the entire line.
 
@@ -273,7 +279,7 @@ class Channel:
         return xy
 
     def get_spaced_points_with_corners(
-        self, channel, spacing, sampling_direction: int
+        self, channel, spacing: float, sampling_direction: int
     ) -> numpy.ndarray:
         """Sample at the specified spacing along each straight segment.
 
@@ -319,7 +325,9 @@ class Channel:
 
         return xy
 
-    def _fit_spline_through_xy(self, xy, smoothing_multiplier) -> numpy.ndarray:
+    def _fit_spline_through_xy(
+        self, xy: numpy.ndarray, smoothing_multiplier: float
+    ) -> numpy.ndarray:
         """Fits a B-spline representation of the curve represented by xy. This is
         sampled at the channel resolution.
 
