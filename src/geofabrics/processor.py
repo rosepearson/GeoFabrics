@@ -916,8 +916,10 @@ class RiverBathymetryGenerator(BaseProcessor):
                 "river_bathymetry": "river_bathymetry.geojson",
                 "fan_bathymetry": "fan_bathymetry.geojson",
                 "fan_polygon": "fan_polygon.geojson",
-                "gnd_dem": f"channel_dem_{area_threshold}.nc",
-                "veg_dem": f"channel_veg_dem_{area_threshold}.nc",
+                "gnd_dem": "raw_gnd_dem.nc",
+                "gnd_dem_extents": "raw_gnd_extents.geojson",
+                "veg_dem": "raw_veg_dem.nc",
+                "veg_dem_extents": "raw_veg_extents.geojson",
                 "catchment": f"channel_catchment_{area_threshold}.geojson",
                 "rec_channel": f"rec_channel_{area_threshold}.geojson",
                 "rec_channel_smoothed": f"rec_channel_{area_threshold}_smoothed.geojson",
@@ -1034,11 +1036,10 @@ class RiverBathymetryGenerator(BaseProcessor):
         if not gnd_file.is_file():
             # Create the ground DEM file if this has not be created yet!
             print("Generating ground DEM.")
-            instruction_paths["result_dem"] = str(
-                self.get_result_file_name(key="gnd_dem")
+            instruction_paths["raw_dem"] = str(self.get_result_file_name(key="gnd_dem"))
+            instruction_paths["raw_dem_extents"] = str(
+                self.get_result_file_name(key="gnd_extents")
             )
-            instruction_paths["raw_dem"] = "raw_gnd_dem.nc"
-            instruction_paths["raw_dem_extents"] = "raw_gnd_extents.geojson"
             runner = RawLidarDemGenerator(self.instructions)
             runner.run()
             gnd_dem = runner.raw_dem.dem
@@ -1054,14 +1055,13 @@ class RiverBathymetryGenerator(BaseProcessor):
         if not veg_file.is_file():
             # Create the catchment file if this has not be created yet!
             print("Generating vegetation DEM.")
-            instruction_paths["result_dem"] = str(
-                self.get_result_file_name(key="veg_dem")
-            )
             self.instructions["general"][
                 "lidar_classifications_to_keep"
             ] = self.get_bathymetry_instruction("veg_lidar_classifications_to_keep")
-            instruction_paths["raw_dem"] = "raw_veg_dem.nc"
-            instruction_paths["raw_dem_extents"] = "raw_veg_extents.geojson"
+            instruction_paths["raw_dem"] = str(self.get_result_file_name(key="veg_dem"))
+            instruction_paths["raw_dem_extents"] = str(
+                self.get_result_file_name(key="veg_extents")
+            )
             runner = RawLidarDemGenerator(self.instructions)
             runner.run()
             veg_dem = runner.raw_dem.dem
