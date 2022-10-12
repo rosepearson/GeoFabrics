@@ -135,10 +135,10 @@ class Channel:
                 )
         return reaches, iteration
 
-    def get_parametric_spline_fit(self, k: int = 3, spacing: float = None):
-        """Return the spline smoothed polyline created from two splines defining a
-        parametric curve fit to points along the channel. The curve is resampled at even
-        spacing once the splines are fit.
+    def get_parametric_spline_fit_points(self, k: int = 3, spacing: float = None):
+        """Return the spline smoothed polyline points created from two splines defining
+        a parametric curve fit to points along the channel. The curve is resampled at
+        even spacing once the splines are fit.
         If no spacing is provided the channel corner points are used, if a spacing is
         provided the channel corner points with sampling at the spacing are used.
 
@@ -151,8 +151,6 @@ class Channel:
             The spacing between sampled points along straight segments
         """
 
-        if spacing is None:
-            spacing = self.resolution * 10
         # Get points along channel
         if spacing is None:
             xy = self._get_corner_points(
@@ -174,7 +172,28 @@ class Channel:
         ):
             xy.append(spline_channel.interpolate(distance))
         spline_channel = shapely.geometry.LineString(xy)
+        return numpy.array(spline_channel.xy)
+
+    def get_parametric_spline_fit(self, k: int = 3, spacing: float = None):
+        """Return the spline smoothed polyline created from two splines defining a
+        parametric curve fit to points along the channel. The curve is resampled at even
+        spacing once the splines are fit.
+        If no spacing is provided the channel corner points are used, if a spacing is
+        provided the channel corner points with sampling at the spacing are used.
+
+        Parameters
+        ----------
+
+        k
+            The polynomial degree. Should be off. 1 <= k <= 5.
+        spacing
+            The spacing between sampled points along straight segments
+        """
+
+        # Get spline points
+        xy = self.get_parametric_spline_fit_points(k=k, spacing=spacing)
         # create dataframe
+        spline_channel = shapely.geometry.LineString(xy.T)
         spline_channel = geopandas.GeoDataFrame(
             geometry=[spline_channel], crs=self.channel.crs
         )
