@@ -1492,7 +1492,7 @@ class ChannelCharacteristics:
             geometry=[shapely.geometry.LineString(start_xy)], crs=cross_sections.crs
         )
         start_xy = Channel(start_xy, resolution=self.cross_section_spacing)
-        start_xy_spline = start_xy.get_b_spline_fit_points(smoothing_multiplier)
+        start_xy_spline = start_xy.get_parametric_spline_fit_points()
 
         # Get the 'flat water' last bank - -1 to move just inwards
         bank_offset = self.resolution * (
@@ -1515,11 +1515,13 @@ class ChannelCharacteristics:
             geometry=[shapely.geometry.LineString(stop_xy)], crs=cross_sections.crs
         )
         stop_xy = Channel(stop_xy, resolution=self.cross_section_spacing)
-        stop_xy_spline = stop_xy.get_b_spline_fit_points(smoothing_multiplier)
+        stop_xy_spline = stop_xy.get_parametric_spline_fit_points()
 
-        flat_xy = numpy.concatenate([start_xy_spline, stop_xy_spline[::-1]])
+        flat_water_polygon = shapely.geometry.Polygon(
+            numpy.concatenate((start_xy_spline, stop_xy_spline[:, ::-1]), axis=1).T
+        )
         flat_water_polygon = geopandas.GeoDataFrame(
-            geometry=[shapely.geometry.Polygon(flat_xy)], crs=cross_sections.crs
+            geometry=[flat_water_polygon], crs=cross_sections.crs
         )
         return flat_water_polygon
 
