@@ -585,11 +585,9 @@ class RawLidarDemGenerator(BaseProcessor):
             )  # Note must be called after all others if it is to be complete
         # Load in reference DEM if any significant land/foreshore not covered by LiDAR
         if self.check_instruction_path("reference_dems"):
-            area_without_lidar = (
-                self.catchment_geometry.land_and_foreshore_without_lidar(
-                    self.raw_dem.extents
-                ).geometry.area.sum()
-            )
+            area_without_lidar = self.catchment_geometry.land_and_foreshore_without_lidar(
+                self.raw_dem.extents
+            ).geometry.area.sum()
             if (
                 area_without_lidar
                 > self.catchment_geometry.land_and_foreshore.area.sum() * area_threshold
@@ -990,7 +988,7 @@ class RiverBathymetryGenerator(BaseProcessor):
                     key="rec_channel_smoothed"
                 )
                 if not smoothed_rec_name.is_file():
-                    channel.get_sampled_spline_fit().to_file(smoothed_rec_name)
+                    channel.get_parametric_spline_fit().to_file(smoothed_rec_name)
         return channel
 
     def get_dems(self, buffer: float, channel: geometry.CatchmentGeometry) -> tuple:
@@ -1312,7 +1310,7 @@ class RiverBathymetryGenerator(BaseProcessor):
                 self.get_result_file_path(name="osm_channel_full.geojson")
             )
         # cut to size
-        smoothed_rec_channel = channel.get_sampled_spline_fit()
+        smoothed_rec_channel = channel.get_parametric_spline_fit()
         rec_extents = smoothed_rec_channel.boundary.explode(index_parts=False)
         rec_start, rec_end = (rec_extents.iloc[0], rec_extents.iloc[1])
         end_split_length = float(osm_channel.project(rec_end))
@@ -1348,7 +1346,7 @@ class RiverBathymetryGenerator(BaseProcessor):
             resolution=cross_section_spacing,
             sampling_direction=1 if osm_from_ocean else -1,
         )
-        smoothed_osm_channel = osm_channel.get_sampled_spline_fit()
+        smoothed_osm_channel = osm_channel.get_parametric_spline_fit()
         smoothed_osm_channel.to_file(self.get_result_file_path(key="aligned"))
         # Get DEMs - create and save if don't exist
         gnd_dem, veg_dem = self.get_dems(buffer=buffer, channel=osm_channel)
@@ -1862,8 +1860,7 @@ class WaterwayBedElevationEstimator(BaseProcessor):
             return sampled_multipoints
 
         open_waterways["points"] = open_waterways.apply(
-            lambda row: sample_location_down_slope(row=row),
-            axis=1,
+            lambda row: sample_location_down_slope(row=row), axis=1,
         )
 
         open_waterways = open_waterways.set_geometry("points", drop=True)[

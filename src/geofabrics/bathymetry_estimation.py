@@ -135,10 +135,12 @@ class Channel:
                 )
         return reaches, iteration
 
-    def get_sampled_spline_fit(self, k: int = 3, spacing: float = None):
+    def get_parametric_spline_fit(self, k: int = 3, spacing: float = None):
         """Return the spline smoothed polyline created from two splines defining a
-        parametric curve fit to evenly spaced points along the channel. The default
-        spacing is 10x the channel resolution.
+        parametric curve fit to points along the channel. The curve is resampled at even
+        spacing once the splines are fit.
+        If no spacing is provided the channel corner points are used, if a spacing is
+        provided the channel corner points with sampling at the spacing are used.
 
         Parameters
         ----------
@@ -151,37 +153,84 @@ class Channel:
 
         if spacing is None:
             spacing = self.resolution * 10
-        # Use spaced points as the insures consistent distance between sampled points
-        # along the spline
-        xy = self.get_spaced_points(
-            channel=self.channel,
-            sampling_direction=self.sampling_direction,
-            spacing=spacing,
-        )
+        # Get points along channel
+        if spacing is None:
+            xy = self._get_corner_points(
+                channel=self.channel, sampling_direction=self.sampling_direction
+            )
+        else:
+            xy = self.get_spaced_points_with_corners(
+                channel=self.channel,
+                sampling_direction=self.sampling_direction,
+                spacing=spacing,
+            )
         if len(xy[0]) > 3:  # default k= 3, must be greater to fit with knots
             xy = self._fit_spline_between_xy(xy, k)
         spline_channel = shapely.geometry.LineString(xy.T)
+        # resample at even spacing
+        xy = []
+        for distance in numpy.arange(
+            0, spline_channel.length + self.resolution / 2, self.resolution
+        ):
+            xy.append(spline_channel.interpolate(distance))
+        spline_channel = shapely.geometry.LineString(xy)
+        # create dataframe
         spline_channel = geopandas.GeoDataFrame(
             geometry=[spline_channel], crs=self.channel.crs
         )
         return spline_channel
 
-    def get_smoothed_spline_fit(
-        self, smoothing_multiplier: float = 50
+    def get_b_spline_fit(
+        self, smoothing_multiplier: float = 50, spacing: float = None
     ) -> numpy.ndarray:
         """Return the spline smoothed polyline created using a B-spline fit to corner
         points.
+        If no spacing is provided the channel corner points are used, if a spacing is
+        provided the channel corner points with sampling at the spacing are used.
 
         Parameters
         ----------
 
         smoothing_multiplier
             The polynomial degree. Should be off. 1 <= k <= 5.
+        spacing
+            The spacing between sampled points along straight segments
         """
-
-        xy = self._get_corner_points(
-            channel=self.channel, sampling_direction=self.sampling_direction
+        xy = self.get_b_spline_fit_points(
+            smoothing_multiplier=smoothing_multiplier, spacing=spacing
         )
+        spline_channel = shapely.geometry.LineString(xy.T)
+        spline_channel = geopandas.GeoDataFrame(
+            geometry=[spline_channel], crs=self.channel.crs
+        )
+        return spline_channel
+
+    def get_b_spline_fit_points(
+        self, smoothing_multiplier: float = 50, spacing: float = None
+    ) -> numpy.ndarray:
+        """Return the spline smoothed polyline points created using a B-spline fit to
+        corner points.
+        If no spacing is provided the channel corner points are used, if a spacing is
+        provided the channel corner points with sampling at the spacing are used.
+
+        Parameters
+        ----------
+
+        smoothing_multiplier
+            The polynomial degree. Should be off. 1 <= k <= 5.
+        spacing
+            The spacing between sampled points along straight segments
+        """
+        if spacing is None:
+            xy = self._get_corner_points(
+                channel=self.channel, sampling_direction=self.sampling_direction
+            )
+        else:
+            xy = self.get_spaced_points_with_corners(
+                channel=self.channel,
+                sampling_direction=self.sampling_direction,
+                spacing=spacing,
+            )
         if len(xy[0]) > 3:  # There must be more than three points to fit a spline
             xy = self._fit_spline_through_xy(xy, smoothing_multiplier)
         return xy.T
@@ -305,9 +354,9 @@ class Channel:
         xy_spaced = []
 
         # Cycle through each segment sampling along it
-        for i in numpy.arange(len(x) - 1, 0, -1):
+        for i in numpy.arange(0, len(x) - 1, 1):
             line_segment = shapely.geometry.LineString(
-                [[x[i], y[i]], [x[i - 1], y[i - 1]]]
+                [[x[i], y[i]], [x[i + 1], y[i + 1]]]
             )
 
             number_segment_samples = max(numpy.round(line_segment.length / spacing), 2)
@@ -1424,7 +1473,7 @@ class ChannelCharacteristics:
             geometry=[shapely.geometry.LineString(start_xy)], crs=cross_sections.crs
         )
         start_xy = Channel(start_xy, resolution=self.cross_section_spacing)
-        start_xy_spline = start_xy.get_smoothed_spline_fit(smoothing_multiplier)
+        start_xy_spline = start_xy.get_b_spline_fit_points(smoothing_multiplier)
 
         # Get the 'flat water' last bank - -1 to move just inwards
         bank_offset = self.resolution * (
@@ -1447,7 +1496,7 @@ class ChannelCharacteristics:
             geometry=[shapely.geometry.LineString(stop_xy)], crs=cross_sections.crs
         )
         stop_xy = Channel(stop_xy, resolution=self.cross_section_spacing)
-        stop_xy_spline = stop_xy.get_smoothed_spline_fit(smoothing_multiplier)
+        stop_xy_spline = stop_xy.get_b_spline_fit_points(smoothing_multiplier)
 
         flat_xy = numpy.concatenate([start_xy_spline, stop_xy_spline[::-1]])
         flat_water_polygon = geopandas.GeoDataFrame(
@@ -1510,13 +1559,7 @@ class ChannelCharacteristics:
             widths_centre_line, resolution=self.cross_section_spacing
         )
 
-        aligned_spline = widths_centre_line.get_smoothed_spline_fit(
-            smoothing_multiplier
-        )
-        aligned_spline = geopandas.GeoDataFrame(
-            geometry=[shapely.geometry.LineString(aligned_spline)],
-            crs=cross_sections.crs,
-        )
+        aligned_spline = widths_centre_line.get_b_spline_fit(smoothing_multiplier)
         return aligned_spline
 
     def _unimodal_smoothing(self, y: numpy.ndarray):
