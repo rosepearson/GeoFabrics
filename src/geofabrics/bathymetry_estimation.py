@@ -266,7 +266,7 @@ class Channel:
             the channel catchment.
         """
 
-        smooth_channel = self.get_sampled_spline_fit()
+        smooth_channel = self.get_parametric_spline_fit()
         channel_catchment = geopandas.GeoDataFrame(
             geometry=smooth_channel.buffer(corridor_radius)
         )
@@ -1738,7 +1738,7 @@ class ChannelCharacteristics:
         self.transect_radius = cross_section_radius
 
         # Sample channel
-        sampled_channel = initial_channel.get_sampled_spline_fit()
+        sampled_channel = initial_channel.get_parametric_spline_fit()
 
         # Create cross_sections
         cross_sections = self.node_centred_reach_cross_section(
