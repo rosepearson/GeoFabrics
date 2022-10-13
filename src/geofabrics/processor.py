@@ -1552,9 +1552,9 @@ class RiverBathymetryGenerator(BaseProcessor):
         # Calculate the flood waters (i.e. flowing above the water surface), but with a
         # correction for the exposed river banks
         above_water_area = flood_depth * width_values[full_bank_width_name]
-        exposed_bank_area = (
-            flood_depth - self.get_bathymetry_instruction("min_bank_height")
-        ) * (width_values[full_bank_width_name] - width_values[flat_width_name])
+        exposed_bank_area = flood_depth * (
+            width_values[full_bank_width_name] - width_values[flat_width_name]
+        )
         assert (exposed_bank_area >= 0).all(), "The exposed bank area must be postive"
         extra_flood_area = above_water_area - exposed_bank_area
 

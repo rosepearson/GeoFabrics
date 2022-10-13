@@ -926,7 +926,8 @@ class ChannelCharacteristics:
             widths["channel_count"].append(channel_count)
         for key in widths.keys():
             cross_sections[key] = widths[key]
-        # Record if the width is valid
+        # Record if the width is valid - only one possible channel that starts and ends
+        # within the samples
         valid_mask = cross_sections["channel_count"] == 1
         valid_mask &= cross_sections["first_bank_i"] > 0
         valid_mask &= cross_sections["last_bank_i"] < self.number_of_samples - 1
@@ -1097,7 +1098,8 @@ class ChannelCharacteristics:
             widths["channel_count"].append(channel_count)
         for key in widths.keys():
             cross_sections[key] = widths[key]
-        # Record if the width is valid
+        # Record if the width is valid - only one possible channel that starts and ends
+        # within the samples
         valid_mask = cross_sections["channel_count"] == 1
         valid_mask &= cross_sections["first_bank_i"] > 0
         valid_mask &= cross_sections["last_bank_i"] < self.number_of_samples - 1
@@ -1235,16 +1237,15 @@ class ChannelCharacteristics:
         start_i = numpy.nan
         stop_i = numpy.nan
 
-        if gnd_samples[start_index] - z_water < threshold or (
-            numpy.isnan(gnd_samples[start_index])
-            and numpy.isnan(veg_samples[start_index])
+        if veg_samples[start_index] - z_water < threshold or (
+            numpy.isnan(veg_samples[start_index])
         ):
 
             for i in numpy.arange(0, self.number_of_samples + 1, 1):
 
                 # work forward checking height
                 if start_index + i < self.number_of_samples and numpy.isnan(stop_i):
-                    gnd_elevation_over_minimum = gnd_samples[start_index + i] - z_water
+                    gnd_elevation_over_minimum = veg_samples[start_index + i] - z_water
 
                     # Detect banks - either ground above threshold, or no ground with
                     # vegetation over threshold
@@ -1253,7 +1254,7 @@ class ChannelCharacteristics:
                         stop_i = start_index + i
                 # work backward checking height
                 if start_index - i >= 0 and numpy.isnan(start_i):
-                    gnd_elevation_over_minimum = gnd_samples[start_index - i] - z_water
+                    gnd_elevation_over_minimum = veg_samples[start_index - i] - z_water
 
                     # Detect bank
                     if numpy.isnan(start_i) and gnd_elevation_over_minimum > threshold:
