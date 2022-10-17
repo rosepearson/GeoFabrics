@@ -585,11 +585,9 @@ class RawLidarDemGenerator(BaseProcessor):
             )  # Note must be called after all others if it is to be complete
         # Load in reference DEM if any significant land/foreshore not covered by LiDAR
         if self.check_instruction_path("reference_dems"):
-            area_without_lidar = (
-                self.catchment_geometry.land_and_foreshore_without_lidar(
-                    self.raw_dem.extents
-                ).geometry.area.sum()
-            )
+            area_without_lidar = self.catchment_geometry.land_and_foreshore_without_lidar(
+                self.raw_dem.extents
+            ).geometry.area.sum()
             if (
                 area_without_lidar
                 > self.catchment_geometry.land_and_foreshore.area.sum() * area_threshold
@@ -906,11 +904,11 @@ class RiverBathymetryGenerator(BaseProcessor):
         if key is None and name is None:
             assert False, "Either a key or a name must be provided"
         if key is not None:
-            area_threshold = self.get_bathymetry_instruction("channel_area_threshold")
+            area_threshold = self.get_bathymetry_instruction("area_threshold")
 
             # key to output name mapping
             name_dictionary = {
-                "aligned": f"aligned_channel_{area_threshold}.geojson",
+                "aligned": f"aligned_river_centreline_{area_threshold}.geojson",
                 "river_characteristics": "river_characteristics.geojson",
                 "river_polygon": "river_polygon.geojson",
                 "river_bathymetry": "river_bathymetry.geojson",
@@ -920,9 +918,10 @@ class RiverBathymetryGenerator(BaseProcessor):
                 "gnd_dem_extents": "raw_gnd_extents.geojson",
                 "veg_dem": "raw_veg_dem.nc",
                 "veg_dem_extents": "raw_veg_extents.geojson",
-                "catchment": f"channel_catchment_{area_threshold}.geojson",
-                "rec_channel": f"rec_channel_{area_threshold}.geojson",
-                "rec_channel_smoothed": f"rec_channel_{area_threshold}_smoothed.geojson",
+                "catchment": f"river_catchment_{area_threshold}.geojson",
+                "network": f"network_river_centreline_{area_threshold}.geojson",
+                "network_smoothed": f"network_river_centreline_{area_threshold}_"
+                "smoothed.geojson",
             }
             return name_dictionary[key]
         else:
@@ -949,46 +948,56 @@ class RiverBathymetryGenerator(BaseProcessor):
         Parameters:
             instructions  The json instructions defining the behaviour
         """
+        defaults = {
+            "sampling_direction": -1,
+        }
 
-        return self.instructions["rivers"][key]
+        assert key in defaults or key in self.instructions["rivers"], (
+            f"The key: {key} is missing from the river instructions, and"
+            " does not have a default value"
+        )
+        if "rivers" in self.instructions and key in self.instructions["rivers"]:
+            return self.instructions["rivers"][key]
+        else:
+            self.instructions["rivers"][key] = defaults[key]
+            return defaults[key]
 
-    def get_rec_channel(self) -> bathymetry_estimation.Channel:
-        """Read in or create a rec channel."""
+    def get_network_channel(self) -> bathymetry_estimation.Channel:
+        """Read in or create a channel from a river network."""
 
         # Get instructions
-        crs = self.get_crs()["horizontal"]
-        area_threshold = self.get_bathymetry_instruction("channel_area_threshold")
-        channel_rec_id = self.get_bathymetry_instruction("channel_rec_id")
         cross_section_spacing = self.get_bathymetry_instruction("cross_section_spacing")
 
         # Check if file exists
-        rec_name = self.get_result_file_path(key="rec_channel")
-        if rec_name.is_file():
+        network_name = self.get_result_file_path(key="network")
+        if network_name.is_file():
             channel = bathymetry_estimation.Channel(
-                channel=geopandas.read_file(rec_name),
+                channel=geopandas.read_file(network_name),
                 resolution=cross_section_spacing,
-                sampling_direction=-1,
+                sampling_direction=self.get_bathymetry_instruction(
+                    "sampling_direction"
+                ),
             )
         else:
             # Else, create if it doesn't exist
-            rec_network = geopandas.read_file(
-                self.get_bathymetry_instruction("rec_file")
-            ).to_crs(crs)
-            channel = bathymetry_estimation.Channel.from_rec(
-                rec_network=rec_network,
-                reach_id=channel_rec_id,
+            channel = bathymetry_estimation.Channel.from_network(
+                network_file=self.get_bathymetry_instruction("network_file"),
+                crs=self.get_crs()["horizontal"],
+                starting_id=self.get_bathymetry_instruction("network_id"),
                 resolution=cross_section_spacing,
-                area_threshold=area_threshold,
+                area_threshold=self.get_bathymetry_instruction("area_threshold"),
+                name_dict=self.get_bathymetry_instruction("network_columns"),
+                sampling_direction=self.get_bathymetry_instruction(
+                    "sampling_direction"
+                ),
             )
 
             if self.debug:
-                # Save the REC channel and smoothed REC channel if not already
-                rec_name = self.get_result_file_path(key="rec_channel")
-                if not rec_name.is_file():
-                    channel.channel.to_file(rec_name)
-                smoothed_rec_name = self.get_result_file_path(
-                    key="rec_channel_smoothed"
-                )
+                # Save the channel and smoothed channel derived from a river network
+                network_name = self.get_result_file_path(key="network")
+                if not network_name.is_file():
+                    channel.channel.to_file(network_name)
+                smoothed_rec_name = self.get_result_file_path(key="network_smoothed")
                 if not smoothed_rec_name.is_file():
                     channel.get_parametric_spline_fit().to_file(smoothed_rec_name)
         return channel
@@ -1006,8 +1015,8 @@ class RiverBathymetryGenerator(BaseProcessor):
 
         # Extract instructions from JSON
         max_channel_width = self.get_bathymetry_instruction("max_channel_width")
-        rec_alignment_tolerance = self.get_bathymetry_instruction(
-            "rec_alignment_tolerance"
+        network_alignment_tolerance = self.get_bathymetry_instruction(
+            "network_alignment_tolerance"
         )
 
         # Define ground and veg files
@@ -1020,7 +1029,9 @@ class RiverBathymetryGenerator(BaseProcessor):
             instruction_paths["catchment_boundary"] = str(
                 self.get_result_file_name(key="catchment")
             )
-            corridor_radius = max_channel_width / 2 + rec_alignment_tolerance + buffer
+            corridor_radius = (
+                max_channel_width / 2 + network_alignment_tolerance + buffer
+            )
             channel_catchment = channel.get_channel_catchment(
                 corridor_radius=corridor_radius
             )
@@ -1086,21 +1097,21 @@ class RiverBathymetryGenerator(BaseProcessor):
         channel: bathymetry_estimation.Channel,
         buffer: float,
     ) -> geopandas.GeoDataFrame:
-        """Align the REC defined channel based on LiDAR and save the aligned
+        """Align the river network defined channel based on LiDAR and save the aligned
         channel.
 
 
         Parameters:
             channel_width  The class for characterising channel width and other
                 properties
-            channel  The REC defined channel alignment
+            channel  The river network defined channel alignment
         """
 
         # Get instruciton parameters
         max_channel_width = self.get_bathymetry_instruction("max_channel_width")
         min_channel_width = self.get_bathymetry_instruction("min_channel_width")
-        rec_alignment_tolerance = self.get_bathymetry_instruction(
-            "rec_alignment_tolerance"
+        network_alignment_tolerance = self.get_bathymetry_instruction(
+            "network_alignment_tolerance"
         )
 
         bank_threshold = self.get_bathymetry_instruction("min_bank_height")
@@ -1109,13 +1120,13 @@ class RiverBathymetryGenerator(BaseProcessor):
         )
 
         # The width of cross sections to sample
-        corridor_radius = max_channel_width / 2 + rec_alignment_tolerance + buffer
+        corridor_radius = max_channel_width / 2 + network_alignment_tolerance + buffer
 
         aligned_channel, sampled_cross_sections = channel_width.align_channel(
             threshold=bank_threshold,
             min_channel_width=min_channel_width,
             initial_channel=channel,
-            search_radius=rec_alignment_tolerance,
+            search_radius=network_alignment_tolerance,
             width_centre_smoothing_multiplier=width_centre_smoothing_multiplier,
             cross_section_radius=corridor_radius,
         )
@@ -1140,14 +1151,14 @@ class RiverBathymetryGenerator(BaseProcessor):
         aligned_channel: geopandas.GeoDataFrame,
         buffer: float,
     ) -> tuple:
-        """Align the REC defined channel based on LiDAR and save the aligned
+        """Align the river network defined channel based on LiDAR and save the aligned
         channel.
 
 
         Parameters:
             channel_width  The class for characterising channel width and other
                 properties
-            channel  The REC defined channel alignment
+            channel  The river network defined channel alignment
         """
 
         # Get instruciton parameters
@@ -1158,8 +1169,8 @@ class RiverBathymetryGenerator(BaseProcessor):
         width_centre_smoothing_multiplier = self.get_bathymetry_instruction(
             "width_centre_smoothing"
         )
-        rec_alignment_tolerance = self.get_bathymetry_instruction(
-            "rec_alignment_tolerance"
+        network_alignment_tolerance = self.get_bathymetry_instruction(
+            "network_alignment_tolerance"
         )
 
         corridor_radius = max_channel_width / 2 + buffer
@@ -1168,7 +1179,7 @@ class RiverBathymetryGenerator(BaseProcessor):
             aligned_channel=aligned_channel,
             threshold=bank_threshold,
             cross_section_radius=corridor_radius,
-            search_radius=rec_alignment_tolerance,
+            search_radius=network_alignment_tolerance,
             min_channel_width=min_channel_width,
             max_threshold=max_bank_height,
             river_polygon_smoothing_multiplier=width_centre_smoothing_multiplier,
@@ -1216,7 +1227,7 @@ class RiverBathymetryGenerator(BaseProcessor):
 
         logging.info("The channel hasn't been characerised. Charactreising now.")
 
-        # Decide if aligning frim REC (coarse river network), or OSM (closer alignment)
+        # Decide if aligning from river network alone, or OSM and river network
         if "osm_id" in self.instructions["rivers"]:
             channel_width, aligned_channel = self.align_channel_from_osm(buffer=buffer)
         else:
@@ -1237,14 +1248,14 @@ class RiverBathymetryGenerator(BaseProcessor):
             buffer  The amount of extra space to create around the river catchment
         """
 
-        logging.info("Align from REC.")
+        logging.info("Align from river network.")
 
         # Extract instructions
         cross_section_spacing = self.get_bathymetry_instruction("cross_section_spacing")
         resolution = self.get_resolution()
 
-        # Create REC defined channel
-        channel = self.get_rec_channel()
+        # Create river network defined channel
+        channel = self.get_network_channel()
 
         # Get DEMs - create and save if don't exist
         gnd_dem, veg_dem = self.get_dems(buffer=buffer, channel=channel)
@@ -1262,7 +1273,7 @@ class RiverBathymetryGenerator(BaseProcessor):
         if not self.alignment_exists():
             print("No aligned channel provided. Aligning the channel.")
 
-            # Align and save the REC defined channel
+            # Align and save the river network defined channel
             aligned_channel = self.align_channel(
                 channel_width=channel_width, channel=channel, buffer=buffer
             )
@@ -1289,8 +1300,8 @@ class RiverBathymetryGenerator(BaseProcessor):
         cross_section_spacing = self.get_bathymetry_instruction("cross_section_spacing")
         resolution = self.get_resolution()
 
-        # Create REC defined channel
-        channel = self.get_rec_channel()
+        # Create river network defined channel
+        channel = self.get_network_channel()
         crs = self.get_crs()["horizontal"]
 
         # Create OSM defined channel
@@ -1312,11 +1323,11 @@ class RiverBathymetryGenerator(BaseProcessor):
                 self.get_result_file_path(name="osm_channel_full.geojson")
             )
         # cut to size
-        smoothed_rec_channel = channel.get_parametric_spline_fit()
-        rec_extents = smoothed_rec_channel.boundary.explode(index_parts=False)
-        rec_start, rec_end = (rec_extents.iloc[0], rec_extents.iloc[1])
-        end_split_length = float(osm_channel.project(rec_end))
-        start_split_length = float(osm_channel.project(rec_start))
+        channel = channel.get_parametric_spline_fit()
+        network_extents = channel.boundary.explode(index_parts=False)
+        network_start, network_end = (network_extents.iloc[0], network_extents.iloc[1])
+        end_split_length = float(osm_channel.project(network_end))
+        start_split_length = float(osm_channel.project(network_start))
         osm_from_ocean = True if start_split_length < end_split_length else False
         end_split_point = osm_channel.interpolate(end_split_length)
         start_split_point = osm_channel.interpolate(start_split_length)
@@ -1336,7 +1347,7 @@ class RiverBathymetryGenerator(BaseProcessor):
         osm_channel_cut = geopandas.GeoSeries(lines.geoms, crs=crs)
         assert (
             len(osm_channel_cut) == 3
-        ), "The OSM line does not stretch the full extents of the REC line"
+        ), "The OSM line does not stretch the full extents of the river network line"
         osm_channel = osm_channel_cut.iloc[1:2]
         if self.debug:
             osm_channel.to_file(
@@ -1374,38 +1385,33 @@ class RiverBathymetryGenerator(BaseProcessor):
         width_values = geopandas.read_file(
             self.get_result_file_path(key="river_characteristics")
         )
-        flow = pandas.read_csv(self.get_bathymetry_instruction("flow_file"))
-        channel = self.get_rec_channel()
+        channel = self.get_network_channel()
 
-        # Match each channel midpoint to a nzsegment ID - based on what channel reach is
-        # closest
-        width_values["nzsegment"] = (
+        # Match each channel midpoint to a reach ID - based on what reach is closest
+        width_values["id"] = (
             numpy.ones(len(width_values["widths"]), dtype=float) * numpy.nan
         )
+        # Add the friction and flow values to the widths and slopes
+        width_values["mannings_n"] = numpy.zeros(len(width_values["id"]), dtype=int)
+        width_values["flow"] = numpy.zeros(len(width_values["id"]), dtype=int)
         for i, row in width_values.iterrows():
             if row.geometry is not None and not row.geometry.is_empty:
                 distances = channel.channel.distance(width_values.loc[i].geometry)
-                width_values.loc[i, ("nzsegment")] = channel.channel[
+                width_values.loc[i, ("id", "flow", "mannings_n")] = channel.channel[
                     distances == distances.min()
-                ]["nzsegment"].min()
+                ][["id", "flow", "mannings_n"]].min()
         # Fill in any missing values
-        width_values["nzsegment"] = (
-            width_values["nzsegment"].fillna(method="ffill").fillna(method="bfill")
+        width_values["id"] = (
+            width_values["id"].fillna(method="ffill").fillna(method="bfill")
         )
-        width_values["nzsegment"] = width_values["nzsegment"].astype("int")
+        width_values["id"] = width_values["id"].astype("int")
+        width_values["flow"] = (
+            width_values["flow"].fillna(method="ffill").fillna(method="bfill")
+        )
+        width_values["mannings_n"] = (
+            width_values["mannings_n"].fillna(method="ffill").fillna(method="bfill")
+        )
 
-        # Add the friction and flow values to the widths and slopes
-        width_values["mannings_n"] = numpy.zeros(
-            len(width_values["nzsegment"]), dtype=int
-        )
-        width_values["flow"] = numpy.zeros(len(width_values["nzsegment"]), dtype=int)
-        for nzsegment in width_values["nzsegment"].unique():
-            width_values.loc[
-                width_values["nzsegment"] == nzsegment, ("mannings_n")
-            ] = flow[flow["nzsegment"] == nzsegment]["n"].unique()[0]
-            width_values.loc[width_values["nzsegment"] == nzsegment, ("flow")] = flow[
-                flow["nzsegment"] == nzsegment
-            ]["flow"].unique()[0]
         # Names of values to use
         slope_name = "slope_mean_2.0km"
         min_z_name = "min_z_centre_unimodal"
@@ -1862,8 +1868,7 @@ class WaterwayBedElevationEstimator(BaseProcessor):
             return sampled_multipoints
 
         open_waterways["points"] = open_waterways.apply(
-            lambda row: sample_location_down_slope(row=row),
-            axis=1,
+            lambda row: sample_location_down_slope(row=row), axis=1,
         )
 
         open_waterways = open_waterways.set_geometry("points", drop=True)[

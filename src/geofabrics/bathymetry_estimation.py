@@ -5,6 +5,7 @@ information.
 """
 
 import geopandas
+import pathlib
 import shapely
 import numpy
 import xarray
@@ -43,41 +44,61 @@ class Channel:
         self.sampling_direction = sampling_direction
 
     @classmethod
-    def from_rec(
+    def from_network(
         cls,
-        rec_network: geopandas.GeoDataFrame,
-        reach_id: int,
+        network_file: pathlib.Path,
+        crs: int,
+        starting_id: int,
         resolution: float,
         area_threshold: float,
-        max_iterations: int = 10000,
+        name_dict: dict,
+        sampling_direction: int = -1,
     ):
         """Create a channel object from a REC file.
 
         Parameters
         ----------
 
-        rec_network
-            Contains association information between upstream and
-            downstream reaches.
-        reach_id
-            The name of the reach ID in the REC channel.
+        network
+            Contains geometry and relational information between upstream and downstream
+            reaches.
+        starting_id
+            The ID of the reach to trace upstream from.
+        name_dict
+            The column names of the network.
         area_threshold
-            The area threshold in metres squared below which to ignore a reach.
-        max_iterations
-            The maximum number of iterations along a single strand to trace
-            upstream.
-        iteration
-            The number of iterations traveled upstream.
+            The minimum upstream area for upstream reaches to be included.
+        resolution
+            The resolution of the upstream polyline trace to create from the network.
+        sampling_direction
+            The direction to sample each reach polyline. 1 if each reach is defined
+            downstream to upstream, -1 otherwise.
         """
-        reaches, iteration = cls._get_up_stream_reaches(
-            rec_network=rec_network,
-            reach_id=reach_id,
-            reaches=None,
-            max_iterations=max_iterations,
-            iteration=0,
+
+        # Load in network and remove unneeded columns
+        network = geopandas.read_file(network_file).to_crs(crs)
+        # Drop any non-required columns
+        network = network[
+            [
+                name_dict["id"],
+                name_dict["to_node"],
+                name_dict["from_node"],
+                name_dict["flow"],
+                name_dict["mannings_n"],
+                name_dict["area"],
+                "geometry",
+            ]
+        ]
+        network = network.rename(
+            columns={value: key for key, value in name_dict.items()}
         )
-        reaches = reaches[reaches["CUM_AREA"] > area_threshold]
-        sampling_direction = -1
+        assert len(network["id"]) == len(network["id"].unique()), (
+            "The reach IDs much be unique in for the network to be valid, but there are"
+            "duplicates"
+        )
+        reaches = cls._get_up_stream_reaches(
+            network=network, starting_id=starting_id, area_threshold=area_threshold,
+        )
         channel = cls(
             channel=reaches,
             resolution=resolution,
@@ -88,52 +109,54 @@ class Channel:
     @classmethod
     def _get_up_stream_reaches(
         cls,
-        rec_network: geopandas.GeoDataFrame,
-        reach_id: int,
-        reaches: geopandas.GeoDataFrame,
-        max_iterations: int,
-        iteration: int,
+        network: geopandas.GeoDataFrame,
+        starting_id: int,
+        area_threshold: float = None,
     ):
-        """A recurive function to trace all up reaches from the reach_id.
-        The default values for reaches and iteration are set for the
-        initial call to the recursive function. The max_iterations acts as a
-        limit on the numbers of reaches upstream to check. This impacts the
-        memory usage. Smaller reduces memory usage.
+        """A function to trace the largest network branch upstream from a starting id.
+
+        There must only be one reference to each ID, and no circular relationships in
+        the to_node and from_node's.'
 
         Parameters
         ----------
 
-        rec_network
-            Contains association information between upstream and
-            downstream reaches.
-        reach_id
-            The `nzsegment` id of the reach to trace upstream from.
-        reaches
-            The already traced downstream reaches to append to.
-        max_iterations
-            The maximum number of iterations along a single strand to trace
-            upstream.
-        iteration
-            The number of iterations traveled upstream.
+        network
+            Contains geometry and relational information between upstream and downstream
+            reaches.
+        starting_id
+            The ID of the reach to trace upstream from.
+        name_dict
+            The column names of the network.
+        area_threshold
+            The minimum upstream area for upstream reaches to be included.
         """
-        if reaches is None:
-            reaches = rec_network[rec_network["nzsegment"] == reach_id]
-        if iteration > max_iterations:
-            print(f"Reached recursion limit at: {iteration}")
-            return reaches, iteration
-        iteration += 1
-        up_stream_reaches = rec_network[rec_network["NextDownID"] == reach_id]
-        reaches = reaches.append(up_stream_reaches)
-        for index, up_stream_reach in up_stream_reaches.iterrows():
-            if not up_stream_reach["Headwater"]:
-                reaches, iteration = cls._get_up_stream_reaches(
-                    rec_network=rec_network,
-                    reach_id=up_stream_reach["nzsegment"],
-                    reaches=reaches,
-                    max_iterations=max_iterations,
-                    iteration=iteration,
-                )
-        return reaches, iteration
+        reaches_index = network[network["id"] == starting_id].index.tolist()
+
+        # While loop with several break statements and asserts to avoid run-away code
+        while True:
+            upstream_reaches = network[
+                network["to_node"] == network.loc[reaches_index[-1]]["from_node"]
+            ][["area", "id"]]
+            if len(upstream_reaches) == 0:
+                # No more upstream reached
+                break
+            # Select the reach with the largest upstream area
+            max_index = upstream_reaches["area"].idxmax()
+            if (
+                area_threshold is not None
+                and upstream_reaches.loc[max_index]["area"] < area_threshold
+            ):
+                # The minimum upstream area threshold has been reached
+                break
+            next_index = upstream_reaches.loc[max_index]["id"]
+            assert next_index not in numpy.array(reaches_index), (
+                "The same reach ID is referenced twice indicating circular network "
+                "connections"
+            )
+            reaches_index.append(network[network["id"] == next_index].index[0])
+        reaches = network.loc[reaches_index]
+        return reaches
 
     def get_parametric_spline_fit_points(self, k: int = 3, spacing: float = None):
         """Return the spline smoothed polyline points created from two splines defining
