@@ -97,7 +97,9 @@ class Channel:
             "duplicates"
         )
         reaches = cls._get_up_stream_reaches(
-            network=network, starting_id=starting_id, area_threshold=area_threshold,
+            network=network,
+            starting_id=starting_id,
+            area_threshold=area_threshold,
         )
         channel = cls(
             channel=reaches,
