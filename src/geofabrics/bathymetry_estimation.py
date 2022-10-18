@@ -700,7 +700,7 @@ class ChannelCharacteristics:
         )
 
         # Slopes for a range of smoothings
-        for smoothing_distance in [500, 1000, 2000, 3000]:
+        for smoothing_distance in [50, 500, 1000, 2000, 3000]:
             # ensure odd number of samples so array length preserved
             smoothing_samples = int(
                 numpy.ceil(smoothing_distance / self.cross_section_spacing)
