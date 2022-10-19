@@ -1477,9 +1477,7 @@ class ChannelCharacteristics:
             cross_sections[slope_columns].plot(ax=ax)
         matplotlib.pyplot.ylim((0, None))
 
-    def _create_flat_water_polygon(
-        self, cross_sections: geopandas.GeoDataFrame, smoothing_multiplier
-    ):
+    def _create_flat_water_polygon(self, cross_sections: geopandas.GeoDataFrame):
         """Create a polygon of the flat water from spline's of each bank.
 
         Parameters
@@ -1488,8 +1486,6 @@ class ChannelCharacteristics:
         cross_sections
             The cross_sections with geometry defined as polylines with width
             estimates.
-        smoothing_multiplier
-            The smoothing multiplier to apply to the spline fit.
         """
 
         # Only use the valid widths
@@ -1834,7 +1830,6 @@ class ChannelCharacteristics:
         cross_section_radius: float,
         search_radius: float,
         min_channel_width: float,
-        river_polygon_smoothing_multiplier: float,
     ):
         """Estimate the channel centre from transect samples
 
@@ -1855,9 +1850,6 @@ class ChannelCharacteristics:
             The distance to search side to side from the centre index.
         min_channel_width
             The minimum width of a 'valid' channel.
-        river_polygon_smoothing_multiplier
-            The amount of smoothing to apply to each bank prior to constructing
-            a polygon representing the channel.
 
         """
 
@@ -1894,10 +1886,7 @@ class ChannelCharacteristics:
         )
 
         # generate a flat water polygon
-        river_polygon = self._create_flat_water_polygon(
-            cross_sections=cross_sections,
-            smoothing_multiplier=river_polygon_smoothing_multiplier,
-        )
+        river_polygon = self._create_flat_water_polygon(cross_sections=cross_sections,)
 
         # Midpoints of the river polygon - buffer slightly to ensure intersection at the
         # start and end

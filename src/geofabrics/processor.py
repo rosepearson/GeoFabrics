@@ -1167,9 +1167,6 @@ class RiverBathymetryGenerator(BaseProcessor):
         min_channel_width = self.get_bathymetry_instruction("min_channel_width")
         bank_threshold = self.get_bathymetry_instruction("min_bank_height")
         max_bank_height = self.get_bathymetry_instruction("max_bank_height")
-        width_centre_smoothing_multiplier = self.get_bathymetry_instruction(
-            "width_centre_smoothing"
-        )
         network_alignment_tolerance = self.get_bathymetry_instruction(
             "network_alignment_tolerance"
         )
@@ -1183,7 +1180,6 @@ class RiverBathymetryGenerator(BaseProcessor):
             search_radius=network_alignment_tolerance,
             min_channel_width=min_channel_width,
             max_threshold=max_bank_height,
-            river_polygon_smoothing_multiplier=width_centre_smoothing_multiplier,
         )
 
         river_polygon.to_file(self.get_result_file_path("river_polygon"))
