@@ -1415,7 +1415,7 @@ class RiverBathymetryGenerator(BaseProcessor):
         )
 
         # Names of values to use
-        slope_name = "slope_mean_2.0km"
+        slope_name = "slope_mean_0.05km"
         min_z_name = "min_z_centre_unimodal"
         width_name = "widths_mean_0.25km"
         flat_width_name = "flat_widths_mean_0.25km"

@@ -719,6 +719,12 @@ class ChannelCharacteristics:
             cross_sections[f"slope_mean_{label}"] = self._rolling_mean_with_padding(
                 cross_sections["slope"], smoothing_samples
             )
+        # Set the minimum slope to 1m every 1km
+        smoothing_distance = 50
+        label = f"{smoothing_distance/1000}km"
+        cross_sections.loc[
+            cross_sections[f"slope_mean_{label}"] < 0.001, (f"slope_mean_{label}")
+        ] = 0.001
 
     def _smooth_widths_and_thresholds(self, cross_sections: geopandas.GeoDataFrame):
         """Record the valid and reolling mean of the calculated thresholds and widths
