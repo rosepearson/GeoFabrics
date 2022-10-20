@@ -12,7 +12,7 @@ import xarray
 import scipy
 import scipy.signal
 import scipy.interpolate
-import matplotlib
+import matplotlib.pyplot
 import logging
 
 
