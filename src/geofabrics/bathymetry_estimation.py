@@ -1886,7 +1886,9 @@ class ChannelCharacteristics:
         )
 
         # generate a flat water polygon
-        river_polygon = self._create_flat_water_polygon(cross_sections=cross_sections,)
+        river_polygon = self._create_flat_water_polygon(
+            cross_sections=cross_sections,
+        )
 
         # Midpoints of the river polygon - buffer slightly to ensure intersection at the
         # start and end
