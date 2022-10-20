@@ -1051,7 +1051,6 @@ class RiverBathymetryGenerator(BaseProcessor):
             gnd_dem = runner.raw_dem.dem
             instruction_paths.pop("raw_dem")
             instruction_paths.pop("raw_dem_extents")
-            instruction_paths.pop("result_dem")
         else:
             print("Loading ground DEM.")  # drop band added by rasterio.open()
             gnd_dem = rioxarray.rioxarray.open_rasterio(gnd_file, masked=True).squeeze(
@@ -1073,7 +1072,6 @@ class RiverBathymetryGenerator(BaseProcessor):
             veg_dem = runner.raw_dem.dem
             instruction_paths.pop("raw_dem")
             instruction_paths.pop("raw_dem_extents")
-            instruction_paths.pop("result_dem")
         else:
             print("Loading the vegetation DEM.")  # drop band added by rasterio.open()
             veg_dem = dem.rioxarray.rioxarray.open_rasterio(
