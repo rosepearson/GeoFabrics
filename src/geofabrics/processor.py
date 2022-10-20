@@ -1044,7 +1044,7 @@ class RiverBathymetryGenerator(BaseProcessor):
             print("Generating ground DEM.")
             instruction_paths["raw_dem"] = str(self.get_result_file_name(key="gnd_dem"))
             instruction_paths["raw_dem_extents"] = str(
-                self.get_result_file_name(key="gnd_extents")
+                self.get_result_file_name(key="gnd_dem_extents")
             )
             runner = RawLidarDemGenerator(self.instructions)
             runner.run()
@@ -1066,7 +1066,7 @@ class RiverBathymetryGenerator(BaseProcessor):
             ] = self.get_bathymetry_instruction("veg_lidar_classifications_to_keep")
             instruction_paths["raw_dem"] = str(self.get_result_file_name(key="veg_dem"))
             instruction_paths["raw_dem_extents"] = str(
-                self.get_result_file_name(key="veg_extents")
+                self.get_result_file_name(key="veg_dem_extents")
             )
             runner = RawLidarDemGenerator(self.instructions)
             runner.run()
