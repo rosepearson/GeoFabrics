@@ -700,7 +700,7 @@ class ChannelCharacteristics:
         )
 
         # Slopes for a range of smoothings
-        for smoothing_distance in [50, 500, 1000, 2000, 3000]:
+        for smoothing_distance in [50, 250, 500, 1000]:
             # ensure odd number of samples so array length preserved
             smoothing_samples = int(
                 numpy.ceil(smoothing_distance / self.cross_section_spacing)
@@ -755,7 +755,7 @@ class ChannelCharacteristics:
         )
 
         # Cycle through and caluclate the rolling mean
-        for smoothing_distance in [150, 200, 250, 2000, 3000]:
+        for smoothing_distance in [50, 150, 200, 250]:
             # ensure odd number of samples so array length preserved
             smoothing_samples = int(
                 numpy.ceil(smoothing_distance / self.cross_section_spacing)
