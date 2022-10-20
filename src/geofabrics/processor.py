@@ -1003,7 +1003,7 @@ class RiverBathymetryGenerator(BaseProcessor):
                     channel.get_parametric_spline_fit().to_file(smoothed_rec_name)
         return channel
 
-    def get_dems(self, buffer: float, channel: geometry.CatchmentGeometry) -> tuple:
+    def get_dems(self, channel: geometry.CatchmentGeometry) -> tuple:
         """Allow selection of the ground or vegetation DEM, and either create
         or load it.
 
@@ -1015,10 +1015,7 @@ class RiverBathymetryGenerator(BaseProcessor):
         instruction_paths = self.instructions["data_paths"]
 
         # Extract instructions from JSON
-        max_channel_width = self.get_bathymetry_instruction("max_channel_width")
-        network_alignment_tolerance = self.get_bathymetry_instruction(
-            "network_alignment_tolerance"
-        )
+        river_corridor_width = self.get_bathymetry_instruction("river_corridor_width")
 
         # Define ground and veg files
         gnd_file = self.get_result_file_path(key="gnd_dem")
@@ -1030,11 +1027,8 @@ class RiverBathymetryGenerator(BaseProcessor):
             instruction_paths["catchment_boundary"] = str(
                 self.get_result_file_name(key="catchment")
             )
-            corridor_radius = (
-                max_channel_width / 2 + network_alignment_tolerance + buffer
-            )
             channel_catchment = channel.get_channel_catchment(
-                corridor_radius=corridor_radius
+                corridor_radius=river_corridor_width / 2
             )
             channel_catchment.to_file(catchment_file)
         # Remove bathymetry contour information if it exists while creating DEMs
@@ -1096,7 +1090,6 @@ class RiverBathymetryGenerator(BaseProcessor):
         self,
         channel_width: bathymetry_estimation.ChannelCharacteristics,
         channel: bathymetry_estimation.Channel,
-        buffer: float,
     ) -> geopandas.GeoDataFrame:
         """Align the river network defined channel based on LiDAR and save the aligned
         channel.
@@ -1109,11 +1102,11 @@ class RiverBathymetryGenerator(BaseProcessor):
         """
 
         # Get instruciton parameters
-        max_channel_width = self.get_bathymetry_instruction("max_channel_width")
         min_channel_width = self.get_bathymetry_instruction("min_channel_width")
         network_alignment_tolerance = self.get_bathymetry_instruction(
             "network_alignment_tolerance"
         )
+        river_corridor_width = self.get_bathymetry_instruction("river_corridor_width")
 
         bank_threshold = self.get_bathymetry_instruction("min_bank_height")
         width_centre_smoothing_multiplier = self.get_bathymetry_instruction(
@@ -1121,7 +1114,7 @@ class RiverBathymetryGenerator(BaseProcessor):
         )
 
         # The width of cross sections to sample
-        corridor_radius = max_channel_width / 2 + network_alignment_tolerance + buffer
+        corridor_radius = river_corridor_width / 2 + network_alignment_tolerance
 
         aligned_channel, sampled_cross_sections = channel_width.align_channel(
             threshold=bank_threshold,
@@ -1150,7 +1143,6 @@ class RiverBathymetryGenerator(BaseProcessor):
         self,
         channel_width: bathymetry_estimation.ChannelCharacteristics,
         aligned_channel: geopandas.GeoDataFrame,
-        buffer: float,
     ) -> tuple:
         """Align the river network defined channel based on LiDAR and save the aligned
         channel.
@@ -1167,17 +1159,13 @@ class RiverBathymetryGenerator(BaseProcessor):
         min_channel_width = self.get_bathymetry_instruction("min_channel_width")
         bank_threshold = self.get_bathymetry_instruction("min_bank_height")
         max_bank_height = self.get_bathymetry_instruction("max_bank_height")
-        network_alignment_tolerance = self.get_bathymetry_instruction(
-            "network_alignment_tolerance"
-        )
-
-        corridor_radius = max_channel_width / 2 + buffer
+        river_corridor_width = self.get_bathymetry_instruction("river_corridor_width")
 
         sampled_cross_sections, river_polygon = channel_width.estimate_width_and_slope(
             aligned_channel=aligned_channel,
             threshold=bank_threshold,
-            cross_section_radius=corridor_radius,
-            search_radius=network_alignment_tolerance,
+            cross_section_radius=river_corridor_width / 2,
+            search_radius=max_channel_width / 2,
             min_channel_width=min_channel_width,
             max_threshold=max_bank_height,
         )
@@ -1212,37 +1200,31 @@ class RiverBathymetryGenerator(BaseProcessor):
                 columns
             ].to_file(self.get_result_file_path(name="final_flat_midpoints.geojson"))
 
-    def characterise_channel(self, buffer: float):
+    def characterise_channel(self):
         """Calculate the channel width, slope and other characteristics. This requires a
         ground and vegetation DEM. This also may require alignment of the channel
         centreline.
 
-
-        Parameters:
-            buffer  The amount of extra space to create around the river catchment
         """
 
         logging.info("The channel hasn't been characerised. Charactreising now.")
 
         # Decide if aligning from river network alone, or OSM and river network
         if "osm_id" in self.instructions["rivers"]:
-            channel_width, aligned_channel = self.align_channel_from_osm(buffer=buffer)
+            channel_width, aligned_channel = self.align_channel_from_osm()
         else:
-            channel_width, aligned_channel = self.align_channel_from_rec(buffer=buffer)
+            channel_width, aligned_channel = self.align_channel_from_rec()
         # calculate the channel width and save results
         print("Characterising the aligned channel.")
         self.calculate_channel_characteristics(
-            channel_width=channel_width, aligned_channel=aligned_channel, buffer=buffer
+            channel_width=channel_width, aligned_channel=aligned_channel
         )
 
-    def align_channel_from_rec(self, buffer: float) -> tuple:
+    def align_channel_from_rec(self) -> tuple:
         """Calculate the channel width, slope and other characteristics. This requires a
         ground and vegetation DEM. This also may require alignment of the channel
         centreline.
 
-
-        Parameters:
-            buffer  The amount of extra space to create around the river catchment
         """
 
         logging.info("Align from river network.")
@@ -1255,7 +1237,7 @@ class RiverBathymetryGenerator(BaseProcessor):
         channel = self.get_network_channel()
 
         # Get DEMs - create and save if don't exist
-        gnd_dem, veg_dem = self.get_dems(buffer=buffer, channel=channel)
+        gnd_dem, veg_dem = self.get_dems(channel=channel)
 
         # Create the channel width object
         channel_width = bathymetry_estimation.ChannelCharacteristics(
@@ -1272,23 +1254,18 @@ class RiverBathymetryGenerator(BaseProcessor):
 
             # Align and save the river network defined channel
             aligned_channel = self.align_channel(
-                channel_width=channel_width, channel=channel, buffer=buffer
+                channel_width=channel_width, channel=channel
             )
         else:
             aligned_channel_file = self.get_result_file_path(key="aligned")
             aligned_channel = geopandas.read_file(aligned_channel_file)
         return channel_width, aligned_channel
 
-    def align_channel_from_osm(
-        self, buffer: float
-    ) -> bathymetry_estimation.ChannelCharacteristics:
+    def align_channel_from_osm(self) -> bathymetry_estimation.ChannelCharacteristics:
         """Calculate the channel width, slope and other characteristics. This requires a
         ground and vegetation DEM. This also may require alignment of the channel
         centreline.
 
-
-        Parameters:
-            buffer  The amount of extra space to create around the river catchment
         """
 
         logging.info("Align from OSM.")
@@ -1359,7 +1336,7 @@ class RiverBathymetryGenerator(BaseProcessor):
         smoothed_osm_channel = osm_channel.get_parametric_spline_fit()
         smoothed_osm_channel.to_file(self.get_result_file_path(key="aligned"))
         # Get DEMs - create and save if don't exist
-        gnd_dem, veg_dem = self.get_dems(buffer=buffer, channel=osm_channel)
+        gnd_dem, veg_dem = self.get_dems(channel=osm_channel)
 
         # Create the channel width object
         channel_width = bathymetry_estimation.ChannelCharacteristics(
@@ -1613,8 +1590,7 @@ class RiverBathymetryGenerator(BaseProcessor):
 
         # Characterise river channel if not already done - may generate DEMs
         if not self.channel_characteristics_exist():
-            buffer = 50
-            self.characterise_channel(buffer=buffer)
+            self.characterise_channel()
         # Estimate channel and fan depths if not already done
         if not self.channel_bathymetry_exist():
             logging.info("Estimating the channel and fan bathymetry.")

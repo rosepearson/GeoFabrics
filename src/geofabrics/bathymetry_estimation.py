@@ -1880,7 +1880,7 @@ class ChannelCharacteristics:
             cross_section_elevations=cross_section_elevations,
             threshold=threshold,
             resolution=self.resolution,
-            search_radius=search_radius / 10,
+            search_radius=min_channel_width,
             maximum_threshold=max_threshold,
             min_channel_width=min_channel_width,
         )
