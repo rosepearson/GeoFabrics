@@ -641,7 +641,7 @@ class HydrologicallyConditionedDem(DemBase):
             bathymetry_points=offshore_points,
             flat_x_array=flat_x_masked,
             flat_y_array=flat_y_masked,
-            method="rbf",
+            method="linear",
         )
         flat_z[mask_z] = flat_z_masked
         self._offshore_dem.z.data = flat_z.reshape(self._offshore_dem.z.data.shape)
