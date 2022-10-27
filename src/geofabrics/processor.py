@@ -1709,7 +1709,7 @@ class WaterwayBedElevationEstimator(BaseProcessor):
             )
             return
         # If not - estimate elevations along close drains
-        closed_waterways = waterways[waterways["tunnel"]]
+        closed_waterways = waterways[waterways["tunnel"]].reset_index(drop=True)
         closed_waterways["polygon"] = closed_waterways.buffer(closed_waterways["width"])
 
         # Sample the minimum elevation at each tunnel
@@ -1755,7 +1755,7 @@ class WaterwayBedElevationEstimator(BaseProcessor):
                 "estimate their elevations."
             )
         points_exploded = points[nan_filter].explode(ignore_index=False)
-        closed_waterways = closed_waterways[nan_filter]
+        closed_waterways = closed_waterways[nan_filter].reset_index(drop=True)
 
         # Save out polygons and elevations
         closed_waterways.set_geometry("polygon", drop=True)[
@@ -1778,7 +1778,9 @@ class WaterwayBedElevationEstimator(BaseProcessor):
             )
             return
         # If not - estimate the elevations along the open waterways
-        open_waterways = waterways[numpy.logical_not(waterways["tunnel"])]
+        open_waterways = waterways[numpy.logical_not(waterways["tunnel"])].reset_index(
+            drop=True
+        )
 
         # sample the ends of the drain - sample over a polygon at each end
         polygons = open_waterways.interpolate(0).buffer(open_waterways["width"])
@@ -1808,7 +1810,7 @@ class WaterwayBedElevationEstimator(BaseProcessor):
                 "Some open waterways are being ignored as there is not enough data to "
                 "estimate their elevations."
             )
-        open_waterways = open_waterways[nan_filter]
+        open_waterways = open_waterways[nan_filter].reset_index(drop=True)
 
         # save out the polygons
         open_waterways.buffer(open_waterways["width"]).to_file(polygon_file)
@@ -1899,7 +1901,7 @@ class WaterwayBedElevationEstimator(BaseProcessor):
             waterways_polygon = geopandas.GeoDataFrame(
                 geometry=[shapely.ops.unary_union(waterways_polygon.geometry.array)],
                 crs=waterways_polygon.crs,
-            )
+            ).reset_index(inplace=False, drop=True)
             waterways_polygon.to_file(waterways_polygon_file)
 
             # Create DEM generation instructions
@@ -1968,19 +1970,25 @@ class WaterwayBedElevationEstimator(BaseProcessor):
             )
 
             # Remove polygons
-            waterways = waterways[waterways.geometry.type == "LineString"]
+            waterways = waterways[waterways.geometry.type == "LineString"].reset_index(
+                drop=True
+            )
             # Get specified widths
             widths = self.instructions["drains"]["widths"]
             # Check if rivers are specified and remove if not
             widths["ditch"] = widths["drain"]
             if "river" not in widths.keys():
-                waterways = waterways[waterways["waterway"] != "river"]
+                waterways = waterways[waterways["waterway"] != "river"].reset_index(
+                    drop=True
+                )
             # Add width label
             waterways["width"] = waterways["waterway"].apply(
                 lambda waterway: widths[waterway]
             )
             # Clip to land
-            waterways = waterways.clip(self.catchment_geometry.land)
+            waterways = waterways.clip(self.catchment_geometry.land).reset_index(
+                drop=True
+            )
             # Save file
             waterways.to_file(waterways_file_path)
         return waterways
