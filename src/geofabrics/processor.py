@@ -1965,29 +1965,31 @@ class WaterwayBedElevationEstimator(BaseProcessor):
                 element_dict["OSM_id"].append(element.id())
                 element_dict["waterway"].append(element.tags()["waterway"])
                 element_dict["tunnel"].append("tunnel" in element.tags().keys())
-            waterways = geopandas.GeoDataFrame(element_dict, crs=self.OSM_CRS).to_crs(
-                self.catchment_geometry.crs["horizontal"]
+            waterways = (
+                geopandas.GeoDataFrame(element_dict, crs=self.OSM_CRS)
+                .to_crs(self.catchment_geometry.crs["horizontal"])
+                .set_index("OSM_id", drop=True)
             )
 
             # Remove polygons
-            waterways = waterways[waterways.geometry.type == "LineString"].reset_index(
-                drop=True
+            waterways = waterways[waterways.geometry.type == "LineString"].sort_index(
+                ascending=True
             )
             # Get specified widths
             widths = self.instructions["drains"]["widths"]
             # Check if rivers are specified and remove if not
             widths["ditch"] = widths["drain"]
             if "river" not in widths.keys():
-                waterways = waterways[waterways["waterway"] != "river"].reset_index(
-                    drop=True
+                waterways = waterways[waterways["waterway"] != "river"].sort_index(
+                    ascending=True
                 )
             # Add width label
             waterways["width"] = waterways["waterway"].apply(
                 lambda waterway: widths[waterway]
             )
             # Clip to land
-            waterways = waterways.clip(self.catchment_geometry.land).reset_index(
-                drop=True
+            waterways = waterways.clip(self.catchment_geometry.land).sort_index(
+                ascending=True
             )
             # Save file
             waterways.to_file(waterways_file_path)
