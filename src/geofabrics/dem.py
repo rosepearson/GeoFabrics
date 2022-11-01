@@ -1827,6 +1827,7 @@ class RoughnessDem(LidarBase):
                 self._dem.source_class.data
                 == self.SOURCE_CLASSIFICATION["rivers and fans"]
             )
+            | (self._dem.source_class.data == self.SOURCE_CLASSIFICATION["waterways"])
         ] = self.ROUGHNESS_DEFAULTS["water"]
         # Set roughness where land and no LiDAR
         self._dem.zo.data[
