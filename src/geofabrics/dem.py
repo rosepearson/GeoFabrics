@@ -1839,6 +1839,9 @@ class RoughnessDem(LidarBase):
             self._dem["zo"] = self._dem.zo.rio.interpolate_na(
                 method=self.interpolation_method
             )
+        self._dem = self._dem.rio.clip(
+            self.catchment_geometry.catchment.geometry, drop=True
+        )
 
     def _add_tiled_lidar_chunked(
         self,
