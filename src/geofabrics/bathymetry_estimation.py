@@ -243,7 +243,7 @@ class Channel:
         xy = self.get_b_spline_fit_points(
             smoothing_multiplier=smoothing_multiplier, spacing=spacing
         )
-        spline_channel = shapely.geometry.LineString(xy.T)
+        spline_channel = shapely.geometry.LineString(xy)
         spline_channel = geopandas.GeoDataFrame(
             geometry=[spline_channel], crs=self.channel.crs
         )

@@ -1338,7 +1338,10 @@ class RawDem(LidarBase):
         dem = dem.rio.clip(region_to_rasterise.geometry, drop=False)
 
         # If drop offshrore LiDAR ensure the foreshore values are 0 or negative
-        if self.drop_offshore_lidar:
+        if (
+            self.drop_offshore_lidar
+            and self.catchment_geometry.foreshore.area.sum() > 0
+        ):
             buffered_foreshore = geopandas.GeoDataFrame(
                 geometry=self.catchment_geometry.foreshore.buffer(
                     self.catchment_geometry.resolution * numpy.sqrt(2)
@@ -2368,10 +2371,7 @@ def roughness_over_chunk(
         return grid_z
     # Perform the point cloud roughness estimation method over chunk
     z_flat = roughness_from_points(
-        point_cloud=tile_points,
-        xy_out=xy_out,
-        xy_ground=xy_ground,
-        options=options,
+        point_cloud=tile_points, xy_out=xy_out, xy_ground=xy_ground, options=options,
     )
     grid_z = z_flat.reshape(grid_x.shape)
 

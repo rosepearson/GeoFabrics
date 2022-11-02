@@ -205,7 +205,6 @@ class BaseProcessor(abc.ABC):
         value. If the default is used it is added to the instructions."""
 
         defaults = {
-            "set_dem_shoreline": True,
             "bathymetry_contours_z_label": None,
             "bathymetry_points_z_label": None,
             "bathymetry_points_type": None,
@@ -610,7 +609,7 @@ class RawLidarDemGenerator(BaseProcessor):
                 self.reference_dem = dem.ReferenceDem(
                     dem_file=self.get_instruction_path("reference_dems")[0],
                     catchment_geometry=self.catchment_geometry,
-                    set_foreshore=self.get_instruction_general("set_dem_shoreline"),
+                    set_foreshore=self.get_instruction_general("drop_offshore_lidar"),
                     exclusion_extent=self.raw_dem.extents,
                 )
 

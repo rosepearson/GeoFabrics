@@ -87,7 +87,7 @@ class CatchmentGeometry:
             self._land_and_foreshore.area > self.resolution * self.resolution
         ]
 
-        self._foreshore = self.land_and_foreshore.overlay(self.land, how="difference")
+        self._foreshore = self._land_and_foreshore.overlay(self.land, how="difference")
 
         self._offshore = self.catchment.overlay(
             self.land_and_foreshore, how="difference"
@@ -784,7 +784,7 @@ class RiverMouthFan:
         # Calculate the normal and tangent to the channel segment at the mouth
         segment_dx = x[0] - x[1]
         segment_dy = y[0] - y[1]
-        segment_length = numpy.sqrt(segment_dx**2 + segment_dy**2)
+        segment_length = numpy.sqrt(segment_dx ** 2 + segment_dy ** 2)
         mouth_tangent = shapely.geometry.Point(
             [segment_dx / segment_length, segment_dy / segment_length]
         )
