@@ -314,20 +314,22 @@ class BathymetryContours:
 
         self._contour = self._contour.to_crs(self.catchment_geometry.crs["horizontal"])
 
+        # Define a large offshore area to keep ocean contours in - to ensure correct
+        # interpolation behaviour near the edges
+        offshore = self.catchment_geometry.offshore
+        offshore = offshore.buffer(numpy.sqrt(offshore.area.sum()) / 2)
+        offshore = offshore.overlay(self.catchment_geometry.land, how="difference")
+
         if exclusion_extent is not None:
             # Remove areas already covered by LiDAR - drop any polygons less than a
             # pixel in area
-            exclusion_extent = exclusion_extent.clip(
-                self.catchment_geometry.offshore, keep_geom_type=True
-            )
+            exclusion_extent = exclusion_extent.clip(offshore, keep_geom_type=True)
             exclusion_extent = exclusion_extent[
-                exclusion_extent.area > self.catchment_geometry.resolution**2
+                exclusion_extent.area > self.catchment_geometry.resolution ** 2
             ]
-            self._extent = self.catchment_geometry.offshore.overlay(
-                exclusion_extent, how="difference"
-            )
+            self._extent = offshore.overlay(exclusion_extent, how="difference")
         else:
-            self._extent = self.catchment_geometry.offshore
+            self._extent = offshore
         # Keep only contours in the 'extents' i.e. inside the catchment and outside any
         # exclusion_extent
         self._contour = self._contour.clip(self._extent, keep_geom_type=True)
