@@ -1334,10 +1334,14 @@ class RawDem(LidarBase):
                 self.catchment_geometry.full_land, how="difference", keep_geom_type=True
             )
             # Clip DEM to buffered foreshore
-            mask = dem.z.rio.clip(buffered_foreshore.geometry, drop=False)
+            mask = numpy.logical_not(
+                numpy.isnan(
+                    dem.z.rio.clip(buffered_foreshore.geometry, drop=False).data
+                )
+            )
 
             # get reference DEM points on the foreshore - with any positive set to zero
-            dem.z.data[numpy.logical_not(numpy.isnan(mask.data)) & dem.z.data > 0] = 0
+            dem.z.data[mask & (dem.z.data > 0)] = 0
         self._dem = dem
         # Create a polygon defining the region where there are dense DEM values
         self._extents = self._calculate_raw_extents()
