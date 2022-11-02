@@ -1327,7 +1327,7 @@ class RawDem(LidarBase):
         if self.drop_offshore_lidar:
             buffered_foreshore = geopandas.GeoDataFrame(
                 geometry=self.catchment_geometry.foreshore.buffer(
-                    self.resolution * numpy.sqrt(2)
+                    self.catchment_geometry.resolution * numpy.sqrt(2)
                 )
             )
             buffered_foreshore = buffered_foreshore.overlay(
