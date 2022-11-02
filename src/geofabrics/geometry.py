@@ -318,7 +318,7 @@ class BathymetryContours:
         # interpolation behaviour near the edges
         offshore = self.catchment_geometry.offshore
         offshore = geopandas.GeoDataFrame(
-            geometry=offshore.buffer(numpy.sqrt(offshore.area.sum()) / 2)
+            geometry=offshore.buffer(numpy.sqrt(offshore.area.sum()))
         )
         offshore = offshore.overlay(self.catchment_geometry.land, how="difference")
 
