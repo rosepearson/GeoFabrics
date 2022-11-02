@@ -232,7 +232,7 @@ class BaseProcessor(abc.ABC):
         return the default value if not specified in the instruction file. If
         the default is used it is added to the instructions."""
 
-        defaults = {"number_of_cores": 1, "chunk_size": None}
+        defaults = {"number_of_cores": 1, "chunk_size": None, "memory_limit": "10GiB"}
 
         assert key in defaults or key in self.instructions["processing"], (
             f"The key: {key} is missing "
@@ -571,6 +571,7 @@ class RawLidarDemGenerator(BaseProcessor):
             "n_workers": self.get_processing_instructions("number_of_cores"),
             "threads_per_worker": 1,
             "processes": True,
+            "memory_limit": self.get_processing_instructions("memory_limit"),
         }
         with distributed.LocalCluster(**cluster_kwargs) as cluster, distributed.Client(
             cluster
@@ -804,6 +805,7 @@ class RoughnessLengthGenerator(BaseProcessor):
             "n_workers": self.get_processing_instructions("number_of_cores"),
             "threads_per_worker": 1,
             "processes": True,
+            "memory_limit": self.get_processing_instructions("memory_limit"),
         }
         with distributed.LocalCluster(**cluster_kwargs) as cluster, distributed.Client(
             cluster
