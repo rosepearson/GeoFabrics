@@ -327,7 +327,7 @@ class BathymetryContours:
             # pixel in area
             exclusion_extent = exclusion_extent.clip(offshore, keep_geom_type=True)
             exclusion_extent = exclusion_extent[
-                exclusion_extent.area > self.catchment_geometry.resolution ** 2
+                exclusion_extent.area > self.catchment_geometry.resolution**2
             ]
             self._extent = offshore.overlay(exclusion_extent, how="difference")
         else:
