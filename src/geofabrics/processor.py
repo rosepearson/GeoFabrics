@@ -214,6 +214,7 @@ class BaseProcessor(abc.ABC):
             "interpolation_method": None,
             "elevation_range": None,
             "lidar_interpolation_method": "idw",
+            "download_limit_gbytes": 100,
         }
 
         assert key in defaults or key in self.instructions["general"], (
@@ -449,6 +450,9 @@ class BaseProcessor(abc.ABC):
                 cache_path=self.get_instruction_path("local_cache"),
                 search_polygon=search_polygon,
                 verbose=True,
+                download_limit_gbytes=self.get_instruction_general(
+                    "download_limit_gbytes"
+                ),
             )
             # Loop through each specified dataset and download it
             for dataset_name in self.instructions["apis"][data_service].keys():
