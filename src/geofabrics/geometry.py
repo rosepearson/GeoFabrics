@@ -317,7 +317,9 @@ class BathymetryContours:
         # Define a large offshore area to keep ocean contours in - to ensure correct
         # interpolation behaviour near the edges
         offshore = self.catchment_geometry.offshore
-        offshore = offshore.buffer(numpy.sqrt(offshore.area.sum()) / 2)
+        offshore = geopandas.GeoDataFrame(
+            geometry=offshore.buffer(numpy.sqrt(offshore.area.sum()) / 2)
+        )
         offshore = offshore.overlay(self.catchment_geometry.land, how="difference")
 
         if exclusion_extent is not None:
