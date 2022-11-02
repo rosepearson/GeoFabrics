@@ -1977,9 +1977,20 @@ class WaterwayBedElevationEstimator(BaseProcessor):
             # Get specified widths
             widths = self.instructions["drains"]["widths"]
             # Check if rivers are specified and remove if not
-            widths["ditch"] = widths["drain"]
-            if "river" not in widths.keys():
-                waterways = waterways[waterways["waterway"] != "river"]
+            if "ditch" not in widths.keys():
+                widths["ditch"] = widths["drain"]
+            # Identify and remove undefined waterway types
+            for waterway_label in waterways["waterway"].unique():
+                if waterway_label not in widths.keys():
+                    waterways = waterways[waterways["waterway"] != waterway_label]
+                    print(
+                        f"{waterway_label} is not in the specified widths and"
+                        " is being removed"
+                    )
+                    logging.info(
+                        f"{waterway_label} is not in the specified widths and"
+                        " is being removed"
+                    )
             # Add width label
             waterways["width"] = waterways["waterway"].apply(
                 lambda waterway: widths[waterway]
