@@ -1587,6 +1587,23 @@ class RawDem(LidarBase):
 
         # ensure the expected CF conventions are followed
         self._write_netcdf_conventions_in_place(dem, self.catchment_geometry.crs)
+
+        # set any offfshre values to ocean
+        if (
+            self.catchment_geometry.foreshore_and_offshore.area.sum() > 0
+            and self.drop_offshore_lidar
+        ):
+            ocean_mask = numpy.logical_not(
+                numpy.isnan(
+                    dem.z.rio.clip(
+                        self.catchment_geometry.foreshore_and_offshore.geometry,
+                        drop=False,
+                    ).data
+                )
+            )
+            dem.source_class.data[ocean_mask] = self.SOURCE_CLASSIFICATION[
+                "ocean bathymetry"
+            ]
         return dem
 
     def add_reference_dem(self, reference_dem: ReferenceDem):
