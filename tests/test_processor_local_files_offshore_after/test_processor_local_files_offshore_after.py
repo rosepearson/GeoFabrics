@@ -90,6 +90,7 @@ class ProcessorLocalFilesOffshoreTest(unittest.TestCase):
         y0 = -50
         y1 = -100
         y2 = -200
+        y3 = -300
         contour_0 = shapely.geometry.LineString(
             [(x0, y0, -y0 / 10), (x1, y0, -y0 / 10)]
         )
@@ -99,7 +100,10 @@ class ProcessorLocalFilesOffshoreTest(unittest.TestCase):
         contour_2 = shapely.geometry.LineString(
             [(x0, y2, -y2 / 10), (x1, y2, -y2 / 10)]
         )
-        contours = geopandas.GeoSeries([contour_0, contour_1, contour_2])
+        contour_3 = shapely.geometry.LineString(
+            [(x0, y3, -y3 / 10), (x1, y3, -y3 / 10)]
+        )
+        contours = geopandas.GeoSeries([contour_0, contour_1, contour_2, contour_3])
         contours = contours.set_crs(cls.instructions["output"]["crs"]["horizontal"])
         contours.to_file(bathymetry_file)
 
