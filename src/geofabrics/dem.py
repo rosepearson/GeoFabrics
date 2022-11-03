@@ -641,7 +641,7 @@ class HydrologicallyConditionedDem(DemBase):
             bathymetry_points=offshore_points,
             flat_x_array=flat_x_masked,
             flat_y_array=flat_y_masked,
-            method="rbf",
+            method="linear",
         )
         flat_z[mask_z] = flat_z_masked
         self._offshore_dem.z.data = flat_z.reshape(self._offshore_dem.z.data.shape)
@@ -1335,8 +1335,31 @@ class RawDem(LidarBase):
             )
         # Clip DEM to Catchment and ensure NaN outside region to rasterise
         dem = dem.rio.clip(self.catchment_geometry.catchment.geometry, drop=True)
-        self._dem = dem.rio.clip(region_to_rasterise.geometry, drop=False)
+        dem = dem.rio.clip(region_to_rasterise.geometry, drop=False)
 
+        # If drop offshrore LiDAR ensure the foreshore values are 0 or negative
+        if (
+            self.drop_offshore_lidar
+            and self.catchment_geometry.foreshore.area.sum() > 0
+        ):
+            buffered_foreshore = geopandas.GeoDataFrame(
+                geometry=self.catchment_geometry.foreshore.buffer(
+                    self.catchment_geometry.resolution * numpy.sqrt(2)
+                )
+            )
+            buffered_foreshore = buffered_foreshore.overlay(
+                self.catchment_geometry.full_land, how="difference", keep_geom_type=True
+            )
+            # Clip DEM to buffered foreshore
+            mask = numpy.logical_not(
+                numpy.isnan(
+                    dem.z.rio.clip(buffered_foreshore.geometry, drop=False).data
+                )
+            )
+
+            # get reference DEM points on the foreshore - with any positive set to zero
+            dem.z.data[mask & (dem.z.data > 0)] = 0
+        self._dem = dem
         # Create a polygon defining the region where there are dense DEM values
         self._extents = self._calculate_raw_extents()
 
@@ -1564,6 +1587,23 @@ class RawDem(LidarBase):
 
         # ensure the expected CF conventions are followed
         self._write_netcdf_conventions_in_place(dem, self.catchment_geometry.crs)
+
+        # set any offfshre values to ocean
+        if (
+            self.catchment_geometry.foreshore_and_offshore.area.sum() > 0
+            and self.drop_offshore_lidar
+        ):
+            ocean_mask = numpy.logical_not(
+                numpy.isnan(
+                    dem.z.rio.clip(
+                        self.catchment_geometry.foreshore_and_offshore.geometry,
+                        drop=False,
+                    ).data
+                )
+            )
+            dem.source_class.data[ocean_mask] = self.SOURCE_CLASSIFICATION[
+                "ocean bathymetry"
+            ]
         return dem
 
     def add_reference_dem(self, reference_dem: ReferenceDem):
@@ -1614,10 +1654,25 @@ class RawDem(LidarBase):
 
         # Update the DEM
         self._dem.z.data[mask] = z_flat
+        # Update the source layer - where defined by the reference DEM and set foreshore
         self._dem.source_class.data[
             mask & numpy.logical_not(numpy.isnan(self._dem.z.data))
         ] = self.SOURCE_CLASSIFICATION["reference DEM"]
-
+        if (
+            self.catchment_geometry.foreshore.area.sum() > 0
+            and reference_dem.set_foreshore
+        ):
+            foreshore_mask = numpy.logical_not(
+                numpy.isnan(
+                    self._dem.z.rio.clip(
+                        self.catchment_geometry.foreshore.geometry,
+                        drop=False,
+                    ).data
+                )
+            )
+            self._dem.source_class.data[
+                mask & foreshore_mask
+            ] = self.SOURCE_CLASSIFICATION["ocean bathymetry"]
         # Update the dense DEM extents
         self._extents = self._calculate_raw_extents()
 
@@ -1827,6 +1882,7 @@ class RoughnessDem(LidarBase):
                 self._dem.source_class.data
                 == self.SOURCE_CLASSIFICATION["rivers and fans"]
             )
+            | (self._dem.source_class.data == self.SOURCE_CLASSIFICATION["waterways"])
         ] = self.ROUGHNESS_DEFAULTS["water"]
         # Set roughness where land and no LiDAR
         self._dem.zo.data[
@@ -1839,6 +1895,9 @@ class RoughnessDem(LidarBase):
             self._dem["zo"] = self._dem.zo.rio.interpolate_na(
                 method=self.interpolation_method
             )
+        self._dem = self._dem.rio.clip(
+            self.catchment_geometry.catchment.geometry, drop=True
+        )
 
     def _add_tiled_lidar_chunked(
         self,

@@ -5,13 +5,14 @@ information.
 """
 
 import geopandas
+import pathlib
 import shapely
 import numpy
 import xarray
 import scipy
 import scipy.signal
 import scipy.interpolate
-import matplotlib
+import matplotlib.pyplot
 import logging
 
 
@@ -43,41 +44,63 @@ class Channel:
         self.sampling_direction = sampling_direction
 
     @classmethod
-    def from_rec(
+    def from_network(
         cls,
-        rec_network: geopandas.GeoDataFrame,
-        reach_id: int,
+        network_file: pathlib.Path,
+        crs: int,
+        starting_id: int,
         resolution: float,
         area_threshold: float,
-        max_iterations: int = 10000,
+        name_dict: dict,
+        sampling_direction: int = -1,
     ):
         """Create a channel object from a REC file.
 
         Parameters
         ----------
 
-        rec_network
-            Contains association information between upstream and
-            downstream reaches.
-        reach_id
-            The name of the reach ID in the REC channel.
+        network
+            Contains geometry and relational information between upstream and downstream
+            reaches.
+        starting_id
+            The ID of the reach to trace upstream from.
+        name_dict
+            The column names of the network.
         area_threshold
-            The area threshold in metres squared below which to ignore a reach.
-        max_iterations
-            The maximum number of iterations along a single strand to trace
-            upstream.
-        iteration
-            The number of iterations traveled upstream.
+            The minimum upstream area for upstream reaches to be included.
+        resolution
+            The resolution of the upstream polyline trace to create from the network.
+        sampling_direction
+            The direction to sample each reach polyline. 1 if each reach is defined
+            downstream to upstream, -1 otherwise.
         """
-        reaches, iteration = cls._get_up_stream_reaches(
-            rec_network=rec_network,
-            reach_id=reach_id,
-            reaches=None,
-            max_iterations=max_iterations,
-            iteration=0,
+
+        # Load in network and remove unneeded columns
+        network = geopandas.read_file(network_file).to_crs(crs)
+        # Drop any non-required columns
+        network = network[
+            [
+                name_dict["id"],
+                name_dict["to_node"],
+                name_dict["from_node"],
+                name_dict["flow"],
+                name_dict["mannings_n"],
+                name_dict["area"],
+                "geometry",
+            ]
+        ]
+        network = network.rename(
+            columns={value: key for key, value in name_dict.items()}
         )
-        reaches = reaches[reaches["CUM_AREA"] > area_threshold]
-        sampling_direction = -1
+        assert len(network["id"]) == len(network["id"].unique()), (
+            "The reach IDs much be unique in for the network to be valid, but there are"
+            "duplicates"
+        )
+        reaches = cls._get_up_stream_reaches(
+            network=network,
+            starting_id=starting_id,
+            area_threshold=area_threshold,
+        )
         channel = cls(
             channel=reaches,
             resolution=resolution,
@@ -88,93 +111,175 @@ class Channel:
     @classmethod
     def _get_up_stream_reaches(
         cls,
-        rec_network: geopandas.GeoDataFrame,
-        reach_id: int,
-        reaches: geopandas.GeoDataFrame,
-        max_iterations: int,
-        iteration: int,
+        network: geopandas.GeoDataFrame,
+        starting_id: int,
+        area_threshold: float = None,
     ):
-        """A recurive function to trace all up reaches from the reach_id.
-        The default values for reaches and iteration are set for the
-        initial call to the recursive function. The max_iterations acts as a
-        limit on the numbers of reaches upstream to check. This impacts the
-        memory usage. Smaller reduces memory usage.
+        """A function to trace the largest network branch upstream from a starting id.
+
+        There must only be one reference to each ID, and no circular relationships in
+        the to_node and from_node's.'
 
         Parameters
         ----------
 
-        rec_network
-            Contains association information between upstream and
-            downstream reaches.
-        reach_id
-            The `nzsegment` id of the reach to trace upstream from.
-        reaches
-            The already traced downstream reaches to append to.
-        max_iterations
-            The maximum number of iterations along a single strand to trace
-            upstream.
-        iteration
-            The number of iterations traveled upstream.
+        network
+            Contains geometry and relational information between upstream and downstream
+            reaches.
+        starting_id
+            The ID of the reach to trace upstream from.
+        name_dict
+            The column names of the network.
+        area_threshold
+            The minimum upstream area for upstream reaches to be included.
         """
-        if reaches is None:
-            reaches = rec_network[rec_network["nzsegment"] == reach_id]
-        if iteration > max_iterations:
-            print(f"Reached recursion limit at: {iteration}")
-            return reaches, iteration
-        iteration += 1
-        up_stream_reaches = rec_network[rec_network["NextDownID"] == reach_id]
-        reaches = reaches.append(up_stream_reaches)
-        for index, up_stream_reach in up_stream_reaches.iterrows():
-            if not up_stream_reach["Headwater"]:
-                reaches, iteration = cls._get_up_stream_reaches(
-                    rec_network=rec_network,
-                    reach_id=up_stream_reach["nzsegment"],
-                    reaches=reaches,
-                    max_iterations=max_iterations,
-                    iteration=iteration,
-                )
-        return reaches, iteration
+        reaches_index = network[network["id"] == starting_id].index.tolist()
 
-    def get_sampled_spline_fit(self):
-        """Return the smoothed channel sampled at the resolution after it has
-        been fit with a spline between corner points.
+        # While loop with several break statements and asserts to avoid run-away code
+        while True:
+            upstream_reaches = network[
+                network["to_node"] == network.loc[reaches_index[-1]]["from_node"]
+            ][["area", "id"]]
+            if len(upstream_reaches) == 0:
+                # No more upstream reached
+                break
+            # Select the reach with the largest upstream area
+            max_index = upstream_reaches["area"].idxmax()
+            if (
+                area_threshold is not None
+                and upstream_reaches.loc[max_index]["area"] < area_threshold
+            ):
+                # The minimum upstream area threshold has been reached
+                break
+            next_index = upstream_reaches.loc[max_index]["id"]
+            assert next_index not in numpy.array(reaches_index), (
+                "The same reach ID is referenced twice indicating circular network "
+                "connections"
+            )
+            reaches_index.append(network[network["id"] == next_index].index[0])
+        reaches = network.loc[reaches_index]
+        return reaches
+
+    def get_parametric_spline_fit_points(self, k: int = 3, spacing: float = None):
+        """Return the spline smoothed polyline points created from two splines defining
+        a parametric curve fit to points along the channel. The curve is resampled at
+        even spacing once the splines are fit.
+        If no spacing is provided the channel corner points are used, if a spacing is
+        provided the channel corner points with sampling at the spacing are used.
 
         Parameters
         ----------
 
-        catchment_corridor_radius
-            The radius of the channel corridor. This will determine the width of
-            the channel catchment.
+        k
+            The polynomial degree. Should be off. 1 <= k <= 5.
+        spacing
+            The spacing between sampled points along straight segments
         """
 
-        # Use spaced points as the insures consistent distance between sampled points
-        # along the spline
-        xy = self.get_spaced_points(
-            channel=self.channel,
-            sampling_direction=self.sampling_direction,
-            spacing=self.resolution * 10,
-        )
+        # Get points along channel
+        if spacing is None:
+            xy = self._get_corner_points(
+                channel=self.channel, sampling_direction=self.sampling_direction
+            )
+        else:
+            xy = self.get_spaced_points_with_corners(
+                channel=self.channel,
+                sampling_direction=self.sampling_direction,
+                spacing=spacing,
+            )
         if len(xy[0]) > 3:  # default k= 3, must be greater to fit with knots
-            xy = self._fit_spline_between_xy(xy)
+            xy = self._fit_spline_between_xy(xy, k)
+        spline_channel = shapely.geometry.LineString(xy.T)
+        # resample at even spacing
+        xy = []
+        for distance in numpy.arange(
+            0, spline_channel.length + self.resolution / 2, self.resolution
+        ):
+            xy.append(spline_channel.interpolate(distance))
+        spline_channel = shapely.geometry.LineString(xy)
+        return numpy.array(spline_channel.xy)
+
+    def get_parametric_spline_fit(self, k: int = 3, spacing: float = None):
+        """Return the spline smoothed polyline created from two splines defining a
+        parametric curve fit to points along the channel. The curve is resampled at even
+        spacing once the splines are fit.
+        If no spacing is provided the channel corner points are used, if a spacing is
+        provided the channel corner points with sampling at the spacing are used.
+
+        Parameters
+        ----------
+
+        k
+            The polynomial degree. Should be off. 1 <= k <= 5.
+        spacing
+            The spacing between sampled points along straight segments
+        """
+
+        # Get spline points
+        xy = self.get_parametric_spline_fit_points(k=k, spacing=spacing)
+        # create dataframe
         spline_channel = shapely.geometry.LineString(xy.T)
         spline_channel = geopandas.GeoDataFrame(
             geometry=[spline_channel], crs=self.channel.crs
         )
         return spline_channel
 
-    def get_smoothed_spline_fit(self, smoothing_multiplier) -> numpy.ndarray:
-        """Return the spline smoothed aligned_centreline sampled at the
-        resolution.
-        """
+    def get_b_spline_fit(
+        self, smoothing_multiplier: float = 50, spacing: float = None
+    ) -> numpy.ndarray:
+        """Return the spline smoothed polyline created using a B-spline fit to corner
+        points.
+        If no spacing is provided the channel corner points are used, if a spacing is
+        provided the channel corner points with sampling at the spacing are used.
 
-        xy = self._get_corner_points(
-            channel=self.channel, sampling_direction=self.sampling_direction
+        Parameters
+        ----------
+
+        smoothing_multiplier
+            The polynomial degree. Should be off. 1 <= k <= 5.
+        spacing
+            The spacing between sampled points along straight segments
+        """
+        xy = self.get_b_spline_fit_points(
+            smoothing_multiplier=smoothing_multiplier, spacing=spacing
         )
+        spline_channel = shapely.geometry.LineString(xy)
+        spline_channel = geopandas.GeoDataFrame(
+            geometry=[spline_channel], crs=self.channel.crs
+        )
+        return spline_channel
+
+    def get_b_spline_fit_points(
+        self, smoothing_multiplier: float = 50, spacing: float = None
+    ) -> numpy.ndarray:
+        """Return the spline smoothed polyline points created using a B-spline fit to
+        corner points.
+        If no spacing is provided the channel corner points are used, if a spacing is
+        provided the channel corner points with sampling at the spacing are used.
+
+        Parameters
+        ----------
+
+        smoothing_multiplier
+            The polynomial degree. Should be off. 1 <= k <= 5.
+        spacing
+            The spacing between sampled points along straight segments
+        """
+        if spacing is None:
+            xy = self._get_corner_points(
+                channel=self.channel, sampling_direction=self.sampling_direction
+            )
+        else:
+            xy = self.get_spaced_points_with_corners(
+                channel=self.channel,
+                sampling_direction=self.sampling_direction,
+                spacing=spacing,
+            )
         if len(xy[0]) > 3:  # There must be more than three points to fit a spline
             xy = self._fit_spline_through_xy(xy, smoothing_multiplier)
         return xy.T
 
-    def get_channel_catchment(self, corridor_radius: float):
+    def get_channel_catchment(self, corridor_radius: float) -> geopandas.GeoDataFrame:
         """Create a catchment from the smooth channel and the specified
         radius.
 
@@ -186,13 +291,13 @@ class Channel:
             the channel catchment.
         """
 
-        smooth_channel = self.get_sampled_spline_fit()
+        smooth_channel = self.get_parametric_spline_fit()
         channel_catchment = geopandas.GeoDataFrame(
             geometry=smooth_channel.buffer(corridor_radius)
         )
         return channel_catchment
 
-    def _remove_duplicate_points(cls, xy):
+    def _remove_duplicate_points(cls, xy: numpy.ndarray) -> numpy.ndarray:
         """Remove duplicate xy pairs in a list of xy points.
 
         Parameters
@@ -230,7 +335,7 @@ class Channel:
         return xy
 
     def get_spaced_points(
-        self, channel, spacing, sampling_direction: int
+        self, channel, spacing: float, sampling_direction: int
     ) -> numpy.ndarray:
         """Sample at the specified spacing along the entire line.
 
@@ -267,7 +372,7 @@ class Channel:
         return xy
 
     def get_spaced_points_with_corners(
-        self, channel, spacing, sampling_direction: int
+        self, channel, spacing: float, sampling_direction: int
     ) -> numpy.ndarray:
         """Sample at the specified spacing along each straight segment.
 
@@ -293,9 +398,9 @@ class Channel:
         xy_spaced = []
 
         # Cycle through each segment sampling along it
-        for i in numpy.arange(len(x) - 1, 0, -1):
+        for i in numpy.arange(0, len(x) - 1, 1):
             line_segment = shapely.geometry.LineString(
-                [[x[i], y[i]], [x[i - 1], y[i - 1]]]
+                [[x[i], y[i]], [x[i + 1], y[i + 1]]]
             )
 
             number_segment_samples = max(numpy.round(line_segment.length / spacing), 2)
@@ -314,9 +419,10 @@ class Channel:
         return xy
 
     def _fit_spline_through_xy(
-        self, xy, smoothing_multiplier: int = 50
+        self, xy: numpy.ndarray, smoothing_multiplier: float
     ) -> numpy.ndarray:
-        """Fit a spline to the aligned centreline points and sampled at the resolution.
+        """Fits a B-spline representation of the curve represented by xy. This is
+        sampled at the channel resolution.
 
         Parameters
         ----------
@@ -342,8 +448,11 @@ class Channel:
 
         return xy_sampled
 
-    def _fit_spline_between_xy(self, xy, k=3) -> numpy.ndarray:
-        """Fit a spline to the aligned centreline points and sampled at the resolution.
+    def _fit_spline_between_xy(self, xy: numpy.ndarray, k: int) -> numpy.ndarray:
+        """Fits two splines using knots to define a parametric curve made of x(t) and
+        y(t) curves.
+        Note that the xy points must be evenly spaced if the output points are to be
+        evenly spaced.
 
         Parameters
         ----------
@@ -591,7 +700,7 @@ class ChannelCharacteristics:
         )
 
         # Slopes for a range of smoothings
-        for smoothing_distance in [500, 1000, 2000, 3000]:
+        for smoothing_distance in [50, 250, 500, 1000]:
             # ensure odd number of samples so array length preserved
             smoothing_samples = int(
                 numpy.ceil(smoothing_distance / self.cross_section_spacing)
@@ -646,7 +755,7 @@ class ChannelCharacteristics:
         )
 
         # Cycle through and caluclate the rolling mean
-        for smoothing_distance in [150, 200, 250, 2000, 3000]:
+        for smoothing_distance in [50, 150, 200, 250]:
             # ensure odd number of samples so array length preserved
             smoothing_samples = int(
                 numpy.ceil(smoothing_distance / self.cross_section_spacing)
@@ -842,7 +951,8 @@ class ChannelCharacteristics:
             widths["channel_count"].append(channel_count)
         for key in widths.keys():
             cross_sections[key] = widths[key]
-        # Record if the width is valid
+        # Record if the width is valid - only one possible channel that starts and ends
+        # within the samples
         valid_mask = cross_sections["channel_count"] == 1
         valid_mask &= cross_sections["first_bank_i"] > 0
         valid_mask &= cross_sections["last_bank_i"] < self.number_of_samples - 1
@@ -1013,7 +1123,8 @@ class ChannelCharacteristics:
             widths["channel_count"].append(channel_count)
         for key in widths.keys():
             cross_sections[key] = widths[key]
-        # Record if the width is valid
+        # Record if the width is valid - only one possible channel that starts and ends
+        # within the samples
         valid_mask = cross_sections["channel_count"] == 1
         valid_mask &= cross_sections["first_bank_i"] > 0
         valid_mask &= cross_sections["last_bank_i"] < self.number_of_samples - 1
@@ -1151,16 +1262,15 @@ class ChannelCharacteristics:
         start_i = numpy.nan
         stop_i = numpy.nan
 
-        if gnd_samples[start_index] - z_water < threshold or (
-            numpy.isnan(gnd_samples[start_index])
-            and numpy.isnan(veg_samples[start_index])
+        if veg_samples[start_index] - z_water < threshold or (
+            numpy.isnan(veg_samples[start_index])
         ):
 
             for i in numpy.arange(0, self.number_of_samples + 1, 1):
 
                 # work forward checking height
                 if start_index + i < self.number_of_samples and numpy.isnan(stop_i):
-                    gnd_elevation_over_minimum = gnd_samples[start_index + i] - z_water
+                    gnd_elevation_over_minimum = veg_samples[start_index + i] - z_water
 
                     # Detect banks - either ground above threshold, or no ground with
                     # vegetation over threshold
@@ -1169,7 +1279,7 @@ class ChannelCharacteristics:
                         stop_i = start_index + i
                 # work backward checking height
                 if start_index - i >= 0 and numpy.isnan(start_i):
-                    gnd_elevation_over_minimum = gnd_samples[start_index - i] - z_water
+                    gnd_elevation_over_minimum = veg_samples[start_index - i] - z_water
 
                     # Detect bank
                     if numpy.isnan(start_i) and gnd_elevation_over_minimum > threshold:
@@ -1367,9 +1477,7 @@ class ChannelCharacteristics:
             cross_sections[slope_columns].plot(ax=ax)
         matplotlib.pyplot.ylim((0, None))
 
-    def _create_flat_water_polygon(
-        self, cross_sections: geopandas.GeoDataFrame, smoothing_multiplier
-    ):
+    def _create_flat_water_polygon(self, cross_sections: geopandas.GeoDataFrame):
         """Create a polygon of the flat water from spline's of each bank.
 
         Parameters
@@ -1378,8 +1486,6 @@ class ChannelCharacteristics:
         cross_sections
             The cross_sections with geometry defined as polylines with width
             estimates.
-        smoothing_multiplier
-            The smoothing multiplier to apply to the spline fit.
         """
 
         # Only use the valid widths
@@ -1408,7 +1514,7 @@ class ChannelCharacteristics:
             geometry=[shapely.geometry.LineString(start_xy)], crs=cross_sections.crs
         )
         start_xy = Channel(start_xy, resolution=self.cross_section_spacing)
-        start_xy_spline = start_xy.get_smoothed_spline_fit(smoothing_multiplier)
+        start_xy_spline = start_xy.get_parametric_spline_fit_points()
 
         # Get the 'flat water' last bank - -1 to move just inwards
         bank_offset = self.resolution * (
@@ -1431,11 +1537,13 @@ class ChannelCharacteristics:
             geometry=[shapely.geometry.LineString(stop_xy)], crs=cross_sections.crs
         )
         stop_xy = Channel(stop_xy, resolution=self.cross_section_spacing)
-        stop_xy_spline = stop_xy.get_smoothed_spline_fit(smoothing_multiplier)
+        stop_xy_spline = stop_xy.get_parametric_spline_fit_points()
 
-        flat_xy = numpy.concatenate([start_xy_spline, stop_xy_spline[::-1]])
+        flat_water_polygon = shapely.geometry.Polygon(
+            numpy.concatenate((start_xy_spline, stop_xy_spline[:, ::-1]), axis=1).T
+        )
         flat_water_polygon = geopandas.GeoDataFrame(
-            geometry=[shapely.geometry.Polygon(flat_xy)], crs=cross_sections.crs
+            geometry=[flat_water_polygon], crs=cross_sections.crs
         )
         return flat_water_polygon
 
@@ -1494,13 +1602,7 @@ class ChannelCharacteristics:
             widths_centre_line, resolution=self.cross_section_spacing
         )
 
-        aligned_spline = widths_centre_line.get_smoothed_spline_fit(
-            smoothing_multiplier
-        )
-        aligned_spline = geopandas.GeoDataFrame(
-            geometry=[shapely.geometry.LineString(aligned_spline)],
-            crs=cross_sections.crs,
-        )
+        aligned_spline = widths_centre_line.get_b_spline_fit(smoothing_multiplier)
         return aligned_spline
 
     def _unimodal_smoothing(self, y: numpy.ndarray):
@@ -1658,7 +1760,7 @@ class ChannelCharacteristics:
         self.transect_radius = cross_section_radius
 
         # Sample channel
-        sampled_channel = initial_channel.get_sampled_spline_fit()
+        sampled_channel = initial_channel.get_parametric_spline_fit()
 
         # Create cross_sections
         cross_sections = self.node_centred_reach_cross_section(
@@ -1728,7 +1830,6 @@ class ChannelCharacteristics:
         cross_section_radius: float,
         search_radius: float,
         min_channel_width: float,
-        river_polygon_smoothing_multiplier: float,
     ):
         """Estimate the channel centre from transect samples
 
@@ -1749,9 +1850,6 @@ class ChannelCharacteristics:
             The distance to search side to side from the centre index.
         min_channel_width
             The minimum width of a 'valid' channel.
-        river_polygon_smoothing_multiplier
-            The amount of smoothing to apply to each bank prior to constructing
-            a polygon representing the channel.
 
         """
 
@@ -1782,7 +1880,7 @@ class ChannelCharacteristics:
             cross_section_elevations=cross_section_elevations,
             threshold=threshold,
             resolution=self.resolution,
-            search_radius=search_radius / 10,
+            search_radius=min_channel_width,
             maximum_threshold=max_threshold,
             min_channel_width=min_channel_width,
         )
@@ -1790,7 +1888,6 @@ class ChannelCharacteristics:
         # generate a flat water polygon
         river_polygon = self._create_flat_water_polygon(
             cross_sections=cross_sections,
-            smoothing_multiplier=river_polygon_smoothing_multiplier,
         )
 
         # Midpoints of the river polygon - buffer slightly to ensure intersection at the
