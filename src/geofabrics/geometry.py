@@ -87,7 +87,7 @@ class CatchmentGeometry:
             self._land_and_foreshore.area > self.resolution * self.resolution
         ]
 
-        self._foreshore = self.land_and_foreshore.overlay(self.land, how="difference")
+        self._foreshore = self._land_and_foreshore.overlay(self.land, how="difference")
 
         self._offshore = self.catchment.overlay(
             self.land_and_foreshore, how="difference"
@@ -314,20 +314,24 @@ class BathymetryContours:
 
         self._contour = self._contour.to_crs(self.catchment_geometry.crs["horizontal"])
 
+        # Define a large offshore area to keep ocean contours in - to ensure correct
+        # interpolation behaviour near the edges
+        offshore = self.catchment_geometry.offshore
+        offshore = geopandas.GeoDataFrame(
+            geometry=offshore.buffer(numpy.sqrt(offshore.area.sum()))
+        )
+        offshore = offshore.overlay(self.catchment_geometry.land, how="difference")
+
         if exclusion_extent is not None:
             # Remove areas already covered by LiDAR - drop any polygons less than a
             # pixel in area
-            exclusion_extent = exclusion_extent.clip(
-                self.catchment_geometry.offshore, keep_geom_type=True
-            )
+            exclusion_extent = exclusion_extent.clip(offshore, keep_geom_type=True)
             exclusion_extent = exclusion_extent[
                 exclusion_extent.area > self.catchment_geometry.resolution**2
             ]
-            self._extent = self.catchment_geometry.offshore.overlay(
-                exclusion_extent, how="difference"
-            )
+            self._extent = offshore.overlay(exclusion_extent, how="difference")
         else:
-            self._extent = self.catchment_geometry.offshore
+            self._extent = offshore
         # Keep only contours in the 'extents' i.e. inside the catchment and outside any
         # exclusion_extent
         self._contour = self._contour.clip(self._extent, keep_geom_type=True)
@@ -530,17 +534,11 @@ class EstimatedBathymetryPoints:
         points_i[self.TYPE_LABEL] = type_labels[0]
         if z_labels is not None:
             points_i = points_i.rename(columns={z_labels[0]: self.DEPTH_LABEL})
-        columns_i = (
-            [
-                self.DEPTH_LABEL,
-                self.TYPE_LABEL,
-                self.WIDTH_LABEL,
-                self.BANK_HEIGHT_LABEL,
-                "geometry",
-            ]
-            if self.BANK_HEIGHT_LABEL in points_i.columns
-            else [self.DEPTH_LABEL, self.TYPE_LABEL, self.WIDTH_LABEL, "geometry"]
-        )
+        columns_i = [self.DEPTH_LABEL, self.TYPE_LABEL, "geometry"]
+        if self.BANK_HEIGHT_LABEL in points_i.columns:
+            columns_i.append(self.BANK_HEIGHT_LABEL)
+        if self.WIDTH_LABEL in points_i.columns:
+            columns_i.append(self.WIDTH_LABEL)
         points_i = points_i[columns_i]
         points_list = [points_i]
         # Polygon where the points are relevent
@@ -553,11 +551,11 @@ class EstimatedBathymetryPoints:
             points_i[self.TYPE_LABEL] = type_labels[i]
             if z_labels is not None and z_labels[i] != self.DEPTH_LABEL:
                 points_i = points_i.rename(columns={z_labels[i]: self.DEPTH_LABEL})
-            columns_i = (
-                [self.DEPTH_LABEL, self.TYPE_LABEL, self.BANK_HEIGHT_LABEL, "geometry"]
-                if self.BANK_HEIGHT_LABEL in points_i.columns
-                else [self.DEPTH_LABEL, self.TYPE_LABEL, "geometry"]
-            )
+            columns_i = [self.DEPTH_LABEL, self.TYPE_LABEL, "geometry"]
+            if self.BANK_HEIGHT_LABEL in points_i.columns:
+                columns_i.append(self.BANK_HEIGHT_LABEL)
+            if self.WIDTH_LABEL in points_i.columns:
+                columns_i.append(self.WIDTH_LABEL)
             points_i = points_i[columns_i]
             points_list.append(points_i)
             # Polygon where the points are relevent
