@@ -1654,10 +1654,24 @@ class RawDem(LidarBase):
 
         # Update the DEM
         self._dem.z.data[mask] = z_flat
+        # Update the source layer - where defined by the reference DEM and set foreshore
         self._dem.source_class.data[
             mask & numpy.logical_not(numpy.isnan(self._dem.z.data))
         ] = self.SOURCE_CLASSIFICATION["reference DEM"]
-
+        if (
+            self.catchment_geometry.foreshore.area.sum() > 0
+            and reference_dem.set_foreshore
+        ):
+            foreshore_mask = numpy.logical_not(
+                numpy.isnan(
+                    self._dem.z.rio.clip(
+                        self.catchment_geometry.foreshore.geometry, drop=False,
+                    ).data
+                )
+            )
+            self._dem.source_class.data[
+                mask & foreshore_mask
+            ] = self.SOURCE_CLASSIFICATION["ocean bathymetry"]
         # Update the dense DEM extents
         self._extents = self._calculate_raw_extents()
 
