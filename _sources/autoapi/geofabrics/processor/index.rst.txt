@@ -301,12 +301,12 @@ Classes
       :param instructions  The json instructions defining the behaviour:
 
 
-   .. py:method:: get_rec_channel()
+   .. py:method:: get_network_channel()
 
-      Read in or create a rec channel.
+      Read in or create a channel from a river network.
 
 
-   .. py:method:: get_dems(buffer, channel)
+   .. py:method:: get_dems(channel)
 
       Allow selection of the ground or vegetation DEM, and either create
       or load it.
@@ -315,54 +315,48 @@ Classes
       :param instructions  The json instructions defining the behaviour:
 
 
-   .. py:method:: align_channel(channel_width, channel, buffer)
+   .. py:method:: align_channel(channel_width, channel)
 
-      Align the REC defined channel based on LiDAR and save the aligned
+      Align the river network defined channel based on LiDAR and save the aligned
       channel.
 
 
       :param channel_width  The class for characterising channel width and other: properties
-      :param channel  The REC defined channel alignment:
+      :param channel  The river network defined channel alignment:
 
 
-   .. py:method:: calculate_channel_characteristics(channel_width, aligned_channel, buffer)
+   .. py:method:: calculate_channel_characteristics(channel_width, aligned_channel)
 
-      Align the REC defined channel based on LiDAR and save the aligned
+      Align the river network defined channel based on LiDAR and save the aligned
       channel.
 
 
       :param channel_width  The class for characterising channel width and other: properties
-      :param channel  The REC defined channel alignment:
+      :param channel  The river network defined channel alignment:
 
 
-   .. py:method:: characterise_channel(buffer)
-
-      Calculate the channel width, slope and other characteristics. This requires a
-      ground and vegetation DEM. This also may require alignment of the channel
-      centreline.
-
-
-      :param buffer  The amount of extra space to create around the river catchment:
-
-
-   .. py:method:: align_channel_from_rec(buffer)
+   .. py:method:: characterise_channel()
 
       Calculate the channel width, slope and other characteristics. This requires a
       ground and vegetation DEM. This also may require alignment of the channel
       centreline.
 
 
-      :param buffer  The amount of extra space to create around the river catchment:
 
-
-   .. py:method:: align_channel_from_osm(buffer)
+   .. py:method:: align_channel_from_rec()
 
       Calculate the channel width, slope and other characteristics. This requires a
       ground and vegetation DEM. This also may require alignment of the channel
       centreline.
 
 
-      :param buffer  The amount of extra space to create around the river catchment:
+
+   .. py:method:: align_channel_from_osm()
+
+      Calculate the channel width, slope and other characteristics. This requires a
+      ground and vegetation DEM. This also may require alignment of the channel
+      centreline.
+
 
 
    .. py:method:: calculate_river_bed_elevations()

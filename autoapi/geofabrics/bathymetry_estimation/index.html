@@ -55,8 +55,8 @@
         <div class="rst-content">
           <div role="navigation" aria-label="Page navigation">
   <ul class="wy-breadcrumbs">
-      <li><a href="../../../index.html" class="icon icon-home"></a> &raquo;</li>
-      <li><code class="xref py py-mod docutils literal notranslate"><span class="pre">geofabrics.bathymetry_estimation</span></code></li>
+      <li><a href="../../../index.html" class="icon icon-home"></a></li>
+      <li class="breadcrumb-item active"><code class="xref py py-mod docutils literal notranslate"><span class="pre">geofabrics.bathymetry_estimation</span></code></li>
       <li class="wy-breadcrumbs-aside">
             <a href="../../../_sources/autoapi/geofabrics/bathymetry_estimation/index.rst.txt" rel="nofollow"> View page source</a>
       </li>
@@ -102,46 +102,99 @@ information.</p>
 </dd>
 </dl>
 <dl class="py method">
-<dt class="sig sig-object py" id="geofabrics.bathymetry_estimation.Channel.from_rec">
-<em class="property"><span class="pre">classmethod</span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">from_rec</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">rec_network</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">reach_id</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">resolution</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">area_threshold</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">max_iterations</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">10000</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#geofabrics.bathymetry_estimation.Channel.from_rec" title="Permalink to this definition"></a></dt>
+<dt class="sig sig-object py" id="geofabrics.bathymetry_estimation.Channel.from_network">
+<em class="property"><span class="pre">classmethod</span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">from_network</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">network_file</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">crs</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">starting_id</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">resolution</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">area_threshold</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">name_dict</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">sampling_direction</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">-1</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#geofabrics.bathymetry_estimation.Channel.from_network" title="Permalink to this definition"></a></dt>
 <dd><p>Create a channel object from a REC file.</p>
 <dl class="field-list simple">
 <dt class="field-odd">Parameters</dt>
 <dd class="field-odd"><ul class="simple">
-<li><p><strong>rec_network</strong> (<em>geopandas.GeoDataFrame</em>) – Contains association information between upstream and
-downstream reaches.</p></li>
-<li><p><strong>reach_id</strong> (<em>int</em>) – The name of the reach ID in the REC channel.</p></li>
-<li><p><strong>area_threshold</strong> (<em>float</em>) – The area threshold in metres squared below which to ignore a reach.</p></li>
-<li><p><strong>max_iterations</strong> (<em>int</em>) – The maximum number of iterations along a single strand to trace
-upstream.</p></li>
-<li><p><strong>iteration</strong> – The number of iterations traveled upstream.</p></li>
-<li><p><strong>resolution</strong> (<em>float</em>) – </p></li>
+<li><p><strong>network</strong> – Contains geometry and relational information between upstream and downstream
+reaches.</p></li>
+<li><p><strong>starting_id</strong> (<em>int</em>) – The ID of the reach to trace upstream from.</p></li>
+<li><p><strong>name_dict</strong> (<em>dict</em>) – The column names of the network.</p></li>
+<li><p><strong>area_threshold</strong> (<em>float</em>) – The minimum upstream area for upstream reaches to be included.</p></li>
+<li><p><strong>resolution</strong> (<em>float</em>) – The resolution of the upstream polyline trace to create from the network.</p></li>
+<li><p><strong>sampling_direction</strong> (<em>int</em>) – The direction to sample each reach polyline. 1 if each reach is defined
+downstream to upstream, -1 otherwise.</p></li>
+<li><p><strong>network_file</strong> (<em>pathlib.Path</em>) – </p></li>
+<li><p><strong>crs</strong> (<em>int</em>) – </p></li>
 </ul>
 </dd>
 </dl>
 </dd></dl>
 
 <dl class="py method">
-<dt class="sig sig-object py" id="geofabrics.bathymetry_estimation.Channel.get_sampled_spline_fit">
-<span class="sig-name descname"><span class="pre">get_sampled_spline_fit</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="headerlink" href="#geofabrics.bathymetry_estimation.Channel.get_sampled_spline_fit" title="Permalink to this definition"></a></dt>
-<dd><p>Return the smoothed channel sampled at the resolution after it has
-been fit with a spline between corner points.</p>
+<dt class="sig sig-object py" id="geofabrics.bathymetry_estimation.Channel.get_parametric_spline_fit_points">
+<span class="sig-name descname"><span class="pre">get_parametric_spline_fit_points</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">k</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">3</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">spacing</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#geofabrics.bathymetry_estimation.Channel.get_parametric_spline_fit_points" title="Permalink to this definition"></a></dt>
+<dd><p>Return the spline smoothed polyline points created from two splines defining
+a parametric curve fit to points along the channel. The curve is resampled at
+even spacing once the splines are fit.
+If no spacing is provided the channel corner points are used, if a spacing is
+provided the channel corner points with sampling at the spacing are used.</p>
 <dl class="field-list simple">
 <dt class="field-odd">Parameters</dt>
-<dd class="field-odd"><p><strong>catchment_corridor_radius</strong> – The radius of the channel corridor. This will determine the width of
-the channel catchment.</p>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>k</strong> (<em>int</em>) – The polynomial degree. Should be off. 1 &lt;= k &lt;= 5.</p></li>
+<li><p><strong>spacing</strong> (<em>float</em>) – The spacing between sampled points along straight segments</p></li>
+</ul>
 </dd>
 </dl>
 </dd></dl>
 
 <dl class="py method">
-<dt class="sig sig-object py" id="geofabrics.bathymetry_estimation.Channel.get_smoothed_spline_fit">
-<span class="sig-name descname"><span class="pre">get_smoothed_spline_fit</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">smoothing_multiplier</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#geofabrics.bathymetry_estimation.Channel.get_smoothed_spline_fit" title="Permalink to this definition"></a></dt>
-<dd><p>Return the spline smoothed aligned_centreline sampled at the
-resolution.</p>
+<dt class="sig sig-object py" id="geofabrics.bathymetry_estimation.Channel.get_parametric_spline_fit">
+<span class="sig-name descname"><span class="pre">get_parametric_spline_fit</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">k</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">3</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">spacing</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#geofabrics.bathymetry_estimation.Channel.get_parametric_spline_fit" title="Permalink to this definition"></a></dt>
+<dd><p>Return the spline smoothed polyline created from two splines defining a
+parametric curve fit to points along the channel. The curve is resampled at even
+spacing once the splines are fit.
+If no spacing is provided the channel corner points are used, if a spacing is
+provided the channel corner points with sampling at the spacing are used.</p>
 <dl class="field-list simple">
-<dt class="field-odd">Return type</dt>
-<dd class="field-odd"><p>numpy.ndarray</p>
+<dt class="field-odd">Parameters</dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>k</strong> (<em>int</em>) – The polynomial degree. Should be off. 1 &lt;= k &lt;= 5.</p></li>
+<li><p><strong>spacing</strong> (<em>float</em>) – The spacing between sampled points along straight segments</p></li>
+</ul>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="geofabrics.bathymetry_estimation.Channel.get_b_spline_fit">
+<span class="sig-name descname"><span class="pre">get_b_spline_fit</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">smoothing_multiplier</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">50</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">spacing</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#geofabrics.bathymetry_estimation.Channel.get_b_spline_fit" title="Permalink to this definition"></a></dt>
+<dd><p>Return the spline smoothed polyline created using a B-spline fit to corner
+points.
+If no spacing is provided the channel corner points are used, if a spacing is
+provided the channel corner points with sampling at the spacing are used.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters</dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>smoothing_multiplier</strong> (<em>float</em>) – The polynomial degree. Should be off. 1 &lt;= k &lt;= 5.</p></li>
+<li><p><strong>spacing</strong> (<em>float</em>) – The spacing between sampled points along straight segments</p></li>
+</ul>
+</dd>
+<dt class="field-even">Return type</dt>
+<dd class="field-even"><p>numpy.ndarray</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="geofabrics.bathymetry_estimation.Channel.get_b_spline_fit_points">
+<span class="sig-name descname"><span class="pre">get_b_spline_fit_points</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">smoothing_multiplier</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">50</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">spacing</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#geofabrics.bathymetry_estimation.Channel.get_b_spline_fit_points" title="Permalink to this definition"></a></dt>
+<dd><p>Return the spline smoothed polyline points created using a B-spline fit to
+corner points.
+If no spacing is provided the channel corner points are used, if a spacing is
+provided the channel corner points with sampling at the spacing are used.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters</dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>smoothing_multiplier</strong> (<em>float</em>) – The polynomial degree. Should be off. 1 &lt;= k &lt;= 5.</p></li>
+<li><p><strong>spacing</strong> (<em>float</em>) – The spacing between sampled points along straight segments</p></li>
+</ul>
+</dd>
+<dt class="field-even">Return type</dt>
+<dd class="field-even"><p>numpy.ndarray</p>
 </dd>
 </dl>
 </dd></dl>
@@ -156,6 +209,9 @@ radius.</p>
 <dd class="field-odd"><p><strong>corridor_radius</strong> (<em>float</em>) – The radius of the channel corridor. This will determine the width of
 the channel catchment.</p>
 </dd>
+<dt class="field-even">Return type</dt>
+<dd class="field-even"><p>geopandas.GeoDataFrame</p>
+</dd>
 </dl>
 </dd></dl>
 
@@ -167,7 +223,7 @@ the channel catchment.</p>
 <dt class="field-odd">Parameters</dt>
 <dd class="field-odd"><ul class="simple">
 <li><p><strong>channel</strong> – A data frame with the geometry defining the channel centreline.</p></li>
-<li><p><strong>spacing</strong> – The spacing between sampled points along straight segments</p></li>
+<li><p><strong>spacing</strong> (<em>float</em>) – The spacing between sampled points along straight segments</p></li>
 <li><p><strong>sample_direction</strong> – Are the reaches sampled in the same direction they are ordered.
 1 if in the same direction, -1 if in the opposite direction.</p></li>
 <li><p><strong>sampling_direction</strong> (<em>int</em>) – </p></li>
@@ -187,7 +243,7 @@ the channel catchment.</p>
 <dt class="field-odd">Parameters</dt>
 <dd class="field-odd"><ul class="simple">
 <li><p><strong>channel</strong> – A data frame with the geometry defining the channel centreline.</p></li>
-<li><p><strong>spacing</strong> – The spacing between sampled points along straight segments</p></li>
+<li><p><strong>spacing</strong> (<em>float</em>) – The spacing between sampled points along straight segments</p></li>
 <li><p><strong>sample_direction</strong> – Are the reaches sampled in the same direction they are ordered.
 1 if in the same direction, -1 if in the opposite direction.</p></li>
 <li><p><strong>sampling_direction</strong> (<em>int</em>) – </p></li>
@@ -441,7 +497,7 @@ sample.</p></li>
 
 <dl class="py method">
 <dt class="sig sig-object py" id="geofabrics.bathymetry_estimation.ChannelCharacteristics.estimate_width_and_slope">
-<span class="sig-name descname"><span class="pre">estimate_width_and_slope</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">aligned_channel</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">threshold</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">max_threshold</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">cross_section_radius</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">search_radius</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">min_channel_width</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">river_polygon_smoothing_multiplier</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#geofabrics.bathymetry_estimation.ChannelCharacteristics.estimate_width_and_slope" title="Permalink to this definition"></a></dt>
+<span class="sig-name descname"><span class="pre">estimate_width_and_slope</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">aligned_channel</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">threshold</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">max_threshold</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">cross_section_radius</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">search_radius</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">min_channel_width</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#geofabrics.bathymetry_estimation.ChannelCharacteristics.estimate_width_and_slope" title="Permalink to this definition"></a></dt>
 <dd><p>Estimate the channel centre from transect samples</p>
 <dl class="field-list simple">
 <dt class="field-odd">Parameters</dt>
@@ -454,8 +510,6 @@ a cliff)</p></li>
 sample.</p></li>
 <li><p><strong>search_radius</strong> (<em>float</em>) – The distance to search side to side from the centre index.</p></li>
 <li><p><strong>min_channel_width</strong> (<em>float</em>) – The minimum width of a ‘valid’ channel.</p></li>
-<li><p><strong>river_polygon_smoothing_multiplier</strong> (<em>float</em>) – The amount of smoothing to apply to each bank prior to constructing
-a polygon representing the channel.</p></li>
 </ul>
 </dd>
 </dl>

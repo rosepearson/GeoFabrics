@@ -28,33 +28,65 @@ Classes
 
    A class to define a channel centre line from a digital network.
 
-   .. py:method:: from_rec(rec_network, reach_id, resolution, area_threshold, max_iterations = 10000)
+   .. py:method:: from_network(network_file, crs, starting_id, resolution, area_threshold, name_dict, sampling_direction = -1)
       :classmethod:
 
       Create a channel object from a REC file.
 
-      :param rec_network: Contains association information between upstream and
-                          downstream reaches.
-      :param reach_id: The name of the reach ID in the REC channel.
-      :param area_threshold: The area threshold in metres squared below which to ignore a reach.
-      :param max_iterations: The maximum number of iterations along a single strand to trace
-                             upstream.
-      :param iteration: The number of iterations traveled upstream.
+      :param network: Contains geometry and relational information between upstream and downstream
+                      reaches.
+      :param starting_id: The ID of the reach to trace upstream from.
+      :param name_dict: The column names of the network.
+      :param area_threshold: The minimum upstream area for upstream reaches to be included.
+      :param resolution: The resolution of the upstream polyline trace to create from the network.
+      :param sampling_direction: The direction to sample each reach polyline. 1 if each reach is defined
+                                 downstream to upstream, -1 otherwise.
 
 
-   .. py:method:: get_sampled_spline_fit()
+   .. py:method:: get_parametric_spline_fit_points(k = 3, spacing = None)
 
-      Return the smoothed channel sampled at the resolution after it has
-      been fit with a spline between corner points.
+      Return the spline smoothed polyline points created from two splines defining
+      a parametric curve fit to points along the channel. The curve is resampled at
+      even spacing once the splines are fit.
+      If no spacing is provided the channel corner points are used, if a spacing is
+      provided the channel corner points with sampling at the spacing are used.
 
-      :param catchment_corridor_radius: The radius of the channel corridor. This will determine the width of
-                                        the channel catchment.
+      :param k: The polynomial degree. Should be off. 1 <= k <= 5.
+      :param spacing: The spacing between sampled points along straight segments
 
 
-   .. py:method:: get_smoothed_spline_fit(smoothing_multiplier)
+   .. py:method:: get_parametric_spline_fit(k = 3, spacing = None)
 
-      Return the spline smoothed aligned_centreline sampled at the
-      resolution.
+      Return the spline smoothed polyline created from two splines defining a
+      parametric curve fit to points along the channel. The curve is resampled at even
+      spacing once the splines are fit.
+      If no spacing is provided the channel corner points are used, if a spacing is
+      provided the channel corner points with sampling at the spacing are used.
+
+      :param k: The polynomial degree. Should be off. 1 <= k <= 5.
+      :param spacing: The spacing between sampled points along straight segments
+
+
+   .. py:method:: get_b_spline_fit(smoothing_multiplier = 50, spacing = None)
+
+      Return the spline smoothed polyline created using a B-spline fit to corner
+      points.
+      If no spacing is provided the channel corner points are used, if a spacing is
+      provided the channel corner points with sampling at the spacing are used.
+
+      :param smoothing_multiplier: The polynomial degree. Should be off. 1 <= k <= 5.
+      :param spacing: The spacing between sampled points along straight segments
+
+
+   .. py:method:: get_b_spline_fit_points(smoothing_multiplier = 50, spacing = None)
+
+      Return the spline smoothed polyline points created using a B-spline fit to
+      corner points.
+      If no spacing is provided the channel corner points are used, if a spacing is
+      provided the channel corner points with sampling at the spacing are used.
+
+      :param smoothing_multiplier: The polynomial degree. Should be off. 1 <= k <= 5.
+      :param spacing: The spacing between sampled points along straight segments
 
 
    .. py:method:: get_channel_catchment(corridor_radius)
@@ -236,7 +268,7 @@ Classes
                                    sample.
 
 
-   .. py:method:: estimate_width_and_slope(aligned_channel, threshold, max_threshold, cross_section_radius, search_radius, min_channel_width, river_polygon_smoothing_multiplier)
+   .. py:method:: estimate_width_and_slope(aligned_channel, threshold, max_threshold, cross_section_radius, search_radius, min_channel_width)
 
       Estimate the channel centre from transect samples
 
@@ -248,8 +280,6 @@ Classes
                                    sample.
       :param search_radius: The distance to search side to side from the centre index.
       :param min_channel_width: The minimum width of a 'valid' channel.
-      :param river_polygon_smoothing_multiplier: The amount of smoothing to apply to each bank prior to constructing
-                                                 a polygon representing the channel.
 
 
 

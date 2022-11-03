@@ -55,8 +55,8 @@
         <div class="rst-content">
           <div role="navigation" aria-label="Page navigation">
   <ul class="wy-breadcrumbs">
-      <li><a href="../../../index.html" class="icon icon-home"></a> &raquo;</li>
-      <li><code class="xref py py-mod docutils literal notranslate"><span class="pre">geofabrics.processor</span></code></li>
+      <li><a href="../../../index.html" class="icon icon-home"></a></li>
+      <li class="breadcrumb-item active"><code class="xref py py-mod docutils literal notranslate"><span class="pre">geofabrics.processor</span></code></li>
       <li class="wy-breadcrumbs-aside">
             <a href="../../../_sources/autoapi/geofabrics/processor/index.rst.txt" rel="nofollow"> View page source</a>
       </li>
@@ -547,9 +547,9 @@ data.</p>
 </dd></dl>
 
 <dl class="py method">
-<dt class="sig sig-object py" id="geofabrics.processor.RiverBathymetryGenerator.get_rec_channel">
-<span class="sig-name descname"><span class="pre">get_rec_channel</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="headerlink" href="#geofabrics.processor.RiverBathymetryGenerator.get_rec_channel" title="Permalink to this definition"></a></dt>
-<dd><p>Read in or create a rec channel.</p>
+<dt class="sig sig-object py" id="geofabrics.processor.RiverBathymetryGenerator.get_network_channel">
+<span class="sig-name descname"><span class="pre">get_network_channel</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="headerlink" href="#geofabrics.processor.RiverBathymetryGenerator.get_network_channel" title="Permalink to this definition"></a></dt>
+<dd><p>Read in or create a channel from a river network.</p>
 <dl class="field-list simple">
 <dt class="field-odd">Return type</dt>
 <dd class="field-odd"><p><a class="reference internal" href="../bathymetry_estimation/index.html#geofabrics.bathymetry_estimation.Channel" title="geofabrics.bathymetry_estimation.Channel">geofabrics.bathymetry_estimation.Channel</a></p>
@@ -559,14 +559,13 @@ data.</p>
 
 <dl class="py method">
 <dt class="sig sig-object py" id="geofabrics.processor.RiverBathymetryGenerator.get_dems">
-<span class="sig-name descname"><span class="pre">get_dems</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">buffer</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">channel</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#geofabrics.processor.RiverBathymetryGenerator.get_dems" title="Permalink to this definition"></a></dt>
+<span class="sig-name descname"><span class="pre">get_dems</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">channel</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#geofabrics.processor.RiverBathymetryGenerator.get_dems" title="Permalink to this definition"></a></dt>
 <dd><p>Allow selection of the ground or vegetation DEM, and either create
 or load it.</p>
 <dl class="field-list simple">
 <dt class="field-odd">Parameters</dt>
 <dd class="field-odd"><ul class="simple">
 <li><p><strong>behaviour</strong> (<em>instructions  The json instructions defining the</em>) – </p></li>
-<li><p><strong>buffer</strong> (<em>float</em>) – </p></li>
 <li><p><strong>channel</strong> (<a class="reference internal" href="../geometry/index.html#geofabrics.geometry.CatchmentGeometry" title="geofabrics.geometry.CatchmentGeometry"><em>geofabrics.geometry.CatchmentGeometry</em></a>) – </p></li>
 </ul>
 </dd>
@@ -578,17 +577,16 @@ or load it.</p>
 
 <dl class="py method">
 <dt class="sig sig-object py" id="geofabrics.processor.RiverBathymetryGenerator.align_channel">
-<span class="sig-name descname"><span class="pre">align_channel</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">channel_width</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">channel</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">buffer</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#geofabrics.processor.RiverBathymetryGenerator.align_channel" title="Permalink to this definition"></a></dt>
-<dd><p>Align the REC defined channel based on LiDAR and save the aligned
+<span class="sig-name descname"><span class="pre">align_channel</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">channel_width</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">channel</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#geofabrics.processor.RiverBathymetryGenerator.align_channel" title="Permalink to this definition"></a></dt>
+<dd><p>Align the river network defined channel based on LiDAR and save the aligned
 channel.</p>
 <dl class="field-list simple">
 <dt class="field-odd">Parameters</dt>
 <dd class="field-odd"><ul class="simple">
 <li><p><strong>other</strong> (<em>channel_width  The class for characterising channel width and</em>) – properties</p></li>
-<li><p><strong>alignment</strong> (<em>channel  The REC defined channel</em>) – </p></li>
+<li><p><strong>alignment</strong> (<em>channel  The river network defined channel</em>) – </p></li>
 <li><p><strong>channel_width</strong> (<a class="reference internal" href="../bathymetry_estimation/index.html#geofabrics.bathymetry_estimation.ChannelCharacteristics" title="geofabrics.bathymetry_estimation.ChannelCharacteristics"><em>geofabrics.bathymetry_estimation.ChannelCharacteristics</em></a>) – </p></li>
 <li><p><strong>channel</strong> (<a class="reference internal" href="../bathymetry_estimation/index.html#geofabrics.bathymetry_estimation.Channel" title="geofabrics.bathymetry_estimation.Channel"><em>geofabrics.bathymetry_estimation.Channel</em></a>) – </p></li>
-<li><p><strong>buffer</strong> (<em>float</em>) – </p></li>
 </ul>
 </dd>
 <dt class="field-even">Return type</dt>
@@ -599,17 +597,16 @@ channel.</p>
 
 <dl class="py method">
 <dt class="sig sig-object py" id="geofabrics.processor.RiverBathymetryGenerator.calculate_channel_characteristics">
-<span class="sig-name descname"><span class="pre">calculate_channel_characteristics</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">channel_width</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">aligned_channel</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">buffer</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#geofabrics.processor.RiverBathymetryGenerator.calculate_channel_characteristics" title="Permalink to this definition"></a></dt>
-<dd><p>Align the REC defined channel based on LiDAR and save the aligned
+<span class="sig-name descname"><span class="pre">calculate_channel_characteristics</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">channel_width</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">aligned_channel</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#geofabrics.processor.RiverBathymetryGenerator.calculate_channel_characteristics" title="Permalink to this definition"></a></dt>
+<dd><p>Align the river network defined channel based on LiDAR and save the aligned
 channel.</p>
 <dl class="field-list simple">
 <dt class="field-odd">Parameters</dt>
 <dd class="field-odd"><ul class="simple">
 <li><p><strong>other</strong> (<em>channel_width  The class for characterising channel width and</em>) – properties</p></li>
-<li><p><strong>alignment</strong> (<em>channel  The REC defined channel</em>) – </p></li>
+<li><p><strong>alignment</strong> (<em>channel  The river network defined channel</em>) – </p></li>
 <li><p><strong>channel_width</strong> (<a class="reference internal" href="../bathymetry_estimation/index.html#geofabrics.bathymetry_estimation.ChannelCharacteristics" title="geofabrics.bathymetry_estimation.ChannelCharacteristics"><em>geofabrics.bathymetry_estimation.ChannelCharacteristics</em></a>) – </p></li>
 <li><p><strong>aligned_channel</strong> (<em>geopandas.GeoDataFrame</em>) – </p></li>
-<li><p><strong>buffer</strong> (<em>float</em>) – </p></li>
 </ul>
 </dd>
 <dt class="field-even">Return type</dt>
@@ -620,54 +617,34 @@ channel.</p>
 
 <dl class="py method">
 <dt class="sig sig-object py" id="geofabrics.processor.RiverBathymetryGenerator.characterise_channel">
-<span class="sig-name descname"><span class="pre">characterise_channel</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">buffer</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#geofabrics.processor.RiverBathymetryGenerator.characterise_channel" title="Permalink to this definition"></a></dt>
+<span class="sig-name descname"><span class="pre">characterise_channel</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="headerlink" href="#geofabrics.processor.RiverBathymetryGenerator.characterise_channel" title="Permalink to this definition"></a></dt>
 <dd><p>Calculate the channel width, slope and other characteristics. This requires a
 ground and vegetation DEM. This also may require alignment of the channel
 centreline.</p>
-<dl class="field-list simple">
-<dt class="field-odd">Parameters</dt>
-<dd class="field-odd"><ul class="simple">
-<li><p><strong>catchment</strong> (<em>buffer  The amount</em><em> of </em><em>extra space to create around the river</em>) – </p></li>
-<li><p><strong>buffer</strong> (<em>float</em>) – </p></li>
-</ul>
-</dd>
-</dl>
 </dd></dl>
 
 <dl class="py method">
 <dt class="sig sig-object py" id="geofabrics.processor.RiverBathymetryGenerator.align_channel_from_rec">
-<span class="sig-name descname"><span class="pre">align_channel_from_rec</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">buffer</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#geofabrics.processor.RiverBathymetryGenerator.align_channel_from_rec" title="Permalink to this definition"></a></dt>
+<span class="sig-name descname"><span class="pre">align_channel_from_rec</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="headerlink" href="#geofabrics.processor.RiverBathymetryGenerator.align_channel_from_rec" title="Permalink to this definition"></a></dt>
 <dd><p>Calculate the channel width, slope and other characteristics. This requires a
 ground and vegetation DEM. This also may require alignment of the channel
 centreline.</p>
 <dl class="field-list simple">
-<dt class="field-odd">Parameters</dt>
-<dd class="field-odd"><ul class="simple">
-<li><p><strong>catchment</strong> (<em>buffer  The amount</em><em> of </em><em>extra space to create around the river</em>) – </p></li>
-<li><p><strong>buffer</strong> (<em>float</em>) – </p></li>
-</ul>
-</dd>
-<dt class="field-even">Return type</dt>
-<dd class="field-even"><p>tuple</p>
+<dt class="field-odd">Return type</dt>
+<dd class="field-odd"><p>tuple</p>
 </dd>
 </dl>
 </dd></dl>
 
 <dl class="py method">
 <dt class="sig sig-object py" id="geofabrics.processor.RiverBathymetryGenerator.align_channel_from_osm">
-<span class="sig-name descname"><span class="pre">align_channel_from_osm</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">buffer</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#geofabrics.processor.RiverBathymetryGenerator.align_channel_from_osm" title="Permalink to this definition"></a></dt>
+<span class="sig-name descname"><span class="pre">align_channel_from_osm</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="headerlink" href="#geofabrics.processor.RiverBathymetryGenerator.align_channel_from_osm" title="Permalink to this definition"></a></dt>
 <dd><p>Calculate the channel width, slope and other characteristics. This requires a
 ground and vegetation DEM. This also may require alignment of the channel
 centreline.</p>
 <dl class="field-list simple">
-<dt class="field-odd">Parameters</dt>
-<dd class="field-odd"><ul class="simple">
-<li><p><strong>catchment</strong> (<em>buffer  The amount</em><em> of </em><em>extra space to create around the river</em>) – </p></li>
-<li><p><strong>buffer</strong> (<em>float</em>) – </p></li>
-</ul>
-</dd>
-<dt class="field-even">Return type</dt>
-<dd class="field-even"><p><a class="reference internal" href="../bathymetry_estimation/index.html#geofabrics.bathymetry_estimation.ChannelCharacteristics" title="geofabrics.bathymetry_estimation.ChannelCharacteristics">geofabrics.bathymetry_estimation.ChannelCharacteristics</a></p>
+<dt class="field-odd">Return type</dt>
+<dd class="field-odd"><p><a class="reference internal" href="../bathymetry_estimation/index.html#geofabrics.bathymetry_estimation.ChannelCharacteristics" title="geofabrics.bathymetry_estimation.ChannelCharacteristics">geofabrics.bathymetry_estimation.ChannelCharacteristics</a></p>
 </dd>
 </dl>
 </dd></dl>
