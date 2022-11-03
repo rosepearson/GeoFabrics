@@ -1665,7 +1665,8 @@ class RawDem(LidarBase):
             foreshore_mask = numpy.logical_not(
                 numpy.isnan(
                     self._dem.z.rio.clip(
-                        self.catchment_geometry.foreshore.geometry, drop=False,
+                        self.catchment_geometry.foreshore.geometry,
+                        drop=False,
                     ).data
                 )
             )
@@ -2402,7 +2403,10 @@ def roughness_over_chunk(
         return grid_z
     # Perform the point cloud roughness estimation method over chunk
     z_flat = roughness_from_points(
-        point_cloud=tile_points, xy_out=xy_out, xy_ground=xy_ground, options=options,
+        point_cloud=tile_points,
+        xy_out=xy_out,
+        xy_ground=xy_ground,
+        options=options,
     )
     grid_z = z_flat.reshape(grid_x.shape)
 
