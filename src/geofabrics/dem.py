@@ -430,6 +430,9 @@ class HydrologicallyConditionedDem(DemBase):
             self._dem["z"] = self._dem.z.rio.interpolate_na(
                 method=self.interpolation_method
             )
+            # If any NaN remain apply nearest neighbour interpolation
+            if numpy.isnan(self._dem.z.data).any():
+                self._dem["z"] = self._dem.z.rio.interpolate_na(method="nearest")
             # Only set areas with successful interpolation as interpolated
             interpolation_mask &= numpy.logical_not(numpy.isnan(self._dem.z.data))
             self._dem.source_class.data[
@@ -1895,6 +1898,9 @@ class RoughnessDem(LidarBase):
             self._dem["zo"] = self._dem.zo.rio.interpolate_na(
                 method=self.interpolation_method
             )
+            # If any NaN remain apply nearest neighbour interpolation
+            if numpy.isnan(self._dem.z.data).any():
+                self._dem["zo"] = self._dem.zo.rio.interpolate_na(method="nearest")
         self._dem = self._dem.rio.clip(
             self.catchment_geometry.catchment.geometry, drop=True
         )
