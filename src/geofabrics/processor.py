@@ -259,6 +259,7 @@ class BaseProcessor(abc.ABC):
         either as a file path, or within any of the vector API's (i.e. LINZ or LRIS).
         """
 
+        api_type = "vector"
         data_services = [
             "linz",
             "lris",
@@ -268,11 +269,11 @@ class BaseProcessor(abc.ABC):
         if "data_paths" in self.instructions and key in self.instructions["data_paths"]:
             # Key included in the data paths
             return True
-        elif "apis" in self.instructions and "vector" in self.instructions["apis"]:
+        elif "apis" in self.instructions and api_type in self.instructions["apis"]:
             for data_service in data_services:
                 if (
-                    data_service in self.instructions["apis"]["vector"]
-                    and key in self.instructions["apis"]["vector"][data_service]
+                    data_service in self.instructions["apis"][api_type]
+                    and key in self.instructions["apis"][api_type][data_service]
                 ):
                     # Key is included in one or more of the data_service's APIs
                     return True
@@ -284,6 +285,7 @@ class BaseProcessor(abc.ABC):
         LINZ API. Return all paths where the vector key is specified. In the case that
         an API is specified ensure the data is fetched as well."""
 
+        api_type = "vector"
         paths = []
 
         # Check the instructions for vector data specified as a data_paths
@@ -306,8 +308,8 @@ class BaseProcessor(abc.ABC):
         # services: LINZ and LRIS
         for data_service in data_services.keys():
             if (
-                self.check_apis(data_service, api_type="vector")
-                and key in self.instructions["apis"][data_service]
+                self.check_apis(data_service, api_type=api_type)
+                and key in self.instructions["apis"][api_type][data_service]
             ):
 
                 # Get the location to cache vector data downloaded from data services
@@ -318,12 +320,12 @@ class BaseProcessor(abc.ABC):
                 cache_dir = pathlib.Path(self.get_instruction_path("local_cache"))
 
                 # Get the API key for the data_serive being checked
-                assert "key" in self.instructions["apis"][data_service], (
+                assert "key" in self.instructions["apis"][api_type][data_service], (
                     f"A 'key' must be specified for the {data_service} data"
                     "  service instead the instruction only includes: "
-                    f"{self.instructions['apis'][data_service]}"
+                    f"{self.instructions['apis'][api_type][data_service]}"
                 )
-                api_key = self.instructions["apis"][data_service]["key"]
+                api_key = self.instructions["apis"][api_type][data_service]["key"]
 
                 # Instantiate the geoapis object for downloading vectors from the data
                 # service.
@@ -336,7 +338,9 @@ class BaseProcessor(abc.ABC):
                     api_key, bounding_polygon=bounding_polygon, verbose=True
                 )
 
-                vector_instruction = self.instructions["apis"][data_service][key]
+                vector_instruction = self.instructions["apis"][api_type][data_service][
+                    key
+                ]
                 geometry_type = (
                     vector_instruction["geometry_name "]
                     if "geometry_name " in vector_instruction
@@ -371,15 +375,18 @@ class BaseProcessor(abc.ABC):
         will later be used to override the CRS encoded in the LAS files.
         """
 
+        api_type = "lidar"
         apis_instructions = self.instructions["apis"]
 
         if (
-            self.check_apis(data_service, api_type="lidar")
-            and type(apis_instructions[data_service]) is dict
-            and dataset_name in apis_instructions[data_service]
-            and type(apis_instructions[data_service][dataset_name]) is dict
+            self.check_apis(data_service, api_type=api_type)
+            and type(apis_instructions[api_type][data_service]) is dict
+            and dataset_name in apis_instructions[api_type][data_service]
+            and type(apis_instructions[api_type][data_service][dataset_name]) is dict
         ):
-            dataset_instruction = apis_instructions[data_service][dataset_name]
+            dataset_instruction = apis_instructions[api_type][data_service][
+                dataset_name
+            ]
 
             if (
                 "crs" in dataset_instruction
@@ -430,6 +437,7 @@ class BaseProcessor(abc.ABC):
 
         lidar_dataset_index = 0  # currently only support one LiDAR dataset
         data_service = "open_topography"  # currently only open topography supported
+        api_type = "lidar"
 
         lidar_dataset_info = {}
 
@@ -456,7 +464,9 @@ class BaseProcessor(abc.ABC):
                 verbose=True,
             )
             # Loop through each specified dataset and download it
-            for dataset_name in self.instructions["apis"][data_service].keys():
+            for dataset_name in self.instructions["apis"][api_type][
+                data_service
+            ].keys():
                 logging.info(f"Fetching dataset: {dataset_name}")
                 self.lidar_fetcher.run(dataset_name)
             assert len(self.lidar_fetcher.dataset_prefixes) == 1, (
@@ -1041,8 +1051,10 @@ class RiverBathymetryGenerator(BaseProcessor):
         bathy_apis = None
         if "bathymetry_contours" in instruction_paths:
             bathy_data_paths = instruction_paths.pop("bathymetry_contours")
-        if "bathymetry_contours" in self.instructions["apis"]["linz"]:
-            bathy_apis = self.instructions["apis"]["linz"].pop("bathymetry_contours")
+        if "bathymetry_contours" in self.instructions["apis"]["vector"]["linz"]:
+            bathy_apis = self.instructions["apis"]["vector"]["linz"].pop(
+                "bathymetry_contours"
+            )
         # Get the ground DEM
         if not gnd_file.is_file():
             # Create the ground DEM file if this has not be created yet!
@@ -1086,7 +1098,9 @@ class RiverBathymetryGenerator(BaseProcessor):
         if bathy_data_paths is not None:
             instruction_paths["bathymetry_contours"] = bathy_data_paths
         if bathy_apis is not None:
-            self.instructions["apis"]["linz"]["bathymetry_contours"] = bathy_apis
+            self.instructions["apis"]["vector"]["linz"][
+                "bathymetry_contours"
+            ] = bathy_apis
         return gnd_dem, veg_dem
 
     def align_channel(
