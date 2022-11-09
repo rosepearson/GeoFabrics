@@ -32,15 +32,15 @@
 				},
 				"bathymetry_contours": {
 					"layers": [50448]
-				},
-			},
+				}
+			}
 		},
 		"raster": {
 			"linz": {
 				"reference_dems": {
 					"layers": [51768]
 				}
-			}.
+			}
 		}
 	},
 	"general": {

@@ -97,7 +97,7 @@
 						"layers": [51153]
 					}
 				}
-			"vector": {
+			}
 		},
 		"general": {
 			"lidar_classifications_to_keep": [2, 9]
