@@ -1316,7 +1316,6 @@ class RawDem(LidarBase):
             "radius": self.catchment_geometry.resolution / numpy.sqrt(2),
             "method": self.lidar_interpolation_method,
         }
-
         # Don't use dask delayed if there is no chunking
         if chunk_size is None:
             dem = self._add_lidar_no_chunking(
@@ -1404,12 +1403,15 @@ class RawDem(LidarBase):
                 )
 
                 # Load in files into tiles
-                chunk_points = delayed_load_tiles_in_chunk(
-                    dim_x=dim_x,
-                    dim_y=dim_y,
+                # TODO following call generate garbage collection from dask?
+                chunk_lidar_files = select_lidar_files(
                     tile_index_extents=tile_index_extents,
                     tile_index_name_column=tile_index_name_column,
+                    chunk_region_to_tile=chunk_region_to_tile,
                     lidar_files=lidar_files,
+                )
+                chunk_points = delayed_load_tiles_in_chunk(
+                    lidar_files=chunk_lidar_files,
                     source_crs=source_crs,
                     chunk_region_to_tile=chunk_region_to_tile,
                     catchment_geometry=self.catchment_geometry,
@@ -1945,8 +1947,6 @@ class RoughnessDem(LidarBase):
 
                 # Load in files into tiles
                 chunk_points = delayed_load_tiles_in_chunk(
-                    dim_x=dim_x,
-                    dim_y=dim_y,
                     tile_index_extents=tile_index_extents,
                     tile_index_name_column=tile_index_name_column,
                     lidar_files=lidar_files,
@@ -2315,19 +2315,12 @@ def calculate_linear(
     return linear
 
 
-def load_tiles_in_chunk(
-    dim_x: numpy.ndarray,
-    dim_y: numpy.ndarray,
+def select_lidar_files(
     tile_index_extents: geopandas.GeoDataFrame,
     tile_index_name_column: str,
-    lidar_files: typing.List[typing.Union[str, pathlib.Path]],
-    source_crs: dict,
     chunk_region_to_tile: geopandas.GeoDataFrame,
-    catchment_geometry: geometry.CatchmentGeometry,
-):
-    """Read in all LiDAR files within the chunked region - clipped to within the region
-    within which to rasterise."""
-
+    lidar_files: typing.List[pathlib.Path],
+) -> typing.List[pathlib.Path]:
     # Clip the tile indices to only include those within the chunk region
     chunk_tile_index_extents = tile_index_extents.drop(columns=["index_right"])
     chunk_tile_index_extents = geopandas.sjoin(
@@ -2335,38 +2328,51 @@ def load_tiles_in_chunk(
     )
     chunk_tile_index_extents = chunk_tile_index_extents.reset_index(drop=True)
 
-    logging.info(
-        f"Reading all {len(chunk_tile_index_extents[tile_index_name_column])} files in"
-        " chunk."
-    )
+    filtered_lidar_files = []
+
+    for tile_index_name in chunk_tile_index_extents[tile_index_name_column]:
+        # get the LiDAR file with the tile_index_name
+        lidar_file = next(
+            lidar_file
+            for lidar_file in lidar_files
+            if lidar_file.name == tile_index_name
+        )
+        filtered_lidar_files.append(lidar_file)
+
+    return filtered_lidar_files
+
+
+def load_tiles_in_chunk(
+    lidar_files: typing.List[pathlib.Path],
+    source_crs: dict,
+    chunk_region_to_tile: geopandas.GeoDataFrame,
+    catchment_geometry: geometry.CatchmentGeometry,
+):
+    """Read in all LiDAR files within the chunked region - clipped to within the region
+    within which to rasterise."""
+
+    logging.info(f"Reading all {len(lidar_files)} files in chunk.")
 
     # Initialise LiDAR points
     lidar_points = []
 
     # Cycle through each file loading it in an adding it to a numpy array
-    for tile_index_name in chunk_tile_index_extents[tile_index_name_column]:
-        logging.info(f"\t Loading in file {tile_index_name}")
-        # get the LiDAR file with the tile_index_name
-        lidar_file = [
-            lidar_file
-            for lidar_file in lidar_files
-            if lidar_file.name == tile_index_name
-        ]
-        assert (
-            len(lidar_file) == 1
-        ), f"Error no single LiDAR file matches the tile name. {lidar_file}"
+    for lidar_file in lidar_files:
+        logging.info(f"\t Loading in file {lidar_file}")
 
         # read in the LiDAR file
         pdal_pipeline = read_file_with_pdal(
-            lidar_file=lidar_file[0],
+            lidar_file=lidar_file,
             region_to_tile=chunk_region_to_tile,
             source_crs=source_crs,
             catchment_geometry=catchment_geometry,
             get_extents=False,
         )
         lidar_points.append(pdal_pipeline.arrays[0])
+
     if len(lidar_points) > 0:
         lidar_points = numpy.concatenate(lidar_points)
+
     return lidar_points
 
 
@@ -2470,7 +2476,6 @@ delayed_roughness_over_chunk = dask.delayed(roughness_over_chunk)
 
 """ Wrap the `rasterise_chunk` routine in dask.delayed """
 delayed_elevation_over_chunk = dask.delayed(elevation_over_chunk)
-
 
 """ Wrap the `load_tiles_in_chunk` routine in dask.delayed """
 delayed_load_tiles_in_chunk = dask.delayed(load_tiles_in_chunk)
