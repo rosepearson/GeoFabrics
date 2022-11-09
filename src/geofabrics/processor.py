@@ -244,13 +244,13 @@ class BaseProcessor(abc.ABC):
             self.instructions["processing"][key] = defaults[key]
             return defaults[key]
 
-    def check_apis(self, key) -> bool:
+    def check_apis(self, key: str, api_type: str) -> bool:
         """Check to see if APIs are included in the instructions and if the key is
         included in specified apis"""
 
-        if "apis" in self.instructions:
+        if "apis" in self.instructions and api_type in self.instructions["apis"]:
             # 'apis' included instructions and Key included in the APIs
-            return key in self.instructions["apis"]
+            return key in self.instructions["apis"][api_type]
         else:
             return False
 
@@ -262,16 +262,17 @@ class BaseProcessor(abc.ABC):
         data_services = [
             "linz",
             "lris",
+            "statsnz",
         ]  # This list will increase as geopais is extended to support more vector APIs
 
         if "data_paths" in self.instructions and key in self.instructions["data_paths"]:
             # Key included in the data paths
             return True
-        elif "apis" in self.instructions:
+        elif "apis" in self.instructions and "vector" in self.instructions["apis"]:
             for data_service in data_services:
                 if (
-                    data_service in self.instructions["apis"]
-                    and key in self.instructions["apis"][data_service]
+                    data_service in self.instructions["apis"]["vector"]
+                    and key in self.instructions["apis"]["vector"][data_service]
                 ):
                     # Key is included in one or more of the data_service's APIs
                     return True
@@ -295,13 +296,17 @@ class BaseProcessor(abc.ABC):
                 paths.append(data_paths)
         # Define the supported vector 'apis' keywords and the geoapis class for
         # accessing that data service
-        data_services = {"linz": geoapis.vector.Linz, "lris": geoapis.vector.Lris}
+        data_services = {
+            "linz": geoapis.vector.Linz,
+            "lris": geoapis.vector.Lris,
+            "statsnz": geoapis.vector.StatsNz,
+        }
 
         # Check the instructions for vector data hosted in the supported vector data
         # services: LINZ and LRIS
         for data_service in data_services.keys():
             if (
-                self.check_apis(data_service)
+                self.check_apis(data_service, api_type="vector")
                 and key in self.instructions["apis"][data_service]
             ):
 
@@ -369,7 +374,7 @@ class BaseProcessor(abc.ABC):
         apis_instructions = self.instructions["apis"]
 
         if (
-            self.check_apis(data_service)
+            self.check_apis(data_service, api_type="lidar")
             and type(apis_instructions[data_service]) is dict
             and dataset_name in apis_instructions[data_service]
             and type(apis_instructions[data_service][dataset_name]) is dict
@@ -404,7 +409,7 @@ class BaseProcessor(abc.ABC):
             )
             return None
 
-    def get_lidar_file_list(self, data_service) -> dict:
+    def get_lidar_file_list(self) -> dict:
         """Return a dictionary with three enties 'file_paths', 'crs' and
         'tile_index_file'. The 'file_paths' contains a list of LiDAR tiles to process.
 
@@ -424,12 +429,13 @@ class BaseProcessor(abc.ABC):
         """
 
         lidar_dataset_index = 0  # currently only support one LiDAR dataset
+        data_service = "open_topography"  # currently only open topography supported
 
         lidar_dataset_info = {}
 
         # See if 'OpenTopography' or another data_service has been specified as an area
         # to look first
-        if self.check_apis(data_service):
+        if self.check_apis(data_service, api_type="lidar"):
 
             assert self.check_instruction_path("local_cache"), (
                 "A 'local_cache' must be specified under the 'file_paths' in the "
@@ -549,7 +555,7 @@ class RawLidarDemGenerator(BaseProcessor):
         self.catchment_geometry = self.create_catchment()
 
         # Get LiDAR data file-list - this may involve downloading lidar files
-        lidar_dataset_info = self.get_lidar_file_list("open_topography")
+        lidar_dataset_info = self.get_lidar_file_list()
 
         # setup the raw DEM generator
         self.raw_dem = dem.RawDem(
@@ -784,7 +790,7 @@ class RoughnessLengthGenerator(BaseProcessor):
         self.catchment_geometry = self.create_catchment()
 
         # Get LiDAR data file-list - this may involve downloading lidar files
-        lidar_dataset_info = self.get_lidar_file_list("open_topography")
+        lidar_dataset_info = self.get_lidar_file_list()
 
         # setup the roughness DEM generator
         self.roughness_dem = dem.RoughnessDem(

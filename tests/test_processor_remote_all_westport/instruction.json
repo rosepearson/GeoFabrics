@@ -20,16 +20,27 @@
 		"benchmark_dem": "benchmark_dem.nc"
 	},
 	"apis": {
-		"open_topography": {
-			"NZ20_Westport": true
+		"lidar": {
+			"open_topography": {
+				"NZ20_Westport": true
+				}
 		},
-		"linz": {
-			"land": {
-				"layers": [51153]
+		"vector": {
+			"linz": {
+				"land": {
+					"layers": [51153]
+				},
+				"bathymetry_contours": {
+					"layers": [50448]
+				},
 			},
-			"bathymetry_contours": {
-				"layers": [50448]
-			}
+		},
+		"raster": {
+			"linz": {
+				"reference_dems": {
+					"layers": [51768]
+				}
+			}.
 		}
 	},
 	"general": {
