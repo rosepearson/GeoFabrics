@@ -228,7 +228,14 @@ class BaseProcessor(abc.ABC):
     def get_processing_instructions(self, key: str):
         """Return the processing instruction from the instruction file or
         return the default value if not specified in the instruction file. If
-        the default is used it is added to the instructions."""
+        the default is used it is added to the instructions.
+
+        Parameters
+        ----------
+
+        key
+            The string identifying the instruction
+        """
 
         defaults = {"number_of_cores": 1, "chunk_size": None}
 
@@ -246,7 +253,16 @@ class BaseProcessor(abc.ABC):
 
     def check_apis(self, key: str, api_type: str) -> bool:
         """Check to see if APIs are included in the instructions and if the key is
-        included in specified apis"""
+        included in specified apis
+
+        Parameters
+        ----------
+
+        key
+            The string identifying the vector/raster
+        api_type
+            The string identifying if the key is a vector or raster
+        """
 
         if "apis" in self.instructions and api_type in self.instructions["apis"]:
             # 'apis' included instructions and Key included in the APIs
@@ -254,9 +270,17 @@ class BaseProcessor(abc.ABC):
         else:
             return False
 
-    def check_vector_or_raster(self, key, api_type: str) -> bool:
-        """Check to see if vector key (i.e. land, bathymetry_contours, etc) is included
-        either as a file path, or within any of the vector API's (i.e. LINZ or LRIS).
+    def check_vector_or_raster(self, key: str, api_type: str) -> bool:
+        """Check to see if vector or raster key (i.e. land, bathymetry_contours, etc) is
+        included either as a file path, or within any of API's (i.e. LINZ or LRIS).
+
+        Parameters
+        ----------
+
+        key
+            The string identifying the vector/raster
+        api_type
+            The string identifying if the key is a vector or raster
         """
 
         data_services = [
@@ -280,11 +304,19 @@ class BaseProcessor(abc.ABC):
             return False
 
     def get_vector_or_raster_paths(self, key: str, api_type: str) -> list:
-        """Get the path to the vector key data included either as a file path or as a
-        LINZ API. Return all paths where the vector key is specified. In the case that
-        an API is specified ensure the data is fetched as well."""
+        """Get the path to the vector/raster key data included either as a file path or
+        as an API. Return all paths where the vector key is specified. In the case that
+        an API is specified ensure the data is fetched as well.
 
-        api_type = "vector"
+        Parameters
+        ----------
+
+        key
+            The string identifying the vector/raster
+        api_type
+            The string identifying if the key is a vector or raster
+        """
+
         paths = []
 
         # Check the instructions for vector data specified as a data_paths
