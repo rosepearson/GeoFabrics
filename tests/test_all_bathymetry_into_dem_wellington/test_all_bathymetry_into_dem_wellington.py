@@ -58,9 +58,9 @@ class ProcessorRiverBathymetryTest(unittest.TestCase):
         # Load in environment variables to get and set the private API keys
         dotenv.load_dotenv()
         linz_key = os.environ.get("LINZ_API", None)
-        cls.instructions["rivers"]["apis"]["linz"]["key"] = linz_key
-        cls.instructions["waterways"]["apis"]["linz"]["key"] = linz_key
-        cls.instructions["dem"]["apis"]["linz"]["key"] = linz_key
+        cls.instructions["rivers"]["apis"]["vector"]["linz"]["key"] = linz_key
+        cls.instructions["waterways"]["apis"]["vector"]["linz"]["key"] = linz_key
+        cls.instructions["dem"]["apis"]["vector"]["linz"]["key"] = linz_key
 
         # Remove any files from last test, then create a results directory
         cls.cache_dir = test_path / "data"

@@ -22,7 +22,7 @@
 	"apis": {
 		"lidar": {
 			"open_topography": {
-				"NZ20_Westport": true,
+				"NZ20_Westport": true
 			}
 		},
 		"vector": {

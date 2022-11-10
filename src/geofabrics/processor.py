@@ -280,7 +280,7 @@ class BaseProcessor(abc.ABC):
         else:
             return False
 
-    def get_vector_paths(self, key) -> list:
+    def get_vector_or_raster_paths(self, key: str, api_type: str) -> list:
         """Get the path to the vector key data included either as a file path or as a
         LINZ API. Return all paths where the vector key is specified. In the case that
         an API is specified ensure the data is fetched as well."""
@@ -321,7 +321,7 @@ class BaseProcessor(abc.ABC):
 
                 # Get the API key for the data_serive being checked
                 assert "key" in self.instructions["apis"][api_type][data_service], (
-                    f"A 'key' must be specified for the {data_service} data"
+                    f"A 'key' must be specified for the {api_type}:{data_service} data"
                     "  service instead the instruction only includes: "
                     f"{self.instructions['apis'][api_type][data_service]}"
                 )
@@ -506,7 +506,7 @@ class BaseProcessor(abc.ABC):
         catchment_geometry = geometry.CatchmentGeometry(
             catchment_dirs, self.get_crs(), self.get_resolution(), foreshore_buffer=2
         )
-        land_dirs = self.get_vector_paths("land")
+        land_dirs = self.get_vector_or_raster_paths(key="land", api_type="vector")
         assert len(land_dirs) == 1, (
             f"{len(land_dirs)} catchment_boundary's provided, where only one is "
             f"supported. Specficially land_dirs = {land_dirs}."
@@ -688,7 +688,9 @@ class HydrologicDemGenerator(BaseProcessor):
         ):
 
             # Get the bathymetry data directory
-            bathy_contour_dirs = self.get_vector_paths("bathymetry_contours")
+            bathy_contour_dirs = self.get_vector_or_raster_paths(
+                key="bathymetry_contours", api_type="vector"
+            )
             assert len(bathy_contour_dirs) == 1, (
                 f"{len(bathy_contour_dirs)} bathymetry_contours's provided. "
                 f"Specficially {catchment_dirs}. Support has not yet been added for "
@@ -713,8 +715,12 @@ class HydrologicDemGenerator(BaseProcessor):
         ):
 
             # Get the polygons and bathymetry and can be multiple
-            bathy_dirs = self.get_vector_paths("river_bathymetry")
-            poly_dirs = self.get_vector_paths("river_polygons")
+            bathy_dirs = self.get_vector_or_raster_paths(
+                key="river_bathymetry", api_type="vector"
+            )
+            poly_dirs = self.get_vector_or_raster_paths(
+                key="river_polygons", api_type="vector"
+            )
 
             logging.info(f"Incorporating river Bathymetry: {bathy_dirs}")
 
@@ -1574,7 +1580,9 @@ class RiverBathymetryGenerator(BaseProcessor):
         crs = self.get_crs()["horizontal"]
         cross_section_spacing = self.get_bathymetry_instruction("cross_section_spacing")
         river_bathymetry_file = self.get_result_file_path(key="river_bathymetry")
-        ocean_contour_file = self.get_vector_paths("bathymetry_contours")[0]
+        ocean_contour_file = self.get_vector_or_raster_paths(
+            key="bathymetry_contours", api_type="vector"
+        )[0]
         aligned_channel_file = self.get_result_file_path(key="aligned")
         ocean_contour_depth_label = self.get_instruction_general(
             "bathymetry_contours_z_label"
