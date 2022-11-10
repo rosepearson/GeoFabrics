@@ -24,6 +24,7 @@ from . import bathymetry_estimation
 from . import version
 import geoapis.lidar
 import geoapis.vector
+import geoapis.raster
 from . import dem
 
 
