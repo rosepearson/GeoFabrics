@@ -598,7 +598,7 @@ class RawLidarDemGenerator(BaseProcessor):
                 metadata=self.create_metadata(),
             )  # Note must be called after all others if it is to be complete
         # Load in reference DEM if any significant land/foreshore not covered by LiDAR
-        if self.check_instruction_path("reference_dems"):
+        if self.check_vector_or_raster(key="reference_dems", api_type="raster"):
             area_without_lidar = (
                 self.catchment_geometry.land_and_foreshore_without_lidar(
                     self.raw_dem.extents
@@ -609,20 +609,19 @@ class RawLidarDemGenerator(BaseProcessor):
                 > self.catchment_geometry.land_and_foreshore.area.sum() * area_threshold
             ):
 
-                assert len(self.get_instruction_path("reference_dems")) == 1, (
-                    f"{len(self.get_instruction_path('reference_dems'))} reference_dems"
-                    " specified, but only one supported currently. reference_dems: "
-                    f"{self.get_instruction_path('reference_dems')}"
+                reference_dem_paths = self.get_vector_or_raster_paths(
+                    key="reference_dems", api_type="raster"
+                )
+                assert len(reference_dem_paths) == 1, (
+                    f"{len(reference_dem_paths)} reference_dems specified, but only one"
+                    f" supported currently. reference_dems: {reference_dem_paths}"
                 )
 
-                logging.info(
-                    "Incorporating background DEM: "
-                    f"{self.get_instruction_path('reference_dems')}"
-                )
+                logging.info(f"Incorporating background DEM: {reference_dem_paths}")
 
                 # Load in background DEM - cut away within the LiDAR extents
                 self.reference_dem = dem.ReferenceDem(
-                    dem_file=self.get_instruction_path("reference_dems")[0],
+                    dem_file=reference_dem_paths[0],
                     catchment_geometry=self.catchment_geometry,
                     set_foreshore=self.get_instruction_general("drop_offshore_lidar"),
                     exclusion_extent=self.raw_dem.extents,
