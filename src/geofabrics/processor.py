@@ -254,12 +254,11 @@ class BaseProcessor(abc.ABC):
         else:
             return False
 
-    def check_vector(self, key) -> bool:
+    def check_vector_or_raster(self, key, api_type: str) -> bool:
         """Check to see if vector key (i.e. land, bathymetry_contours, etc) is included
         either as a file path, or within any of the vector API's (i.e. LINZ or LRIS).
         """
 
-        api_type = "vector"
         data_services = [
             "linz",
             "lris",
@@ -682,7 +681,7 @@ class HydrologicDemGenerator(BaseProcessor):
             self.hydrologic_dem.extents
         ).geometry.area.sum()
         if (
-            self.check_vector("bathymetry_contours")
+            self.check_vector_or_raster(key="bathymetry_contours", api_type="vector")
             and area_without_lidar
             > self.catchment_geometry.offshore.area.sum() * area_threshold
         ):
@@ -710,9 +709,9 @@ class HydrologicDemGenerator(BaseProcessor):
             # interpolate
             self.hydrologic_dem.interpolate_ocean_bathymetry(self.bathy_contours)
         # Load in river bathymetry and incorporate where discernable at the resolution
-        if self.check_vector("river_polygons") and self.check_vector(
-            "river_bathymetry"
-        ):
+        if self.check_vector_or_raster(
+            "river_polygons", api_type="vector"
+        ) and self.check_vector_or_raster("river_bathymetry", api_type="vector"):
 
             # Get the polygons and bathymetry and can be multiple
             bathy_dirs = self.get_vector_or_raster_paths(
