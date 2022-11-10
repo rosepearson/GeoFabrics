@@ -327,16 +327,26 @@ class BaseProcessor(abc.ABC):
                 paths.extend(data_paths)
             else:
                 paths.append(data_paths)
-        # Define the supported vector 'apis' keywords and the geoapis class for
-        # accessing that data service
-        data_services = {
-            "linz": geoapis.vector.Linz,
-            "lris": geoapis.vector.Lris,
-            "statsnz": geoapis.vector.StatsNz,
-        }
-
+        if api_type == "vector":
+            # Define the supported vector 'apis' keywords and the geoapis class for
+            # accessing that data service
+            data_services = {
+                "linz": geoapis.vector.Linz,
+                "lris": geoapis.vector.Lris,
+                "statsnz": geoapis.vector.StatsNz,
+            }
+        elif api_type == "raster":
+            data_services = {
+                "linz": geoapis.raster.Linz,
+                "lris": geoapis.raster.Lris,
+                "statsnz": geoapis.raster.StatsNz,
+            }
+        else:
+            logging.warning(f"Unsupported API type specified: {api_type}. Ignored.")
+            return
         # Check the instructions for vector data hosted in the supported vector data
         # services: LINZ and LRIS
+        cache_dir = pathlib.Path(self.get_instruction_path("local_cache"))
         for data_service in data_services.keys():
             if (
                 self.check_apis(data_service, api_type=api_type)
@@ -348,7 +358,6 @@ class BaseProcessor(abc.ABC):
                     "Local cache file path must exist to specify thelocation to"
                     + f" download vector data from the vector APIs: {data_services}"
                 )
-                cache_dir = pathlib.Path(self.get_instruction_path("local_cache"))
 
                 # Get the API key for the data_serive being checked
                 assert "key" in self.instructions["apis"][api_type][data_service], (
@@ -365,39 +374,66 @@ class BaseProcessor(abc.ABC):
                     if self.catchment_geometry is not None
                     else None
                 )
-                vector_fetcher = data_services[data_service](
-                    api_key, bounding_polygon=bounding_polygon, verbose=True
-                )
-
-                vector_instruction = self.instructions["apis"][api_type][data_service][
-                    key
-                ]
-                geometry_type = (
-                    vector_instruction["geometry_name "]
-                    if "geometry_name " in vector_instruction
-                    else None
-                )
-
-                logging.info(
-                    f"Downloading vector layers {vector_instruction['layers']} from the"
-                    f" {data_service} data service"
-                )
-
-                # Cycle through all layers specified - save each & add to the path list
-                for layer in vector_instruction["layers"]:
-                    # Use the run method to download each layer in turn
-                    vector = vector_fetcher.run(layer, geometry_type)
-
-                    # Ensure directory for layer and save vector file
-                    layer_dir = cache_dir / str(layer)
-                    layer_dir.mkdir(parents=True, exist_ok=True)
-                    vector_dir = layer_dir / key
-                    vector.to_file(vector_dir)
-                    shutil.make_archive(
-                        base_name=vector_dir, format="zip", root_dir=vector_dir
+                if api_type == "vector":
+                    fetcher = data_services[data_service](
+                        api_key, bounding_polygon=bounding_polygon, verbose=True
                     )
-                    shutil.rmtree(vector_dir)
-                    paths.append(layer_dir / f"{key}.zip")
+
+                    api_instruction = self.instructions["apis"][api_type][data_service][
+                        key
+                    ]
+                    geometry_type = (
+                        api_instruction["geometry_name "]
+                        if "geometry_name " in api_instruction
+                        else None
+                    )
+
+                    logging.info(
+                        f"Downloading vector layers {api_instruction['layers']} from"
+                        f" the {data_service} data service"
+                    )
+
+                    # Cycle through all layers specified - save each & add to the path
+                    # list
+                    for layer in api_instruction["layers"]:
+                        # Use the run method to download each layer in turn
+                        vector = fetcher.run(layer, geometry_type)
+
+                        # Ensure directory for layer and save vector file
+                        layer_dir = cache_dir / str(layer)
+                        layer_dir.mkdir(parents=True, exist_ok=True)
+                        vector_dir = layer_dir / key
+                        vector.to_file(vector_dir)
+                        shutil.make_archive(
+                            base_name=vector_dir, format="zip", root_dir=vector_dir
+                        )
+                        shutil.rmtree(vector_dir)
+                        paths.append(layer_dir / f"{key}.zip")
+                elif api_type == "raster":
+                    fetcher = data_services[data_service](
+                        key=api_key,
+                        bounding_polygon=bounding_polygon,
+                        cache_path=cache_dir,
+                    )
+
+                    api_instruction = self.instructions["apis"][api_type][data_service][
+                        key
+                    ]
+
+                    logging.info(
+                        f"Downloading rater layers {api_instruction['layers']} from"
+                        f" the {data_service} data service"
+                    )
+
+                    # Cycle through all layers specified - save each & add to the path
+                    # list
+                    for layer in api_instruction["layers"]:
+                        # Use the run method to download each layer in turn
+                        raster_paths = fetcher.run(layer)
+
+                        # Add the downloaded to paths
+                        for raster_path in raster_paths:
+                            paths.append(raster_path)
         return paths
 
     def get_lidar_dataset_crs(self, data_service, dataset_name) -> dict:
