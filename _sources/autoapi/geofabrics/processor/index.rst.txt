@@ -91,24 +91,35 @@ Classes
       return the default value if not specified in the instruction file. If
       the default is used it is added to the instructions.
 
+      :param key: The string identifying the instruction
 
-   .. py:method:: check_apis(key)
+
+   .. py:method:: check_apis(key, api_type)
 
       Check to see if APIs are included in the instructions and if the key is
       included in specified apis
 
-
-   .. py:method:: check_vector(key)
-
-      Check to see if vector key (i.e. land, bathymetry_contours, etc) is included
-      either as a file path, or within any of the vector API's (i.e. LINZ or LRIS).
+      :param key: The string identifying the vector/raster
+      :param api_type: The string identifying if the key is a vector or raster
 
 
-   .. py:method:: get_vector_paths(key)
+   .. py:method:: check_vector_or_raster(key, api_type)
 
-      Get the path to the vector key data included either as a file path or as a
-      LINZ API. Return all paths where the vector key is specified. In the case that
+      Check to see if vector or raster key (i.e. land, bathymetry_contours, etc) is
+      included either as a file path, or within any of API's (i.e. LINZ or LRIS).
+
+      :param key: The string identifying the vector/raster
+      :param api_type: The string identifying if the key is a vector or raster
+
+
+   .. py:method:: get_vector_or_raster_paths(key, api_type)
+
+      Get the path to the vector/raster key data included either as a file path or
+      as an API. Return all paths where the vector key is specified. In the case that
       an API is specified ensure the data is fetched as well.
+
+      :param key: The string identifying the vector/raster
+      :param api_type: The string identifying if the key is a vector or raster
 
 
    .. py:method:: get_lidar_dataset_crs(data_service, dataset_name)
@@ -118,7 +129,7 @@ Classes
       will later be used to override the CRS encoded in the LAS files.
 
 
-   .. py:method:: get_lidar_file_list(data_service)
+   .. py:method:: get_lidar_file_list()
 
       Return a dictionary with three enties 'file_paths', 'crs' and
       'tile_index_file'. The 'file_paths' contains a list of LiDAR tiles to process.

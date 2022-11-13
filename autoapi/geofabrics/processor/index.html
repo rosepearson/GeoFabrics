@@ -211,44 +211,62 @@ return the default value if not specified in the instruction file. If
 the default is used it is added to the instructions.</p>
 <dl class="field-list simple">
 <dt class="field-odd">Parameters</dt>
-<dd class="field-odd"><p><strong>key</strong> (<em>str</em>) – </p>
+<dd class="field-odd"><p><strong>key</strong> (<em>str</em>) – The string identifying the instruction</p>
 </dd>
 </dl>
 </dd></dl>
 
 <dl class="py method">
 <dt class="sig sig-object py" id="geofabrics.processor.BaseProcessor.check_apis">
-<span class="sig-name descname"><span class="pre">check_apis</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">key</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#geofabrics.processor.BaseProcessor.check_apis" title="Permalink to this definition"></a></dt>
+<span class="sig-name descname"><span class="pre">check_apis</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">key</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">api_type</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#geofabrics.processor.BaseProcessor.check_apis" title="Permalink to this definition"></a></dt>
 <dd><p>Check to see if APIs are included in the instructions and if the key is
 included in specified apis</p>
 <dl class="field-list simple">
-<dt class="field-odd">Return type</dt>
-<dd class="field-odd"><p>bool</p>
+<dt class="field-odd">Parameters</dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>key</strong> (<em>str</em>) – The string identifying the vector/raster</p></li>
+<li><p><strong>api_type</strong> (<em>str</em>) – The string identifying if the key is a vector or raster</p></li>
+</ul>
+</dd>
+<dt class="field-even">Return type</dt>
+<dd class="field-even"><p>bool</p>
 </dd>
 </dl>
 </dd></dl>
 
 <dl class="py method">
-<dt class="sig sig-object py" id="geofabrics.processor.BaseProcessor.check_vector">
-<span class="sig-name descname"><span class="pre">check_vector</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">key</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#geofabrics.processor.BaseProcessor.check_vector" title="Permalink to this definition"></a></dt>
-<dd><p>Check to see if vector key (i.e. land, bathymetry_contours, etc) is included
-either as a file path, or within any of the vector API’s (i.e. LINZ or LRIS).</p>
+<dt class="sig sig-object py" id="geofabrics.processor.BaseProcessor.check_vector_or_raster">
+<span class="sig-name descname"><span class="pre">check_vector_or_raster</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">key</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">api_type</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#geofabrics.processor.BaseProcessor.check_vector_or_raster" title="Permalink to this definition"></a></dt>
+<dd><p>Check to see if vector or raster key (i.e. land, bathymetry_contours, etc) is
+included either as a file path, or within any of API’s (i.e. LINZ or LRIS).</p>
 <dl class="field-list simple">
-<dt class="field-odd">Return type</dt>
-<dd class="field-odd"><p>bool</p>
+<dt class="field-odd">Parameters</dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>key</strong> (<em>str</em>) – The string identifying the vector/raster</p></li>
+<li><p><strong>api_type</strong> (<em>str</em>) – The string identifying if the key is a vector or raster</p></li>
+</ul>
+</dd>
+<dt class="field-even">Return type</dt>
+<dd class="field-even"><p>bool</p>
 </dd>
 </dl>
 </dd></dl>
 
 <dl class="py method">
-<dt class="sig sig-object py" id="geofabrics.processor.BaseProcessor.get_vector_paths">
-<span class="sig-name descname"><span class="pre">get_vector_paths</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">key</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#geofabrics.processor.BaseProcessor.get_vector_paths" title="Permalink to this definition"></a></dt>
-<dd><p>Get the path to the vector key data included either as a file path or as a
-LINZ API. Return all paths where the vector key is specified. In the case that
+<dt class="sig sig-object py" id="geofabrics.processor.BaseProcessor.get_vector_or_raster_paths">
+<span class="sig-name descname"><span class="pre">get_vector_or_raster_paths</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">key</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">api_type</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#geofabrics.processor.BaseProcessor.get_vector_or_raster_paths" title="Permalink to this definition"></a></dt>
+<dd><p>Get the path to the vector/raster key data included either as a file path or
+as an API. Return all paths where the vector key is specified. In the case that
 an API is specified ensure the data is fetched as well.</p>
 <dl class="field-list simple">
-<dt class="field-odd">Return type</dt>
-<dd class="field-odd"><p>list</p>
+<dt class="field-odd">Parameters</dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>key</strong> (<em>str</em>) – The string identifying the vector/raster</p></li>
+<li><p><strong>api_type</strong> (<em>str</em>) – The string identifying if the key is a vector or raster</p></li>
+</ul>
+</dd>
+<dt class="field-even">Return type</dt>
+<dd class="field-even"><p>list</p>
 </dd>
 </dl>
 </dd></dl>
@@ -268,7 +286,7 @@ will later be used to override the CRS encoded in the LAS files.</p>
 
 <dl class="py method">
 <dt class="sig sig-object py" id="geofabrics.processor.BaseProcessor.get_lidar_file_list">
-<span class="sig-name descname"><span class="pre">get_lidar_file_list</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">data_service</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#geofabrics.processor.BaseProcessor.get_lidar_file_list" title="Permalink to this definition"></a></dt>
+<span class="sig-name descname"><span class="pre">get_lidar_file_list</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="headerlink" href="#geofabrics.processor.BaseProcessor.get_lidar_file_list" title="Permalink to this definition"></a></dt>
 <dd><p>Return a dictionary with three enties ‘file_paths’, ‘crs’ and
 ‘tile_index_file’. The ‘file_paths’ contains a list of LiDAR tiles to process.</p>
 <p>The ‘crs’ (or coordinate system of the LiDAR data as defined by an EPSG code) is
