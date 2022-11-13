@@ -348,6 +348,11 @@ class BaseProcessor(abc.ABC):
         # Check the instructions for vector data hosted in the supported vector data
         # services: LINZ and LRIS
         cache_dir = pathlib.Path(self.get_instruction_path("local_cache"))
+        bounding_polygon = (
+            self.catchment_geometry.catchment
+            if self.catchment_geometry is not None
+            else None
+        )
         for data_service in data_services.keys():
             if (
                 self.check_apis(data_service, api_type=api_type)
@@ -370,11 +375,6 @@ class BaseProcessor(abc.ABC):
 
                 # Instantiate the geoapis object for downloading vectors from the data
                 # service.
-                bounding_polygon = (
-                    self.catchment_geometry.catchment
-                    if self.catchment_geometry is not None
-                    else None
-                )
                 if api_type == "vector":
                     fetcher = data_services[data_service](
                         api_key, bounding_polygon=bounding_polygon, verbose=True
