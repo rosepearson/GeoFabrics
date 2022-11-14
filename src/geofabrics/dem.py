@@ -1367,7 +1367,7 @@ class RawDem(LidarBase):
 
     def _add_tiled_lidar_chunked(
         self,
-        lidar_files: typing.List[typing.Union[str, pathlib.Path]],
+        lidar_files: typing.List[pathlib.Path],
         tile_index_file: typing.Union[str, pathlib.Path],
         source_crs: dict,
         region_to_rasterise: geopandas.GeoDataFrame,
@@ -1378,13 +1378,16 @@ class RawDem(LidarBase):
         """Create a 'raw'' DEM from a set of tiled LiDAR files. Read these in over
         non-overlapping chunks and then combine"""
 
-        # Remove all tiles entirely outside the region to raserise
+        # remove all tiles entirely outside the region to raserise
         tile_index_extents, tile_index_name_column = self._tile_index_column_name(
             tile_index_file
         )
 
         # get chunking information
         chunked_dim_x, chunked_dim_y = self._set_up_chunks(chunk_size)
+
+        # create a map from tile name to tile file name
+        lidar_files_map = {lidar_file.name: lidar_file for lidar_file in lidar_files}
 
         # cycle through index chunks - and collect in a delayed array
         logging.info(f"Preparing {[len(chunked_dim_x), len(chunked_dim_y)]} chunks")
@@ -1403,12 +1406,11 @@ class RawDem(LidarBase):
                 )
 
                 # Load in files into tiles
-                # TODO following call generate garbage collection from dask?
                 chunk_lidar_files = select_lidar_files(
                     tile_index_extents=tile_index_extents,
                     tile_index_name_column=tile_index_name_column,
                     chunk_region_to_tile=chunk_region_to_tile,
-                    lidar_files=lidar_files,
+                    lidar_files_map=lidar_files_map,
                 )
                 chunk_points = delayed_load_tiles_in_chunk(
                     lidar_files=chunk_lidar_files,
@@ -2319,25 +2321,22 @@ def select_lidar_files(
     tile_index_extents: geopandas.GeoDataFrame,
     tile_index_name_column: str,
     chunk_region_to_tile: geopandas.GeoDataFrame,
-    lidar_files: typing.List[pathlib.Path],
+    lidar_files_map: typing.Dict[str, pathlib.Path],
 ) -> typing.List[pathlib.Path]:
-    # Clip the tile indices to only include those within the chunk region
-    chunk_tile_index_extents = tile_index_extents.drop(columns=["index_right"])
+
+    if chunk_region_to_tile.empty:
+        return []
+
+    # clip the tile indices to only include those within the chunk region
     chunk_tile_index_extents = geopandas.sjoin(
-        chunk_tile_index_extents, chunk_region_to_tile
+        chunk_region_to_tile, tile_index_extents.drop(columns=["index_right"])
     )
-    chunk_tile_index_extents = chunk_tile_index_extents.reset_index(drop=True)
 
-    filtered_lidar_files = []
-
-    for tile_index_name in chunk_tile_index_extents[tile_index_name_column]:
-        # get the LiDAR file with the tile_index_name
-        lidar_file = next(
-            lidar_file
-            for lidar_file in lidar_files
-            if lidar_file.name == tile_index_name
-        )
-        filtered_lidar_files.append(lidar_file)
+    # get the LiDAR file with the tile_index_name
+    filtered_lidar_files = [
+        lidar_files_map[tile_index_name]
+        for tile_index_name in chunk_tile_index_extents[tile_index_name_column]
+    ]
 
     return filtered_lidar_files
 
