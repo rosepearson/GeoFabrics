@@ -21,8 +21,10 @@
 		"benchmark_dem": "benchmark_dem.nc"
 	},
 	"apis": {
-		"open_topography": {
-			"NZ20_Westport": true
+		"lidar": {
+			"open_topography": {
+				"NZ20_Westport": true
+			}
 		}
 	},
 	"general": {

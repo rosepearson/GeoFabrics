@@ -24,9 +24,9 @@ from src.geofabrics import processor
 
 
 class ProcessorRemoteAllWestportTest(unittest.TestCase):
-    """A class to test the basic processor class DemGenerator functionality for remote
-    LiDAR tiles and remote Bathymetry contours and coast contours by downloading files
-    from OpenTopography and the LINZ data portal within a small region and then
+    """Test the DemGenerator class functionality for remote LiDAR tiles and remote
+    Bathymetry contours, a remote reference DEM and a remote land outline by downloading
+    files from OpenTopography and the LINZ data portal within a small region and then
     generating a DEM. All files are deleted after checking the DEM.
 
     Tests run include:
@@ -43,15 +43,12 @@ class ProcessorRemoteAllWestportTest(unittest.TestCase):
 
     # The expected datasets and files to be downloaded - used for comparison in the
     # later tests
-    DATASETS = ["NZ20_Westport", "51153", "50448"]
+    DATASETS = ["NZ20_Westport", "51153", "51768"]
     LIDAR_SIZES = {
-        "CL2_BR20_2020_1000_4012.laz": 2636961,
-        "CL2_BR20_2020_1000_4013.laz": 3653378,
-        "CL2_BR20_2020_1000_4014.laz": 4470413,
-        "CL2_BR20_2020_1000_4112.laz": 9036407,
-        "CL2_BR20_2020_1000_4212.laz": 8340310,
-        "CL2_BR20_2020_1000_4213.laz": 6094309,
-        "CL2_BR20_2020_1000_4214.laz": 8492543,
+        "CL2_BR21_2020_1000_4704.laz": 20851153,
+        "CL2_BR21_2020_1000_4705.laz": 19749374,
+        "CL2_BR21_2020_1000_4706.laz": 17977826,
+        "CL2_BR21_2020_1000_4804.laz": 18379794,
         DATASETS[0] + "_TileIndex.zip": 1125874,
     }
 
@@ -80,7 +77,8 @@ class ProcessorRemoteAllWestportTest(unittest.TestCase):
         # Load in environment variables to get and set the private API keys
         dotenv.load_dotenv()
         linz_key = os.environ.get("LINZ_API", None)
-        cls.instructions["apis"]["linz"]["key"] = linz_key
+        cls.instructions["apis"]["vector"]["linz"]["key"] = linz_key
+        cls.instructions["apis"]["raster"]["linz"]["key"] = linz_key
 
         # Remove any files from last test, then create a results directory
         cls.cache_dir = test_path / "data"
@@ -89,23 +87,16 @@ class ProcessorRemoteAllWestportTest(unittest.TestCase):
         cls.results_dir.mkdir()
 
         # Create fake catchment boundary
-        x0 = 1473354
-        x1 = 1473704
-        x2 = 1474598
-        y0 = 5377655
-        y1 = 5377335
-        y2 = 5376291
-        y3 = 5375824
+        x0 = 1493600
+        x1 = 1494400
+        y0 = 5372300
+        y1 = 5371700
         catchment = shapely.geometry.Polygon(
             [
                 (x0, y0),
-                (x0, y3),
-                (x2, y3),
-                (x2, y2),
-                (x1, y2),
+                (x0, y1),
                 (x1, y1),
-                (x2, y1),
-                (x2, y0),
+                (x1, y0),
             ]
         )
         catchment = geopandas.GeoSeries([catchment])

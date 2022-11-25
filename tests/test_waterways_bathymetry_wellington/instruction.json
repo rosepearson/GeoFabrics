@@ -22,17 +22,21 @@
 		"closed_waterways_bathymetry_benchmark": "closed_waterways_elevation_benchmark.geojson"
 	},
 	"apis": {
-		"open_topography": {
-			"Wellington_2013": {
-				"crs": {
-					"horizontal": 2193,
-					"vertical": 7839
+		"lidar": {
+			"open_topography": {
+				"Wellington_2013": {
+					"crs": {
+						"horizontal": 2193,
+						"vertical": 7839
+					}
 				}
 			}
 		},
-		"linz": {
-			"land": {
-				"layers": [51559]
+		"vector": {
+			"linz": {
+				"land": {
+					"layers": [51559]
+				}
 			}
 		}
 	},
