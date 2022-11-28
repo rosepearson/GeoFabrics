@@ -214,6 +214,7 @@ class BaseProcessor(abc.ABC):
             "interpolation_method": None,
             "elevation_range": None,
             "lidar_interpolation_method": "idw",
+            "download_limit_gbytes": 100,
         }
 
         assert key in defaults or key in self.instructions["general"], (
@@ -238,7 +239,7 @@ class BaseProcessor(abc.ABC):
             The string identifying the instruction
         """
 
-        defaults = {"number_of_cores": 1, "chunk_size": None}
+        defaults = {"number_of_cores": 1, "chunk_size": None, "memory_limit": "10GiB"}
 
         assert key in defaults or key in self.instructions["processing"], (
             f"The key: {key} is missing "
@@ -530,6 +531,9 @@ class BaseProcessor(abc.ABC):
                 cache_path=self.get_instruction_path("local_cache"),
                 search_polygon=search_polygon,
                 verbose=True,
+                download_limit_gbytes=self.get_instruction_general(
+                    "download_limit_gbytes"
+                ),
             )
             # Loop through each specified dataset and download it
             for dataset_name in self.instructions["apis"][api_type][
@@ -650,6 +654,7 @@ class RawLidarDemGenerator(BaseProcessor):
             "n_workers": self.get_processing_instructions("number_of_cores"),
             "threads_per_worker": 1,
             "processes": True,
+            "memory_limit": self.get_processing_instructions("memory_limit"),
         }
         with distributed.LocalCluster(**cluster_kwargs) as cluster, distributed.Client(
             cluster
@@ -888,6 +893,7 @@ class RoughnessLengthGenerator(BaseProcessor):
             "n_workers": self.get_processing_instructions("number_of_cores"),
             "threads_per_worker": 1,
             "processes": True,
+            "memory_limit": self.get_processing_instructions("memory_limit"),
         }
         with distributed.LocalCluster(**cluster_kwargs) as cluster, distributed.Client(
             cluster
