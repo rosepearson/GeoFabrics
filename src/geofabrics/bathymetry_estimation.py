@@ -613,7 +613,7 @@ class ChannelCharacteristics:
 
         assert len(sampled_channel) == 1, (
             "Expect only one polyline "
-            f"geometry per channel. Instead got {len(channel_polyline)}"
+            f"geometry per channel. Instead got {len(sampled_channel)}"
         )
 
         (x_array, y_array) = sampled_channel.iloc[0].geometry.xy
