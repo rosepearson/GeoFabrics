@@ -971,7 +971,7 @@ class RiverMouthFan:
         ocean_contours = self._get_ocean_contours(max(river_mouth_elevations))
 
         # Clip to fan
-        ocean_contours = ocean_contours.clip(fan_polygon.buffer(1))
+        ocean_contours = ocean_contours.clip(fan_polygon)
 
         # Cycle through contours finding the nearest contour to intersect the fan
         distance = numpy.inf
@@ -985,7 +985,6 @@ class RiverMouthFan:
                     distance = intersection_line_i.distance(mouth_point)
                     intersection_line = intersection_line_i
                     end_depth = row[self.ocean_contour_depth_label]
-
         assert distance < numpy.inf, (
             "There must be at least one ocean "
             "contour within the max length fan polygon."
