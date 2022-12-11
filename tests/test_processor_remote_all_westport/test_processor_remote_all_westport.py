@@ -25,7 +25,7 @@ from src.geofabrics import processor
 
 class ProcessorRemoteAllWestportTest(unittest.TestCase):
     """Test the DemGenerator class functionality for remote LiDAR tiles and remote
-    Bathymetry contours, a remote reference DEM and a remote land outline by downloading
+    Bathymetry contours, a remote coarse DEM and a remote land outline by downloading
     files from OpenTopography and the LINZ data portal within a small region and then
     generating a DEM. All files are deleted after checking the DEM.
 
@@ -129,14 +129,14 @@ class ProcessorRemoteAllWestportTest(unittest.TestCase):
         )
 
         # Cycle through all folders within the cache dir deleting their contents
-        for path in cls.cache_dir.iterdir():
+        """for path in cls.cache_dir.iterdir():
             if path.is_dir():
                 for file in path.glob("*"):  # only files
                     if file.is_file():
                         file.unlink()
                     elif file.is_dir():
                         shutil.rmtree(file)
-                shutil.rmtree(path)
+                shutil.rmtree(path)"""
 
     def test_correct_datasets(self):
         """A test to see if the correct datasets were downloaded"""

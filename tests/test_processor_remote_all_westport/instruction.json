@@ -37,7 +37,7 @@
 		},
 		"raster": {
 			"linz": {
-				"reference_dems": {
+				"coarse_dems": {
 					"layers": [51768]
 				}
 			}
