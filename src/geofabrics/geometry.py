@@ -968,9 +968,7 @@ class RiverMouthFan:
         )
 
         # Load in ocean depth contours
-        ocean_contours = self._get_ocean_contours(
-            max(river_mouth_elevations)
-        )
+        ocean_contours = self._get_ocean_contours(max(river_mouth_elevations))
 
         # Clip to fan
         ocean_contours = ocean_contours.clip(fan_polygon.buffer(1))
