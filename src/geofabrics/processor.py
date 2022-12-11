@@ -13,7 +13,7 @@ import abc
 import logging
 import distributed
 import rioxarray
-import pandas
+import copy
 import geopandas
 import datetime
 import shapely
@@ -44,12 +44,20 @@ class BaseProcessor(abc.ABC):
 
     def create_metadata(self) -> dict:
         """A clase to create metadata to be added as netCDF attributes."""
+
+        # Ensure no senstive key information is printed out as part of the instructions
+        cleaned_instructions = copy.deepcopy(self.instructions)
+        if "apis" in cleaned_instructions:
+            for api_type in cleaned_instructions["apis"].keys():
+                for data_service in cleaned_instructions["apis"][api_type].keys():
+                    if "key" in data_service:
+                        cleaned_instructions["apis"][api_type]["key"].pop()
         metadata = {
             "library_name": "GeoFabrics",
             "library_version": version.__version__,
             "class_name": self.__class__.__name__,
             "utc_time": datetime.datetime.now(datetime.timezone.utc).isoformat(),
-            "instructions": self.instructions,
+            "instructions": cleaned_instructions,
         }
         return metadata
 
