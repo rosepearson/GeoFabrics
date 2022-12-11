@@ -595,7 +595,7 @@ class BaseProcessor(abc.ABC):
 
 class RawLidarDemGenerator(BaseProcessor):
     """RawLidarDemGenerator executes a pipeline for creating a DEM from LiDAR and
-    optionally a reference DEM. The data sources and pipeline logic is defined in the
+    optionally a coarse DEM. The data sources and pipeline logic is defined in the
     json_instructions file.
 
     The `DemGenerator` class contains several important class members:
@@ -604,7 +604,7 @@ class RawLidarDemGenerator(BaseProcessor):
        generation of a DEM as polygons.
      * raw_dem - A combination of LiDAR tiles and any referecnce DEM
        from LiDAR and interpolated from bathymetry.
-     * reference_dem - This optional object defines a background DEM that may be used to
+     * coarse_dem - This optional object defines a background DEM that may be used to
        fill on land gaps in the LiDAR.
 
     See the README.md for usage examples or GeoFabrics/tests/ for examples of usage and
@@ -616,7 +616,7 @@ class RawLidarDemGenerator(BaseProcessor):
         super(RawLidarDemGenerator, self).__init__(json_instructions=json_instructions)
 
         self.raw_dem = None
-        self.reference_dem = None
+        self.coarse_dem = None
 
     def run(self):
         """This method executes the geofabrics generation pipeline to produce geofabric
@@ -671,8 +671,8 @@ class RawLidarDemGenerator(BaseProcessor):
                 chunk_size=self.get_processing_instructions("chunk_size"),
                 metadata=self.create_metadata(),
             )  # Note must be called after all others if it is to be complete
-        # Load in reference DEM if any significant land/foreshore not covered by LiDAR
-        if self.check_vector_or_raster(key="reference_dems", api_type="raster"):
+        # Load in coarse DEM if any significant land/foreshore not covered by LiDAR
+        if self.check_vector_or_raster(key="coarse_dems", api_type="raster"):
             area_without_lidar = (
                 self.catchment_geometry.land_and_foreshore_without_lidar(
                     self.raw_dem.extents
@@ -683,26 +683,26 @@ class RawLidarDemGenerator(BaseProcessor):
                 > self.catchment_geometry.land_and_foreshore.area.sum() * area_threshold
             ):
 
-                reference_dem_paths = self.get_vector_or_raster_paths(
-                    key="reference_dems", api_type="raster"
+                coarse_dem_paths = self.get_vector_or_raster_paths(
+                    key="coarse_dems", api_type="raster"
                 )
-                assert len(reference_dem_paths) == 1, (
-                    f"{len(reference_dem_paths)} reference_dems specified, but only one"
-                    f" supported currently. reference_dems: {reference_dem_paths}"
+                assert len(coarse_dem_paths) == 1, (
+                    f"{len(coarse_dem_paths)} coarse_dems specified, but only one"
+                    f" supported currently. coarse_dems: {coarse_dem_paths}"
                 )
 
-                logging.info(f"Incorporating background DEM: {reference_dem_paths}")
+                logging.info(f"Incorporating background DEM: {coarse_dem_paths}")
 
                 # Load in background DEM - cut away within the LiDAR extents
-                self.reference_dem = dem.ReferenceDem(
-                    dem_file=reference_dem_paths[0],
+                self.coarse_dem = dem.CoarseDem(
+                    dem_file=coarse_dem_paths[0],
                     catchment_geometry=self.catchment_geometry,
                     set_foreshore=self.get_instruction_general("drop_offshore_lidar"),
                     exclusion_extent=self.raw_dem.extents,
                 )
 
-                # Add the reference DEM data where there's no LiDAR updating the extents
-                self.raw_dem.add_reference_dem(reference_dem=self.reference_dem)
+                # Add the coarse DEM data where there's no LiDAR updating the extents
+                self.raw_dem.add_coarse_dem(coarse_dem=self.coarse_dem)
         # save raw DEM and extents
         logging.info("In processor.DemGenerator - write out the raw DEM")
         self.raw_dem.dem.to_netcdf(
