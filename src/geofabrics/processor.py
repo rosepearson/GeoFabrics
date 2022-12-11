@@ -110,7 +110,7 @@ class BaseProcessor(abc.ABC):
         else:
             assert False, (
                 f"The key `{key}` is either missing from data "
-                "paths, not specified in the defaults: {defaults}"
+                f"paths, not specified in the defaults: {defaults}"
             )
 
     def check_instruction_path(self, key: str) -> bool:

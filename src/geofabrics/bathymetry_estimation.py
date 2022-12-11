@@ -613,7 +613,7 @@ class ChannelCharacteristics:
 
         assert len(sampled_channel) == 1, (
             "Expect only one polyline "
-            "geometry per channel. Instead got {len(channel_polyline)}"
+            f"geometry per channel. Instead got {len(sampled_channel)}"
         )
 
         (x_array, y_array) = sampled_channel.iloc[0].geometry.xy
@@ -1008,7 +1008,7 @@ class ChannelCharacteristics:
         for j in range(len(cross_section_elevations["gnd_elevations"])):
             logging.info(
                 f"Variable thresholding cross section {j} out of "
-                "{len(cross_section_elevations['gnd_elevations'])}"
+                f"{len(cross_section_elevations['gnd_elevations'])}"
             )
             assert (
                 len(cross_section_elevations["gnd_elevations"][j])
