@@ -807,8 +807,9 @@ class RiverMouthFan:
 
     def _get_ocean_contours(
         self, river_mouth_depth, depth_sign: int = -1, depth_multiplier: int = 2
-    ):
-        """Load in the ocean contours.
+    ) -> geopandas.GeoDataFrame:
+        """Load in the ocean contours and remove those that are too close to the
+        shoreline to consider as the slope change would be too great.
 
         Parameters:
             river_mouth_depth  The depth in m of the river mouth
@@ -973,7 +974,7 @@ class RiverMouthFan:
         # Clip to fan
         ocean_contours = ocean_contours.clip(fan_polygon)
 
-        # Cycle through contours finding the nearest contour to intersect the fan
+        # Cycle through contours finding the nearest contour to intersect wiith the fan
         distance = numpy.inf
         intersection_line = shapely.geometry.Point()
         end_depth = numpy.nan
