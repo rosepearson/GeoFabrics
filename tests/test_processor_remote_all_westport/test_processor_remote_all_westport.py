@@ -129,14 +129,14 @@ class ProcessorRemoteAllWestportTest(unittest.TestCase):
         )
 
         # Cycle through all folders within the cache dir deleting their contents
-        """for path in cls.cache_dir.iterdir():
+        for path in cls.cache_dir.iterdir():
             if path.is_dir():
                 for file in path.glob("*"):  # only files
                     if file.is_file():
                         file.unlink()
                     elif file.is_dir():
                         shutil.rmtree(file)
-                shutil.rmtree(path)"""
+                shutil.rmtree(path)
 
     def test_correct_datasets(self):
         """A test to see if the correct datasets were downloaded"""
