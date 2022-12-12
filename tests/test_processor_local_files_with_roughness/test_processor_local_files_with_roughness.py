@@ -109,7 +109,7 @@ class ProcessorLocalFilesTest(unittest.TestCase):
         contours.to_file(bathymetry_file)
 
         # Create a reference DEM
-        dem_file = cls.results_dir / "reference_dem.nc"
+        dem_file = cls.results_dir / "coarse_dem.nc"
         dxy = 15
         grid_dem_x, grid_dem_y = numpy.meshgrid(
             numpy.arange(200, 1300, dxy), numpy.arange(-25, 800, dxy)
