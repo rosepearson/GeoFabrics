@@ -1,5 +1,5 @@
 {
-	"rivers": 
+	"rivers":
 	{
 		"output": {
 			"crs": {
@@ -106,7 +106,7 @@
 			"widths": {"drain": 5, "stream": 7.5, "river": 10}
 		}
 	},
-	"dem": 
+	"dem":
 	{
 		"output": {
 			"crs": {

@@ -25,8 +25,8 @@ import scipy.spatial
 from . import geometry
 
 
-class ReferenceDem:
-    """A class to manage reference or background DEMs in the catchment context
+class CoarseDem:
+    """A class to manage coarse or background DEMs in the catchment context
 
     Specifically, clip within the catchment land and foreshore. There is the option to
     clip outside any LiDAR using the
@@ -42,7 +42,7 @@ class ReferenceDem:
         set_foreshore: bool = True,
         exclusion_extent: geopandas.GeoDataFrame = None,
     ):
-        """Load in the reference DEM, clip and extract points"""
+        """Load in the coarse DEM, clip and extract points"""
 
         self.catchment_geometry = catchment_geometry
         self.set_foreshore = set_foreshore
@@ -71,7 +71,7 @@ class ReferenceDem:
 
     @property
     def resolution(self) -> float:
-        """Return the largest dimension of the reference DEM resolution"""
+        """Return the largest dimension of the coarse DEM resolution"""
 
         resolution = self._dem.rio.resolution()
         resolution = max(abs(resolution[0]), abs(resolution[1]))
@@ -96,13 +96,13 @@ class ReferenceDem:
                 > self.catchment_geometry.resolution
                 * self.catchment_geometry.resolution
             ]
-            # Keep the reference DEM where there's no LiDAR & trim outside buffered area
+            # Keep the coarse DEM where there's no LiDAR & trim outside buffered area
             self._extents = buffered_land_and_foreshore.overlay(
                 exclusion_extent,
                 how="difference",
             )
         else:
-            # If no LiDAR - only use the reference DEM on land
+            # If no LiDAR - only use the coarse DEM on land
             self._extents = buffered_land_and_foreshore
         self._dem = self._dem.rio.clip(self._extents.geometry, drop=True)
         self._extract_points()
@@ -152,7 +152,7 @@ class ReferenceDem:
             )
             # Clip DEM to buffered lanzd
             land_dem = self._dem.rio.clip(buffered_land.geometry, drop=True)
-            # get reference DEM points on land
+            # get coarse DEM points on land
             land_flat_z = land_dem.data.flatten()
             land_mask_z = ~numpy.isnan(land_flat_z)
             land_grid_x, land_grid_y = numpy.meshgrid(land_dem.x, land_dem.y)
@@ -187,7 +187,7 @@ class ReferenceDem:
             # Clip DEM to buffered foreshore
             foreshore_dem = self._dem.rio.clip(buffered_foreshore.geometry, drop=True)
 
-            # get reference DEM points on the foreshore - with any positive set to zero
+            # get coarse DEM points on the foreshore - with any positive set to zero
             if self.set_foreshore:
                 foreshore_dem.data[foreshore_dem.data > 0] = 0
             foreshore_flat_z = foreshore_dem.data.flatten()
@@ -205,7 +205,7 @@ class ReferenceDem:
             foreshore_z = []
         assert (
             len(land_x) + len(foreshore_x) > 0
-        ), "The reference DEM has no values on the land or foreshore"
+        ), "The coarse DEM has no values on the land or foreshore"
 
         # combine in an single array
         self._points = numpy.empty(
@@ -226,14 +226,14 @@ class ReferenceDem:
 
     @property
     def points(self) -> numpy.ndarray:
-        """The reference DEM points after any extent or foreshore value
+        """The coarse DEM points after any extent or foreshore value
         filtering."""
 
         return self._points
 
     @property
     def extents(self) -> geopandas.GeoDataFrame:
-        """The extents for the reference DEM"""
+        """The extents for the coarse DEM"""
 
         return self._extents
 
@@ -260,7 +260,7 @@ class DemBase(abc.ABC):
         "ocean bathymetry": 2,
         "rivers and fans": 3,
         "waterways": 4,
-        "reference DEM": 5,
+        "coarse DEM": 5,
         "interpolated": 0,
         "no data": -1,
     }
@@ -1173,7 +1173,7 @@ class LidarBase(DemBase):
 
 class RawDem(LidarBase):
     """A class to manage the creation of a 'raw' DEM from LiDAR tiles, and/or a
-    reference DEM.
+    coarse DEM.
 
     Parameters
     ----------
@@ -1257,7 +1257,7 @@ class RawDem(LidarBase):
 
     def _calculate_raw_extents(self):
         """Define the extents of the DEM with values (i.e. what are the spatial extents
-        of pixels in the DEM that are defined from LiDAR or a reference DEM)."""
+        of pixels in the DEM that are defined from LiDAR or a coarse DEM)."""
 
         # Defines extents where raw DEM values exist
         mask = numpy.logical_not(numpy.isnan(self._dem.z.data))
@@ -1274,7 +1274,7 @@ class RawDem(LidarBase):
         metadata: dict,
     ):
         """Read in all LiDAR files and use to define a 'raw' DEM with elevations in
-        pixels where there is LiDAR or reference  DEM information.
+        pixels where there is LiDAR or coarse DEM information.
 
         Parameters
         ----------
@@ -1360,7 +1360,7 @@ class RawDem(LidarBase):
                 )
             )
 
-            # get reference DEM points on the foreshore - with any positive set to zero
+            # get coarse DEM points on the foreshore - with any positive set to zero
             dem.z.data[mask & (dem.z.data > 0)] = 0
         self._dem = dem
         # Create a polygon defining the region where there are dense DEM values
@@ -1609,14 +1609,14 @@ class RawDem(LidarBase):
             ]
         return dem
 
-    def add_reference_dem(self, reference_dem: ReferenceDem):
-        """Fill gaps in dense DEM from areas with no LiDAR with the reference DEM.
+    def add_coarse_dem(self, coarse_dem: CoarseDem):
+        """Fill gaps in dense DEM from areas with no LiDAR with the coarse DEM.
         Perform linear interpolation.
 
         Currently doesn't use chunking - this may be required if a large area is covered
-        by the reference DEM."""
+        by the coarse DEM."""
 
-        logging.info("Add a reference DEM to fill areas outside the LiDAR extents")
+        logging.info("Add a coarse DEM to fill areas outside the LiDAR extents")
         # Only rasterise on land/foreshore and outside where there is LiDAR
         region_to_rasterise = self.catchment_geometry.land_and_foreshore.overlay(
             self._extents, how="difference"
@@ -1631,15 +1631,15 @@ class RawDem(LidarBase):
 
         if mask.sum() == 0:
             logging.warning(
-                "RawDem.add_reference_dem: LiDAR covers all raster values so the "
-                "reference DEM is being ignored."
+                "RawDem.add_coarse_dem: LiDAR covers all raster values so the "
+                "coarse DEM is being ignored."
             )
             return
         # create dictionary defining raster options
-        # Set search radius to diagonal reference cell length to ensure corners covered
+        # Set search radius to the diagonal cell length to ensure corners covered
         raster_options = {
             "raster_type": geometry.RASTER_TYPE,
-            "radius": reference_dem.resolution * numpy.sqrt(2),
+            "radius": coarse_dem.resolution * numpy.sqrt(2),
             "method": "linear",
         }
         # Get the grid locations overwhich to perform averaging
@@ -1650,20 +1650,20 @@ class RawDem(LidarBase):
         xy_out[:, 0] = grid_x[mask]
         xy_out[:, 1] = grid_y[mask]
 
-        # Perform specified averaging from the reference DEM where there is no data
+        # Perform specified averaging from the coarse DEM where there is no data
         z_flat = elevation_from_points(
-            point_cloud=reference_dem.points, xy_out=xy_out, options=raster_options
+            point_cloud=coarse_dem.points, xy_out=xy_out, options=raster_options
         )
 
         # Update the DEM
         self._dem.z.data[mask] = z_flat
-        # Update the source layer - where defined by the reference DEM and set foreshore
+        # Update the source layer - where defined by the coarse DEM and set foreshore
         self._dem.source_class.data[
             mask & numpy.logical_not(numpy.isnan(self._dem.z.data))
-        ] = self.SOURCE_CLASSIFICATION["reference DEM"]
+        ] = self.SOURCE_CLASSIFICATION["coarse DEM"]
         if (
             self.catchment_geometry.foreshore.area.sum() > 0
-            and reference_dem.set_foreshore
+            and coarse_dem.set_foreshore
         ):
             foreshore_mask = numpy.logical_not(
                 numpy.isnan(
@@ -1889,7 +1889,7 @@ class RoughnessDem(LidarBase):
         ] = self.ROUGHNESS_DEFAULTS["water"]
         # Set roughness where land and no LiDAR
         self._dem.zo.data[
-            self._dem.source_class.data == self.SOURCE_CLASSIFICATION["reference DEM"]
+            self._dem.source_class.data == self.SOURCE_CLASSIFICATION["coarse DEM"]
         ] = self.ROUGHNESS_DEFAULTS[
             "land"
         ]  # or LiDAR with no roughness estimate

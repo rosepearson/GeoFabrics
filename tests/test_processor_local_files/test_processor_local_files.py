@@ -23,7 +23,7 @@ from src.geofabrics import processor
 
 class ProcessorLocalFilesTest(unittest.TestCase):
     """Tests the basic DemGenerator processor class for a simple example with land,
-    offshore, a reference DEM and
+    offshore, a coarse DEM and
     LiDAR using the data specified in the instruction.json
 
     Tests run include:
@@ -108,8 +108,8 @@ class ProcessorLocalFilesTest(unittest.TestCase):
         contours = contours.set_crs(cls.instructions["output"]["crs"]["horizontal"])
         contours.to_file(bathymetry_file)
 
-        # Create a reference DEM
-        dem_file = cls.results_dir / "reference_dem.nc"
+        # Create a coarse DEM
+        dem_file = cls.results_dir / "coarse_dem.nc"
         dxy = 15
         grid_dem_x, grid_dem_y = numpy.meshgrid(
             numpy.arange(200, 1300, dxy), numpy.arange(-25, 800, dxy)
