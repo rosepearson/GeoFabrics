@@ -807,8 +807,9 @@ class RiverMouthFan:
 
     def _get_ocean_contours(
         self, river_mouth_depth, depth_sign: int = -1, depth_multiplier: int = 2
-    ):
-        """Load in the ocean contours.
+    ) -> geopandas.GeoDataFrame:
+        """Load in the ocean contours and remove those that are too close to the
+        shoreline to consider as the slope change would be too great.
 
         Parameters:
             river_mouth_depth  The depth in m of the river mouth
@@ -826,19 +827,16 @@ class RiverMouthFan:
         depth_label = self.ocean_contour_depth_label
 
         # Determine the end depth and filter the contours to include only these contours
-        end_depth = ocean_contours[depth_label][
+        ocean_contours = ocean_contours[
             ocean_contours[depth_label]
             > depth_multiplier * river_mouth_depth * depth_sign
-        ].min()
-        ocean_contours = ocean_contours[
-            ocean_contours[depth_label] == end_depth
         ].reset_index(drop=True)
 
         assert (
             len(ocean_contours) > 0
-        ), "No contours exist with a depth 2x the river mouth depth. "
+        ), f"No contours exist with a depth {depth_multiplier}x the river mouth depth. "
 
-        return ocean_contours, end_depth
+        return ocean_contours
 
     def _bathymetry(
         self,
@@ -971,13 +969,15 @@ class RiverMouthFan:
         )
 
         # Load in ocean depth contours
-        ocean_contours, end_depth = self._get_ocean_contours(
-            max(river_mouth_elevations)
-        )
+        ocean_contours = self._get_ocean_contours(max(river_mouth_elevations))
 
-        # Cycle through contours finding the nearest contour to intersect the fan
+        # Clip to fan
+        ocean_contours = ocean_contours.clip(fan_polygon)
+
+        # Cycle through contours finding the nearest contour to intersect wiith the fan
         distance = numpy.inf
         intersection_line = shapely.geometry.Point()
+        end_depth = numpy.nan
 
         for i, row in ocean_contours.iterrows():
             if row.geometry.intersects(fan_polygon):
@@ -985,6 +985,7 @@ class RiverMouthFan:
                 if intersection_line_i.distance(mouth_point) < distance:
                     distance = intersection_line_i.distance(mouth_point)
                     intersection_line = intersection_line_i
+                    end_depth = row[self.ocean_contour_depth_label]
         assert distance < numpy.inf, (
             "There must be at least one ocean "
             "contour within the max length fan polygon."

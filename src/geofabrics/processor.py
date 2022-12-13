@@ -13,7 +13,7 @@ import abc
 import logging
 import distributed
 import rioxarray
-import pandas
+import copy
 import geopandas
 import datetime
 import shapely
@@ -24,6 +24,7 @@ from . import bathymetry_estimation
 from . import version
 import geoapis.lidar
 import geoapis.vector
+import geoapis.raster
 from . import dem
 
 
@@ -43,12 +44,20 @@ class BaseProcessor(abc.ABC):
 
     def create_metadata(self) -> dict:
         """A clase to create metadata to be added as netCDF attributes."""
+
+        # Ensure no senstive key information is printed out as part of the instructions
+        cleaned_instructions = copy.deepcopy(self.instructions)
+        if "apis" in cleaned_instructions:
+            for api_type in cleaned_instructions["apis"].keys():
+                for data_service in cleaned_instructions["apis"][api_type].keys():
+                    if "key" in data_service:
+                        cleaned_instructions["apis"][api_type]["key"].pop()
         metadata = {
             "library_name": "GeoFabrics",
             "library_version": version.__version__,
             "class_name": self.__class__.__name__,
             "utc_time": datetime.datetime.now(datetime.timezone.utc).isoformat(),
-            "instructions": self.instructions,
+            "instructions": cleaned_instructions,
         }
         return metadata
 
@@ -109,7 +118,7 @@ class BaseProcessor(abc.ABC):
         else:
             assert False, (
                 f"The key `{key}` is either missing from data "
-                "paths, not specified in the defaults: {defaults}"
+                f"paths, not specified in the defaults: {defaults}"
             )
 
     def check_instruction_path(self, key: str) -> bool:
@@ -229,7 +238,14 @@ class BaseProcessor(abc.ABC):
     def get_processing_instructions(self, key: str):
         """Return the processing instruction from the instruction file or
         return the default value if not specified in the instruction file. If
-        the default is used it is added to the instructions."""
+        the default is used it is added to the instructions.
+
+        Parameters
+        ----------
+
+        key
+            The string identifying the instruction
+        """
 
         defaults = {"number_of_cores": 1, "chunk_size": None, "memory_limit": "10GiB"}
 
@@ -245,44 +261,71 @@ class BaseProcessor(abc.ABC):
             self.instructions["processing"][key] = defaults[key]
             return defaults[key]
 
-    def check_apis(self, key) -> bool:
+    def check_apis(self, key: str, api_type: str) -> bool:
         """Check to see if APIs are included in the instructions and if the key is
-        included in specified apis"""
+        included in specified apis
 
-        if "apis" in self.instructions:
+        Parameters
+        ----------
+
+        key
+            The string identifying the vector/raster
+        api_type
+            The string identifying if the key is a vector or raster
+        """
+
+        if "apis" in self.instructions and api_type in self.instructions["apis"]:
             # 'apis' included instructions and Key included in the APIs
-            return key in self.instructions["apis"]
+            return key in self.instructions["apis"][api_type]
         else:
             return False
 
-    def check_vector(self, key) -> bool:
-        """Check to see if vector key (i.e. land, bathymetry_contours, etc) is included
-        either as a file path, or within any of the vector API's (i.e. LINZ or LRIS).
+    def check_vector_or_raster(self, key: str, api_type: str) -> bool:
+        """Check to see if vector or raster key (i.e. land, bathymetry_contours, etc) is
+        included either as a file path, or within any of API's (i.e. LINZ or LRIS).
+
+        Parameters
+        ----------
+
+        key
+            The string identifying the vector/raster
+        api_type
+            The string identifying if the key is a vector or raster
         """
 
         data_services = [
             "linz",
             "lris",
+            "statsnz",
         ]  # This list will increase as geopais is extended to support more vector APIs
 
         if "data_paths" in self.instructions and key in self.instructions["data_paths"]:
             # Key included in the data paths
             return True
-        elif "apis" in self.instructions:
+        elif "apis" in self.instructions and api_type in self.instructions["apis"]:
             for data_service in data_services:
                 if (
-                    data_service in self.instructions["apis"]
-                    and key in self.instructions["apis"][data_service]
+                    data_service in self.instructions["apis"][api_type]
+                    and key in self.instructions["apis"][api_type][data_service]
                 ):
                     # Key is included in one or more of the data_service's APIs
                     return True
         else:
             return False
 
-    def get_vector_paths(self, key) -> list:
-        """Get the path to the vector key data included either as a file path or as a
-        LINZ API. Return all paths where the vector key is specified. In the case that
-        an API is specified ensure the data is fetched as well."""
+    def get_vector_or_raster_paths(self, key: str, api_type: str) -> list:
+        """Get the path to the vector/raster key data included either as a file path or
+        as an API. Return all paths where the vector key is specified. In the case that
+        an API is specified ensure the data is fetched as well.
+
+        Parameters
+        ----------
+
+        key
+            The string identifying the vector/raster
+        api_type
+            The string identifying if the key is a vector or raster
+        """
 
         paths = []
 
@@ -294,16 +337,35 @@ class BaseProcessor(abc.ABC):
                 paths.extend(data_paths)
             else:
                 paths.append(data_paths)
-        # Define the supported vector 'apis' keywords and the geoapis class for
-        # accessing that data service
-        data_services = {"linz": geoapis.vector.Linz, "lris": geoapis.vector.Lris}
-
+        if api_type == "vector":
+            # Define the supported vector 'apis' keywords and the geoapis class for
+            # accessing that data service
+            data_services = {
+                "linz": geoapis.vector.Linz,
+                "lris": geoapis.vector.Lris,
+                "statsnz": geoapis.vector.StatsNz,
+            }
+        elif api_type == "raster":
+            data_services = {
+                "linz": geoapis.raster.Linz,
+                "lris": geoapis.raster.Lris,
+                "statsnz": geoapis.raster.StatsNz,
+            }
+        else:
+            logging.warning(f"Unsupported API type specified: {api_type}. Ignored.")
+            return
         # Check the instructions for vector data hosted in the supported vector data
         # services: LINZ and LRIS
+        cache_dir = pathlib.Path(self.get_instruction_path("local_cache"))
+        bounding_polygon = (
+            self.catchment_geometry.catchment
+            if self.catchment_geometry is not None
+            else None
+        )
         for data_service in data_services.keys():
             if (
-                self.check_apis(data_service)
-                and key in self.instructions["apis"][data_service]
+                self.check_apis(data_service, api_type=api_type)
+                and key in self.instructions["apis"][api_type][data_service]
             ):
 
                 # Get the location to cache vector data downloaded from data services
@@ -311,54 +373,77 @@ class BaseProcessor(abc.ABC):
                     "Local cache file path must exist to specify thelocation to"
                     + f" download vector data from the vector APIs: {data_services}"
                 )
-                cache_dir = pathlib.Path(self.get_instruction_path("local_cache"))
 
                 # Get the API key for the data_serive being checked
-                assert "key" in self.instructions["apis"][data_service], (
-                    f"A 'key' must be specified for the {data_service} data"
+                assert "key" in self.instructions["apis"][api_type][data_service], (
+                    f"A 'key' must be specified for the {api_type}:{data_service} data"
                     "  service instead the instruction only includes: "
-                    f"{self.instructions['apis'][data_service]}"
+                    f"{self.instructions['apis'][api_type][data_service]}"
                 )
-                api_key = self.instructions["apis"][data_service]["key"]
+                api_key = self.instructions["apis"][api_type][data_service]["key"]
 
                 # Instantiate the geoapis object for downloading vectors from the data
                 # service.
-                bounding_polygon = (
-                    self.catchment_geometry.catchment
-                    if self.catchment_geometry is not None
-                    else None
-                )
-                vector_fetcher = data_services[data_service](
-                    api_key, bounding_polygon=bounding_polygon, verbose=True
-                )
-
-                vector_instruction = self.instructions["apis"][data_service][key]
-                geometry_type = (
-                    vector_instruction["geometry_name "]
-                    if "geometry_name " in vector_instruction
-                    else None
-                )
-
-                logging.info(
-                    f"Downloading vector layers {vector_instruction['layers']} from the"
-                    f" {data_service} data service"
-                )
-
-                # Cycle through all layers specified - save each & add to the path list
-                for layer in vector_instruction["layers"]:
-                    # Use the run method to download each layer in turn
-                    vector = vector_fetcher.run(layer, geometry_type)
-
-                    # Ensure directory for layer and save vector file
-                    layer_dir = cache_dir / str(layer)
-                    layer_dir.mkdir(parents=True, exist_ok=True)
-                    vector_dir = layer_dir / key
-                    vector.to_file(vector_dir)
-                    shutil.make_archive(
-                        base_name=vector_dir, format="zip", root_dir=vector_dir
+                if api_type == "vector":
+                    fetcher = data_services[data_service](
+                        api_key, bounding_polygon=bounding_polygon, verbose=True
                     )
-                    shutil.rmtree(vector_dir)
-                    paths.append(layer_dir / f"{key}.zip")
+
+                    api_instruction = self.instructions["apis"][api_type][data_service][
+                        key
+                    ]
+                    geometry_type = (
+                        api_instruction["geometry_name "]
+                        if "geometry_name " in api_instruction
+                        else None
+                    )
+
+                    logging.info(
+                        f"Downloading vector layers {api_instruction['layers']} from"
+                        f" the {data_service} data service"
+                    )
+
+                    # Cycle through all layers specified - save each & add to the path
+                    # list
+                    for layer in api_instruction["layers"]:
+                        # Use the run method to download each layer in turn
+                        vector = fetcher.run(layer, geometry_type)
+
+                        # Ensure directory for layer and save vector file
+                        layer_dir = cache_dir / str(layer)
+                        layer_dir.mkdir(parents=True, exist_ok=True)
+                        vector_dir = layer_dir / key
+                        vector.to_file(vector_dir)
+                        shutil.make_archive(
+                            base_name=vector_dir, format="zip", root_dir=vector_dir
+                        )
+                        shutil.rmtree(vector_dir)
+                        paths.append(layer_dir / f"{key}.zip")
+                elif api_type == "raster":
+                    fetcher = data_services[data_service](
+                        key=api_key,
+                        bounding_polygon=bounding_polygon,
+                        cache_path=cache_dir,
+                    )
+
+                    api_instruction = self.instructions["apis"][api_type][data_service][
+                        key
+                    ]
+
+                    logging.info(
+                        f"Downloading rater layers {api_instruction['layers']} from"
+                        f" the {data_service} data service"
+                    )
+
+                    # Cycle through all layers specified - save each & add to the path
+                    # list
+                    for layer in api_instruction["layers"]:
+                        # Use the run method to download each layer in turn
+                        raster_paths = fetcher.run(layer)
+
+                        # Add the downloaded to paths
+                        for raster_path in raster_paths:
+                            paths.append(raster_path)
         return paths
 
     def get_lidar_dataset_crs(self, data_service, dataset_name) -> dict:
@@ -367,15 +452,18 @@ class BaseProcessor(abc.ABC):
         will later be used to override the CRS encoded in the LAS files.
         """
 
+        api_type = "lidar"
         apis_instructions = self.instructions["apis"]
 
         if (
-            self.check_apis(data_service)
-            and type(apis_instructions[data_service]) is dict
-            and dataset_name in apis_instructions[data_service]
-            and type(apis_instructions[data_service][dataset_name]) is dict
+            self.check_apis(data_service, api_type=api_type)
+            and type(apis_instructions[api_type][data_service]) is dict
+            and dataset_name in apis_instructions[api_type][data_service]
+            and type(apis_instructions[api_type][data_service][dataset_name]) is dict
         ):
-            dataset_instruction = apis_instructions[data_service][dataset_name]
+            dataset_instruction = apis_instructions[api_type][data_service][
+                dataset_name
+            ]
 
             if (
                 "crs" in dataset_instruction
@@ -405,7 +493,7 @@ class BaseProcessor(abc.ABC):
             )
             return None
 
-    def get_lidar_file_list(self, data_service) -> dict:
+    def get_lidar_file_list(self) -> dict:
         """Return a dictionary with three enties 'file_paths', 'crs' and
         'tile_index_file'. The 'file_paths' contains a list of LiDAR tiles to process.
 
@@ -425,12 +513,14 @@ class BaseProcessor(abc.ABC):
         """
 
         lidar_dataset_index = 0  # currently only support one LiDAR dataset
+        data_service = "open_topography"  # currently only open topography supported
+        api_type = "lidar"
 
         lidar_dataset_info = {}
 
         # See if 'OpenTopography' or another data_service has been specified as an area
         # to look first
-        if self.check_apis(data_service):
+        if self.check_apis(data_service, api_type="lidar"):
 
             assert self.check_instruction_path("local_cache"), (
                 "A 'local_cache' must be specified under the 'file_paths' in the "
@@ -454,7 +544,9 @@ class BaseProcessor(abc.ABC):
                 ),
             )
             # Loop through each specified dataset and download it
-            for dataset_name in self.instructions["apis"][data_service].keys():
+            for dataset_name in self.instructions["apis"][api_type][
+                data_service
+            ].keys():
                 logging.info(f"Fetching dataset: {dataset_name}")
                 self.lidar_fetcher.run(dataset_name)
             assert len(self.lidar_fetcher.dataset_prefixes) == 1, (
@@ -494,7 +586,7 @@ class BaseProcessor(abc.ABC):
         catchment_geometry = geometry.CatchmentGeometry(
             catchment_dirs, self.get_crs(), self.get_resolution(), foreshore_buffer=2
         )
-        land_dirs = self.get_vector_paths("land")
+        land_dirs = self.get_vector_or_raster_paths(key="land", api_type="vector")
         assert len(land_dirs) == 1, (
             f"{len(land_dirs)} catchment_boundary's provided, where only one is "
             f"supported. Specficially land_dirs = {land_dirs}."
@@ -511,7 +603,7 @@ class BaseProcessor(abc.ABC):
 
 class RawLidarDemGenerator(BaseProcessor):
     """RawLidarDemGenerator executes a pipeline for creating a DEM from LiDAR and
-    optionally a reference DEM. The data sources and pipeline logic is defined in the
+    optionally a coarse DEM. The data sources and pipeline logic is defined in the
     json_instructions file.
 
     The `DemGenerator` class contains several important class members:
@@ -520,7 +612,7 @@ class RawLidarDemGenerator(BaseProcessor):
        generation of a DEM as polygons.
      * raw_dem - A combination of LiDAR tiles and any referecnce DEM
        from LiDAR and interpolated from bathymetry.
-     * reference_dem - This optional object defines a background DEM that may be used to
+     * coarse_dem - This optional object defines a background DEM that may be used to
        fill on land gaps in the LiDAR.
 
     See the README.md for usage examples or GeoFabrics/tests/ for examples of usage and
@@ -532,7 +624,7 @@ class RawLidarDemGenerator(BaseProcessor):
         super(RawLidarDemGenerator, self).__init__(json_instructions=json_instructions)
 
         self.raw_dem = None
-        self.reference_dem = None
+        self.coarse_dem = None
 
     def run(self):
         """This method executes the geofabrics generation pipeline to produce geofabric
@@ -553,7 +645,7 @@ class RawLidarDemGenerator(BaseProcessor):
         self.catchment_geometry = self.create_catchment()
 
         # Get LiDAR data file-list - this may involve downloading lidar files
-        lidar_dataset_info = self.get_lidar_file_list("open_topography")
+        lidar_dataset_info = self.get_lidar_file_list()
 
         # setup the raw DEM generator
         self.raw_dem = dem.RawDem(
@@ -587,8 +679,8 @@ class RawLidarDemGenerator(BaseProcessor):
                 chunk_size=self.get_processing_instructions("chunk_size"),
                 metadata=self.create_metadata(),
             )  # Note must be called after all others if it is to be complete
-        # Load in reference DEM if any significant land/foreshore not covered by LiDAR
-        if self.check_instruction_path("reference_dems"):
+        # Load in coarse DEM if any significant land/foreshore not covered by LiDAR
+        if self.check_vector_or_raster(key="coarse_dems", api_type="raster"):
             area_without_lidar = (
                 self.catchment_geometry.land_and_foreshore_without_lidar(
                     self.raw_dem.extents
@@ -599,27 +691,26 @@ class RawLidarDemGenerator(BaseProcessor):
                 > self.catchment_geometry.land_and_foreshore.area.sum() * area_threshold
             ):
 
-                assert len(self.get_instruction_path("reference_dems")) == 1, (
-                    f"{len(self.get_instruction_path('reference_dems'))} reference_dems"
-                    " specified, but only one supported currently. reference_dems: "
-                    f"{self.get_instruction_path('reference_dems')}"
+                coarse_dem_paths = self.get_vector_or_raster_paths(
+                    key="coarse_dems", api_type="raster"
+                )
+                assert len(coarse_dem_paths) == 1, (
+                    f"{len(coarse_dem_paths)} coarse_dems specified, but only one"
+                    f" supported currently. coarse_dems: {coarse_dem_paths}"
                 )
 
-                logging.info(
-                    "Incorporating background DEM: "
-                    f"{self.get_instruction_path('reference_dems')}"
-                )
+                logging.info(f"Incorporating background DEM: {coarse_dem_paths}")
 
                 # Load in background DEM - cut away within the LiDAR extents
-                self.reference_dem = dem.ReferenceDem(
-                    dem_file=self.get_instruction_path("reference_dems")[0],
+                self.coarse_dem = dem.CoarseDem(
+                    dem_file=coarse_dem_paths[0],
                     catchment_geometry=self.catchment_geometry,
                     set_foreshore=self.get_instruction_general("drop_offshore_lidar"),
                     exclusion_extent=self.raw_dem.extents,
                 )
 
-                # Add the reference DEM data where there's no LiDAR updating the extents
-                self.raw_dem.add_reference_dem(reference_dem=self.reference_dem)
+                # Add the coarse DEM data where there's no LiDAR updating the extents
+                self.raw_dem.add_coarse_dem(coarse_dem=self.coarse_dem)
         # save raw DEM and extents
         logging.info("In processor.DemGenerator - write out the raw DEM")
         self.raw_dem.dem.to_netcdf(
@@ -671,13 +762,15 @@ class HydrologicDemGenerator(BaseProcessor):
             self.hydrologic_dem.extents
         ).geometry.area.sum()
         if (
-            self.check_vector("bathymetry_contours")
+            self.check_vector_or_raster(key="bathymetry_contours", api_type="vector")
             and area_without_lidar
             > self.catchment_geometry.offshore.area.sum() * area_threshold
         ):
 
             # Get the bathymetry data directory
-            bathy_contour_dirs = self.get_vector_paths("bathymetry_contours")
+            bathy_contour_dirs = self.get_vector_or_raster_paths(
+                key="bathymetry_contours", api_type="vector"
+            )
             assert len(bathy_contour_dirs) == 1, (
                 f"{len(bathy_contour_dirs)} bathymetry_contours's provided. "
                 f"Specficially {catchment_dirs}. Support has not yet been added for "
@@ -697,13 +790,17 @@ class HydrologicDemGenerator(BaseProcessor):
             # interpolate
             self.hydrologic_dem.interpolate_ocean_bathymetry(self.bathy_contours)
         # Load in river bathymetry and incorporate where discernable at the resolution
-        if self.check_vector("river_polygons") and self.check_vector(
-            "river_bathymetry"
-        ):
+        if self.check_vector_or_raster(
+            "river_polygons", api_type="vector"
+        ) and self.check_vector_or_raster("river_bathymetry", api_type="vector"):
 
             # Get the polygons and bathymetry and can be multiple
-            bathy_dirs = self.get_vector_paths("river_bathymetry")
-            poly_dirs = self.get_vector_paths("river_polygons")
+            bathy_dirs = self.get_vector_or_raster_paths(
+                key="river_bathymetry", api_type="vector"
+            )
+            poly_dirs = self.get_vector_or_raster_paths(
+                key="river_polygons", api_type="vector"
+            )
 
             logging.info(f"Incorporating river Bathymetry: {bathy_dirs}")
 
@@ -789,7 +886,7 @@ class RoughnessLengthGenerator(BaseProcessor):
         self.catchment_geometry = self.create_catchment()
 
         # Get LiDAR data file-list - this may involve downloading lidar files
-        lidar_dataset_info = self.get_lidar_file_list("open_topography")
+        lidar_dataset_info = self.get_lidar_file_list()
 
         # setup the roughness DEM generator
         self.roughness_dem = dem.RoughnessDem(
@@ -1041,8 +1138,10 @@ class RiverBathymetryGenerator(BaseProcessor):
         bathy_apis = None
         if "bathymetry_contours" in instruction_paths:
             bathy_data_paths = instruction_paths.pop("bathymetry_contours")
-        if "bathymetry_contours" in self.instructions["apis"]["linz"]:
-            bathy_apis = self.instructions["apis"]["linz"].pop("bathymetry_contours")
+        if "bathymetry_contours" in self.instructions["apis"]["vector"]["linz"]:
+            bathy_apis = self.instructions["apis"]["vector"]["linz"].pop(
+                "bathymetry_contours"
+            )
         # Get the ground DEM
         if not gnd_file.is_file():
             # Create the ground DEM file if this has not be created yet!
@@ -1086,7 +1185,9 @@ class RiverBathymetryGenerator(BaseProcessor):
         if bathy_data_paths is not None:
             instruction_paths["bathymetry_contours"] = bathy_data_paths
         if bathy_apis is not None:
-            self.instructions["apis"]["linz"]["bathymetry_contours"] = bathy_apis
+            self.instructions["apis"]["vector"]["linz"][
+                "bathymetry_contours"
+            ] = bathy_apis
         return gnd_dem, veg_dem
 
     def align_channel(
@@ -1560,7 +1661,9 @@ class RiverBathymetryGenerator(BaseProcessor):
         crs = self.get_crs()["horizontal"]
         cross_section_spacing = self.get_bathymetry_instruction("cross_section_spacing")
         river_bathymetry_file = self.get_result_file_path(key="river_bathymetry")
-        ocean_contour_file = self.get_vector_paths("bathymetry_contours")[0]
+        ocean_contour_file = self.get_vector_or_raster_paths(
+            key="bathymetry_contours", api_type="vector"
+        )[0]
         aligned_channel_file = self.get_result_file_path(key="aligned")
         ocean_contour_depth_label = self.get_instruction_general(
             "bathymetry_contours_z_label"
