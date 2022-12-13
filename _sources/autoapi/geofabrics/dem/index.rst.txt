@@ -18,7 +18,7 @@ Classes
 
 .. autoapisummary::
 
-   geofabrics.dem.ReferenceDem
+   geofabrics.dem.CoarseDem
    geofabrics.dem.DemBase
    geofabrics.dem.HydrologicallyConditionedDem
    geofabrics.dem.LidarBase
@@ -52,9 +52,9 @@ Attributes
    geofabrics.dem.delayed_elevation_over_chunk
 
 
-.. py:class:: ReferenceDem(dem_file, catchment_geometry, set_foreshore = True, exclusion_extent = None)
+.. py:class:: CoarseDem(dem_file, catchment_geometry, set_foreshore = True, exclusion_extent = None)
 
-   A class to manage reference or background DEMs in the catchment context
+   A class to manage coarse or background DEMs in the catchment context
 
    Specifically, clip within the catchment land and foreshore. There is the option to
    clip outside any LiDAR using the
@@ -70,18 +70,18 @@ Attributes
    .. py:property:: resolution
       :type: float
 
-      Return the largest dimension of the reference DEM resolution
+      Return the largest dimension of the coarse DEM resolution
 
    .. py:property:: points
       :type: numpy.ndarray
 
-      The reference DEM points after any extent or foreshore value
+      The coarse DEM points after any extent or foreshore value
       filtering.
 
    .. py:property:: extents
       :type: geopandas.GeoDataFrame
 
-      The extents for the reference DEM
+      The extents for the coarse DEM
 
    .. py:method:: __del__()
 
@@ -197,7 +197,7 @@ Attributes
    Bases: :py:obj:`LidarBase`
 
    A class to manage the creation of a 'raw' DEM from LiDAR tiles, and/or a
-   reference DEM.
+   coarse DEM.
 
    :param drop_offshore_lidar: If True only keep LiDAR values within the foreshore and land regions defined by
                                the catchment_geometry. If False keep all LiDAR values.
@@ -209,7 +209,7 @@ Attributes
    .. py:method:: add_lidar(lidar_files, tile_index_file, chunk_size, lidar_classifications_to_keep, source_crs, metadata)
 
       Read in all LiDAR files and use to define a 'raw' DEM with elevations in
-      pixels where there is LiDAR or reference  DEM information.
+      pixels where there is LiDAR or coarse DEM information.
 
       :param source_crs: Coordinate reference system information
       :param chunk_size: The chunk size in pixels for parallel/staged processing
@@ -221,13 +221,13 @@ Attributes
       :param meta_data: Information to include in the created DEM.
 
 
-   .. py:method:: add_reference_dem(reference_dem)
+   .. py:method:: add_coarse_dem(coarse_dem)
 
-      Fill gaps in dense DEM from areas with no LiDAR with the reference DEM.
+      Fill gaps in dense DEM from areas with no LiDAR with the coarse DEM.
       Perform linear interpolation.
 
       Currently doesn't use chunking - this may be required if a large area is covered
-      by the reference DEM.
+      by the coarse DEM.
 
 
 

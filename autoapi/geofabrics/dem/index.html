@@ -80,8 +80,8 @@ DEMs.</p>
 <col style="width: 90%" />
 </colgroup>
 <tbody>
-<tr class="row-odd"><td><p><a class="reference internal" href="#geofabrics.dem.ReferenceDem" title="geofabrics.dem.ReferenceDem"><code class="xref py py-obj docutils literal notranslate"><span class="pre">ReferenceDem</span></code></a></p></td>
-<td><p>A class to manage reference or background DEMs in the catchment context</p></td>
+<tr class="row-odd"><td><p><a class="reference internal" href="#geofabrics.dem.CoarseDem" title="geofabrics.dem.CoarseDem"><code class="xref py py-obj docutils literal notranslate"><span class="pre">CoarseDem</span></code></a></p></td>
+<td><p>A class to manage coarse or background DEMs in the catchment context</p></td>
 </tr>
 <tr class="row-even"><td><p><a class="reference internal" href="#geofabrics.dem.DemBase" title="geofabrics.dem.DemBase"><code class="xref py py-obj docutils literal notranslate"><span class="pre">DemBase</span></code></a></p></td>
 <td><p>An abstract class to manage the dense DEM in a catchment context.</p></td>
@@ -153,9 +153,9 @@ DEMs.</p>
 </tbody>
 </table>
 <dl class="py class">
-<dt class="sig sig-object py" id="geofabrics.dem.ReferenceDem">
-<em class="property"><span class="pre">class</span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">geofabrics.dem.</span></span><span class="sig-name descname"><span class="pre">ReferenceDem</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">dem_file</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">catchment_geometry</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">set_foreshore</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">True</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">exclusion_extent</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#geofabrics.dem.ReferenceDem" title="Permalink to this definition"></a></dt>
-<dd><p>A class to manage reference or background DEMs in the catchment context</p>
+<dt class="sig sig-object py" id="geofabrics.dem.CoarseDem">
+<em class="property"><span class="pre">class</span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">geofabrics.dem.</span></span><span class="sig-name descname"><span class="pre">CoarseDem</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">dem_file</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">catchment_geometry</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">set_foreshore</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">True</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">exclusion_extent</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#geofabrics.dem.CoarseDem" title="Permalink to this definition"></a></dt>
+<dd><p>A class to manage coarse or background DEMs in the catchment context</p>
 <p>Specifically, clip within the catchment land and foreshore. There is the option to
 clip outside any LiDAR using the
 optional ‘exclusion_extent’ input.</p>
@@ -170,8 +170,8 @@ optional ‘exclusion_extent’ input.</p>
 </dd>
 </dl>
 <dl class="py property">
-<dt class="sig sig-object py" id="geofabrics.dem.ReferenceDem.dem">
-<em class="property"><span class="pre">property</span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">dem</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="pre">xarray.Dataset</span></em><a class="headerlink" href="#geofabrics.dem.ReferenceDem.dem" title="Permalink to this definition"></a></dt>
+<dt class="sig sig-object py" id="geofabrics.dem.CoarseDem.dem">
+<em class="property"><span class="pre">property</span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">dem</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="pre">xarray.Dataset</span></em><a class="headerlink" href="#geofabrics.dem.CoarseDem.dem" title="Permalink to this definition"></a></dt>
 <dd><p>Return the DEM over the catchment region</p>
 <dl class="field-list simple">
 <dt class="field-odd">Return type</dt>
@@ -181,9 +181,9 @@ optional ‘exclusion_extent’ input.</p>
 </dd></dl>
 
 <dl class="py property">
-<dt class="sig sig-object py" id="geofabrics.dem.ReferenceDem.resolution">
-<em class="property"><span class="pre">property</span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">resolution</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="pre">float</span></em><a class="headerlink" href="#geofabrics.dem.ReferenceDem.resolution" title="Permalink to this definition"></a></dt>
-<dd><p>Return the largest dimension of the reference DEM resolution</p>
+<dt class="sig sig-object py" id="geofabrics.dem.CoarseDem.resolution">
+<em class="property"><span class="pre">property</span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">resolution</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="pre">float</span></em><a class="headerlink" href="#geofabrics.dem.CoarseDem.resolution" title="Permalink to this definition"></a></dt>
+<dd><p>Return the largest dimension of the coarse DEM resolution</p>
 <dl class="field-list simple">
 <dt class="field-odd">Return type</dt>
 <dd class="field-odd"><p>float</p>
@@ -192,9 +192,9 @@ optional ‘exclusion_extent’ input.</p>
 </dd></dl>
 
 <dl class="py property">
-<dt class="sig sig-object py" id="geofabrics.dem.ReferenceDem.points">
-<em class="property"><span class="pre">property</span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">points</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="pre">numpy.ndarray</span></em><a class="headerlink" href="#geofabrics.dem.ReferenceDem.points" title="Permalink to this definition"></a></dt>
-<dd><p>The reference DEM points after any extent or foreshore value
+<dt class="sig sig-object py" id="geofabrics.dem.CoarseDem.points">
+<em class="property"><span class="pre">property</span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">points</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="pre">numpy.ndarray</span></em><a class="headerlink" href="#geofabrics.dem.CoarseDem.points" title="Permalink to this definition"></a></dt>
+<dd><p>The coarse DEM points after any extent or foreshore value
 filtering.</p>
 <dl class="field-list simple">
 <dt class="field-odd">Return type</dt>
@@ -204,9 +204,9 @@ filtering.</p>
 </dd></dl>
 
 <dl class="py property">
-<dt class="sig sig-object py" id="geofabrics.dem.ReferenceDem.extents">
-<em class="property"><span class="pre">property</span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">extents</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="pre">geopandas.GeoDataFrame</span></em><a class="headerlink" href="#geofabrics.dem.ReferenceDem.extents" title="Permalink to this definition"></a></dt>
-<dd><p>The extents for the reference DEM</p>
+<dt class="sig sig-object py" id="geofabrics.dem.CoarseDem.extents">
+<em class="property"><span class="pre">property</span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">extents</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="pre">geopandas.GeoDataFrame</span></em><a class="headerlink" href="#geofabrics.dem.CoarseDem.extents" title="Permalink to this definition"></a></dt>
+<dd><p>The extents for the coarse DEM</p>
 <dl class="field-list simple">
 <dt class="field-odd">Return type</dt>
 <dd class="field-odd"><p>geopandas.GeoDataFrame</p>
@@ -215,8 +215,8 @@ filtering.</p>
 </dd></dl>
 
 <dl class="py method">
-<dt class="sig sig-object py" id="geofabrics.dem.ReferenceDem.__del__">
-<span class="sig-name descname"><span class="pre">__del__</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="headerlink" href="#geofabrics.dem.ReferenceDem.__del__" title="Permalink to this definition"></a></dt>
+<dt class="sig sig-object py" id="geofabrics.dem.CoarseDem.__del__">
+<span class="sig-name descname"><span class="pre">__del__</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="headerlink" href="#geofabrics.dem.CoarseDem.__del__" title="Permalink to this definition"></a></dt>
 <dd><p>Ensure the memory associated with netCDF files is properly freed.</p>
 </dd></dl>
 
@@ -391,7 +391,7 @@ standard list</p></li>
 <em class="property"><span class="pre">class</span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">geofabrics.dem.</span></span><span class="sig-name descname"><span class="pre">RawDem</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">catchment_geometry</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">lidar_interpolation_method</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">drop_offshore_lidar</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">True</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">elevation_range</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#geofabrics.dem.RawDem" title="Permalink to this definition"></a></dt>
 <dd><p>Bases: <a class="reference internal" href="#geofabrics.dem.LidarBase" title="geofabrics.dem.LidarBase"><code class="xref py py-obj docutils literal notranslate"><span class="pre">LidarBase</span></code></a></p>
 <p>A class to manage the creation of a ‘raw’ DEM from LiDAR tiles, and/or a
-reference DEM.</p>
+coarse DEM.</p>
 <dl class="field-list simple">
 <dt class="field-odd">Parameters</dt>
 <dd class="field-odd"><ul class="simple">
@@ -409,7 +409,7 @@ Options are: mean, median, IDW, max, min, STD.</p></li>
 <dt class="sig sig-object py" id="geofabrics.dem.RawDem.add_lidar">
 <span class="sig-name descname"><span class="pre">add_lidar</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">lidar_files</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">tile_index_file</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">chunk_size</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">lidar_classifications_to_keep</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">source_crs</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">metadata</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#geofabrics.dem.RawDem.add_lidar" title="Permalink to this definition"></a></dt>
 <dd><p>Read in all LiDAR files and use to define a ‘raw’ DEM with elevations in
-pixels where there is LiDAR or reference  DEM information.</p>
+pixels where there is LiDAR or coarse DEM information.</p>
 <dl class="field-list simple">
 <dt class="field-odd">Parameters</dt>
 <dd class="field-odd"><ul class="simple">
@@ -428,15 +428,15 @@ standard list</p></li>
 </dd></dl>
 
 <dl class="py method">
-<dt class="sig sig-object py" id="geofabrics.dem.RawDem.add_reference_dem">
-<span class="sig-name descname"><span class="pre">add_reference_dem</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">reference_dem</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#geofabrics.dem.RawDem.add_reference_dem" title="Permalink to this definition"></a></dt>
-<dd><p>Fill gaps in dense DEM from areas with no LiDAR with the reference DEM.
+<dt class="sig sig-object py" id="geofabrics.dem.RawDem.add_coarse_dem">
+<span class="sig-name descname"><span class="pre">add_coarse_dem</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">coarse_dem</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#geofabrics.dem.RawDem.add_coarse_dem" title="Permalink to this definition"></a></dt>
+<dd><p>Fill gaps in dense DEM from areas with no LiDAR with the coarse DEM.
 Perform linear interpolation.</p>
 <p>Currently doesn’t use chunking - this may be required if a large area is covered
-by the reference DEM.</p>
+by the coarse DEM.</p>
 <dl class="field-list simple">
 <dt class="field-odd">Parameters</dt>
-<dd class="field-odd"><p><strong>reference_dem</strong> (<a class="reference internal" href="#geofabrics.dem.ReferenceDem" title="geofabrics.dem.ReferenceDem"><em>ReferenceDem</em></a>) – </p>
+<dd class="field-odd"><p><strong>coarse_dem</strong> (<a class="reference internal" href="#geofabrics.dem.CoarseDem" title="geofabrics.dem.CoarseDem"><em>CoarseDem</em></a>) – </p>
 </dd>
 </dl>
 </dd></dl>

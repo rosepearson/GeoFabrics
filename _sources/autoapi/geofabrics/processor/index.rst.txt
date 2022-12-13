@@ -161,7 +161,7 @@ Classes
    Bases: :py:obj:`BaseProcessor`
 
    RawLidarDemGenerator executes a pipeline for creating a DEM from LiDAR and
-   optionally a reference DEM. The data sources and pipeline logic is defined in the
+   optionally a coarse DEM. The data sources and pipeline logic is defined in the
    json_instructions file.
 
    The `DemGenerator` class contains several important class members:
@@ -170,7 +170,7 @@ Classes
       generation of a DEM as polygons.
     * raw_dem - A combination of LiDAR tiles and any referecnce DEM
       from LiDAR and interpolated from bathymetry.
-    * reference_dem - This optional object defines a background DEM that may be used to
+    * coarse_dem - This optional object defines a background DEM that may be used to
       fill on land gaps in the LiDAR.
 
    See the README.md for usage examples or GeoFabrics/tests/ for examples of usage and

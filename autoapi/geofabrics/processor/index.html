@@ -320,7 +320,7 @@ the instruction ‘data_paths’ is checked for ‘lidars’ and these are retur
 <em class="property"><span class="pre">class</span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">geofabrics.processor.</span></span><span class="sig-name descname"><span class="pre">RawLidarDemGenerator</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">json_instructions</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#geofabrics.processor.RawLidarDemGenerator" title="Permalink to this definition"></a></dt>
 <dd><p>Bases: <a class="reference internal" href="#geofabrics.processor.BaseProcessor" title="geofabrics.processor.BaseProcessor"><code class="xref py py-obj docutils literal notranslate"><span class="pre">BaseProcessor</span></code></a></p>
 <p>RawLidarDemGenerator executes a pipeline for creating a DEM from LiDAR and
-optionally a reference DEM. The data sources and pipeline logic is defined in the
+optionally a coarse DEM. The data sources and pipeline logic is defined in the
 json_instructions file.</p>
 <dl class="simple">
 <dt>The <cite>DemGenerator</cite> class contains several important class members:</dt><dd><ul class="simple">
@@ -329,7 +329,7 @@ json_instructions file.</p>
 generation of a DEM as polygons.</p></li>
 <li><p>raw_dem - A combination of LiDAR tiles and any referecnce DEM
 from LiDAR and interpolated from bathymetry.</p></li>
-<li><p>reference_dem - This optional object defines a background DEM that may be used to
+<li><p>coarse_dem - This optional object defines a background DEM that may be used to
 fill on land gaps in the LiDAR.</p></li>
 </ul>
 </dd>
