@@ -12,6 +12,7 @@ import matplotlib
 import datetime
 import logging
 import pathlib
+import typing
 
 import warnings
 
@@ -124,13 +125,10 @@ def run_processor_class(processor_class, processor_label: str, instructions: dic
     return runner
 
 
-def launch_processor(args):
+def run_from_dict(instructions: dict):
     """Run the DEM generation pipeline(s) given the specified instructions.
     If a benchmark is specified compare the result to the benchmark"""
 
-    # Load the instructions
-    with open(args.instructions, "r") as file_pointer:
-        instructions = json.load(file_pointer)
     # Run the pipeline
     initial_start_time = datetime.datetime.now()
     if "rivers" in instructions:
@@ -181,10 +179,24 @@ def launch_processor(args):
     print(f"Total execution time is {datetime.datetime.now() - initial_start_time}")
 
 
+def run_from_file(
+    instructions_path: typing.Union[str, pathlib.Path],
+):
+    """Run the DEM generation pipeline(s) given the specified instructions.
+    If a benchmark is specified compare the result to the benchmark"""
+
+    # Load the instructions
+    with open(instructions_path, "r") as file_pointer:
+        instructions = json.load(file_pointer)
+    # Run the pipeline
+    run_from_dict(instructions=instructions)
+
+
 def main():
     """The entry point to geofabrics."""
     args = parse_args()
-    launch_processor(args)
+    instructions_path = args.instructions
+    run_from_file(instructions_path=instructions_path)
 
 
 if __name__ == "__main__":
