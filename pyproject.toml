@@ -35,6 +35,9 @@ dependencies = [
 ]
 requires-python = ">=3.9"
 
+[project.scripts]
+geofabrics = "geofabrics.__main__:cli_run_from_file"
+
 [tool.setuptools]
 packages = ["geofabrics"]
 

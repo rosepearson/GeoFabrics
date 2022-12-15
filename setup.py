@@ -9,4 +9,9 @@ import setuptools
 setuptools.setup(
     package_dir={"": "src"},
     packages=setuptools.find_packages(where="src"),
+    entry_points={
+        "console_scripts": [
+            "geofabrics=geofabrics.__main__:cli_run_from_file",
+        ],
+    },
 )

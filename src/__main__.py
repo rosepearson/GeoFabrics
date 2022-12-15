@@ -192,12 +192,15 @@ def run_from_file(
     run_from_dict(instructions=instructions)
 
 
-def main():
-    """The entry point to geofabrics."""
+def cli_run_from_file():
+    """The script entry point to geofabrics & a CLI entry point to geofabrics.
+    Run standard workflow from an instruction file intput."""
     args = parse_args()
     instructions_path = args.instructions
     run_from_file(instructions_path=instructions_path)
 
 
 if __name__ == "__main__":
-    main()
+    """If called as a script."""
+
+    cli_run_from_file()
