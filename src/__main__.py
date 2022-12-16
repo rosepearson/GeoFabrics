@@ -4,10 +4,7 @@ A convenience script for running the DEM generation pipelines contained in the p
  module of geofabrics.
 """
 from geofabrics import runner
-import json
 import argparse
-import pathlib
-import typing
 
 import warnings
 
@@ -26,31 +23,28 @@ def parse_args():
         metavar="path",
         required=True,
         action="store",
-        help="the path to instruction file",
+        help="the instructions - either a path or dict - depending if running from file"
+        " or from dictionary. If running as a script must be a path",
     )
 
     return parser.parse_args()
 
 
-def run_from_file(
-    instructions_path: typing.Union[str, pathlib.Path],
-):
-    """Run the DEM generation pipeline(s) given the specified instructions.
-    If a benchmark is specified compare the result to the benchmark"""
+def cli_run_from_dict():
+    """Run the DEM generation pipeline(s) given the specified instructions as a
+    dictionary. If a benchmark is specified compare the result to the benchmark"""
 
     # Load the instructions
-    with open(instructions_path, "r") as file_pointer:
-        instructions = json.load(file_pointer)
+    args = parse_args()
     # Run the pipeline
-    runner.run_from_dict(instructions=instructions)
+    runner.from_instructions_dict(instructions=args.instructions)
 
 
 def cli_run_from_file():
-    """The script entry point to geofabrics & a CLI entry point to geofabrics.
+    """The standard script entry point to geofabrics & a CLI entry point to geofabrics.
     Run standard workflow from an instruction file intput."""
     args = parse_args()
-    instructions_path = args.instructions
-    runner.run_from_file(instructions_path=instructions_path)
+    runner.from_instructions_file(instructions_path=args.instructions)
 
 
 if __name__ == "__main__":
