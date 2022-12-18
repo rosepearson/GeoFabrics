@@ -1,0 +1,45 @@
+:py:mod:`__main__`
+==================
+
+.. py:module:: __main__
+
+.. autoapi-nested-parse::
+
+   A convenience script for running the DEM generation pipelines contained in the processor
+    module of geofabrics.
+
+
+
+Module Contents
+---------------
+
+
+Functions
+~~~~~~~~~
+
+.. autoapisummary::
+
+   __main__.parse_args
+   __main__.cli_run_from_dict
+   __main__.cli_run_from_file
+
+
+
+.. py:function:: parse_args()
+
+   Expect a command line argument of the form:
+   '--instructions path/to/json/instruction/file'
+
+
+.. py:function:: cli_run_from_dict()
+
+   Run the DEM generation pipeline(s) given the specified instructions as a
+   dictionary. If a benchmark is specified compare the result to the benchmark
+
+
+.. py:function:: cli_run_from_file()
+
+   The standard script entry point to geofabrics & a CLI entry point to geofabrics.
+   Run standard workflow from an instruction file intput.
+
+

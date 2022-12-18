@@ -26,6 +26,7 @@ Submodules
    dem/index.rst
    geometry/index.rst
    processor/index.rst
+   runner/index.rst
    version/index.rst
 
 

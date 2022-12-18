@@ -1,7 +1,7 @@
-:py:mod:`main`
-==============
+:py:mod:`geofabrics.runner`
+===========================
 
-.. py:module:: main
+.. py:module:: geofabrics.runner
 
 .. autoapi-nested-parse::
 
@@ -19,29 +19,16 @@ Functions
 
 .. autoapisummary::
 
-   main.parse_args
-   main.setup_logging_for_run
-   main.check_for_benchmarks
-   main.run_processor_class
-   main.launch_processor
-   main.main
+   geofabrics.runner.setup_logging_for_run
+   geofabrics.runner.run_processor_class
+   geofabrics.runner.from_instructions_dict
+   geofabrics.runner.from_instructions_file
 
-
-
-.. py:function:: parse_args()
-
-   Expect a command line argument of the form:
-   '--instructions path/to/json/instruction/file'
 
 
 .. py:function:: setup_logging_for_run(instructions, label)
 
    Setup logging for the current processor run
-
-
-.. py:function:: check_for_benchmarks(instructions, runner)
-
-   Compare against a benchmark DEM if one is specified
 
 
 .. py:function:: run_processor_class(processor_class, processor_label, instructions)
@@ -50,14 +37,15 @@ Functions
    execution.
 
 
-.. py:function:: launch_processor(args)
+.. py:function:: from_instructions_dict(instructions)
 
    Run the DEM generation pipeline(s) given the specified instructions.
    If a benchmark is specified compare the result to the benchmark
 
 
-.. py:function:: main()
+.. py:function:: from_instructions_file(instructions_path)
 
-   The entry point to geofabrics.
+   Run the DEM generation pipeline(s) given the specified instructions.
+   If a benchmark is specified compare the result to the benchmark
 
 
