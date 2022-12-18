@@ -35,6 +35,10 @@ dependencies = [
 ]
 requires-python = ">=3.9"
 
+[project.scripts]
+geofabrics_from_file = "__main__:cli_run_from_file"
+geofabrics_from_dict = "__main__:cli_run_from_dict"
+
 [tool.setuptools]
 packages = ["geofabrics"]
 
@@ -44,6 +48,3 @@ dev = ["black", "check-manifest", "python-dotenv", "pip-tools", "pytest"]
 [project.urls]
 Homepage = "https://github.com/rosepearson/GeoFabrics"
 Documentation = "https://rosepearson.github.io/GeoFabrics/"
-
-[project.scripts]
-geofabrics = "main:main"
