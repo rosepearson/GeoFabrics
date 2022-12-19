@@ -1926,6 +1926,9 @@ class RoughnessDem(LidarBase):
         # get chunks to tile over
         chunked_dim_x, chunked_dim_y = self._set_up_chunks(chunk_size)
 
+        # create a map from tile name to tile file name
+        lidar_files_map = {lidar_file.name: lidar_file for lidar_file in lidar_files}
+
         # cycle through chunks - and collect in a delayed array
         logging.info(f"Preparing {[len(chunked_dim_x), len(chunked_dim_y)]} chunks")
         delayed_chunked_matrix = []
@@ -1943,10 +1946,14 @@ class RoughnessDem(LidarBase):
                 )
 
                 # Load in files into tiles
-                chunk_points = delayed_load_tiles_in_chunk(
+                chunk_lidar_files = select_lidar_files(
                     tile_index_extents=tile_index_extents,
                     tile_index_name_column=tile_index_name_column,
-                    lidar_files=lidar_files,
+                    chunk_region_to_tile=chunk_region_to_tile,
+                    lidar_files_map=lidar_files_map,
+                )
+                chunk_points = delayed_load_tiles_in_chunk(
+                    lidar_files=chunk_lidar_files,
                     source_crs=source_crs,
                     chunk_region_to_tile=chunk_region_to_tile,
                     catchment_geometry=self.catchment_geometry,
