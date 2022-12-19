@@ -1222,37 +1222,32 @@ class RawDem(LidarBase):
         resolution = self.catchment_geometry.resolution
 
         # Determine the number of chunks
+        minx = bounds.minx.min()
+        maxy = bounds.maxy.max()
         n_chunks_x = int(
-            numpy.ceil(
-                (bounds.maxx.max() - bounds.minx.min()) / (chunk_size * resolution)
-            )
+            numpy.ceil((bounds.maxx.max() - minx) / (chunk_size * resolution))
         )
         n_chunks_y = int(
-            numpy.ceil(
-                (bounds.maxy.max() - bounds.miny.min()) / (chunk_size * resolution)
-            )
+            numpy.ceil((maxy - bounds.miny.min()) / (chunk_size * resolution))
         )
 
         # The x coordinates rounded up to the nearest chunk
-        dim_x = [
-            numpy.arange(
-                bounds.minx.min() + resolution / 2 + i * chunk_size * resolution,
-                bounds.minx.min() + resolution / 2 + (i + 1) * chunk_size * resolution,
-                resolution,
-                dtype=geometry.RASTER_TYPE,
-            )
-            for i in range(n_chunks_x)
-        ]
+        dim_x = numpy.arange(
+            minx + resolution / 2,
+            minx + resolution / 2 + n_chunks_x * chunk_size * resolution,
+            resolution,
+            dtype=geometry.RASTER_TYPE,
+        )
+        dim_x = dim_x.reshape((n_chunks_x, chunk_size))
         # The y coordinates rounded up to the nearest chunk
-        dim_y = [
-            numpy.arange(
-                bounds.maxy.max() - resolution / 2 - i * chunk_size * resolution,
-                bounds.maxy.max() - resolution / 2 - (i + 1) * chunk_size * resolution,
-                -resolution,
-                dtype=geometry.RASTER_TYPE,
-            )
-            for i in range(n_chunks_y)
-        ]
+        dim_y = numpy.arange(
+            maxy + resolution / 2,
+            maxy + resolution / 2 + n_chunks_y * chunk_size * resolution,
+            resolution,
+            dtype=geometry.RASTER_TYPE,
+        )
+        dim_y = dim_y.reshape((n_chunks_y, chunk_size))
+
         return dim_x, dim_y
 
     def _calculate_raw_extents(self):
@@ -2326,7 +2321,6 @@ def select_lidar_files(
 
     if chunk_region_to_tile.empty:
         return []
-
     # clip the tile indices to only include those within the chunk region
     chunk_tile_index_extents = geopandas.sjoin(
         chunk_region_to_tile, tile_index_extents.drop(columns=["index_right"])
@@ -2368,10 +2362,8 @@ def load_tiles_in_chunk(
             get_extents=False,
         )
         lidar_points.append(pdal_pipeline.arrays[0])
-
     if len(lidar_points) > 0:
         lidar_points = numpy.concatenate(lidar_points)
-
     return lidar_points
 
 
