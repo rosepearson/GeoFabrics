@@ -1241,9 +1241,9 @@ class RawDem(LidarBase):
         dim_x = dim_x.reshape((n_chunks_x, chunk_size))
         # The y coordinates rounded up to the nearest chunk
         dim_y = numpy.arange(
-            maxy + resolution / 2,
-            maxy + resolution / 2 + n_chunks_y * chunk_size * resolution,
-            resolution,
+            maxy - resolution / 2,
+            maxy - resolution / 2 - n_chunks_y * chunk_size * resolution,
+            -resolution,
             dtype=geometry.RASTER_TYPE,
         )
         dim_y = dim_y.reshape((n_chunks_y, chunk_size))
