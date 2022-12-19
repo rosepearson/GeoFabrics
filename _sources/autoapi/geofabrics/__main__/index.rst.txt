@@ -1,7 +1,7 @@
-:py:mod:`__main__`
-==================
+:py:mod:`geofabrics.__main__`
+=============================
 
-.. py:module:: __main__
+.. py:module:: geofabrics.__main__
 
 .. autoapi-nested-parse::
 
@@ -19,9 +19,9 @@ Functions
 
 .. autoapisummary::
 
-   __main__.parse_args
-   __main__.cli_run_from_dict
-   __main__.cli_run_from_file
+   geofabrics.__main__.parse_args
+   geofabrics.__main__.cli_run_from_dict
+   geofabrics.__main__.cli_run_from_file
 
 
 

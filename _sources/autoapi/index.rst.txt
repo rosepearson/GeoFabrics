@@ -6,7 +6,6 @@ This page contains auto-generated API reference documentation [#f1]_.
 .. toctree::
    :titlesonly:
 
-   /autoapi/__main__/index
    /autoapi/benchmarking/index
    /autoapi/geofabrics/index
 

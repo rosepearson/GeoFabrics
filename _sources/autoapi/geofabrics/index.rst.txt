@@ -22,6 +22,7 @@ Submodules
    :titlesonly:
    :maxdepth: 1
 
+   __main__/index.rst
    bathymetry_estimation/index.rst
    dem/index.rst
    geometry/index.rst
