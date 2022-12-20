@@ -124,7 +124,7 @@ DEMs.</p>
 <tr class="row-odd"><td><p><a class="reference internal" href="#geofabrics.dem.calculate_linear" title="geofabrics.dem.calculate_linear"><code class="xref py py-obj docutils literal notranslate"><span class="pre">calculate_linear</span></code></a>(near_indices, point, tree, point_cloud)</p></td>
 <td><p>Calculate linear interpolation of the 'near_indices' points. Take the straight</p></td>
 </tr>
-<tr class="row-even"><td><p><a class="reference internal" href="#geofabrics.dem.load_tiles_in_chunk" title="geofabrics.dem.load_tiles_in_chunk"><code class="xref py py-obj docutils literal notranslate"><span class="pre">load_tiles_in_chunk</span></code></a>(dim_x, dim_y, tile_index_extents, ...)</p></td>
+<tr class="row-even"><td><p><a class="reference internal" href="#geofabrics.dem.load_tiles_in_chunk" title="geofabrics.dem.load_tiles_in_chunk"><code class="xref py py-obj docutils literal notranslate"><span class="pre">load_tiles_in_chunk</span></code></a>(lidar_files, source_crs, ...)</p></td>
 <td><p>Read in all LiDAR files within the chunked region - clipped to within the region</p></td>
 </tr>
 <tr class="row-odd"><td><p><a class="reference internal" href="#geofabrics.dem.roughness_over_chunk" title="geofabrics.dem.roughness_over_chunk"><code class="xref py py-obj docutils literal notranslate"><span class="pre">roughness_over_chunk</span></code></a>(dim_x, dim_y, tile_points, ...)</p></td>
@@ -588,17 +588,13 @@ mean if the points are co-linear or too few for linear interpolation.</p>
 
 <dl class="py function">
 <dt class="sig sig-object py" id="geofabrics.dem.load_tiles_in_chunk">
-<span class="sig-prename descclassname"><span class="pre">geofabrics.dem.</span></span><span class="sig-name descname"><span class="pre">load_tiles_in_chunk</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">dim_x</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">dim_y</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">tile_index_extents</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">tile_index_name_column</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">lidar_files</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">source_crs</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">chunk_region_to_tile</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">catchment_geometry</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#geofabrics.dem.load_tiles_in_chunk" title="Permalink to this definition"></a></dt>
+<span class="sig-prename descclassname"><span class="pre">geofabrics.dem.</span></span><span class="sig-name descname"><span class="pre">load_tiles_in_chunk</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">lidar_files</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">source_crs</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">chunk_region_to_tile</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">catchment_geometry</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#geofabrics.dem.load_tiles_in_chunk" title="Permalink to this definition"></a></dt>
 <dd><p>Read in all LiDAR files within the chunked region - clipped to within the region
 within which to rasterise.</p>
 <dl class="field-list simple">
 <dt class="field-odd">Parameters</dt>
 <dd class="field-odd"><ul class="simple">
-<li><p><strong>dim_x</strong> (<em>numpy.ndarray</em>) – </p></li>
-<li><p><strong>dim_y</strong> (<em>numpy.ndarray</em>) – </p></li>
-<li><p><strong>tile_index_extents</strong> (<em>geopandas.GeoDataFrame</em>) – </p></li>
-<li><p><strong>tile_index_name_column</strong> (<em>str</em>) – </p></li>
-<li><p><strong>lidar_files</strong> (<em>List</em><em>[</em><em>Union</em><em>[</em><em>str</em><em>, </em><em>pathlib.Path</em><em>]</em><em>]</em>) – </p></li>
+<li><p><strong>lidar_files</strong> (<em>List</em><em>[</em><em>pathlib.Path</em><em>]</em>) – </p></li>
 <li><p><strong>source_crs</strong> (<em>dict</em>) – </p></li>
 <li><p><strong>chunk_region_to_tile</strong> (<em>geopandas.GeoDataFrame</em>) – </p></li>
 <li><p><strong>catchment_geometry</strong> (<a class="reference internal" href="../geometry/index.html#geofabrics.geometry.CatchmentGeometry" title="geofabrics.geometry.CatchmentGeometry"><em>geofabrics.geometry.CatchmentGeometry</em></a>) – </p></li>
