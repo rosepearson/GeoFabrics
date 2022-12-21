@@ -11,8 +11,8 @@ setuptools.setup(
     packages=setuptools.find_packages(where="src"),
     entry_points={
         "console_scripts": [
-            "geofabrics_from_file=geofabrics:__main__:cli_run_from_file",
-            "geofabrics_from_dict=geofabrics:__main__:cli_run_from_dict",
+            "geofabrics_from_file=geofabrics.__main__:cli_run_from_file",
+            "geofabrics_from_dict=geofabrics.__main__:cli_run_from_dict",
         ],
     },
 )
