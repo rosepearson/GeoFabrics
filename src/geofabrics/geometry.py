@@ -974,12 +974,12 @@ class RiverMouthFan:
         # Clip to fan
         ocean_contours = ocean_contours.clip(fan_polygon)
 
-        # Cycle through contours finding the nearest contour to intersect wiith the fan
+        # Cycle through contours finding the nearest contour to intersect with the fan
         distance = numpy.inf
         intersection_line = shapely.geometry.Point()
         end_depth = numpy.nan
-
-        for i, row in ocean_contours.iterrows():
+        # Cycle through and get the section of line intersecting with the line
+        for i, row in ocean_contours.explode().iterrows():
             if row.geometry.intersects(fan_polygon):
                 intersection_line_i = row.geometry.intersection(fan_polygon)
                 if intersection_line_i.distance(mouth_point) < distance:
@@ -990,7 +990,12 @@ class RiverMouthFan:
             "There must be at least one ocean "
             "contour within the max length fan polygon."
         )
-
+        # Check for MultiLineString and take only the closest - TODO see if can remove
+        if intersection_line.type == "MultiLineString":
+            lines = geopandas.GeoSeries(intersection_line, crs=2193).explode(
+                ignore_index=True
+            )
+            intersection_line = lines[lines.distance(mouth_point) == distance].iloc[0]
         # Construct a fan ending at the contour
         (x, y) = intersection_line.xy
         polygon_points = [[xi, yi] for (xi, yi) in zip(x, y)]
