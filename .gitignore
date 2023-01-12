@@ -98,6 +98,8 @@ ipython_config.py
 __pypackages__/
 
 # OSM cache stuff
+cache/overpass*
+
 # Celery stuff
 celerybeat-schedule
 celerybeat.pid
