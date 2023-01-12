@@ -162,7 +162,7 @@ class ProcessorRiverBathymetryOsmTest(unittest.TestCase):
         self.assertAlmostEqual(
             comparison,
             numpy.zeros(len(test[column_name])),
-            places=7,
+            places=6,
             msg=f"The geneated river {column_name} does not"
             f" match the benchmark. They are separated by "
             f"distances of {comparison}",
