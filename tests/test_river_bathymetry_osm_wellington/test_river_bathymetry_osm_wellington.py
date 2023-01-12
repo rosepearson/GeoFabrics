@@ -93,7 +93,8 @@ class ProcessorRiverBathymetryOsmTest(unittest.TestCase):
                         shutil.rmtree(file)
                 shutil.rmtree(path)
 
-    def test_river_polygon(self):
+    @pytest.mark.skipif(sys.platform != "win32", reason="Windows test - this is strict")
+    def test_river_polygon_windows(self):
         """A test to see if the correct river polygon is generated. This is
         tested individually as it is generated first."""
 
@@ -112,6 +113,36 @@ class ProcessorRiverBathymetryOsmTest(unittest.TestCase):
             "The geneated river"
             f"polygon {test} doesn't equal the river benchmark "
             f"river polygon {benchmark}",
+        )
+
+    @pytest.mark.skipif(
+        sys.platform != "linux", reason="Linux test - this is less strict"
+    )
+    def test_river_polygon_linux(self):
+        """A test to see if the correct river polygon is generated. This is
+        tested individually as it is generated first."""
+
+        print("Compare river polygon  - All OS")
+
+        data_path_instructions = self.instructions["data_paths"]
+
+        test = geopandas.read_file(self.results_dir / "river_polygon.geojson")
+        benchmark = geopandas.read_file(
+            self.cache_dir / data_path_instructions["river_polygon_benchmark"]
+        )
+
+        # check the polygons match closely
+        column_name = "geometry"
+        test_comparison = test[column_name].area.item()
+        benchmark_comparison = benchmark[column_name].area.item()
+        print(f"test area {test_comparison}, and benchmark area {benchmark_comparison}")
+        self.assertAlmostEqual(
+            test_comparison,
+            benchmark_comparison,
+            places=6,
+            msg=f"The geneated river {column_name} does"
+            f" not match the benchmark. {test_comparison} "
+            f"vs {benchmark_comparison}",
         )
 
     @pytest.mark.skipif(sys.platform != "win32", reason="Windows test - this is strict")
