@@ -297,7 +297,7 @@ Attributes
    mean if the points are co-linear or too few for linear interpolation.
 
 
-.. py:function:: load_tiles_in_chunk(dim_x, dim_y, tile_index_extents, tile_index_name_column, lidar_files, source_crs, chunk_region_to_tile, catchment_geometry)
+.. py:function:: load_tiles_in_chunk(lidar_files, source_crs, chunk_region_to_tile, catchment_geometry)
 
    Read in all LiDAR files within the chunked region - clipped to within the region
    within which to rasterise.
