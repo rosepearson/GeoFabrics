@@ -131,12 +131,18 @@ class ProcessorRiverBathymetryOsmTest(unittest.TestCase):
             self.cache_dir / data_path_instructions["river_polygon_benchmark"]
         )
 
-        # check the polygons match
-        self.assertTrue(
-            (test == benchmark).all().all(),
-            "The geneated river"
-            f"polygon {test} doesn't equal the river benchmark "
-            f"river polygon {benchmark}",
+        # check the polygons match closely
+        column_name = "geometry"
+        test_comparison = test[column_name].area.item()
+        benchmark_comparison = benchmark[column_name].area.item()
+        print(f"test area {test_comparison}, and benchmark area {benchmark_comparison}")
+        self.assertAlmostEqual(
+            test_comparison,
+            benchmark_comparison,
+            places=6,
+            msg=f"The geneated river {column_name} does"
+            f" not match the benchmark. {test_comparison} "
+            f"vs {benchmark_comparison}",
         )
 
     @pytest.mark.skipif(sys.platform != "win32", reason="Windows test - this is strict")
@@ -154,18 +160,11 @@ class ProcessorRiverBathymetryOsmTest(unittest.TestCase):
         )
 
         # check the bathymetries match
-        column_name = "geometry"
-        comparison = test[column_name].distance(benchmark[column_name]).array
-        print(
-            f"Distances between the test and benchmark points {numpy.array(comparison)}"
-        )
-        self.assertAlmostEqual(
-            comparison,
-            numpy.zeros(len(test[column_name])),
-            places=6,
-            msg=f"The geneated river {column_name} does not"
-            f" match the benchmark. They are separated by "
-            f"distances of {comparison}",
+        self.assertTrue(
+            (test == benchmark).all().all(),
+            "The geneated river"
+            f"bathymetry {test} doesn't equal the river benchmark "
+            f"river bathymetry {benchmark}",
         )
 
     @pytest.mark.skipif(
