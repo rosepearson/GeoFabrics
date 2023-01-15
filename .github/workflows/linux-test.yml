@@ -10,7 +10,7 @@ jobs:
     runs-on: ubuntu-latest
     defaults:
       run:
-        shell: bash -l {0}
+        shell: bash -el {0}
     strategy:
       fail-fast: false
       matrix:
@@ -23,30 +23,25 @@ jobs:
       with:
         lfs: true
 
-    - name: Cache conda
-      uses: actions/cache@v2
-      env:
-        cache-name: cache-conda-env
-      with:
-        path: ~/conda_pkgs_dir
-        key: ${{ runner.os }}-conda-${{ env.cache-name }}-${{ hashFiles('linux_environment.yml') }}
+
 
     - name: Install package dependencies with setup-miniconda@v2
       uses: conda-incubator/setup-miniconda@v2
       with:
+        python-version: ${{ matrix.python-version }}
+        mamba-version: "*"
+        channels: conda-forge,defaults
+        channel-priority: true
         activate-environment: geofabrics
         environment-file: environment_linux.yml
         auto-activate-base: false
-        channels: conda-forge
-        channel-priority: strict
         use-only-tar-bz2: true # IMPORTANT: This needs to be set for caching to work properly!
-        python-version: ${{ matrix.python-version }}
-        mamba-version: "*"
     - run: |
         conda info
         conda list
         conda config --show-sources
         conda config --show
+        printenv | sort
 
     - name: Install test dependencies
       run: |
