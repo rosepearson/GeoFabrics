@@ -410,8 +410,9 @@ class BaseProcessor(abc.ABC):
                         vector = fetcher.run(layer, geometry_type)
 
                         # Write out file if not already recorded
-                        layer_file = cache_dir / f"{layer}.geojson"
+                        layer_file = cache_dir / "vector" / f"{layer}.geojson"
                         if not layer_file.exists():
+                            layer_file.parent.mkdir(parents=False, exist_ok=True)
                             vector.to_file(layer_file)
                         paths.append(layer_file)
                 elif api_type == "raster":
