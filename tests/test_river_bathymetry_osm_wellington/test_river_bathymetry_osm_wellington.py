@@ -25,9 +25,12 @@ class ProcessorRiverBathymetryOsmTest(unittest.TestCase):
     contained in processor.RiverBathymetryGenerator.
 
     Tests run include:
-        1. test_river_polygon - Test that the expected river polygon is created
-        2. test_river_bathymetry - Test that the expected river bathymetry is created
-        3. test_fan - Test that the expected fan polygon and geometry are created
+        1. test_river_polygon_(linux/windows) - Test that the expected river polygon is
+        created
+        2. test_river_bathymetry_(linux/windows) - Test that the expected river
+        bathymetry is created
+        3. test_fan_(linux/windows) - Test that the expected fan polygon and geometry
+        are created
     """
 
     @classmethod

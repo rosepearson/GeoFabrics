@@ -10,7 +10,7 @@ jobs:
     runs-on: ubuntu-latest
     defaults:
       run:
-        shell: bash -l {0}
+        shell: bash -el {0}
     strategy:
       fail-fast: false
       matrix:
@@ -23,6 +23,7 @@ jobs:
       with:
         lfs: true
 
+
     - name: Cache conda
       uses: actions/cache@v2
       env:
@@ -31,26 +32,30 @@ jobs:
         path: ~/conda_pkgs_dir
         key: ${{ runner.os }}-conda-${{ env.cache-name }}-${{ hashFiles('linux_environment.yml') }}
 
+
     - name: Install package dependencies with setup-miniconda@v2
       uses: conda-incubator/setup-miniconda@v2
       with:
+        python-version: ${{ matrix.python-version }}
+        miniforge-variant: Mambaforge
+        channels: conda-forge
+        channel-priority: true
         activate-environment: geofabrics
         environment-file: environment_linux.yml
         auto-activate-base: false
-        channels: conda-forge
-        channel-priority: strict
         use-only-tar-bz2: true # IMPORTANT: This needs to be set for caching to work properly!
-        python-version: ${{ matrix.python-version }}
-        mamba-version: "*"
     - run: |
         conda info
         conda list
         conda config --show-sources
         conda config --show
+        printenv | sort
+
 
     - name: Install test dependencies
       run: |
         mamba install flake8 pytest
+
 
     - name: Create .env file with API keys
       env:
@@ -59,12 +64,14 @@ jobs:
         echo import .env file from secrets and regenerate the file
         echo $ENV_BASE64 | base64 -d > .env
 
+
     - name: Run lint with flake8
       run: |
         # stop the build if there are Python syntax errors or undefined names
         flake8 . --count --select=E9,F63,F7,F82 --show-source --statistics
         # exit-zero treats all errors as warnings. The GitHub editor is 127 chars wide
         flake8 . --count --exit-zero --max-complexity=10 --max-line-length=127 --statistics
+
 
     - name: Run tests with pytest
       run: |
