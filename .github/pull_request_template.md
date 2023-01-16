@@ -8,4 +8,4 @@ DESCRIPTION OF PR:
  - [ ] Update documentation
    - [ ] Doc strings
    - [ ] Wiki
-- [ ] Update package version (if needed)
+- [ ] Update package (version.py & pyproject.toml) version (if needed)

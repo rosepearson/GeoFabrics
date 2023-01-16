@@ -409,16 +409,12 @@ class BaseProcessor(abc.ABC):
                         # Use the run method to download each layer in turn
                         vector = fetcher.run(layer, geometry_type)
 
-                        # Ensure directory for layer and save vector file
-                        layer_dir = cache_dir / str(layer)
-                        layer_dir.mkdir(parents=True, exist_ok=True)
-                        vector_dir = layer_dir / key
-                        vector.to_file(vector_dir)
-                        shutil.make_archive(
-                            base_name=vector_dir, format="zip", root_dir=vector_dir
-                        )
-                        shutil.rmtree(vector_dir)
-                        paths.append(layer_dir / f"{key}.zip")
+                        # Write out file if not already recorded
+                        layer_file = cache_dir / "vector" / f"{layer}.geojson"
+                        if not layer_file.exists():
+                            layer_file.parent.mkdir(parents=False, exist_ok=True)
+                            vector.to_file(layer_file)
+                        paths.append(layer_file)
                 elif api_type == "raster":
                     fetcher = data_services[data_service](
                         key=api_key,
@@ -694,21 +690,19 @@ class RawLidarDemGenerator(BaseProcessor):
                 coarse_dem_paths = self.get_vector_or_raster_paths(
                     key="coarse_dems", api_type="raster"
                 )
-                assert len(coarse_dem_paths) == 1, (
-                    f"{len(coarse_dem_paths)} coarse_dems specified, but only one"
-                    f" supported currently. coarse_dems: {coarse_dem_paths}"
-                )
 
                 logging.info(f"Incorporating background DEM: {coarse_dem_paths}")
 
                 # Load in background DEM - cut away within the LiDAR extents
-                self.coarse_dem = dem.CoarseDem(
-                    dem_file=coarse_dem_paths[0],
-                    catchment_geometry=self.catchment_geometry,
-                    set_foreshore=self.get_instruction_general("drop_offshore_lidar"),
-                    exclusion_extent=self.raw_dem.extents,
-                )
-
+                for coarse_dem_path in coarse_dem_paths:
+                    self.coarse_dem = dem.CoarseDem(
+                        dem_file=coarse_dem_path,
+                        catchment_geometry=self.catchment_geometry,
+                        set_foreshore=self.get_instruction_general(
+                            "drop_offshore_lidar"
+                        ),
+                        exclusion_extent=self.raw_dem.extents,
+                    )
                 # Add the coarse DEM data where there's no LiDAR updating the extents
                 self.raw_dem.add_coarse_dem(coarse_dem=self.coarse_dem)
         # save raw DEM and extents
