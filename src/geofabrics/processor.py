@@ -413,6 +413,7 @@ class BaseProcessor(abc.ABC):
                         layer_file = cache_dir / f"{layer}.geojson"
                         if not layer_file.exists():
                             vector.to_file(layer_file)
+                        paths.append(layer_file)
                 elif api_type == "raster":
                     fetcher = data_services[data_service](
                         key=api_key,
