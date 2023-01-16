@@ -409,16 +409,10 @@ class BaseProcessor(abc.ABC):
                         # Use the run method to download each layer in turn
                         vector = fetcher.run(layer, geometry_type)
 
-                        # Ensure directory for layer and save vector file
-                        layer_dir = cache_dir / str(layer)
-                        layer_dir.mkdir(parents=True, exist_ok=True)
-                        vector_dir = layer_dir / key
-                        vector.to_file(vector_dir)
-                        shutil.make_archive(
-                            base_name=vector_dir, format="zip", root_dir=vector_dir
-                        )
-                        shutil.rmtree(vector_dir)
-                        paths.append(layer_dir / f"{key}.zip")
+                        # Write out file if not already recorded
+                        layer_file = cache_dir / f"{layer}.geojson"
+                        if not layer_file.exists():
+                            vector.to_file(layer_file)
                 elif api_type == "raster":
                     fetcher = data_services[data_service](
                         key=api_key,
