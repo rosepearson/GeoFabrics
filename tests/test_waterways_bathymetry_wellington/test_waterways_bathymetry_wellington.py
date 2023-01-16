@@ -26,7 +26,8 @@ class ProcessorWaterwayElevationsWellingtonTest(unittest.TestCase):
     contained in processor.RiverBathymetryGenerator.
 
     Tests run include:
-        1. test_open_waterways_windows - Test the expected waterways are created in windows
+        1. test_open_waterways_windows - Test the expected waterways are created in
+        windows
         2. test_open_waterways_linux - Test the expected waterways are created in linux
     """
 
