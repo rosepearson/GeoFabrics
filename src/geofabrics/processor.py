@@ -416,6 +416,20 @@ class BaseProcessor(abc.ABC):
                             vector.to_file(layer_file)
                         paths.append(layer_file)
                 elif api_type == "raster":
+                    # simplify the bounding_polygon geometry
+                    if bounding_polygon is not None:
+                        bounds = bounding_polygon.bounds
+                        bounds = shapely.geometry.Polygon(
+                            [
+                                (bounds["minx"].min(), bounds["miny"].min()),
+                                (bounds["maxx"].max(), bounds["miny"].min()),
+                                (bounds["maxx"].max(), bounds["maxy"].max()),
+                                (bounds["minx"].min(), bounds["maxy"].max()),
+                            ]
+                        )
+                        bounding_polygon = geopandas.GeoDataFrame(
+                            geometry=[bounds], crs=bounding_polygon.crs
+                        )
                     fetcher = data_services[data_service](
                         key=api_key,
                         bounding_polygon=bounding_polygon,
