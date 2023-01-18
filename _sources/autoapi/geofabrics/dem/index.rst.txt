@@ -314,12 +314,10 @@ Attributes
 
 
 .. py:data:: delayed_roughness_over_chunk
-   
 
    Wrap the `rasterise_chunk` routine in dask.delayed
 
 .. py:data:: delayed_elevation_over_chunk
-   
 
    Wrap the `load_tiles_in_chunk` routine in dask.delayed
 
