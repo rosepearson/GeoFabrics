@@ -5,15 +5,15 @@
 			"vertical": 7839
 		},
 		"grid_params": {
-			"resolution": 10
+			"resolution": 2
 		}
 	},
 	"processing": {
-		"chunk_size": 100,
+		"chunk_size": 500,
 		"number_of_cores": 2
 	},
 	"data_paths": {
-		"local_cache": "tests/test_processor_remote_tiles_wellington_ground_only/data",
+		"local_cache": "tests/test_multiple_lidar_ground_only/data",
 		"subfolder": "results",
 		"catchment_boundary": "catchment.geojson",
 		"land": "catchment.geojson",
@@ -23,6 +23,7 @@
 	"apis": {
 		"lidar": {
 			"open_topography": {
+				"NZ21_Kapiti": true,
 				"Wellington_2013": {
 					"crs": {
 						"horizontal": 2193,
