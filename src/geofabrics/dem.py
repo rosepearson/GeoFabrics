@@ -1370,6 +1370,7 @@ class RawDem(LidarBase):
 
         # get chunking information
         chunked_dim_x, chunked_dim_y = self._set_up_chunks(chunk_size)
+        elevations = []
 
         logging.info(f"Preparing {[len(chunked_dim_x), len(chunked_dim_y)]} chunks")
         for dataset_name in lidar_datasets_info.keys():
@@ -1378,7 +1379,6 @@ class RawDem(LidarBase):
             tile_index_file = lidar_datasets_info[dataset_name]["tile_index_file"]
             source_crs = lidar_datasets_info[dataset_name]["crs"]
 
-            elevations = []
             # create a map from tile name to tile file name
             lidar_files_map = {
                 lidar_file.name: lidar_file for lidar_file in lidar_files
@@ -1554,11 +1554,11 @@ class RawDem(LidarBase):
                 A list of elevations over the x, and y coordiantes.One for each dataset
         """
 
-        # Lood opver each dataset and add data to the DEM
+        # Lood over each dataset and add data to the DEM
         dems = []
         for z in elevations:
             # Create source variable - assume all values are defined from LiDAR
-            source_class = numpy.ones_like(z) * self.SOURCE_CLASSIFICATION["no data"]
+            source_class = numpy.ones_like(z) * numpy.nan
             source_class[
                 numpy.logical_not(numpy.isnan(z))
             ] = self.SOURCE_CLASSIFICATION["LiDAR"]
@@ -1602,6 +1602,11 @@ class RawDem(LidarBase):
             self._write_netcdf_conventions_in_place(dem, self.catchment_geometry.crs)
             dems.append(dem)
         dem = rioxarray.merge.merge_datasets(dems, method="first")
+
+        # Set areas with no values to No Data
+        dem.source_class.data[
+            numpy.isnan(dem.source_class.data)
+        ] = self.SOURCE_CLASSIFICATION["no data"]
 
         # set any offshre values to ocean assuming drop offshore is selected
         if (

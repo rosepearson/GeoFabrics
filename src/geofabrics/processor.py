@@ -525,7 +525,6 @@ class BaseProcessor(abc.ABC):
         # Store dataset information in a dictionary of dictionaries
         lidar_datasets_info = {}
 
-        lidar_dataset_index = 0  # currently only support one LiDAR dataset
         data_service = "open_topography"  # currently only open topography supported
         api_type = "lidar"
 
@@ -560,21 +559,20 @@ class BaseProcessor(abc.ABC):
             ].keys():
                 logging.info(f"Fetching dataset: {dataset_name}")
                 self.lidar_fetcher.run(dataset_name)
-            lidar_datasets_info[dataset_name] = {}
-            dataset_prefix = self.lidar_fetcher.dataset_prefixes[lidar_dataset_index]
-            lidar_datasets_info[dataset_name]["file_paths"] = sorted(
-                pathlib.Path(self.lidar_fetcher.cache_path / dataset_prefix).rglob(
-                    "*.laz"
+                lidar_datasets_info[dataset_name] = {}
+                lidar_datasets_info[dataset_name]["file_paths"] = sorted(
+                    pathlib.Path(self.lidar_fetcher.cache_path / dataset_name).rglob(
+                        "*.laz"
+                    )
                 )
-            )
-            lidar_datasets_info[dataset_name]["crs"] = self.get_lidar_dataset_crs(
-                data_service, dataset_prefix
-            )
-            lidar_datasets_info[dataset_name]["tile_index_file"] = (
-                self.lidar_fetcher.cache_path
-                / dataset_prefix
-                / f"{dataset_prefix}_TileIndex.zip"
-            )
+                lidar_datasets_info[dataset_name]["crs"] = self.get_lidar_dataset_crs(
+                    data_service, dataset_name
+                )
+                lidar_datasets_info[dataset_name]["tile_index_file"] = (
+                    self.lidar_fetcher.cache_path
+                    / dataset_name
+                    / f"{dataset_name}_TileIndex.zip"
+                )
         else:
             # get the specified file paths from the instructions,
             lidar_datasets_info["local_files"] = {}
