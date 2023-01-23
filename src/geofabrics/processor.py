@@ -503,7 +503,7 @@ class BaseProcessor(abc.ABC):
             )
             return None
 
-    def get_lidar_file_list(self) -> dict:
+    def get_lidar_datasets_info(self) -> dict:
         """Return a dictionary with three enties 'file_paths', 'crs' and
         'tile_index_file'. The 'file_paths' contains a list of LiDAR tiles to process.
 
@@ -522,11 +522,12 @@ class BaseProcessor(abc.ABC):
         the instruction 'data_paths' is checked for 'lidars' and these are returned.
         """
 
+        # Store dataset information in a dictionary of dictionaries
+        lidar_datasets_info = {}
+
         lidar_dataset_index = 0  # currently only support one LiDAR dataset
         data_service = "open_topography"  # currently only open topography supported
         api_type = "lidar"
-
-        lidar_dataset_info = {}
 
         # See if 'OpenTopography' or another data_service has been specified as an area
         # to look first
@@ -559,32 +560,30 @@ class BaseProcessor(abc.ABC):
             ].keys():
                 logging.info(f"Fetching dataset: {dataset_name}")
                 self.lidar_fetcher.run(dataset_name)
-            assert len(self.lidar_fetcher.dataset_prefixes) == 1, (
-                "geofabrics currently only supports creating a DEM from only one LiDAR "
-                "dataset at a time. Please create an issue if you want support for "
-                "mutliple datasets. Error as the following datasets were specified: "
-                f"{self.lidar_fetcher.dataset_prefixes}"
-            )
+            lidar_datasets_info[dataset_name] = {}
             dataset_prefix = self.lidar_fetcher.dataset_prefixes[lidar_dataset_index]
-            lidar_dataset_info["file_paths"] = sorted(
+            lidar_datasets_info[dataset_name]["file_paths"] = sorted(
                 pathlib.Path(self.lidar_fetcher.cache_path / dataset_prefix).rglob(
                     "*.laz"
                 )
             )
-            lidar_dataset_info["crs"] = self.get_lidar_dataset_crs(
+            lidar_datasets_info[dataset_name]["crs"] = self.get_lidar_dataset_crs(
                 data_service, dataset_prefix
             )
-            lidar_dataset_info["tile_index_file"] = (
+            lidar_datasets_info[dataset_name]["tile_index_file"] = (
                 self.lidar_fetcher.cache_path
                 / dataset_prefix
                 / f"{dataset_prefix}_TileIndex.zip"
             )
         else:
-            # get the specified file paths from the instructions
-            lidar_dataset_info["file_paths"] = self.get_instruction_path("lidars")
-            lidar_dataset_info["crs"] = None
-            lidar_dataset_info["tile_index_file"] = None
-        return lidar_dataset_info
+            # get the specified file paths from the instructions,
+            lidar_datasets_info["local_files"] = {}
+            lidar_datasets_info["local_files"][
+                "file_paths"
+            ] = self.get_instruction_path("lidars")
+            lidar_datasets_info["local_files"]["crs"] = None
+            lidar_datasets_info["local_files"]["tile_index_file"] = None
+        return lidar_datasets_info
 
     def create_catchment(self) -> geometry.CatchmentGeometry:
         # create the catchment geometry object
@@ -598,7 +597,7 @@ class BaseProcessor(abc.ABC):
         )
         land_dirs = self.get_vector_or_raster_paths(key="land", api_type="vector")
         assert len(land_dirs) == 1, (
-            f"{len(land_dirs)} catchment_boundary's provided, where only one is "
+            f"{len(land_dirs)} land_dir's provided, where only one is "
             f"supported. Specficially land_dirs = {land_dirs}."
         )
         catchment_geometry.land = land_dirs[0]
@@ -655,7 +654,7 @@ class RawLidarDemGenerator(BaseProcessor):
         self.catchment_geometry = self.create_catchment()
 
         # Get LiDAR data file-list - this may involve downloading lidar files
-        lidar_dataset_info = self.get_lidar_file_list()
+        lidar_datasets_info = self.get_lidar_datasets_info()
 
         # setup the raw DEM generator
         self.raw_dem = dem.RawDem(
@@ -680,12 +679,10 @@ class RawLidarDemGenerator(BaseProcessor):
             print(client)
             # Load in LiDAR tiles
             self.raw_dem.add_lidar(
-                lidar_files=lidar_dataset_info["file_paths"],
-                source_crs=lidar_dataset_info["crs"],
+                lidar_datasets_info=lidar_datasets_info,
                 lidar_classifications_to_keep=self.get_instruction_general(
                     "lidar_classifications_to_keep"
                 ),
-                tile_index_file=lidar_dataset_info["tile_index_file"],
                 chunk_size=self.get_processing_instructions("chunk_size"),
                 metadata=self.create_metadata(),
             )  # Note must be called after all others if it is to be complete

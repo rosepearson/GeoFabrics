@@ -1064,48 +1064,56 @@ class LidarBase(DemBase):
             ][0]
         return tile_index_extents, tile_index_name_column
 
-    def _check_valid_inputs(self, source_crs, chunk_size, lidar_files, tile_index_file):
+    def _check_valid_inputs(self, lidar_datasets_info, chunk_size):
         """Check the combination of inputs for adding LiDAR is valid.
 
         Parameters
         ----------
 
-        source_crs
-            Coordinate reference system information
+        lidar_datasets_info
+            A dictionary of dictionaties of LiDAR dataset information. The CRS, list of
+            LAS files and tile index file are included for each dataset.
         chunk_size
             The chunk size in pixels for parallel/staged processing
-        lidar_files
-            The list of LiDAR files to read in
-        tile_index_file
-            A file specifying the spatial extents of the LiDAR files.
         """
 
-        # Check the source_crs is valid
-        if source_crs is not None:
-            assert "horizontal" in source_crs, (
-                "The horizontal component of the source CRS is not specified. Both "
-                "horizontal and vertical CRS need to be defined. The source_crs "
-                f"specified is: {self.source_crs}"
-            )
-            assert "vertical" in source_crs, (
-                "The vertical component of the source CRS is not specified. Both "
-                "horizontal and vertical CRS need to be defined. The source_crs "
-                f"specified is: {self.source_crs}"
-            )
-        # Check some LiDAR files are soecified
-        assert len(lidar_files) >= 1, "There are no LiDAR files specified"
-        # Check the combination of chunk_size, lidar_files and tile_index_file are valid
+        for dataset_name in lidar_datasets_info:
+            # Check the source_crs is valid
+            source_crs = lidar_datasets_info[dataset_name]["crs"]
+            if source_crs is not None:
+                assert "horizontal" in source_crs, (
+                    "The horizontal component of the source CRS is not specified. Both "
+                    "horizontal and vertical CRS need to be defined. The source_crs "
+                    f"specified is: {source_crs} for {dataset_name}"
+                )
+                assert "vertical" in source_crs, (
+                    "The vertical component of the source CRS is not specified. Both "
+                    "horizontal and vertical CRS need to be defined. The source_crs "
+                    f"specified is: {self.source_crs} for {dataset_name}"
+                )
+            # Check some LiDAR files are soecified
+            lidar_files = lidar_datasets_info[dataset_name]["file_paths"]
+            assert len(lidar_files) >= 1, "There are no LiDAR files specified"
+            # Check for valid combination of chunk_size, lidar_files and tile_index_file
+            if chunk_size is None:
+                assert (
+                    len(lidar_files) == 1
+                ), "If there is no chunking there must be only one LiDAR file"
+            else:
+                assert (
+                    chunk_size > 0 and type(chunk_size) is int
+                ), "chunk_size must be a positive integer"
+                tile_index_file = lidar_datasets_info[dataset_name]["tile_index_file"]
+                assert tile_index_file is not None, (
+                    "A tile index file must be provided if chunking is defined for"
+                    f"for {dataset_name}"
+                )
+        # There should only be one dataset if there is no chunking information
         if chunk_size is None:
-            assert (
-                len(lidar_files) == 1
-            ), "If there is no chunking there must be only one LiDAR file"
-        else:
-            assert (
-                chunk_size > 0 and type(chunk_size) is int
-            ), "chunk_size must be a positive integer"
-            assert (
-                tile_index_file is not None
-            ), "A tile index file must be provided if chunking is defined"
+            assert len(lidar_datasets_info) == 1, (
+                "If there is no chunking there must only be one LiDAR dataset. Instead"
+                "there is {len(lidar_file_info)} with keys {lidar_file_info.keys()}"
+            )
 
     def add_lidar(
         self,
@@ -1260,11 +1268,9 @@ class RawDem(LidarBase):
 
     def add_lidar(
         self,
-        lidar_files: typing.List[typing.Union[str, pathlib.Path]],
-        tile_index_file: typing.Union[str, pathlib.Path],
+        lidar_datasets_info: dict,
         chunk_size: int,
         lidar_classifications_to_keep: list,
-        source_crs: dict,
         metadata: dict,
     ):
         """Read in all LiDAR files and use to define a 'raw' DEM with elevations in
@@ -1273,14 +1279,11 @@ class RawDem(LidarBase):
         Parameters
         ----------
 
-        source_crs
-            Coordinate reference system information
+        lidar_datasets_info
+            One of more dictionaries of LiDAR dataset information - including a list of
+            LAS files, CRS and tile index file for each.
         chunk_size
             The chunk size in pixels for parallel/staged processing
-        lidar_files
-            The list of LiDAR files to read in
-        tile_index_file
-            A file specifying the spatial extents of the LiDAR files.
         lidar_classifications_to_keep
             A list of LiDAR classifications to keep - '2' for ground, '9' for water.
             See https://www.asprs.org/wp-content/uploads/2010/12/LAS_1_4_r13.pdf for
@@ -1291,10 +1294,7 @@ class RawDem(LidarBase):
 
         # Check valid inputs
         self._check_valid_inputs(
-            source_crs=source_crs,
-            chunk_size=chunk_size,
-            lidar_files=lidar_files,
-            tile_index_file=tile_index_file,
+            lidar_datasets_info=lidar_datasets_info, chunk_size=chunk_size
         )
         # Define the region to rasterise over
         region_to_rasterise = (
@@ -1314,17 +1314,14 @@ class RawDem(LidarBase):
         # Don't use dask delayed if there is no chunking
         if chunk_size is None:
             dem = self._add_lidar_no_chunking(
-                lidar_file=lidar_files[0],
+                lidar_dataset_info=next(iter(lidar_datasets_info.values())),
                 region_to_rasterise=region_to_rasterise,
-                source_crs=source_crs,
                 options=raster_options,
                 metadata=metadata,
             )
         else:
             dem = self._add_tiled_lidar_chunked(
-                lidar_files=lidar_files,
-                tile_index_file=tile_index_file,
-                source_crs=source_crs,
+                lidar_datasets_info=lidar_datasets_info,
                 raster_options=raster_options,
                 region_to_rasterise=region_to_rasterise,
                 chunk_size=chunk_size,
@@ -1362,9 +1359,7 @@ class RawDem(LidarBase):
 
     def _add_tiled_lidar_chunked(
         self,
-        lidar_files: typing.List[pathlib.Path],
-        tile_index_file: typing.Union[str, pathlib.Path],
-        source_crs: dict,
+        lidar_datasets_info: dict,
         region_to_rasterise: geopandas.GeoDataFrame,
         chunk_size: int,
         metadata: dict,
@@ -1373,66 +1368,76 @@ class RawDem(LidarBase):
         """Create a 'raw'' DEM from a set of tiled LiDAR files. Read these in over
         non-overlapping chunks and then combine"""
 
-        # remove all tiles entirely outside the region to raserise
-        tile_index_extents, tile_index_name_column = self._tile_index_column_name(
-            tile_index_file
-        )
-
         # get chunking information
         chunked_dim_x, chunked_dim_y = self._set_up_chunks(chunk_size)
 
-        # create a map from tile name to tile file name
-        lidar_files_map = {lidar_file.name: lidar_file for lidar_file in lidar_files}
-
-        # cycle through index chunks - and collect in a delayed array
         logging.info(f"Preparing {[len(chunked_dim_x), len(chunked_dim_y)]} chunks")
-        delayed_chunked_matrix = []
-        for i, dim_y in enumerate(chunked_dim_y):
-            delayed_chunked_x = []
-            for j, dim_x in enumerate(chunked_dim_x):
-                logging.info(f"\tChunk {[i, j]}")
+        for dataset_name in lidar_datasets_info.keys():
+            # Pull out the dataset information
+            lidar_files = lidar_datasets_info[dataset_name]["file_paths"]
+            tile_index_file = lidar_datasets_info[dataset_name]["tile_index_file"]
+            source_crs = lidar_datasets_info[dataset_name]["crs"]
 
-                # Define the region to tile
-                chunk_region_to_tile = self._define_chunk_region(
-                    region_to_rasterise=region_to_rasterise,
-                    dim_x=dim_x,
-                    dim_y=dim_y,
-                    radius=raster_options["radius"],
-                )
+            elevations = []
+            # create a map from tile name to tile file name
+            lidar_files_map = {
+                lidar_file.name: lidar_file for lidar_file in lidar_files
+            }
 
-                # Load in files into tiles
-                chunk_lidar_files = select_lidar_files(
-                    tile_index_extents=tile_index_extents,
-                    tile_index_name_column=tile_index_name_column,
-                    chunk_region_to_tile=chunk_region_to_tile,
-                    lidar_files_map=lidar_files_map,
-                )
-                chunk_points = delayed_load_tiles_in_chunk(
-                    lidar_files=chunk_lidar_files,
-                    source_crs=source_crs,
-                    chunk_region_to_tile=chunk_region_to_tile,
-                    catchment_geometry=self.catchment_geometry,
-                )
-                # Rasterise tiles
-                delayed_chunked_x.append(
-                    dask.array.from_delayed(
-                        delayed_elevation_over_chunk(
-                            dim_x=dim_x,
-                            dim_y=dim_y,
-                            tile_points=chunk_points,
-                            options=raster_options,
-                        ),
-                        shape=(chunk_size, chunk_size),
-                        dtype=numpy.float32,
+            # remove all tiles entirely outside the region to raserise
+            tile_index_extents, tile_index_name_column = self._tile_index_column_name(
+                tile_index_file
+            )
+
+            # cycle through index chunks - and collect in a delayed array
+            logging.info(f"Running over dataset {dataset_name}")
+            delayed_chunked_matrix = []
+            for i, dim_y in enumerate(chunked_dim_y):
+                delayed_chunked_x = []
+                for j, dim_x in enumerate(chunked_dim_x):
+                    logging.info(f"\tChunk {[i, j]}")
+
+                    # Define the region to tile
+                    chunk_region_to_tile = self._define_chunk_region(
+                        region_to_rasterise=region_to_rasterise,
+                        dim_x=dim_x,
+                        dim_y=dim_y,
+                        radius=raster_options["radius"],
                     )
-                )
-            delayed_chunked_matrix.append(delayed_chunked_x)
-        # Combine chunks into a dataset
-        elevation = dask.array.block(delayed_chunked_matrix)
+
+                    # Load in files into tiles
+                    chunk_lidar_files = select_lidar_files(
+                        tile_index_extents=tile_index_extents,
+                        tile_index_name_column=tile_index_name_column,
+                        chunk_region_to_tile=chunk_region_to_tile,
+                        lidar_files_map=lidar_files_map,
+                    )
+                    chunk_points = delayed_load_tiles_in_chunk(
+                        lidar_files=chunk_lidar_files,
+                        source_crs=source_crs,
+                        chunk_region_to_tile=chunk_region_to_tile,
+                        catchment_geometry=self.catchment_geometry,
+                    )
+                    # Rasterise tiles
+                    delayed_chunked_x.append(
+                        dask.array.from_delayed(
+                            delayed_elevation_over_chunk(
+                                dim_x=dim_x,
+                                dim_y=dim_y,
+                                tile_points=chunk_points,
+                                options=raster_options,
+                            ),
+                            shape=(chunk_size, chunk_size),
+                            dtype=numpy.float32,
+                        )
+                    )
+                delayed_chunked_matrix.append(delayed_chunked_x)
+            # Combine chunks into a dataset
+            elevations.append(dask.array.block(delayed_chunked_matrix))
         chunked_dem = self._create_data_set(
             x=numpy.concatenate(chunked_dim_x),
             y=numpy.concatenate(chunked_dim_y),
-            z=elevation,
+            elevations=elevations,
             metadata=metadata,
         )
         logging.info("Computing chunks")
@@ -1443,14 +1448,15 @@ class RawDem(LidarBase):
 
     def _add_lidar_no_chunking(
         self,
-        lidar_file: typing.Union[str, pathlib.Path],
+        lidar_dataset_info: dict,
         region_to_rasterise: geopandas.GeoDataFrame,
         options: dict,
-        source_crs: dict,
         metadata: dict,
     ) -> xarray.Dataset:
         """Create a 'raw' DEM from a single LiDAR file with no chunking."""
 
+        lidar_file = lidar_dataset_info["file_paths"][0]
+        source_crs = lidar_dataset_info["crs"]
         logging.info(f"On LiDAR tile 1 of 1: {lidar_file}")
 
         # Use PDAL to load in file
@@ -1488,7 +1494,9 @@ class RawDem(LidarBase):
         elevation = raster_values.reshape((len(dim_y), len(dim_x)))
 
         # Create xarray
-        dem = self._create_data_set(x=dim_x, y=dim_y, z=elevation, metadata=metadata)
+        dem = self._create_data_set(
+            x=dim_x, y=dim_y, elevations=[elevation], metadata=metadata
+        )
 
         return dem
 
@@ -1531,7 +1539,7 @@ class RawDem(LidarBase):
         return grid_z
 
     def _create_data_set(
-        self, x: numpy.ndarray, y: numpy.ndarray, z: numpy.ndarray, metadata: dict
+        self, x: numpy.ndarray, y: numpy.ndarray, elevations: list, metadata: dict
     ) -> xarray.Dataset:
         """A function to create a new dataset from x, y and z arrays.
 
@@ -1542,55 +1550,60 @@ class RawDem(LidarBase):
                 X coordinates of the dataset.
             y
                 Y coordinates of the dataset.
-            z
-                Elevations over the x, and y coordiantes.
+            elevations
+                A list of elevations over the x, and y coordiantes.One for each dataset
         """
 
-        # Create source variable - assume all values are defined from LiDAR
-        source_class = numpy.ones_like(z) * self.SOURCE_CLASSIFICATION["no data"]
-        source_class[numpy.logical_not(numpy.isnan(z))] = self.SOURCE_CLASSIFICATION[
-            "LiDAR"
-        ]
-        dem = xarray.Dataset(
-            data_vars=dict(
-                z=(
-                    ["y", "x"],
-                    z,
-                    {
-                        "units": "m",
-                        "long_name": "ground elevation",
-                        "vertical_datum": "EPSG:"
-                        f"{self.catchment_geometry.crs['vertical']}",
-                    },
+        # Lood opver each dataset and add data to the DEM
+        dems = []
+        for z in elevations:
+            # Create source variable - assume all values are defined from LiDAR
+            source_class = numpy.ones_like(z) * self.SOURCE_CLASSIFICATION["no data"]
+            source_class[
+                numpy.logical_not(numpy.isnan(z))
+            ] = self.SOURCE_CLASSIFICATION["LiDAR"]
+            dem = xarray.Dataset(
+                data_vars=dict(
+                    z=(
+                        ["y", "x"],
+                        z,
+                        {
+                            "units": "m",
+                            "long_name": "ground elevation",
+                            "vertical_datum": "EPSG:"
+                            f"{self.catchment_geometry.crs['vertical']}",
+                        },
+                    ),
+                    source_class=(
+                        ["y", "x"],
+                        source_class,
+                        {
+                            "units": "",
+                            "long_name": "source data classification",
+                            "classifications": f"{self.SOURCE_CLASSIFICATION}",
+                        },
+                    ),
                 ),
-                source_class=(
-                    ["y", "x"],
-                    source_class,
-                    {
-                        "units": "",
-                        "long_name": "source data classification",
-                        "classifications": f"{self.SOURCE_CLASSIFICATION}",
-                    },
-                ),
-            ),
-            coords=dict(x=(["x"], x), y=(["y"], y)),
-            attrs={
-                "title": "Geofabric representing elevation and roughness",
-                "source": f"{metadata['library_name']} version "
-                f"{metadata['library_version']}",
-                "description": f"{metadata['library_name']}:{metadata['class_name']} "
-                f"resolution {self.catchment_geometry.resolution}",
-                "history": f"{metadata['utc_time']}: {metadata['library_name']}:"
-                f"{metadata['class_name']} resolution "
-                f"{self.catchment_geometry.resolution};",
-                "geofabrics_instructions": f"{metadata['instructions']}",
-            },
-        )
+                coords=dict(x=(["x"], x), y=(["y"], y)),
+                attrs={
+                    "title": "Geofabric representing elevation and roughness",
+                    "source": f"{metadata['library_name']} version "
+                    f"{metadata['library_version']}",
+                    "description": f"{metadata['library_name']}:"
+                    f"{metadata['class_name']} resolution "
+                    f"{self.catchment_geometry.resolution}",
+                    "history": f"{metadata['utc_time']}: {metadata['library_name']}"
+                    f":{metadata['class_name']} resolution "
+                    f"{self.catchment_geometry.resolution};",
+                    "geofabrics_instructions": f"{metadata['instructions']}",
+                },
+            )
+            # ensure the expected CF conventions are followed
+            self._write_netcdf_conventions_in_place(dem, self.catchment_geometry.crs)
+            dems.append(dem)
+        dem = rioxarray.merge.merge_datasets(dems, method="first")
 
-        # ensure the expected CF conventions are followed
-        self._write_netcdf_conventions_in_place(dem, self.catchment_geometry.crs)
-
-        # set any offfshre values to ocean
+        # set any offshre values to ocean assuming drop offshore is selected
         if (
             self.catchment_geometry.foreshore_and_offshore.area.sum() > 0
             and self.drop_offshore_lidar
