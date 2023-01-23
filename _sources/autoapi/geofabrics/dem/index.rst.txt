@@ -206,15 +206,14 @@ Attributes
    :param lidar_interpolation_method: The interpolation method to apply to LiDAR during downsampling/averaging.
                                       Options are: mean, median, IDW, max, min, STD.
 
-   .. py:method:: add_lidar(lidar_files, tile_index_file, chunk_size, lidar_classifications_to_keep, source_crs, metadata)
+   .. py:method:: add_lidar(lidar_datasets_info, chunk_size, lidar_classifications_to_keep, metadata)
 
       Read in all LiDAR files and use to define a 'raw' DEM with elevations in
       pixels where there is LiDAR or coarse DEM information.
 
-      :param source_crs: Coordinate reference system information
+      :param lidar_datasets_info: One of more dictionaries of LiDAR dataset information - including a list of
+                                  LAS files, CRS and tile index file for each.
       :param chunk_size: The chunk size in pixels for parallel/staged processing
-      :param lidar_files: The list of LiDAR files to read in
-      :param tile_index_file: A file specifying the spatial extents of the LiDAR files.
       :param lidar_classifications_to_keep: A list of LiDAR classifications to keep - '2' for ground, '9' for water.
                                             See https://www.asprs.org/wp-content/uploads/2010/12/LAS_1_4_r13.pdf for
                                             standard list
@@ -249,16 +248,15 @@ Attributes
                                 'nearest', and 'cubic'.
    :param lidar_interpolation_method: The interpolation method to apply to LiDAR. Options are: mean, median, IDW.
 
-   .. py:method:: add_lidar(lidar_files, tile_index_file, chunk_size, lidar_classifications_to_keep, source_crs, metadata)
+   .. py:method:: add_lidar(lidar_datasets_info, chunk_size, lidar_classifications_to_keep, metadata)
 
       Read in all LiDAR files and use the point cloud distribution, source_class
       information, and hydrologiaclly conditioned elevations to estimate the roughness
       across the DEM.
 
-      :param source_crs: Coordinate reference system information
+      :param lidar_datasets_info: One of more dictionaries of LiDAR dataset information - including a list of
+                                  LAS files, CRS and tile index file for each.
       :param chunk_size: The chunk size in pixels for parallel/staged processing
-      :param lidar_files: The list of LiDAR files to read in
-      :param tile_index_file: A file specifying the spatial extents of the LiDAR files.
       :param lidar_classifications_to_keep: A list of LiDAR classifications to keep - '2' for ground, '9' for water.
                                             See https://www.asprs.org/wp-content/uploads/2010/12/LAS_1_4_r13.pdf for
                                             standard list

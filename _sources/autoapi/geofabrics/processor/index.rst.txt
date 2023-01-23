@@ -129,7 +129,7 @@ Classes
       will later be used to override the CRS encoded in the LAS files.
 
 
-   .. py:method:: get_lidar_file_list()
+   .. py:method:: get_lidar_datasets_info()
 
       Return a dictionary with three enties 'file_paths', 'crs' and
       'tile_index_file'. The 'file_paths' contains a list of LiDAR tiles to process.
@@ -182,7 +182,7 @@ Classes
       derivatives.
 
       Note it currently only considers one LiDAR dataset that can have many tiles.
-      See 'get_lidar_file_list' for where to change this.
+      See 'get_lidar_datasets_info' for where to change this.
 
 
 

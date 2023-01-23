@@ -285,8 +285,8 @@ will later be used to override the CRS encoded in the LAS files.</p>
 </dd></dl>
 
 <dl class="py method">
-<dt class="sig sig-object py" id="geofabrics.processor.BaseProcessor.get_lidar_file_list">
-<span class="sig-name descname"><span class="pre">get_lidar_file_list</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="headerlink" href="#geofabrics.processor.BaseProcessor.get_lidar_file_list" title="Permalink to this definition"></a></dt>
+<dt class="sig sig-object py" id="geofabrics.processor.BaseProcessor.get_lidar_datasets_info">
+<span class="sig-name descname"><span class="pre">get_lidar_datasets_info</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="headerlink" href="#geofabrics.processor.BaseProcessor.get_lidar_datasets_info" title="Permalink to this definition"></a></dt>
 <dd><p>Return a dictionary with three enties ‘file_paths’, ‘crs’ and
 ‘tile_index_file’. The ‘file_paths’ contains a list of LiDAR tiles to process.</p>
 <p>The ‘crs’ (or coordinate system of the LiDAR data as defined by an EPSG code) is
@@ -347,7 +347,7 @@ an instruction file.</p>
 <dd><p>This method executes the geofabrics generation pipeline to produce geofabric
 derivatives.</p>
 <p>Note it currently only considers one LiDAR dataset that can have many tiles.
-See ‘get_lidar_file_list’ for where to change this.</p>
+See ‘get_lidar_datasets_info’ for where to change this.</p>
 </dd></dl>
 
 </dd></dl>

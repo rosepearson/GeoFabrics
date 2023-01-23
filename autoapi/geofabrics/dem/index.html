@@ -407,16 +407,15 @@ Options are: mean, median, IDW, max, min, STD.</p></li>
 </dl>
 <dl class="py method">
 <dt class="sig sig-object py" id="geofabrics.dem.RawDem.add_lidar">
-<span class="sig-name descname"><span class="pre">add_lidar</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">lidar_files</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">tile_index_file</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">chunk_size</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">lidar_classifications_to_keep</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">source_crs</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">metadata</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#geofabrics.dem.RawDem.add_lidar" title="Permalink to this definition"></a></dt>
+<span class="sig-name descname"><span class="pre">add_lidar</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">lidar_datasets_info</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">chunk_size</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">lidar_classifications_to_keep</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">metadata</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#geofabrics.dem.RawDem.add_lidar" title="Permalink to this definition"></a></dt>
 <dd><p>Read in all LiDAR files and use to define a ‘raw’ DEM with elevations in
 pixels where there is LiDAR or coarse DEM information.</p>
 <dl class="field-list simple">
 <dt class="field-odd">Parameters</dt>
 <dd class="field-odd"><ul class="simple">
-<li><p><strong>source_crs</strong> (<em>dict</em>) – Coordinate reference system information</p></li>
+<li><p><strong>lidar_datasets_info</strong> (<em>dict</em>) – One of more dictionaries of LiDAR dataset information - including a list of
+LAS files, CRS and tile index file for each.</p></li>
 <li><p><strong>chunk_size</strong> (<em>int</em>) – The chunk size in pixels for parallel/staged processing</p></li>
-<li><p><strong>lidar_files</strong> (<em>List</em><em>[</em><em>Union</em><em>[</em><em>str</em><em>, </em><em>pathlib.Path</em><em>]</em><em>]</em>) – The list of LiDAR files to read in</p></li>
-<li><p><strong>tile_index_file</strong> (<em>Union</em><em>[</em><em>str</em><em>, </em><em>pathlib.Path</em><em>]</em>) – A file specifying the spatial extents of the LiDAR files.</p></li>
 <li><p><strong>lidar_classifications_to_keep</strong> (<em>list</em>) – A list of LiDAR classifications to keep - ‘2’ for ground, ‘9’ for water.
 See <a class="reference external" href="https://www.asprs.org/wp-content/uploads/2010/12/LAS_1_4_r13.pdf">https://www.asprs.org/wp-content/uploads/2010/12/LAS_1_4_r13.pdf</a> for
 standard list</p></li>
@@ -466,17 +465,16 @@ to estimate roughness emperically.</p>
 </dl>
 <dl class="py method">
 <dt class="sig sig-object py" id="geofabrics.dem.RoughnessDem.add_lidar">
-<span class="sig-name descname"><span class="pre">add_lidar</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">lidar_files</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">tile_index_file</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">chunk_size</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">lidar_classifications_to_keep</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">source_crs</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">metadata</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#geofabrics.dem.RoughnessDem.add_lidar" title="Permalink to this definition"></a></dt>
+<span class="sig-name descname"><span class="pre">add_lidar</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">lidar_datasets_info</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">chunk_size</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">lidar_classifications_to_keep</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">metadata</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#geofabrics.dem.RoughnessDem.add_lidar" title="Permalink to this definition"></a></dt>
 <dd><p>Read in all LiDAR files and use the point cloud distribution, source_class
 information, and hydrologiaclly conditioned elevations to estimate the roughness
 across the DEM.</p>
 <dl class="field-list simple">
 <dt class="field-odd">Parameters</dt>
 <dd class="field-odd"><ul class="simple">
-<li><p><strong>source_crs</strong> (<em>dict</em>) – Coordinate reference system information</p></li>
+<li><p><strong>lidar_datasets_info</strong> (<em>dict</em>) – One of more dictionaries of LiDAR dataset information - including a list of
+LAS files, CRS and tile index file for each.</p></li>
 <li><p><strong>chunk_size</strong> (<em>int</em>) – The chunk size in pixels for parallel/staged processing</p></li>
-<li><p><strong>lidar_files</strong> (<em>List</em><em>[</em><em>Union</em><em>[</em><em>str</em><em>, </em><em>pathlib.Path</em><em>]</em><em>]</em>) – The list of LiDAR files to read in</p></li>
-<li><p><strong>tile_index_file</strong> (<em>Union</em><em>[</em><em>str</em><em>, </em><em>pathlib.Path</em><em>]</em>) – A file specifying the spatial extents of the LiDAR files.</p></li>
 <li><p><strong>lidar_classifications_to_keep</strong> (<em>list</em>) – A list of LiDAR classifications to keep - ‘2’ for ground, ‘9’ for water.
 See <a class="reference external" href="https://www.asprs.org/wp-content/uploads/2010/12/LAS_1_4_r13.pdf">https://www.asprs.org/wp-content/uploads/2010/12/LAS_1_4_r13.pdf</a> for
 standard list</p></li>
