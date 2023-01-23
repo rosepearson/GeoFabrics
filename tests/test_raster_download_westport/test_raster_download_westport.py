@@ -58,7 +58,7 @@ class ProcessorRemoteAllWestportTest(unittest.TestCase):
         chain to download remote files and produce a DEM prior to testing."""
 
         test_path = pathlib.Path().cwd() / pathlib.Path(
-            "tests/test_processor_remote_all_westport"
+            "tests/test_raster_download_westport"
         )
 
         # Setup logging
@@ -68,7 +68,7 @@ class ProcessorRemoteAllWestportTest(unittest.TestCase):
             level=logging.INFO,
             force=True,
         )
-        logging.info("In test_processor_remote_all_westport.py")
+        logging.info("In test_raster_download_westport.py")
 
         # Load in the test instructions
         instruction_file_path = test_path / "instruction.json"

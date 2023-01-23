@@ -21,7 +21,7 @@ import gc
 from src.geofabrics import processor
 
 
-class ProcessorRemoteTilesWellingtonTest(unittest.TestCase):
+class MultipleLidarGroundOnlyTest(unittest.TestCase):
     """A class to test the basic processor class Processor functionality for remote
     tiles by downloading files from
     OpenTopography within a small region and then generating a DEM. All files are
@@ -44,7 +44,7 @@ class ProcessorRemoteTilesWellingtonTest(unittest.TestCase):
         chain to download remote files and produce a DEM prior to testing."""
 
         test_path = pathlib.Path().cwd() / pathlib.Path(
-            "tests/test_processor_remote_tiles_wellington_ground_only"
+            "tests/test_multiple_lidar_ground_only"
         )
 
         # Setup logging
@@ -54,7 +54,7 @@ class ProcessorRemoteTilesWellingtonTest(unittest.TestCase):
             level=logging.INFO,
             force=True,
         )
-        logging.info("In test_processor_remote_tiles_wellington_ground_only.py")
+        logging.info("In test_multiple_lidar_ground_only.py")
 
         # load in the test instructions
         instruction_file_path = test_path / "instruction.json"
