@@ -638,7 +638,7 @@ class RawLidarDemGenerator(BaseProcessor):
         derivatives.
 
         Note it currently only considers one LiDAR dataset that can have many tiles.
-        See 'get_lidar_file_list' for where to change this."""
+        See 'get_lidar_datasets_info' for where to change this."""
 
         logging.info("Create a raw DEM layer from LiDAR.")
 
@@ -889,7 +889,7 @@ class RoughnessLengthGenerator(BaseProcessor):
         self.catchment_geometry = self.create_catchment()
 
         # Get LiDAR data file-list - this may involve downloading lidar files
-        lidar_dataset_info = self.get_lidar_file_list()
+        lidar_datasets_info = self.get_lidar_datasets_info()
 
         # setup the roughness DEM generator
         self.roughness_dem = dem.RoughnessDem(
@@ -912,12 +912,10 @@ class RoughnessLengthGenerator(BaseProcessor):
             print(client)
             # Load in LiDAR tiles
             self.roughness_dem.add_lidar(
-                lidar_files=lidar_dataset_info["file_paths"],
-                source_crs=lidar_dataset_info["crs"],
+                lidar_datasets_info=lidar_datasets_info,
                 lidar_classifications_to_keep=self.get_instruction_general(
                     "lidar_classifications_to_keep"
                 ),
-                tile_index_file=lidar_dataset_info["tile_index_file"],
                 chunk_size=self.get_processing_instructions("chunk_size"),
                 metadata=self.create_metadata(),
             )  # Note must be called after all others if it is to be complete

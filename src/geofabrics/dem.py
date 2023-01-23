@@ -1824,11 +1824,9 @@ class RoughnessDem(LidarBase):
 
     def add_lidar(
         self,
-        lidar_files: typing.List[typing.Union[str, pathlib.Path]],
-        tile_index_file: typing.Union[str, pathlib.Path],
+        lidar_datasets_info: dict,
         chunk_size: int,
         lidar_classifications_to_keep: list,
-        source_crs: dict,
         metadata: dict,
     ):
         """Read in all LiDAR files and use the point cloud distribution, source_class
@@ -1838,14 +1836,11 @@ class RoughnessDem(LidarBase):
         Parameters
         ----------
 
-        source_crs
-            Coordinate reference system information
+        lidar_datasets_info
+            One of more dictionaries of LiDAR dataset information - including a list of
+            LAS files, CRS and tile index file for each.
         chunk_size
             The chunk size in pixels for parallel/staged processing
-        lidar_files
-            The list of LiDAR files to read in
-        tile_index_file
-            A file specifying the spatial extents of the LiDAR files.
         lidar_classifications_to_keep
             A list of LiDAR classifications to keep - '2' for ground, '9' for water.
             See https://www.asprs.org/wp-content/uploads/2010/12/LAS_1_4_r13.pdf for
@@ -1856,10 +1851,7 @@ class RoughnessDem(LidarBase):
 
         # Check valid inputs
         self._check_valid_inputs(
-            source_crs=source_crs,
-            chunk_size=chunk_size,
-            lidar_files=lidar_files,
-            tile_index_file=tile_index_file,
+            lidar_datasets_info=lidar_datasets_info, chunk_size=chunk_size
         )
 
         # Calculate roughness from LiDAR
@@ -1876,17 +1868,14 @@ class RoughnessDem(LidarBase):
         # Set roughness where LiDAR
         if chunk_size is None:  # If one file it's ok if there is no tile_index
             self._dem = self._add_lidar_no_chunking(
-                lidar_file=lidar_files[0],
+                lidar_dataset_info=next(iter(lidar_datasets_info.values())),
                 region_to_rasterise=region_to_rasterise,
-                source_crs=source_crs,
                 options=raster_options,
                 metadata=metadata,
             )
         else:
             self._dem = self._add_tiled_lidar_chunked(
-                lidar_files=lidar_files,
-                tile_index_file=tile_index_file,
-                source_crs=source_crs,
+                lidar_datasets_info=lidar_datasets_info,
                 raster_options=raster_options,
                 region_to_rasterise=region_to_rasterise,
                 chunk_size=chunk_size,
@@ -1924,9 +1913,7 @@ class RoughnessDem(LidarBase):
 
     def _add_tiled_lidar_chunked(
         self,
-        lidar_files: typing.List[typing.Union[str, pathlib.Path]],
-        tile_index_file: typing.Union[str, pathlib.Path],
-        source_crs: dict,
+        lidar_datasets_info: dict,
         region_to_rasterise: geopandas.GeoDataFrame,
         chunk_size: int,
         metadata: dict,
@@ -1936,70 +1923,81 @@ class RoughnessDem(LidarBase):
         tiled LiDAR files. Read these in over non-overlapping chunks and then combine.
         """
 
-        # Remove all tiles entirely outside the region to raserise
-        tile_index_extents, tile_index_name_column = self._tile_index_column_name(
-            tile_index_file
-        )
-
         # get chunks to tile over
         chunked_dim_x, chunked_dim_y = self._set_up_chunks(chunk_size)
 
-        # create a map from tile name to tile file name
-        lidar_files_map = {lidar_file.name: lidar_file for lidar_file in lidar_files}
+        roughnesses = []
 
-        # cycle through chunks - and collect in a delayed array
         logging.info(f"Preparing {[len(chunked_dim_x), len(chunked_dim_y)]} chunks")
-        delayed_chunked_matrix = []
-        for i, dim_y in enumerate(chunked_dim_y):
-            delayed_chunked_x = []
-            for j, dim_x in enumerate(chunked_dim_x):
-                logging.info(f"\tChunk {[i, j]}")
+        for dataset_name in lidar_datasets_info.keys():
+            # Pull out the dataset information
+            lidar_files = lidar_datasets_info[dataset_name]["file_paths"]
+            tile_index_file = lidar_datasets_info[dataset_name]["tile_index_file"]
+            source_crs = lidar_datasets_info[dataset_name]["crs"]
 
-                # Define the region to tile
-                chunk_region_to_tile = self._define_chunk_region(
-                    region_to_rasterise=region_to_rasterise,
-                    dim_x=dim_x,
-                    dim_y=dim_y,
-                    radius=raster_options["radius"],
-                )
+            # create a map from tile name to tile file name
+            lidar_files_map = {
+                lidar_file.name: lidar_file for lidar_file in lidar_files
+            }
 
-                # Load in files into tiles
-                chunk_lidar_files = select_lidar_files(
-                    tile_index_extents=tile_index_extents,
-                    tile_index_name_column=tile_index_name_column,
-                    chunk_region_to_tile=chunk_region_to_tile,
-                    lidar_files_map=lidar_files_map,
-                )
-                chunk_points = delayed_load_tiles_in_chunk(
-                    lidar_files=chunk_lidar_files,
-                    source_crs=source_crs,
-                    chunk_region_to_tile=chunk_region_to_tile,
-                    catchment_geometry=self.catchment_geometry,
-                )
-                # Rasterise tiles
-                xy_ground = self._dem.z.sel(
-                    x=dim_x, y=dim_y, method="nearest"
-                ).data.flatten()
-                delayed_chunked_x.append(
-                    dask.array.from_delayed(
-                        delayed_roughness_over_chunk(
-                            dim_x=dim_x,
-                            dim_y=dim_y,
-                            tile_points=chunk_points,
-                            xy_ground=xy_ground,
-                            options=raster_options,
-                        ),
-                        shape=(chunk_size, chunk_size),
-                        dtype=numpy.float32,
+            # Remove all tiles entirely outside the region to raserise
+            tile_index_extents, tile_index_name_column = self._tile_index_column_name(
+                tile_index_file
+            )
+
+            # cycle through chunks - and collect in a delayed array
+            logging.info(f"Running over dataset {dataset_name}")
+            delayed_chunked_matrix = []
+            for i, dim_y in enumerate(chunked_dim_y):
+                delayed_chunked_x = []
+                for j, dim_x in enumerate(chunked_dim_x):
+                    logging.info(f"\tChunk {[i, j]}")
+
+                    # Define the region to tile
+                    chunk_region_to_tile = self._define_chunk_region(
+                        region_to_rasterise=region_to_rasterise,
+                        dim_x=dim_x,
+                        dim_y=dim_y,
+                        radius=raster_options["radius"],
                     )
-                )
-            delayed_chunked_matrix.append(delayed_chunked_x)
-        # Combine chunks and add to dataset
-        zo = dask.array.block(delayed_chunked_matrix)
+
+                    # Load in files into tiles
+                    chunk_lidar_files = select_lidar_files(
+                        tile_index_extents=tile_index_extents,
+                        tile_index_name_column=tile_index_name_column,
+                        chunk_region_to_tile=chunk_region_to_tile,
+                        lidar_files_map=lidar_files_map,
+                    )
+                    chunk_points = delayed_load_tiles_in_chunk(
+                        lidar_files=chunk_lidar_files,
+                        source_crs=source_crs,
+                        chunk_region_to_tile=chunk_region_to_tile,
+                        catchment_geometry=self.catchment_geometry,
+                    )
+                    # Rasterise tiles
+                    xy_ground = self._dem.z.sel(
+                        x=dim_x, y=dim_y, method="nearest"
+                    ).data.flatten()
+                    delayed_chunked_x.append(
+                        dask.array.from_delayed(
+                            delayed_roughness_over_chunk(
+                                dim_x=dim_x,
+                                dim_y=dim_y,
+                                tile_points=chunk_points,
+                                xy_ground=xy_ground,
+                                options=raster_options,
+                            ),
+                            shape=(chunk_size, chunk_size),
+                            dtype=numpy.float32,
+                        )
+                    )
+                delayed_chunked_matrix.append(delayed_chunked_x)
+            # Combine chunks and add to dataset
+            roughnesses.append(dask.array.block(delayed_chunked_matrix))
         chunked_dem = self._add_roughness_to_data_set(
             x=numpy.concatenate(chunked_dim_x),
             y=numpy.concatenate(chunked_dim_y),
-            zo=zo,
+            roughnesses=roughnesses,
             metadata=metadata,
             region_to_rasterise=region_to_rasterise,
         )
@@ -2011,15 +2009,16 @@ class RoughnessDem(LidarBase):
 
     def _add_lidar_no_chunking(
         self,
-        lidar_file: typing.Union[str, pathlib.Path],
+        lidar_dataset_info: dict,
         region_to_rasterise: geopandas.GeoDataFrame,
         options: dict,
-        source_crs: dict,
         metadata: dict,
     ) -> xarray.Dataset:
         """Create a roughness layer with estimates where there is LiDAR from a single
         LiDAR file with no chunking."""
 
+        lidar_file = lidar_dataset_info["file_paths"][0]
+        source_crs = lidar_dataset_info["crs"]
         logging.info(f"On LiDAR tile 1 of 1: {lidar_file}")
 
         # Use PDAL to load in file
@@ -2052,7 +2051,7 @@ class RoughnessDem(LidarBase):
         dem = self._add_roughness_to_data_set(
             x=dim_x,
             y=dim_y,
-            zo=roughness,
+            roughnesses=[roughness],
             metadata=metadata,
             region_to_rasterise=region_to_rasterise,
         )
@@ -2105,7 +2104,7 @@ class RoughnessDem(LidarBase):
         self,
         x: numpy.ndarray,
         y: numpy.ndarray,
-        zo: numpy.ndarray,
+        roughnesses: list,
         metadata: dict,
         region_to_rasterise: geopandas.GeoDataFrame,
     ) -> xarray.Dataset:
@@ -2118,20 +2117,27 @@ class RoughnessDem(LidarBase):
                 X coordinates of the dataset.
             y
                 Y coordinates of the dataset.
-            zo
-                Roughness over the x, and y coordiantes.
+            roughnesses
+                A list of roughnesses over the x, and y coordiantes for each dataset.
         """
 
         # Create a DataArray of zo
-        zo = xarray.DataArray(
-            data=zo,
-            dims=["y", "x"],
-            coords=dict(x=(["x"], x), y=(["y"], y)),
-            attrs=dict(
-                long_name="ground roughness",
-                units="",
-            ),
-        )
+        zos = []
+        for zo_array in roughnesses:
+            zo = xarray.DataArray(
+                data=zo_array,
+                dims=["y", "x"],
+                coords=dict(x=(["x"], x), y=(["y"], y)),
+                attrs=dict(
+                    long_name="ground roughness",
+                    units="",
+                ),
+            )
+            zo.rio.write_crs(self.catchment_geometry.crs["horizontal"], inplace=True)
+            zo.rio.write_transform(inplace=True)
+            zos.append(zo)
+        zo = rioxarray.merge.merge_arrays(zos, method="first")
+
         # Resize zo to share the same dimensions at the DEM
         self._dem["zo"] = zo.sel(x=self._dem.x, y=self._dem.y, method="nearest")
 
