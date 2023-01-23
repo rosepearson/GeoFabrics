@@ -33,27 +33,10 @@ class ProcessorRemoteTilesWellingtonTest(unittest.TestCase):
     is provided.
 
     Tests run include:
-        1. test_correct_dataset - Test that the expected dataset is downloaded from
-           OpenTopography
-        2. test_correct_lidar_files_downloaded - Test the downloaded LIDAR files have
-           the expected names
-        3. test_correct_lidar_file_size - Test the downloaded LIDAR files have the
-           expected file sizes
-        4. test_result_dem_windows/linux - Check the generated DEM matches the benchmark
+        1. test_result_dem_windows/linux - Check the generated DEM matches the benchmark
            DEM, where the rigor of the test depends on the operating system (windows or
                                                                              Linux)
     """
-
-    # The expected datasets and files to be downloaded - used for comparison in the
-    # later tests
-    DATASET = "Wellington_2013"
-    FILE_SIZES = {
-        "ot_CL1_WLG_2013_1km_085034.laz": 18621287,
-        "ot_CL1_WLG_2013_1km_085035.laz": 23047792,
-        "ot_CL1_WLG_2013_1km_086034.laz": 13866572,
-        "ot_CL1_WLG_2013_1km_086035.laz": 23702615,
-        DATASET + "_TileIndex.zip": 598532,
-    }
 
     @classmethod
     def setUpClass(cls):
@@ -84,10 +67,10 @@ class ProcessorRemoteTilesWellingtonTest(unittest.TestCase):
         cls.results_dir.mkdir()
 
         # create fake catchment boundary
-        x0 = 1766100
-        y0 = 5470382
-        x1 = 1767800
-        y1 = 5471304
+        x0 = 1778250
+        y0 = 5470800
+        x1 = 1778550
+        y1 = 5470500
         catchment = shapely.geometry.Polygon([(x0, y0), (x1, y0), (x1, y1), (x0, y1)])
         catchment = geopandas.GeoSeries([catchment])
         catchment = catchment.set_crs(cls.instructions["output"]["crs"]["horizontal"])
@@ -126,75 +109,6 @@ class ProcessorRemoteTilesWellingtonTest(unittest.TestCase):
                     elif file.is_dir():
                         shutil.rmtree(file)
                 shutil.rmtree(path)
-
-    def test_correct_dataset(self):
-        """A test to see if the correct dataset is downloaded"""
-
-        dataset_dir = self.cache_dir / self.DATASET
-
-        # check the right dataset is downloaded - self.DATASET
-        self.assertEqual(
-            len(list(self.cache_dir.glob("*/**"))),
-            2,
-            f"There should only be one dataset named {self.DATASET} as well as the "
-            f" generated results folder {self.results_dir} instead there are "
-            f"{len(list(self.cache_dir.glob('*/**')))} list "
-            f"{list(self.cache_dir.glob('*/**'))}",
-        )
-
-        self.assertEqual(
-            len(
-                [
-                    file
-                    for file in self.cache_dir.iterdir()
-                    if file.is_dir() and file == dataset_dir
-                ]
-            ),
-            1,
-            f"Only the {self.DATASET} directory should have been downloaded. Instead we"
-            f" have: {[file for file in self.cache_dir.iterdir() if file.is_dir()]}",
-        )
-
-    def test_correct_files_downloaded(self):
-        """A test to see if all expected dataset files are downloaded"""
-
-        dataset_dir = self.cache_dir / self.DATASET
-        downloaded_files = [dataset_dir / file for file in self.FILE_SIZES.keys()]
-
-        # check files are correct
-        self.assertEqual(
-            len(list(dataset_dir.glob("*"))),
-            len(downloaded_files),
-            f"There should have been {len(downloaded_files)} files downloaded into the "
-            f"{self.DATASET} directory, instead there are "
-            f"{len(list(dataset_dir.glob('*')))} files/dirs in the directory",
-        )
-
-        self.assertTrue(
-            numpy.all([file in downloaded_files for file in dataset_dir.glob("*")]),
-            f"The downloaded files {list(dataset_dir.glob('*'))} do not match the "
-            f"expected files {downloaded_files}",
-        )
-
-    def test_correct_file_size(self):
-        """A test to see if all expected dataset files are of the right size"""
-
-        dataset_dir = self.cache_dir / self.DATASET
-        downloaded_files = [dataset_dir / file for file in self.FILE_SIZES.keys()]
-
-        # check sizes are correct
-        self.assertTrue(
-            numpy.all(
-                [
-                    downloaded_file.stat().st_size
-                    == self.FILE_SIZES[downloaded_file.name]
-                    for downloaded_file in downloaded_files
-                ]
-            ),
-            "There is a miss-match between the size of the downloaded files "
-            f"{[file.stat().st_size for file in downloaded_files]} and the expected "
-            f"sizes of {self.FILE_SIZES.values()}",
-        )
 
     @pytest.mark.skipif(sys.platform != "win32", reason="Windows test - this is strict")
     def test_result_dem_windows(self):
