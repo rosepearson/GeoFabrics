@@ -1601,8 +1601,10 @@ class RawDem(LidarBase):
             # ensure the expected CF conventions are followed
             self._write_netcdf_conventions_in_place(dem, self.catchment_geometry.crs)
             dems.append(dem)
-        dem = rioxarray.merge.merge_datasets(dems, method="first")
-
+        if len(dems) == 1:
+            dem = dems[0]
+        else:
+            dem = rioxarray.merge.merge_datasets(dems, method="first")
         # Set areas with no values to No Data
         dem.source_class.data[
             numpy.isnan(dem.source_class.data)
@@ -2138,8 +2140,10 @@ class RoughnessDem(LidarBase):
             zo.rio.write_transform(inplace=True)
             zo.rio.write_nodata(numpy.nan, encoded=True, inplace=True)
             zos.append(zo)
-        zo = rioxarray.merge.merge_arrays(zos, method="first")
-
+        if len(zos) == 1:
+            zo = zos[0]
+        else:
+            zo = rioxarray.merge.merge_arrays(zos, method="first")
         # Resize zo to share the same dimensions at the DEM
         self._dem["zo"] = zo.sel(x=self._dem.x, y=self._dem.y, method="nearest")
 
