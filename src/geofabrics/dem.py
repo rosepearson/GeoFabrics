@@ -2124,6 +2124,7 @@ class RoughnessDem(LidarBase):
         # Create a DataArray of zo
         zos = []
         for zo_array in roughnesses:
+
             zo = xarray.DataArray(
                 data=zo_array,
                 dims=["y", "x"],
@@ -2135,6 +2136,7 @@ class RoughnessDem(LidarBase):
             )
             zo.rio.write_crs(self.catchment_geometry.crs["horizontal"], inplace=True)
             zo.rio.write_transform(inplace=True)
+            zo.rio.write_nodata(numpy.nan, encoded=True, inplace=True)
             zos.append(zo)
         zo = rioxarray.merge.merge_arrays(zos, method="first")
 
