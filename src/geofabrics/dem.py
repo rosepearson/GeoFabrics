@@ -541,10 +541,13 @@ class HydrologicallyConditionedDem(DemBase):
 
         if method == "rbf":
             # Ensure the number of points is not too great for RBF interpolation
-            assert len(bathymetry_points) < self.CACHE_SIZE, (
-                f"need less that {self.CACHE_SIZE}, if going to use RBF. "
-                f"Currently there are {len(bathymetry_points)}"
-            )
+            if len(bathymetry_points) < self.CACHE_SIZE:
+                logging.warning(
+                    "The number of points to fit and RBF interpolant to is"
+                    f" {len(bathymetry_points)}. We recommend using fewer "
+                    f" than {self.CACHE_SIZE} for best performance and to. "
+                    "avoid errors in the `scipy.interpolate.Rbf` function"
+                )
             # Create RBF function
             logging.info("Creating RBF interpolant")
             rbf_function = scipy.interpolate.Rbf(
