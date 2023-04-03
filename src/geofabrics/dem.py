@@ -2129,7 +2129,6 @@ class RoughnessDem(LidarBase):
         # Create a DataArray of zo
         zos = []
         for zo_array in roughnesses:
-
             zo = xarray.DataArray(
                 data=zo_array,
                 dims=["y", "x"],
@@ -2229,7 +2228,6 @@ def roughness_from_points(
     z_out = numpy.zeros(len(xy_out), dtype=options["raster_type"])
 
     for i, (near_indicies, ground) in enumerate(zip(tree_index_list, xy_ground)):
-
         if len(near_indicies) == 0:  # Set NaN if no values in search region
             z_out[i] = numpy.nan
         else:
@@ -2264,7 +2262,6 @@ def elevation_from_points(
     z_out = numpy.zeros(len(xy_out), dtype=options["raster_type"])
 
     for i, (near_indices, point) in enumerate(zip(tree_index_list, xy_out)):
-
         if len(near_indices) == 0:  # Set NaN if no values in search region
             z_out[i] = numpy.nan
         else:
@@ -2358,7 +2355,6 @@ def select_lidar_files(
     chunk_region_to_tile: geopandas.GeoDataFrame,
     lidar_files_map: typing.Dict[str, pathlib.Path],
 ) -> typing.List[pathlib.Path]:
-
     if chunk_region_to_tile.empty:
         return []
     # clip the tile indices to only include those within the chunk region
