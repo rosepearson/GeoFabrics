@@ -1510,7 +1510,7 @@ class RiverBathymetryGenerator(BaseProcessor):
             flat_width_name=flat_width_name,
             full_bank_width_name=width_name,
             width_values=width_values,
-        ) # TODO - remove and don't make correction
+        )  # TODO - remove and don't make correction
         width_values["bed_elevation_Neal_et_al"] = (
             width_values[min_z_name] - active_channel_bank_depth
         )
@@ -1532,7 +1532,7 @@ class RiverBathymetryGenerator(BaseProcessor):
             flat_width_name=flat_width_name,
             full_bank_width_name=width_name,
             width_values=width_values,
-        ) # TODO - remove and don't make correction
+        )  # TODO - remove and don't make correction
         width_values["bed_elevation_Rupp_and_Smart"] = (
             width_values[min_z_name] - active_channel_bank_depth
         )

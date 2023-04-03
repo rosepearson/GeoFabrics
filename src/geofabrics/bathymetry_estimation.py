@@ -1044,7 +1044,7 @@ class ChannelCharacteristics:
                 z_bankfull = numpy.nanmin(gnd_samples[[start_i, stop_i]])
                 start_i_bf = start_i
                 stop_i_bf = stop_i
-                dwidth = 1 # Change in width this iteration
+                dwidth = 1  # Change in width this iteration
 
                 while (
                     start_i_bf > 0
@@ -1088,12 +1088,12 @@ class ChannelCharacteristics:
                         gnd_samples[start_i_bf] >= maximum_z
                         or gnd_samples[stop_i_bf] >= maximum_z
                     ):
-                        break # todo - set to the max specified threshold
+                        break  # todo - set to the max specified threshold
                     # Break if ground is nan, but there are vegatation returns
                     if numpy.isnan(gnd_samples[start_i_bf]) and not numpy.isnan(
                         veg_samples[start_i_bf]
                     ):
-                        break # todo - look at waikanae and consider checking the vegetation hights and only saying bank fill if over threshold or going down
+                        break  # todo - look at waikanae and consider checking the vegetation hights and only saying bank fill if over threshold or going down
                     if numpy.isnan(gnd_samples[stop_i_bf]) and not numpy.isnan(
                         veg_samples[stop_i_bf]
                     ):
