@@ -712,8 +712,8 @@ class RawLidarDemGenerator(BaseProcessor):
                         ),
                         exclusion_extent=self.raw_dem.extents,
                     )
-                # Add the coarse DEM data where there's no LiDAR updating the extents
-                self.raw_dem.add_coarse_dem(coarse_dem=self.coarse_dem)
+                    # Add the coarse DEM data where there's no LiDAR updating the extents
+                    self.raw_dem.add_coarse_dem(coarse_dem=self.coarse_dem)
         # save raw DEM and extents
         logging.info("In processor.DemGenerator - write out the raw DEM")
         self.raw_dem.dem.to_netcdf(
