@@ -618,7 +618,6 @@ class ChannelCharacteristics:
 
         (x_array, y_array) = sampled_channel.iloc[0].geometry.xy
         for i in range(len(x_array)):
-
             # calculate slope along segment
             if i == 0:
                 # first segment - slope of next segment
@@ -852,7 +851,6 @@ class ChannelCharacteristics:
 
         # cycle through each transect - calculate sample points then look up
         for index, row in cross_sections.iterrows():
-
             # Calculate xx, and yy points to sample at
             xx = row["mid_x"] + sample_index_array * self.resolution * row["nx"]
             yy = row["mid_y"] + sample_index_array * self.resolution * row["ny"]
@@ -923,7 +921,6 @@ class ChannelCharacteristics:
         }
 
         for j in range(len(cross_section_elevations["gnd_elevations"])):
-
             assert (
                 len(cross_section_elevations["gnd_elevations"][j])
                 == self.number_of_samples
@@ -1047,7 +1044,7 @@ class ChannelCharacteristics:
                 z_bankfull = numpy.nanmin(gnd_samples[[start_i, stop_i]])
                 start_i_bf = start_i
                 stop_i_bf = stop_i
-                dwidth = 1
+                dwidth = 1  # Change in width this iteration
 
                 while (
                     start_i_bf > 0
@@ -1056,7 +1053,7 @@ class ChannelCharacteristics:
                 ):
                     dwidth = 0
 
-                    # break if going down
+                    # break if going down - TODO do after other side finished increasing
                     if gnd_samples[start_i_bf - 1] < numpy.nanmax(
                         [gnd_samples[start_i_bf], z_bankfull]
                     ) or gnd_samples[stop_i_bf + 1] < numpy.nanmax(
@@ -1091,12 +1088,12 @@ class ChannelCharacteristics:
                         gnd_samples[start_i_bf] >= maximum_z
                         or gnd_samples[stop_i_bf] >= maximum_z
                     ):
-                        break
+                        break  # todo - set to the max specified threshold
                     # Break if ground is nan, but there are vegatation returns
                     if numpy.isnan(gnd_samples[start_i_bf]) and not numpy.isnan(
                         veg_samples[start_i_bf]
                     ):
-                        break
+                        break  # todo - look at waikanae and consider checking the vegetation hights and only saying bank fill if over threshold or going down
                     if numpy.isnan(gnd_samples[stop_i_bf]) and not numpy.isnan(
                         veg_samples[stop_i_bf]
                     ):
@@ -1265,9 +1262,7 @@ class ChannelCharacteristics:
         if veg_samples[start_index] - z_water < threshold or (
             numpy.isnan(veg_samples[start_index])
         ):
-
             for i in numpy.arange(0, self.number_of_samples + 1, 1):
-
                 # work forward checking height
                 if start_index + i < self.number_of_samples and numpy.isnan(stop_i):
                     gnd_elevation_over_minimum = veg_samples[start_index + i] - z_water
@@ -1329,7 +1324,6 @@ class ChannelCharacteristics:
         """
 
         for i in numpy.arange(start_index, stop_index + 1, 1):
-
             # check if in channel
             start_i, stop_i = self.fixed_threshold_width_outwards(
                 gnd_samples=gnd_samples,
@@ -1376,7 +1370,6 @@ class ChannelCharacteristics:
         stop_i = numpy.nan
 
         for i in numpy.arange(start_index, stop_index - 1, -1):
-
             # Check if in channel
             start_i, stop_i = self.fixed_threshold_width_outwards(
                 gnd_samples=gnd_samples,

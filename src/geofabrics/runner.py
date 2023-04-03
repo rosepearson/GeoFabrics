@@ -77,6 +77,7 @@ def from_instructions_dict(instructions: dict):
     if "dem" in instructions:
         run_instructions = instructions["dem"]
         dem_paths = run_instructions["data_paths"]
+        # Only run if raw doesn't exist
         if "raw_dem" not in dem_paths or not (
             pathlib.Path(dem_paths["raw_dem"]).is_file()
             or (
@@ -91,12 +92,21 @@ def from_instructions_dict(instructions: dict):
                 processor_label="dem",
                 instructions=instructions,
             )
-        # Add bathymetry information to a raw DEM
-        run_processor_class(
-            processor_class=processor.HydrologicDemGenerator,
-            processor_label="dem",
-            instructions=instructions,
-        )
+        # Only run if the dem doesn't already exist
+        if "result_dem" not in dem_paths or not (
+            pathlib.Path(dem_paths["result_dem"]).is_file()
+            or (
+                pathlib.Path(dem_paths["local_cache"])
+                / dem_paths["subfolder"]
+                / dem_paths["result_dem"]
+            ).is_file()
+        ):
+            # Add bathymetry information to a raw DEM
+            run_processor_class(
+                processor_class=processor.HydrologicDemGenerator,
+                processor_label="dem",
+                instructions=instructions,
+            )
     if "roughness" in instructions:
         # Create a roughness map and add to the hydrological DEM
         run_processor_class(
