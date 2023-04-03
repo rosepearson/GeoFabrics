@@ -502,7 +502,6 @@ class EstimatedBathymetryPoints:
         type_labels: list,
         z_labels: list = None,
     ):
-
         self.catchment_geometry = catchment_geometry
 
         self.z_label = z_labels is not None
@@ -766,7 +765,6 @@ class RiverMouthFan:
         cross_section_spacing: float,
         ocean_contour_depth_label: str = None,
     ):
-
         self.crs = crs
         self.cross_section_spacing = cross_section_spacing
         self.aligned_channel_file = aligned_channel_file

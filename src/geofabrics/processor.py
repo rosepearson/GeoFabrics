@@ -91,7 +91,6 @@ class BaseProcessor(abc.ABC):
             return local_cache / subfolder
         # return the full path of the specified key
         if key in path_instructions:
-
             # check if a list or single path
             if type(path_instructions[key]) == list:
                 absolute_file_paths = []
@@ -367,7 +366,6 @@ class BaseProcessor(abc.ABC):
                 self.check_apis(data_service, api_type=api_type)
                 and key in self.instructions["apis"][api_type][data_service]
             ):
-
                 # Get the location to cache vector data downloaded from data services
                 assert self.check_instruction_path("local_cache"), (
                     "Local cache file path must exist to specify thelocation to"
@@ -531,7 +529,6 @@ class BaseProcessor(abc.ABC):
         # See if 'OpenTopography' or another data_service has been specified as an area
         # to look first
         if self.check_apis(data_service, api_type="lidar"):
-
             assert self.check_instruction_path("local_cache"), (
                 "A 'local_cache' must be specified under the 'file_paths' in the "
                 "instruction file if you are going to use an API - like "
@@ -627,7 +624,6 @@ class RawLidarDemGenerator(BaseProcessor):
     """
 
     def __init__(self, json_instructions: json):
-
         super(RawLidarDemGenerator, self).__init__(json_instructions=json_instructions)
 
         self.raw_dem = None
@@ -695,7 +691,6 @@ class RawLidarDemGenerator(BaseProcessor):
                 area_without_lidar
                 > self.catchment_geometry.land_and_foreshore.area.sum() * area_threshold
             ):
-
                 coarse_dem_paths = self.get_vector_or_raster_paths(
                     key="coarse_dems", api_type="raster"
                 )
@@ -748,7 +743,6 @@ class HydrologicDemGenerator(BaseProcessor):
     """
 
     def __init__(self, json_instructions: json):
-
         super(HydrologicDemGenerator, self).__init__(
             json_instructions=json_instructions
         )
@@ -769,7 +763,6 @@ class HydrologicDemGenerator(BaseProcessor):
             and area_without_lidar
             > self.catchment_geometry.offshore.area.sum() * area_threshold
         ):
-
             # Get the bathymetry data directory
             bathy_contour_dirs = self.get_vector_or_raster_paths(
                 key="bathymetry_contours", api_type="vector"
@@ -796,7 +789,6 @@ class HydrologicDemGenerator(BaseProcessor):
         if self.check_vector_or_raster(
             "river_polygons", api_type="vector"
         ) and self.check_vector_or_raster("river_bathymetry", api_type="vector"):
-
             # Get the polygons and bathymetry and can be multiple
             bathy_dirs = self.get_vector_or_raster_paths(
                 key="river_bathymetry", api_type="vector"
@@ -869,7 +861,6 @@ class RoughnessLengthGenerator(BaseProcessor):
     """
 
     def __init__(self, json_instructions: json):
-
         super(RoughnessLengthGenerator, self).__init__(
             json_instructions=json_instructions
         )
@@ -948,7 +939,6 @@ class RiverBathymetryGenerator(BaseProcessor):
     """
 
     def __init__(self, json_instructions: json, debug: bool = True):
-
         super(RiverBathymetryGenerator, self).__init__(
             json_instructions=json_instructions
         )
@@ -1724,7 +1714,6 @@ class WaterwayBedElevationEstimator(BaseProcessor):
     """
 
     def __init__(self, json_instructions: json, debug: bool = True):
-
         super(WaterwayBedElevationEstimator, self).__init__(
             json_instructions=json_instructions
         )
@@ -2002,7 +1991,6 @@ class WaterwayBedElevationEstimator(BaseProcessor):
                 "band", drop=True
             )
         else:  # Create DEM over the drain region
-
             # Save out the drain polygons as a file with a single multipolygon
             waterways_polygon_file = self.get_result_file_path(key="waterways_polygon")
             waterways_polygon = waterways.buffer(waterways["width"])
@@ -2038,7 +2026,6 @@ class WaterwayBedElevationEstimator(BaseProcessor):
         if waterways_file_path.is_file():  # already created. Load in.
             waterways = geopandas.read_file(waterways_file_path)
         else:  # Download from OSM
-
             # Create area to query within
             bbox_lat_long = self.catchment_geometry.catchment.to_crs(self.OSM_CRS)
 
