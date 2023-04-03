@@ -1,7 +1,7 @@
 <!DOCTYPE html>
 <html class="writer-html5" lang="en" >
 <head>
-  <meta charset="utf-8" /><meta name="generator" content="Docutils 0.17.1: http://docutils.sourceforge.net/" />
+  <meta charset="utf-8" /><meta name="generator" content="Docutils 0.18.1: http://docutils.sourceforge.net/" />
 
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>geofabrics.runner &mdash; Geofabrics 0.7.6 documentation</title>
@@ -13,9 +13,6 @@
   <![endif]-->
   
         <script data-url_root="../../../" id="documentation_options" src="../../../_static/documentation_options.js"></script>
-        <script src="../../../_static/jquery.js"></script>
-        <script src="../../../_static/underscore.js"></script>
-        <script src="../../../_static/_sphinx_javascript_frameworks_compat.js"></script>
         <script src="../../../_static/doctools.js"></script>
         <script src="../../../_static/sphinx_highlight.js"></script>
     <script src="../../../_static/js/theme.js"></script>
@@ -28,11 +25,15 @@
     <nav data-toggle="wy-nav-shift" class="wy-nav-side">
       <div class="wy-side-scroll">
         <div class="wy-side-nav-search" >
-            <a href="../../../index.html" class="icon icon-home"> Geofabrics
+
+          
+          
+          <a href="../../../index.html" class="icon icon-home">
+            Geofabrics
           </a>
 <div role="search">
   <form id="rtd-search-form" class="wy-form" action="../../../search.html" method="get">
-    <input type="text" name="q" placeholder="Search docs" />
+    <input type="text" name="q" placeholder="Search docs" aria-label="Search docs" />
     <input type="hidden" name="check_keywords" value="yes" />
     <input type="hidden" name="area" value="default" />
   </form>
@@ -55,7 +56,7 @@
         <div class="rst-content">
           <div role="navigation" aria-label="Page navigation">
   <ul class="wy-breadcrumbs">
-      <li><a href="../../../index.html" class="icon icon-home"></a></li>
+      <li><a href="../../../index.html" class="icon icon-home" aria-label="Home"></a></li>
       <li class="breadcrumb-item active"><code class="xref py py-mod docutils literal notranslate"><span class="pre">geofabrics.runner</span></code></li>
       <li class="wy-breadcrumbs-aside">
             <a href="../../../_sources/autoapi/geofabrics/runner/index.rst.txt" rel="nofollow"> View page source</a>
@@ -77,10 +78,6 @@
 <section id="functions">
 <h3>Functions<a class="headerlink" href="#functions" title="Permalink to this heading"></a></h3>
 <table class="autosummary longtable docutils align-default">
-<colgroup>
-<col style="width: 10%" />
-<col style="width: 90%" />
-</colgroup>
 <tbody>
 <tr class="row-odd"><td><p><a class="reference internal" href="#geofabrics.runner.setup_logging_for_run" title="geofabrics.runner.setup_logging_for_run"><code class="xref py py-obj docutils literal notranslate"><span class="pre">setup_logging_for_run</span></code></a>(instructions, label)</p></td>
 <td><p>Setup logging for the current processor run</p></td>
@@ -101,7 +98,7 @@
 <span class="sig-prename descclassname"><span class="pre">geofabrics.runner.</span></span><span class="sig-name descname"><span class="pre">setup_logging_for_run</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">instructions</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">label</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#geofabrics.runner.setup_logging_for_run" title="Permalink to this definition"></a></dt>
 <dd><p>Setup logging for the current processor run</p>
 <dl class="field-list simple">
-<dt class="field-odd">Parameters</dt>
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
 <dd class="field-odd"><ul class="simple">
 <li><p><strong>instructions</strong> (<em>dict</em>) – </p></li>
 <li><p><strong>label</strong> (<em>str</em>) – </p></li>
@@ -116,7 +113,7 @@
 <dd><p>Run a processor class recording outputs in a unique log file and timing the
 execution.</p>
 <dl class="field-list simple">
-<dt class="field-odd">Parameters</dt>
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
 <dd class="field-odd"><ul class="simple">
 <li><p><strong>processor_label</strong> (<em>str</em>) – </p></li>
 <li><p><strong>instructions</strong> (<em>dict</em>) – </p></li>
@@ -131,7 +128,7 @@ execution.</p>
 <dd><p>Run the DEM generation pipeline(s) given the specified instructions.
 If a benchmark is specified compare the result to the benchmark</p>
 <dl class="field-list simple">
-<dt class="field-odd">Parameters</dt>
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
 <dd class="field-odd"><p><strong>instructions</strong> (<em>dict</em>) – </p>
 </dd>
 </dl>
@@ -143,7 +140,7 @@ If a benchmark is specified compare the result to the benchmark</p>
 <dd><p>Run the DEM generation pipeline(s) given the specified instructions.
 If a benchmark is specified compare the result to the benchmark</p>
 <dl class="field-list simple">
-<dt class="field-odd">Parameters</dt>
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
 <dd class="field-odd"><p><strong>instructions_path</strong> (<em>Union</em><em>[</em><em>str</em><em>, </em><em>pathlib.Path</em><em>]</em>) – </p>
 </dd>
 </dl>

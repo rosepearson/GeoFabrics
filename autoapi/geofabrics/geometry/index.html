@@ -1,7 +1,7 @@
 <!DOCTYPE html>
 <html class="writer-html5" lang="en" >
 <head>
-  <meta charset="utf-8" /><meta name="generator" content="Docutils 0.17.1: http://docutils.sourceforge.net/" />
+  <meta charset="utf-8" /><meta name="generator" content="Docutils 0.18.1: http://docutils.sourceforge.net/" />
 
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>geofabrics.geometry &mdash; Geofabrics 0.7.6 documentation</title>
@@ -13,9 +13,6 @@
   <![endif]-->
   
         <script data-url_root="../../../" id="documentation_options" src="../../../_static/documentation_options.js"></script>
-        <script src="../../../_static/jquery.js"></script>
-        <script src="../../../_static/underscore.js"></script>
-        <script src="../../../_static/_sphinx_javascript_frameworks_compat.js"></script>
         <script src="../../../_static/doctools.js"></script>
         <script src="../../../_static/sphinx_highlight.js"></script>
     <script src="../../../_static/js/theme.js"></script>
@@ -28,11 +25,15 @@
     <nav data-toggle="wy-nav-shift" class="wy-nav-side">
       <div class="wy-side-scroll">
         <div class="wy-side-nav-search" >
-            <a href="../../../index.html" class="icon icon-home"> Geofabrics
+
+          
+          
+          <a href="../../../index.html" class="icon icon-home">
+            Geofabrics
           </a>
 <div role="search">
   <form id="rtd-search-form" class="wy-form" action="../../../search.html" method="get">
-    <input type="text" name="q" placeholder="Search docs" />
+    <input type="text" name="q" placeholder="Search docs" aria-label="Search docs" />
     <input type="hidden" name="check_keywords" value="yes" />
     <input type="hidden" name="area" value="default" />
   </form>
@@ -55,7 +56,7 @@
         <div class="rst-content">
           <div role="navigation" aria-label="Page navigation">
   <ul class="wy-breadcrumbs">
-      <li><a href="../../../index.html" class="icon icon-home"></a></li>
+      <li><a href="../../../index.html" class="icon icon-home" aria-label="Home"></a></li>
       <li class="breadcrumb-item active"><code class="xref py py-mod docutils literal notranslate"><span class="pre">geofabrics.geometry</span></code></li>
       <li class="wy-breadcrumbs-aside">
             <a href="../../../_sources/autoapi/geofabrics/geometry/index.rst.txt" rel="nofollow"> View page source</a>
@@ -74,10 +75,6 @@
 <section id="classes">
 <h3>Classes<a class="headerlink" href="#classes" title="Permalink to this heading"></a></h3>
 <table class="autosummary longtable docutils align-default">
-<colgroup>
-<col style="width: 10%" />
-<col style="width: 90%" />
-</colgroup>
 <tbody>
 <tr class="row-odd"><td><p><a class="reference internal" href="#geofabrics.geometry.CatchmentGeometry" title="geofabrics.geometry.CatchmentGeometry"><code class="xref py py-obj docutils literal notranslate"><span class="pre">CatchmentGeometry</span></code></a></p></td>
 <td><p>A class defining revelant catchment regions by polygons.</p></td>
@@ -121,7 +118,7 @@ exclusion zone. I.E. is outside
 (i.e. land, offshore,
 foreshore, etc) can be accessed.</p>
 <dl class="field-list simple">
-<dt class="field-odd">Parameters</dt>
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
 <dd class="field-odd"><ul class="simple">
 <li><p><strong>catchment_file</strong> (<em>Union</em><em>[</em><em>str</em><em>, </em><em>pathlib.Path</em><em>]</em>) – </p></li>
 <li><p><strong>crs</strong> (<em>dict</em>) – </p></li>
@@ -177,7 +174,7 @@ foreshore, etc) can be accessed.</p>
 <span class="sig-name descname"><span class="pre">land_and_foreshore_without_lidar</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">dense_extents</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#geofabrics.geometry.CatchmentGeometry.land_and_foreshore_without_lidar" title="Permalink to this definition"></a></dt>
 <dd><p>Return the land and foreshore region without LiDAR</p>
 <dl class="field-list simple">
-<dt class="field-odd">Parameters</dt>
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
 <dd class="field-odd"><p><strong>dense_extents</strong> (<em>geopandas.GeoDataFrame</em>) – </p>
 </dd>
 </dl>
@@ -188,7 +185,7 @@ foreshore, etc) can be accessed.</p>
 <span class="sig-name descname"><span class="pre">offshore_without_lidar</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">dense_extents</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#geofabrics.geometry.CatchmentGeometry.offshore_without_lidar" title="Permalink to this definition"></a></dt>
 <dd><p>Return the offshore region without LiDAR</p>
 <dl class="field-list simple">
-<dt class="field-odd">Parameters</dt>
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
 <dd class="field-odd"><p><strong>dense_extents</strong> (<em>geopandas.GeoDataFrame</em>) – </p>
 </dd>
 </dl>
@@ -200,7 +197,7 @@ foreshore, etc) can be accessed.</p>
 <dd><p>Return the offshore edge of where there is ‘dense data’ i.e. LiDAR or
 reference DEM</p>
 <dl class="field-list simple">
-<dt class="field-odd">Parameters</dt>
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
 <dd class="field-odd"><p><strong>dense_extents</strong> (<em>geopandas.GeoDataFrame</em>) – </p>
 </dd>
 </dl>
@@ -220,7 +217,7 @@ reference DEM</p>
 <dd><p>A class for sampling from bathymetry contours.</p>
 <p>Assumes contours to be sampled to the catchment_geometry resolution</p>
 <dl class="field-list simple">
-<dt class="field-odd">Parameters</dt>
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
 <dd class="field-odd"><ul class="simple">
 <li><p><strong>contour_file</strong> (<em>str</em>) – </p></li>
 <li><p><strong>catchment_geometry</strong> (<a class="reference internal" href="#geofabrics.geometry.CatchmentGeometry" title="geofabrics.geometry.CatchmentGeometry"><em>CatchmentGeometry</em></a>) – </p></li>
@@ -232,10 +229,10 @@ reference DEM</p>
 <span class="sig-name descname"><span class="pre">sample_contours</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">resolution</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#geofabrics.geometry.BathymetryContours.sample_contours" title="Permalink to this definition"></a></dt>
 <dd><p>Sample the contours at the specified resolution.</p>
 <dl class="field-list simple">
-<dt class="field-odd">Parameters</dt>
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
 <dd class="field-odd"><p><strong>resolution</strong> (<em>float</em>) – </p>
 </dd>
-<dt class="field-even">Return type</dt>
+<dt class="field-even">Return type<span class="colon">:</span></dt>
 <dd class="field-even"><p>numpy.ndarray</p>
 </dd>
 </dl>
@@ -249,7 +246,7 @@ reference DEM</p>
 <dd><p>A class for accesing marine bathymetry points. These can be used as
 depths to interpolate elevations offshore.</p>
 <dl class="field-list simple">
-<dt class="field-odd">Parameters</dt>
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
 <dd class="field-odd"><ul class="simple">
 <li><p><strong>points_file</strong> (<em>str</em>) – </p></li>
 <li><p><strong>catchment_geometry</strong> (<a class="reference internal" href="#geofabrics.geometry.CatchmentGeometry" title="geofabrics.geometry.CatchmentGeometry"><em>CatchmentGeometry</em></a>) – </p></li>
@@ -289,7 +286,7 @@ depths to interpolate elevations offshore.</p>
 and mouth elevation and polygon files are expected. These depths can be
 used to interpolate elevations within the river and mouth polygon.</p>
 <dl class="field-list simple">
-<dt class="field-odd">Parameters</dt>
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
 <dd class="field-odd"><ul class="simple">
 <li><p><strong>points_files</strong> (<em>list</em>) – </p></li>
 <li><p><strong>polygon_files</strong> (<em>list</em>) – </p></li>
@@ -328,10 +325,10 @@ used to interpolate elevations within the river and mouth polygon.</p>
 <span class="sig-name descname"><span class="pre">filtered_polygons</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">type_label</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#geofabrics.geometry.EstimatedBathymetryPoints.filtered_polygons" title="Permalink to this definition"></a></dt>
 <dd><p>Return the polygon filtered by any type label.</p>
 <dl class="field-list simple">
-<dt class="field-odd">Parameters</dt>
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
 <dd class="field-odd"><p><strong>type_label</strong> (<em>str</em>) – </p>
 </dd>
-<dt class="field-even">Return type</dt>
+<dt class="field-even">Return type<span class="colon">:</span></dt>
 <dd class="field-even"><p>geopandas.GeoDataFrame</p>
 </dd>
 </dl>
@@ -342,10 +339,10 @@ used to interpolate elevations within the river and mouth polygon.</p>
 <span class="sig-name descname"><span class="pre">filtered_points</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">type_label</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#geofabrics.geometry.EstimatedBathymetryPoints.filtered_points" title="Permalink to this definition"></a></dt>
 <dd><p>Return the points as a single array.</p>
 <dl class="field-list simple">
-<dt class="field-odd">Parameters</dt>
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
 <dd class="field-odd"><p><strong>type_label</strong> (<em>str</em>) – </p>
 </dd>
-<dt class="field-even">Return type</dt>
+<dt class="field-even">Return type<span class="colon">:</span></dt>
 <dd class="field-even"><p>numpy.ndarray</p>
 </dd>
 </dl>
@@ -356,10 +353,10 @@ used to interpolate elevations within the river and mouth polygon.</p>
 <span class="sig-name descname"><span class="pre">filtered_bank_height_points</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">type_label</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#geofabrics.geometry.EstimatedBathymetryPoints.filtered_bank_height_points" title="Permalink to this definition"></a></dt>
 <dd><p>Return the points with ‘Z’ being the estimated bank height as a single array.</p>
 <dl class="field-list simple">
-<dt class="field-odd">Parameters</dt>
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
 <dd class="field-odd"><p><strong>type_label</strong> (<em>str</em>) – </p>
 </dd>
-<dt class="field-even">Return type</dt>
+<dt class="field-even">Return type<span class="colon">:</span></dt>
 <dd class="field-even"><p>numpy.ndarray</p>
 </dd>
 </dl>
@@ -372,7 +369,7 @@ used to interpolate elevations within the river and mouth polygon.</p>
 <em class="property"><span class="pre">class</span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">geofabrics.geometry.</span></span><span class="sig-name descname"><span class="pre">TileInfo</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">tile_file</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">catchment_geometry</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#geofabrics.geometry.TileInfo" title="Permalink to this definition"></a></dt>
 <dd><p>A class for working with tiling information.</p>
 <dl class="field-list simple">
-<dt class="field-odd">Parameters</dt>
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
 <dd class="field-odd"><ul class="simple">
 <li><p><strong>tile_file</strong> (<em>str</em>) – </p></li>
 <li><p><strong>catchment_geometry</strong> (<a class="reference internal" href="#geofabrics.geometry.CatchmentGeometry" title="geofabrics.geometry.CatchmentGeometry"><em>CatchmentGeometry</em></a>) – </p></li>
@@ -403,7 +400,7 @@ the transition. A fan is caculated for both river bed elevation approach.
 TODO In future,it may move to defining the width as 10x the mouth width.
 TODO deal with no width at the mouth and work upstream.</p>
 <dl class="field-list simple">
-<dt class="field-odd">Parameters</dt>
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
 <dd class="field-odd"><ul class="simple">
 <li><p><strong>aligned_channel_file</strong> (<em>str</em>) – </p></li>
 <li><p><strong>river_bathymetry_file</strong> (<em>str</em>) – </p></li>
@@ -424,7 +421,7 @@ TODO deal with no width at the mouth and work upstream.</p>
 <dt class="sig sig-object py">
 <span class="sig-name descname"><span class="pre">cross_section_spacing</span>&#160; <span class="pre">The</span> <span class="pre">spacing</span> <span class="pre">in</span></span></dt>
 <dd><dl class="field-list simple">
-<dt class="field-odd">Type</dt>
+<dt class="field-odd">Type<span class="colon">:</span></dt>
 <dd class="field-odd"><p>m</p>
 </dd>
 </dl>

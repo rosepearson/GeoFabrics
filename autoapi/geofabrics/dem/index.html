@@ -1,7 +1,7 @@
 <!DOCTYPE html>
 <html class="writer-html5" lang="en" >
 <head>
-  <meta charset="utf-8" /><meta name="generator" content="Docutils 0.17.1: http://docutils.sourceforge.net/" />
+  <meta charset="utf-8" /><meta name="generator" content="Docutils 0.18.1: http://docutils.sourceforge.net/" />
 
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>geofabrics.dem &mdash; Geofabrics 0.7.6 documentation</title>
@@ -13,9 +13,6 @@
   <![endif]-->
   
         <script data-url_root="../../../" id="documentation_options" src="../../../_static/documentation_options.js"></script>
-        <script src="../../../_static/jquery.js"></script>
-        <script src="../../../_static/underscore.js"></script>
-        <script src="../../../_static/_sphinx_javascript_frameworks_compat.js"></script>
         <script src="../../../_static/doctools.js"></script>
         <script src="../../../_static/sphinx_highlight.js"></script>
     <script src="../../../_static/js/theme.js"></script>
@@ -28,11 +25,15 @@
     <nav data-toggle="wy-nav-shift" class="wy-nav-side">
       <div class="wy-side-scroll">
         <div class="wy-side-nav-search" >
-            <a href="../../../index.html" class="icon icon-home"> Geofabrics
+
+          
+          
+          <a href="../../../index.html" class="icon icon-home">
+            Geofabrics
           </a>
 <div role="search">
   <form id="rtd-search-form" class="wy-form" action="../../../search.html" method="get">
-    <input type="text" name="q" placeholder="Search docs" />
+    <input type="text" name="q" placeholder="Search docs" aria-label="Search docs" />
     <input type="hidden" name="check_keywords" value="yes" />
     <input type="hidden" name="area" value="default" />
   </form>
@@ -55,7 +56,7 @@
         <div class="rst-content">
           <div role="navigation" aria-label="Page navigation">
   <ul class="wy-breadcrumbs">
-      <li><a href="../../../index.html" class="icon icon-home"></a></li>
+      <li><a href="../../../index.html" class="icon icon-home" aria-label="Home"></a></li>
       <li class="breadcrumb-item active"><code class="xref py py-mod docutils literal notranslate"><span class="pre">geofabrics.dem</span></code></li>
       <li class="wy-breadcrumbs-aside">
             <a href="../../../_sources/autoapi/geofabrics/dem/index.rst.txt" rel="nofollow"> View page source</a>
@@ -75,10 +76,6 @@ DEMs.</p>
 <section id="classes">
 <h3>Classes<a class="headerlink" href="#classes" title="Permalink to this heading"></a></h3>
 <table class="autosummary longtable docutils align-default">
-<colgroup>
-<col style="width: 10%" />
-<col style="width: 90%" />
-</colgroup>
 <tbody>
 <tr class="row-odd"><td><p><a class="reference internal" href="#geofabrics.dem.CoarseDem" title="geofabrics.dem.CoarseDem"><code class="xref py py-obj docutils literal notranslate"><span class="pre">CoarseDem</span></code></a></p></td>
 <td><p>A class to manage coarse or background DEMs in the catchment context</p></td>
@@ -104,10 +101,6 @@ DEMs.</p>
 <section id="functions">
 <h3>Functions<a class="headerlink" href="#functions" title="Permalink to this heading"></a></h3>
 <table class="autosummary longtable docutils align-default">
-<colgroup>
-<col style="width: 10%" />
-<col style="width: 90%" />
-</colgroup>
 <tbody>
 <tr class="row-odd"><td><p><a class="reference internal" href="#geofabrics.dem.read_file_with_pdal" title="geofabrics.dem.read_file_with_pdal"><code class="xref py py-obj docutils literal notranslate"><span class="pre">read_file_with_pdal</span></code></a>(lidar_file, region_to_tile, ...[, ...])</p></td>
 <td><p>Read a tile file in using PDAL</p></td>
@@ -139,10 +132,6 @@ DEMs.</p>
 <section id="attributes">
 <h3>Attributes<a class="headerlink" href="#attributes" title="Permalink to this heading"></a></h3>
 <table class="autosummary longtable docutils align-default">
-<colgroup>
-<col style="width: 10%" />
-<col style="width: 90%" />
-</colgroup>
 <tbody>
 <tr class="row-odd"><td><p><a class="reference internal" href="#geofabrics.dem.delayed_roughness_over_chunk" title="geofabrics.dem.delayed_roughness_over_chunk"><code class="xref py py-obj docutils literal notranslate"><span class="pre">delayed_roughness_over_chunk</span></code></a></p></td>
 <td><p>Wrap the <cite>rasterise_chunk</cite> routine in dask.delayed</p></td>
@@ -161,7 +150,7 @@ clip outside any LiDAR using the
 optional ‘exclusion_extent’ input.</p>
 <p>If set_foreshore is True all positive DEM values in the foreshore are set to zero.</p>
 <dl class="field-list simple">
-<dt class="field-odd">Parameters</dt>
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
 <dd class="field-odd"><ul class="simple">
 <li><p><strong>catchment_geometry</strong> (<a class="reference internal" href="../geometry/index.html#geofabrics.geometry.CatchmentGeometry" title="geofabrics.geometry.CatchmentGeometry"><em>geofabrics.geometry.CatchmentGeometry</em></a>) – </p></li>
 <li><p><strong>set_foreshore</strong> (<em>bool</em>) – </p></li>
@@ -174,7 +163,7 @@ optional ‘exclusion_extent’ input.</p>
 <em class="property"><span class="pre">property</span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">dem</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="pre">xarray.Dataset</span></em><a class="headerlink" href="#geofabrics.dem.CoarseDem.dem" title="Permalink to this definition"></a></dt>
 <dd><p>Return the DEM over the catchment region</p>
 <dl class="field-list simple">
-<dt class="field-odd">Return type</dt>
+<dt class="field-odd">Return type<span class="colon">:</span></dt>
 <dd class="field-odd"><p>xarray.Dataset</p>
 </dd>
 </dl>
@@ -185,7 +174,7 @@ optional ‘exclusion_extent’ input.</p>
 <em class="property"><span class="pre">property</span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">resolution</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="pre">float</span></em><a class="headerlink" href="#geofabrics.dem.CoarseDem.resolution" title="Permalink to this definition"></a></dt>
 <dd><p>Return the largest dimension of the coarse DEM resolution</p>
 <dl class="field-list simple">
-<dt class="field-odd">Return type</dt>
+<dt class="field-odd">Return type<span class="colon">:</span></dt>
 <dd class="field-odd"><p>float</p>
 </dd>
 </dl>
@@ -197,7 +186,7 @@ optional ‘exclusion_extent’ input.</p>
 <dd><p>The coarse DEM points after any extent or foreshore value
 filtering.</p>
 <dl class="field-list simple">
-<dt class="field-odd">Return type</dt>
+<dt class="field-odd">Return type<span class="colon">:</span></dt>
 <dd class="field-odd"><p>numpy.ndarray</p>
 </dd>
 </dl>
@@ -208,7 +197,7 @@ filtering.</p>
 <em class="property"><span class="pre">property</span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">extents</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="pre">geopandas.GeoDataFrame</span></em><a class="headerlink" href="#geofabrics.dem.CoarseDem.extents" title="Permalink to this definition"></a></dt>
 <dd><p>The extents for the coarse DEM</p>
 <dl class="field-list simple">
-<dt class="field-odd">Return type</dt>
+<dt class="field-odd">Return type<span class="colon">:</span></dt>
 <dd class="field-odd"><p>geopandas.GeoDataFrame</p>
 </dd>
 </dl>
@@ -230,7 +219,7 @@ filtering.</p>
 <p>The dense DEM is made up of a dense DEM that is loaded in, and an offshore DEM that
 is interpolated from bathymetry contours offshore and outside all LiDAR tiles.</p>
 <dl class="field-list simple">
-<dt class="field-odd">Parameters</dt>
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
 <dd class="field-odd"><ul class="simple">
 <li><p><strong>catchment_geometry</strong> (<a class="reference internal" href="../geometry/index.html#geofabrics.geometry.CatchmentGeometry" title="geofabrics.geometry.CatchmentGeometry"><em>geofabrics.geometry.CatchmentGeometry</em></a>) – Defines the spatial extents of the catchment, land, foreshore, and offshore
 regions</p></li>
@@ -249,7 +238,7 @@ regions</p></li>
 <em class="property"><span class="pre">abstract</span><span class="w"> </span><span class="pre">property</span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">dem</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="pre">xarray.Dataset</span></em><a class="headerlink" href="#geofabrics.dem.DemBase.dem" title="Permalink to this definition"></a></dt>
 <dd><p>Return the DEM over the catchment region</p>
 <dl class="field-list simple">
-<dt class="field-odd">Return type</dt>
+<dt class="field-odd">Return type<span class="colon">:</span></dt>
 <dd class="field-odd"><p>xarray.Dataset</p>
 </dd>
 </dl>
@@ -264,7 +253,7 @@ regions</p></li>
 <p>A class to manage loading in an already created and saved dense DEM that has yet
 to have an offshore DEM associated with it.</p>
 <dl class="field-list simple">
-<dt class="field-odd">Parameters</dt>
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
 <dd class="field-odd"><ul class="simple">
 <li><p><strong>behaviour</strong> (<em>Logic controlling</em>) – <dl class="simple">
 <dt>interpolation_method</dt><dd><p>If not None, interpolate using that method. Valid options are ‘linear’,
@@ -303,7 +292,7 @@ to have an offshore DEM associated with it.</p>
 <dd><p>Interpolate the bathymetry points at the specified locations using the
 specified method.</p>
 <dl class="field-list simple">
-<dt class="field-odd">Parameters</dt>
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
 <dd class="field-odd"><ul class="simple">
 <li><p><strong>bathymetry_points</strong> (<em>numpy.ndarray</em>) – </p></li>
 <li><p><strong>flat_x_array</strong> (<em>numpy.ndarray</em>) – </p></li>
@@ -311,7 +300,7 @@ specified method.</p>
 <li><p><strong>method</strong> (<em>str</em>) – </p></li>
 </ul>
 </dd>
-<dt class="field-even">Return type</dt>
+<dt class="field-even">Return type<span class="colon">:</span></dt>
 <dd class="field-even"><p>numpy.ndarray</p>
 </dd>
 </dl>
@@ -330,7 +319,7 @@ function.</p>
 <dd><p>Performs interpolation over drains, culverts, rivers and river fan
 polygons using various interpolation techniques.</p>
 <dl class="field-list simple">
-<dt class="field-odd">Parameters</dt>
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
 <dd class="field-odd"><p><strong>estimated_bathymetry</strong> (<a class="reference internal" href="../geometry/index.html#geofabrics.geometry.EstimatedBathymetryPoints" title="geofabrics.geometry.EstimatedBathymetryPoints"><em>geofabrics.geometry.EstimatedBathymetryPoints</em></a>) – </p>
 </dd>
 </dl>
@@ -344,7 +333,7 @@ polygons using various interpolation techniques.</p>
 <dd><p>Bases: <a class="reference internal" href="#geofabrics.dem.DemBase" title="geofabrics.dem.DemBase"><code class="xref py py-obj docutils literal notranslate"><span class="pre">DemBase</span></code></a></p>
 <p>A class with some base methods for reading in LiDAR data.</p>
 <dl class="field-list simple">
-<dt class="field-odd">Parameters</dt>
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
 <dd class="field-odd"><ul class="simple">
 <li><p><strong>catchment_geometry</strong> (<a class="reference internal" href="../geometry/index.html#geofabrics.geometry.CatchmentGeometry" title="geofabrics.geometry.CatchmentGeometry"><em>geofabrics.geometry.CatchmentGeometry</em></a>) – Defines the geometry of the catchment</p></li>
 <li><p><strong>elevation_range</strong> (<em>list</em>) – The range of valid LiDAR elevations. i.e. define elevation filtering to apply.</p></li>
@@ -368,7 +357,7 @@ polygons using various interpolation techniques.</p>
 <em class="property"><span class="pre">abstract</span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">add_lidar</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">lidar_files</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">tile_index_file</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">chunk_size</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">lidar_classifications_to_keep</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">source_crs</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">metadata</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#geofabrics.dem.LidarBase.add_lidar" title="Permalink to this definition"></a></dt>
 <dd><p>Read in all LiDAR files and use to create a dense DEM.</p>
 <dl class="field-list simple">
-<dt class="field-odd">Parameters</dt>
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
 <dd class="field-odd"><ul class="simple">
 <li><p><strong>source_crs</strong> (<em>dict</em>) – Coordinate reference system information</p></li>
 <li><p><strong>chunk_size</strong> (<em>int</em>) – The chunk size in pixels for parallel/staged processing</p></li>
@@ -393,7 +382,7 @@ standard list</p></li>
 <p>A class to manage the creation of a ‘raw’ DEM from LiDAR tiles, and/or a
 coarse DEM.</p>
 <dl class="field-list simple">
-<dt class="field-odd">Parameters</dt>
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
 <dd class="field-odd"><ul class="simple">
 <li><p><strong>drop_offshore_lidar</strong> (<em>bool</em>) – If True only keep LiDAR values within the foreshore and land regions defined by
 the catchment_geometry. If False keep all LiDAR values.</p></li>
@@ -411,7 +400,7 @@ Options are: mean, median, IDW, max, min, STD.</p></li>
 <dd><p>Read in all LiDAR files and use to define a ‘raw’ DEM with elevations in
 pixels where there is LiDAR or coarse DEM information.</p>
 <dl class="field-list simple">
-<dt class="field-odd">Parameters</dt>
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
 <dd class="field-odd"><ul class="simple">
 <li><p><strong>lidar_datasets_info</strong> (<em>dict</em>) – One of more dictionaries of LiDAR dataset information - including a list of
 LAS files, CRS and tile index file for each.</p></li>
@@ -434,7 +423,7 @@ Perform linear interpolation.</p>
 <p>Currently doesn’t use chunking - this may be required if a large area is covered
 by the coarse DEM.</p>
 <dl class="field-list simple">
-<dt class="field-odd">Parameters</dt>
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
 <dd class="field-odd"><p><strong>coarse_dem</strong> (<a class="reference internal" href="#geofabrics.dem.CoarseDem" title="geofabrics.dem.CoarseDem"><em>CoarseDem</em></a>) – </p>
 </dd>
 </dl>
@@ -452,7 +441,7 @@ LiDAR data and z (elevation) layer of the hydrologically conditioned DEM, and us
 to estimate roughness emperically.</p>
 <p>RoughnessDem logic can be controlled by the constructor inputs.</p>
 <dl class="field-list simple">
-<dt class="field-odd">Parameters</dt>
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
 <dd class="field-odd"><ul class="simple">
 <li><p><strong>catchment_geometry</strong> (<a class="reference internal" href="../geometry/index.html#geofabrics.geometry.CatchmentGeometry" title="geofabrics.geometry.CatchmentGeometry"><em>geofabrics.geometry.CatchmentGeometry</em></a>) – Defines the geometry of the catchment</p></li>
 <li><p><strong>hydrological_dem_path</strong> (<em>Union</em><em>[</em><em>str</em><em>, </em><em>pathlib.Path</em><em>]</em>) – The path to the hydrologically conditioned DEM.</p></li>
@@ -470,7 +459,7 @@ to estimate roughness emperically.</p>
 information, and hydrologiaclly conditioned elevations to estimate the roughness
 across the DEM.</p>
 <dl class="field-list simple">
-<dt class="field-odd">Parameters</dt>
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
 <dd class="field-odd"><ul class="simple">
 <li><p><strong>lidar_datasets_info</strong> (<em>dict</em>) – One of more dictionaries of LiDAR dataset information - including a list of
 LAS files, CRS and tile index file for each.</p></li>
@@ -492,7 +481,7 @@ standard list</p></li>
 <span class="sig-prename descclassname"><span class="pre">geofabrics.dem.</span></span><span class="sig-name descname"><span class="pre">read_file_with_pdal</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">lidar_file</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">region_to_tile</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">catchment_geometry</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">source_crs</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">get_extents</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">False</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#geofabrics.dem.read_file_with_pdal" title="Permalink to this definition"></a></dt>
 <dd><p>Read a tile file in using PDAL</p>
 <dl class="field-list simple">
-<dt class="field-odd">Parameters</dt>
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
 <dd class="field-odd"><ul class="simple">
 <li><p><strong>lidar_file</strong> (<em>Union</em><em>[</em><em>str</em><em>, </em><em>pathlib.Path</em><em>]</em>) – </p></li>
 <li><p><strong>region_to_tile</strong> (<em>geopandas.GeoDataFrame</em>) – </p></li>
@@ -511,7 +500,7 @@ standard list</p></li>
 approach. Options include: mean, median, and inverse distance weighing (IDW). This
 implementation is based on the scipy.spatial.KDTree</p>
 <dl class="field-list simple">
-<dt class="field-odd">Parameters</dt>
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
 <dd class="field-odd"><ul class="simple">
 <li><p><strong>point_cloud</strong> (<em>numpy.ndarray</em>) – </p></li>
 <li><p><strong>xy_out</strong> (<em>numpy.ndarray</em>) – </p></li>
@@ -521,7 +510,7 @@ implementation is based on the scipy.spatial.KDTree</p>
 <li><p><strong>leaf_size</strong> (<em>int</em>) – </p></li>
 </ul>
 </dd>
-<dt class="field-even">Return type</dt>
+<dt class="field-even">Return type<span class="colon">:</span></dt>
 <dd class="field-even"><p>numpy.ndarray</p>
 </dd>
 </dl>
@@ -534,7 +523,7 @@ implementation is based on the scipy.spatial.KDTree</p>
 approach. Options include: mean, median, and inverse distance weighing (IDW). This
 implementation is based on the scipy.spatial.KDTree</p>
 <dl class="field-list simple">
-<dt class="field-odd">Parameters</dt>
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
 <dd class="field-odd"><ul class="simple">
 <li><p><strong>point_cloud</strong> (<em>numpy.ndarray</em>) – </p></li>
 <li><p><strong>options</strong> (<em>dict</em>) – </p></li>
@@ -542,7 +531,7 @@ implementation is based on the scipy.spatial.KDTree</p>
 <li><p><strong>leaf_size</strong> (<em>int</em>) – </p></li>
 </ul>
 </dd>
-<dt class="field-even">Return type</dt>
+<dt class="field-even">Return type<span class="colon">:</span></dt>
 <dd class="field-even"><p>numpy.ndarray</p>
 </dd>
 </dl>
@@ -554,7 +543,7 @@ implementation is based on the scipy.spatial.KDTree</p>
 <dd><p>Calculate the IDW mean of the ‘near_indices’ points. This implementation is based
 on the scipy.spatial.KDTree</p>
 <dl class="field-list simple">
-<dt class="field-odd">Parameters</dt>
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
 <dd class="field-odd"><ul class="simple">
 <li><p><strong>near_indices</strong> (<em>list</em>) – </p></li>
 <li><p><strong>point</strong> (<em>numpy.ndarray</em>) – </p></li>
@@ -573,7 +562,7 @@ on the scipy.spatial.KDTree</p>
 <dd><p>Calculate linear interpolation of the ‘near_indices’ points. Take the straight
 mean if the points are co-linear or too few for linear interpolation.</p>
 <dl class="field-list simple">
-<dt class="field-odd">Parameters</dt>
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
 <dd class="field-odd"><ul class="simple">
 <li><p><strong>near_indices</strong> (<em>list</em>) – </p></li>
 <li><p><strong>point</strong> (<em>numpy.ndarray</em>) – </p></li>
@@ -590,7 +579,7 @@ mean if the points are co-linear or too few for linear interpolation.</p>
 <dd><p>Read in all LiDAR files within the chunked region - clipped to within the region
 within which to rasterise.</p>
 <dl class="field-list simple">
-<dt class="field-odd">Parameters</dt>
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
 <dd class="field-odd"><ul class="simple">
 <li><p><strong>lidar_files</strong> (<em>List</em><em>[</em><em>pathlib.Path</em><em>]</em>) – </p></li>
 <li><p><strong>source_crs</strong> (<em>dict</em>) – </p></li>
@@ -606,7 +595,7 @@ within which to rasterise.</p>
 <span class="sig-prename descclassname"><span class="pre">geofabrics.dem.</span></span><span class="sig-name descname"><span class="pre">roughness_over_chunk</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">dim_x</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">dim_y</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">tile_points</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">xy_ground</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">options</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#geofabrics.dem.roughness_over_chunk" title="Permalink to this definition"></a></dt>
 <dd><p>Rasterise all points within a chunk.</p>
 <dl class="field-list simple">
-<dt class="field-odd">Parameters</dt>
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
 <dd class="field-odd"><ul class="simple">
 <li><p><strong>dim_x</strong> (<em>numpy.ndarray</em>) – </p></li>
 <li><p><strong>dim_y</strong> (<em>numpy.ndarray</em>) – </p></li>
@@ -615,7 +604,7 @@ within which to rasterise.</p>
 <li><p><strong>options</strong> (<em>dict</em>) – </p></li>
 </ul>
 </dd>
-<dt class="field-even">Return type</dt>
+<dt class="field-even">Return type<span class="colon">:</span></dt>
 <dd class="field-even"><p>numpy.ndarray</p>
 </dd>
 </dl>
@@ -626,7 +615,7 @@ within which to rasterise.</p>
 <span class="sig-prename descclassname"><span class="pre">geofabrics.dem.</span></span><span class="sig-name descname"><span class="pre">elevation_over_chunk</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">dim_x</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">dim_y</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">tile_points</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">options</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#geofabrics.dem.elevation_over_chunk" title="Permalink to this definition"></a></dt>
 <dd><p>Rasterise all points within a chunk.</p>
 <dl class="field-list simple">
-<dt class="field-odd">Parameters</dt>
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
 <dd class="field-odd"><ul class="simple">
 <li><p><strong>dim_x</strong> (<em>numpy.ndarray</em>) – </p></li>
 <li><p><strong>dim_y</strong> (<em>numpy.ndarray</em>) – </p></li>
@@ -634,7 +623,7 @@ within which to rasterise.</p>
 <li><p><strong>options</strong> (<em>dict</em>) – </p></li>
 </ul>
 </dd>
-<dt class="field-even">Return type</dt>
+<dt class="field-even">Return type<span class="colon">:</span></dt>
 <dd class="field-even"><p>numpy.ndarray</p>
 </dd>
 </dl>

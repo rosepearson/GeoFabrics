@@ -1,7 +1,7 @@
 <!DOCTYPE html>
 <html class="writer-html5" lang="en" >
 <head>
-  <meta charset="utf-8" /><meta name="generator" content="Docutils 0.17.1: http://docutils.sourceforge.net/" />
+  <meta charset="utf-8" /><meta name="generator" content="Docutils 0.18.1: http://docutils.sourceforge.net/" />
 
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>geofabrics.processor &mdash; Geofabrics 0.7.6 documentation</title>
@@ -13,9 +13,6 @@
   <![endif]-->
   
         <script data-url_root="../../../" id="documentation_options" src="../../../_static/documentation_options.js"></script>
-        <script src="../../../_static/jquery.js"></script>
-        <script src="../../../_static/underscore.js"></script>
-        <script src="../../../_static/_sphinx_javascript_frameworks_compat.js"></script>
         <script src="../../../_static/doctools.js"></script>
         <script src="../../../_static/sphinx_highlight.js"></script>
     <script src="../../../_static/js/theme.js"></script>
@@ -28,11 +25,15 @@
     <nav data-toggle="wy-nav-shift" class="wy-nav-side">
       <div class="wy-side-scroll">
         <div class="wy-side-nav-search" >
-            <a href="../../../index.html" class="icon icon-home"> Geofabrics
+
+          
+          
+          <a href="../../../index.html" class="icon icon-home">
+            Geofabrics
           </a>
 <div role="search">
   <form id="rtd-search-form" class="wy-form" action="../../../search.html" method="get">
-    <input type="text" name="q" placeholder="Search docs" />
+    <input type="text" name="q" placeholder="Search docs" aria-label="Search docs" />
     <input type="hidden" name="check_keywords" value="yes" />
     <input type="hidden" name="area" value="default" />
   </form>
@@ -55,7 +56,7 @@
         <div class="rst-content">
           <div role="navigation" aria-label="Page navigation">
   <ul class="wy-breadcrumbs">
-      <li><a href="../../../index.html" class="icon icon-home"></a></li>
+      <li><a href="../../../index.html" class="icon icon-home" aria-label="Home"></a></li>
       <li class="breadcrumb-item active"><code class="xref py py-mod docutils literal notranslate"><span class="pre">geofabrics.processor</span></code></li>
       <li class="wy-breadcrumbs-aside">
             <a href="../../../_sources/autoapi/geofabrics/processor/index.rst.txt" rel="nofollow"> View page source</a>
@@ -76,10 +77,6 @@ LiDAR and bathymetry contours based on the instructions contained in a JSON file
 <section id="classes">
 <h3>Classes<a class="headerlink" href="#classes" title="Permalink to this heading"></a></h3>
 <table class="autosummary longtable docutils align-default">
-<colgroup>
-<col style="width: 10%" />
-<col style="width: 90%" />
-</colgroup>
 <tbody>
 <tr class="row-odd"><td><p><a class="reference internal" href="#geofabrics.processor.BaseProcessor" title="geofabrics.processor.BaseProcessor"><code class="xref py py-obj docutils literal notranslate"><span class="pre">BaseProcessor</span></code></a></p></td>
 <td><p>An abstract class with general methods for accessing elements in</p></td>
@@ -110,7 +107,7 @@ instruction files including populating default values. Also contains
 functions for downloading remote data using geopais, and constructing data
 file lists.</p>
 <dl class="field-list simple">
-<dt class="field-odd">Parameters</dt>
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
 <dd class="field-odd"><p><strong>json_instructions</strong> (<em>json</em>) – </p>
 </dd>
 </dl>
@@ -119,7 +116,7 @@ file lists.</p>
 <span class="sig-name descname"><span class="pre">create_metadata</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="headerlink" href="#geofabrics.processor.BaseProcessor.create_metadata" title="Permalink to this definition"></a></dt>
 <dd><p>A clase to create metadata to be added as netCDF attributes.</p>
 <dl class="field-list simple">
-<dt class="field-odd">Return type</dt>
+<dt class="field-odd">Return type<span class="colon">:</span></dt>
 <dd class="field-odd"><p>dict</p>
 </dd>
 </dl>
@@ -132,10 +129,10 @@ file lists.</p>
 is a default value and the local cache is specified. Raise an error if
 the key is not in the instructions.</p>
 <dl class="field-list simple">
-<dt class="field-odd">Parameters</dt>
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
 <dd class="field-odd"><p><strong>key</strong> (<em>str</em>) – </p>
 </dd>
-<dt class="field-even">Return type</dt>
+<dt class="field-even">Return type<span class="colon">:</span></dt>
 <dd class="field-even"><p>str</p>
 </dd>
 </dl>
@@ -147,10 +144,10 @@ the key is not in the instructions.</p>
 <dd><p>Return True if the file path exists in the instruction file, or True
 if there is a default value and the local cache is specified.</p>
 <dl class="field-list simple">
-<dt class="field-odd">Parameters</dt>
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
 <dd class="field-odd"><p><strong>key</strong> (<em>str</em>) – </p>
 </dd>
-<dt class="field-even">Return type</dt>
+<dt class="field-even">Return type<span class="colon">:</span></dt>
 <dd class="field-even"><p>bool</p>
 </dd>
 </dl>
@@ -168,7 +165,7 @@ if there is a default value and the local cache is specified.</p>
 <dd><p>Return the resolution from the instruction file. Raise an error if
 not in the instructions.</p>
 <dl class="field-list simple">
-<dt class="field-odd">Return type</dt>
+<dt class="field-odd">Return type<span class="colon">:</span></dt>
 <dd class="field-odd"><p>float</p>
 </dd>
 </dl>
@@ -183,7 +180,7 @@ no ‘crs’ or ‘horizontal’ or ‘vertical’ values are specified then use
 value for each one missing from the instructions. If the default is used it is
 added to the instructions.</p>
 <dl class="field-list simple">
-<dt class="field-odd">Return type</dt>
+<dt class="field-odd">Return type<span class="colon">:</span></dt>
 <dd class="field-odd"><p>dict</p>
 </dd>
 </dl>
@@ -197,7 +194,7 @@ the default value if not specified in the instruction file. Raise an
 error if the key is not in the instructions and there is no default
 value. If the default is used it is added to the instructions.</p>
 <dl class="field-list simple">
-<dt class="field-odd">Parameters</dt>
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
 <dd class="field-odd"><p><strong>key</strong> (<em>str</em>) – </p>
 </dd>
 </dl>
@@ -210,7 +207,7 @@ value. If the default is used it is added to the instructions.</p>
 return the default value if not specified in the instruction file. If
 the default is used it is added to the instructions.</p>
 <dl class="field-list simple">
-<dt class="field-odd">Parameters</dt>
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
 <dd class="field-odd"><p><strong>key</strong> (<em>str</em>) – The string identifying the instruction</p>
 </dd>
 </dl>
@@ -222,13 +219,13 @@ the default is used it is added to the instructions.</p>
 <dd><p>Check to see if APIs are included in the instructions and if the key is
 included in specified apis</p>
 <dl class="field-list simple">
-<dt class="field-odd">Parameters</dt>
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
 <dd class="field-odd"><ul class="simple">
 <li><p><strong>key</strong> (<em>str</em>) – The string identifying the vector/raster</p></li>
 <li><p><strong>api_type</strong> (<em>str</em>) – The string identifying if the key is a vector or raster</p></li>
 </ul>
 </dd>
-<dt class="field-even">Return type</dt>
+<dt class="field-even">Return type<span class="colon">:</span></dt>
 <dd class="field-even"><p>bool</p>
 </dd>
 </dl>
@@ -240,13 +237,13 @@ included in specified apis</p>
 <dd><p>Check to see if vector or raster key (i.e. land, bathymetry_contours, etc) is
 included either as a file path, or within any of API’s (i.e. LINZ or LRIS).</p>
 <dl class="field-list simple">
-<dt class="field-odd">Parameters</dt>
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
 <dd class="field-odd"><ul class="simple">
 <li><p><strong>key</strong> (<em>str</em>) – The string identifying the vector/raster</p></li>
 <li><p><strong>api_type</strong> (<em>str</em>) – The string identifying if the key is a vector or raster</p></li>
 </ul>
 </dd>
-<dt class="field-even">Return type</dt>
+<dt class="field-even">Return type<span class="colon">:</span></dt>
 <dd class="field-even"><p>bool</p>
 </dd>
 </dl>
@@ -259,13 +256,13 @@ included either as a file path, or within any of API’s (i.e. LINZ or LRIS).</p
 as an API. Return all paths where the vector key is specified. In the case that
 an API is specified ensure the data is fetched as well.</p>
 <dl class="field-list simple">
-<dt class="field-odd">Parameters</dt>
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
 <dd class="field-odd"><ul class="simple">
 <li><p><strong>key</strong> (<em>str</em>) – The string identifying the vector/raster</p></li>
 <li><p><strong>api_type</strong> (<em>str</em>) – The string identifying if the key is a vector or raster</p></li>
 </ul>
 </dd>
-<dt class="field-even">Return type</dt>
+<dt class="field-even">Return type<span class="colon">:</span></dt>
 <dd class="field-even"><p>list</p>
 </dd>
 </dl>
@@ -278,7 +275,7 @@ an API is specified ensure the data is fetched as well.</p>
 in the instruction file. If it has been specified, this CRS is returned, and
 will later be used to override the CRS encoded in the LAS files.</p>
 <dl class="field-list simple">
-<dt class="field-odd">Return type</dt>
+<dt class="field-odd">Return type<span class="colon">:</span></dt>
 <dd class="field-odd"><p>dict</p>
 </dd>
 </dl>
@@ -301,7 +298,7 @@ OpenTopography files.</p>
 area are downloaded and used to construct the file list. If none is specified,
 the instruction ‘data_paths’ is checked for ‘lidars’ and these are returned.</p>
 <dl class="field-list simple">
-<dt class="field-odd">Return type</dt>
+<dt class="field-odd">Return type<span class="colon">:</span></dt>
 <dd class="field-odd"><p>dict</p>
 </dd>
 </dl>
@@ -337,7 +334,7 @@ fill on land gaps in the LiDAR.</p></li>
 <p>See the README.md for usage examples or GeoFabrics/tests/ for examples of usage and
 an instruction file.</p>
 <dl class="field-list simple">
-<dt class="field-odd">Parameters</dt>
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
 <dd class="field-odd"><p><strong>json_instructions</strong> (<em>json</em>) – </p>
 </dd>
 </dl>
@@ -374,7 +371,7 @@ DEM values offshore.</p></li>
 <p>See the README.md for usage examples or GeoFabrics/tests/ for examples of usage and
 an instruction file</p>
 <dl class="field-list simple">
-<dt class="field-odd">Parameters</dt>
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
 <dd class="field-odd"><p><strong>json_instructions</strong> (<em>json</em>) – </p>
 </dd>
 </dl>
@@ -383,7 +380,7 @@ an instruction file</p>
 <span class="sig-name descname"><span class="pre">add_bathymetry</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">area_threshold</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">catchment_dirs</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#geofabrics.processor.HydrologicDemGenerator.add_bathymetry" title="Permalink to this definition"></a></dt>
 <dd><p>Add in any bathymetry data - ocean or river</p>
 <dl class="field-list simple">
-<dt class="field-odd">Parameters</dt>
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
 <dd class="field-odd"><ul class="simple">
 <li><p><strong>area_threshold</strong> (<em>float</em>) – </p></li>
 <li><p><strong>catchment_dirs</strong> (<em>pathlib.Path</em>) – </p></li>
@@ -418,7 +415,7 @@ generation of a DEM as polygons.</p></li>
 </dd>
 </dl>
 <dl class="field-list simple">
-<dt class="field-odd">Parameters</dt>
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
 <dd class="field-odd"><p><strong>json_instructions</strong> (<em>json</em>) – </p>
 </dd>
 </dl>
@@ -441,7 +438,7 @@ channel. This is dones by first creating a hydrologically conditioned DEM
 of the channel. A json_instructions file defines the pipeline logic and
 data.</p>
 <dl class="field-list simple">
-<dt class="field-odd">Parameters</dt>
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
 <dd class="field-odd"><ul class="simple">
 <li><p><strong>json_instructions</strong> (<em>json</em>) – </p></li>
 <li><p><strong>debug</strong> (<em>bool</em>) – </p></li>
@@ -483,7 +480,7 @@ data.</p>
 <span class="sig-name descname"><span class="pre">channel_characteristics_exist</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="headerlink" href="#geofabrics.processor.RiverBathymetryGenerator.channel_characteristics_exist" title="Permalink to this definition"></a></dt>
 <dd><p>Return true if the DEMs are required for later processing</p>
 <dl class="field-list simple">
-<dt class="field-odd">Return type</dt>
+<dt class="field-odd">Return type<span class="colon">:</span></dt>
 <dd class="field-odd"><p>bool</p>
 </dd>
 </dl>
@@ -494,7 +491,7 @@ data.</p>
 <span class="sig-name descname"><span class="pre">channel_bathymetry_exist</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="headerlink" href="#geofabrics.processor.RiverBathymetryGenerator.channel_bathymetry_exist" title="Permalink to this definition"></a></dt>
 <dd><p>Return true if the river channel and bathymetry files exist.</p>
 <dl class="field-list simple">
-<dt class="field-odd">Return type</dt>
+<dt class="field-odd">Return type<span class="colon">:</span></dt>
 <dd class="field-odd"><p>bool</p>
 </dd>
 </dl>
@@ -505,10 +502,10 @@ data.</p>
 <span class="sig-name descname"><span class="pre">alignment_exists</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="headerlink" href="#geofabrics.processor.RiverBathymetryGenerator.alignment_exists" title="Permalink to this definition"></a></dt>
 <dd><p>Return true if the DEMs are required for later processing</p>
 <dl class="field-list simple">
-<dt class="field-odd">Parameters</dt>
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
 <dd class="field-odd"><p><strong>behaviour</strong> (<em>instructions  The json instructions defining the</em>) – </p>
 </dd>
-<dt class="field-even">Return type</dt>
+<dt class="field-even">Return type<span class="colon">:</span></dt>
 <dd class="field-even"><p>bool</p>
 </dd>
 </dl>
@@ -519,14 +516,14 @@ data.</p>
 <span class="sig-name descname"><span class="pre">get_result_file_name</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">key</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">name</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#geofabrics.processor.RiverBathymetryGenerator.get_result_file_name" title="Permalink to this definition"></a></dt>
 <dd><p>Return the file name of the file to save.</p>
 <dl class="field-list simple">
-<dt class="field-odd">Parameters</dt>
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
 <dd class="field-odd"><ul class="simple">
 <li><p><strong>behaviour</strong> (<em>instructions  The json instructions defining the</em>) – </p></li>
 <li><p><strong>key</strong> (<em>str</em>) – </p></li>
 <li><p><strong>name</strong> (<em>str</em>) – </p></li>
 </ul>
 </dd>
-<dt class="field-even">Return type</dt>
+<dt class="field-even">Return type<span class="colon">:</span></dt>
 <dd class="field-even"><p>str</p>
 </dd>
 </dl>
@@ -537,14 +534,14 @@ data.</p>
 <span class="sig-name descname"><span class="pre">get_result_file_path</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">key</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">name</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#geofabrics.processor.RiverBathymetryGenerator.get_result_file_path" title="Permalink to this definition"></a></dt>
 <dd><p>Return the file name of the file to save with the local cache path.</p>
 <dl class="field-list simple">
-<dt class="field-odd">Parameters</dt>
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
 <dd class="field-odd"><ul class="simple">
 <li><p><strong>behaviour</strong> (<em>instructions  The json instructions defining the</em>) – </p></li>
 <li><p><strong>key</strong> (<em>str</em>) – </p></li>
 <li><p><strong>name</strong> (<em>str</em>) – </p></li>
 </ul>
 </dd>
-<dt class="field-even">Return type</dt>
+<dt class="field-even">Return type<span class="colon">:</span></dt>
 <dd class="field-even"><p>pathlib.Path</p>
 </dd>
 </dl>
@@ -555,7 +552,7 @@ data.</p>
 <span class="sig-name descname"><span class="pre">get_bathymetry_instruction</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">key</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#geofabrics.processor.RiverBathymetryGenerator.get_bathymetry_instruction" title="Permalink to this definition"></a></dt>
 <dd><p>Return true if the DEMs are required for later processing</p>
 <dl class="field-list simple">
-<dt class="field-odd">Parameters</dt>
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
 <dd class="field-odd"><ul class="simple">
 <li><p><strong>behaviour</strong> (<em>instructions  The json instructions defining the</em>) – </p></li>
 <li><p><strong>key</strong> (<em>str</em>) – </p></li>
@@ -569,7 +566,7 @@ data.</p>
 <span class="sig-name descname"><span class="pre">get_network_channel</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="headerlink" href="#geofabrics.processor.RiverBathymetryGenerator.get_network_channel" title="Permalink to this definition"></a></dt>
 <dd><p>Read in or create a channel from a river network.</p>
 <dl class="field-list simple">
-<dt class="field-odd">Return type</dt>
+<dt class="field-odd">Return type<span class="colon">:</span></dt>
 <dd class="field-odd"><p><a class="reference internal" href="../bathymetry_estimation/index.html#geofabrics.bathymetry_estimation.Channel" title="geofabrics.bathymetry_estimation.Channel">geofabrics.bathymetry_estimation.Channel</a></p>
 </dd>
 </dl>
@@ -581,13 +578,13 @@ data.</p>
 <dd><p>Allow selection of the ground or vegetation DEM, and either create
 or load it.</p>
 <dl class="field-list simple">
-<dt class="field-odd">Parameters</dt>
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
 <dd class="field-odd"><ul class="simple">
 <li><p><strong>behaviour</strong> (<em>instructions  The json instructions defining the</em>) – </p></li>
 <li><p><strong>channel</strong> (<a class="reference internal" href="../geometry/index.html#geofabrics.geometry.CatchmentGeometry" title="geofabrics.geometry.CatchmentGeometry"><em>geofabrics.geometry.CatchmentGeometry</em></a>) – </p></li>
 </ul>
 </dd>
-<dt class="field-even">Return type</dt>
+<dt class="field-even">Return type<span class="colon">:</span></dt>
 <dd class="field-even"><p>tuple</p>
 </dd>
 </dl>
@@ -599,7 +596,7 @@ or load it.</p>
 <dd><p>Align the river network defined channel based on LiDAR and save the aligned
 channel.</p>
 <dl class="field-list simple">
-<dt class="field-odd">Parameters</dt>
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
 <dd class="field-odd"><ul class="simple">
 <li><p><strong>other</strong> (<em>channel_width  The class for characterising channel width and</em>) – properties</p></li>
 <li><p><strong>alignment</strong> (<em>channel  The river network defined channel</em>) – </p></li>
@@ -607,7 +604,7 @@ channel.</p>
 <li><p><strong>channel</strong> (<a class="reference internal" href="../bathymetry_estimation/index.html#geofabrics.bathymetry_estimation.Channel" title="geofabrics.bathymetry_estimation.Channel"><em>geofabrics.bathymetry_estimation.Channel</em></a>) – </p></li>
 </ul>
 </dd>
-<dt class="field-even">Return type</dt>
+<dt class="field-even">Return type<span class="colon">:</span></dt>
 <dd class="field-even"><p>geopandas.GeoDataFrame</p>
 </dd>
 </dl>
@@ -619,7 +616,7 @@ channel.</p>
 <dd><p>Align the river network defined channel based on LiDAR and save the aligned
 channel.</p>
 <dl class="field-list simple">
-<dt class="field-odd">Parameters</dt>
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
 <dd class="field-odd"><ul class="simple">
 <li><p><strong>other</strong> (<em>channel_width  The class for characterising channel width and</em>) – properties</p></li>
 <li><p><strong>alignment</strong> (<em>channel  The river network defined channel</em>) – </p></li>
@@ -627,7 +624,7 @@ channel.</p>
 <li><p><strong>aligned_channel</strong> (<em>geopandas.GeoDataFrame</em>) – </p></li>
 </ul>
 </dd>
-<dt class="field-even">Return type</dt>
+<dt class="field-even">Return type<span class="colon">:</span></dt>
 <dd class="field-even"><p>tuple</p>
 </dd>
 </dl>
@@ -648,7 +645,7 @@ centreline.</p>
 ground and vegetation DEM. This also may require alignment of the channel
 centreline.</p>
 <dl class="field-list simple">
-<dt class="field-odd">Return type</dt>
+<dt class="field-odd">Return type<span class="colon">:</span></dt>
 <dd class="field-odd"><p>tuple</p>
 </dd>
 </dl>
@@ -661,7 +658,7 @@ centreline.</p>
 ground and vegetation DEM. This also may require alignment of the channel
 centreline.</p>
 <dl class="field-list simple">
-<dt class="field-odd">Return type</dt>
+<dt class="field-odd">Return type<span class="colon">:</span></dt>
 <dd class="field-odd"><p><a class="reference internal" href="../bathymetry_estimation/index.html#geofabrics.bathymetry_estimation.ChannelCharacteristics" title="geofabrics.bathymetry_estimation.ChannelCharacteristics">geofabrics.bathymetry_estimation.ChannelCharacteristics</a></p>
 </dd>
 </dl>
@@ -699,7 +696,7 @@ and tunnel information. A DEM is generated of the surrounding area and this used
 unblock drains and tunnels - by taking the lowest value in the area around a tunnel
 to be the tunnel elevation, and ensuring opne waterways flow downhill.</p>
 <dl class="field-list simple">
-<dt class="field-odd">Parameters</dt>
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
 <dd class="field-odd"><ul class="simple">
 <li><p><strong>json_instructions</strong> (<em>json</em>) – </p></li>
 <li><p><strong>debug</strong> (<em>bool</em>) – </p></li>
@@ -711,10 +708,10 @@ to be the tunnel elevation, and ensuring opne waterways flow downhill.</p>
 <span class="sig-name descname"><span class="pre">get_result_file_name</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">key</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#geofabrics.processor.WaterwayBedElevationEstimator.get_result_file_name" title="Permalink to this definition"></a></dt>
 <dd><p>Return the name of the file to save.</p>
 <dl class="field-list simple">
-<dt class="field-odd">Parameters</dt>
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
 <dd class="field-odd"><p><strong>key</strong> (<em>str</em>) – </p>
 </dd>
-<dt class="field-even">Return type</dt>
+<dt class="field-even">Return type<span class="colon">:</span></dt>
 <dd class="field-even"><p>str</p>
 </dd>
 </dl>
@@ -725,13 +722,13 @@ to be the tunnel elevation, and ensuring opne waterways flow downhill.</p>
 <span class="sig-name descname"><span class="pre">get_result_file_path</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">key</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#geofabrics.processor.WaterwayBedElevationEstimator.get_result_file_path" title="Permalink to this definition"></a></dt>
 <dd><p>Return the file name of the file to save with the local cache path.</p>
 <dl class="field-list simple">
-<dt class="field-odd">Parameters</dt>
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
 <dd class="field-odd"><ul class="simple">
 <li><p><strong>behaviour</strong> (<em>instructions  The json instructions defining the</em>) – </p></li>
 <li><p><strong>key</strong> (<em>str</em>) – </p></li>
 </ul>
 </dd>
-<dt class="field-even">Return type</dt>
+<dt class="field-even">Return type<span class="colon">:</span></dt>
 <dd class="field-even"><p>pathlib.Path</p>
 </dd>
 </dl>
@@ -751,7 +748,7 @@ estimated.</p>
 within the polygon bounding box before clipping to the bounding box and
 then returning the minimum elevation.</p>
 <dl class="field-list simple">
-<dt class="field-odd">Parameters</dt>
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
 <dd class="field-odd"><ul class="simple">
 <li><p><strong>geometry</strong> (<em>shapely.geometry.Polygon</em>) – </p></li>
 <li><p><strong>dem</strong> (<em>xarray.Dataset</em>) – </p></li>
@@ -765,7 +762,7 @@ then returning the minimum elevation.</p>
 <span class="sig-name descname"><span class="pre">estimate_closed_elevations</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">waterways</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">dem</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#geofabrics.processor.WaterwayBedElevationEstimator.estimate_closed_elevations" title="Permalink to this definition"></a></dt>
 <dd><p>Sample the DEM around the tunnels to estimate the bed elevation.</p>
 <dl class="field-list simple">
-<dt class="field-odd">Parameters</dt>
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
 <dd class="field-odd"><ul class="simple">
 <li><p><strong>waterways</strong> (<em>geopandas.GeoDataFrame</em>) – </p></li>
 <li><p><strong>dem</strong> (<em>xarray.Dataset</em>) – </p></li>
@@ -779,7 +776,7 @@ then returning the minimum elevation.</p>
 <span class="sig-name descname"><span class="pre">estimate_open_elevations</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">waterways</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">dem</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#geofabrics.processor.WaterwayBedElevationEstimator.estimate_open_elevations" title="Permalink to this definition"></a></dt>
 <dd><p>Sample the DEM along the open waterways to enforce a decreasing elevation.</p>
 <dl class="field-list simple">
-<dt class="field-odd">Parameters</dt>
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
 <dd class="field-odd"><ul class="simple">
 <li><p><strong>waterways</strong> (<em>geopandas.GeoDataFrame</em>) – </p></li>
 <li><p><strong>dem</strong> (<em>xarray.Dataset</em>) – </p></li>
@@ -793,10 +790,10 @@ then returning the minimum elevation.</p>
 <span class="sig-name descname"><span class="pre">create_dem</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">waterways</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#geofabrics.processor.WaterwayBedElevationEstimator.create_dem" title="Permalink to this definition"></a></dt>
 <dd><p>Create and return a DEM at a resolution 1.5x the drain width.</p>
 <dl class="field-list simple">
-<dt class="field-odd">Parameters</dt>
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
 <dd class="field-odd"><p><strong>waterways</strong> (<em>geopandas.GeoDataFrame</em>) – </p>
 </dd>
-<dt class="field-even">Return type</dt>
+<dt class="field-even">Return type<span class="colon">:</span></dt>
 <dd class="field-even"><p>xarray.Dataset</p>
 </dd>
 </dl>
@@ -807,7 +804,7 @@ then returning the minimum elevation.</p>
 <span class="sig-name descname"><span class="pre">download_osm_values</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="headerlink" href="#geofabrics.processor.WaterwayBedElevationEstimator.download_osm_values" title="Permalink to this definition"></a></dt>
 <dd><p>Download OpenStreetMap drains and tunnels within the catchment BBox.</p>
 <dl class="field-list simple">
-<dt class="field-odd">Return type</dt>
+<dt class="field-odd">Return type<span class="colon">:</span></dt>
 <dd class="field-odd"><p>bool</p>
 </dd>
 </dl>
