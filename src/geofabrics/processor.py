@@ -1408,8 +1408,8 @@ class RiverBathymetryGenerator(BaseProcessor):
             osm_channel.loc[0, 'geometry'] = shapely.geometry.LineString(
                 list(osm_channel.iloc[0].geometry.coords)[::-1])
             # Update the split positions
-            end_split_length = osm_channel.length - end_split_length
-            start_split_length = osm_channel.length - start_split_length
+            end_split_length = float(osm_channel.length) - end_split_length
+            start_split_length = float(osm_channel.length) - start_split_length
             network_start, network_end = (network_extents.iloc[1],
                                           network_extents.iloc[0])
         # Cut the OSM to the length of the network. Give warning if shorter.
