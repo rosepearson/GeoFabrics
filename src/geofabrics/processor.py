@@ -1418,21 +1418,21 @@ class RiverBathymetryGenerator(BaseProcessor):
              osm_channel = shapely.ops.snap(
                  osm_channel.loc[0].geometry, split_point.loc[0], tolerance=0.1
              )
-             osm_channel = geopandas.GeoSeries(list(
-                 shapely.ops.split(osm_channel, split_point.loc[0]).geoms)[1],
+             osm_channel = geopandas.GeoDataFrame({"geometry": [list(
+                 shapely.ops.split(osm_channel, split_point.loc[0]).geoms)[1]]},
                  crs=crs)
         else:
             logging.warning("The OSM reference line starts upstream of the"
                             "network line. The bottom of the network will be"
                             "ignored over a stright line distance of "
                             f"{osm_channel.distance(network_start)}")
-        if end_split_length < osm_channel.length:
+        if end_split_length < float(osm_channel.length):
             split_point = osm_channel.interpolate(end_split_length)
             osm_channel = shapely.ops.snap(
                 osm_channel.loc[0].geometry, split_point.loc[0], tolerance=0.1
             )
-            osm_channel = geopandas.GeoSeries(list(
-                shapely.ops.split(osm_channel, split_point.loc[0]).geoms)[0],
+            osm_channel = geopandas.GeoDataFrame({"geometry": [list(
+                shapely.ops.split(osm_channel, split_point.loc[0]).geoms)[0]]},
                 crs=crs)
         else:
             logging.warning("The OSM reference line ends downstream of the"
