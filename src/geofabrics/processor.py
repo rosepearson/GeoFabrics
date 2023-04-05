@@ -1396,8 +1396,7 @@ class RiverBathymetryGenerator(BaseProcessor):
         # Get the start and end point of the smoothed network line
         channel = channel.get_parametric_spline_fit()
         network_extents = channel.boundary.explode(index_parts=False)
-        network_start, network_end = (network_extents.iloc[0],
-                                      network_extents.iloc[1])
+        network_start, network_end = (network_extents.iloc[0], network_extents.iloc[1])
         # Get the distance along the OSM that the start/end points are.
         # Note projection function is limited between [0, osm_channel.length]
         end_split_length = float(osm_channel.project(network_end))
@@ -1405,13 +1404,16 @@ class RiverBathymetryGenerator(BaseProcessor):
         # Ensure the OSM line is defined upstream
         if start_split_length > end_split_length:
             # Reverse direction of the geometry
-            osm_channel.loc[0, 'geometry'] = shapely.geometry.LineString(
-                list(osm_channel.iloc[0].geometry.coords)[::-1])
+            osm_channel.loc[0, "geometry"] = shapely.geometry.LineString(
+                list(osm_channel.iloc[0].geometry.coords)[::-1]
+            )
             # Update the split positions
             end_split_length = float(osm_channel.length) - end_split_length
             start_split_length = float(osm_channel.length) - start_split_length
-            network_start, network_end = (network_extents.iloc[1],
-                                          network_extents.iloc[0])
+            network_start, network_end = (
+                network_extents.iloc[1],
+                network_extents.iloc[0],
+            )
         # Cut the OSM to the length of the network. Give warning if shorter.
         if start_split_length > 0:
              split_point = osm_channel.interpolate(start_split_length)
@@ -1435,10 +1437,12 @@ class RiverBathymetryGenerator(BaseProcessor):
                 shapely.ops.split(osm_channel, split_point.loc[0]).geoms)[0]]},
                 crs=crs)
         else:
-            logging.warning("The OSM reference line ends downstream of the"
-                            "network line. The top of the network will be"
-                            "ignored over a stright line distance of "
-                            f"{osm_channel.distance(network_end)}")
+            logging.warning(
+                "The OSM reference line ends downstream of the"
+                "network line. The top of the network will be"
+                "ignored over a stright line distance of "
+                f"{osm_channel.distance(network_end)}"
+            )
 
         if self.debug:
             osm_channel.to_file(
