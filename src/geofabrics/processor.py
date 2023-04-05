@@ -1392,33 +1392,54 @@ class RiverBathymetryGenerator(BaseProcessor):
             osm_channel.to_file(
                 self.get_result_file_path(name="osm_channel_full.geojson")
             )
-        # cut to size
+        # Cut the OSM to size - give warning if OSM line shorter than network
+        # Get the start and end point of the smoothed network line
         channel = channel.get_parametric_spline_fit()
         network_extents = channel.boundary.explode(index_parts=False)
-        network_start, network_end = (network_extents.iloc[0], network_extents.iloc[1])
+        network_start, network_end = (network_extents.iloc[0],
+                                      network_extents.iloc[1])
+        # Get the distance along the OSM that the start/end points are.
+        # Note projection function is limited between [0, osm_channel.length]
         end_split_length = float(osm_channel.project(network_end))
         start_split_length = float(osm_channel.project(network_start))
-        osm_from_ocean = True if start_split_length < end_split_length else False
-        end_split_point = osm_channel.interpolate(end_split_length)
-        start_split_point = osm_channel.interpolate(start_split_length)
-        # Introduce point to the polyline so shapely slip works
-        osm_channel_with_point = shapely.ops.snap(
-            osm_channel.loc[0].geometry, end_split_point.loc[0], tolerance=0.1
-        )
-        osm_channel_with_point = shapely.ops.snap(
-            osm_channel_with_point, start_split_point.loc[0], tolerance=0.1
-        )
-        lines = shapely.ops.split(
-            osm_channel_with_point,
-            shapely.geometry.MultiPoint(
-                [start_split_point.loc[0], end_split_point.loc[0]]
-            ),
-        )
-        osm_channel_cut = geopandas.GeoSeries(lines.geoms, crs=crs)
-        assert (
-            len(osm_channel_cut) == 3
-        ), "The OSM line does not stretch the full extents of the river network line"
-        osm_channel = osm_channel_cut.iloc[1:2]
+        # Ensure the OSM line is defined upstream
+        if start_split_length > end_split_length:
+            # Reverse direction of the geometry
+            osm_channel.loc[0, 'geometry'] = shapely.geometry.LineString(
+                list(osm_channel.iloc[0].geometry.coords)[::-1])
+            # Update the split positions
+            end_split_length = osm_channel.length - end_split_length
+            start_split_length = osm_channel.length - start_split_length
+            network_start, network_end = (network_extents.iloc[1],
+                                          network_extents.iloc[0])
+        # Cut the OSM to the length of the network. Give warning if shorter.
+        if start_split_length > 0:
+             split_point = osm_channel.interpolate(start_split_length)
+             osm_channel = shapely.ops.snap(
+                 osm_channel.loc[0].geometry, split_point.loc[0], tolerance=0.1
+             )
+             osm_channel = geopandas.GeoSeries(list(
+                 shapely.ops.split(osm_channel, split_point.loc[0]).geoms)[1],
+                 crs=crs)
+        else:
+            logging.warning("The OSM reference line starts upstream of the"
+                            "network line. The bottom of the network will be"
+                            "ignored over a stright line distance of "
+                            f"{osm_channel.distance(network_start)}")
+        if end_split_length < osm_channel.length:
+            split_point = osm_channel.interpolate(end_split_length)
+            osm_channel = shapely.ops.snap(
+                osm_channel.loc[0].geometry, split_point.loc[0], tolerance=0.1
+            )
+            osm_channel = geopandas.GeoSeries(list(
+                shapely.ops.split(osm_channel, split_point.loc[0]).geoms)[0],
+                crs=crs)
+        else:
+            logging.warning("The OSM reference line ends downstream of the"
+                            "network line. The top of the network will be"
+                            "ignored over a stright line distance of "
+                            f"{osm_channel.distance(network_end)}")
+
         if self.debug:
             osm_channel.to_file(
                 self.get_result_file_path(name="osm_channel_cut.geojson")
@@ -1427,7 +1448,7 @@ class RiverBathymetryGenerator(BaseProcessor):
         osm_channel = bathymetry_estimation.Channel(
             channel=osm_channel,
             resolution=cross_section_spacing,
-            sampling_direction=1 if osm_from_ocean else -1,
+            sampling_direction=1,
         )
         smoothed_osm_channel = osm_channel.get_parametric_spline_fit()
         smoothed_osm_channel.to_file(self.get_result_file_path(key="aligned"))
