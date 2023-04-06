@@ -1391,7 +1391,9 @@ class RiverBathymetryGenerator(BaseProcessor):
         query = f"(way[waterway]({osm_id});); out body geom;"
         overpass = OSMPythonTools.overpass.Overpass()
         if "osm_date" in self.instructions["rivers"]:
-            osm_channel = overpass.query(query, date=self.get_bathymetry_instruction("osm_date"), timeout=60)
+            osm_channel = overpass.query(
+                query, date=self.get_bathymetry_instruction("osm_date"), timeout=60
+            )
         else:
             osm_channel = overpass.query(query, timeout=60)
         osm_channel = osm_channel.elements()[0]
@@ -2105,7 +2107,9 @@ class WaterwayBedElevationEstimator(BaseProcessor):
             # Perform query
             overpass = OSMPythonTools.overpass.Overpass()
             if "osm_date" in self.instructions["drains"]:
-                waterways = overpass.query(query, date=self.instructions["drains"]["osm_date"], timeout=60)
+                waterways = overpass.query(
+                    query, date=self.instructions["drains"]["osm_date"], timeout=60
+                )
             else:
                 waterways = overpass.query(query, timeout=60)
 
