@@ -781,7 +781,8 @@ class RiverMouthFan:
         aligned_channel = geopandas.read_file(self.aligned_channel_file)
         river_polygon = geopandas.read_file(self.river_polygon_file)
         aligned_channel = aligned_channel.clip(river_polygon)
-        (x, y) = aligned_channel.loc[0].geometry.xy
+        # Explode incase the aligned channel is clipped into a MultiPolyLine
+        (x, y) = aligned_channel.explode().iloc[0].geometry.xy
 
         # Calculate the normal and tangent to the channel segment at the mouth
         segment_dx = x[0] - x[1]
