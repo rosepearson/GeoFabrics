@@ -591,11 +591,17 @@ class BaseProcessor(abc.ABC):
             catchment_dirs, self.get_crs(), self.get_resolution(), foreshore_buffer=2
         )
         land_dirs = self.get_vector_or_raster_paths(key="land", api_type="vector")
-        assert len(land_dirs) == 1, (
-            f"{len(land_dirs)} land_dir's provided, where only one is "
-            f"supported. Specficially land_dirs = {land_dirs}."
-        )
-        catchment_geometry.land = land_dirs[0]
+        # Use the catchment outline as the land outline if the land is not specified
+        if len(land_dirs) == 0:
+            catchment_geometry.land = catchment_dirs
+        elif len(land_dirs) == 1:
+            catchment_geometry.land = land_dirs[0]
+        else:
+            raise Exception(
+                f"{len(land_dirs)} land_dir's provided, where only one is "
+                f"supported. Specficially land_dirs = {land_dirs}."
+            )
+
         return catchment_geometry
 
     @abc.abstractmethod
@@ -797,7 +803,7 @@ class HydrologicDemGenerator(BaseProcessor):
                 key="river_polygons", api_type="vector"
             )
 
-            logging.info(f"Incorporating river Bathymetry: {bathy_dirs}")
+            logging.info(f"Incorporating river and waterbed: {bathy_dirs}")
 
             # Load in bathymetry
             self.estimated_bathymetry_points = geometry.EstimatedBathymetryPoints(
@@ -810,7 +816,7 @@ class HydrologicDemGenerator(BaseProcessor):
 
             # Call interpolate river on the DEM - the class checks to see if any pixels
             # actually fall inside the polygon
-            self.hydrologic_dem.interpolate_river_bathymetry(
+            self.hydrologic_dem.interpolate_waterbed_elevations(
                 estimated_bathymetry=self.estimated_bathymetry_points
             )
 
@@ -962,14 +968,19 @@ class RiverBathymetryGenerator(BaseProcessor):
         # Check if the expected bathymetry and polygon files exist
         river_bathymetry_file = self.get_result_file_path(key="river_bathymetry")
         river_polygon_file = self.get_result_file_path(key="river_polygon")
-        fan_bathymetry_file = self.get_result_file_path(key="fan_bathymetry")
-        fan_polygon_file = self.get_result_file_path(key="fan_polygon")
-        return (
-            river_bathymetry_file.is_file()
-            and river_polygon_file.is_file()
-            and fan_bathymetry_file.is_file()
-            and fan_polygon_file.is_file()
-        )
+
+        if not self.get_bathymetry_instruction("estimate_fan"):
+            return (river_bathymetry_file.is_file() and river_polygon_file.is_file())
+        else:
+
+            fan_bathymetry_file = self.get_result_file_path(key="fan_bathymetry")
+            fan_polygon_file = self.get_result_file_path(key="fan_polygon")
+            return (
+                river_bathymetry_file.is_file()
+                and river_polygon_file.is_file()
+                and fan_bathymetry_file.is_file()
+                and fan_polygon_file.is_file()
+            )
 
     def alignment_exists(self) -> bool:
         """Return true if the DEMs are required for later processing
@@ -1045,6 +1056,7 @@ class RiverBathymetryGenerator(BaseProcessor):
             "sampling_direction": -1,
             "minimum_slope": 0.0001,  # 0.1m per 1km
             "keep_downstream_osm": False,
+            "estimate_fan": False,
         }
 
         assert key in defaults or key in self.instructions["rivers"], (
@@ -1692,6 +1704,7 @@ class RiverBathymetryGenerator(BaseProcessor):
         crs = self.get_crs()["horizontal"]
         cross_section_spacing = self.get_bathymetry_instruction("cross_section_spacing")
         river_bathymetry_file = self.get_result_file_path(key="river_bathymetry")
+        river_polygon_file = self.get_result_file_path(key="river_polygon")
         ocean_contour_file = self.get_vector_or_raster_paths(
             key="bathymetry_contours", api_type="vector"
         )[0]
@@ -1704,6 +1717,7 @@ class RiverBathymetryGenerator(BaseProcessor):
         fan = geometry.RiverMouthFan(
             aligned_channel_file=aligned_channel_file,
             river_bathymetry_file=river_bathymetry_file,
+            river_polygon_file=river_polygon_file,
             ocean_contour_file=ocean_contour_file,
             crs=crs,
             cross_section_spacing=cross_section_spacing,
@@ -1735,7 +1749,9 @@ class RiverBathymetryGenerator(BaseProcessor):
 
             # Calculate and save river bathymetry depths
             self.calculate_river_bed_elevations()
-            self.estimate_river_mouth_fan()
+            # check if the river mouth is to be estimated
+            if self.get_bathymetry_instruction("estimate_fan"):
+                self.estimate_river_mouth_fan()
         if self.debug:
             # Record the parameter used during execution - append to existing
             with open(

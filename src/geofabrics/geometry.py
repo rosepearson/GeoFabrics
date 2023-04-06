@@ -740,7 +740,7 @@ class RiverMouthFan:
     their is a defined fan that is slightly deeper than the surrounding during
     the transition. A fan is caculated for both river bed elevation approach.
     TODO In future,it may move to defining the width as 10x the mouth width.
-    TODO deal with no width at the mouth and work upstream.
+    If no width at mouth - move back to where there is a valid width
 
     Attributes:
         crs  The horizontal CRS to be used. i.e. EPSG:2193
@@ -760,6 +760,7 @@ class RiverMouthFan:
         self,
         aligned_channel_file: str,
         river_bathymetry_file: str,
+        river_polygon_file: str,
         ocean_contour_file: str,
         crs: int,
         cross_section_spacing: float,
@@ -768,6 +769,7 @@ class RiverMouthFan:
         self.crs = crs
         self.cross_section_spacing = cross_section_spacing
         self.aligned_channel_file = aligned_channel_file
+        self.river_polygon_file = river_polygon_file
         self.river_bathymetry_file = river_bathymetry_file
         self.ocean_contour_file = ocean_contour_file
         self.ocean_contour_depth_label = ocean_contour_depth_label
@@ -775,8 +777,10 @@ class RiverMouthFan:
     def _get_mouth_alignment(self):
         """Get the location and alignment of the river mouth."""
 
-        # Take the alignment based on the aligned channel file
+        # Get the river alignment and clip to the river polygon
         aligned_channel = geopandas.read_file(self.aligned_channel_file)
+        river_polygon = geopandas.read_file(self.river_polygon_file)
+        aligned_channel = aligned_channel.clip(river_polygon)
         (x, y) = aligned_channel.loc[0].geometry.xy
 
         # Calculate the normal and tangent to the channel segment at the mouth
@@ -790,14 +794,19 @@ class RiverMouthFan:
 
         # Get the midpoint of the river mouth from the river bathymetry
         river_bathymetry = geopandas.read_file(self.river_bathymetry_file)
-        mouth_point = river_bathymetry.loc[0].geometry
+        river_bathymetry = river_bathymetry.clip(river_polygon.buffer(self.cross_section_spacing/2)).sort_index(ascending=True)
+        mouth_point = river_bathymetry.iloc[0].geometry
 
         return mouth_point, mouth_tangent, mouth_normal
 
     def _get_mouth_bathymetry(self):
         """Get the width and depth at the river mouth."""
 
+        # Get river bathymetry values and clip to the river polygon
         river_bathymetry = geopandas.read_file(self.river_bathymetry_file)
+        river_polygon = geopandas.read_file(self.river_polygon_file)
+        river_bathymetry = river_bathymetry.clip(river_polygon.buffer(self.cross_section_spacing/2)).sort_index(ascending=True)
+
         river_mouth_elevation_1 = river_bathymetry[self.ELEVATION_LABEL_1].iloc[0]
         river_mouth_elevation_2 = river_bathymetry[self.ELEVATION_LABEL_2].iloc[0]
         river_mouth_width = river_bathymetry["width"].iloc[0]

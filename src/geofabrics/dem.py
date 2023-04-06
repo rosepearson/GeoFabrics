@@ -652,7 +652,7 @@ class HydrologicallyConditionedDem(DemBase):
         flat_z[mask_z] = flat_z_masked
         self._offshore_dem.z.data = flat_z.reshape(self._offshore_dem.z.data.shape)
 
-    def interpolate_river_bathymetry(
+    def interpolate_waterbed_elevations(
         self,
         estimated_bathymetry: geometry.EstimatedBathymetryPoints,
     ):
@@ -668,17 +668,10 @@ class HydrologicallyConditionedDem(DemBase):
             )
         # Reset the river DEM
         self._river_dem = None
-        if (estimated_bathymetry.points["type"] == "rivers").any() and (
-            estimated_bathymetry.points["type"] == "fans"
-        ).any():
+        if (estimated_bathymetry.points["type"] == "rivers").any():
             self._river_dem = self._interpolate_estimated_rivers_and_fans(
                 estimated_bathymetry=estimated_bathymetry,
                 method="rbf",
-            )
-        elif (estimated_bathymetry.points["type"] == "rivers").any():
-            logging.warning(
-                "'rivers' included but no 'fans'. GeoFabrics currently "
-                "requires both to include for hydrological conditioning"
             )
         elif (estimated_bathymetry.points["type"] == "fans").any():
             logging.warning(
@@ -781,26 +774,28 @@ class HydrologicallyConditionedDem(DemBase):
         # extract points and polygon
         river_points = estimated_bathymetry.filtered_points(type_label="rivers")
         river_polygons = estimated_bathymetry.filtered_polygons(type_label="rivers")
-        fan_points = estimated_bathymetry.filtered_points(type_label="fans")
-        fan_polygons = estimated_bathymetry.filtered_polygons(type_label="fans")
-        river_and_fan_points = numpy.concatenate([river_points, fan_points])
-        river_and_fan_polygons = geopandas.GeoDataFrame(
-            pandas.concat([river_polygons, fan_polygons], ignore_index=True),
-            crs=river_polygons.crs,
-        )
+        # Combine with fan data if provided
+        if (estimated_bathymetry.points["type"] == "fans").any():
+            fan_points = estimated_bathymetry.filtered_points(type_label="fans")
+            fan_polygons = estimated_bathymetry.filtered_polygons(type_label="fans")
+            river_points = numpy.concatenate([river_points, fan_points])
+            river_polygons = geopandas.GeoDataFrame(
+                pandas.concat([river_polygons, fan_polygons], ignore_index=True),
+                crs=river_polygons.crs,
+                )
 
         # combined DEM
         combined_dem = self.combine_dem_parts()
 
         # Get the river and fan edge points - from DEM
         edge_dem = combined_dem.rio.clip(
-            river_and_fan_polygons.dissolve().buffer(
+            river_polygons.dissolve().buffer(
                 self.catchment_geometry.resolution
             ),
             drop=True,
         )
         edge_dem = edge_dem.rio.clip(
-            river_and_fan_polygons.dissolve().geometry,
+            river_polygons.dissolve().geometry,
             invert=True,
             drop=True,
         )
@@ -856,16 +851,16 @@ class HydrologicallyConditionedDem(DemBase):
         edge_points["Y"] = flat_y[mask_z]
         edge_points["Z"] = flat_z[mask_z]
         # Combine the estimated and edge points
-        bathy_points = numpy.concatenate([edge_points, river_and_fan_points])
+        bathy_points = numpy.concatenate([edge_points, river_points])
 
         # Setup the empty river area ready for interpolation
-        estimated_dem = combined_dem.rio.clip(river_and_fan_polygons.geometry)
+        estimated_dem = combined_dem.rio.clip(river_polygons.geometry)
         # Set value for all, then use clip to set regions outside polygon to NaN
         estimated_dem.z.data[:] = 0
         estimated_dem.source_class.data[:] = self.SOURCE_CLASSIFICATION[
             "rivers and fans"
         ]
-        estimated_dem = estimated_dem.rio.clip(river_and_fan_polygons.geometry)
+        estimated_dem = estimated_dem.rio.clip(river_polygons.geometry)
 
         grid_x, grid_y = numpy.meshgrid(estimated_dem.x, estimated_dem.y)
         flat_z = estimated_dem.z.data[:].flatten()
