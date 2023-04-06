@@ -57,6 +57,7 @@
 			"min_bank_height": 0.75,
 			"cross_section_spacing": 10,
 			"area_threshold": 153000000,
+			"keep_downstream_osm": false,
 			"osm_id": 132793862,
 			"network_id": 9003742,
 			"network_file": "tests/test_river_bathymetry_osm_wellington/data/rec1_flow_and_friction.geojson",
