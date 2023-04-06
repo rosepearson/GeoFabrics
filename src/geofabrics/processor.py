@@ -1411,7 +1411,7 @@ class RiverBathymetryGenerator(BaseProcessor):
 
         # Cut the OSM to the length of the network. Give warning if shorter.
         start_split_length = float(osm_channel.project(network_start))
-        if start_split_length > 0 and self.get_bathymetry_instruction("keep_downstream_osm"):
+        if start_split_length > 0 and not self.get_bathymetry_instruction("keep_downstream_osm"):
             split_point = osm_channel.interpolate(start_split_length)
             osm_channel = shapely.ops.snap(
                 osm_channel.loc[0].geometry, split_point.loc[0], tolerance=0.1
