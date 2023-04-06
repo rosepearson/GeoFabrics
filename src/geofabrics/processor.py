@@ -970,9 +970,8 @@ class RiverBathymetryGenerator(BaseProcessor):
         river_polygon_file = self.get_result_file_path(key="river_polygon")
 
         if not self.get_bathymetry_instruction("estimate_fan"):
-            return (river_bathymetry_file.is_file() and river_polygon_file.is_file())
+            return river_bathymetry_file.is_file() and river_polygon_file.is_file()
         else:
-
             fan_bathymetry_file = self.get_result_file_path(key="fan_bathymetry")
             fan_polygon_file = self.get_result_file_path(key="fan_polygon")
             return (

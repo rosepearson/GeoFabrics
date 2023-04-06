@@ -794,7 +794,9 @@ class RiverMouthFan:
 
         # Get the midpoint of the river mouth from the river bathymetry
         river_bathymetry = geopandas.read_file(self.river_bathymetry_file)
-        river_bathymetry = river_bathymetry.clip(river_polygon.buffer(self.cross_section_spacing/2)).sort_index(ascending=True)
+        river_bathymetry = river_bathymetry.clip(
+            river_polygon.buffer(self.cross_section_spacing / 2)
+        ).sort_index(ascending=True)
         mouth_point = river_bathymetry.iloc[0].geometry
 
         return mouth_point, mouth_tangent, mouth_normal
@@ -805,7 +807,9 @@ class RiverMouthFan:
         # Get river bathymetry values and clip to the river polygon
         river_bathymetry = geopandas.read_file(self.river_bathymetry_file)
         river_polygon = geopandas.read_file(self.river_polygon_file)
-        river_bathymetry = river_bathymetry.clip(river_polygon.buffer(self.cross_section_spacing/2)).sort_index(ascending=True)
+        river_bathymetry = river_bathymetry.clip(
+            river_polygon.buffer(self.cross_section_spacing / 2)
+        ).sort_index(ascending=True)
 
         river_mouth_elevation_1 = river_bathymetry[self.ELEVATION_LABEL_1].iloc[0]
         river_mouth_elevation_2 = river_bathymetry[self.ELEVATION_LABEL_2].iloc[0]
