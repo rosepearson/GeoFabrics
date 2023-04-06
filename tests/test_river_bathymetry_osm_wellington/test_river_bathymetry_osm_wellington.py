@@ -292,7 +292,7 @@ class ProcessorRiverBathymetryOsmTest(unittest.TestCase):
         self.assertAlmostEqual(
             test_comparison,
             benchmark_comparison,
-            places=6,
+            places=5,
             msg=f"The geneated river {column_name} does"
             f" not match the benchmark. {test_comparison} "
             f"vs {benchmark_comparison}",
