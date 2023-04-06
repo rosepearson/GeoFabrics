@@ -1391,7 +1391,10 @@ class RiverBathymetryGenerator(BaseProcessor):
         osm_id = self.get_bathymetry_instruction("osm_id")
         query = f"(way[waterway]({osm_id});); out body geom;"
         overpass = OSMPythonTools.overpass.Overpass()
-        osm_channel = overpass.query(query)
+        if "osm_date" in self.instructions["rivers"]:
+            osm_channel = overpass.query(query, date=self.get_bathymetry_instruction("osm_date"), timeout=60)
+        else:
+            osm_channel = overpass.query(query, timeout=60)
         osm_channel = osm_channel.elements()[0]
         osm_channel = geopandas.GeoDataFrame(
             {
@@ -2102,7 +2105,10 @@ class WaterwayBedElevationEstimator(BaseProcessor):
 
             # Perform query
             overpass = OSMPythonTools.overpass.Overpass()
-            rivers = overpass.query(query)
+            if "osm_date" in self.instructions["drains"]:
+                waterways = overpass.query(query, date=self.instructions["drains"]["osm_date"], timeout=60)
+            else:
+                waterways = overpass.query(query, timeout=60)
 
             # Extract information
             element_dict = {
@@ -2112,7 +2118,7 @@ class WaterwayBedElevationEstimator(BaseProcessor):
                 "tunnel": [],
             }
 
-            for element in rivers.elements():
+            for element in waterways.elements():
                 element_dict["geometry"].append(element.geometry())
                 element_dict["OSM_id"].append(element.id())
                 element_dict["waterway"].append(element.tags()["waterway"])
