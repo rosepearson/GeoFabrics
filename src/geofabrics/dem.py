@@ -782,16 +782,14 @@ class HydrologicallyConditionedDem(DemBase):
             river_polygons = geopandas.GeoDataFrame(
                 pandas.concat([river_polygons, fan_polygons], ignore_index=True),
                 crs=river_polygons.crs,
-                )
+            )
 
         # combined DEM
         combined_dem = self.combine_dem_parts()
 
         # Get the river and fan edge points - from DEM
         edge_dem = combined_dem.rio.clip(
-            river_polygons.dissolve().buffer(
-                self.catchment_geometry.resolution
-            ),
+            river_polygons.dissolve().buffer(self.catchment_geometry.resolution),
             drop=True,
         )
         edge_dem = edge_dem.rio.clip(
