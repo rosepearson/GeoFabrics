@@ -56,6 +56,7 @@
 			"cross_section_spacing": 10,
 			"area_threshold": 142000000,
 			"osm_id": 132793862,
+			"estimate_fan": true,
 			"network_id": 9003742,
 			"network_file": "tests/test_all_bathymetry_into_dem_wellington/data/rec1_flow_and_friction.geojson",
 			"network_columns": {"id": "NZREACH", "to_node": "to_node", "from_node": "from_node", "flow": "flow", "mannings_n": "n", "area": "CATCHAREA"}
