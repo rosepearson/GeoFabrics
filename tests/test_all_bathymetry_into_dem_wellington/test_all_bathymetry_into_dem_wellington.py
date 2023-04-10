@@ -177,7 +177,7 @@ class ProcessorRiverBathymetryTest(unittest.TestCase):
         # compare the generated and benchmark DEMs
         lidar_diff = (
             test_dem.z.data[test_dem.source_class.data == 1]
-            - benchmark_dem.z.data[benchmark_dem.source_class.data == 1]
+            - benchmark_dem.z.data[test_dem.source_class.data == 1]
         )
         numpy.testing.assert_array_almost_equal(
             test_dem.z.data[test_dem.source_class.data == 1],

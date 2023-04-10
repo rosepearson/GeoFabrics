@@ -196,7 +196,7 @@ class ProcessorRiverBathymetryTest(unittest.TestCase):
         # Compare the generated and benchmark elevations
         lidar_diff = (
             test.z.data[test.source_class.data == 1]
-            - benchmark.z.data[benchmark.source_class.data == 1]
+            - benchmark.z.data[test.source_class.data == 1]
         )
         numpy.testing.assert_array_almost_equal(
             test.z.data[test.source_class.data == 1],
@@ -208,7 +208,7 @@ class ProcessorRiverBathymetryTest(unittest.TestCase):
 
         diff_array = (
             test.z.data[~numpy.isnan(test.z.data)]
-            - benchmark.z.data[~numpy.isnan(benchmark.z.data)]
+            - benchmark.z.data[~numpy.isnan(test.z.data)]
         )
         logging.info(f"DEM array diff is: {diff_array[diff_array != 0]}")
         threshold = 10e-6
