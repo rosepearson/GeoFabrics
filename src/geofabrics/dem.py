@@ -811,7 +811,7 @@ class HydrologicallyConditionedDem(DemBase):
         # Create a mask defining the river points within the edge_points
         edge_dem = edge_dem.rio.clip(
             river_polygons.dissolve().buffer(self.catchment_geometry.resolution),
-            drop=False, # Don't drop as mask is the same size as mask_z
+            drop=False,  # Don't drop as mask is the same size as mask_z
         )
         mask_z_river = ~numpy.isnan(edge_dem.z.data.flatten())
 
