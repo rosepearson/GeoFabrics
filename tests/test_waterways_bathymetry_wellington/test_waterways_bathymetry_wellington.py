@@ -308,7 +308,7 @@ class ProcessorWaterwayElevationsWellingtonTest(unittest.TestCase):
         benchmark_comparison = benchmark[column_name].array
         print(
             f"Close waterways bathymetry {column_name} difference "
-            "{numpy.array(test_comparison) - numpy.array(benchmark_comparison)}"
+            f"{numpy.array(test_comparison) - numpy.array(benchmark_comparison)}"
         )
         self.assertAlmostEqual(
             test_comparison,
