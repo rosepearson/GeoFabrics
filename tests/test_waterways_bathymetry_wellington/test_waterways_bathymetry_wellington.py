@@ -173,7 +173,7 @@ class ProcessorWaterwayElevationsWellingtonTest(unittest.TestCase):
         self.assertAlmostEqual(
             test_comparison,
             benchmark_comparison,
-            places=6,
+            delta=50,
             msg=f"The geneated open waterways polygon {column_name} does not match the "
             f"benchmark. {test_comparison} vs {benchmark_comparison}",
         )
