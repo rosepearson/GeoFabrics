@@ -184,7 +184,7 @@ Classes
       Return the names of all tiles within the catchment
 
 
-.. py:class:: RiverMouthFan(aligned_channel_file, river_bathymetry_file, ocean_contour_file, crs, cross_section_spacing, ocean_contour_depth_label = None)
+.. py:class:: RiverMouthFan(aligned_channel_file, river_bathymetry_file, river_polygon_file, ocean_contour_file, crs, cross_section_spacing, ocean_contour_depth_label = None)
 
    A class for creating an appropiate river mouth fan to transition from
    river depth estimates to the ocean bathymetry values. This fan region defines a
@@ -195,7 +195,7 @@ Classes
    their is a defined fan that is slightly deeper than the surrounding during
    the transition. A fan is caculated for both river bed elevation approach.
    TODO In future,it may move to defining the width as 10x the mouth width.
-   TODO deal with no width at the mouth and work upstream.
+   If no width at mouth - move back to where there is a valid width
 
    .. attribute:: crs  The horizontal CRS to be used. i.e. EPSG
 

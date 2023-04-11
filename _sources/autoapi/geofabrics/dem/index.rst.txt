@@ -151,7 +151,7 @@ Attributes
       function.
 
 
-   .. py:method:: interpolate_river_bathymetry(estimated_bathymetry)
+   .. py:method:: interpolate_waterbed_elevations(estimated_bathymetry)
 
       Performs interpolation over drains, culverts, rivers and river fan
       polygons using various interpolation techniques.
