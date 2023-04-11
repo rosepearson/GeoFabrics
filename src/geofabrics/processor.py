@@ -1907,14 +1907,20 @@ class WaterwayBedElevationEstimator(BaseProcessor):
         closed_waterways["elevation"] = elevations
         # Remove any NaN areas (where no LiDAR data to estimate elevations)
         nan_filter = (
-            points.explode(ignore_index=False, index_parts=True)["elevation"].notnull().groupby(level=0).all().array
+            points.explode(ignore_index=False, index_parts=True)["elevation"]
+            .notnull()
+            .groupby(level=0)
+            .all()
+            .array
         )
         if not nan_filter.all():
             logging.warning(
                 "Some open waterways are being ignored as there is not enough data to "
                 "estimate their elevations."
             )
-        points_exploded = points[nan_filter].explode(ignore_index=False, index_parts=True)
+        points_exploded = points[nan_filter].explode(
+            ignore_index=False, index_parts=True
+        )
         closed_waterways = closed_waterways[nan_filter]
 
         # Save out polygons and elevations
