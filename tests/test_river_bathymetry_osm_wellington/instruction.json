@@ -33,9 +33,6 @@
 		},
 		"vector": {
 			"linz": {
-				"land": {
-					"layers": [51559]
-				},
 				"bathymetry_contours": {
 					"layers": [50554]
 				}
@@ -57,7 +54,10 @@
 			"min_bank_height": 0.75,
 			"cross_section_spacing": 10,
 			"area_threshold": 153000000,
+			"keep_downstream_osm": true,
+			"estimate_fan": true,
 			"osm_id": 132793862,
+			"osm_date": "2023-01-01T00:00:00Z",
 			"network_id": 9003742,
 			"network_file": "tests/test_river_bathymetry_osm_wellington/data/rec1_flow_and_friction.geojson",
 			"network_columns": {"id": "NZREACH", "to_node": "to_node", "from_node": "from_node", "flow": "flow", "mannings_n": "n", "area": "CATCHAREA"}

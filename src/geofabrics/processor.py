@@ -8,7 +8,6 @@ GeoFabric layers include hydrologically conditioned DEMs.
 import numpy
 import json
 import pathlib
-import shutil
 import abc
 import logging
 import distributed
@@ -591,11 +590,17 @@ class BaseProcessor(abc.ABC):
             catchment_dirs, self.get_crs(), self.get_resolution(), foreshore_buffer=2
         )
         land_dirs = self.get_vector_or_raster_paths(key="land", api_type="vector")
-        assert len(land_dirs) == 1, (
-            f"{len(land_dirs)} land_dir's provided, where only one is "
-            f"supported. Specficially land_dirs = {land_dirs}."
-        )
-        catchment_geometry.land = land_dirs[0]
+        # Use the catchment outline as the land outline if the land is not specified
+        if len(land_dirs) == 0:
+            catchment_geometry.land = catchment_dirs
+        elif len(land_dirs) == 1:
+            catchment_geometry.land = land_dirs[0]
+        else:
+            raise Exception(
+                f"{len(land_dirs)} land_dir's provided, where only one is "
+                f"supported. Specficially land_dirs = {land_dirs}."
+            )
+
         return catchment_geometry
 
     @abc.abstractmethod
@@ -797,7 +802,7 @@ class HydrologicDemGenerator(BaseProcessor):
                 key="river_polygons", api_type="vector"
             )
 
-            logging.info(f"Incorporating river Bathymetry: {bathy_dirs}")
+            logging.info(f"Incorporating river and waterbed: {bathy_dirs}")
 
             # Load in bathymetry
             self.estimated_bathymetry_points = geometry.EstimatedBathymetryPoints(
@@ -810,7 +815,7 @@ class HydrologicDemGenerator(BaseProcessor):
 
             # Call interpolate river on the DEM - the class checks to see if any pixels
             # actually fall inside the polygon
-            self.hydrologic_dem.interpolate_river_bathymetry(
+            self.hydrologic_dem.interpolate_waterbed_elevations(
                 estimated_bathymetry=self.estimated_bathymetry_points
             )
 
@@ -962,14 +967,18 @@ class RiverBathymetryGenerator(BaseProcessor):
         # Check if the expected bathymetry and polygon files exist
         river_bathymetry_file = self.get_result_file_path(key="river_bathymetry")
         river_polygon_file = self.get_result_file_path(key="river_polygon")
-        fan_bathymetry_file = self.get_result_file_path(key="fan_bathymetry")
-        fan_polygon_file = self.get_result_file_path(key="fan_polygon")
-        return (
-            river_bathymetry_file.is_file()
-            and river_polygon_file.is_file()
-            and fan_bathymetry_file.is_file()
-            and fan_polygon_file.is_file()
-        )
+
+        if not self.get_bathymetry_instruction("estimate_fan"):
+            return river_bathymetry_file.is_file() and river_polygon_file.is_file()
+        else:
+            fan_bathymetry_file = self.get_result_file_path(key="fan_bathymetry")
+            fan_polygon_file = self.get_result_file_path(key="fan_polygon")
+            return (
+                river_bathymetry_file.is_file()
+                and river_polygon_file.is_file()
+                and fan_bathymetry_file.is_file()
+                and fan_polygon_file.is_file()
+            )
 
     def alignment_exists(self) -> bool:
         """Return true if the DEMs are required for later processing
@@ -1044,6 +1053,8 @@ class RiverBathymetryGenerator(BaseProcessor):
         defaults = {
             "sampling_direction": -1,
             "minimum_slope": 0.0001,  # 0.1m per 1km
+            "keep_downstream_osm": False,
+            "estimate_fan": False,
         }
 
         assert key in defaults or key in self.instructions["rivers"], (
@@ -1378,7 +1389,12 @@ class RiverBathymetryGenerator(BaseProcessor):
         osm_id = self.get_bathymetry_instruction("osm_id")
         query = f"(way[waterway]({osm_id});); out body geom;"
         overpass = OSMPythonTools.overpass.Overpass()
-        osm_channel = overpass.query(query)
+        if "osm_date" in self.instructions["rivers"]:
+            osm_channel = overpass.query(
+                query, date=self.get_bathymetry_instruction("osm_date"), timeout=60
+            )
+        else:
+            osm_channel = overpass.query(query, timeout=60)
         osm_channel = osm_channel.elements()[0]
         osm_channel = geopandas.GeoDataFrame(
             {
@@ -1392,33 +1408,73 @@ class RiverBathymetryGenerator(BaseProcessor):
             osm_channel.to_file(
                 self.get_result_file_path(name="osm_channel_full.geojson")
             )
-        # cut to size
+        # Cut the OSM to size - give warning if OSM line shorter than network
+        # Get the start and end point of the smoothed network line
         channel = channel.get_parametric_spline_fit()
         network_extents = channel.boundary.explode(index_parts=False)
         network_start, network_end = (network_extents.iloc[0], network_extents.iloc[1])
+        # Get the distance along the OSM that the start/end points are.
+        # Note projection function is limited between [0, osm_channel.length]
         end_split_length = float(osm_channel.project(network_end))
         start_split_length = float(osm_channel.project(network_start))
-        osm_from_ocean = True if start_split_length < end_split_length else False
-        end_split_point = osm_channel.interpolate(end_split_length)
-        start_split_point = osm_channel.interpolate(start_split_length)
-        # Introduce point to the polyline so shapely slip works
-        osm_channel_with_point = shapely.ops.snap(
-            osm_channel.loc[0].geometry, end_split_point.loc[0], tolerance=0.1
-        )
-        osm_channel_with_point = shapely.ops.snap(
-            osm_channel_with_point, start_split_point.loc[0], tolerance=0.1
-        )
-        lines = shapely.ops.split(
-            osm_channel_with_point,
-            shapely.geometry.MultiPoint(
-                [start_split_point.loc[0], end_split_point.loc[0]]
-            ),
-        )
-        osm_channel_cut = geopandas.GeoSeries(lines.geoms, crs=crs)
-        assert (
-            len(osm_channel_cut) == 3
-        ), "The OSM line does not stretch the full extents of the river network line"
-        osm_channel = osm_channel_cut.iloc[1:2]
+        # Ensure the OSM line is defined upstream
+        if start_split_length > end_split_length:
+            # Reverse direction of the geometry
+            osm_channel.loc[0, "geometry"] = shapely.geometry.LineString(
+                list(osm_channel.iloc[0].geometry.coords)[::-1]
+            )
+
+        # Cut the OSM to the length of the network. Give warning if shorter.
+        start_split_length = float(osm_channel.project(network_start))
+        if start_split_length > 0 and not self.get_bathymetry_instruction(
+            "keep_downstream_osm"
+        ):
+            split_point = osm_channel.interpolate(start_split_length)
+            osm_channel = shapely.ops.snap(
+                osm_channel.loc[0].geometry, split_point.loc[0], tolerance=0.1
+            )
+            osm_channel = geopandas.GeoDataFrame(
+                {
+                    "geometry": [
+                        list(shapely.ops.split(osm_channel, split_point.loc[0]).geoms)[
+                            1
+                        ]
+                    ]
+                },
+                crs=crs,
+            )
+        else:
+            logging.warning(
+                "The OSM reference line starts upstream of the"
+                "network line. The bottom of the network will be"
+                "ignored over a stright line distance of "
+                f"{osm_channel.distance(network_start)}"
+            )
+        # Clip end if needed - recacluate clip position incase front clipped.
+        end_split_length = float(osm_channel.project(network_end))
+        if end_split_length < float(osm_channel.length):
+            split_point = osm_channel.interpolate(end_split_length)
+            osm_channel = shapely.ops.snap(
+                osm_channel.loc[0].geometry, split_point.loc[0], tolerance=0.1
+            )
+            osm_channel = geopandas.GeoDataFrame(
+                {
+                    "geometry": [
+                        list(shapely.ops.split(osm_channel, split_point.loc[0]).geoms)[
+                            0
+                        ]
+                    ]
+                },
+                crs=crs,
+            )
+        else:
+            logging.warning(
+                "The OSM reference line ends downstream of the"
+                "network line. The top of the network will be"
+                "ignored over a stright line distance of "
+                f"{osm_channel.distance(network_end)}"
+            )
+
         if self.debug:
             osm_channel.to_file(
                 self.get_result_file_path(name="osm_channel_cut.geojson")
@@ -1427,7 +1483,7 @@ class RiverBathymetryGenerator(BaseProcessor):
         osm_channel = bathymetry_estimation.Channel(
             channel=osm_channel,
             resolution=cross_section_spacing,
-            sampling_direction=1 if osm_from_ocean else -1,
+            sampling_direction=1,
         )
         smoothed_osm_channel = osm_channel.get_parametric_spline_fit()
         smoothed_osm_channel.to_file(self.get_result_file_path(key="aligned"))
@@ -1653,6 +1709,7 @@ class RiverBathymetryGenerator(BaseProcessor):
         crs = self.get_crs()["horizontal"]
         cross_section_spacing = self.get_bathymetry_instruction("cross_section_spacing")
         river_bathymetry_file = self.get_result_file_path(key="river_bathymetry")
+        river_polygon_file = self.get_result_file_path(key="river_polygon")
         ocean_contour_file = self.get_vector_or_raster_paths(
             key="bathymetry_contours", api_type="vector"
         )[0]
@@ -1665,6 +1722,7 @@ class RiverBathymetryGenerator(BaseProcessor):
         fan = geometry.RiverMouthFan(
             aligned_channel_file=aligned_channel_file,
             river_bathymetry_file=river_bathymetry_file,
+            river_polygon_file=river_polygon_file,
             ocean_contour_file=ocean_contour_file,
             crs=crs,
             cross_section_spacing=cross_section_spacing,
@@ -1696,7 +1754,9 @@ class RiverBathymetryGenerator(BaseProcessor):
 
             # Calculate and save river bathymetry depths
             self.calculate_river_bed_elevations()
-            self.estimate_river_mouth_fan()
+            # check if the river mouth is to be estimated
+            if self.get_bathymetry_instruction("estimate_fan"):
+                self.estimate_river_mouth_fan()
         if self.debug:
             # Record the parameter used during execution - append to existing
             with open(
@@ -1846,14 +1906,20 @@ class WaterwayBedElevationEstimator(BaseProcessor):
         closed_waterways["elevation"] = elevations
         # Remove any NaN areas (where no LiDAR data to estimate elevations)
         nan_filter = (
-            points.explode(ignore_index=False)["elevation"].notnull().all(level=0).array
+            points.explode(ignore_index=False, index_parts=True)["elevation"]
+            .notnull()
+            .groupby(level=0)
+            .all()
+            .array
         )
         if not nan_filter.all():
             logging.warning(
                 "Some open waterways are being ignored as there is not enough data to "
                 "estimate their elevations."
             )
-        points_exploded = points[nan_filter].explode(ignore_index=False)
+        points_exploded = points[nan_filter].explode(
+            ignore_index=False, index_parts=True
+        )
         closed_waterways = closed_waterways[nan_filter]
 
         # Save out polygons and elevations
@@ -1957,7 +2023,7 @@ class WaterwayBedElevationEstimator(BaseProcessor):
             lambda geometry: self.minimum_elevation_in_polygon(
                 geometry=geometry, dem=dem
             )
-        )
+        )  # TODO - look to optimise as runs slowely
         # Check open waterways take into account culvert bed elevations
         closed_polygons = geopandas.read_file(
             self.get_result_file_path(key="closed_polygon")
@@ -2045,7 +2111,12 @@ class WaterwayBedElevationEstimator(BaseProcessor):
 
             # Perform query
             overpass = OSMPythonTools.overpass.Overpass()
-            rivers = overpass.query(query)
+            if "osm_date" in self.instructions["drains"]:
+                waterways = overpass.query(
+                    query, date=self.instructions["drains"]["osm_date"], timeout=60
+                )
+            else:
+                waterways = overpass.query(query, timeout=60)
 
             # Extract information
             element_dict = {
@@ -2055,7 +2126,7 @@ class WaterwayBedElevationEstimator(BaseProcessor):
                 "tunnel": [],
             }
 
-            for element in rivers.elements():
+            for element in waterways.elements():
                 element_dict["geometry"].append(element.geometry())
                 element_dict["OSM_id"].append(element.id())
                 element_dict["waterway"].append(element.tags()["waterway"])
@@ -2093,7 +2164,9 @@ class WaterwayBedElevationEstimator(BaseProcessor):
                 lambda waterway: widths[waterway]
             )
             # Clip to land
-            waterways = waterways.clip(self.catchment_geometry.land)
+            waterways = waterways.clip(self.catchment_geometry.land).sort_index(
+                ascending=True
+            )
 
             # Save file
             waterways.to_file(waterways_file_path)

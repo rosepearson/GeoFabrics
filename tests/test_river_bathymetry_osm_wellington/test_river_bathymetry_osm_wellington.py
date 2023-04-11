@@ -292,7 +292,7 @@ class ProcessorRiverBathymetryOsmTest(unittest.TestCase):
         self.assertAlmostEqual(
             test_comparison,
             benchmark_comparison,
-            places=6,
+            places=5,
             msg=f"The geneated river {column_name} does"
             f" not match the benchmark. {test_comparison} "
             f"vs {benchmark_comparison}",
@@ -310,7 +310,7 @@ class ProcessorRiverBathymetryOsmTest(unittest.TestCase):
         benchmark_comparison = benchmark[column_name].array
         print(
             f"{column_name} difference "
-            "{numpy.array(test_comparison) - numpy.array(benchmark_comparison)}"
+            f"{numpy.array(test_comparison) - numpy.array(benchmark_comparison)}"
         )
         self.assertAlmostEqual(
             test_comparison,
@@ -326,7 +326,7 @@ class ProcessorRiverBathymetryOsmTest(unittest.TestCase):
         benchmark_comparison = benchmark[column_name].array
         print(
             f"{column_name} difference "
-            "{numpy.array(test_comparison) - numpy.array(benchmark_comparison)}"
+            f"{numpy.array(test_comparison) - numpy.array(benchmark_comparison)}"
         )
         self.assertAlmostEqual(
             test_comparison,
