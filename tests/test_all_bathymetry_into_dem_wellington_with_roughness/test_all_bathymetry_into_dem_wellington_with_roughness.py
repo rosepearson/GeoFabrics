@@ -194,11 +194,12 @@ class ProcessorRiverBathymetryTest(unittest.TestCase):
         with rioxarray.rioxarray.open_rasterio(file_path, masked=True) as test:
             test.load()
         # Get data generated from LiDAR
-        lidar_source_mask = (test.source_class.data == 1) & (benchmark.source_class.data == 1)
+        lidar_source_mask = (test.source_class.data == 1) & (
+            benchmark.source_class.data == 1
+        )
         # Compare the generated and benchmark elevations
         lidar_diff = (
-            test.z.data[lidar_source_mask]
-            - benchmark.z.data[lidar_source_mask]
+            test.z.data[lidar_source_mask] - benchmark.z.data[lidar_source_mask]
         )
         numpy.testing.assert_array_almost_equal(
             test.z.data[test.source_class.data == 1],
