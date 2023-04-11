@@ -2018,7 +2018,7 @@ class WaterwayBedElevationEstimator(BaseProcessor):
             lambda geometry: self.minimum_elevation_in_polygon(
                 geometry=geometry, dem=dem
             )
-        ) # TODO - look to optimise as runs slowely
+        )  # TODO - look to optimise as runs slowely
         # Check open waterways take into account culvert bed elevations
         closed_polygons = geopandas.read_file(
             self.get_result_file_path(key="closed_polygon")
@@ -2159,7 +2159,9 @@ class WaterwayBedElevationEstimator(BaseProcessor):
                 lambda waterway: widths[waterway]
             )
             # Clip to land
-            waterways = waterways.clip(self.catchment_geometry.land).sort_index(ascending=True)
+            waterways = waterways.clip(self.catchment_geometry.land).sort_index(
+                ascending=True
+            )
 
             # Save file
             waterways.to_file(waterways_file_path)
