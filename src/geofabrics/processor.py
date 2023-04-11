@@ -8,7 +8,6 @@ GeoFabric layers include hydrologically conditioned DEMs.
 import numpy
 import json
 import pathlib
-import shutil
 import abc
 import logging
 import distributed
