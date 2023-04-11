@@ -211,7 +211,7 @@ class ProcessorWaterwayElevationsWellingtonTest(unittest.TestCase):
             f"{benchmark_comparison.min()}",
         )
         # TODO - trun back on more robust comparison
-        '''print(
+        """print(
             f"Open waterways elevation {column_name} difference "
             f"{numpy.array(test_comparison) - numpy.array(benchmark_comparison)}"
         )
@@ -235,7 +235,7 @@ class ProcessorWaterwayElevationsWellingtonTest(unittest.TestCase):
             msg=f"The geneated river {column_name} does not"
             f" match the benchmark. They are separated by "
             f"distances of {comparison}",
-        )'''
+        )"""
 
     @pytest.mark.skipif(sys.platform != "win32", reason="Windows test - this is strict")
     def test_closed_waterways_windows(self):
