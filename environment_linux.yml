@@ -9,9 +9,9 @@ dependencies:
   - dask
   - distributed
   - gdal
-  - geopandas >=0.10.2
+  - pdal
+  - geopandas
   - shapely >=2.0.0
-  - pdal >=2.3
   - pytest
   - python-dotenv
   - python-pdal
