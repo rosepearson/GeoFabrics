@@ -808,36 +808,38 @@ class HydrologicallyConditionedDem(DemBase):
         mask_z = ~numpy.isnan(flat_z)
 
         # Interpolate the estimated river bank heights along only the river
-        # Create a mask defining the river points within the edge_points
-        edge_dem = edge_dem.rio.clip(
-            river_polygons.dissolve().buffer(self.catchment_geometry.resolution),
-            drop=False,  # Don't drop as mask is the same size as mask_z
-        )
-        mask_z_river = ~numpy.isnan(edge_dem.z.data.flatten())
+        if estimated_bathymetry.bank_heights_exist(type_label="rivers"):
+            # TODO consider interpolation along the banks if not bank heights
+            # Create a mask defining the river points within the edge_points
+            edge_dem = edge_dem.rio.clip(
+                river_polygons.dissolve().buffer(self.catchment_geometry.resolution),
+                drop=False,  # Don't drop as mask is the same size as mask_z
+            )
+            mask_z_river = ~numpy.isnan(edge_dem.z.data.flatten())
 
-        # Get the estimated river bank heights
-        river_bank_points = estimated_bathymetry.filtered_bank_height_points(
-            type_label="rivers"
-        )
-        # Interpolate the estimated river bank heights along the river
-        xy_out = numpy.concatenate(
-            [[flat_x[mask_z_river]], [flat_y[mask_z_river]]], axis=0
-        ).transpose()
-        options = {
-            "radius": estimated_bathymetry.points["width"].max(),
-            "raster_type": geometry.RASTER_TYPE,
-            "method": "linear",
-        }
-        estimated_river_edge_z = elevation_from_points(
-            point_cloud=river_bank_points, xy_out=xy_out, options=options
-        )
+            # Get the estimated river bank heights
+            river_bank_points = estimated_bathymetry.filtered_bank_height_points(
+                type_label="rivers"
+            )
+            # Interpolate the estimated river bank heights along the river
+            xy_out = numpy.concatenate(
+                [[flat_x[mask_z_river]], [flat_y[mask_z_river]]], axis=0
+            ).transpose()
+            options = {
+                "radius": estimated_bathymetry.points["width"].max(),
+                "raster_type": geometry.RASTER_TYPE,
+                "method": "linear",
+            }
+            estimated_river_edge_z = elevation_from_points(
+                point_cloud=river_bank_points, xy_out=xy_out, options=options
+            )
 
-        # Take the estimated bank heights where lower than the DEM edge values
-        river_edge_z = estimated_river_edge_z.copy()
-        river_edge_z[flat_z[mask_z_river] < estimated_river_edge_z] = flat_z[
-            mask_z_river
-        ][flat_z[mask_z_river] < estimated_river_edge_z]
-        flat_z[mask_z_river] = river_edge_z
+            # Take the estimated bank heights where lower than the DEM edge values
+            river_edge_z = estimated_river_edge_z.copy()
+            river_edge_z[flat_z[mask_z_river] < estimated_river_edge_z] = flat_z[
+                mask_z_river
+            ][flat_z[mask_z_river] < estimated_river_edge_z]
+            flat_z[mask_z_river] = river_edge_z
 
         # Use the flat_x/y/z to define edge points and heights
         edge_points = numpy.empty(
