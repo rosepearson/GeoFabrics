@@ -494,15 +494,18 @@ class Channel:
 
 
 class InterpolateMeasuredElevations:
-    """ Interpolate measured river bed elevations. Requires LineStrings of
+    """Interpolate measured river bed elevations. Requires LineStrings of
     riverbed elevations, and the LineStrings defining the left and right
-    riverbank. """
+    riverbank."""
 
-    def __init__(self, riverbank_file: pathlib.Path,
-                 measured_cross_sections: pathlib.Path,
-                 cross_section_spacing: int):
-        """ Setup for interpolating the measured riverbed elevations along
-        equally spaced cross sections. """
+    def __init__(
+        self,
+        riverbank_file: pathlib.Path,
+        measured_cross_sections: pathlib.Path,
+        cross_section_spacing: int,
+    ):
+        """Setup for interpolating the measured riverbed elevations along
+        equally spaced cross sections."""
         self.riverbanks = geopandas.read_file(riverbank_file)
         self.measured_sections.read_file(measured_cross_sections)
         self.cross_section_spacing = cross_section_spacing
@@ -510,37 +513,65 @@ class InterpolateMeasuredElevations:
         self.check_valid_inputs()
 
     def check_valid_inputs(self):
-        """ Check expected entries in the input data"""
+        """Check expected entries in the input data"""
 
         # Check expected riverbank information
-        if len(self.riverbanks.columns) != 2 and 'Name' not in self.riverbanks.columns and 'geometry' not in self.riverbanks.columns:
-            raise Exception("Unexpected columns for self.riverbanks. Expecting"
-                            " ['Name', 'geometry'], but got"
-                            f" {self.riverbanks.columns}")
+        if (
+            len(self.riverbanks.columns) != 2
+            and "Name" not in self.riverbanks.columns
+            and "geometry" not in self.riverbanks.columns
+        ):
+            raise Exception(
+                "Unexpected columns for self.riverbanks. Expecting"
+                " ['Name', 'geometry'], but got"
+                f" {self.riverbanks.columns}"
+            )
 
-        if len(self.riverbanks) != 2 and not (self.riverbanks['Name']=='Right').any() and not (self.riverbanks['Name']=='Left').any():
-            raise Exception("Unexpected row for self.riverbanks. Expecting two"
-                            " rows with names ['Right', 'Left'], but got"
-                            f" {self.riverbanks['Name']}")
+        if (
+            len(self.riverbanks) != 2
+            and not (self.riverbanks["Name"] == "Right").any()
+            and not (self.riverbanks["Name"] == "Left").any()
+        ):
+            raise Exception(
+                "Unexpected row for self.riverbanks. Expecting two"
+                " rows with names ['Right', 'Left'], but got"
+                f" {self.riverbanks['Name']}"
+            )
 
-        if (self.riverbanks.iloc[0].geometry.interpolate(0, normalized=True).distance(self.riverbanks.loc[1].geometry.interpolate(0, normalized=True)) >
-            self.riverbanks.iloc[0].geometry.interpolate(0, normalized=True).distance(self.riverbanks.loc[1].geometry.interpolate(1, normalized=True))
-            or
-            (self.riverbanks.iloc[0].geometry.interpolate(1, normalized=True).distance(self.riverbanks.loc[1].geometry.interpolate(1, normalized=True)) >
-             self.riverbanks.iloc[0].geometry.interpolate(1, normalized=True).distance(self.riverbanks.loc[1].geometry.interpolate(0, normalized=True)))):
-            logging.Warning("It appears that the `right` and `left` banks are"
-                            "defined in different directions based on the "
-                            "relative distance between the endpoints. Please "
-                            "define both as either upstream or downstream.")
-
+        # Check the riverbank lines are both in the same direction
+        if self.riverbanks.iloc[0].geometry.interpolate(0, normalized=True).distance(
+            self.riverbanks.loc[1].geometry.interpolate(0, normalized=True)
+        ) > self.riverbanks.iloc[0].geometry.interpolate(0, normalized=True).distance(
+            self.riverbanks.loc[1].geometry.interpolate(1, normalized=True)
+        ) or (
+            self.riverbanks.iloc[0]
+            .geometry.interpolate(1, normalized=True)
+            .distance(self.riverbanks.loc[1].geometry.interpolate(1, normalized=True))
+            > self.riverbanks.iloc[0]
+            .geometry.interpolate(1, normalized=True)
+            .distance(self.riverbanks.loc[1].geometry.interpolate(0, normalized=True))
+        ):
+            logging.Warning(
+                "It appears that the `right` and `left` banks are"
+                "defined in different directions based on the "
+                "relative distance between the endpoints. Please "
+                "define both as either upstream or downstream."
+            )
 
         if self.riverbanks.crs is None:
-            raise Exception("self.riverbanks must have a valid crs. Instead"
-                            f"has {self.riverbanks.crs}")
+            raise Exception(
+                "self.riverbanks must have a valid crs. Instead"
+                f"has {self.riverbanks.crs}"
+            )
 
-        if self.measured_sections.crs is None or self.riverbanks.crs != self.measured_sections.crs:
-            raise Exception("self.measured_sections must have a valid crs that matches self.riverbanks. Instead"
-                            f"has {self.measured_sections.crs}")
+        if (
+            self.measured_sections.crs is None
+            or self.riverbanks.crs != self.measured_sections.crs
+        ):
+            raise Exception(
+                "self.measured_sections must have a valid crs that matches self.riverbanks. Instead"
+                f"has {self.measured_sections.crs}"
+            )
 
     def interpolate(self, samples_per_section: int, thalweg_centre: bool = True):
         """ Interpolate with equally spaced points along each cross section
@@ -553,31 +584,61 @@ class InterpolateMeasuredElevations:
 
         # Define river polygon and clip the measured sections
         polygon = geopandas.GeoDataFrame(
-            geometry=[shapely.geometry.Polygon(
-                numpy.append(self.riverbanks[self.riverbanks['Name']=='Right'].iloc[0].geometry.coords,
-                             self.riverbanks[self.riverbanks['Name']=='Left'].iloc[0].geometry.coords[::-1], axis=0))],
-            crs=self.riverbanks.crs
-            )
+            geometry=[
+                shapely.geometry.Polygon(
+                    numpy.append(
+                        self.riverbanks[self.riverbanks["Name"] == "Right"]
+                        .iloc[0]
+                        .geometry.coords,
+                        self.riverbanks[self.riverbanks["Name"] == "Left"]
+                        .iloc[0]
+                        .geometry.coords[::-1],
+                        axis=0,
+                    )
+                )
+            ],
+            crs=self.riverbanks.crs,
+        )
         # Clip measured sections
         self.measured_sections = self.measured_sections.clip(polygon).sort_index()
-        measured_sections_exploded = self.measured_sections.apply(lambda row: shapely.geometry.MultiPoint(row['geometry'].coords), axis=1).explode(index_parts=True)
+        measured_sections_exploded = self.measured_sections.apply(
+            lambda row: shapely.geometry.MultiPoint(row["geometry"].coords), axis=1
+        ).explode(index_parts=True)
 
         # work out number of cross sections
-        n_cross_sections = round(self.riverbanks.length.max() / self.cross_section_spacing)
+        n_cross_sections = round(
+            self.riverbanks.length.max() / self.cross_section_spacing
+        )
 
         # Split riverbank polylines
         cross_sections = self.riverbanks.copy(deep=True)
-        normalised_sample_locations = numpy.arange(0, 1 + 1/n_cross_sections, 1/n_cross_sections)
-        cross_sections['geometry'] = cross_sections['geometry'].apply(
-            lambda row: shapely.geometry.LineString(row.interpolate(normalised_sample_locations, normalized=True)))
+        normalised_sample_locations = numpy.arange(
+            0, 1 + 1 / n_cross_sections, 1 / n_cross_sections
+        )
+        cross_sections["geometry"] = cross_sections["geometry"].apply(
+            lambda row: shapely.geometry.LineString(
+                row.interpolate(normalised_sample_locations, normalized=True)
+            )
+        )
 
         # Reshape to separate right and left column - split lines to points
         cross_sections = cross_sections.explode(index_parts=True)
-        cross_sections = pandas.concat([cross_sections[cross_sections['Name']=='Right'].droplevel(0).geometry.rename('Right'),
-                                cross_sections[cross_sections['Name']=='Left'].droplevel(0).geometry.rename('Left')], axis = 1)
+        cross_sections = pandas.concat(
+            [
+                cross_sections[cross_sections["Name"] == "Right"]
+                .droplevel(0)
+                .geometry.rename("Right"),
+                cross_sections[cross_sections["Name"] == "Left"]
+                .droplevel(0)
+                .geometry.rename("Left"),
+            ],
+            axis=1,
+        )
 
         # Create cross sections
-        cross_sections['Sections'] = cross_sections.apply(lambda row: shapely.geometry.LineString( [row['Right'], row['Left'] ] ), axis=1)
+        cross_sections["Sections"] = cross_sections.apply(
+            lambda row: shapely.geometry.LineString([row["Right"], row["Left"]]), axis=1
+        )
 
         # Define the node spacings along the cross sections
         if thalweg_centre:
@@ -586,14 +647,33 @@ class InterpolateMeasuredElevations:
             self.uniform_spacing(samples_per_section, cross_sections)
 
         # Explode the cross section points
-        cross_sections_exploded = cross_sections[['Cross Sections']].set_geometry('Cross Sections', crs=self.riverbanks.crs).explode(index_parts=True)
+        cross_sections_exploded = (
+            cross_sections[["Cross Sections"]]
+            .set_geometry("Cross Sections", crs=self.riverbanks.crs)
+            .explode(index_parts=True)
+        )
 
         # Map measured section values then interpolated down/up river
-        nearest_cross_section_point_indices = measured_sections_exploded.apply(lambda row: row.distance(cross_sections['Cross Sections'].explode(index_parts=True)).idxmin()).unique()
-        cross_sections_exploded['z'] = numpy.nan
-        cross_sections_exploded.loc[nearest_cross_section_point_indices, 'z']  = cross_sections_exploded.loc[nearest_cross_section_point_indices, 'Cross Sections'].apply(
-            lambda point: measured_sections_exploded.loc[point.distance(measured_sections_exploded).idxmin()].z)
-        cross_sections_exploded['z'] = cross_sections_exploded['z'].groupby(level=1, group_keys=False).apply(lambda group: group.interpolate(limit_direction='both'))
+        nearest_cross_section_point_indices = measured_sections_exploded.apply(
+            lambda row: row.distance(
+                cross_sections["Cross Sections"].explode(index_parts=True)
+            ).idxmin()
+        ).unique()
+        cross_sections_exploded["z"] = numpy.nan
+        cross_sections_exploded.loc[
+            nearest_cross_section_point_indices, "z"
+        ] = cross_sections_exploded.loc[
+            nearest_cross_section_point_indices, "Cross Sections"
+        ].apply(
+            lambda point: measured_sections_exploded.loc[
+                point.distance(measured_sections_exploded).idxmin()
+            ].z
+        )
+        cross_sections_exploded["z"] = (
+            cross_sections_exploded["z"]
+            .groupby(level=1, group_keys=False)
+            .apply(lambda group: group.interpolate(limit_direction="both"))
+        )
 
         # Return river polygon and sampled cross sections
         return polygon, cross_sections_exploded
@@ -632,15 +712,27 @@ class InterpolateMeasuredElevations:
 
         # Calculate the normalised thalweg location at each measured section
         def calculate_normalised_thalweg_location(indices: tuple, sections_exploded):
-            """ Tuple of the section index, and the point index along the section"""
+            """Tuple of the section index, and the point index along the section"""
             thalweg_point = sections_exploded[indices]
-            left_bank_distance = thalweg_point.distance(sections_exploded.loc[indices[0]][0])
-            right_bank_distance = thalweg_point.distance(sections_exploded.loc[indices[0]][len(sections_exploded.loc[indices[0]])-1])
-            normalised_thalweg_location = left_bank_distance / (left_bank_distance + right_bank_distance)
+            left_bank_distance = thalweg_point.distance(
+                sections_exploded.loc[indices[0]][0]
+            )
+            right_bank_distance = thalweg_point.distance(
+                sections_exploded.loc[indices[0]][
+                    len(sections_exploded.loc[indices[0]]) - 1
+                ]
+            )
+            normalised_thalweg_location = left_bank_distance / (
+                left_bank_distance + right_bank_distance
+            )
 
             return normalised_thalweg_location
 
-        thalweg_indices = measured_sections_exploded.apply(lambda row: row.z).groupby(level=0).idxmin()
+        thalweg_indices = (
+            measured_sections_exploded.apply(lambda row: row.z)
+            .groupby(level=0)
+            .idxmin()
+        )
         thalweg_points = measured_sections_exploded[thalweg_indices]
 
         # Linearly interpolate the normalised Thalewg location along the cross sections
