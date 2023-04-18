@@ -65,13 +65,16 @@ class BaseProcessor(abc.ABC):
         is a default value and the local cache is specified. Raise an error if
         the key is not in the instructions."""
 
-        defaults = dict(**defaults, **{
-            "result_dem": "generated_dem.nc",
-            "result_geofabric": "generated_geofabric.nc",
-            "raw_dem": "raw_dem.nc",
-            "raw_dem_extents": "raw_extents.geojson",
-            "subfolder": "results",
-        } )
+        defaults = dict(
+            **defaults,
+            **{
+                "result_dem": "generated_dem.nc",
+                "result_geofabric": "generated_geofabric.nc",
+                "raw_dem": "raw_dem.nc",
+                "raw_dem_extents": "raw_extents.geojson",
+                "subfolder": "results",
+            },
+        )
 
         path_instructions = self.instructions["data_paths"]
 
@@ -963,8 +966,9 @@ class MeasuredRiverGenerator(BaseProcessor):
         pipeline to produce a DEM before sampling this to extimate width, slope
         and eventually depth."""
 
-        logging.info("Interpolating the measured river elevations if not"
-                     "already done.")
+        logging.info(
+            "Interpolating the measured river elevations if not" "already done."
+        )
 
         # Ensure the results folder has been created
         self.create_results_folder()
@@ -973,24 +977,32 @@ class MeasuredRiverGenerator(BaseProcessor):
         measured_rivers = bathymetry_estimation.InterpolateMeasuredElevations(
             riverbank_file=self.get_instruction_path("riverbanks"),
             measured_sections_file=self.get_instruction_path("measured_sections"),
-            cross_section_spacing=self.get_measured_instruction("cross_section_spacing")
-            )
+            cross_section_spacing=self.get_measured_instruction(
+                "cross_section_spacing"
+            ),
+        )
         river_polygon, river_elevations = measured_rivers.interpolate(
             samples_per_section=self.get_measured_instruction("samples_per_section"),
-            thalweg_centre=self.get_measured_instruction("thalweg_centre"))
+            thalweg_centre=self.get_measured_instruction("thalweg_centre"),
+        )
 
         # Save the generated polygon and measured elevations\
-        defaults = {"result_polygon": "river_polygon.geojson",
-                    "result_elevation": "river_elevations.geojson"}
-        river_polygon.to_file(self.get_instruction_path("result_polygon",
-                                                           defaults=defaults))
-        river_elevations.to_file(self.get_instruction_path("result_elevation",
-                                                           defaults=defaults))
+        defaults = {
+            "result_polygon": "river_polygon.geojson",
+            "result_elevation": "river_elevations.geojson",
+        }
+        river_polygon.to_file(
+            self.get_instruction_path("result_polygon", defaults=defaults)
+        )
+        river_elevations.to_file(
+            self.get_instruction_path("result_elevation", defaults=defaults)
+        )
 
         if self.debug:
             # Record the parameter used during execution - append to existing
             with open(
-                self.get_instruction_path("subfolder") / "measured_instructions.json", "a"
+                self.get_instruction_path("subfolder") / "measured_instructions.json",
+                "a",
             ) as file_pointer:
                 json.dump(self.instructions, file_pointer)
 

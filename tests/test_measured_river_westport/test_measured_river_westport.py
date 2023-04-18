@@ -52,7 +52,6 @@ class ProcessorMeasuredRiverWestportTest(unittest.TestCase):
         with open(instruction_file_path, "r") as file_pointer:
             cls.instructions = json.load(file_pointer)
 
-
         # Remove any files from last test, then create a results directory
         cls.cache_dir = test_path / "data"
         cls.results_dir = cls.cache_dir / "results"
