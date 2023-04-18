@@ -60,18 +60,18 @@ class BaseProcessor(abc.ABC):
         }
         return metadata
 
-    def get_instruction_path(self, key: str) -> str:
+    def get_instruction_path(self, key: str, defaults: dict = {}) -> str:
         """Return the file path from the instruction file, or default if there
         is a default value and the local cache is specified. Raise an error if
         the key is not in the instructions."""
 
-        defaults = {
+        defaults = dict(**defaults, **{
             "result_dem": "generated_dem.nc",
             "result_geofabric": "generated_geofabric.nc",
             "raw_dem": "raw_dem.nc",
             "raw_dem_extents": "raw_extents.geojson",
             "subfolder": "results",
-        }
+        } )
 
         path_instructions = self.instructions["data_paths"]
 
@@ -921,6 +921,92 @@ class RoughnessLengthGenerator(BaseProcessor):
             format="NETCDF4",
             engine="netcdf4",
         )
+
+
+class MeasuredRiverGenerator(BaseProcessor):
+    """MeasuredRiverGenerator executes a pipeline to interpolate between
+    measured river cross section elevations. A json_instructions file defines
+    the pipeline logic and data.
+
+    """
+
+    def __init__(self, json_instructions: json, debug: bool = True):
+        super(MeasuredRiverGenerator, self).__init__(
+            json_instructions=json_instructions
+        )
+
+        self.debug = debug
+
+    def get_measured_instruction(self, key: str):
+        """Return true if the DEMs are required for later processing
+
+
+        Parameters:
+            instructions  The json instructions defining the behaviour
+        """
+        defaults = {
+            "thalweg_centre": True,
+        }
+
+        assert key in defaults or key in self.instructions["measured"], (
+            f"The key: {key} is missing from the measured instructions, and"
+            " does not have a default value"
+        )
+        if "measured" in self.instructions and key in self.instructions["measured"]:
+            return self.instructions["measured"][key]
+        else:
+            self.instructions["measured"][key] = defaults[key]
+            return defaults[key]
+
+    def run(self):
+        """This method extracts a main channel then executes the DemGeneration
+        pipeline to produce a DEM before sampling this to extimate width, slope
+        and eventually depth."""
+
+        logging.info("Interpolating the measured river elevations if not"
+                     "already done.")
+
+        # Ensure the results folder has been created
+        self.create_results_folder()
+
+        # create the measured river interpolator object
+        measured_rivers = self.bathymetry_estimation.InterpolateMeasuredElevations(
+            riverbank_file=self.get_instruction_path("riverbanks"),
+            measured_sections_file=self.get_instruction_path("measured_sections"),
+            cross_section_spacing=self.get_measured_instruction("cross_section_spacing")
+            )
+        river_polygon, river_elevations = measured_rivers.interpolate(
+            samples_per_section=self.get_measured_instruction("samples_per_section"),
+            thalweg_centre=self.get_measured_instruction("thalweg_centre"))
+
+        # Save the generated polygon and measured elevations\
+        defaults = {"result_polygon": "river_polygon.geojson",
+                    "result_elevation": "river_elevations.geojson"}
+        river_polygon.to_file(self.get_instruction_path("result_polygon"),
+                              defauls=defaults)
+        river_elevations.to_file(self.get_instruction_path("result_elevation"),
+                                 defauls=defaults)
+
+
+        # Characterise river channel if not already done - may generate DEMs
+        if not self.channel_characteristics_exist():
+            self.characterise_channel()
+        # Estimate channel and fan depths if not already done
+        if not self.channel_bathymetry_exist():
+            logging.info("Estimating the channel and fan bathymetry.")
+            print("Estimating the channel and fan bathymetry.")
+
+            # Calculate and save river bathymetry depths
+            self.calculate_river_bed_elevations()
+            # check if the river mouth is to be estimated
+            if self.get_bathymetry_instruction("estimate_fan"):
+                self.estimate_river_mouth_fan()
+        if self.debug:
+            # Record the parameter used during execution - append to existing
+            with open(
+                self.get_instruction_path("subfolder") / "rivers_instructions.json", "a"
+            ) as file_pointer:
+                json.dump(self.instructions, file_pointer)
 
 
 class RiverBathymetryGenerator(BaseProcessor):
