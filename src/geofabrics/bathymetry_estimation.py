@@ -610,8 +610,9 @@ class InterpolateMeasuredElevations:
         )
 
         # Split riverbank polylines
-        normalised_sample_locations = numpy.arange(
-            n_cross_sections + 1) * 1 / n_cross_sections
+        normalised_sample_locations = (
+            numpy.arange(n_cross_sections + 1) * 1 / n_cross_sections
+        )
         self.riverbanks["geometry"] = self.riverbanks["geometry"].apply(
             lambda row: shapely.geometry.MultiPoint(
                 row.interpolate(normalised_sample_locations, normalized=True)

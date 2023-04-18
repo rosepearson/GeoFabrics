@@ -942,7 +942,8 @@ class RoughnessLengthGenerator(BaseProcessor):
         if self.debug:
             # Record the parameter used during execution - append to existing
             with open(
-                self.get_instruction_path("subfolder") / "roughness_instructions.json", "a"
+                self.get_instruction_path("subfolder") / "roughness_instructions.json",
+                "a",
             ) as file_pointer:
                 json.dump(self.instructions, file_pointer)
 
