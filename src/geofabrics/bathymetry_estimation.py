@@ -501,15 +501,14 @@ class InterpolateMeasuredElevations:
     def __init__(
         self,
         riverbank_file: pathlib.Path,
-        measured_cross_sections: pathlib.Path,
+        measured_sections_file: pathlib.Path,
         cross_section_spacing: int,
     ):
         """Setup for interpolating the measured riverbed elevations along
         equally spaced cross sections."""
         self.riverbanks = geopandas.read_file(riverbank_file)
-        self.measured_sections.read_file(measured_cross_sections)
+        self.measured_sections = geopandas.read_file(measured_sections_file)
         self.cross_section_spacing = cross_section_spacing
-
         self.check_valid_inputs()
 
     def check_valid_inputs(self):
@@ -616,7 +615,7 @@ class InterpolateMeasuredElevations:
             0, 1 + 1 / n_cross_sections, 1 / n_cross_sections
         )
         cross_sections["geometry"] = cross_sections["geometry"].apply(
-            lambda row: shapely.geometry.LineString(
+            lambda row: shapely.geometry.MultiPoint(
                 row.interpolate(normalised_sample_locations, normalized=True)
             )
         )
@@ -642,28 +641,33 @@ class InterpolateMeasuredElevations:
 
         # Define the node spacings along the cross sections
         if thalweg_centre:
-            self.thalweg_centred_spacing(samples_per_section, cross_sections)
+            self.thalweg_centred_spacing(
+                samples_per_section=samples_per_section,
+                cross_sections=cross_sections,
+                measured_sections_exploded=measured_sections_exploded)
         else:
-            self.uniform_spacing(samples_per_section, cross_sections)
+            self.uniform_spacing(
+                samples_per_section=samples_per_section,
+                cross_sections=cross_sections)
 
         # Explode the cross section points
         cross_sections_exploded = (
-            cross_sections[["Cross Sections"]]
-            .set_geometry("Cross Sections", crs=self.riverbanks.crs)
+            cross_sections[["Sections"]]
+            .set_geometry("Sections", crs=self.riverbanks.crs)
             .explode(index_parts=True)
         )
 
         # Map measured section values then interpolated down/up river
         nearest_cross_section_point_indices = measured_sections_exploded.apply(
             lambda row: row.distance(
-                cross_sections["Cross Sections"].explode(index_parts=True)
+                cross_sections["Sections"].explode(index_parts=True)
             ).idxmin()
         ).unique()
         cross_sections_exploded["z"] = numpy.nan
         cross_sections_exploded.loc[
             nearest_cross_section_point_indices, "z"
         ] = cross_sections_exploded.loc[
-            nearest_cross_section_point_indices, "Cross Sections"
+            nearest_cross_section_point_indices, "Sections"
         ].apply(
             lambda point: measured_sections_exploded.loc[
                 point.distance(measured_sections_exploded).idxmin()
@@ -689,8 +693,8 @@ class InterpolateMeasuredElevations:
         normalised_node_locations = numpy.arange(0,
                                                      1 + 1.0/samples_per_section,
                                                      1.0/samples_per_section)
-        cross_sections['Cross Sections'] = (
-            cross_sections['Cross Sections'].apply(
+        cross_sections['Sections'] = (
+            cross_sections['Sections'].apply(
                 lambda line:
                     shapely.geometry.MultiPoint(
                         line.interpolate(normalised_node_locations,
@@ -737,7 +741,7 @@ class InterpolateMeasuredElevations:
 
         # Linearly interpolate the normalised Thalewg location along the cross sections
         cross_sections['Thalweg ratio'] = numpy.nan
-        cross_sections.loc[thalweg_indices.apply(lambda row: cross_sections['Cross Sections'].distance(thalweg_points[row]).idxmin()),
+        cross_sections.loc[thalweg_indices.apply(lambda row: cross_sections['Sections'].distance(thalweg_points[row]).idxmin()),
                            'Thalweg ratio'] = thalweg_indices.apply(lambda row: calculate_normalised_thalweg_location(row, measured_sections_exploded)).array
         cross_sections['Thalweg ratio'].interpolate(limit_direction='both', inplace=True)
 
@@ -752,8 +756,8 @@ class InterpolateMeasuredElevations:
                                                                         (1-thalweg_ratio)/samples_per_section)])
             return shapely.geometry.MultiPoint(line.interpolate(normalised_node_locations, normalized=True))
         # Apply the function for sampling along each cross section
-        cross_sections['Cross Sections'] = cross_sections[['Cross Sections', 'Thalweg ratio']].apply(
-            lambda row: split_line_to_nodes(row['Cross Sections'], row['Thalweg ratio'], samples_per_section=samples_per_section), axis=1)
+        cross_sections['Sections'] = cross_sections[['Sections', 'Thalweg ratio']].apply(
+            lambda row: split_line_to_nodes(row['Sections'], row['Thalweg ratio'], samples_per_section=samples_per_section), axis=1)
 
 
 class ChannelCharacteristics:
