@@ -628,11 +628,12 @@ class RawLidarDemGenerator(BaseProcessor):
     an instruction file.
     """
 
-    def __init__(self, json_instructions: json):
+    def __init__(self, json_instructions: json, debug: bool = True):
         super(RawLidarDemGenerator, self).__init__(json_instructions=json_instructions)
 
         self.raw_dem = None
         self.coarse_dem = None
+        self.debug = debug
 
     def run(self):
         """This method executes the geofabrics generation pipeline to produce geofabric
@@ -727,6 +728,12 @@ class RawLidarDemGenerator(BaseProcessor):
                 "In processor.DemGenerator - no LiDAR extents exist so no extents file "
                 "written"
             )
+        if self.debug:
+            # Record the parameter used during execution - append to existing
+            with open(
+                self.get_instruction_path("subfolder") / "dem_instructions.json", "a"
+            ) as file_pointer:
+                json.dump(self.instructions, file_pointer)
 
 
 class HydrologicDemGenerator(BaseProcessor):
@@ -747,13 +754,14 @@ class HydrologicDemGenerator(BaseProcessor):
     an instruction file
     """
 
-    def __init__(self, json_instructions: json):
+    def __init__(self, json_instructions: json, debug: bool = True):
         super(HydrologicDemGenerator, self).__init__(
             json_instructions=json_instructions
         )
 
         self.hydrologic_dem = None
         self.bathy_contours = None
+        self.debug = debug
 
     def add_bathymetry(self, area_threshold: float, catchment_dirs: pathlib.Path):
         """Add in any bathymetry data - ocean or river"""
@@ -850,6 +858,12 @@ class HydrologicDemGenerator(BaseProcessor):
         self.hydrologic_dem.dem.to_netcdf(
             self.get_instruction_path("result_dem"), format="NETCDF4", engine="netcdf4"
         )
+        if self.debug:
+            # Record the parameter used during execution - append to existing
+            with open(
+                self.get_instruction_path("subfolder") / "dem_instructions.json", "a"
+            ) as file_pointer:
+                json.dump(self.instructions, file_pointer)
 
 
 class RoughnessLengthGenerator(BaseProcessor):
@@ -865,12 +879,13 @@ class RoughnessLengthGenerator(BaseProcessor):
 
     """
 
-    def __init__(self, json_instructions: json):
+    def __init__(self, json_instructions: json, debug: bool = True):
         super(RoughnessLengthGenerator, self).__init__(
             json_instructions=json_instructions
         )
 
         self.roughness_dem = None
+        self.debug = debug
 
     def run(self):
         """This method executes the geofabrics generation pipeline to produce geofabric
@@ -921,6 +936,12 @@ class RoughnessLengthGenerator(BaseProcessor):
             format="NETCDF4",
             engine="netcdf4",
         )
+        if self.debug:
+            # Record the parameter used during execution - append to existing
+            with open(
+                self.get_instruction_path("subfolder") / "roughness_instructions.json", "a"
+            ) as file_pointer:
+                json.dump(self.instructions, file_pointer)
 
 
 class MeasuredRiverGenerator(BaseProcessor):
