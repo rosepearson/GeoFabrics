@@ -644,11 +644,12 @@ class InterpolateMeasuredElevations:
             self.thalweg_centred_spacing(
                 samples_per_section=samples_per_section,
                 cross_sections=cross_sections,
-                measured_sections_exploded=measured_sections_exploded)
+                measured_sections_exploded=measured_sections_exploded,
+            )
         else:
             self.uniform_spacing(
-                samples_per_section=samples_per_section,
-                cross_sections=cross_sections)
+                samples_per_section=samples_per_section, cross_sections=cross_sections
+            )
 
         # Explode the cross section points
         cross_sections_exploded = (
@@ -691,17 +692,14 @@ class InterpolateMeasuredElevations:
         number_samples
             The number of samples along each cross section."""
 
-        normalised_node_locations = numpy.arange(0,
-                                                 1 + 1.0/samples_per_section,
-                                                 1.0/samples_per_section)
-        cross_sections['Sections'] = (
-            cross_sections['Sections'].apply(
-                lambda line:
-                    shapely.geometry.MultiPoint(
-                        line.interpolate(normalised_node_locations,
-                                         normalized=True))
-                    )
-                )
+        normalised_node_locations = numpy.arange(
+            0, 1 + 1.0 / samples_per_section, 1.0 / samples_per_section
+        )
+        cross_sections["Sections"] = cross_sections["Sections"].apply(
+            lambda line: shapely.geometry.MultiPoint(
+                line.interpolate(normalised_node_locations, normalized=True)
+            )
+        )
 
     def thalweg_centred_spacing(
         self,
@@ -766,8 +764,13 @@ class InterpolateMeasuredElevations:
             """Split line into n_nodes points half equally spaced on each side of the Thalweg"""
             normalised_node_locations = numpy.concatenate(
                 [
-                    numpy.arange(samples_per_section) * thalweg_ratio/samples_per_section,
-                    numpy.arange(samples_per_section + 1) * (1-thalweg_ratio)/samples_per_section + thalweg_ratio
+                    numpy.arange(samples_per_section)
+                    * thalweg_ratio
+                    / samples_per_section,
+                    numpy.arange(samples_per_section + 1)
+                    * (1 - thalweg_ratio)
+                    / samples_per_section
+                    + thalweg_ratio,
                 ]
             )
             return shapely.geometry.MultiPoint(
