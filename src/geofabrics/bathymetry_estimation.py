@@ -639,16 +639,11 @@ class InterpolateMeasuredElevations:
         )
 
         # Define the node spacings along the cross sections
-        if thalweg_centre:
-            self.thalweg_centred_spacing(
-                samples_per_section=samples_per_section,
-                cross_sections=cross_sections,
-                measured_sections_exploded=measured_sections_exploded,
-            )
-        else:
-            self.uniform_spacing(
+        self.uniform_spacing(
                 samples_per_section=samples_per_section, cross_sections=cross_sections
             )
+        # Note that in future could look at support for Thalweg centred spacing
+        # using the thalweg_centred_spacing function
 
         # Explode the cross section points
         cross_sections_exploded = (
