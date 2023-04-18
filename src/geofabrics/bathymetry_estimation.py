@@ -691,8 +691,8 @@ class InterpolateMeasuredElevations:
         number_samples
             The number of samples along each cross section."""
         normalised_node_locations = numpy.arange(0,
-                                                     1 + 1.0/samples_per_section,
-                                                     1.0/samples_per_section)
+                                                 1 + 1.0/samples_per_section,
+                                                 1.0/samples_per_section)
         cross_sections['Sections'] = (
             cross_sections['Sections'].apply(
                 lambda line:
@@ -748,12 +748,10 @@ class InterpolateMeasuredElevations:
         # Define equal sample locations on each side of the Thalweg
         def split_line_to_nodes(line, thalweg_ratio, samples_per_section):
             """ Split line into n_nodes points half equally spaced on each side of the Thalweg"""
-            normalised_node_locations = numpy.concatenate([numpy.arange(0,
-                                                                        thalweg_ratio,
-                                                                        thalweg_ratio/samples_per_section),
-                                                           numpy.arange(thalweg_ratio,
-                                                                        1 + (1-thalweg_ratio)/samples_per_section,
-                                                                        (1-thalweg_ratio)/samples_per_section)])
+            normalised_node_locations = numpy.concatenate([
+                numpy.arange(samples_per_section) * thalweg_ratio/samples_per_section,
+                numpy.arange(samples_per_section + 1) * (1-thalweg_ratio)/samples_per_section + thalweg_ratio
+                ])
             return shapely.geometry.MultiPoint(line.interpolate(normalised_node_locations, normalized=True))
         # Apply the function for sampling along each cross section
         cross_sections['Sections'] = cross_sections[['Sections', 'Thalweg ratio']].apply(
