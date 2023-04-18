@@ -610,17 +610,16 @@ class InterpolateMeasuredElevations:
         )
 
         # Split riverbank polylines
-        cross_sections = self.riverbanks.copy(deep=True)
         normalised_sample_locations = numpy.arange(
             n_cross_sections + 1) * 1 / n_cross_sections
-        cross_sections["geometry"] = cross_sections["geometry"].apply(
+        self.riverbanks["geometry"] = self.riverbanks["geometry"].apply(
             lambda row: shapely.geometry.MultiPoint(
                 row.interpolate(normalised_sample_locations, normalized=True)
             )
         )
 
         # Reshape to separate right and left column - split lines to points
-        cross_sections = cross_sections.explode(index_parts=True)
+        cross_sections = self.riverbanks.explode(index_parts=True)
         cross_sections = pandas.concat(
             [
                 cross_sections[cross_sections["Name"] == "Right"]
