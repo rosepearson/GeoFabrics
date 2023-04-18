@@ -518,9 +518,29 @@ class InterpolateMeasuredElevations:
                             " ['Name', 'geometry'], but got"
                             f" {self.riverbanks.columns}")
 
+        if len(self.riverbanks) != 2 and not (self.riverbanks['Name']=='Right').any() and not (self.riverbanks['Name']=='Left').any():
+            raise Exception("Unexpected row for self.riverbanks. Expecting two"
+                            " rows with names ['Right', 'Left'], but got"
+                            f" {self.riverbanks['Name']}")
+
+        if (self.riverbanks.iloc[0].geometry.interpolate(0, normalized=True).distance(self.riverbanks.loc[1].geometry.interpolate(0, normalized=True)) >
+            self.riverbanks.iloc[0].geometry.interpolate(0, normalized=True).distance(self.riverbanks.loc[1].geometry.interpolate(1, normalized=True))
+            or
+            (self.riverbanks.iloc[0].geometry.interpolate(1, normalized=True).distance(self.riverbanks.loc[1].geometry.interpolate(1, normalized=True)) >
+             self.riverbanks.iloc[0].geometry.interpolate(1, normalized=True).distance(self.riverbanks.loc[1].geometry.interpolate(0, normalized=True)))):
+            logging.Warning("It appears that the `right` and `left` banks are"
+                            "defined in different directions based on the "
+                            "relative distance between the endpoints. Please "
+                            "define both as either upstream or downstream.")
+
+
         if self.riverbanks.crs is None:
             raise Exception("self.riverbanks must have a valid crs. Instead"
                             f"has {self.riverbanks.crs}")
+
+        if self.measured_sections.crs is None or self.riverbanks.crs != self.measured_sections.crs:
+            raise Exception("self.measured_sections must have a valid crs that matches self.riverbanks. Instead"
+                            f"has {self.measured_sections.crs}")
 
     def interpolate(self, number_samples: int, thalweg_centre: bool = True):
         """ Interpolate with equally spaced points along each cross section
