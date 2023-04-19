@@ -21,7 +21,7 @@ import gc
 from src.geofabrics import processor
 
 
-class ProcessorMeasuredRiverWestportTest(unittest.TestCase):
+class ProcessorMeasuredRiverIntoDemWestportTest(unittest.TestCase):
     """A class to test the basic measured river interpolation functionality
     contained in processor.MeasuredRiverGenerator.
 
