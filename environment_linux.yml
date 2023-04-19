@@ -6,6 +6,7 @@ channels:
   - defaults
 dependencies:
   - pip
+  - shapely >=2
   - dask
   - distributed
   - geopandas
