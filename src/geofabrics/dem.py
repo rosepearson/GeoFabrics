@@ -495,14 +495,14 @@ class HydrologicallyConditionedDem(DemBase):
         # resample the DEM
         if resolution > self.catchment_geometry.resolution:
             x = numpy.arange(
-                offshore_edge_dem.x.min(),
-                offshore_edge_dem.x.max() + resolution / 2,
+                numpy.ceil(offshore_edge_dem.x.min() / resolution) * resolution,
+                numpy.ceil(offshore_edge_dem.x.max() / resolution) * resolution,
                 resolution,
             )
             y = numpy.arange(
-                offshore_edge_dem.y.min(),
-                offshore_edge_dem.y.max() + resolution / 2,
-                resolution,
+                numpy.ceil(offshore_edge_dem.y.max() / resolution) * resolution,
+                numpy.ceil(offshore_edge_dem.y.min() / resolution) * resolution,
+                -resolution,
             )
             offshore_edge_dem = offshore_edge_dem.interp(x=x, y=y, method="nearest")
             offshore_edge_dem = offshore_edge_dem.rio.clip(
@@ -1240,16 +1240,16 @@ class RawDem(LidarBase):
 
         # The x coordinates rounded up to the nearest chunk
         dim_x = numpy.arange(
-            minx + resolution / 2,
-            minx + resolution / 2 + n_chunks_x * chunk_size * resolution,
+            numpy.ceil(minx / resolution) * resolution,
+            numpy.ceil(minx / resolution) * resolution + n_chunks_x * chunk_size * resolution,
             resolution,
             dtype=geometry.RASTER_TYPE,
         )
         dim_x = dim_x.reshape((n_chunks_x, chunk_size))
         # The y coordinates rounded up to the nearest chunk
         dim_y = numpy.arange(
-            maxy - resolution / 2,
-            maxy - resolution / 2 - n_chunks_y * chunk_size * resolution,
+            numpy.ceil(maxy / resolution) * resolution,
+            numpy.ceil(maxy / resolution) * resolution - n_chunks_y * chunk_size * resolution,
             -resolution,
             dtype=geometry.RASTER_TYPE,
         )
@@ -1474,14 +1474,14 @@ class RawDem(LidarBase):
         bounds = self.catchment_geometry.catchment.geometry.bounds
         resolution = self.catchment_geometry.resolution
         dim_x = numpy.arange(
-            bounds.minx.min() + resolution / 2,
-            bounds.maxx.max(),
+            numpy.ceil(bounds.minx.min() / resolution) * resolution,
+            numpy.ceil(bounds.maxx.max() / resolution) * resolution,
             resolution,
             dtype=geometry.RASTER_TYPE,
         )
         dim_y = numpy.arange(
-            bounds.maxy.max() - resolution / 2,
-            bounds.miny.min(),
+            numpy.ceil(bounds.maxy.max() / resolution) * resolution,
+            numpy.ceil(bounds.miny.min() / resolution) * resolution,
             -resolution,
             dtype=geometry.RASTER_TYPE,
         )
