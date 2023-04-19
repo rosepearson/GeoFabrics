@@ -55,7 +55,6 @@ class ProcessorMeasuredRiverWestportTest(unittest.TestCase):
         with open(instruction_file_path, "r") as file_pointer:
             cls.instructions = json.load(file_pointer)
 
-
         # Remove any files from last test, then create a results directory
         cls.cache_dir = test_path / "data"
         cls.results_dir = cls.cache_dir / "results"
@@ -69,14 +68,18 @@ class ProcessorMeasuredRiverWestportTest(unittest.TestCase):
         y1 = 5373303
         catchment = shapely.geometry.Polygon([(x0, y0), (x1, y0), (x1, y1), (x0, y1)])
         catchment = geopandas.GeoSeries([catchment])
-        catchment = catchment.set_crs(cls.instructions["dem"]["output"]["crs"]["horizontal"])
+        catchment = catchment.set_crs(
+            cls.instructions["dem"]["output"]["crs"]["horizontal"]
+        )
 
         # save faked catchment boundary - used as land boundary as well
         catchment_file = cls.results_dir / "catchment.geojson"
         catchment.to_file(catchment_file)
 
         # Run pipeline - download files and generated DEM
-        runner = processor.MeasuredRiverGenerator(cls.instructions["measured"], debug=False)
+        runner = processor.MeasuredRiverGenerator(
+            cls.instructions["measured"], debug=False
+        )
         runner.run()
         runner = processor.RawLidarDemGenerator(cls.instructions["dem"], debug=False)
         runner.run()
@@ -113,11 +116,15 @@ class ProcessorMeasuredRiverWestportTest(unittest.TestCase):
     def test_result_dem_windows(self):
         """A basic comparison between the generated and benchmark DEM"""
 
-        file_path = self.cache_dir / self.instructions["dem"]["data_paths"]["benchmark_dem"]
+        file_path = (
+            self.cache_dir / self.instructions["dem"]["data_paths"]["benchmark_dem"]
+        )
         with rioxarray.rioxarray.open_rasterio(file_path, masked=True) as benchmark_dem:
             benchmark_dem.load()
         # Load in test DEM
-        file_path = self.results_dir / self.instructions["dem"]["data_paths"]["result_dem"]
+        file_path = (
+            self.results_dir / self.instructions["dem"]["data_paths"]["result_dem"]
+        )
         with rioxarray.rioxarray.open_rasterio(file_path, masked=True) as test_dem:
             test_dem.load()
         # compare the generated and benchmark DEMs
@@ -144,11 +151,15 @@ class ProcessorMeasuredRiverWestportTest(unittest.TestCase):
     def test_result_dem_linux(self):
         """A basic comparison between the generated and benchmark DEM"""
 
-        file_path = self.cache_dir / self.instructions["dem"]["data_paths"]["benchmark_dem"]
+        file_path = (
+            self.cache_dir / self.instructions["dem"]["data_paths"]["benchmark_dem"]
+        )
         with rioxarray.rioxarray.open_rasterio(file_path, masked=True) as benchmark_dem:
             benchmark_dem.load()
         # Load in test DEM
-        file_path = self.results_dir / self.instructions["dem"]["data_paths"]["result_dem"]
+        file_path = (
+            self.results_dir / self.instructions["dem"]["data_paths"]["result_dem"]
+        )
         with rioxarray.rioxarray.open_rasterio(file_path, masked=True) as test_dem:
             test_dem.load()
         # compare the generated and benchmark DEMs
