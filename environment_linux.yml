@@ -10,6 +10,7 @@ dependencies:
   - distributed
   - gdal
   - geopandas >=0.10.2
+  - shapely >=2.0.1
   - pdal >=2.3
   - pytest
   - python-dotenv
