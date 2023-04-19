@@ -39,7 +39,7 @@ jobs:
         python-version: ${{ matrix.python-version }}
         miniforge-variant: Mambaforge
         channels: conda-forge, defaults
-        channel-priority: true
+        channel-priority: flexible
         activate-environment: geofabrics
         environment-file: environment_linux.yml
         auto-activate-base: false
