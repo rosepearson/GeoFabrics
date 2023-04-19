@@ -6,15 +6,15 @@ channels:
   - defaults
 dependencies:
   - pip
-  - dask
-  - distributed
-  - gdal
-  - geopandas >=0.10.2
-  - pdal >=2.3
+  - dask >=2023.1.0
+  - distributed >=2023.1.0
+  - gdal >=3.6.2
+  - geopandas >=0.12.2
+  - pdal >=2.5
   - pytest
   - python-dotenv
-  - python-pdal
-  - rioxarray
+  - python-pdal >=3.2.2
+  - rioxarray >=0.13.3
   - geoapis >=0.3.0
   - shapely >=2
   - pip:
