@@ -15,8 +15,7 @@
 	},
 	"measured": {
 			"cross_section_spacing": 10,
-			"samples_per_section": 10,
-			"thalweg_centre": true
+			"samples_per_section": 10
 	}
 }
 
