@@ -8,7 +8,7 @@ dependencies:
   - pip
   - dask
   - distributed
-  - geopandas >=0.10.2
+  - geopandas >=0.12.2
   - shapely >=2.0.0
   - python-dotenv
   - python-pdal >=3.2.2
