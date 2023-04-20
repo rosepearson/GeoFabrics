@@ -615,7 +615,8 @@ class InterpolateMeasuredElevations:
         )
         self.riverbanks["geometry"] = self.riverbanks["geometry"].apply(
             lambda row: shapely.geometry.MultiPoint(
-                row.interpolate(normalised_sample_locations, normalized=True)
+                #row.interpolate(normalised_sample_locations, normalized=True) # shapely 2.0 compatible code
+				[row.interpolate(location, normalized=True) for location in normalised_sample_locations]
             )
         )
 
@@ -691,7 +692,8 @@ class InterpolateMeasuredElevations:
         )
         cross_sections["Sections"] = cross_sections["Sections"].apply(
             lambda line: shapely.geometry.MultiPoint(
-                line.interpolate(normalised_node_locations, normalized=True)
+				#line.interpolate(normalised_node_locations, normalized=True) # shapely 2.0 compatible code
+				[line.interpolate(location, normalized=True) for location in normalised_node_locations]
             )
         )
 
@@ -768,7 +770,8 @@ class InterpolateMeasuredElevations:
                 ]
             )
             return shapely.geometry.MultiPoint(
-                line.interpolate(normalised_node_locations, normalized=True)
+                #line.interpolate(normalised_node_locations, normalized=True) # shapely 2.0 compatible code
+				[line.interpolate(location, normalized=True) for location in normalised_node_locations]
             )
 
         # Apply the function for sampling along each cross section
