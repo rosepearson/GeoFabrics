@@ -15,9 +15,9 @@ dependencies:
   - pytest
   - python-dotenv
   - python-pdal
-  - geoapis >=0.3.2
   - pip:
     - netcdf4
+    - geoapis >=0.3.2
     - osmpythontools >=0.3.5
 
 prefix: C:\ProgramData\Anaconda3\envs\geofabrics
