@@ -225,7 +225,7 @@ class ProcessorLocalFilesOffshoreResTest(unittest.TestCase):
         numpy.testing.assert_array_almost_equal(
             test_dem.z.data,
             benchmark_dem.z.data,
-			decimal=4,
+            decimal=4,
             err_msg="The generated result_dem has different data from the "
             + "benchmark_dem",
         )
