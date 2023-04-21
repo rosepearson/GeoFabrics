@@ -28,7 +28,7 @@ jobs:
       with:
         auto-update-conda: true
         miniforge-variant: Mambaforge
-        channels: conda-forge, defaults
+        channels: conda-forge # defaults automatically added
         python-version: ${{ matrix.python-version }}
         activate-environment: geofabrics
         environment-file: environment_linux.yml
