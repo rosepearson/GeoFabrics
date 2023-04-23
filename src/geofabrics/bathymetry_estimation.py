@@ -572,9 +572,7 @@ class InterpolateMeasuredElevations:
                 f"has {self.measured_sections.crs}"
             )
 
-        if not (
-            self.measured_sections.geometry.type == 'LineString'
-        ).all():
+        if not (self.measured_sections.geometry.type == "LineString").all():
             raise Exception(
                 "The individual sections of the self.measured_sections must "
                 "all be of geometry type `LineString`. These are of type"
@@ -609,9 +607,7 @@ class InterpolateMeasuredElevations:
         )
         # Clip measured sections
         self.measured_sections = self.measured_sections.clip(polygon).sort_index()
-        if not (
-            self.measured_sections.geometry.type == 'LineString'
-        ).all():
+        if not (self.measured_sections.geometry.type == "LineString").all():
             raise Exception(
                 "The individual sections of the self.measured_sections must "
                 "all be of geometry type `LineString` after clipping. Instead"
