@@ -572,6 +572,15 @@ class InterpolateMeasuredElevations:
                 f"has {self.measured_sections.crs}"
             )
 
+        if not (
+            self.measured_sections.geometry.type == 'LineString'
+        ).all():
+            raise Exception(
+                "The individual sections of the self.measured_sections must "
+                "all be of geometry type `LineString`. These are of type"
+                f"{self.measured_sections.geometry.type}"
+            )
+
     def interpolate(self, samples_per_section: int, thalweg_centre: bool = True):
         """Interpolate with equally spaced points along each cross section
 
@@ -600,6 +609,14 @@ class InterpolateMeasuredElevations:
         )
         # Clip measured sections
         self.measured_sections = self.measured_sections.clip(polygon).sort_index()
+        if not (
+            self.measured_sections.geometry.type == 'LineString'
+        ).all():
+            raise Exception(
+                "The individual sections of the self.measured_sections must "
+                "all be of geometry type `LineString` after clipping. Instead"
+                f"{self.measured_sections.geometry.type}"
+            )
         measured_sections_exploded = self.measured_sections.apply(
             lambda row: shapely.geometry.MultiPoint(row["geometry"].coords), axis=1
         ).explode(index_parts=True)
