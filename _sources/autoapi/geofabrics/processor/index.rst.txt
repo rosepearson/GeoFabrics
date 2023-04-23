@@ -24,6 +24,7 @@ Classes
    geofabrics.processor.RawLidarDemGenerator
    geofabrics.processor.HydrologicDemGenerator
    geofabrics.processor.RoughnessLengthGenerator
+   geofabrics.processor.MeasuredRiverGenerator
    geofabrics.processor.RiverBathymetryGenerator
    geofabrics.processor.WaterwayBedElevationEstimator
 
@@ -44,7 +45,7 @@ Classes
       A clase to create metadata to be added as netCDF attributes.
 
 
-   .. py:method:: get_instruction_path(key)
+   .. py:method:: get_instruction_path(key, defaults = {})
 
       Return the file path from the instruction file, or default if there
       is a default value and the local cache is specified. Raise an error if
@@ -156,7 +157,7 @@ Classes
 
 
 
-.. py:class:: RawLidarDemGenerator(json_instructions)
+.. py:class:: RawLidarDemGenerator(json_instructions, debug = True)
 
    Bases: :py:obj:`BaseProcessor`
 
@@ -186,7 +187,7 @@ Classes
 
 
 
-.. py:class:: HydrologicDemGenerator(json_instructions)
+.. py:class:: HydrologicDemGenerator(json_instructions, debug = True)
 
    Bases: :py:obj:`BaseProcessor`
 
@@ -218,7 +219,7 @@ Classes
 
 
 
-.. py:class:: RoughnessLengthGenerator(json_instructions)
+.. py:class:: RoughnessLengthGenerator(json_instructions, debug = True)
 
    Bases: :py:obj:`BaseProcessor`
 
@@ -237,6 +238,31 @@ Classes
 
       This method executes the geofabrics generation pipeline to produce geofabric
       derivatives.
+
+
+
+.. py:class:: MeasuredRiverGenerator(json_instructions, debug = True)
+
+   Bases: :py:obj:`BaseProcessor`
+
+   MeasuredRiverGenerator executes a pipeline to interpolate between
+   measured river cross section elevations. A json_instructions file defines
+   the pipeline logic and data.
+
+
+   .. py:method:: get_measured_instruction(key)
+
+      Return true if the DEMs are required for later processing
+
+
+      :param instructions  The json instructions defining the behaviour:
+
+
+   .. py:method:: run()
+
+      This method extracts a main channel then executes the DemGeneration
+      pipeline to produce a DEM before sampling this to extimate width, slope
+      and eventually depth.
 
 
 

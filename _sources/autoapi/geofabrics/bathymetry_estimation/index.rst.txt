@@ -19,6 +19,7 @@ Classes
 .. autoapisummary::
 
    geofabrics.bathymetry_estimation.Channel
+   geofabrics.bathymetry_estimation.InterpolateMeasuredElevations
    geofabrics.bathymetry_estimation.ChannelCharacteristics
 
 
@@ -116,6 +117,40 @@ Classes
       :param spacing: The spacing between sampled points along straight segments
       :param sample_direction: Are the reaches sampled in the same direction they are ordered.
                                1 if in the same direction, -1 if in the opposite direction.
+
+
+
+.. py:class:: InterpolateMeasuredElevations(riverbank_file, measured_sections_file, cross_section_spacing)
+
+   Interpolate measured river bed elevations. Requires LineStrings of
+   riverbed elevations, and the LineStrings defining the left and right
+   riverbank.
+
+   .. py:method:: check_valid_inputs()
+
+      Check expected entries in the input data
+
+
+   .. py:method:: interpolate(samples_per_section, thalweg_centre = True)
+
+      Interpolate with equally spaced points along each cross section
+
+      :param number_samples: The number of samples along each cross section.
+
+
+   .. py:method:: uniform_spacing(samples_per_section, cross_sections)
+
+      Interpolate with equally spaced points along each cross section
+
+      :param number_samples: The number of samples along each cross section.
+
+
+   .. py:method:: thalweg_centred_spacing(samples_per_section, cross_sections, measured_sections_exploded)
+
+      Interpolate with equal number of equally spaced points on each side
+      of the Thalweg.
+
+      :param number_samples: The number of samples along each cross section.
 
 
 

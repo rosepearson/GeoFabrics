@@ -169,6 +169,11 @@ Classes
       Return the points as a single array.
 
 
+   .. py:method:: bank_heights_exist(type_label)
+
+      Return true if the bank heights are defined in array
+
+
    .. py:method:: filtered_bank_height_points(type_label = None)
 
       Return the points with 'Z' being the estimated bank height as a single array.
