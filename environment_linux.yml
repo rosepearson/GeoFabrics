@@ -10,14 +10,14 @@ dependencies:
   - distributed
   - gdal
   - geopandas >=0.10.2
-  - pdal >=2.3
+  - pdal
+  - rioxarray
   - pytest
   - python-dotenv
   - python-pdal
-  - rioxarray
-  - geoapis >=0.3.0
   - pip:
     - netcdf4
+    - geoapis >=0.3.2
     - osmpythontools >=0.3.5
 
 prefix: C:\ProgramData\Anaconda3\envs\geofabrics

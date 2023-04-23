@@ -620,6 +620,15 @@ class EstimatedBathymetryPoints:
             ).to_list()
         return points_array
 
+    def bank_heights_exist(self, type_label: str) -> bool:
+        """Return true if the bank heights are defined in array"""
+        return (
+            self.BANK_HEIGHT_LABEL in self._points.columns
+            and self._points[self._points["type"] == type_label][
+                self.BANK_HEIGHT_LABEL
+            ].any()
+        )
+
     def filtered_bank_height_points(self, type_label: str = None) -> numpy.ndarray:
         """Return the points with 'Z' being the estimated bank height as a single array."""
 

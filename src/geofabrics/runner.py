@@ -60,6 +60,13 @@ def from_instructions_dict(instructions: dict):
 
     # Run the pipeline
     initial_start_time = datetime.datetime.now()
+    if "measured" in instructions:
+        # Estimate river channel bathymetry
+        run_processor_class(
+            processor_class=processor.MeasuredRiverGenerator,
+            processor_label="measured",
+            instructions=instructions,
+        )
     if "rivers" in instructions:
         # Estimate river channel bathymetry
         run_processor_class(
