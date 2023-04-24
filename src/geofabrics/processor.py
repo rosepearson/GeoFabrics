@@ -1674,12 +1674,12 @@ class RiverBathymetryGenerator(BaseProcessor):
             width_values=width_values,
         )  # TODO - remove and don't make correction
         width_values["bed_elevation_Neal_et_al"] = (
-            width_values[min_z_name] - active_channel_bank_depth
+            width_values[min_z_name] + width_values[threshold_name] - active_channel_bank_depth
         )
         if self.debug:
             # Optionally write out additional depth information
-            width_values["depth_Neal_et_al"] = active_channel_bank_depth
-            width_values["flood_depth_Neal_et_al"] = full_bank_depth
+            width_values["area_adjusted_depth_Neal_et_al"] = active_channel_bank_depth
+            width_values["depth_Neal_et_al"] = full_bank_depth
         # Calculate depths and bed elevation using the Rupp & Smart approach (Hydrologic
         # geometry)
         full_bank_depth = self._calculate_rupp_and_smart_depth(
@@ -1696,12 +1696,12 @@ class RiverBathymetryGenerator(BaseProcessor):
             width_values=width_values,
         )  # TODO - remove and don't make correction
         width_values["bed_elevation_Rupp_and_Smart"] = (
-            width_values[min_z_name] - active_channel_bank_depth
+            width_values[min_z_name] + width_values[threshold_name] - active_channel_bank_depth
         )
         if self.debug:
             # Optionally write out additional depth information
-            width_values["depth_Rupp_and_Smart"] = active_channel_bank_depth
-            width_values["flood_depth_Rupp_and_Smart"] = full_bank_depth
+            width_values["area_adjusted_depth_Rupp_and_Smart"] = active_channel_bank_depth
+            width_values["depth_Rupp_and_Smart"] = full_bank_depth
         # Save the bed elevations
         values_to_save = [
             "geometry",
