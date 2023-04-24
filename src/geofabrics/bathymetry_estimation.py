@@ -1423,6 +1423,7 @@ class ChannelCharacteristics:
             widths["widths"].append((stop_i - start_i) * resolution)
             widths["threshold"].append(dz_bankfull)
             widths["channel_count"].append(channel_count)
+        # Add threshold/width information as newcolumns to data frame
         for key in widths.keys():
             cross_sections[key] = widths[key]
         # Record if the width is valid - only one possible channel that starts and ends
