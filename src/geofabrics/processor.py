@@ -1855,13 +1855,15 @@ class RiverBathymetryGenerator(BaseProcessor):
             self.characterise_channel()
         # Estimate channel and fan depths if not already done
         if not self.channel_bathymetry_exist():
-            logging.info("Estimating the channel and fan bathymetry.")
-            print("Estimating the channel and fan bathymetry.")
+            logging.info("Estimating the channel bathymetry.")
+            print("Estimating the channel bathymetry.")
 
             # Calculate and save river bathymetry depths
             self.calculate_river_bed_elevations()
             # check if the river mouth is to be estimated
             if self.get_bathymetry_instruction("estimate_fan"):
+                logging.info("Estimating the fan bathymetry.")
+                print("Estimating the fan bathymetry.")
                 self.estimate_river_mouth_fan()
         if self.debug:
             # Record the parameter used during execution - append to existing
