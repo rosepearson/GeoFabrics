@@ -1717,8 +1717,8 @@ class RiverBathymetryGenerator(BaseProcessor):
                 [
                     "depth_Neal_et_al",
                     "depth_Rupp_and_Smart",
-                    "flood_depth_Neal_et_al",
-                    "flood_depth_Rupp_and_Smart",
+                    "area_adjusted_depth_Neal_et_al",
+                    "area_adjusted_depth_Rupp_and_Smart",
                 ]
             )
         # Save the widths and depths
