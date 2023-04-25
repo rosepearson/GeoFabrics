@@ -1337,87 +1337,76 @@ class ChannelCharacteristics:
             widths["last_flat_bank_i"].append(stop_i)
             widths["flat_widths"].append((stop_i - start_i) * resolution)
 
-            # Iterate out from the fixed threshold width until the banks go down, or the
-            # max threshold is reached
-            maximum_z = z_water + maximum_threshold
-            if numpy.isnan(start_i) or numpy.isnan(stop_i):
-                # No valid width to begin with
+            # Iterate out from the fixed threshold width until the banks go
+            # down, or the max threshold is reached
+            if numpy.isnan(start_i) or numpy.isnan(stop_i) or numpy.isnan([gnd_samples[start_i], veg_samples[start_i]]).all() or numpy.isnan([gnd_samples[stop_i], veg_samples[stop_i]]).all():
+                # No valid width or elevations to begin with
                 dz_bankfull = numpy.nan
             else:
-                # Iterate out from the fixed threshold width until the banks go down,
-                # or the max threshold is reached
-                z_bankfull = numpy.nanmin(gnd_samples[[start_i, stop_i]])
+                # Calculate the threshold elevation (z)
+                maximum_z = z_water + maximum_threshold
+                # The bankfull indices - updated if moving out each iteration
                 start_i_bf = start_i
                 stop_i_bf = stop_i
                 dwidth = 1  # Change in width this iteration
+                # Calculate the initial end elevations - checked above not NaN
+                prev_start_elevation = numpy.nanmin([gnd_samples[start_i],
+                                                     veg_samples[start_i]])
+                prev_stop_elevation = numpy.nanmin([gnd_samples[stop_i],
+                                                    veg_samples[stop_i]])
 
-                while (
+                while ( # Stop when no move out or at end of section
                     start_i_bf > 0
                     and stop_i_bf < self.number_of_samples - 1
                     and dwidth > 0
                 ):
                     dwidth = 0
-
-                    # break if going down - TODO do after other side finished increasing
-                    if gnd_samples[start_i_bf - 1] < numpy.nanmax(
-                        [gnd_samples[start_i_bf], z_bankfull]
-                    ) or gnd_samples[stop_i_bf + 1] < numpy.nanmax(
-                        [gnd_samples[stop_i_bf], z_bankfull]
-                    ):
-                        break
-                    # if not, extend whichever bank is lower
-                    if gnd_samples[start_i_bf - 1] > gnd_samples[stop_i_bf + 1]:
-                        stop_i_bf += 1
-                        dwidth += 1
-                    elif gnd_samples[start_i_bf - 1] < gnd_samples[stop_i_bf + 1]:
-                        start_i_bf -= 1
-                        dwidth += 1
-                    elif gnd_samples[start_i_bf - 1] == gnd_samples[stop_i_bf + 1]:
-                        start_i_bf -= 1
-                        stop_i_bf += 1
-                        dwidth += 2
+                    # Update the end elevations
+                    elevations = [gnd_samples[start_i_bf - 1],
+                                  veg_samples[start_i_bf - 1]]
+                    if numpy.isnan(elevations).all():
+                        start_elevation = numpy.nan
                     else:
-                        # extend if value is nan and not vegetated
-                        if numpy.isnan(gnd_samples[start_i_bf - 1]) and numpy.isnan(
-                            veg_samples[start_i_bf - 1]
-                        ):
-                            start_i_bf -= 1
-                            dwidth += 1
-                        if numpy.isnan(gnd_samples[stop_i_bf + 1]) and numpy.isnan(
-                            veg_samples[start_i_bf + 1]
-                        ):
-                            stop_i_bf += 1
-                            dwidth += 1
-                    # Break if the threshold has been meet before updating maz_z
+                        start_elevation = numpy.nanmin(elevations)
+                    elevations = [gnd_samples[start_i_bf + 1],
+                                  veg_samples[start_i_bf + 1]]
+                    if numpy.isnan(elevations).all():
+                        stop_elevation = numpy.nan
+                    else:
+                        stop_elevation = numpy.nanmin(elevations)
+
+                    # Move outwards if all Nan, or lowest is going up
+                    if numpy.isnan(start_elevation):
+                        # start is all NaN - move out
+                        start_i_bf -= 1
+                        dwidth += 1
+                    elif numpy.isnan(stop_elevation):
+                        # stop is all NaN - move out
+                        stop_i_bf += 1
+                        dwidth += 1
+                    elif start_elevation <= stop_elevation and start_elevation > prev_start_elevation:
+                        # Start is lowest and going up - update prev elevation
+                        start_i_bf -= 1
+                        dwidth += 1
+                        prev_start_elevation = start_elevation
+                    elif stop_elevation <= start_elevation and stop_elevation > prev_start_elevation:
+                        # stop is lowest and going up - update prev elevation
+                        stop_i_bf += 1
+                        dwidth += 1
+                        prev_stop_elevation = stop_elevation
+                    # Break if threshold is reached
                     if (
-                        gnd_samples[start_i_bf] >= maximum_z
-                        or gnd_samples[stop_i_bf] >= maximum_z
-                    ):
-                        break  # todo - set to the max specified threshold
-                    # Break if ground is nan, but there are vegatation returns
-                    if numpy.isnan(gnd_samples[start_i_bf]) and not numpy.isnan(
-                        veg_samples[start_i_bf]
-                    ):
-                        break  # todo - look at waikanae and consider checking the vegetation hights and only saying bank fill if over threshold or going down
-                    if numpy.isnan(gnd_samples[stop_i_bf]) and not numpy.isnan(
-                        veg_samples[stop_i_bf]
-                    ):
+                            not numpy.isnan([start_elevation, stop_elevation]).all()
+                            and numpy.nanmin([start_elevation, stop_elevation]).all() > maximum_z):
                         break
-                    # update maximum value so far
-                    if not numpy.isnan(
-                        [gnd_samples[start_i_bf], gnd_samples[stop_i_bf]]
-                    ).all():
-                        z_bankfull = max(
-                            z_bankfull,
-                            numpy.nanmin(
-                                [gnd_samples[start_i_bf], gnd_samples[stop_i_bf]]
-                            ),
-                        )
-                # Set the detected bankful values
-                dz_bankfull = z_bankfull - z_water
+
+                # Update with the final bankfull values
                 start_i = start_i_bf
                 stop_i = stop_i_bf
-            # assign the longest width
+                z_bankfull = min(max(prev_start_elevation, prev_stop_elevation), maximum_z)
+                dz_bankfull = z_bankfull - z_water
+
+            # Add section info to the list for all sections
             widths["first_bank_i"].append(start_i)
             widths["last_bank_i"].append(stop_i)
             widths["widths"].append((stop_i - start_i) * resolution)
@@ -1426,13 +1415,12 @@ class ChannelCharacteristics:
         # Add threshold/width information as newcolumns to data frame
         for key in widths.keys():
             cross_sections[key] = widths[key]
-        # Record if the width is valid - only one possible channel that starts and ends
-        # within the samples
+        # Check valid - one channel, start & end within section, non-NaN thres
         valid_mask = cross_sections["channel_count"] == 1
         valid_mask &= cross_sections["first_bank_i"] > 0
         valid_mask &= cross_sections["last_bank_i"] < self.number_of_samples - 1
-        valid_mask &= cross_sections["threshold"] < maximum_threshold
         valid_mask &= numpy.logical_not(numpy.isnan(cross_sections["threshold"]))
+        #valid_mask &= cross_sections["threshold"] < maximum_threshold
         cross_sections["valid"] = valid_mask
 
     def fixed_threshold_width(
@@ -1575,7 +1563,7 @@ class ChannelCharacteristics:
 
                     # Detect banks - either ground above threshold, or no ground with
                     # vegetation over threshold
-                    if numpy.isnan(stop_i) and gnd_elevation_over_minimum > threshold:
+                    if gnd_elevation_over_minimum > threshold:
                         # Leaving the channel
                         stop_i = start_index + i
                 # work backward checking height
@@ -1583,21 +1571,19 @@ class ChannelCharacteristics:
                     gnd_elevation_over_minimum = veg_samples[start_index - i] - z_water
 
                     # Detect bank
-                    if numpy.isnan(start_i) and gnd_elevation_over_minimum > threshold:
+                    if gnd_elevation_over_minimum > threshold:
                         # Leaving the channel
                         start_i = start_index - i
                 # break if both edges detected
                 if not numpy.isnan(start_i) and not numpy.isnan(stop_i):
                     break
                 # break if both ends of the sampled cross section reached
-                if (
+                if (  # Set to max range
                     start_index + i >= self.number_of_samples - 1
                     and start_index - i <= 0
                 ):
-                    if numpy.isnan(start_i):
-                        start_i = 0
-                    if numpy.isnan(stop_i):
-                        stop_i = self.number_of_samples - 1
+                    start_i = 0
+                    stop_i = self.number_of_samples - 1
                     break
         return start_i, stop_i
 
