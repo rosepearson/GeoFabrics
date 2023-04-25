@@ -1339,7 +1339,12 @@ class ChannelCharacteristics:
 
             # Iterate out from the fixed threshold width until the banks go
             # down, or the max threshold is reached
-            if numpy.isnan(start_i) or numpy.isnan(stop_i) or numpy.isnan([gnd_samples[start_i], veg_samples[start_i]]).all() or numpy.isnan([gnd_samples[stop_i], veg_samples[stop_i]]).all():
+            if (
+                numpy.isnan(start_i)
+                or numpy.isnan(stop_i)
+                or numpy.isnan([gnd_samples[start_i], veg_samples[start_i]]).all()
+                or numpy.isnan([gnd_samples[stop_i], veg_samples[stop_i]]).all()
+            ):
                 # No valid width or elevations to begin with
                 dz_bankfull = numpy.nan
             else:
@@ -1350,26 +1355,32 @@ class ChannelCharacteristics:
                 stop_i_bf = stop_i
                 dwidth = 1  # Change in width this iteration
                 # Calculate the initial end elevations - checked above not NaN
-                prev_start_elevation = numpy.nanmin([gnd_samples[start_i],
-                                                     veg_samples[start_i]])
-                prev_stop_elevation = numpy.nanmin([gnd_samples[stop_i],
-                                                    veg_samples[stop_i]])
+                prev_start_elevation = numpy.nanmin(
+                    [gnd_samples[start_i], veg_samples[start_i]]
+                )
+                prev_stop_elevation = numpy.nanmin(
+                    [gnd_samples[stop_i], veg_samples[stop_i]]
+                )
 
-                while ( # Stop when no move out or at end of section
+                while (  # Stop when no move out or at end of section
                     start_i_bf > 0
                     and stop_i_bf < self.number_of_samples - 1
                     and dwidth > 0
                 ):
                     dwidth = 0
                     # Update the end elevations
-                    elevations = [gnd_samples[start_i_bf - 1],
-                                  veg_samples[start_i_bf - 1]]
+                    elevations = [
+                        gnd_samples[start_i_bf - 1],
+                        veg_samples[start_i_bf - 1],
+                    ]
                     if numpy.isnan(elevations).all():
                         start_elevation = numpy.nan
                     else:
                         start_elevation = numpy.nanmin(elevations)
-                    elevations = [gnd_samples[start_i_bf + 1],
-                                  veg_samples[start_i_bf + 1]]
+                    elevations = [
+                        gnd_samples[start_i_bf + 1],
+                        veg_samples[start_i_bf + 1],
+                    ]
                     if numpy.isnan(elevations).all():
                         stop_elevation = numpy.nan
                     else:
@@ -1384,26 +1395,36 @@ class ChannelCharacteristics:
                         # stop is all NaN - move out
                         stop_i_bf += 1
                         dwidth += 1
-                    elif start_elevation <= stop_elevation and start_elevation > prev_start_elevation:
+                    elif (
+                        start_elevation <= stop_elevation
+                        and start_elevation > prev_start_elevation
+                    ):
                         # Start is lowest and going up - update prev elevation
                         start_i_bf -= 1
                         dwidth += 1
                         prev_start_elevation = start_elevation
-                    elif stop_elevation <= start_elevation and stop_elevation > prev_start_elevation:
+                    elif (
+                        stop_elevation <= start_elevation
+                        and stop_elevation > prev_start_elevation
+                    ):
                         # stop is lowest and going up - update prev elevation
                         stop_i_bf += 1
                         dwidth += 1
                         prev_stop_elevation = stop_elevation
                     # Break if threshold is reached
                     if (
-                            not numpy.isnan([start_elevation, stop_elevation]).all()
-                            and numpy.nanmin([start_elevation, stop_elevation]).all() > maximum_z):
+                        not numpy.isnan([start_elevation, stop_elevation]).all()
+                        and numpy.nanmin([start_elevation, stop_elevation]).all()
+                        > maximum_z
+                    ):
                         break
 
                 # Update with the final bankfull values
                 start_i = start_i_bf
                 stop_i = stop_i_bf
-                z_bankfull = min(max(prev_start_elevation, prev_stop_elevation), maximum_z)
+                z_bankfull = min(
+                    max(prev_start_elevation, prev_stop_elevation), maximum_z
+                )
                 dz_bankfull = z_bankfull - z_water
 
             # Add section info to the list for all sections
@@ -1420,7 +1441,7 @@ class ChannelCharacteristics:
         valid_mask &= cross_sections["first_bank_i"] > 0
         valid_mask &= cross_sections["last_bank_i"] < self.number_of_samples - 1
         valid_mask &= numpy.logical_not(numpy.isnan(cross_sections["threshold"]))
-        #valid_mask &= cross_sections["threshold"] < maximum_threshold
+        # valid_mask &= cross_sections["threshold"] < maximum_threshold
         cross_sections["valid"] = valid_mask
 
     def fixed_threshold_width(
