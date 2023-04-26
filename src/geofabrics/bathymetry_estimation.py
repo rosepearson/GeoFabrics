@@ -1398,18 +1398,22 @@ class ChannelCharacteristics:
                     elif (
                         start_elevation <= stop_elevation
                         and start_elevation > prev_start_elevation
+                        and start_elevation > z_water + threshold
                     ):
-                        # Start is lowest and going up - update prev elevation
+                        # Start is lowest and going up and above min threshold
                         start_i_bf -= 1
                         dwidth += 1
+                        # update prev elevation
                         prev_start_elevation = start_elevation
                     elif (
                         stop_elevation <= start_elevation
                         and stop_elevation > prev_start_elevation
+                        and stop_elevation > z_water + threshold
                     ):
-                        # stop is lowest and going up - update prev elevation
+                        # stop is lowest and going up  and above min threshold
                         stop_i_bf += 1
                         dwidth += 1
+                        # update prev elevation
                         prev_stop_elevation = stop_elevation
                     # Break if threshold is reached
                     if (

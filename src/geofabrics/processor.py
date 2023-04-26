@@ -1666,6 +1666,10 @@ class RiverBathymetryGenerator(BaseProcessor):
             slope_name=slope_name,
             threshold_name=threshold_name,
         )
+        if not (full_bank_depth >= 0).all():
+            logging.warning("Unexpected negative depths. Setting to zero. "
+                            "Check `river_characteristics.geojson` file.")
+            full_bank_depth[full_bank_depth < 0] = 0
         active_channel_bank_depth = self._convert_full_bank_to_channel_depth(
             full_bank_depth=full_bank_depth,
             threshold_name=threshold_name,
@@ -1673,10 +1677,16 @@ class RiverBathymetryGenerator(BaseProcessor):
             full_bank_width_name=width_name,
             width_values=width_values,
         )  # TODO - remove and don't make correction
+        # Ensure valid depths before converting to bed elevations
+        if not ((full_bank_depth - width_values[threshold_name]) >= 0).all():
+            logging.warning("Depths less than the thresholds. Try reduce the "
+                            "`max_bank_height`. Setting to thresholds.")
+            mask = (full_bank_depth - width_values[threshold_name]) < 0
+            full_bank_depth[mask] = width_values[threshold_name][mask]
         width_values["bed_elevation_Neal_et_al"] = (
             width_values[min_z_name]
             + width_values[threshold_name]
-            - active_channel_bank_depth
+            - full_bank_depth
         )
         if self.debug:
             # Optionally write out additional depth information
@@ -1690,6 +1700,10 @@ class RiverBathymetryGenerator(BaseProcessor):
             slope_name=slope_name,
             threshold_name=threshold_name,
         )
+        if not (full_bank_depth >= 0).all():
+            logging.warning("Unexpected negative depths. Setting to zero. "
+                            "Check `river_characteristics.geojson` file.")
+            full_bank_depth[full_bank_depth < 0] = 0
         active_channel_bank_depth = self._convert_full_bank_to_channel_depth(
             full_bank_depth=full_bank_depth,
             threshold_name=threshold_name,
@@ -1697,10 +1711,16 @@ class RiverBathymetryGenerator(BaseProcessor):
             full_bank_width_name=width_name,
             width_values=width_values,
         )  # TODO - remove and don't make correction
+        # Ensure valid depths before converting to bed elevations
+        if not ((full_bank_depth - width_values[threshold_name]) >= 0).all():
+            logging.warning("Depths less than the thresholds. Try reduce the "
+                            "`max_bank_height`. Setting to thresholds.")
+            mask = (full_bank_depth - width_values[threshold_name]) < 0
+            full_bank_depth[mask] = width_values[threshold_name][mask]
         width_values["bed_elevation_Rupp_and_Smart"] = (
             width_values[min_z_name]
             + width_values[threshold_name]
-            - active_channel_bank_depth
+            - full_bank_depth
         )
         if self.debug:
             # Optionally write out additional depth information
@@ -1791,19 +1811,22 @@ class RiverBathymetryGenerator(BaseProcessor):
             flat_width_name  The name of the down-river channel slope column.
             threshold_name The name of the bank height threshold column."""
 
-        # The depth of flood water above the water surface
-        flood_depth = width_values[threshold_name]
-
-        # Calculate the area estimated for full bank width flow
+        # Calculate the estimated full bank flow area
         full_flood_area = full_bank_depth * width_values[full_bank_width_name]
 
-        # Calculate the flood waters (i.e. flowing above the water surface), but with a
-        # correction for the exposed river banks
-        above_water_area = flood_depth * width_values[full_bank_width_name]
-        exposed_bank_area = flood_depth * (
+        # Threshold is the depth of flood water above the water surface
+        threshold = width_values[threshold_name]
+
+        # Calculate the area of flood waters (i.e. above the water surface)
+        above_water_area = threshold * width_values[full_bank_width_name]
+        # Calculate the above water area that is actually banks (assume linear)
+        exposed_bank_area = threshold * (
             width_values[full_bank_width_name] - width_values[flat_width_name]
-        )
-        assert (exposed_bank_area >= 0).all(), "The exposed bank area must be postive"
+        ) / 2
+        if not (exposed_bank_area >= 0).all():
+            logging.warning("The exposed bank area is not always postive. "
+                            "Setting to zero.")
+            exposed_bank_area[exposed_bank_area < 0] = 0
         extra_flood_area = above_water_area - exposed_bank_area
 
         # The area to convert to the active 'flat' channel depth
@@ -1811,6 +1834,13 @@ class RiverBathymetryGenerator(BaseProcessor):
 
         # Calculate the depth from the area
         flat_flow_depth = flat_flow_area / width_values[flat_width_name]
+
+        # Ensure not negative
+        if not (flat_flow_depth >= 0).all():
+            logging.warning("Negative area-adjusted depths. Try reduce the "
+                            "`max_bank_height`. Setting to zero. # affected: "
+                            f"{len(flat_flow_depth[flat_flow_depth < 0])}.")
+            flat_flow_depth[flat_flow_depth < 0] = 0
 
         return flat_flow_depth
 
