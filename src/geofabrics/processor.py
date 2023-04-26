@@ -1681,14 +1681,15 @@ class RiverBathymetryGenerator(BaseProcessor):
         )  # TODO - remove and don't make correction
         # Ensure valid depths before converting to bed elevations
         if not ((full_bank_depth - width_values[threshold_name]) >= 0).all():
+            mask = (full_bank_depth - width_values[threshold_name]) < 0
             logging.warning(
                 "Depths less than the thresholds. Try reduce the "
-                "`max_bank_height`. Setting to thresholds."
+                "`max_bank_height`. Setting to thresholds. "
+                f"{mask.sum()} affected."
             )
-            mask = (full_bank_depth - width_values[threshold_name]) < 0
             full_bank_depth[mask] = width_values[threshold_name][mask]
         width_values["bed_elevation_Neal_et_al"] = (
-            width_values[min_z_name] + width_values[threshold_name] - full_bank_depth
+            width_values[min_z_name] - active_channel_bank_depth
         )
         if self.debug:
             # Optionally write out additional depth information
@@ -1717,14 +1718,15 @@ class RiverBathymetryGenerator(BaseProcessor):
         )  # TODO - remove and don't make correction
         # Ensure valid depths before converting to bed elevations
         if not ((full_bank_depth - width_values[threshold_name]) >= 0).all():
+            mask = (full_bank_depth - width_values[threshold_name]) < 0
             logging.warning(
                 "Depths less than the thresholds. Try reduce the "
-                "`max_bank_height`. Setting to thresholds."
+                "`max_bank_height`. Setting to thresholds. "
+                f"{mask.sum()} affected."
             )
-            mask = (full_bank_depth - width_values[threshold_name]) < 0
             full_bank_depth[mask] = width_values[threshold_name][mask]
         width_values["bed_elevation_Rupp_and_Smart"] = (
-            width_values[min_z_name] + width_values[threshold_name] - full_bank_depth
+            width_values[min_z_name] - active_channel_bank_depth
         )
         if self.debug:
             # Optionally write out additional depth information
