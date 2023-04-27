@@ -1,0 +1,26 @@
+<PAMDataset>
+  <Subdataset name="source_class">
+    <PAMDataset>
+      <PAMRasterBand band="1">
+        <Metadata>
+          <MDI key="STATISTICS_MAXIMUM">4</MDI>
+          <MDI key="STATISTICS_MEAN">1.8138528138528</MDI>
+          <MDI key="STATISTICS_MINIMUM">0</MDI>
+          <MDI key="STATISTICS_STDDEV">0.87179741572037</MDI>
+        </Metadata>
+      </PAMRasterBand>
+    </PAMDataset>
+  </Subdataset>
+  <Subdataset name="z">
+    <PAMDataset>
+      <PAMRasterBand band="1">
+        <Metadata>
+          <MDI key="STATISTICS_MAXIMUM">10.7239112854</MDI>
+          <MDI key="STATISTICS_MEAN">0.48260508990398</MDI>
+          <MDI key="STATISTICS_MINIMUM">-5.4790663719177</MDI>
+          <MDI key="STATISTICS_STDDEV">2.5543559772479</MDI>
+        </Metadata>
+      </PAMRasterBand>
+    </PAMDataset>
+  </Subdataset>
+</PAMDataset>
