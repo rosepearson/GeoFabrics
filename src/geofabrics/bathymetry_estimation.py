@@ -1368,7 +1368,7 @@ class ChannelCharacteristics:
                     and dwidth > 0
                 ):
                     dwidth = 0
-                    # Update the end elevations
+                    # Get the current start elevation
                     elevations = [
                         gnd_samples[start_i_bf - 1],
                         veg_samples[start_i_bf - 1],
@@ -1377,9 +1377,10 @@ class ChannelCharacteristics:
                         start_elevation = numpy.nan
                     else:
                         start_elevation = numpy.nanmin(elevations)
+                    # Get the current end elevation
                     elevations = [
-                        gnd_samples[start_i_bf + 1],
-                        veg_samples[start_i_bf + 1],
+                        gnd_samples[stop_i_bf + 1],
+                        veg_samples[stop_i_bf + 1],
                     ]
                     if numpy.isnan(elevations).all():
                         stop_elevation = numpy.nan
@@ -1407,7 +1408,7 @@ class ChannelCharacteristics:
                         prev_start_elevation = start_elevation
                     elif (
                         stop_elevation <= start_elevation
-                        and stop_elevation > prev_start_elevation
+                        and stop_elevation > prev_stop_elevation
                         and stop_elevation > z_water + threshold
                     ):
                         # stop is lowest and going up  and above min threshold
