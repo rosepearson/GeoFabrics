@@ -60,7 +60,7 @@ class BaseProcessor(abc.ABC):
         }
         return metadata
 
-    def get_instruction_path(self, key: str, defaults: dict = {}) -> str:
+    def get_instruction_path(self, key: str, defaults: dict = {}) -> pathlib.Path:
         """Return the file path from the instruction file, or default if there
         is a default value and the local cache is specified. Raise an error if
         the key is not in the instructions."""
@@ -1038,8 +1038,10 @@ class MeasuredRiverGenerator(BaseProcessor):
 
         # Estimate the fan extents and bathymetry
         fan_polygon, fan_bathymetry = fan.polygon_and_bathymetry()
-        fan_polygon.to_file(self.get_result_file_path(key="fan_polygon"))
-        fan_bathymetry.to_file(self.get_result_file_path(key="fan_bathymetry"))
+        fan_polygon.to_file(self.get_instruction_path("fan_polygon",
+                                                      defaults=defaults))
+        fan_bathymetry.to_file(self.get_instruction_path("fan_bathymetry",
+                                                         defaults=defaults))
 
     def run(self):
         """This method extracts a main channel then executes the DemGeneration
@@ -1054,36 +1056,44 @@ class MeasuredRiverGenerator(BaseProcessor):
         self.create_results_folder()
 
         # create the measured river interpolator object
-        measured_rivers = bathymetry_estimation.InterpolateMeasuredElevations(
-            riverbank_file=self.get_instruction_path("riverbanks"),
-            measured_sections_file=self.get_instruction_path("measured_sections"),
-            cross_section_spacing=self.get_measured_instruction(
-                "cross_section_spacing"
-            ),
-            crs=self.get_crs()["horizontal"],
-        )
-        river_polygon, river_elevations = measured_rivers.interpolate(
-            samples_per_section=self.get_measured_instruction("samples_per_section"),
-            thalweg_centre=self.get_measured_instruction("thalweg_centre"),
-        )
-
-        # Save the generated polygon and measured elevations
         defaults = {
             "result_polygon": "river_polygon.geojson",
             "result_elevation": "river_elevations.geojson",
-        }
-        river_polygon.to_file(
-            self.get_instruction_path("result_polygon", defaults=defaults)
-        )
-        river_elevations.to_file(
-            self.get_instruction_path("result_elevation", defaults=defaults)
-        )
+            }
+        result_polygon_file = self.get_instruction_path("result_polygon", defaults=defaults)
+        result_elevations_file = self.get_instruction_path("result_elevation", defaults=defaults)
+        # Only rerun if files don't exist
+        if not (result_polygon_file.exists() and result_elevations_file.exists()):
+            logging.info("Interpolating measured sections.")
+            print("Interpolating measured sections.")
+            measured_rivers = bathymetry_estimation.InterpolateMeasuredElevations(
+                riverbank_file=self.get_instruction_path("riverbanks"),
+                measured_sections_file=self.get_instruction_path("measured_sections"),
+                cross_section_spacing=self.get_measured_instruction(
+                    "cross_section_spacing"
+                ),
+                crs=self.get_crs()["horizontal"],
+            )
+            river_polygon, river_elevations = measured_rivers.interpolate(
+                samples_per_section=self.get_measured_instruction("samples_per_section"),
+                thalweg_centre=self.get_measured_instruction("thalweg_centre"),
+            )
 
-        # Estimate a river fan if true
+            # Save the generated polygon and measured elevations
+            river_polygon.to_file(result_polygon_file)
+            river_elevations.to_file(result_elevations_file)
+
+        # Estimate a river fan if `estimate_fan` is True
         if self.get_measured_instruction("estimate_fan"):
-            logging.info("Estimating the fan bathymetry.")
-            print("Estimating the fan bathymetry.")
-            self.estimate_river_mouth_fan(defaults)
+            # Check if already done
+            defaults["fan_polygon"] = "fan_polygon.geojson"
+            defaults["fan_bathymetry"] = "fan_bathymetry.geojson"
+            fan_polygon_file = self.get_instruction_path("fan_polygon", defaults=defaults)
+            fan_elevations_file = self.get_instruction_path("fan_bathymetry", defaults=defaults)
+            if not (fan_polygon_file.exists() and fan_elevations_file.exists()):
+                logging.info("Estimating the fan bathymetry.")
+                print("Estimating the fan bathymetry.")
+                self.estimate_river_mouth_fan(defaults)
 
         if self.debug:
             # Record the parameter used during execution - append to existing
