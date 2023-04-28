@@ -1009,7 +1009,7 @@ class MeasuredRiverGenerator(BaseProcessor):
         # Generate and save out a river centreline file
         riverlines = geopandas.read_file(self.get_instruction_path("riverbanks"))
         elevations = geopandas.read_file(river_elevation_file)
-        n = elevations["level_0"].max()
+        n = len(elevations.groupby('level_0'))
         points_0 = riverlines.geometry.iloc[0].interpolate(
             numpy.arange(0, 1 + 1 / n, 1 / n), normalized=True
         )
@@ -1027,7 +1027,7 @@ class MeasuredRiverGenerator(BaseProcessor):
         )
         river_centreline = geopandas.GeoDataFrame(geometry=[river_centreline], crs=crs)
         river_centreline.to_file(river_centreline_file)
-        # Save elevations in expected form
+        # Save elevations in expected form - needs widths and only one pt/row
         defaults["river_bathymetry"] = "river_bathymetry.geojson"
         river_bathymetry_file = self.get_instruction_path(
             "river_bathymetry", defaults=defaults
