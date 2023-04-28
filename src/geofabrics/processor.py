@@ -1010,16 +1010,17 @@ class MeasuredRiverGenerator(BaseProcessor):
         riverlines = geopandas.read_file(self.get_instruction_path("riverbanks"))
         elevations = geopandas.read_file(river_elevation_file)
         n = elevations["level_0"].max()
+        points_0 = riverlines.geometry.iloc[0].interpolate(
+            numpy.arange(0, 1 + 1 / n, 1 / n), normalized=True
+        )
+        points_1 = riverlines.geometry.iloc[1].interpolate(
+            numpy.arange(0, 1 + 1 / n, 1 / n), normalized=True
+        )
         river_centreline = shapely.geometry.LineString(
             [
-                shapely.geometry.MultiPoint([right, left]).centroid
-                for left, right in zip(
-                    riverlines.geometry.iloc[0].interpolate(
-                        numpy.arange(0, 1 + 1 / n, 1 / n), normalized=True
-                    ),
-                    riverlines.geometry.iloc[1].interpolate(
-                        numpy.arange(0, 1 + 1 / n, 1 / n), normalized=True
-                    ),
+                shapely.geometry.MultiPoint([point_0, point_1]).centroid
+                for point_0, point_1 in zip(
+                    points_0, points_1,
                 )
             ]
         )
@@ -1037,6 +1038,10 @@ class MeasuredRiverGenerator(BaseProcessor):
             elevations["level_1"] == int(elevations["level_1"].median())
         ]["geometry"].reset_index(drop=True)
         elevations_clean = elevations_clean.set_geometry("geometry").set_crs(crs)
+        elevations_clean["width"] = [ point_0.distance(point_1)
+                                     for point_0, point_1
+                                     in zip(points_0, points_1)
+                                     ]
         elevations_clean.to_file(river_bathymetry_file)
 
         # Create fan object
