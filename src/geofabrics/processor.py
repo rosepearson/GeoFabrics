@@ -1023,19 +1023,20 @@ class MeasuredRiverGenerator(BaseProcessor):
                 )
             ]
         )
-        river_centreline = geopandas.GeoDataFrame(
-            geometry=[river_centreline],
-            crs=crs
-            )
+        river_centreline = geopandas.GeoDataFrame(geometry=[river_centreline], crs=crs)
         river_centreline.to_file(river_centreline_file)
         # Save elevations in expected form
         defaults["river_bathymetry"] = "river_bathymetry.geojson"
         river_bathymetry_file = self.get_instruction_path(
             "river_bathymetry", defaults=defaults
         )
-        elevations_clean = elevations[['level_0', 'z']].groupby('level_0').min().reset_index(drop=True)
-        elevations_clean['geometry'] = elevations[elevations['level_1'] == int(elevations['level_1'].median())]['geometry'].reset_index(drop=True)
-        elevations_clean.set_geometry('geometry').set_crs(crs)
+        elevations_clean = (
+            elevations[["level_0", "z"]].groupby("level_0").min().reset_index(drop=True)
+        )
+        elevations_clean["geometry"] = elevations[
+            elevations["level_1"] == int(elevations["level_1"].median())
+        ]["geometry"].reset_index(drop=True)
+        elevations_clean.set_geometry("geometry").set_crs(crs)
         elevations_clean.to_file(river_bathymetry_file)
 
         # Create fan object
