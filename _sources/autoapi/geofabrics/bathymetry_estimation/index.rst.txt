@@ -120,7 +120,7 @@ Classes
 
 
 
-.. py:class:: InterpolateMeasuredElevations(riverbank_file, measured_sections_file, cross_section_spacing)
+.. py:class:: InterpolateMeasuredElevations(riverbank_file, measured_sections_file, cross_section_spacing, crs)
 
    Interpolate measured river bed elevations. Requires LineStrings of
    riverbed elevations, and the LineStrings defining the left and right

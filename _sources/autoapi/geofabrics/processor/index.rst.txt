@@ -258,6 +258,11 @@ Classes
       :param instructions  The json instructions defining the behaviour:
 
 
+   .. py:method:: estimate_river_mouth_fan(defaults)
+
+      Calculate and save depth estimates along the river mouth fan.
+
+
    .. py:method:: run()
 
       This method extracts a main channel then executes the DemGeneration
