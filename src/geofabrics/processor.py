@@ -970,7 +970,7 @@ class MeasuredRiverGenerator(BaseProcessor):
             instructions  The json instructions defining the behaviour
         """
         defaults = {
-            "thalweg_centre": True,
+            "thalweg_centre": True, "estimate_fan": False,
         }
 
         assert key in defaults or key in self.instructions["measured"], (
@@ -982,6 +982,53 @@ class MeasuredRiverGenerator(BaseProcessor):
         else:
             self.instructions["measured"][key] = defaults[key]
             return defaults[key]
+
+    def estimate_river_mouth_fan(self, defaults: dict):
+        """Calculate and save depth estimates along the river mouth fan."""
+
+        defaults["river_centreline"] = "river_centreline.geojson"
+        # Get required inputs
+        crs = self.get_crs()["horizontal"]
+        cross_section_spacing = self.get_measured_instruction(
+            "cross_section_spacing"
+        )
+        river_bathymetry_file = self.get_instruction_path("result_elevation",
+                                                          defaults=defaults)
+        river_polygon_file = self.get_instruction_path("result_elevation",
+                                                       defaults=defaults)
+        river_centreline_file = self.get_instruction_path("river_centreline",
+                                                          defaults=defaults)
+        ocean_contour_file = self.get_vector_or_raster_paths(
+            key="bathymetry_contours", api_type="vector"
+        )[0]
+        ocean_contour_depth_label = self.get_instruction_general(
+            "bathymetry_contours_z_label"
+        )
+        # Generate and save out a river centreline file
+        riverlines = geopandas.read_file(self.get_instruction_path("riverbanks"))
+        elevations = geopandas.read_file(river_bathymetry_file)
+        n = elevations['level_0'].max()
+        river_centreline = shapely.geometry.LineString([shapely.geometry.MultiPoint([right, left]).centroid
+                                     for left, right in
+                                     zip(riverlines.geometry.iloc[0].interpolate(numpy.arange(0, 1 + 1/n, 1/n), normalized=True),
+                                         riverlines.geometry.iloc[1].interpolate(numpy.arange(0, 1 + 1/n, 1/n), normalized=True))])
+        river_centreline.to_file(river_centreline_file)
+
+        # Create fan object
+        fan = geometry.RiverMouthFan(
+            aligned_channel_file=river_centreline_file,
+            river_bathymetry_file=river_bathymetry_file,
+            river_polygon_file=river_polygon_file,
+            ocean_contour_file=ocean_contour_file,
+            crs=crs,
+            cross_section_spacing=cross_section_spacing,
+            ocean_contour_depth_label=ocean_contour_depth_label,
+        )
+
+        # Estimate the fan extents and bathymetry
+        fan_polygon, fan_bathymetry = fan.polygon_and_bathymetry()
+        fan_polygon.to_file(self.get_result_file_path(key="fan_polygon"))
+        fan_bathymetry.to_file(self.get_result_file_path(key="fan_bathymetry"))
 
     def run(self):
         """This method extracts a main channel then executes the DemGeneration
@@ -1008,7 +1055,7 @@ class MeasuredRiverGenerator(BaseProcessor):
             thalweg_centre=self.get_measured_instruction("thalweg_centre"),
         )
 
-        # Save the generated polygon and measured elevations\
+        # Save the generated polygon and measured elevations
         defaults = {
             "result_polygon": "river_polygon.geojson",
             "result_elevation": "river_elevations.geojson",
@@ -1019,6 +1066,12 @@ class MeasuredRiverGenerator(BaseProcessor):
         river_elevations.to_file(
             self.get_instruction_path("result_elevation", defaults=defaults)
         )
+
+        # Estimate a river fan if true
+        if self.get_measured_instruction("estimate_fan"):
+            logging.info("Estimating the fan bathymetry.")
+            print("Estimating the fan bathymetry.")
+            self.estimate_river_mouth_fan()
 
         if self.debug:
             # Record the parameter used during execution - append to existing
