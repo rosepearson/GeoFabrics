@@ -1049,6 +1049,7 @@ class MeasuredRiverGenerator(BaseProcessor):
             cross_section_spacing=self.get_measured_instruction(
                 "cross_section_spacing"
             ),
+            crs=self.get_crs()["horizontal"],
         )
         river_polygon, river_elevations = measured_rivers.interpolate(
             samples_per_section=self.get_measured_instruction("samples_per_section"),
@@ -1071,7 +1072,7 @@ class MeasuredRiverGenerator(BaseProcessor):
         if self.get_measured_instruction("estimate_fan"):
             logging.info("Estimating the fan bathymetry.")
             print("Estimating the fan bathymetry.")
-            self.estimate_river_mouth_fan()
+            self.estimate_river_mouth_fan(defaults)
 
         if self.debug:
             # Record the parameter used during execution - append to existing

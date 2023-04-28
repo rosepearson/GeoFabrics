@@ -503,18 +503,24 @@ class InterpolateMeasuredElevations:
         riverbank_file: pathlib.Path,
         measured_sections_file: pathlib.Path,
         cross_section_spacing: int,
+        crs: int,
     ):
         """Setup for interpolating the measured riverbed elevations along
         equally spaced cross sections."""
         self.riverbanks = geopandas.read_file(riverbank_file)
         self.measured_sections = geopandas.read_file(measured_sections_file)
         self.cross_section_spacing = cross_section_spacing
+        self.crs = crs
         self.check_valid_inputs()
 
     def check_valid_inputs(self):
         """Check expected entries in the input data"""
 
         # Check expected riverbank information
+        if self.riverbanks.crs is None:
+            raise Exception(
+                "CRS required for self.measured_sections. Is None."
+            )
         if (
             len(self.riverbanks.columns) != 2
             and "Name" not in self.riverbanks.columns
@@ -563,21 +569,20 @@ class InterpolateMeasuredElevations:
                 f"has {self.riverbanks.crs}"
             )
 
-        if (
-            self.measured_sections.crs is None
-            or self.riverbanks.crs != self.measured_sections.crs
-        ):
+        # Check valid measured cross section information
+        if (self.measured_sections.crs is None):
             raise Exception(
-                "self.measured_sections must have a valid crs that matches self.riverbanks. Instead"
-                f"has {self.measured_sections.crs}"
+                "CRS required for self.measured_sections. Is None."
             )
-
         if not (self.measured_sections.geometry.type == "LineString").all():
             raise Exception(
                 "The individual sections of the self.measured_sections must "
                 "all be of geometry type `LineString`. These are of type"
                 f"{self.measured_sections.geometry.type}"
             )
+        # Set the CRS to be that defined for the output
+        self.riverbanks.to_crs(self.crs, inplace=True)
+        self.measured_sections.to_crs(self.crs, inplace=True)
 
     def interpolate(self, samples_per_section: int, thalweg_centre: bool = True):
         """Interpolate with equally spaced points along each cross section
