@@ -1036,7 +1036,7 @@ class MeasuredRiverGenerator(BaseProcessor):
         elevations_clean["geometry"] = elevations[
             elevations["level_1"] == int(elevations["level_1"].median())
         ]["geometry"].reset_index(drop=True)
-        elevations_clean.set_geometry("geometry").set_crs(crs)
+        elevations_clean = elevations_clean.set_geometry("geometry").set_crs(crs)
         elevations_clean.to_file(river_bathymetry_file)
 
         # Create fan object
