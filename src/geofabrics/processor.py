@@ -970,7 +970,8 @@ class MeasuredRiverGenerator(BaseProcessor):
             instructions  The json instructions defining the behaviour
         """
         defaults = {
-            "thalweg_centre": True, "estimate_fan": False,
+            "thalweg_centre": True,
+            "estimate_fan": False,
         }
 
         assert key in defaults or key in self.instructions["measured"], (
@@ -989,15 +990,16 @@ class MeasuredRiverGenerator(BaseProcessor):
         defaults["river_centreline"] = "river_centreline.geojson"
         # Get required inputs
         crs = self.get_crs()["horizontal"]
-        cross_section_spacing = self.get_measured_instruction(
-            "cross_section_spacing"
+        cross_section_spacing = self.get_measured_instruction("cross_section_spacing")
+        river_bathymetry_file = self.get_instruction_path(
+            "result_elevation", defaults=defaults
         )
-        river_bathymetry_file = self.get_instruction_path("result_elevation",
-                                                          defaults=defaults)
-        river_polygon_file = self.get_instruction_path("result_elevation",
-                                                       defaults=defaults)
-        river_centreline_file = self.get_instruction_path("river_centreline",
-                                                          defaults=defaults)
+        river_polygon_file = self.get_instruction_path(
+            "result_elevation", defaults=defaults
+        )
+        river_centreline_file = self.get_instruction_path(
+            "river_centreline", defaults=defaults
+        )
         ocean_contour_file = self.get_vector_or_raster_paths(
             key="bathymetry_contours", api_type="vector"
         )[0]
@@ -1007,11 +1009,20 @@ class MeasuredRiverGenerator(BaseProcessor):
         # Generate and save out a river centreline file
         riverlines = geopandas.read_file(self.get_instruction_path("riverbanks"))
         elevations = geopandas.read_file(river_bathymetry_file)
-        n = elevations['level_0'].max()
-        river_centreline = shapely.geometry.LineString([shapely.geometry.MultiPoint([right, left]).centroid
-                                     for left, right in
-                                     zip(riverlines.geometry.iloc[0].interpolate(numpy.arange(0, 1 + 1/n, 1/n), normalized=True),
-                                         riverlines.geometry.iloc[1].interpolate(numpy.arange(0, 1 + 1/n, 1/n), normalized=True))])
+        n = elevations["level_0"].max()
+        river_centreline = shapely.geometry.LineString(
+            [
+                shapely.geometry.MultiPoint([right, left]).centroid
+                for left, right in zip(
+                    riverlines.geometry.iloc[0].interpolate(
+                        numpy.arange(0, 1 + 1 / n, 1 / n), normalized=True
+                    ),
+                    riverlines.geometry.iloc[1].interpolate(
+                        numpy.arange(0, 1 + 1 / n, 1 / n), normalized=True
+                    ),
+                )
+            ]
+        )
         river_centreline.to_file(river_centreline_file)
 
         # Create fan object
