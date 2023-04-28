@@ -1040,9 +1040,9 @@ class MeasuredRiverGenerator(BaseProcessor):
                 ),
             ]
         )
-        defaults["river_centreline"] = "river_centreline.geojson"
+        defaults["river_centreline"] = "river_centreline_for_fan.geojson"
         river_centreline_file = self.get_instruction_path(
-            "river_centreline_for_fan", defaults=defaults
+            "river_centreline", defaults=defaults
         )
         river_centreline = geopandas.GeoDataFrame(geometry=[river_centreline], crs=crs)
         river_centreline.to_file(river_centreline_file)
