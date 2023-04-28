@@ -916,8 +916,7 @@ class RiverMouthFan:
                 )
             )
             for elevation_label, river_mouth_elevation, depth_increment in zip(
-                self.elevation_labels, river_mouth_elevations,
-                depth_increments
+                self.elevation_labels, river_mouth_elevations, depth_increments
             ):
                 fan_depths[elevation_label].append(
                     river_mouth_elevation + i * depth_increment
