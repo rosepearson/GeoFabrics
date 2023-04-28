@@ -1020,7 +1020,8 @@ class MeasuredRiverGenerator(BaseProcessor):
             [
                 shapely.geometry.MultiPoint([point_0, point_1]).centroid
                 for point_0, point_1 in zip(
-                    points_0, points_1,
+                    points_0,
+                    points_1,
                 )
             ]
         )
@@ -1038,10 +1039,9 @@ class MeasuredRiverGenerator(BaseProcessor):
             elevations["level_1"] == int(elevations["level_1"].median())
         ]["geometry"].reset_index(drop=True)
         elevations_clean = elevations_clean.set_geometry("geometry").set_crs(crs)
-        elevations_clean["width"] = [ point_0.distance(point_1)
-                                     for point_0, point_1
-                                     in zip(points_0, points_1)
-                                     ]
+        elevations_clean["width"] = [
+            point_0.distance(point_1) for point_0, point_1 in zip(points_0, points_1)
+        ]
         elevations_clean.to_file(river_bathymetry_file)
 
         # Create fan object
