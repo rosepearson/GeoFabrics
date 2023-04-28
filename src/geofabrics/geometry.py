@@ -762,8 +762,6 @@ class RiverMouthFan:
 
     FAN_ANGLE = 30
     FAN_MAX_LENGTH = 10_000
-    ELEVATION_LABEL_1 = "bed_elevation_Neal_et_al"
-    ELEVATION_LABEL_2 = "bed_elevation_Rupp_and_Smart"
 
     def __init__(
         self,
@@ -773,6 +771,7 @@ class RiverMouthFan:
         ocean_contour_file: str,
         crs: int,
         cross_section_spacing: float,
+        elevation_labels: list,
         ocean_contour_depth_label: str = None,
     ):
         self.crs = crs
@@ -782,6 +781,7 @@ class RiverMouthFan:
         self.river_bathymetry_file = river_bathymetry_file
         self.ocean_contour_file = ocean_contour_file
         self.ocean_contour_depth_label = ocean_contour_depth_label
+        self.elevation_labels = elevation_labels
 
     def _get_mouth_alignment(self):
         """Get the location and alignment of the river mouth."""
@@ -821,10 +821,12 @@ class RiverMouthFan:
             river_polygon.buffer(self.cross_section_spacing / 2)
         ).sort_index(ascending=True)
 
-        river_mouth_elevation_1 = river_bathymetry[self.ELEVATION_LABEL_1].iloc[0]
-        river_mouth_elevation_2 = river_bathymetry[self.ELEVATION_LABEL_2].iloc[0]
+        river_mouth_elevations = [
+            river_bathymetry[elevation_label].iloc[0]
+            for elevation_label in self.elevation_labels
+        ]
         river_mouth_width = river_bathymetry["width"].iloc[0]
-        return river_mouth_width, [river_mouth_elevation_1, river_mouth_elevation_2]
+        return river_mouth_width, river_mouth_elevations
 
     def _get_ocean_contours(
         self, river_mouth_depth, depth_sign: int = -1, depth_multiplier: int = 2
@@ -892,14 +894,13 @@ class RiverMouthFan:
 
         # Setup the fan data values
         fan_depths = {
-            "geometry": [],
-            self.ELEVATION_LABEL_1: [],
-            self.ELEVATION_LABEL_2: [],
+            **{"geometry": []},
+            **dict((elevation_label, []) for elevation_label in self.elevation_labels),
         }
         number_of_samples = int(distance / self.cross_section_spacing)
         depth_increments = [
-            (-1 * end_depth - river_mouth_elevations[0]) / number_of_samples,
-            (-1 * end_depth - river_mouth_elevations[1]) / number_of_samples,
+            (-1 * end_depth - river_mouth_elevation) / number_of_samples
+            for river_mouth_elevation in river_mouth_elevations
         ]
 
         # Iterate through creating fan bathymetry
@@ -914,12 +915,12 @@ class RiverMouthFan:
                     ]
                 )
             )
-            fan_depths[self.ELEVATION_LABEL_1].append(
-                river_mouth_elevations[0] + i * depth_increments[0]
-            )
-            fan_depths[self.ELEVATION_LABEL_2].append(
-                river_mouth_elevations[1] + i * depth_increments[1]
-            )
+            for elevation_label, river_mouth_elevation, depth_increment in zip(
+                self.elevation_labels, river_mouth_elevations, depth_increments
+            ):
+                fan_depths[elevation_label].append(
+                    river_mouth_elevation + i * depth_increment
+                )
         fan_depths = geopandas.GeoDataFrame(fan_depths, crs=self.crs)
         return fan_depths
 

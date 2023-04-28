@@ -1723,10 +1723,7 @@ class RoughnessDem(LidarBase):
         The interpolation method to apply to LiDAR. Options are: mean, median, IDW.
     """
 
-    ROUGHNESS_DEFAULTS = {
-        "land": 0.014,
-        "water": 0.004,
-    }
+    ROUGHNESS_DEFAULTS = {"land": 0.014, "water": 0.004, "minimum": 0.00001}
 
     def __init__(
         self,
@@ -2146,6 +2143,8 @@ class RoughnessDem(LidarBase):
             zo = rioxarray.merge.merge_arrays(zos, method="first")
         # Resize zo to share the same dimensions at the DEM
         self._dem["zo"] = zo.sel(x=self._dem.x, y=self._dem.y, method="nearest")
+        # Ensure no negative roughnesses
+        self._dem.zo.data[self._dem.zo.data < 0] = self.ROUGHNESS_DEFAULTS["minimum"]
 
         # ensure the expected CF conventions are followed
         self._write_netcdf_conventions_in_place(self._dem, self.catchment_geometry.crs)

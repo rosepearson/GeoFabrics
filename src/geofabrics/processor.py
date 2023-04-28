@@ -60,7 +60,7 @@ class BaseProcessor(abc.ABC):
         }
         return metadata
 
-    def get_instruction_path(self, key: str, defaults: dict = {}) -> str:
+    def get_instruction_path(self, key: str, defaults: dict = {}) -> pathlib.Path:
         """Return the file path from the instruction file, or default if there
         is a default value and the local cache is specified. Raise an error if
         the key is not in the instructions."""
@@ -971,6 +971,7 @@ class MeasuredRiverGenerator(BaseProcessor):
         """
         defaults = {
             "thalweg_centre": True,
+            "estimate_fan": False,
         }
 
         assert key in defaults or key in self.instructions["measured"], (
@@ -982,6 +983,106 @@ class MeasuredRiverGenerator(BaseProcessor):
         else:
             self.instructions["measured"][key] = defaults[key]
             return defaults[key]
+
+    def estimate_river_mouth_fan(self, defaults: dict):
+        """Calculate and save depth estimates along the river mouth fan."""
+
+        # Get the required inputs that already exist
+        crs = self.get_crs()["horizontal"]
+        cross_section_spacing = self.get_measured_instruction("cross_section_spacing")
+        river_elevation_file = self.get_instruction_path(
+            "result_elevation", defaults=defaults
+        )
+        river_polygon_file = self.get_instruction_path(
+            "result_polygon", defaults=defaults
+        )
+        ocean_contour_file = self.get_vector_or_raster_paths(
+            key="bathymetry_contours", api_type="vector"
+        )[0]
+        ocean_contour_depth_label = self.get_instruction_general(
+            "bathymetry_contours_z_label"
+        )
+        # Create the required river centreline and bathymtries that don't exist
+        # Only create for the two closest points to the river mouth
+        # And ensure is perpindicular to the river mouth
+        riverlines = geopandas.read_file(self.get_instruction_path("riverbanks"))
+        elevations = geopandas.read_file(river_elevation_file)
+        # Resample river edges at same spacing as used to interpolate
+        n = len(elevations.groupby("level_0"))
+        normalised_locations = numpy.arange(n) * 1 / n
+        points_0 = riverlines.geometry.iloc[0].interpolate(
+            normalised_locations, normalized=True
+        )
+        points_1 = riverlines.geometry.iloc[1].interpolate(
+            normalised_locations, normalized=True
+        )
+        # Calculate the mouth centre, normal and tangent
+        segment_dx = points_0[0].x - points_1[0].x
+        segment_dy = points_0[0].y - points_1[0].y
+        segment_length = numpy.sqrt(segment_dx**2 + segment_dy**2)
+        mouth_tangent = shapely.geometry.Point(
+            [segment_dx / segment_length, segment_dy / segment_length]
+        )
+        mouth_normal = shapely.geometry.Point([-mouth_tangent.y, mouth_tangent.x])
+        mouth_centre = shapely.geometry.MultiPoint([points_0[0], points_1[0]]).centroid
+        spacing = max(
+            points_0[0].distance(points_0[1]), points_1[0].distance(points_1[1])
+        )
+        # Generate and save out a river centreline file normal to the river mouth
+        river_centreline = shapely.geometry.LineString(
+            [
+                mouth_centre,
+                shapely.geometry.Point(
+                    [
+                        mouth_centre.x + mouth_normal.x * spacing,
+                        mouth_centre.y + mouth_normal.y * spacing,
+                    ]
+                ),
+            ]
+        )
+        defaults["river_centreline"] = "river_centreline_for_fan.geojson"
+        river_centreline_file = self.get_instruction_path(
+            "river_centreline", defaults=defaults
+        )
+        river_centreline = geopandas.GeoDataFrame(geometry=[river_centreline], crs=crs)
+        river_centreline.to_file(river_centreline_file)
+        # Create the river bathmetries with needed widths and geometry
+        defaults["river_bathymetry"] = "river_bathymetry_for_fan.geojson"
+        river_bathymetry_file = self.get_instruction_path(
+            "river_bathymetry", defaults=defaults
+        )
+        elevations_clean = (
+            elevations[["level_0", "z"]].groupby("level_0").min().reset_index(drop=True)
+        )
+        elevations_clean["geometry"] = elevations[
+            elevations["level_1"] == int(elevations["level_1"].median())
+        ]["geometry"].reset_index(drop=True)
+        elevations_clean = elevations_clean.iloc[[0, 1]]
+        elevations_clean = elevations_clean.set_geometry("geometry").set_crs(crs)
+        elevations_clean["width"] = [
+            point_0.distance(point_1)
+            for point_0, point_1 in zip(points_0[0:2], points_1[0:2])
+        ]
+        elevations_clean.to_file(river_bathymetry_file)
+
+        # Create fan object
+        fan = geometry.RiverMouthFan(
+            aligned_channel_file=river_centreline_file,
+            river_bathymetry_file=river_bathymetry_file,
+            river_polygon_file=river_polygon_file,
+            ocean_contour_file=ocean_contour_file,
+            crs=crs,
+            cross_section_spacing=cross_section_spacing,
+            elevation_labels=["z"],
+            ocean_contour_depth_label=ocean_contour_depth_label,
+        )
+
+        # Estimate the fan extents and bathymetry
+        fan_polygon, fan_bathymetry = fan.polygon_and_bathymetry()
+        fan_polygon.to_file(self.get_instruction_path("fan_polygon", defaults=defaults))
+        fan_bathymetry.to_file(
+            self.get_instruction_path("fan_bathymetry", defaults=defaults)
+        )
 
     def run(self):
         """This method extracts a main channel then executes the DemGeneration
@@ -996,29 +1097,54 @@ class MeasuredRiverGenerator(BaseProcessor):
         self.create_results_folder()
 
         # create the measured river interpolator object
-        measured_rivers = bathymetry_estimation.InterpolateMeasuredElevations(
-            riverbank_file=self.get_instruction_path("riverbanks"),
-            measured_sections_file=self.get_instruction_path("measured_sections"),
-            cross_section_spacing=self.get_measured_instruction(
-                "cross_section_spacing"
-            ),
-        )
-        river_polygon, river_elevations = measured_rivers.interpolate(
-            samples_per_section=self.get_measured_instruction("samples_per_section"),
-            thalweg_centre=self.get_measured_instruction("thalweg_centre"),
-        )
-
-        # Save the generated polygon and measured elevations\
         defaults = {
             "result_polygon": "river_polygon.geojson",
             "result_elevation": "river_elevations.geojson",
         }
-        river_polygon.to_file(
-            self.get_instruction_path("result_polygon", defaults=defaults)
+        result_polygon_file = self.get_instruction_path(
+            "result_polygon", defaults=defaults
         )
-        river_elevations.to_file(
-            self.get_instruction_path("result_elevation", defaults=defaults)
+        result_elevations_file = self.get_instruction_path(
+            "result_elevation", defaults=defaults
         )
+        # Only rerun if files don't exist
+        if not (result_polygon_file.exists() and result_elevations_file.exists()):
+            logging.info("Interpolating measured sections.")
+            print("Interpolating measured sections.")
+            measured_rivers = bathymetry_estimation.InterpolateMeasuredElevations(
+                riverbank_file=self.get_instruction_path("riverbanks"),
+                measured_sections_file=self.get_instruction_path("measured_sections"),
+                cross_section_spacing=self.get_measured_instruction(
+                    "cross_section_spacing"
+                ),
+                crs=self.get_crs()["horizontal"],
+            )
+            river_polygon, river_elevations = measured_rivers.interpolate(
+                samples_per_section=self.get_measured_instruction(
+                    "samples_per_section"
+                ),
+                thalweg_centre=self.get_measured_instruction("thalweg_centre"),
+            )
+
+            # Save the generated polygon and measured elevations
+            river_polygon.to_file(result_polygon_file)
+            river_elevations.to_file(result_elevations_file)
+
+        # Estimate a river fan if `estimate_fan` is True
+        if self.get_measured_instruction("estimate_fan"):
+            # Check if already done
+            defaults["fan_polygon"] = "fan_polygon.geojson"
+            defaults["fan_bathymetry"] = "fan_bathymetry.geojson"
+            fan_polygon_file = self.get_instruction_path(
+                "fan_polygon", defaults=defaults
+            )
+            fan_elevations_file = self.get_instruction_path(
+                "fan_bathymetry", defaults=defaults
+            )
+            if not (fan_polygon_file.exists() and fan_elevations_file.exists()):
+                logging.info("Estimating the fan bathymetry.")
+                print("Estimating the fan bathymetry.")
+                self.estimate_river_mouth_fan(defaults)
 
         if self.debug:
             # Record the parameter used during execution - append to existing
@@ -1666,6 +1792,12 @@ class RiverBathymetryGenerator(BaseProcessor):
             slope_name=slope_name,
             threshold_name=threshold_name,
         )
+        if not (full_bank_depth >= 0).all():
+            logging.warning(
+                "Unexpected negative depths. Setting to zero. "
+                "Check `river_characteristics.geojson` file."
+            )
+            full_bank_depth[full_bank_depth < 0] = 0
         active_channel_bank_depth = self._convert_full_bank_to_channel_depth(
             full_bank_depth=full_bank_depth,
             threshold_name=threshold_name,
@@ -1673,13 +1805,22 @@ class RiverBathymetryGenerator(BaseProcessor):
             full_bank_width_name=width_name,
             width_values=width_values,
         )  # TODO - remove and don't make correction
+        # Ensure valid depths before converting to bed elevations
+        if not ((full_bank_depth - width_values[threshold_name]) >= 0).all():
+            mask = (full_bank_depth - width_values[threshold_name]) < 0
+            logging.warning(
+                "Depths less than the thresholds. Try reduce the "
+                "`max_bank_height`. Setting to thresholds. "
+                f"{mask.sum()} affected."
+            )
+            full_bank_depth[mask] = width_values[threshold_name][mask]
         width_values["bed_elevation_Neal_et_al"] = (
             width_values[min_z_name] - active_channel_bank_depth
         )
         if self.debug:
             # Optionally write out additional depth information
-            width_values["depth_Neal_et_al"] = active_channel_bank_depth
-            width_values["flood_depth_Neal_et_al"] = full_bank_depth
+            width_values["area_adjusted_depth_Neal_et_al"] = active_channel_bank_depth
+            width_values["depth_Neal_et_al"] = full_bank_depth
         # Calculate depths and bed elevation using the Rupp & Smart approach (Hydrologic
         # geometry)
         full_bank_depth = self._calculate_rupp_and_smart_depth(
@@ -1688,6 +1829,12 @@ class RiverBathymetryGenerator(BaseProcessor):
             slope_name=slope_name,
             threshold_name=threshold_name,
         )
+        if not (full_bank_depth >= 0).all():
+            logging.warning(
+                "Unexpected negative depths. Setting to zero. "
+                "Check `river_characteristics.geojson` file."
+            )
+            full_bank_depth[full_bank_depth < 0] = 0
         active_channel_bank_depth = self._convert_full_bank_to_channel_depth(
             full_bank_depth=full_bank_depth,
             threshold_name=threshold_name,
@@ -1695,13 +1842,24 @@ class RiverBathymetryGenerator(BaseProcessor):
             full_bank_width_name=width_name,
             width_values=width_values,
         )  # TODO - remove and don't make correction
+        # Ensure valid depths before converting to bed elevations
+        if not ((full_bank_depth - width_values[threshold_name]) >= 0).all():
+            mask = (full_bank_depth - width_values[threshold_name]) < 0
+            logging.warning(
+                "Depths less than the thresholds. Try reduce the "
+                "`max_bank_height`. Setting to thresholds. "
+                f"{mask.sum()} affected."
+            )
+            full_bank_depth[mask] = width_values[threshold_name][mask]
         width_values["bed_elevation_Rupp_and_Smart"] = (
             width_values[min_z_name] - active_channel_bank_depth
         )
         if self.debug:
             # Optionally write out additional depth information
-            width_values["depth_Rupp_and_Smart"] = active_channel_bank_depth
-            width_values["flood_depth_Rupp_and_Smart"] = full_bank_depth
+            width_values[
+                "area_adjusted_depth_Rupp_and_Smart"
+            ] = active_channel_bank_depth
+            width_values["depth_Rupp_and_Smart"] = full_bank_depth
         # Save the bed elevations
         values_to_save = [
             "geometry",
@@ -1717,8 +1875,8 @@ class RiverBathymetryGenerator(BaseProcessor):
                 [
                     "depth_Neal_et_al",
                     "depth_Rupp_and_Smart",
-                    "flood_depth_Neal_et_al",
-                    "flood_depth_Rupp_and_Smart",
+                    "area_adjusted_depth_Neal_et_al",
+                    "area_adjusted_depth_Rupp_and_Smart",
                 ]
             )
         # Save the widths and depths
@@ -1785,19 +1943,25 @@ class RiverBathymetryGenerator(BaseProcessor):
             flat_width_name  The name of the down-river channel slope column.
             threshold_name The name of the bank height threshold column."""
 
-        # The depth of flood water above the water surface
-        flood_depth = width_values[threshold_name]
-
-        # Calculate the area estimated for full bank width flow
+        # Calculate the estimated full bank flow area
         full_flood_area = full_bank_depth * width_values[full_bank_width_name]
 
-        # Calculate the flood waters (i.e. flowing above the water surface), but with a
-        # correction for the exposed river banks
-        above_water_area = flood_depth * width_values[full_bank_width_name]
-        exposed_bank_area = flood_depth * (
-            width_values[full_bank_width_name] - width_values[flat_width_name]
+        # Threshold is the depth of flood water above the water surface
+        threshold = width_values[threshold_name]
+
+        # Calculate the area of flood waters (i.e. above the water surface)
+        above_water_area = threshold * width_values[full_bank_width_name]
+        # Calculate the above water area that is actually banks (assume linear)
+        exposed_bank_area = (
+            threshold
+            * (width_values[full_bank_width_name] - width_values[flat_width_name])
+            / 2
         )
-        assert (exposed_bank_area >= 0).all(), "The exposed bank area must be postive"
+        if not (exposed_bank_area >= 0).all():
+            logging.warning(
+                "The exposed bank area is not always postive. " "Setting to zero."
+            )
+            exposed_bank_area[exposed_bank_area < 0] = 0
         extra_flood_area = above_water_area - exposed_bank_area
 
         # The area to convert to the active 'flat' channel depth
@@ -1805,6 +1969,15 @@ class RiverBathymetryGenerator(BaseProcessor):
 
         # Calculate the depth from the area
         flat_flow_depth = flat_flow_area / width_values[flat_width_name]
+
+        # Ensure not negative
+        if not (flat_flow_depth >= 0).all():
+            logging.warning(
+                "Negative area-adjusted depths. Try reduce the "
+                "`max_bank_height`. Setting to zero. # affected: "
+                f"{len(flat_flow_depth[flat_flow_depth < 0])}."
+            )
+            flat_flow_depth[flat_flow_depth < 0] = 0
 
         return flat_flow_depth
 
@@ -1832,6 +2005,10 @@ class RiverBathymetryGenerator(BaseProcessor):
             ocean_contour_file=ocean_contour_file,
             crs=crs,
             cross_section_spacing=cross_section_spacing,
+            elevation_labels=[
+                "bed_elevation_Neal_et_al",
+                "bed_elevation_Rupp_and_Smart",
+            ],
             ocean_contour_depth_label=ocean_contour_depth_label,
         )
 
@@ -1855,13 +2032,15 @@ class RiverBathymetryGenerator(BaseProcessor):
             self.characterise_channel()
         # Estimate channel and fan depths if not already done
         if not self.channel_bathymetry_exist():
-            logging.info("Estimating the channel and fan bathymetry.")
-            print("Estimating the channel and fan bathymetry.")
+            logging.info("Estimating the channel bathymetry.")
+            print("Estimating the channel bathymetry.")
 
             # Calculate and save river bathymetry depths
             self.calculate_river_bed_elevations()
             # check if the river mouth is to be estimated
             if self.get_bathymetry_instruction("estimate_fan"):
+                logging.info("Estimating the fan bathymetry.")
+                print("Estimating the fan bathymetry.")
                 self.estimate_river_mouth_fan()
         if self.debug:
             # Record the parameter used during execution - append to existing

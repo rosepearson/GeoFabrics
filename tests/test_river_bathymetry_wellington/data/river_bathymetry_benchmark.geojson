@@ -2,7 +2,7 @@
 "type": "FeatureCollection",
 "crs": { "type": "name", "properties": { "name": "urn:ogc:def:crs:EPSG::2193" } },
 "features": [
-{ "type": "Feature", "properties": { "bed_elevation_Neal_et_al": -2.4882489101720258, "bed_elevation_Rupp_and_Smart": -1.6487436146319132, "bank_height": -0.12909253516399241, "width": 79.2, "flat_widths_mean_0.05km": 78.8 }, "geometry": { "type": "Point", "coordinates": [ 1769153.702137548942119, 5473488.756803735159338 ] } },
-{ "type": "Feature", "properties": { "bed_elevation_Neal_et_al": 0.6528371313298067, "bed_elevation_Rupp_and_Smart": 0.6528371313298067, "bank_height": -0.12909253862696921, "width": 79.8, "flat_widths_mean_0.05km": 79.2 }, "geometry": null }
+{ "type": "Feature", "properties": { "bed_elevation_Neal_et_al": -2.3726020386891697, "bed_elevation_Rupp_and_Smart": -1.5330967431490572, "bank_height": -0.12909253516399241, "width": 79.2, "flat_widths_mean_0.05km": 78.8 }, "geometry": { "type": "Point", "coordinates": [ 1769153.702137548942119, 5473488.756803735159338 ] } },
+{ "type": "Feature", "properties": { "bed_elevation_Neal_et_al": -0.12909253862696921, "bed_elevation_Rupp_and_Smart": -0.12909253862696921, "bank_height": -0.12909253862696921, "width": 79.8, "flat_widths_mean_0.05km": 79.2 }, "geometry": null }
 ]
 }
