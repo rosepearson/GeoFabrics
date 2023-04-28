@@ -987,8 +987,7 @@ class MeasuredRiverGenerator(BaseProcessor):
     def estimate_river_mouth_fan(self, defaults: dict):
         """Calculate and save depth estimates along the river mouth fan."""
 
-        defaults["river_centreline"] = "river_centreline.geojson"
-        # Get required inputs
+        # Get the required inputs that already exist
         crs = self.get_crs()["horizontal"]
         cross_section_spacing = self.get_measured_instruction("cross_section_spacing")
         river_elevation_file = self.get_instruction_path(
@@ -997,18 +996,18 @@ class MeasuredRiverGenerator(BaseProcessor):
         river_polygon_file = self.get_instruction_path(
             "result_polygon", defaults=defaults
         )
-        river_centreline_file = self.get_instruction_path(
-            "river_centreline", defaults=defaults
-        )
         ocean_contour_file = self.get_vector_or_raster_paths(
             key="bathymetry_contours", api_type="vector"
         )[0]
         ocean_contour_depth_label = self.get_instruction_general(
             "bathymetry_contours_z_label"
         )
-        # Generate and save out a river centreline file
+        # Create the required river centreline and bathymtries that don't exist
+        # Only create for the two closest points to the river mouth
+        # And ensure is perpindicular to the river mouth
         riverlines = geopandas.read_file(self.get_instruction_path("riverbanks"))
         elevations = geopandas.read_file(river_elevation_file)
+        # Resample river edges at same spacing as used to interpolate
         n = len(elevations.groupby("level_0"))
         normalised_locations = numpy.arange(n) * 1 / n
         points_0 = riverlines.geometry.iloc[0].interpolate(
@@ -1017,19 +1016,32 @@ class MeasuredRiverGenerator(BaseProcessor):
         points_1 = riverlines.geometry.iloc[1].interpolate(
             normalised_locations, normalized=True
         )
+        # Calculate the mouth centre, normal and tangent
+        segment_dx = points_0[0].x - points_1[0].x
+        segment_dy = points_0[0].y - points_1[0].y
+        segment_length = numpy.sqrt(segment_dx**2 + segment_dy**2)
+        mouth_tangent = shapely.geometry.Point(
+            [segment_dx / segment_length, segment_dy / segment_length]
+        )
+        mouth_normal = shapely.geometry.Point([-mouth_tangent.y, mouth_tangent.x])
+        mouth_centre = shapely.geometry.MultiPoint([points_0[0], points_1[0]]).centroid
+        spacing = max(points_0[0].distance(points_0[1]), points_1[0].distance(points_1[1]))
+        # Generate and save out a river centreline file normal to the river mouth
         river_centreline = shapely.geometry.LineString(
             [
-                shapely.geometry.MultiPoint([point_0, point_1]).centroid
-                for point_0, point_1 in zip(
-                    points_0,
-                    points_1,
-                )
+                mouth_centre,
+                shapely.geometry.Point([mouth_centre.x + mouth_normal.x * spacing,
+                                        mouth_centre.y + mouth_normal.y * spacing])
             ]
+        )
+        defaults["river_centreline"] = "river_centreline.geojson"
+        river_centreline_file = self.get_instruction_path(
+            "river_centreline_for_fan", defaults=defaults
         )
         river_centreline = geopandas.GeoDataFrame(geometry=[river_centreline], crs=crs)
         river_centreline.to_file(river_centreline_file)
-        # Save elevations in expected form - needs widths and only one pt/row
-        defaults["river_bathymetry"] = "river_bathymetry.geojson"
+        # Create the river bathmetries with needed widths and geometry
+        defaults["river_bathymetry"] = "river_bathymetry_for_fan.geojson"
         river_bathymetry_file = self.get_instruction_path(
             "river_bathymetry", defaults=defaults
         )
@@ -1039,9 +1051,10 @@ class MeasuredRiverGenerator(BaseProcessor):
         elevations_clean["geometry"] = elevations[
             elevations["level_1"] == int(elevations["level_1"].median())
         ]["geometry"].reset_index(drop=True)
+        elevations_clean = elevations_clean.iloc[[0,1]]
         elevations_clean = elevations_clean.set_geometry("geometry").set_crs(crs)
         elevations_clean["width"] = [
-            point_0.distance(point_1) for point_0, point_1 in zip(points_0, points_1)
+            point_0.distance(point_1) for point_0, point_1 in zip(points_0[0:2], points_1[0:2])
         ]
         elevations_clean.to_file(river_bathymetry_file)
 
