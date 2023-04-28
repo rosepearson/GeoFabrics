@@ -991,11 +991,11 @@ class MeasuredRiverGenerator(BaseProcessor):
         # Get required inputs
         crs = self.get_crs()["horizontal"]
         cross_section_spacing = self.get_measured_instruction("cross_section_spacing")
-        river_bathymetry_file = self.get_instruction_path(
+        river_elevation_file = self.get_instruction_path(
             "result_elevation", defaults=defaults
         )
         river_polygon_file = self.get_instruction_path(
-            "result_elevation", defaults=defaults
+            "result_polygon", defaults=defaults
         )
         river_centreline_file = self.get_instruction_path(
             "river_centreline", defaults=defaults
@@ -1008,7 +1008,7 @@ class MeasuredRiverGenerator(BaseProcessor):
         )
         # Generate and save out a river centreline file
         riverlines = geopandas.read_file(self.get_instruction_path("riverbanks"))
-        elevations = geopandas.read_file(river_bathymetry_file)
+        elevations = geopandas.read_file(river_elevation_file)
         n = elevations["level_0"].max()
         river_centreline = shapely.geometry.LineString(
             [
@@ -1023,9 +1023,20 @@ class MeasuredRiverGenerator(BaseProcessor):
                 )
             ]
         )
-        river_centreline = geopandas.GeoDataFrame(geometry=[river_centreline],
-                                                  crs=crs)
+        river_centreline = geopandas.GeoDataFrame(
+            geometry=[river_centreline],
+            crs=crs
+            )
         river_centreline.to_file(river_centreline_file)
+        # Save elevations in expected form
+        defaults["river_bathymetry"] = "river_bathymetry.geojson"
+        river_bathymetry_file = self.get_instruction_path(
+            "river_bathymetry", defaults=defaults
+        )
+        elevations_clean = elevations[['level_0', 'z']].groupby('level_0').min().reset_index(drop=True)
+        elevations_clean['geometry'] = elevations[elevations['level_1'] == int(elevations['level_1'].median())]['geometry'].reset_index(drop=True)
+        elevations_clean.set_geometry('geometry').set_crs(crs)
+        elevations_clean.to_file(river_bathymetry_file)
 
         # Create fan object
         fan = geometry.RiverMouthFan(
