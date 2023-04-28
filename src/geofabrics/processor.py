@@ -1025,13 +1025,19 @@ class MeasuredRiverGenerator(BaseProcessor):
         )
         mouth_normal = shapely.geometry.Point([-mouth_tangent.y, mouth_tangent.x])
         mouth_centre = shapely.geometry.MultiPoint([points_0[0], points_1[0]]).centroid
-        spacing = max(points_0[0].distance(points_0[1]), points_1[0].distance(points_1[1]))
+        spacing = max(
+            points_0[0].distance(points_0[1]), points_1[0].distance(points_1[1])
+        )
         # Generate and save out a river centreline file normal to the river mouth
         river_centreline = shapely.geometry.LineString(
             [
                 mouth_centre,
-                shapely.geometry.Point([mouth_centre.x + mouth_normal.x * spacing,
-                                        mouth_centre.y + mouth_normal.y * spacing])
+                shapely.geometry.Point(
+                    [
+                        mouth_centre.x + mouth_normal.x * spacing,
+                        mouth_centre.y + mouth_normal.y * spacing,
+                    ]
+                ),
             ]
         )
         defaults["river_centreline"] = "river_centreline.geojson"
@@ -1051,10 +1057,11 @@ class MeasuredRiverGenerator(BaseProcessor):
         elevations_clean["geometry"] = elevations[
             elevations["level_1"] == int(elevations["level_1"].median())
         ]["geometry"].reset_index(drop=True)
-        elevations_clean = elevations_clean.iloc[[0,1]]
+        elevations_clean = elevations_clean.iloc[[0, 1]]
         elevations_clean = elevations_clean.set_geometry("geometry").set_crs(crs)
         elevations_clean["width"] = [
-            point_0.distance(point_1) for point_0, point_1 in zip(points_0[0:2], points_1[0:2])
+            point_0.distance(point_1)
+            for point_0, point_1 in zip(points_0[0:2], points_1[0:2])
         ]
         elevations_clean.to_file(river_bathymetry_file)
 
