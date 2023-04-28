@@ -1040,10 +1040,10 @@ class MeasuredRiverGenerator(BaseProcessor):
 
         # Estimate the fan extents and bathymetry
         fan_polygon, fan_bathymetry = fan.polygon_and_bathymetry()
-        fan_polygon.to_file(self.get_instruction_path("fan_polygon",
-                                                      defaults=defaults))
-        fan_bathymetry.to_file(self.get_instruction_path("fan_bathymetry",
-                                                         defaults=defaults))
+        fan_polygon.to_file(self.get_instruction_path("fan_polygon", defaults=defaults))
+        fan_bathymetry.to_file(
+            self.get_instruction_path("fan_bathymetry", defaults=defaults)
+        )
 
     def run(self):
         """This method extracts a main channel then executes the DemGeneration
@@ -1061,9 +1061,13 @@ class MeasuredRiverGenerator(BaseProcessor):
         defaults = {
             "result_polygon": "river_polygon.geojson",
             "result_elevation": "river_elevations.geojson",
-            }
-        result_polygon_file = self.get_instruction_path("result_polygon", defaults=defaults)
-        result_elevations_file = self.get_instruction_path("result_elevation", defaults=defaults)
+        }
+        result_polygon_file = self.get_instruction_path(
+            "result_polygon", defaults=defaults
+        )
+        result_elevations_file = self.get_instruction_path(
+            "result_elevation", defaults=defaults
+        )
         # Only rerun if files don't exist
         if not (result_polygon_file.exists() and result_elevations_file.exists()):
             logging.info("Interpolating measured sections.")
@@ -1077,7 +1081,9 @@ class MeasuredRiverGenerator(BaseProcessor):
                 crs=self.get_crs()["horizontal"],
             )
             river_polygon, river_elevations = measured_rivers.interpolate(
-                samples_per_section=self.get_measured_instruction("samples_per_section"),
+                samples_per_section=self.get_measured_instruction(
+                    "samples_per_section"
+                ),
                 thalweg_centre=self.get_measured_instruction("thalweg_centre"),
             )
 
@@ -1090,8 +1096,12 @@ class MeasuredRiverGenerator(BaseProcessor):
             # Check if already done
             defaults["fan_polygon"] = "fan_polygon.geojson"
             defaults["fan_bathymetry"] = "fan_bathymetry.geojson"
-            fan_polygon_file = self.get_instruction_path("fan_polygon", defaults=defaults)
-            fan_elevations_file = self.get_instruction_path("fan_bathymetry", defaults=defaults)
+            fan_polygon_file = self.get_instruction_path(
+                "fan_polygon", defaults=defaults
+            )
+            fan_elevations_file = self.get_instruction_path(
+                "fan_bathymetry", defaults=defaults
+            )
             if not (fan_polygon_file.exists() and fan_elevations_file.exists()):
                 logging.info("Estimating the fan bathymetry.")
                 print("Estimating the fan bathymetry.")
