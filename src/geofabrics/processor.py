@@ -1024,7 +1024,7 @@ class MeasuredRiverGenerator(BaseProcessor):
             ]
         )
         river_centreline = geopandas.GeoDataFrame(geometry=[river_centreline],
-                                                  crs=self.crs)
+                                                  crs=crs)
         river_centreline.to_file(river_centreline_file)
 
         # Create fan object
