@@ -1979,9 +1979,10 @@ class RiverBathymetryGenerator(BaseProcessor):
             ocean_contour_file=ocean_contour_file,
             crs=crs,
             cross_section_spacing=cross_section_spacing,
-
-            elevation_labels=["bed_elevation_Neal_et_al",
-                                       "bed_elevation_Rupp_and_Smart"],
+            elevation_labels=[
+                "bed_elevation_Neal_et_al",
+                "bed_elevation_Rupp_and_Smart",
+            ],
             ocean_contour_depth_label=ocean_contour_depth_label,
         )
 

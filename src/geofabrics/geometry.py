@@ -821,7 +821,10 @@ class RiverMouthFan:
             river_polygon.buffer(self.cross_section_spacing / 2)
         ).sort_index(ascending=True)
 
-        river_mouth_elevations = [river_bathymetry[elevation_label].iloc[0] for elevation_label in self.elevation_labels]
+        river_mouth_elevations = [
+            river_bathymetry[elevation_label].iloc[0]
+            for elevation_label in self.elevation_labels
+        ]
         river_mouth_width = river_bathymetry["width"].iloc[0]
         return river_mouth_width, river_mouth_elevations
 
@@ -890,10 +893,10 @@ class RiverMouthFan:
         distance = fan_centre.intersection(intersection_line).distance(mouth_point)
 
         # Setup the fan data values
-        fan_depths = {**{"geometry": []},
-                      **dict((elevation_label, [])
-                             for elevation_label in self.elevation_labels)
-                       }
+        fan_depths = {
+            **{"geometry": []},
+            **dict((elevation_label, []) for elevation_label in self.elevation_labels),
+        }
         number_of_samples = int(distance / self.cross_section_spacing)
         depth_increments = [
             (-1 * end_depth - river_mouth_elevation) / number_of_samples
@@ -912,10 +915,10 @@ class RiverMouthFan:
                     ]
                 )
             )
-        for i, (elevation_label, river_mouth_elevation) in enumerate(zip(self.elevation_labels, river_mouth_elevations)):
-            fan_depths[elevation_label].append(
-                river_mouth_elevation + i * depth_increments[i]
-            )
+            for elevation_label, river_mouth_elevation in zip(self.elevation_labels, river_mouth_elevations):
+                fan_depths[elevation_label].append(
+                    river_mouth_elevation + i * depth_increments[i]
+                )
         fan_depths = geopandas.GeoDataFrame(fan_depths, crs=self.crs)
         return fan_depths
 
