@@ -1723,11 +1723,7 @@ class RoughnessDem(LidarBase):
         The interpolation method to apply to LiDAR. Options are: mean, median, IDW.
     """
 
-    ROUGHNESS_DEFAULTS = {
-        "land": 0.014,
-        "water": 0.004,
-        "minimum": 0.00001
-    }
+    ROUGHNESS_DEFAULTS = {"land": 0.014, "water": 0.004, "minimum": 0.00001}
 
     def __init__(
         self,
