@@ -518,9 +518,7 @@ class InterpolateMeasuredElevations:
 
         # Check expected riverbank information
         if self.riverbanks.crs is None:
-            raise Exception(
-                "CRS required for self.measured_sections. Is None."
-            )
+            raise Exception("CRS required for self.measured_sections. Is None.")
         if (
             len(self.riverbanks.columns) != 2
             and "Name" not in self.riverbanks.columns
@@ -570,10 +568,8 @@ class InterpolateMeasuredElevations:
             )
 
         # Check valid measured cross section information
-        if (self.measured_sections.crs is None):
-            raise Exception(
-                "CRS required for self.measured_sections. Is None."
-            )
+        if self.measured_sections.crs is None:
+            raise Exception("CRS required for self.measured_sections. Is None.")
         if not (self.measured_sections.geometry.type == "LineString").all():
             raise Exception(
                 "The individual sections of the self.measured_sections must "
