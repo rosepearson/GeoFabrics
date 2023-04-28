@@ -912,10 +912,10 @@ class RiverMouthFan:
                     ]
                 )
             )
-            for i, (elevation_label, river_mouth_elevation) in enumerate(zip(self.elevation_labels, river_mouth_elevations)):
-                fan_depths[elevation_label].append(
-                    river_mouth_elevation + i * depth_increments[i]
-                )
+        for i, (elevation_label, river_mouth_elevation) in enumerate(zip(self.elevation_labels, river_mouth_elevations)):
+            fan_depths[elevation_label].append(
+                river_mouth_elevation + i * depth_increments[i]
+            )
         fan_depths = geopandas.GeoDataFrame(fan_depths, crs=self.crs)
         return fan_depths
 
