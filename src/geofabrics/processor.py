@@ -1877,7 +1877,7 @@ class RiverBathymetryGenerator(BaseProcessor):
             flat_width_name=flat_width_name,
             full_bank_width_name=width_name,
             width_values=width_values,
-        )  # TODO - remove and don't make correction
+        )
         # Ensure valid depths before converting to bed elevations
         if not ((full_bank_depth - width_values[threshold_name]) >= 0).all():
             mask = (full_bank_depth - width_values[threshold_name]) < 0
@@ -1914,7 +1914,7 @@ class RiverBathymetryGenerator(BaseProcessor):
             flat_width_name=flat_width_name,
             full_bank_width_name=width_name,
             width_values=width_values,
-        )  # TODO - remove and don't make correction
+        )
         # Ensure valid depths before converting to bed elevations
         if not ((full_bank_depth - width_values[threshold_name]) >= 0).all():
             mask = (full_bank_depth - width_values[threshold_name]) < 0
