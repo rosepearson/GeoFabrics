@@ -993,12 +993,9 @@ class ChannelCharacteristics:
             cross_sections["min_z_centre"]
         )
 
-        # Set the water z value to use for width thresholding
-        cross_sections["min_z_water"] = cross_sections["min_z_centre_unimodal"]
-
         # Slope from the water surface - interpolate to fill any Nan
         cross_sections["slope"] = (
-            cross_sections["min_z_water"].diff() / self.cross_section_spacing
+            cross_sections["min_z_centre_unimodal"].diff() / self.cross_section_spacing
         )
         cross_sections["slope"] = cross_sections["slope"].interpolate(
             "index", limit_direction="both"
@@ -1153,7 +1150,7 @@ class ChannelCharacteristics:
             gnd_samples = cross_section_elevations["gnd_elevations"][j]
             veg_samples = cross_section_elevations["veg_elevations"][j]
             start_index = self.centre_index
-            z_water = cross_sections.iloc[j]["min_z_water"]
+            z_water = cross_sections.iloc[j]["min_z_centre_unimodal"]
 
             start_i, stop_i, channel_count = self.fixed_threshold_width(
                 gnd_samples=gnd_samples,
@@ -1239,7 +1236,7 @@ class ChannelCharacteristics:
             gnd_samples = cross_section_elevations["gnd_elevations"][j]
             veg_samples = cross_section_elevations["veg_elevations"][j]
             start_index = self.centre_index
-            z_water = cross_sections.iloc[j]["min_z_water"]
+            z_water = cross_sections.iloc[j]["min_z_centre_unimodal"]
 
             # Get width based on fixed threshold
             start_i, stop_i, channel_count = self.fixed_threshold_width(
