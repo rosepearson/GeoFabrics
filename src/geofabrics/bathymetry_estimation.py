@@ -1004,27 +1004,6 @@ class ChannelCharacteristics:
             "index", limit_direction="both"
         )
 
-        # Slopes for a range of smoothings
-        for smoothing_distance in [50, 250, 500, 1000]:
-            # ensure odd number of samples so array length preserved
-            smoothing_samples = int(
-                numpy.ceil(smoothing_distance / self.cross_section_spacing)
-            )
-            smoothing_samples = int(smoothing_samples / 2) * 2 + 1
-            label = f"{smoothing_distance/1000}km"
-
-            # Smoothed min_z_centre_unimodal
-            cross_sections[
-                f"min_z_centre_unimodal_mean_{label}"
-            ] = self._rolling_mean_with_padding(
-                cross_sections["min_z_centre_unimodal"], smoothing_samples
-            )
-
-            # Smoothed slope
-            cross_sections[f"slope_mean_{label}"] = self._rolling_mean_with_padding(
-                cross_sections["slope"], smoothing_samples
-            )
-
     def _smooth_widths_and_thresholds(self, cross_sections: geopandas.GeoDataFrame):
         """Record the valid and reolling mean of the calculated thresholds and widths
 
@@ -1041,75 +1020,14 @@ class ChannelCharacteristics:
         # Tidy up widths - pull out the valid widths
         cross_sections["valid_widths"] = cross_sections["widths"]
         cross_sections.loc[invalid_mask, "valid_widths"] = numpy.nan
-        widths_no_nan = cross_sections["valid_widths"].interpolate(
-            "index", limit_direction="both"
-        )
 
         # Flat widths
         cross_sections["valid_flat_widths"] = cross_sections["flat_widths"]
         cross_sections.loc[invalid_mask, "valid_flat_widths"] = numpy.nan
-        flat_widths_no_nan = cross_sections["valid_flat_widths"].interpolate(
-            "index", limit_direction="both"
-        )
 
         # Tidy up thresholds - pull out the valid thresholds
         cross_sections["valid_threhold"] = cross_sections["threshold"]
         cross_sections.loc[invalid_mask, "valid_threhold"] = numpy.nan
-        thresholds_no_nan = cross_sections["valid_threhold"].interpolate(
-            "index", limit_direction="both"
-        )
-
-        # Cycle through and caluclate the rolling mean
-        for smoothing_distance in [50, 150, 200, 250]:
-            # ensure odd number of samples so array length preserved
-            smoothing_samples = int(
-                numpy.ceil(smoothing_distance / self.cross_section_spacing)
-            )
-            smoothing_samples = int(smoothing_samples / 2) * 2 + 1
-            label = f"{smoothing_distance/1000}km"
-
-            # Apply the rolling mean to each
-            cross_sections[f"widths_mean_{label}"] = self._rolling_mean_with_padding(
-                widths_no_nan, smoothing_samples
-            )
-            cross_sections[
-                f"flat_widths_mean_{label}"
-            ] = self._rolling_mean_with_padding(flat_widths_no_nan, smoothing_samples)
-            cross_sections[
-                f"thresholds_mean_{label}"
-            ] = self._rolling_mean_with_padding(thresholds_no_nan, smoothing_samples)
-
-            """cross_sections[f'widths_Savgol_{label}'] = scipy.signal.savgol_filter(
-                cross_sections['widths'].interpolate('index', limit_direction='both'),
-                smoothing_samples,  # Ensure odd. number of samples included
-                3)  # Polynomial order"""
-
-    def _rolling_mean_with_padding(
-        self, data: geopandas.GeoSeries, number_of_samples: int
-    ) -> numpy.ndarray:
-        """Calculate the rolling mean of an array after padding the array with
-        the edge value to ensure the derivative is smooth.
-
-        Parameters
-        ----------
-
-        data
-            The array to pad then smooth.
-        number_of_samples
-            The width in samples of the averaging filter
-        """
-        assert (
-            number_of_samples > 0 and type(number_of_samples) == int
-        ), "Must be more than 0 and an int"
-        rolling_mean = (
-            numpy.convolve(
-                numpy.pad(data, int(number_of_samples / 2), "symmetric"),
-                numpy.ones(number_of_samples),
-                "valid",
-            )
-            / number_of_samples
-        )
-        return rolling_mean
 
     def sample_cross_sections(
         self, cross_sections: geopandas.GeoDataFrame, min_z_search_radius: float

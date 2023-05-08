@@ -1287,6 +1287,7 @@ class RiverBathymetryGenerator(BaseProcessor):
             "minimum_slope": 0.0001,  # 0.1m per 1km
             "keep_downstream_osm": False,
             "estimate_fan": False,
+            "upstream_smoothing_factor": 25,  # i.e. 25 x cross_section_spacing
         }
 
         assert key in defaults or key in self.instructions["rivers"], (
@@ -1733,6 +1734,75 @@ class RiverBathymetryGenerator(BaseProcessor):
 
         return channel_width, smoothed_osm_channel
 
+    def _rolling_mean_with_padding(
+        self, data: geopandas.GeoSeries, number_of_samples: int
+    ) -> numpy.ndarray:
+        """Calculate the rolling mean of an array after padding the array with
+        the edge value to ensure the derivative is smooth.
+
+        Parameters
+        ----------
+
+        data
+            The array to pad then smooth.
+        number_of_samples
+            The width in samples of the averaging filter
+        """
+        assert (
+            number_of_samples > 0 and type(number_of_samples) == int
+        ), "Must be more than 0 and an int"
+        rolling_mean = (
+            numpy.convolve(
+                numpy.pad(data, int(number_of_samples / 2), "symmetric"),
+                numpy.ones(number_of_samples),
+                "valid",
+            )
+            / number_of_samples
+        )
+        return rolling_mean
+
+    def _apply_upstream_smoothing(self, width_values: geopandas.GeoDataFrame) -> str:
+        """ Apply upstream smoothing to the width, flat_widths, thresholds, and
+        slope. Store in the widths values Then result the smoothing label.
+        """
+
+        # Get the level of upstream smoothing to apply
+        upstream_smoothing_factor = self.get_bathymetry_instruction(
+            "upstream_smoothing_factor")
+        cross_section_spacing = self.get_bathymetry_instruction(
+            "cross_section_spacing")
+        # Cycle through and caluclate the rolling mean
+        label = f"{cross_section_spacing*upstream_smoothing_factor/1000}km"
+
+        # Apply the rolling mean to each
+        # Smoothed slope
+        width_values[f"slope_mean_{label}"] = self._rolling_mean_with_padding(
+            width_values["slope"], upstream_smoothing_factor
+        )
+
+        widths_no_nan = width_values["valid_widths"].interpolate(
+            "index", limit_direction="both"
+        )
+        width_values[f"widths_mean_{label}"] = self._rolling_mean_with_padding(
+            widths_no_nan, upstream_smoothing_factor
+        )
+        flat_widths_no_nan = width_values["valid_flat_widths"].interpolate(
+            "index", limit_direction="both"
+        )
+        width_values[
+            f"flat_widths_mean_{label}"
+        ] = self._rolling_mean_with_padding(flat_widths_no_nan,
+                                            upstream_smoothing_factor)
+        thresholds_no_nan = width_values["valid_threhold"].interpolate(
+            "index", limit_direction="both"
+        )
+        width_values[
+            f"thresholds_mean_{label}"
+        ] = self._rolling_mean_with_padding(thresholds_no_nan,
+                                            upstream_smoothing_factor)
+
+        return label
+
     def calculate_river_bed_elevations(self):
         """Calculate and save depth estimates along the channel using various
         approaches.
@@ -1770,12 +1840,15 @@ class RiverBathymetryGenerator(BaseProcessor):
             width_values["mannings_n"].fillna(method="ffill").fillna(method="bfill")
         )
 
+        # Get the level of upstream smoothing to apply
+        label = self._apply_upstream_smoothing(width_values)
+
         # Names of values to use
-        slope_name = "slope_mean_0.05km"
+        slope_name = "slope_mean_{label}km"
         min_z_name = "min_z_centre_unimodal"
-        width_name = "widths_mean_0.05km"
-        flat_width_name = "flat_widths_mean_0.05km"
-        threshold_name = "thresholds_mean_0.05km"
+        width_name = "widths_mean_{label}km"
+        flat_width_name = "flat_widths_mean_{label}km"
+        threshold_name = "thresholds_mean_{label}km"
 
         # Enfore a minimum slope - as specified in the instructions
         minimum_slope = self.get_bathymetry_instruction("minimum_slope")
