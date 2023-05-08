@@ -1842,11 +1842,11 @@ class RiverBathymetryGenerator(BaseProcessor):
         label = self._apply_upstream_smoothing(width_values)
 
         # Names of values to use
-        slope_name = "slope_mean_{label}km"
+        slope_name = f"slope_mean_{label}km"
         min_z_name = "min_z_centre_unimodal"
-        width_name = "widths_mean_{label}km"
-        flat_width_name = "flat_widths_mean_{label}km"
-        threshold_name = "thresholds_mean_{label}km"
+        width_name = f"widths_mean_{label}km"
+        flat_width_name = f"flat_widths_mean_{label}km"
+        threshold_name = f"thresholds_mean_{label}km"
 
         # Enfore a minimum slope - as specified in the instructions
         minimum_slope = self.get_bathymetry_instruction("minimum_slope")
