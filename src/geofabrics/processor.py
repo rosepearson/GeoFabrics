@@ -1762,15 +1762,15 @@ class RiverBathymetryGenerator(BaseProcessor):
         return rolling_mean
 
     def _apply_upstream_smoothing(self, width_values: geopandas.GeoDataFrame) -> str:
-        """ Apply upstream smoothing to the width, flat_widths, thresholds, and
+        """Apply upstream smoothing to the width, flat_widths, thresholds, and
         slope. Store in the widths values Then result the smoothing label.
         """
 
         # Get the level of upstream smoothing to apply
         upstream_smoothing_factor = self.get_bathymetry_instruction(
-            "upstream_smoothing_factor")
-        cross_section_spacing = self.get_bathymetry_instruction(
-            "cross_section_spacing")
+            "upstream_smoothing_factor"
+        )
+        cross_section_spacing = self.get_bathymetry_instruction("cross_section_spacing")
         # Cycle through and caluclate the rolling mean
         label = f"{cross_section_spacing*upstream_smoothing_factor/1000}km"
 
@@ -1789,17 +1789,15 @@ class RiverBathymetryGenerator(BaseProcessor):
         flat_widths_no_nan = width_values["valid_flat_widths"].interpolate(
             "index", limit_direction="both"
         )
-        width_values[
-            f"flat_widths_mean_{label}"
-        ] = self._rolling_mean_with_padding(flat_widths_no_nan,
-                                            upstream_smoothing_factor)
+        width_values[f"flat_widths_mean_{label}"] = self._rolling_mean_with_padding(
+            flat_widths_no_nan, upstream_smoothing_factor
+        )
         thresholds_no_nan = width_values["valid_threhold"].interpolate(
             "index", limit_direction="both"
         )
-        width_values[
-            f"thresholds_mean_{label}"
-        ] = self._rolling_mean_with_padding(thresholds_no_nan,
-                                            upstream_smoothing_factor)
+        width_values[f"thresholds_mean_{label}"] = self._rolling_mean_with_padding(
+            thresholds_no_nan, upstream_smoothing_factor
+        )
 
         return label
 
