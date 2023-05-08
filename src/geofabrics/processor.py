@@ -1774,24 +1774,26 @@ class RiverBathymetryGenerator(BaseProcessor):
         # Cycle through and caluclate the rolling mean
         label = f"{cross_section_spacing*upstream_smoothing_factor/1000}km"
 
-        # Apply the rolling mean to each
-        # Smoothed slope
+        # Apply smoothing via '_rolling_mean_with_padding' to each measurement
+        # Slope
         width_values[f"slope_mean_{label}"] = self._rolling_mean_with_padding(
             width_values["slope"], upstream_smoothing_factor
         )
-
+        # Width
         widths_no_nan = width_values["valid_widths"].interpolate(
             "index", limit_direction="both"
         )
         width_values[f"widths_mean_{label}"] = self._rolling_mean_with_padding(
             widths_no_nan, upstream_smoothing_factor
         )
+        # Flat width
         flat_widths_no_nan = width_values["valid_flat_widths"].interpolate(
             "index", limit_direction="both"
         )
         width_values[f"flat_widths_mean_{label}"] = self._rolling_mean_with_padding(
             flat_widths_no_nan, upstream_smoothing_factor
         )
+        # Threshold
         thresholds_no_nan = width_values["valid_threhold"].interpolate(
             "index", limit_direction="both"
         )
@@ -1842,11 +1844,11 @@ class RiverBathymetryGenerator(BaseProcessor):
         label = self._apply_upstream_smoothing(width_values)
 
         # Names of values to use
-        slope_name = f"slope_mean_{label}km"
+        slope_name = f"slope_mean_{label}"
         min_z_name = "min_z_centre_unimodal"
-        width_name = f"widths_mean_{label}km"
-        flat_width_name = f"flat_widths_mean_{label}km"
-        threshold_name = f"thresholds_mean_{label}km"
+        width_name = f"widths_mean_{label}"
+        flat_width_name = f"flat_widths_mean_{label}"
+        threshold_name = f"thresholds_mean_{label}"
 
         # Enfore a minimum slope - as specified in the instructions
         minimum_slope = self.get_bathymetry_instruction("minimum_slope")
