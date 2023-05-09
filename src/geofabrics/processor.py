@@ -358,6 +358,7 @@ class BaseProcessor(abc.ABC):
         # Check the instructions for vector data hosted in the supported vector data
         # services: LINZ and LRIS
         cache_dir = pathlib.Path(self.get_instruction_path("local_cache"))
+        subfolder = self.get_instruction_path("subfolder").relative_to(cache_dir)
         bounding_polygon = (
             self.catchment_geometry.catchment
             if self.catchment_geometry is not None
@@ -410,9 +411,9 @@ class BaseProcessor(abc.ABC):
                         vector = fetcher.run(layer, geometry_type)
 
                         # Write out file if not already recorded
-                        layer_file = cache_dir / "vector" / f"{layer}.geojson"
+                        layer_file = cache_dir / "vector" / subfolder / f"{layer}.geojson"
                         if not layer_file.exists():
-                            layer_file.parent.mkdir(parents=False, exist_ok=True)
+                            layer_file.parent.mkdir(parents=True, exist_ok=True)
                             vector.to_file(layer_file)
                         paths.append(layer_file)
                 elif api_type == "raster":
