@@ -23,7 +23,7 @@ import numpy
 from src.geofabrics import processor
 
 
-class ProcessorRiverBathymetryTest(unittest.TestCase):
+class AllBathymetryIntoDemWellingtonTest(unittest.TestCase):
     """A class to test the basic river bathymetry estimation functionality
     contained in processor.RiverBathymetryGenerator.
 
@@ -162,36 +162,36 @@ class ProcessorRiverBathymetryTest(unittest.TestCase):
     def test_result_dem_linux(self):
         """A basic comparison between the generated and benchmark DEM"""
 
-        # load in benchmark DEM
+        # load in benchmark
         file_path = (
             self.cache_dir / self.instructions["dem"]["data_paths"]["benchmark_dem"]
         )
-        with rioxarray.rioxarray.open_rasterio(file_path, masked=True) as benchmark_dem:
-            benchmark_dem.load()
-        # Load in test DEM
+        with rioxarray.rioxarray.open_rasterio(file_path, masked=True) as benchmark:
+            benchmark.load()
+        # Load in test
         file_path = (
             self.results_dir / self.instructions["dem"]["data_paths"]["result_dem"]
         )
-        with rioxarray.rioxarray.open_rasterio(file_path, masked=True) as test_dem:
-            test_dem.load()
+        with rioxarray.rioxarray.open_rasterio(file_path, masked=True) as test:
+            test.load()
         # compare the generated and benchmark DEMs
-        lidar_source_mask = (test_dem.source_class.data == 1) & (
-            benchmark_dem.source_class.data == 1
+        lidar_source_mask = (test.source_class.data == 1) & (
+            benchmark.source_class.data == 1
         )
         lidar_diff = (
-            test_dem.z.data[lidar_source_mask] - benchmark_dem.z.data[lidar_source_mask]
+            test.z.data[lidar_source_mask] - benchmark.z.data[lidar_source_mask]
         )
         numpy.testing.assert_array_almost_equal(
-            test_dem.z.data[lidar_source_mask],
-            benchmark_dem.z.data[lidar_source_mask],
+            test.z.data[lidar_source_mask],
+            benchmark.z.data[lidar_source_mask],
             decimal=6,
-            err_msg="The generated test_dem has significantly different data from the "
-            f"benchmark_dem where there is LiDAR: {lidar_diff}",
+            err_msg="The generated test has significantly different data from the "
+            f"benchmark where there is LiDAR: {lidar_diff}",
         )
 
         diff_array = (
-            test_dem.z.data[~numpy.isnan(test_dem.z.data)]
-            - benchmark_dem.z.data[~numpy.isnan(benchmark_dem.z.data)]
+            test.z.data[~numpy.isnan(test.z.data)]
+            - benchmark.z.data[~numpy.isnan(benchmark.z.data)]
         )
         logging.info(f"DEM array diff is: {diff_array[diff_array != 0]}")
         threshold = 10e-6
@@ -205,8 +205,8 @@ class ProcessorRiverBathymetryTest(unittest.TestCase):
         )
 
         # explicitly free memory as xarray seems to be hanging onto memory
-        del test_dem
-        del benchmark_dem
+        del test
+        del benchmark
         gc.collect()
 
 
