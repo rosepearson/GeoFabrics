@@ -358,6 +358,7 @@ class BaseProcessor(abc.ABC):
         # Check the instructions for vector data hosted in the supported vector data
         # services: LINZ and LRIS
         cache_dir = pathlib.Path(self.get_instruction_path("local_cache"))
+        subfolder = self.get_instruction_path("subfolder").relative_to(cache_dir)
         bounding_polygon = (
             self.catchment_geometry.catchment
             if self.catchment_geometry is not None
@@ -410,9 +411,11 @@ class BaseProcessor(abc.ABC):
                         vector = fetcher.run(layer, geometry_type)
 
                         # Write out file if not already recorded
-                        layer_file = cache_dir / "vector" / f"{layer}.geojson"
+                        layer_file = (
+                            cache_dir / "vector" / subfolder / f"{layer}.geojson"
+                        )
                         if not layer_file.exists():
-                            layer_file.parent.mkdir(parents=False, exist_ok=True)
+                            layer_file.parent.mkdir(parents=True, exist_ok=True)
                             vector.to_file(layer_file)
                         paths.append(layer_file)
                 elif api_type == "raster":
@@ -430,10 +433,12 @@ class BaseProcessor(abc.ABC):
                         bounding_polygon = geopandas.GeoDataFrame(
                             geometry=[bounds], crs=bounding_polygon.crs
                         )
+                    raster_dir = cache_dir / "raster" / subfolder
+                    raster_dir.parent.mkdir(parents=True, exist_ok=True)
                     fetcher = data_services[data_service](
                         key=api_key,
                         bounding_polygon=bounding_polygon,
-                        cache_path=cache_dir,
+                        cache_path=raster_dir,
                     )
 
                     api_instruction = self.instructions["apis"][api_type][data_service][
@@ -1287,6 +1292,7 @@ class RiverBathymetryGenerator(BaseProcessor):
             "minimum_slope": 0.0001,  # 0.1m per 1km
             "keep_downstream_osm": False,
             "estimate_fan": False,
+            "upstream_smoothing_factor": 25,  # i.e. 25 x cross_section_spacing
         }
 
         assert key in defaults or key in self.instructions["rivers"], (
@@ -1733,6 +1739,75 @@ class RiverBathymetryGenerator(BaseProcessor):
 
         return channel_width, smoothed_osm_channel
 
+    def _rolling_mean_with_padding(
+        self, data: geopandas.GeoSeries, number_of_samples: int
+    ) -> numpy.ndarray:
+        """Calculate the rolling mean of an array after padding the array with
+        the edge value to ensure the derivative is smooth.
+
+        Parameters
+        ----------
+
+        data
+            The array to pad then smooth.
+        number_of_samples
+            The width in samples of the averaging filter
+        """
+        assert (
+            number_of_samples > 0 and type(number_of_samples) == int
+        ), "Must be more than 0 and an int"
+        rolling_mean = (
+            numpy.convolve(
+                numpy.pad(data, int(number_of_samples / 2), "symmetric"),
+                numpy.ones(number_of_samples),
+                "valid",
+            )
+            / number_of_samples
+        )
+        return rolling_mean
+
+    def _apply_upstream_smoothing(self, width_values: geopandas.GeoDataFrame) -> str:
+        """Apply upstream smoothing to the width, flat_widths, thresholds, and
+        slope. Store in the widths values Then result the smoothing label.
+        """
+
+        # Get the level of upstream smoothing to apply
+        upstream_smoothing_factor = self.get_bathymetry_instruction(
+            "upstream_smoothing_factor"
+        )
+        cross_section_spacing = self.get_bathymetry_instruction("cross_section_spacing")
+        # Cycle through and caluclate the rolling mean
+        label = f"{cross_section_spacing*upstream_smoothing_factor/1000}km"
+
+        # Apply smoothing via '_rolling_mean_with_padding' to each measurement
+        # Slope
+        width_values[f"slope_mean_{label}"] = self._rolling_mean_with_padding(
+            width_values["slope"], upstream_smoothing_factor
+        )
+        # Width
+        widths_no_nan = width_values["valid_widths"].interpolate(
+            "index", limit_direction="both"
+        )
+        width_values[f"widths_mean_{label}"] = self._rolling_mean_with_padding(
+            widths_no_nan, upstream_smoothing_factor
+        )
+        # Flat width
+        flat_widths_no_nan = width_values["valid_flat_widths"].interpolate(
+            "index", limit_direction="both"
+        )
+        width_values[f"flat_widths_mean_{label}"] = self._rolling_mean_with_padding(
+            flat_widths_no_nan, upstream_smoothing_factor
+        )
+        # Threshold
+        thresholds_no_nan = width_values["valid_threhold"].interpolate(
+            "index", limit_direction="both"
+        )
+        width_values[f"thresholds_mean_{label}"] = self._rolling_mean_with_padding(
+            thresholds_no_nan, upstream_smoothing_factor
+        )
+
+        return label
+
     def calculate_river_bed_elevations(self):
         """Calculate and save depth estimates along the channel using various
         approaches.
@@ -1770,12 +1845,15 @@ class RiverBathymetryGenerator(BaseProcessor):
             width_values["mannings_n"].fillna(method="ffill").fillna(method="bfill")
         )
 
+        # Get the level of upstream smoothing to apply
+        label = self._apply_upstream_smoothing(width_values)
+
         # Names of values to use
-        slope_name = "slope_mean_0.05km"
+        slope_name = f"slope_mean_{label}"
         min_z_name = "min_z_centre_unimodal"
-        width_name = "widths_mean_0.05km"
-        flat_width_name = "flat_widths_mean_0.05km"
-        threshold_name = "thresholds_mean_0.05km"
+        width_name = f"widths_mean_{label}"
+        flat_width_name = f"flat_widths_mean_{label}"
+        threshold_name = f"thresholds_mean_{label}"
 
         # Enfore a minimum slope - as specified in the instructions
         minimum_slope = self.get_bathymetry_instruction("minimum_slope")
@@ -1804,7 +1882,7 @@ class RiverBathymetryGenerator(BaseProcessor):
             flat_width_name=flat_width_name,
             full_bank_width_name=width_name,
             width_values=width_values,
-        )  # TODO - remove and don't make correction
+        )
         # Ensure valid depths before converting to bed elevations
         if not ((full_bank_depth - width_values[threshold_name]) >= 0).all():
             mask = (full_bank_depth - width_values[threshold_name]) < 0
@@ -1841,7 +1919,7 @@ class RiverBathymetryGenerator(BaseProcessor):
             flat_width_name=flat_width_name,
             full_bank_width_name=width_name,
             width_values=width_values,
-        )  # TODO - remove and don't make correction
+        )
         # Ensure valid depths before converting to bed elevations
         if not ((full_bank_depth - width_values[threshold_name]) >= 0).all():
             mask = (full_bank_depth - width_values[threshold_name]) < 0

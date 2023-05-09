@@ -23,7 +23,7 @@ import numpy
 from src.geofabrics import processor
 
 
-class ProcessorRiverBathymetryTest(unittest.TestCase):
+class AllBathymetryIntoDemWellingtonWithRoughnessTest(unittest.TestCase):
     """A class to test the basic river bathymetry estimation functionality
     contained in processor.RiverBathymetryGenerator.
 
@@ -202,8 +202,8 @@ class ProcessorRiverBathymetryTest(unittest.TestCase):
             test.z.data[lidar_source_mask] - benchmark.z.data[lidar_source_mask]
         )
         numpy.testing.assert_array_almost_equal(
-            test.z.data[test.source_class.data == 1],
-            benchmark.z.data[test.source_class.data == 1],
+            test.z.data[lidar_source_mask],
+            benchmark.z.data[lidar_source_mask],
             decimal=6,
             err_msg="The generated test has significantly different elevation from the "
             f"benchmark where there is LiDAR: {lidar_diff}",

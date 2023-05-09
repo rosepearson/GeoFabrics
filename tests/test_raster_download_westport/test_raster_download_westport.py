@@ -43,7 +43,7 @@ class ProcessorRemoteAllWestportTest(unittest.TestCase):
 
     # The expected datasets and files to be downloaded - used for comparison in the
     # later tests
-    DATASETS = ["NZ20_Westport", "vector", "51768"]
+    DATASETS = ["NZ20_Westport", "vector", "raster"]
     LIDAR_SIZES = {
         "CL2_BR21_2020_1000_4704.laz": 20851153,
         "CL2_BR21_2020_1000_4705.laz": 19749374,
@@ -145,7 +145,13 @@ class ProcessorRemoteAllWestportTest(unittest.TestCase):
 
         # Check the right dataset is downloaded - self.DATASET
         self.assertEqual(
-            len(list(self.cache_dir.glob("*/**"))),
+            len(
+                [
+                    directory
+                    for directory in self.cache_dir.glob("*")
+                    if directory.is_dir()
+                ]
+            ),
             len(dataset_dirs) + 1,
             f"There should only be {len(dataset_dirs)} datasets named {dataset_dirs} "
             f"and the results dir {self.results_dir}, but instead there are "
