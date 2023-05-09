@@ -431,10 +431,12 @@ class BaseProcessor(abc.ABC):
                         bounding_polygon = geopandas.GeoDataFrame(
                             geometry=[bounds], crs=bounding_polygon.crs
                         )
+                    raster_dir = cache_dir / "raster" / subfolder
+                    raster_dir.parent.mkdir(parents=True, exist_ok=True)
                     fetcher = data_services[data_service](
                         key=api_key,
                         bounding_polygon=bounding_polygon,
-                        cache_path=cache_dir,
+                        cache_path=raster_dir,
                     )
 
                     api_instruction = self.instructions["apis"][api_type][data_service][
