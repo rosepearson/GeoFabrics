@@ -145,7 +145,13 @@ class ProcessorRemoteAllWestportTest(unittest.TestCase):
 
         # Check the right dataset is downloaded - self.DATASET
         self.assertEqual(
-            len([directory for directory in self.cache_dir.glob("*") if directory.is_dir()]),
+            len(
+                [
+                    directory
+                    for directory in self.cache_dir.glob("*")
+                    if directory.is_dir()
+                ]
+            ),
             len(dataset_dirs) + 1,
             f"There should only be {len(dataset_dirs)} datasets named {dataset_dirs} "
             f"and the results dir {self.results_dir}, but instead there are "
