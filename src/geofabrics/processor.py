@@ -411,7 +411,9 @@ class BaseProcessor(abc.ABC):
                         vector = fetcher.run(layer, geometry_type)
 
                         # Write out file if not already recorded
-                        layer_file = cache_dir / "vector" / subfolder / f"{layer}.geojson"
+                        layer_file = (
+                            cache_dir / "vector" / subfolder / f"{layer}.geojson"
+                        )
                         if not layer_file.exists():
                             layer_file.parent.mkdir(parents=True, exist_ok=True)
                             vector.to_file(layer_file)
