@@ -578,13 +578,17 @@ class BaseProcessor(abc.ABC):
                     / f"{dataset_name}_TileIndex.zip"
                 )
         else:
-            # get the specified file paths from the instructions,
-            lidar_datasets_info["local_files"] = {}
-            lidar_datasets_info["local_files"][
-                "file_paths"
-            ] = self.get_instruction_path("lidars")
-            lidar_datasets_info["local_files"]["crs"] = None
-            lidar_datasets_info["local_files"]["tile_index_file"] = None
+            # for multiple local lidar datasets
+            if 'local' in self.instructions.keys() and 'lidar' in self.instructions['local'].keys():
+                lidar_datasets_info = self.instructions["local"]["lidar"]
+            else:
+                # get the specified file paths from the instructions,
+                lidar_datasets_info["local_files"] = {}
+                lidar_datasets_info["local_files"][
+                    "file_paths"
+                ] = self.get_instruction_path("lidars")
+                lidar_datasets_info["local_files"]["crs"] = None
+                lidar_datasets_info["local_files"]["tile_index_file"] = None
         return lidar_datasets_info
 
     def create_catchment(self) -> geometry.CatchmentGeometry:
