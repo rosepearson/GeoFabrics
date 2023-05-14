@@ -579,7 +579,10 @@ class BaseProcessor(abc.ABC):
                 )
         else:
             # for multiple local lidar datasets
-            if 'local' in self.instructions.keys() and 'lidar' in self.instructions['local'].keys():
+            if (
+                "local" in self.instructions.keys()
+                and "lidar" in self.instructions["local"].keys()
+            ):
                 lidar_datasets_info = self.instructions["local"]["lidar"]
             else:
                 # get the specified file paths from the instructions,
