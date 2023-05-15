@@ -2,15 +2,15 @@
 "type": "FeatureCollection",
 "crs": { "type": "name", "properties": { "name": "urn:ogc:def:crs:EPSG::2193" } },
 "features": [
-{ "type": "Feature", "properties": { "OSM_id": 920599000, "level_1": 0, "elevation": 1.2796626091003418, "width": 7.5 }, "geometry": { "type": "Point", "coordinates": [ 1770855.148882067296654, 5472804.545030660927296 ] } },
-{ "type": "Feature", "properties": { "OSM_id": 920599000, "level_1": 1, "elevation": 1.2796626091003418, "width": 7.5 }, "geometry": { "type": "Point", "coordinates": [ 1770855.049747160868719, 5472805.522335520014167 ] } },
-{ "type": "Feature", "properties": { "OSM_id": 920599000, "level_1": 2, "elevation": 1.2796626091003418, "width": 7.5 }, "geometry": { "type": "Point", "coordinates": [ 1770854.950612254440784, 5472806.499640379101038 ] } },
-{ "type": "Feature", "properties": { "OSM_id": 920599000, "level_1": 3, "elevation": 1.2796626091003418, "width": 7.5 }, "geometry": { "type": "Point", "coordinates": [ 1770854.85147734824568, 5472807.476945239119232 ] } },
-{ "type": "Feature", "properties": { "OSM_id": 920599000, "level_1": 4, "elevation": 1.2796626091003418, "width": 7.5 }, "geometry": { "type": "Point", "coordinates": [ 1770854.752342441817746, 5472808.454250098206103 ] } },
-{ "type": "Feature", "properties": { "OSM_id": 920599000, "level_1": 5, "elevation": 1.2796626091003418, "width": 7.5 }, "geometry": { "type": "Point", "coordinates": [ 1770854.653207535389811, 5472809.431554957292974 ] } },
-{ "type": "Feature", "properties": { "OSM_id": 920599000, "level_1": 6, "elevation": 1.2796626091003418, "width": 7.5 }, "geometry": { "type": "Point", "coordinates": [ 1770854.554072628961876, 5472810.408859816379845 ] } },
-{ "type": "Feature", "properties": { "OSM_id": 920599000, "level_1": 7, "elevation": 1.2796626091003418, "width": 7.5 }, "geometry": { "type": "Point", "coordinates": [ 1770854.454937722766772, 5472811.386164676398039 ] } },
-{ "type": "Feature", "properties": { "OSM_id": 920599000, "level_1": 8, "elevation": 1.2796626091003418, "width": 7.5 }, "geometry": { "type": "Point", "coordinates": [ 1770854.355802816338837, 5472812.36346953548491 ] } },
-{ "type": "Feature", "properties": { "OSM_id": 920599000, "level_1": 9, "elevation": 1.2796626091003418, "width": 7.5 }, "geometry": { "type": "Point", "coordinates": [ 1770854.256667909910902, 5472813.340774394571781 ] } }
+{ "type": "Feature", "properties": { "OSM_id": 920599000, "level_1": 0, "elevation": 1.3238042593002319, "width": 7.5 }, "geometry": { "type": "Point", "coordinates": [ 1770855.148882067296654, 5472804.545030660927296 ] } },
+{ "type": "Feature", "properties": { "OSM_id": 920599000, "level_1": 1, "elevation": 1.3238042593002319, "width": 7.5 }, "geometry": { "type": "Point", "coordinates": [ 1770855.049747160868719, 5472805.522335520014167 ] } },
+{ "type": "Feature", "properties": { "OSM_id": 920599000, "level_1": 2, "elevation": 1.3238042593002319, "width": 7.5 }, "geometry": { "type": "Point", "coordinates": [ 1770854.950612254440784, 5472806.499640379101038 ] } },
+{ "type": "Feature", "properties": { "OSM_id": 920599000, "level_1": 3, "elevation": 1.3238042593002319, "width": 7.5 }, "geometry": { "type": "Point", "coordinates": [ 1770854.85147734824568, 5472807.476945239119232 ] } },
+{ "type": "Feature", "properties": { "OSM_id": 920599000, "level_1": 4, "elevation": 1.3238042593002319, "width": 7.5 }, "geometry": { "type": "Point", "coordinates": [ 1770854.752342441817746, 5472808.454250098206103 ] } },
+{ "type": "Feature", "properties": { "OSM_id": 920599000, "level_1": 5, "elevation": 1.3238042593002319, "width": 7.5 }, "geometry": { "type": "Point", "coordinates": [ 1770854.653207535389811, 5472809.431554957292974 ] } },
+{ "type": "Feature", "properties": { "OSM_id": 920599000, "level_1": 6, "elevation": 1.3238042593002319, "width": 7.5 }, "geometry": { "type": "Point", "coordinates": [ 1770854.554072628961876, 5472810.408859816379845 ] } },
+{ "type": "Feature", "properties": { "OSM_id": 920599000, "level_1": 7, "elevation": 1.3238042593002319, "width": 7.5 }, "geometry": { "type": "Point", "coordinates": [ 1770854.454937722766772, 5472811.386164676398039 ] } },
+{ "type": "Feature", "properties": { "OSM_id": 920599000, "level_1": 8, "elevation": 1.3238042593002319, "width": 7.5 }, "geometry": { "type": "Point", "coordinates": [ 1770854.355802816338837, 5472812.36346953548491 ] } },
+{ "type": "Feature", "properties": { "OSM_id": 920599000, "level_1": 9, "elevation": 1.3238042593002319, "width": 7.5 }, "geometry": { "type": "Point", "coordinates": [ 1770854.256667909910902, 5472813.340774394571781 ] } }
 ]
 }
