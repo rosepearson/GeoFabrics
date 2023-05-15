@@ -39,9 +39,7 @@ class Test(unittest.TestCase):
         and also download the files used
         in the tests."""
 
-        test_path = pathlib.Path().cwd() / pathlib.Path(
-            "tests/test_many_stages_local"
-        )
+        test_path = pathlib.Path().cwd() / pathlib.Path("tests/test_many_stages_local")
 
         # Setup logging
         logging.basicConfig(
