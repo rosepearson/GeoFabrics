@@ -331,6 +331,9 @@ class DemBase(abc.ABC):
         if "source_class" in dem:
             dem.source_class.rio.write_crs(crs_dict["horizontal"], inplace=True)
             dem.source_class.rio.write_nodata(numpy.nan, encoded=True, inplace=True)
+        if "dataset_id" in dem:
+            dem.dataset_id.rio.write_crs(crs_dict["horizontal"], inplace=True)
+            dem.dataset_id.rio.write_nodata(numpy.nan, encoded=True, inplace=True)
         if "zo" in dem:
             dem.zo.rio.write_crs(crs_dict["horizontal"], inplace=True)
             dem.zo.rio.write_nodata(numpy.nan, encoded=True, inplace=True)
@@ -1372,6 +1375,7 @@ class RawDem(LidarBase):
         # get chunking information
         chunked_dim_x, chunked_dim_y = self._set_up_chunks(chunk_size)
         elevations = []
+        dataset_name_list = []
 
         logging.info(f"Preparing {[len(chunked_dim_x), len(chunked_dim_y)]} chunks")
         for dataset_name in lidar_datasets_info.keys():
@@ -1379,6 +1383,7 @@ class RawDem(LidarBase):
             lidar_files = lidar_datasets_info[dataset_name]["file_paths"]
             tile_index_file = lidar_datasets_info[dataset_name]["tile_index_file"]
             source_crs = lidar_datasets_info[dataset_name]["crs"]
+            dataset_name_list.append(dataset_name)
 
             # create a map from tile name to tile file name
             lidar_files_map = {
@@ -1440,6 +1445,7 @@ class RawDem(LidarBase):
             y=numpy.concatenate(chunked_dim_y),
             elevations=elevations,
             metadata=metadata,
+            dataset_name=dataset_name_list,
         )
         logging.info("Computing chunks")
         chunked_dem = chunked_dem.compute()
@@ -1540,7 +1546,12 @@ class RawDem(LidarBase):
         return grid_z
 
     def _create_data_set(
-        self, x: numpy.ndarray, y: numpy.ndarray, elevations: list, metadata: dict
+        self,
+        x: numpy.ndarray,
+        y: numpy.ndarray,
+        elevations: list,
+        metadata: dict,
+        dataset_name: list = None,
     ) -> xarray.Dataset:
         """A function to create a new dataset from x, y and z arrays.
 
@@ -1554,15 +1565,44 @@ class RawDem(LidarBase):
             elevations
                 A list of elevations over the x, and y coordiantes.One for each dataset
         """
+        # check mapping dict exist to map the dataset name to the dataset id
+        # if dataset_name or dataset_mapping is not exist,
+        # then the dataset_id variable is array of 0.
+        if ("dataset_mapping" in metadata["instructions"]
+                and dataset_name is not None):
+            dataset_mapping = metadata["instructions"]["dataset_mapping"]
+            dataset_mapping_result = {k: v for k, v in dataset_mapping.items()
+                                      if k in dataset_name}
+            assert (len(dataset_mapping_result) == (len(dataset_name))), (
+                f"Dataset name not found in the mapping dict."
+            )
+        else:
+            dataset_mapping = None
+            dataset_mapping_result = "Unknown dataset name"
 
         # Lood over each dataset and add data to the DEM
         dems = []
-        for z in elevations:
+        for i, z in enumerate(elevations):
             # Create source variable - assume all values are defined from LiDAR
             source_class = numpy.ones_like(z) * numpy.nan
             source_class[
                 numpy.logical_not(numpy.isnan(z))
             ] = self.SOURCE_CLASSIFICATION["LiDAR"]
+            # check if dataset name is in the mapping dict to get the dataset id
+            if (dataset_mapping is not None
+                    and dataset_name[i] in dataset_mapping):
+                dataset_id = [v for k, v in dataset_mapping.items()
+                              if k == dataset_name[i]]
+                assert (isinstance(dataset_id[0], int)), (
+                    f"dataset id {dataset_id[0]} for dataset name "
+                    f"{dataset_name[i]} is not an integer."
+                )
+            else:
+                dataset_id = [0]
+            dataset_id_array = numpy.ones_like(z) * numpy.nan
+            dataset_id_array[
+                numpy.logical_not(numpy.isnan(z))
+            ] = dataset_id[0]
             dem = xarray.Dataset(
                 data_vars=dict(
                     z=(
@@ -1582,6 +1622,15 @@ class RawDem(LidarBase):
                             "units": "",
                             "long_name": "source data classification",
                             "classifications": f"{self.SOURCE_CLASSIFICATION}",
+                        },
+                    ),
+                    dataset_id=(
+                        ["y", "x"],
+                        dataset_id_array,
+                        {
+                            "units": "",
+                            "long_name": "source dataset id",
+                            "dataset_mapping": f"{dataset_mapping_result}",
                         },
                     ),
                 ),
