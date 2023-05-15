@@ -13,7 +13,7 @@
 		"number_of_cores": 1
 	},
 	"data_paths": {
-		"local_cache": "tests/test_waterways_bathymetry_wellington/data",
+		"local_cache": "tests/test_waterways_estimation_wellington/data",
 		"subfolder": "results",
 		"catchment_boundary": "catchment.geojson",
 		"open_waterways_polygon_benchmark": "open_waterways_polygon_benchmark.geojson",

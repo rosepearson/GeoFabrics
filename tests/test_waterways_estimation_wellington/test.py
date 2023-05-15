@@ -21,7 +21,7 @@ import numpy
 from src.geofabrics import processor
 
 
-class ProcessorWaterwayElevationsWellingtonTest(unittest.TestCase):
+class Test(unittest.TestCase):
     """A class to test the basic waterway elevation estimation functionality
     contained in processor.RiverBathymetryGenerator.
 
@@ -37,7 +37,7 @@ class ProcessorWaterwayElevationsWellingtonTest(unittest.TestCase):
         chain to download remote files and produce a DEM prior to testing."""
 
         test_path = pathlib.Path().cwd() / pathlib.Path(
-            "tests/test_waterways_bathymetry_wellington"
+            "tests/test_waterways_estimation_wellington"
         )
 
         # Setup logging
@@ -47,7 +47,7 @@ class ProcessorWaterwayElevationsWellingtonTest(unittest.TestCase):
             level=logging.INFO,
             force=True,
         )
-        logging.info("In test_waterways_bathymetry_wellington.py")
+        logging.info("In test_waterways_estimation_wellington")
 
         # load in the test instructions
         instruction_file_path = test_path / "instruction.json"

@@ -15,7 +15,7 @@
 			"number_of_cores": 2
 		},
 		"data_paths": {
-			"local_cache": "tests/test_all_bathymetry_into_dem_wellington/data",
+			"local_cache": "tests/test_many_stages_wellington_1/data",
 			"subfolder": "results"
 		},
 		"apis": {

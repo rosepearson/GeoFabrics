@@ -21,7 +21,7 @@ import gc
 from src.geofabrics import processor
 
 
-class ProcessorRemoteTilesWestportTest(unittest.TestCase):
+class Test(unittest.TestCase):
     """A class to test the basic processor class Processor functionality for remote
     tiles by downloading files from OpenTopography within a small region and then
     generating a DEM. All files are deleted after checking the DEM.
@@ -57,7 +57,7 @@ class ProcessorRemoteTilesWestportTest(unittest.TestCase):
         chain to download remote files and produce a DEM prior to testing."""
 
         test_path = pathlib.Path().cwd() / pathlib.Path(
-            "tests/test_processor_remote_tiles_westport"
+            "tests/test_dem_generation_westport_2"
         )
 
         # Setup logging
@@ -67,7 +67,7 @@ class ProcessorRemoteTilesWestportTest(unittest.TestCase):
             level=logging.INFO,
             force=True,
         )
-        logging.info("In test_processor_remote_tiles_westport.py")
+        logging.info("In test_dem_generation_westport_2")
 
         # load in the test instructions
         instruction_file_path = test_path / "instruction.json"

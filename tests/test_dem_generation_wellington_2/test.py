@@ -21,10 +21,10 @@ import gc
 from src.geofabrics import processor
 
 
-class ProcessorRemoteTilesWellingtonTest(unittest.TestCase):
-    """A class to test the basic processor class Processor functionality for remote
-    tiles by downloading files from OpenTopography within a small region and then
-    generating a DEM. All files are deleted after checking the DEM.
+class Test(unittest.TestCase):
+    """A class to test the LidarDemGenerator processor class elevation filtering
+    functionality over remote tiles downloading files from OpenTopography within a small
+    region. All files are deleted after checking the DEM.
 
     Tests run include:
         1. test_correct_dataset - Test that the expected dataset is downloaded from
@@ -38,13 +38,12 @@ class ProcessorRemoteTilesWellingtonTest(unittest.TestCase):
                                                                              Linux)
     """
 
-    # The expected datasets and files to be downloaded - used for comparison in tests
+    # The expected datasets and files to be downloaded - used for comparison in the
+    # later tests
     DATASET = "Wellington_2013"
     FILE_SIZES = {
-        "ot_CL1_WLG_2013_1km_085033.laz": 6795072,
-        "ot_CL1_WLG_2013_1km_086033.laz": 5712485,
-        "ot_CL1_WLG_2013_1km_085032.laz": 1670549,
-        "ot_CL1_WLG_2013_1km_086032.laz": 72787,
+        "ot_CL1_WLG_2013_1km_092044.laz": 23427023,
+        "ot_CL1_WLG_2013_1km_091044.laz": 26435976,
         DATASET + "_TileIndex.zip": 598532,
     }
 
@@ -54,7 +53,7 @@ class ProcessorRemoteTilesWellingtonTest(unittest.TestCase):
         chain to download remote files and produce a DEM prior to testing."""
 
         test_path = pathlib.Path().cwd() / pathlib.Path(
-            "tests/test_processor_remote_tiles_wellington"
+            "tests/test_dem_generation_wellington_2"
         )
 
         # Setup logging
@@ -64,7 +63,7 @@ class ProcessorRemoteTilesWellingtonTest(unittest.TestCase):
             level=logging.INFO,
             force=True,
         )
-        logging.info("In test_processor_remote_tiles_wellington.py")
+        logging.info("In test_dem_generation_wellington_2")
 
         # load in the test instructions
         instruction_file_path = test_path / "instruction.json"
@@ -77,10 +76,10 @@ class ProcessorRemoteTilesWellingtonTest(unittest.TestCase):
         cls.results_dir.mkdir()
 
         # create fake catchment boundary
-        x0 = 1764864
-        y0 = 5470382
-        x1 = 1765656
-        y1 = 5471304
+        x0 = 1776358
+        y0 = 5477084
+        x1 = 1776629
+        y1 = 5476914
         catchment = shapely.geometry.Polygon([(x0, y0), (x1, y0), (x1, y1), (x0, y1)])
         catchment = geopandas.GeoSeries([catchment])
         catchment = catchment.set_crs(cls.instructions["output"]["crs"]["horizontal"])
@@ -158,15 +157,14 @@ class ProcessorRemoteTilesWellingtonTest(unittest.TestCase):
         self.assertEqual(
             len(list(dataset_dir.glob("*"))),
             len(downloaded_files),
-            "There should have been "
-            f"{len(downloaded_files)} files downloaded into the {self.DATASET} "
-            f"directory, instead there are {len(list(dataset_dir.glob('*')))} "
-            "files/dirs in the directory",
+            f"There should have been {len(downloaded_files)} files downloaded into the "
+            f"{self.DATASET} directory, instead there are "
+            f"{len(list(dataset_dir.glob('*')))} files/dirs in the directory",
         )
 
         self.assertTrue(
             numpy.all([file in downloaded_files for file in dataset_dir.glob("*")]),
-            f"The downloaded files {list(dataset_dir.glob('*'))} do not match the "
+            "The downloaded files {list(dataset_dir.glob('*'))} do not match the "
             f"expected files {downloaded_files}",
         )
 
@@ -186,8 +184,8 @@ class ProcessorRemoteTilesWellingtonTest(unittest.TestCase):
                 ]
             ),
             "There is a miss-match between the size of the downloaded files "
-            + f"{[file.stat().st_size for file in downloaded_files]} and the expected "
-            + f"sizes of {self.FILE_SIZES.values()}",
+            f"{[file.stat().st_size for file in downloaded_files]} and the expected "
+            f"sizes of {self.FILE_SIZES.values()}",
         )
 
     @pytest.mark.skipif(sys.platform != "win32", reason="Windows test - this is strict")
@@ -243,15 +241,14 @@ class ProcessorRemoteTilesWellingtonTest(unittest.TestCase):
         threshold = 10e-6
         self.assertTrue(
             len(diff_array[diff_array != 0]) < len(diff_array) / 100,
-            f"{len(diff_array[diff_array != 0])} or more than 1% of DEM values differ"
-            f" on Linux test run: {diff_array[diff_array != 0]}",
+            f"{len(diff_array[diff_array != 0])} or more than 1% of DEM values differ "
+            f"on Linux test run: {diff_array[diff_array != 0]}",
         )
-        number_under_threshold = len(diff_array[numpy.abs(diff_array) > threshold])
         self.assertTrue(
-            number_under_threshold < len(diff_array) / 250,
-            f"More than 0.4% of DEM values differ by more than {threshold} on Linux"
-            f" test run: {diff_array[numpy.abs(diff_array) > threshold]} or "
-            f"{number_under_threshold / len(diff_array.flatten()) * 100}%",
+            len(diff_array[numpy.abs(diff_array) > threshold]) < len(diff_array) / 250,
+            "More than 0.4% of DEM values differ by more than {threshold} on Linux test"
+            f" run: {diff_array[numpy.abs(diff_array) > threshold]} or "
+            f"{len(diff_array[numpy.abs(diff_array) > threshold]) / len(diff_array.flatten()) * 100}%",
         )
 
         # explicitly free memory as xarray seems to be hanging onto memory

@@ -9,7 +9,7 @@
 		}
 	},
 	"data_paths": {
-		"local_cache": "tests/test_processor_local_files_with_roughness/data",
+		"local_cache": "tests/test_many_stages_local/data",
 		"subfolder": "results",
 		"catchment_boundary": "catchment_boundary.geojson",
 		"land": "land.geojson",

@@ -15,7 +15,7 @@
 		"number_of_cores": 2
 	},
 	"data_paths": {
-		"local_cache": "tests/test_multiple_lidar_ground_only_roughness/data",
+		"local_cache": "tests/test_many_stages_multiple/data",
 		"subfolder": "results",
 		"catchment_boundary": "catchment.geojson",
 		"land": "catchment.geojson",

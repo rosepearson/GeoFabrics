@@ -1,5 +1,5 @@
 {
-"measured":	
+"measured":
 	{
 	"output": {
 			"crs": {
@@ -8,7 +8,7 @@
 			}
 		},
 		"data_paths": {
-			"local_cache": "tests/test_measured_river_into_dem_westport/data",
+			"local_cache": "tests/test_many_stages_westport/data",
 			"subfolder": "results",
 			"measured_sections": "../measured_sections.geojson",
 			"riverbanks": "../delineated_riverbanks.geojson",

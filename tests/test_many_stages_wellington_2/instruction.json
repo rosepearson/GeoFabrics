@@ -1,5 +1,5 @@
 {
-	"rivers": 
+	"rivers":
 	{
 		"output": {
 			"crs": {
@@ -15,7 +15,7 @@
 			"number_of_cores": 2
 		},
 		"data_paths": {
-			"local_cache": "tests/test_all_bathymetry_into_dem_wellington_with_roughness/data",
+			"local_cache": "tests/test_many_stages_wellington_2/data",
 			"subfolder": "results"
 		},
 		"apis": {
@@ -107,7 +107,7 @@
 			"widths": {"drain": 5, "stream": 7.5, "river": 10}
 		}
 	},
-	"dem": 
+	"dem":
 	{
 		"output": {
 			"crs": {
@@ -167,7 +167,7 @@
 			"interpolation_method": "linear"
 		}
 	},
-	"roughness": 
+	"roughness":
 	{
 		"output": {
 			"crs": {

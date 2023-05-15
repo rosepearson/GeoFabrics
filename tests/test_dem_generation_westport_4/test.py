@@ -23,15 +23,11 @@ import gc
 from src.geofabrics import processor
 
 
-class ProcessorRemoteAllWestportTest(unittest.TestCase):
-    """A class to test the basic processor class DemGenerator functionality for remote
-    LiDAR tiles and remote Bathymetry contours and coast contours by downloading files
-    from OpenTopography and the LINZ data portal within a small region and then
+class Test(unittest.TestCase):
+    """Test the DemGenerator class functionality for remote LiDAR tiles and remote
+    Bathymetry contours, a remote coarse DEM and a remote land outline by downloading
+    files from OpenTopography and the LINZ data portal within a small region and then
     generating a DEM. All files are deleted after checking the DEM.
-
-    Note in comparison to the companion `test_processor_remote_tiles_westport` test
-    hedges and the like are removed on land. Offshore values match the inbounds contours
-    provided by bathymetry layer 50448.
 
     Tests run include:
         1. test_correct_datasets - Test that the expected datasets are downloaded from
@@ -47,15 +43,12 @@ class ProcessorRemoteAllWestportTest(unittest.TestCase):
 
     # The expected datasets and files to be downloaded - used for comparison in the
     # later tests
-    DATASETS = ["NZ20_Westport", "vector"]
+    DATASETS = ["NZ20_Westport", "vector", "raster"]
     LIDAR_SIZES = {
-        "CL2_BR20_2020_1000_4012.laz": 2636961,
-        "CL2_BR20_2020_1000_4013.laz": 3653378,
-        "CL2_BR20_2020_1000_4014.laz": 4470413,
-        "CL2_BR20_2020_1000_4112.laz": 9036407,
-        "CL2_BR20_2020_1000_4212.laz": 8340310,
-        "CL2_BR20_2020_1000_4213.laz": 6094309,
-        "CL2_BR20_2020_1000_4214.laz": 8492543,
+        "CL2_BR21_2020_1000_4704.laz": 20851153,
+        "CL2_BR21_2020_1000_4705.laz": 19749374,
+        "CL2_BR21_2020_1000_4706.laz": 17977826,
+        "CL2_BR21_2020_1000_4804.laz": 18379794,
         DATASETS[0] + "_TileIndex.zip": 1125874,
     }
 
@@ -65,7 +58,7 @@ class ProcessorRemoteAllWestportTest(unittest.TestCase):
         chain to download remote files and produce a DEM prior to testing."""
 
         test_path = pathlib.Path().cwd() / pathlib.Path(
-            "tests/test_processor_remote_all_westport_ground_only"
+            "tests/test_dem_generation_westport_4"
         )
 
         # Setup logging
@@ -75,7 +68,7 @@ class ProcessorRemoteAllWestportTest(unittest.TestCase):
             level=logging.INFO,
             force=True,
         )
-        logging.info("In test_processor_remote_all_westport_ground_only.py")
+        logging.info("In test_dem_generation_westport_4")
 
         # Load in the test instructions
         instruction_file_path = test_path / "instruction.json"
@@ -85,6 +78,7 @@ class ProcessorRemoteAllWestportTest(unittest.TestCase):
         dotenv.load_dotenv()
         linz_key = os.environ.get("LINZ_API", None)
         cls.instructions["apis"]["vector"]["linz"]["key"] = linz_key
+        cls.instructions["apis"]["raster"]["linz"]["key"] = linz_key
 
         # Remove any files from last test, then create a results directory
         cls.cache_dir = test_path / "data"
@@ -93,23 +87,16 @@ class ProcessorRemoteAllWestportTest(unittest.TestCase):
         cls.results_dir.mkdir()
 
         # Create fake catchment boundary
-        x0 = 1473354
-        x1 = 1473704
-        x2 = 1474598
-        y0 = 5377655
-        y1 = 5377335
-        y2 = 5376291
-        y3 = 5375824
+        x0 = 1493600
+        x1 = 1494400
+        y0 = 5372300
+        y1 = 5371700
         catchment = shapely.geometry.Polygon(
             [
                 (x0, y0),
-                (x0, y3),
-                (x2, y3),
-                (x2, y2),
-                (x1, y2),
+                (x0, y1),
                 (x1, y1),
-                (x2, y1),
-                (x2, y0),
+                (x1, y0),
             ]
         )
         catchment = geopandas.GeoSeries([catchment])
@@ -239,7 +226,8 @@ class ProcessorRemoteAllWestportTest(unittest.TestCase):
         file_path = self.results_dir / self.instructions["data_paths"]["result_dem"]
         with rioxarray.rioxarray.open_rasterio(file_path, masked=True) as test_dem:
             test_dem.load()
-        # Compare the generated and benchmark DEMs
+        # Compare DEMs - load both from file as rioxarray.rioxarray.open_rasterio
+        # ignores index order
         diff_array = (
             test_dem.z.data[~numpy.isnan(test_dem.z.data)]
             - benchmark_dem.z.data[~numpy.isnan(benchmark_dem.z.data)]
@@ -279,13 +267,13 @@ class ProcessorRemoteAllWestportTest(unittest.TestCase):
         logging.info(f"DEM array diff is: {diff_array[diff_array != 0]}")
 
         threshold = 10e-2
-        allowable_number_above = 5
+        allowable_number_above = 2
         self.assertTrue(
             len(diff_array[numpy.abs(diff_array) > threshold])
             <= allowable_number_above,
-            "Some DEM values "
-            + f"differ by more than {threshold} on Linux test run: "
-            + f"{diff_array[numpy.abs(diff_array) > threshold]}",
+            f"more than {allowable_number_above} differ by more than DEM values differ "
+            f" by more than{threshold} on Linux test run: "
+            f"{diff_array[numpy.abs(diff_array) > threshold]}",
         )
         threshold = 10e-6
         self.assertTrue(

@@ -13,7 +13,7 @@
 		"number_of_cores": 2
 	},
 	"data_paths": {
-		"local_cache": "tests/test_processor_remote_all_westport_ground_only/data",
+		"local_cache": "tests/test_dem_generation_westport_1/data",
 		"subfolder": "results",
 		"catchment_boundary": "catchment.geojson",
 		"result_dem": "test_dem.nc",

@@ -13,7 +13,7 @@
 		"number_of_cores": 2
 	},
 	"data_paths": {
-		"local_cache": "tests/test_river_bathymetry_osm_wellington/data",
+		"local_cache": "tests/test_riverbed_estimation_wellington_1/data",
 		"subfolder": "results",
 		"river_polygon_benchmark": "river_polygon_benchmark.geojson",
 		"river_bathymetry_benchmark": "river_bathymetry_benchmark.geojson",

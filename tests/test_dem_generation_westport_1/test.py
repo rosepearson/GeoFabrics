@@ -15,24 +15,27 @@ import numpy
 import rioxarray
 import pytest
 import sys
+import dotenv
+import os
 import logging
 import gc
 
 from src.geofabrics import processor
 
 
-class ProcessorRemoteTilesWestportTest(unittest.TestCase):
-    """A class to test the basic functionality of the processor class DemGenerator for
-    remote tiles by downloading files from OpenTopography within a small region and then
+class Test(unittest.TestCase):
+    """A class to test the basic processor class DemGenerator functionality for remote
+    LiDAR tiles and remote Bathymetry contours and coast contours by downloading files
+    from OpenTopography and the LINZ data portal within a small region and then
     generating a DEM. All files are deleted after checking the DEM.
 
-    Note benchmark shows nearest neighbour caused artifact as there is no offshore data
-    and nearest neighbour is used interpolate results. In comparison to the companion
-    `test_processor_remote_tiles_westport` test hedges and the like are removed on land.
+    Note in comparison to the companion `test_processor_remote_tiles_westport` test
+    hedges and the like are removed on land. Offshore values match the inbounds contours
+    provided by bathymetry layer 50448.
 
     Tests run include:
-        1. test_correct_dataset - Test that the expected dataset is downloaded from
-           OpenTopography
+        1. test_correct_datasets - Test that the expected datasets are downloaded from
+           OpenTopography and LINZ
         2. test_correct_lidar_files_downloaded - Test the downloaded LIDAR files have
            the expected names
         3. test_correct_lidar_file_size - Test the downloaded LIDAR files have the
@@ -42,9 +45,10 @@ class ProcessorRemoteTilesWestportTest(unittest.TestCase):
                                                                              Linux)
     """
 
-    # The expected datasets and files to be downloaded - used for comparison in tests
-    DATASET = "NZ20_Westport"
-    FILE_SIZES = {
+    # The expected datasets and files to be downloaded - used for comparison in the
+    # later tests
+    DATASETS = ["NZ20_Westport", "vector"]
+    LIDAR_SIZES = {
         "CL2_BR20_2020_1000_4012.laz": 2636961,
         "CL2_BR20_2020_1000_4013.laz": 3653378,
         "CL2_BR20_2020_1000_4014.laz": 4470413,
@@ -52,7 +56,7 @@ class ProcessorRemoteTilesWestportTest(unittest.TestCase):
         "CL2_BR20_2020_1000_4212.laz": 8340310,
         "CL2_BR20_2020_1000_4213.laz": 6094309,
         "CL2_BR20_2020_1000_4214.laz": 8492543,
-        DATASET + "_TileIndex.zip": 1125874,
+        DATASETS[0] + "_TileIndex.zip": 1125874,
     }
 
     @classmethod
@@ -61,7 +65,7 @@ class ProcessorRemoteTilesWestportTest(unittest.TestCase):
         chain to download remote files and produce a DEM prior to testing."""
 
         test_path = pathlib.Path().cwd() / pathlib.Path(
-            "tests/test_processor_remote_tiles_westport_ground_only"
+            "tests/test_dem_generation_westport_1"
         )
 
         # Setup logging
@@ -71,12 +75,17 @@ class ProcessorRemoteTilesWestportTest(unittest.TestCase):
             level=logging.INFO,
             force=True,
         )
-        logging.info("In test_processor_remote_tiles_wellington_ground_only.py")
+        logging.info("In test_dem_generation_westport_1")
 
         # Load in the test instructions
         instruction_file_path = test_path / "instruction.json"
         with open(instruction_file_path, "r") as file_pointer:
             cls.instructions = json.load(file_pointer)
+        # Load in environment variables to get and set the private API keys
+        dotenv.load_dotenv()
+        linz_key = os.environ.get("LINZ_API", None)
+        cls.instructions["apis"]["vector"]["linz"]["key"] = linz_key
+
         # Remove any files from last test, then create a results directory
         cls.cache_dir = test_path / "data"
         cls.results_dir = cls.cache_dir / "results"
@@ -142,18 +151,24 @@ class ProcessorRemoteTilesWestportTest(unittest.TestCase):
                         shutil.rmtree(file)
                 shutil.rmtree(path)
 
-    def test_correct_dataset(self):
-        """A test to see if the correct dataset is downloaded"""
+    def test_correct_datasets(self):
+        """A test to see if the correct datasets were downloaded"""
 
-        dataset_dir = self.cache_dir / self.DATASET
+        dataset_dirs = [self.cache_dir / dataset for dataset in self.DATASETS]
 
         # Check the right dataset is downloaded - self.DATASET
         self.assertEqual(
-            len(list(self.cache_dir.glob("*/**"))),
-            2,
-            f"There should only be one dataset folder named {self.DATASET} as well as "
-            f"the generated results folder {self.results_dir} instead there are "
-            f"{len(list(self.cache_dir.glob('*/**')))} list "
+            len(
+                [
+                    directory
+                    for directory in self.cache_dir.glob("*")
+                    if directory.is_dir()
+                ]
+            ),
+            len(dataset_dirs) + 1,
+            f"There should only be {len(dataset_dirs)} datasets named {dataset_dirs} "
+            f"and the results dir {self.results_dir}, but instead there are "
+            f" {len(list(self.cache_dir.glob('*/**')))} list "
             f"{list(self.cache_dir.glob('*/**'))}",
         )
 
@@ -162,55 +177,54 @@ class ProcessorRemoteTilesWestportTest(unittest.TestCase):
                 [
                     file
                     for file in self.cache_dir.iterdir()
-                    if file.is_dir() and file == dataset_dir
+                    if file.is_dir() and file in dataset_dirs
                 ]
             ),
-            1,
-            f"Only the {self.DATASET} directory should have been downloaded. Instead we"
-            f" have: {[file for file in self.cache_dir.iterdir() if file.is_dir()]}",
+            len(dataset_dirs),
+            f"Only the {dataset_dirs} directories should have been downloaded. Instead "
+            f"we have: {[file for file in self.cache_dir.iterdir() if file.is_dir()]}",
         )
 
-    def test_correct_files_downloaded(self):
-        """A test to see if all expected dataset files are downloaded"""
+    def test_correct_lidar_files_downloaded(self):
+        """A test to see if all expected LiDAR dataset files are downloaded"""
 
-        dataset_dir = self.cache_dir / self.DATASET
-        downloaded_files = [dataset_dir / file for file in self.FILE_SIZES.keys()]
-
+        dataset_dir = self.cache_dir / self.DATASETS[0]
+        downloaded_files = [dataset_dir / file for file in self.LIDAR_SIZES.keys()]
+        for file in downloaded_files:
+            print(f"{file.name} of size {file.stat().st_size}")
         # Check files are correct
         self.assertEqual(
             len(list(dataset_dir.glob("*"))),
             len(downloaded_files),
-            "There should have been "
-            f"{len(downloaded_files)} files downloaded into the {self.DATASET} "
-            f"directory, instead there are {len(list(dataset_dir.glob('*')))} "
-            "files/dirs in the directory",
+            f"There should have been {len(downloaded_files)} files downloaded into the "
+            f"{self.DATASETS[0]} directory, instead there are "
+            f" {len(list(dataset_dir.glob('*')))} files/dirs in the directory",
         )
 
         self.assertTrue(
             numpy.all([file in downloaded_files for file in dataset_dir.glob("*")]),
-            "The downloaded files"
-            f" {list(dataset_dir.glob('*'))} do not match the expected files "
-            f"{downloaded_files}",
+            f"The downloaded files {list(dataset_dir.glob('*'))} do not match the "
+            f"expected files {downloaded_files}",
         )
 
-    def test_correct_file_size(self):
-        """A test to see if all expected dataset files are of the right size"""
+    def test_correct_lidar_file_size(self):
+        """A test to see if all expected LiDAR dataset files are of the right size"""
 
-        dataset_dir = self.cache_dir / self.DATASET
-        downloaded_files = [dataset_dir / file for file in self.FILE_SIZES.keys()]
+        dataset_dir = self.cache_dir / self.DATASETS[0]
+        downloaded_files = [dataset_dir / file for file in self.LIDAR_SIZES.keys()]
 
         # Check sizes are correct
         self.assertTrue(
             numpy.all(
                 [
                     downloaded_file.stat().st_size
-                    == self.FILE_SIZES[downloaded_file.name]
+                    == self.LIDAR_SIZES[downloaded_file.name]
                     for downloaded_file in downloaded_files
                 ]
             ),
             "There is a miss-match between the size of the downloaded files "
             f"{[file.stat().st_size for file in downloaded_files]} and the expected "
-            f"sizes of {self.FILE_SIZES.values()}",
+            f"sizes of {self.LIDAR_SIZES.values()}",
         )
 
     @pytest.mark.skipif(sys.platform != "win32", reason="Windows test - this is strict")
@@ -265,21 +279,20 @@ class ProcessorRemoteTilesWestportTest(unittest.TestCase):
         logging.info(f"DEM array diff is: {diff_array[diff_array != 0]}")
 
         threshold = 10e-2
-        allowable_number_above = 38
+        allowable_number_above = 5
         self.assertTrue(
             len(diff_array[numpy.abs(diff_array) > threshold])
             <= allowable_number_above,
-            "A total of "
-            f"len(diff_array[numpy.abs(diff_array) > threshold]) DEM values differ by "
-            f"more than {threshold} on Linux test run: "
-            f"{diff_array[numpy.abs(diff_array) > threshold]}",
+            "Some DEM values "
+            + f"differ by more than {threshold} on Linux test run: "
+            + f"{diff_array[numpy.abs(diff_array) > threshold]}",
         )
         threshold = 10e-6
         self.assertTrue(
             len(diff_array[numpy.abs(diff_array) > threshold]) < len(diff_array) / 100,
             f"{len(diff_array[numpy.abs(diff_array) > threshold])} or more than 1% of "
             f"DEM values differ by more than {threshold} on Linux test run: "
-            f"{diff_array[numpy.abs(diff_array) > threshold]}",
+            f" {diff_array[numpy.abs(diff_array) > threshold]}",
         )
 
         # explicitly free memory as xarray seems to be hanging onto memory

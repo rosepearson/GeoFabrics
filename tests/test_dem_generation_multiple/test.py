@@ -21,7 +21,7 @@ import gc
 from src.geofabrics import processor
 
 
-class MultipleLidarGroundOnlyTest(unittest.TestCase):
+class Test(unittest.TestCase):
     """A class to test the basic processor class Processor functionality for remote
     tiles by downloading files from
     OpenTopography within a small region and then generating a DEM. All files are
@@ -44,7 +44,7 @@ class MultipleLidarGroundOnlyTest(unittest.TestCase):
         chain to download remote files and produce a DEM prior to testing."""
 
         test_path = pathlib.Path().cwd() / pathlib.Path(
-            "tests/test_multiple_lidar_ground_only_roughness"
+            "tests/test_dem_generation_multiple"
         )
 
         # Setup logging
@@ -54,7 +54,7 @@ class MultipleLidarGroundOnlyTest(unittest.TestCase):
             level=logging.INFO,
             force=True,
         )
-        logging.info("In test_multiple_lidar_ground_only_roughness.py")
+        logging.info("In test_dem_generation_multiple")
 
         # load in the test instructions
         instruction_file_path = test_path / "instruction.json"
@@ -73,20 +73,16 @@ class MultipleLidarGroundOnlyTest(unittest.TestCase):
         y1 = 5470500
         catchment = shapely.geometry.Polygon([(x0, y0), (x1, y0), (x1, y1), (x0, y1)])
         catchment = geopandas.GeoSeries([catchment])
-        catchment = catchment.set_crs(
-            cls.instructions["dem"]["output"]["crs"]["horizontal"]
-        )
+        catchment = catchment.set_crs(cls.instructions["output"]["crs"]["horizontal"])
 
         # save faked catchment boundary - used as land boundary as well
         catchment_file = cls.results_dir / "catchment.geojson"
         catchment.to_file(catchment_file)
 
         # Run pipeline - download files and generated DEM
-        runner = processor.RawLidarDemGenerator(cls.instructions["dem"])
+        runner = processor.RawLidarDemGenerator(cls.instructions)
         runner.run()
-        runner = processor.HydrologicDemGenerator(cls.instructions["dem"])
-        runner.run()
-        runner = processor.RoughnessLengthGenerator(cls.instructions["roughness"])
+        runner = processor.HydrologicDemGenerator(cls.instructions)
         runner.run()
 
     @classmethod
@@ -118,47 +114,29 @@ class MultipleLidarGroundOnlyTest(unittest.TestCase):
     def test_result_dem_windows(self):
         """A basic comparison between the generated and benchmark DEM"""
 
-        file_path = (
-            self.cache_dir / self.instructions["roughness"]["data_paths"]["benchmark"]
-        )
-        with rioxarray.rioxarray.open_rasterio(file_path, masked=True) as benchmark:
-            benchmark.load()
+        file_path = self.cache_dir / self.instructions["data_paths"]["benchmark_dem"]
+        with rioxarray.rioxarray.open_rasterio(file_path, masked=True) as benchmark_dem:
+            benchmark_dem.load()
         # Load in test DEM
-        file_path = (
-            self.results_dir
-            / self.instructions["roughness"]["data_paths"]["result_geofabric"]
-        )
-        with rioxarray.rioxarray.open_rasterio(file_path, masked=True) as test:
-            test.load()
+        file_path = self.results_dir / self.instructions["data_paths"]["result_dem"]
+        with rioxarray.rioxarray.open_rasterio(file_path, masked=True) as test_dem:
+            test_dem.load()
         # compare the generated and benchmark DEMs
         diff_array = (
-            test.z.data[~numpy.isnan(test.z.data)]
-            - benchmark.z.data[~numpy.isnan(benchmark.z.data)]
+            test_dem.z.data[~numpy.isnan(test_dem.z.data)]
+            - benchmark_dem.z.data[~numpy.isnan(benchmark_dem.z.data)]
         )
         logging.info(f"DEM array diff is: {diff_array[diff_array != 0]}")
         numpy.testing.assert_array_almost_equal(
-            test.z.data,
-            benchmark.z.data,
+            test_dem.z.data,
+            benchmark_dem.z.data,
             err_msg="The generated result_dem has different data from the "
             + "benchmark_dem",
         )
 
-        # Compare the generated and benchmark roughness
-        diff_array = (
-            test.zo.data[~numpy.isnan(test.zo.data)]
-            - benchmark.zo.data[~numpy.isnan(benchmark.zo.data)]
-        )
-        logging.info(f"Roughness diff is: {diff_array[diff_array != 0]}")
-        numpy.testing.assert_array_almost_equal(
-            test.zo.data,
-            benchmark.zo.data,
-            err_msg="The generated result_geofabric has different roughness data from "
-            "the benchmark_dem",
-        )
-
         # explicitly free memory as xarray seems to be hanging onto memory
-        del test
-        del benchmark
+        del test_dem
+        del benchmark_dem
         gc.collect()
 
     @pytest.mark.skipif(
@@ -167,22 +145,17 @@ class MultipleLidarGroundOnlyTest(unittest.TestCase):
     def test_result_dem_linux(self):
         """A basic comparison between the generated and benchmark DEM"""
 
-        file_path = (
-            self.cache_dir / self.instructions["roughness"]["data_paths"]["benchmark"]
-        )
-        with rioxarray.rioxarray.open_rasterio(file_path, masked=True) as benchmark:
-            benchmark.load()
+        file_path = self.cache_dir / self.instructions["data_paths"]["benchmark_dem"]
+        with rioxarray.rioxarray.open_rasterio(file_path, masked=True) as benchmark_dem:
+            benchmark_dem.load()
         # Load in test DEM
-        file_path = (
-            self.results_dir
-            / self.instructions["roughness"]["data_paths"]["result_geofabric"]
-        )
-        with rioxarray.rioxarray.open_rasterio(file_path, masked=True) as test:
-            test.load()
+        file_path = self.results_dir / self.instructions["data_paths"]["result_dem"]
+        with rioxarray.rioxarray.open_rasterio(file_path, masked=True) as test_dem:
+            test_dem.load()
         # compare the generated and benchmark DEMs
         diff_array = (
-            test.z.data[~numpy.isnan(test.z.data)]
-            - benchmark.z.data[~numpy.isnan(benchmark.z.data)]
+            test_dem.z.data[~numpy.isnan(test_dem.z.data)]
+            - benchmark_dem.z.data[~numpy.isnan(benchmark_dem.z.data)]
         )
         logging.info(f"DEM array diff is: {diff_array[diff_array != 0]}")
 
@@ -199,19 +172,9 @@ class MultipleLidarGroundOnlyTest(unittest.TestCase):
             f"{len(diff_array[numpy.abs(diff_array) > threshold]) / len(diff_array.flatten()) * 100}%",
         )
 
-        # Compare the generated and benchmark roughnesses
-        diff_array = test.zo.data - benchmark.zo.data
-        numpy.testing.assert_array_almost_equal(
-            test.zo.data,
-            benchmark.zo.data,
-            decimal=3,
-            err_msg="The generated test has significantly different roughness from the "
-            f"benchmark where there is LiDAR: {diff_array}",
-        )
-
         # explicitly free memory as xarray seems to be hanging onto memory
-        del test
-        del benchmark
+        del test_dem
+        del benchmark_dem
         gc.collect()
 
 

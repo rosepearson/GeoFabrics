@@ -21,10 +21,10 @@ import gc
 from src.geofabrics import processor
 
 
-class ProcessorLocalFilesTest(unittest.TestCase):
-    """Tests the basic DemGenerator processor class for a simple example with land,
-    offshore, a reference DEM and
-    LiDAR using the data specified in the instruction.json
+class Test(unittest.TestCase):
+    """A class to test the basic DemGenerator processor class for a simple example with
+    land, offshore, a coarse DEM and LiDAR using the data specified in the
+    instruction.json
 
     Tests run include:
         1. test_result_dem  Check the generated DEM matches the benchmark DEM within a
@@ -36,11 +36,10 @@ class ProcessorLocalFilesTest(unittest.TestCase):
     @classmethod
     def setUpClass(cls):
         """Create a cache directory and CatchmentGeometry object for use in the tests
-        and also download the files used
-        in the tests."""
+        and also download the files used in the tests."""
 
         test_path = pathlib.Path().cwd() / pathlib.Path(
-            "tests/test_processor_local_files_with_roughness"
+            "tests/test_dem_generation_local_3"
         )
 
         # Setup logging
@@ -50,7 +49,7 @@ class ProcessorLocalFilesTest(unittest.TestCase):
             level=logging.INFO,
             force=True,
         )
-        logging.info("In test_processor_local_files_with_roughness.py")
+        logging.info("In test_dem_generation_local_3")
 
         # Load in the test instructions
         instruction_file_path = test_path / "instruction.json"
@@ -108,7 +107,7 @@ class ProcessorLocalFilesTest(unittest.TestCase):
         contours = contours.set_crs(cls.instructions["output"]["crs"]["horizontal"])
         contours.to_file(bathymetry_file)
 
-        # Create a reference DEM
+        # Create a coarse DEM
         dem_file = cls.results_dir / "coarse_dem.nc"
         dxy = 15
         grid_dem_x, grid_dem_y = numpy.meshgrid(
@@ -143,7 +142,6 @@ class ProcessorLocalFilesTest(unittest.TestCase):
         grid_lidar_x, grid_lidar_y = numpy.meshgrid(
             numpy.arange(500, 1000, dxy), numpy.arange(-25, 475, dxy)
         )
-        # ground points
         grid_lidar_z = numpy.zeros_like(grid_lidar_x, dtype=numpy.float64)
         grid_lidar_z[grid_lidar_y < 0] = grid_lidar_y[grid_lidar_y < 0] / 10
         grid_lidar_z[grid_lidar_y > 0] = (
@@ -152,8 +150,6 @@ class ProcessorLocalFilesTest(unittest.TestCase):
             * (numpy.abs(grid_lidar_x[grid_lidar_y > 0] - 750) / 500 + 0.1)
             / 1.1
         )
-        # trees
-        # scrub
         lidar_array = numpy.empty(
             [len(grid_lidar_x.flatten())],
             dtype=[("X", "<f8"), ("Y", "<f8"), ("Z", "<f8"), ("Classification", "u1")],
@@ -166,9 +162,8 @@ class ProcessorLocalFilesTest(unittest.TestCase):
         pdal_pipeline_instructions = [
             {
                 "type": "writers.las",
-                "a_srs": f"EPSG:"
-                f"{cls.instructions['output']['crs']['horizontal']}+"
-                f"{cls.instructions['output']['crs']['vertical']}",
+                "a_srs": f"EPSG:{cls.instructions['output']['crs']['horizontal']}+"
+                + f"{cls.instructions['output']['crs']['vertical']}",
                 "filename": str(lidar_file),
                 "compression": "laszip",
             }
@@ -179,12 +174,10 @@ class ProcessorLocalFilesTest(unittest.TestCase):
         )
         pdal_pipeline.execute()
 
-        # Run pipeline
+        # Run geofabrics processing pipeline
         runner = processor.RawLidarDemGenerator(cls.instructions)
         runner.run()
         runner = processor.HydrologicDemGenerator(cls.instructions)
-        runner.run()
-        runner = processor.RoughnessLengthGenerator(cls.instructions)
         runner.run()
 
     @classmethod
@@ -219,41 +212,33 @@ class ProcessorLocalFilesTest(unittest.TestCase):
         # Load in benchmark DEM
         file_path = self.cache_dir / self.instructions["data_paths"]["benchmark_dem"]
         with rioxarray.rioxarray.open_rasterio(file_path, masked=True) as benchmark_dem:
-            benchmark_dem = benchmark_dem.squeeze("band", drop=True)
+            benchmark_dem.load()
         # Load in result DEM
-        file_path = (
-            self.results_dir / self.instructions["data_paths"]["result_geofabric"]
-        )
+        file_path = self.results_dir / self.instructions["data_paths"]["result_dem"]
         with rioxarray.rioxarray.open_rasterio(file_path, masked=True) as test_dem:
-            test_dem = test_dem.squeeze("band", drop=True)
-        # Compare DEMs z - load both from file as rioxarray.rioxarray.open_rasterio
-        # ignores index order
-        diff_array = test_dem.z.data - benchmark_dem.z.data
-        logging.info(f"DEM z array diff is: {diff_array[diff_array != 0]}")
+            test_dem.load()
+        # Compare DEMs elevations
+        diff_array = (
+            test_dem.z.data[~numpy.isnan(test_dem.z.data)]
+            - benchmark_dem.z.data[~numpy.isnan(benchmark_dem.z.data)]
+        )
+        logging.info(f"DEM z diff is: {diff_array[diff_array != 0]}")
         numpy.testing.assert_array_almost_equal(
             test_dem.z.data,
             benchmark_dem.z.data,
-            err_msg="The generated result_dem z has different data from the "
-            "benchmark_dem",
+            err_msg="The generated result_dem has different data from the "
+            + "benchmark_dem",
         )
 
         # Compare DEMs source classification
         diff_array = test_dem.source_class.data - benchmark_dem.source_class.data
-        logging.info(f"DEM source class array diff is: {diff_array[diff_array != 0]}")
+        logging.info(
+            f"DEM source classification array diff is: {diff_array[diff_array != 0]}"
+        )
         numpy.testing.assert_array_almost_equal(
             test_dem.source_class.data,
             benchmark_dem.source_class.data,
             err_msg="The generated result_dem source_class has different data "
-            "from the benchmark_dem",
-        )
-
-        # Compare DEMs roughness
-        diff_array = test_dem.zo.data - benchmark_dem.zo.data
-        logging.info(f"DEM zo array diff is: {diff_array[diff_array != 0]}")
-        numpy.testing.assert_array_almost_equal(
-            test_dem.source_class.data,
-            benchmark_dem.source_class.data,
-            err_msg="The generated result_dem zo has different data "
             "from the benchmark_dem",
         )
 

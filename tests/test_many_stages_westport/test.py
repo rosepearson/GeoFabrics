@@ -21,7 +21,7 @@ import gc
 from src.geofabrics import processor
 
 
-class ProcessorMeasuredRiverIntoDemWestportTest(unittest.TestCase):
+class Test(unittest.TestCase):
     """A class to test the basic measured river interpolation functionality
     contained in processor.MeasuredRiverGenerator.
 
@@ -38,7 +38,7 @@ class ProcessorMeasuredRiverIntoDemWestportTest(unittest.TestCase):
         chain to download remote files and produce a DEM prior to testing."""
 
         test_path = pathlib.Path().cwd() / pathlib.Path(
-            "tests/test_measured_river_into_dem_westport"
+            "tests/test_many_stages_westport"
         )
 
         # Setup logging
@@ -48,7 +48,7 @@ class ProcessorMeasuredRiverIntoDemWestportTest(unittest.TestCase):
             level=logging.INFO,
             force=True,
         )
-        logging.info("In test_measured_river_into_dem_westport.py")
+        logging.info("In test_many_stages_westport")
 
         # load in the test instructions
         instruction_file_path = test_path / "instruction.json"

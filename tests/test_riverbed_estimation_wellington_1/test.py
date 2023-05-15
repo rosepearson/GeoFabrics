@@ -20,14 +20,17 @@ import numpy
 from src.geofabrics import processor
 
 
-class ProcessorRiverBathymetryTest(unittest.TestCase):
+class Test(unittest.TestCase):
     """A class to test the basic river bathymetry estimation functionality
     contained in processor.RiverBathymetryGenerator.
 
     Tests run include:
-        1. test_river_polygon - Test that the expected river polygon is created
-        2. test_river_bathymetry - Test that the expected river bathymetry is created
-        3. test_fan - Test that the expected fan polygon and geometry are created
+        1. test_river_polygon_(linux/windows) - Test that the expected river polygon is
+        created
+        2. test_river_bathymetry_(linux/windows) - Test that the expected river
+        bathymetry is created
+        3. test_fan_(linux/windows) - Test that the expected fan polygon and geometry
+        are created
     """
 
     @classmethod
@@ -36,7 +39,7 @@ class ProcessorRiverBathymetryTest(unittest.TestCase):
         chain to download remote files and produce a DEM prior to testing."""
 
         test_path = pathlib.Path().cwd() / pathlib.Path(
-            "tests/test_river_bathymetry_wellington"
+            "tests/test_riverbed_estimation_wellington_1"
         )
 
         # Setup logging
@@ -46,7 +49,7 @@ class ProcessorRiverBathymetryTest(unittest.TestCase):
             level=logging.INFO,
             force=True,
         )
-        logging.info("In test_river_bathymetry_wellington.py")
+        logging.info("In test_riverbed_estimation_wellington_1")
 
         # load in the test instructions
         instruction_file_path = test_path / "instruction.json"
@@ -61,6 +64,7 @@ class ProcessorRiverBathymetryTest(unittest.TestCase):
         cls.cache_dir = test_path / "data"
         cls.results_dir = cls.cache_dir / "results"
         cls.tearDownClass()
+        cls.results_dir.mkdir()
 
         # Run pipeline - download files and generated DEM
         runner = processor.RiverBathymetryGenerator(cls.instructions, debug=False)
@@ -92,7 +96,8 @@ class ProcessorRiverBathymetryTest(unittest.TestCase):
                         shutil.rmtree(file)
                 shutil.rmtree(path)
 
-    def test_river_polygon(self):
+    @pytest.mark.skipif(sys.platform != "win32", reason="Windows test - this is strict")
+    def test_river_polygon_windows(self):
         """A test to see if the correct river polygon is generated. This is
         tested individually as it is generated first."""
 
@@ -111,6 +116,36 @@ class ProcessorRiverBathymetryTest(unittest.TestCase):
             "The geneated river"
             f"polygon {test} doesn't equal the river benchmark "
             f"river polygon {benchmark}",
+        )
+
+    @pytest.mark.skipif(
+        sys.platform != "linux", reason="Linux test - this is less strict"
+    )
+    def test_river_polygon_linux(self):
+        """A test to see if the correct river polygon is generated. This is
+        tested individually as it is generated first."""
+
+        print("Compare river polygon  - All OS")
+
+        data_path_instructions = self.instructions["data_paths"]
+
+        test = geopandas.read_file(self.results_dir / "river_polygon.geojson")
+        benchmark = geopandas.read_file(
+            self.cache_dir / data_path_instructions["river_polygon_benchmark"]
+        )
+
+        # check the polygons match closely
+        column_name = "geometry"
+        test_comparison = test[column_name].area.item()
+        benchmark_comparison = benchmark[column_name].area.item()
+        print(f"test area {test_comparison}, and benchmark area {benchmark_comparison}")
+        self.assertAlmostEqual(
+            test_comparison,
+            benchmark_comparison,
+            places=6,
+            msg=f"The geneated river {column_name} does"
+            f" not match the benchmark. {test_comparison} "
+            f"vs {benchmark_comparison}",
         )
 
     @pytest.mark.skipif(sys.platform != "win32", reason="Windows test - this is strict")
@@ -257,7 +292,7 @@ class ProcessorRiverBathymetryTest(unittest.TestCase):
         self.assertAlmostEqual(
             test_comparison,
             benchmark_comparison,
-            places=6,
+            places=5,
             msg=f"The geneated river {column_name} does"
             f" not match the benchmark. {test_comparison} "
             f"vs {benchmark_comparison}",
@@ -269,13 +304,13 @@ class ProcessorRiverBathymetryTest(unittest.TestCase):
             self.cache_dir / data_path_instructions["fan_bathymetry_benchmark"]
         )
 
-        # check some of the bathymetrt columns match
+        # check some of the bathymetry columns match
         column_name = "bed_elevation_Neal_et_al"
         test_comparison = test[column_name].array
         benchmark_comparison = benchmark[column_name].array
         print(
             f"{column_name} difference "
-            "{numpy.array(test_comparison) - numpy.array(benchmark_comparison)}"
+            f"{numpy.array(test_comparison) - numpy.array(benchmark_comparison)}"
         )
         self.assertAlmostEqual(
             test_comparison,
@@ -286,13 +321,12 @@ class ProcessorRiverBathymetryTest(unittest.TestCase):
             f"vs {benchmark_comparison}",
         )
 
-        # check some of the bathymetrt columns match
         column_name = "bed_elevation_Rupp_and_Smart"
         test_comparison = test[column_name].array
         benchmark_comparison = benchmark[column_name].array
         print(
             f"{column_name} difference "
-            "{numpy.array(test_comparison) - numpy.array(benchmark_comparison)}"
+            f"{numpy.array(test_comparison) - numpy.array(benchmark_comparison)}"
         )
         self.assertAlmostEqual(
             test_comparison,

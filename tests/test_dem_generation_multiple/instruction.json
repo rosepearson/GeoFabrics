@@ -13,7 +13,7 @@
 		"number_of_cores": 2
 	},
 	"data_paths": {
-		"local_cache": "tests/test_multiple_lidar_ground_only/data",
+		"local_cache": "tests/test_dem_generation_multiple/data",
 		"subfolder": "results",
 		"catchment_boundary": "catchment.geojson",
 		"land": "catchment.geojson",

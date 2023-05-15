@@ -23,14 +23,13 @@ import numpy
 from src.geofabrics import processor
 
 
-class AllBathymetryIntoDemWellingtonTest(unittest.TestCase):
+class Test(unittest.TestCase):
     """A class to test the basic river bathymetry estimation functionality
     contained in processor.RiverBathymetryGenerator.
 
     Tests run include:
-        1. test_river_polygon - Test that the expected river polygon is created
-        2. test_river_bathymetry - Test that the expected river bathymetry is created
-        3. test_fan - Test that the expected fan polygon and geometry are created
+        1. test_result_geofabric_linux - Test the geofabric layers are as expected
+        2. test_result_geofabric_windows - Test the geofabric layers are as expected
     """
 
     @classmethod
@@ -39,7 +38,7 @@ class AllBathymetryIntoDemWellingtonTest(unittest.TestCase):
         chain to download remote files and produce a DEM prior to testing."""
 
         test_path = pathlib.Path().cwd() / pathlib.Path(
-            "tests/test_all_bathymetry_into_dem_wellington"
+            "tests/test_many_stages_wellington_2"
         )
 
         # Setup logging
@@ -49,7 +48,7 @@ class AllBathymetryIntoDemWellingtonTest(unittest.TestCase):
             level=logging.INFO,
             force=True,
         )
-        logging.info("In test_all_bathymetry_into_dem_wellington.py")
+        logging.info("In test_many_stages_wellington_2")
 
         # load in the test instructions
         instruction_file_path = test_path / "instruction.json"
@@ -61,6 +60,7 @@ class AllBathymetryIntoDemWellingtonTest(unittest.TestCase):
         cls.instructions["rivers"]["apis"]["vector"]["linz"]["key"] = linz_key
         cls.instructions["waterways"]["apis"]["vector"]["linz"]["key"] = linz_key
         cls.instructions["dem"]["apis"]["vector"]["linz"]["key"] = linz_key
+        cls.instructions["roughness"]["apis"]["vector"]["linz"]["key"] = linz_key
 
         # Remove any files from last test, then create a results directory
         cls.cache_dir = test_path / "data"
@@ -96,6 +96,8 @@ class AllBathymetryIntoDemWellingtonTest(unittest.TestCase):
         runner.run()
         runner = processor.HydrologicDemGenerator(cls.instructions["dem"])
         runner.run()
+        runner = processor.RoughnessLengthGenerator(cls.instructions["roughness"])
+        runner.run()
 
     @classmethod
     def tearDownClass(cls):
@@ -124,60 +126,78 @@ class AllBathymetryIntoDemWellingtonTest(unittest.TestCase):
                 shutil.rmtree(path)
 
     @pytest.mark.skipif(sys.platform != "win32", reason="Windows test - this is strict")
-    def test_result_dem_windows(self):
+    def test_result_geofabric_windows(self):
         """A basic comparison between the generated and benchmark DEM"""
 
+        # Load in benchmark
         file_path = (
-            self.cache_dir / self.instructions["dem"]["data_paths"]["benchmark_dem"]
-        )
-        with rioxarray.rioxarray.open_rasterio(file_path, masked=True) as benchmark_dem:
-            benchmark_dem.load()
-        # Load in test DEM
-        file_path = (
-            self.results_dir / self.instructions["dem"]["data_paths"]["result_dem"]
-        )
-        with rioxarray.rioxarray.open_rasterio(file_path, masked=True) as test_dem:
-            test_dem.load()
-        # compare the generated and benchmark DEMs
-        diff_array = (
-            test_dem.z.data[~numpy.isnan(test_dem.z.data)]
-            - benchmark_dem.z.data[~numpy.isnan(benchmark_dem.z.data)]
-        )
-        logging.info(f"DEM array diff is: {diff_array[diff_array != 0]}")
-        numpy.testing.assert_array_almost_equal(
-            test_dem.z.data,
-            benchmark_dem.z.data,
-            err_msg="The generated result_dem has different data from the "
-            + "benchmark_dem",
-        )
-
-        # explicitly free memory as xarray seems to be hanging onto memory
-        del test_dem
-        del benchmark_dem
-        gc.collect()
-
-    @pytest.mark.skipif(
-        sys.platform != "linux", reason="Linux test - this is less strict"
-    )
-    def test_result_dem_linux(self):
-        """A basic comparison between the generated and benchmark DEM"""
-
-        # load in benchmark
-        file_path = (
-            self.cache_dir / self.instructions["dem"]["data_paths"]["benchmark_dem"]
+            self.cache_dir
+            / self.instructions["roughness"]["data_paths"]["benchmark_geofabric"]
         )
         with rioxarray.rioxarray.open_rasterio(file_path, masked=True) as benchmark:
             benchmark.load()
         # Load in test
         file_path = (
-            self.results_dir / self.instructions["dem"]["data_paths"]["result_dem"]
+            self.results_dir
+            / self.instructions["roughness"]["data_paths"]["result_geofabric"]
         )
         with rioxarray.rioxarray.open_rasterio(file_path, masked=True) as test:
             test.load()
-        # compare the generated and benchmark DEMs
+        # Compare the generated and benchmark elevations
+        diff_array = (
+            test.z.data[~numpy.isnan(test.z.data)]
+            - benchmark.z.data[~numpy.isnan(benchmark.z.data)]
+        )
+        logging.info(f"DEM elevation diff is: {diff_array[diff_array != 0]}")
+        numpy.testing.assert_array_almost_equal(
+            test.z.data,
+            benchmark.z.data,
+            err_msg="The generated result_geofabric has different elevation data from "
+            "the benchmark_dem",
+        )
+        # Compare the generated and benchmark roughness
+        diff_array = (
+            test.zo.data[~numpy.isnan(test.zo.data)]
+            - benchmark.zo.data[~numpy.isnan(benchmark.zo.data)]
+        )
+        logging.info(f"Roughness diff is: {diff_array[diff_array != 0]}")
+        numpy.testing.assert_array_almost_equal(
+            test.zo.data,
+            benchmark.zo.data,
+            err_msg="The generated result_geofabric has different roughness data from "
+            "the benchmark_dem",
+        )
+
+        # explicitly free memory as xarray seems to be hanging onto memory
+        del test
+        del benchmark
+        gc.collect()
+
+    @pytest.mark.skipif(
+        sys.platform != "linux", reason="Linux test - this is less strict"
+    )
+    def test_result_geofabric_linux(self):
+        """A basic comparison between the generated and benchmark DEM"""
+
+        # load in benchmark
+        file_path = (
+            self.cache_dir
+            / self.instructions["roughness"]["data_paths"]["benchmark_geofabric"]
+        )
+        with rioxarray.rioxarray.open_rasterio(file_path, masked=True) as benchmark:
+            benchmark.load()
+        # Load in test
+        file_path = (
+            self.results_dir
+            / self.instructions["roughness"]["data_paths"]["result_geofabric"]
+        )
+        with rioxarray.rioxarray.open_rasterio(file_path, masked=True) as test:
+            test.load()
+        # Get data generated from LiDAR
         lidar_source_mask = (test.source_class.data == 1) & (
             benchmark.source_class.data == 1
         )
+        # Compare the generated and benchmark elevations
         lidar_diff = (
             test.z.data[lidar_source_mask] - benchmark.z.data[lidar_source_mask]
         )
@@ -185,13 +205,13 @@ class AllBathymetryIntoDemWellingtonTest(unittest.TestCase):
             test.z.data[lidar_source_mask],
             benchmark.z.data[lidar_source_mask],
             decimal=6,
-            err_msg="The generated test has significantly different data from the "
+            err_msg="The generated test has significantly different elevation from the "
             f"benchmark where there is LiDAR: {lidar_diff}",
         )
 
         diff_array = (
             test.z.data[~numpy.isnan(test.z.data)]
-            - benchmark.z.data[~numpy.isnan(benchmark.z.data)]
+            - benchmark.z.data[~numpy.isnan(test.z.data)]
         )
         logging.info(f"DEM array diff is: {diff_array[diff_array != 0]}")
         threshold = 10e-6
@@ -199,9 +219,18 @@ class AllBathymetryIntoDemWellingtonTest(unittest.TestCase):
         number_above_threshold = len(diff_array[numpy.abs(diff_array) > threshold])
         self.assertTrue(
             number_above_threshold < len(diff_array) * percent / 100,
-            f"More than {percent}% of DEM values differ by more than {threshold} on Linux "
-            f"test run: {diff_array[numpy.abs(diff_array) > threshold]} or "
+            f"More than {percent}% of DEM values differ by more than {threshold} on Linux test"
+            f" run: {diff_array[numpy.abs(diff_array) > threshold]} or "
             f"{number_above_threshold / len(diff_array.flatten()) * 100}%",
+        )
+        # Compare the generated and benchmark roughnesses
+        diff_array = test.zo.data - benchmark.zo.data
+        numpy.testing.assert_array_almost_equal(
+            test.zo.data,
+            benchmark.zo.data,
+            decimal=3,
+            err_msg="The generated test has significantly different roughness from the "
+            f"benchmark where there is LiDAR: {diff_array}",
         )
 
         # explicitly free memory as xarray seems to be hanging onto memory
