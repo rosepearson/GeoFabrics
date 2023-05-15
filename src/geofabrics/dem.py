@@ -1568,14 +1568,14 @@ class RawDem(LidarBase):
         # check mapping dict exist to map the dataset name to the dataset id
         # if dataset_name or dataset_mapping is not exist,
         # then the dataset_id variable is array of 0.
-        if ("dataset_mapping" in metadata["instructions"]
-                and dataset_name is not None):
+        if "dataset_mapping" in metadata["instructions"] and dataset_name is not None:
             dataset_mapping = metadata["instructions"]["dataset_mapping"]
-            dataset_mapping_result = {k: v for k, v in dataset_mapping.items()
-                                      if k in dataset_name}
-            assert (len(dataset_mapping_result) == (len(dataset_name))), (
-                f"Dataset name not found in the mapping dict."
-            )
+            dataset_mapping_result = {
+                k: v for k, v in dataset_mapping.items() if k in dataset_name
+            }
+            assert len(dataset_mapping_result) == (
+                len(dataset_name)
+            ), f"Dataset name not found in the mapping dict."
         else:
             dataset_mapping = None
             dataset_mapping_result = "Unknown dataset name"
@@ -1589,20 +1589,18 @@ class RawDem(LidarBase):
                 numpy.logical_not(numpy.isnan(z))
             ] = self.SOURCE_CLASSIFICATION["LiDAR"]
             # check if dataset name is in the mapping dict to get the dataset id
-            if (dataset_mapping is not None
-                    and dataset_name[i] in dataset_mapping):
-                dataset_id = [v for k, v in dataset_mapping.items()
-                              if k == dataset_name[i]]
-                assert (isinstance(dataset_id[0], int)), (
+            if dataset_mapping is not None and dataset_name[i] in dataset_mapping:
+                dataset_id = [
+                    v for k, v in dataset_mapping.items() if k == dataset_name[i]
+                ]
+                assert isinstance(dataset_id[0], int), (
                     f"dataset id {dataset_id[0]} for dataset name "
                     f"{dataset_name[i]} is not an integer."
                 )
             else:
                 dataset_id = [0]
             dataset_id_array = numpy.ones_like(z) * numpy.nan
-            dataset_id_array[
-                numpy.logical_not(numpy.isnan(z))
-            ] = dataset_id[0]
+            dataset_id_array[numpy.logical_not(numpy.isnan(z))] = dataset_id[0]
             dem = xarray.Dataset(
                 data_vars=dict(
                     z=(
