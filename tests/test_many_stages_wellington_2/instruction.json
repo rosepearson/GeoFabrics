@@ -58,7 +58,7 @@
 			"osm_id": 132793862,
 			"estimate_fan": true,
 			"network_id": 9003742,
-			"network_file": "tests/test_all_bathymetry_into_dem_wellington/data/rec1_flow_and_friction.geojson",
+			"network_file": "tests/test_many_stages_wellington_2/data/rec1_flow_and_friction.geojson",
 			"network_columns": {"id": "NZREACH", "to_node": "to_node", "from_node": "from_node", "flow": "flow", "mannings_n": "n", "area": "CATCHAREA"}
 		}
 	},
@@ -78,7 +78,7 @@
 			"number_of_cores": 2
 		},
 		"data_paths": {
-			"local_cache": "tests/test_all_bathymetry_into_dem_wellington_with_roughness/data",
+			"local_cache": "tests/test_many_stages_wellington_2/data",
 			"catchment_boundary": "catchment.geojson"
 		},
 		"apis": {
@@ -123,7 +123,7 @@
 			"number_of_cores": 2
 		},
 		"data_paths": {
-		  "local_cache": "tests/test_all_bathymetry_into_dem_wellington_with_roughness/data",
+		  "local_cache": "tests/test_many_stages_wellington_2/data",
 		  "catchment_boundary": "catchment.geojson",
 		  "raw_dem": "raw_dem.nc",
 		  "river_polygons": ["river_polygon.geojson",
@@ -183,7 +183,7 @@
 			"number_of_cores": 2
 		},
 		"data_paths": {
-		  "local_cache": "tests/test_all_bathymetry_into_dem_wellington_with_roughness/data",
+		  "local_cache": "tests/test_many_stages_wellington_2/data",
 		  "catchment_boundary": "catchment.geojson",
 		  "result_dem": "test_dem.nc",
 		  "result_geofabric": "test_geofabric.nc",

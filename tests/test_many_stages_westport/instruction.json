@@ -36,7 +36,7 @@
 			"number_of_cores": 2
 		},
 		"data_paths": {
-			"local_cache": "tests/test_measured_river_into_dem_westport/data",
+			"local_cache": "tests/test_many_stages_westport/data",
 			"catchment_boundary": "catchment.geojson",
 			"raw_dem": "raw_dem.nc",
 		    "river_polygons": ["river_polygon.geojson"],
