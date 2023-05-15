@@ -492,7 +492,7 @@ class HydrologicallyConditionedDem(DemBase):
         offshore_edge_dem = self._raw_dem.rio.clip(offshore_dense_data_edge.geometry)
 
         # If the sampling resolution is coaser than the catchment_geometry resolution
-        # resample the DEM
+        # resample the DEM - Align to the resolution (not the BBox).
         if resolution > self.catchment_geometry.resolution:
             x = numpy.arange(
                 numpy.ceil(offshore_edge_dem.x.min() / resolution) * resolution,
@@ -1240,7 +1240,7 @@ class RawDem(LidarBase):
             numpy.ceil((maxy - bounds.miny.min()) / (chunk_size * resolution))
         )
 
-        # The x coordinates rounded up to the nearest chunk
+        # x coordinates rounded up to the nearest chunk - resolution aligned
         dim_x = numpy.arange(
             numpy.ceil(minx / resolution) * resolution,
             numpy.ceil(minx / resolution) * resolution
@@ -1249,7 +1249,7 @@ class RawDem(LidarBase):
             dtype=geometry.RASTER_TYPE,
         )
         dim_x = dim_x.reshape((n_chunks_x, chunk_size))
-        # The y coordinates rounded up to the nearest chunk
+        # y coordinates rounded up to the nearest chunk - resolution aligned
         dim_y = numpy.arange(
             numpy.ceil(maxy / resolution) * resolution,
             numpy.ceil(maxy / resolution) * resolution
@@ -1474,7 +1474,7 @@ class RawDem(LidarBase):
         # Load LiDAR points from pipeline
         tile_points = pdal_pipeline.arrays[0]
 
-        # define the raster/DEM dimensions
+        # Define the raster/DEM dimensions - Align resolution (not BBox)
         bounds = self.catchment_geometry.catchment.geometry.bounds
         resolution = self.catchment_geometry.resolution
         dim_x = numpy.arange(
