@@ -1243,7 +1243,8 @@ class RawDem(LidarBase):
         # The x coordinates rounded up to the nearest chunk
         dim_x = numpy.arange(
             numpy.ceil(minx / resolution) * resolution,
-            numpy.ceil(minx / resolution) * resolution + n_chunks_x * chunk_size * resolution,
+            numpy.ceil(minx / resolution) * resolution
+            + n_chunks_x * chunk_size * resolution,
             resolution,
             dtype=geometry.RASTER_TYPE,
         )
@@ -1251,7 +1252,8 @@ class RawDem(LidarBase):
         # The y coordinates rounded up to the nearest chunk
         dim_y = numpy.arange(
             numpy.ceil(maxy / resolution) * resolution,
-            numpy.ceil(maxy / resolution) * resolution - n_chunks_y * chunk_size * resolution,
+            numpy.ceil(maxy / resolution) * resolution
+            - n_chunks_y * chunk_size * resolution,
             -resolution,
             dtype=geometry.RASTER_TYPE,
         )
