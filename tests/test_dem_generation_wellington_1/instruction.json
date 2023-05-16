@@ -1,0 +1,40 @@
+{
+	"output": {
+		"crs": {
+			"horizontal": 2193,
+			"vertical": 7839
+		},
+		"grid_params": {
+			"resolution": 10
+		}
+	},
+	"processing": {
+		"chunk_size": 100,
+		"number_of_cores": 2
+	},
+	"data_paths": {
+		"local_cache": "tests/test_dem_generation_wellington_1/data",
+		"subfolder": "results",
+		"catchment_boundary": "catchment.geojson",
+		"land": "catchment.geojson",
+		"result_dem": "test_dem.nc",
+		"benchmark_dem": "benchmark_dem.nc"
+	},
+	"apis": {
+		"lidar": {
+			"open_topography": {
+				"Wellington_2013": {
+					"crs": {
+						"horizontal": 2193,
+						"vertical": 7839
+					}
+				}
+			}
+		}
+	},
+	"general": {
+		"drop_offshore_lidar": true,
+		"lidar_classifications_to_keep": [1, 2, 4, 9],
+		"interpolation_method": "linear"
+	}
+}
