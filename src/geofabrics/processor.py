@@ -577,21 +577,56 @@ class BaseProcessor(abc.ABC):
                     / dataset_name
                     / f"{dataset_name}_TileIndex.zip"
                 )
-        else:
-            # for multiple local lidar datasets
-            if (
-                "local" in self.instructions.keys()
-                and "lidar" in self.instructions["local"].keys()
-            ):
-                lidar_datasets_info = self.instructions["local"]["lidar"]
-            else:
-                # get the specified file paths from the instructions,
-                lidar_datasets_info["local_files"] = {}
-                lidar_datasets_info["local_files"][
-                    "file_paths"
-                ] = self.get_instruction_path("lidars")
-                lidar_datasets_info["local_files"]["crs"] = None
-                lidar_datasets_info["local_files"]["tile_index_file"] = None
+        # Next check for any additional local LiDAR datasets.
+            # for multiple local lidar datasets - must be in separate folders
+        if (
+            "local" in self.instructions.keys()
+            and "lidar" in self.instructions["local"].keys()
+        ):
+            local_datasets = self.instructions["local"]["lidar"]
+
+            for key, dataset in local_datasets.items():
+                if "file_paths" not in dataset and "folder_path" in dataset:
+                    dataset["file_paths"] = sorted(
+                        pathlib.Path(self.lidar_fetcher.cache_path / dataset_name).rglob(
+                            "*.laz"
+                        )
+                    )
+                    # Remove the now unneeded folder path
+                    dataset.pop("folder_path");
+                elif 'file_paths' not in dataset and 'folder_path' not in dataset:
+                    raise Exception(
+                        "Local datasets must have either a `folder_path` or "
+                        "file_paths specified. Both are missing for dataset:"
+                        f"{key}."
+                    )
+            # Check no overlap between local and remote (API) keys
+            if len(lidar_datasets_info.keys() & local_datasets.keys()) > 0:
+                raise Exception(
+                    "The local and API (remote) LiDAR dataset names must be "
+                    "unique. Both contain the dataset name(s): "
+                    "{lidar_datasets_info.keys() & local_datasets.keys()}."
+                )
+            # Add the local datasets to any remote (API) datasets
+            lidar_datasets_info.update(local_datasets)
+        # Finally if there are no LiDAR datasets see if invidividual LiDAR
+        # files have been specified.
+        if len(lidar_datasets_info) == 0 and self.check_instruction_path("lidar_files"):
+            # get the specified file paths from the instructions,
+            lidar_datasets_info["local_files"] = {}
+            lidar_datasets_info["local_files"][
+                "file_paths"
+            ] = self.get_instruction_path("lidar_files")
+            lidar_datasets_info["local_files"]["crs"] = None
+            lidar_datasets_info["local_files"]["tile_index_file"] = None
+        elif len(lidar_datasets_info) == 0 and not self.check_instruction_path("lidar_files"):
+            logging.warning("No LiDAR datasets or `lidar_files` have been "
+                            "specified. Please check your instruction file/"
+                            "dict if this is unexpected.")
+        elif self.check_instruction_path("lidar_files"):
+            logging.warning("Full LiDAR datasets have been specified (either "
+                            "through the APIs or locally) as well as "
+                            "`lidar_files`. These will be ignored.")
         return lidar_datasets_info
 
     def create_catchment(self) -> geometry.CatchmentGeometry:
