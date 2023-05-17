@@ -37,7 +37,7 @@ class BaseProcessor(abc.ABC):
     OSM_CRS = "EPSG:4326"
 
     def __init__(self, json_instructions: json):
-        self.instructions = json_instructions
+        self.instructions = copy.deepcopy(json_instructions)
 
         self.catchment_geometry = None
 
@@ -1510,9 +1510,6 @@ class RiverBathymetryGenerator(BaseProcessor):
             instruction_paths["raw_dem_extents"] = str(
                 self.get_result_file_name(key="veg_dem_extents")
             )
-            # remove the added reserved no LiDAR map value
-            if "dataset_mapping" in self.instructions and "lidar" in self.instructions["dataset_mapping"] and "no LiDAR" in self.instructions["dataset_mapping"]["lidar"]:
-                self.instructions["dataset_mapping"]["lidar"].pop("no LiDAR")
             runner = RawLidarDemGenerator(self.instructions)
             runner.run()
             veg_dem = runner.raw_dem.dem

@@ -1516,7 +1516,7 @@ class RawDem(LidarBase):
         # Create xarray
         dem = self._create_data_set(
             x=dim_x, y=dim_y, elevations=[elevation], metadata=metadata,
-            lidar_names = [lidar_name]
+            dataset_names = [lidar_name]
         )
 
         return dem
@@ -1913,7 +1913,7 @@ class RoughnessDem(LidarBase):
         # Set roughness where LiDAR
         if chunk_size is None:  # If one file it's ok if there is no tile_index
             self._dem = self._add_lidar_no_chunking(
-                lidar_datasets_info=lidar_datasets_info.values,
+                lidar_datasets_info=lidar_datasets_info,
                 region_to_rasterise=region_to_rasterise,
                 options=raster_options,
                 metadata=metadata,
