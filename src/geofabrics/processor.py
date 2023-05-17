@@ -46,11 +46,11 @@ class BaseProcessor(abc.ABC):
 
         # Ensure no senstive key information is printed out as part of the instructions
         cleaned_instructions = copy.deepcopy(self.instructions)
-        if "apis" in cleaned_instructions:
-            for api_type in cleaned_instructions["apis"].keys():
-                for data_service in cleaned_instructions["apis"][api_type].keys():
+        if "datasets" in cleaned_instructions:
+            for data_type in cleaned_instructions["datasets"].keys():
+                for data_service in cleaned_instructions["datasets"][data_type].keys():
                     if "key" in data_service:
-                        cleaned_instructions["apis"][api_type]["key"].pop()
+                        cleaned_instructions["datasets"][data_type]["key"].pop()
         metadata = {
             "library_name": "GeoFabrics",
             "library_version": version.__version__,
@@ -262,22 +262,23 @@ class BaseProcessor(abc.ABC):
             self.instructions["processing"][key] = defaults[key]
             return defaults[key]
 
-    def check_apis(self, key: str, api_type: str) -> bool:
-        """Check to see if APIs are included in the instructions and if the key is
-        included in specified apis
+    def check_datasets(self, key: str, data_type: str) -> bool:
+        """Check to see if the dataset is included in the instructions:
+        key = dataservice (i.e. local, opentogaphy, linxz, lris)
 
         Parameters
         ----------
 
         key
-            The string identifying the vector/raster
-        api_type
-            The string identifying if the key is a vector or raster
+            The string identifying how the data is accessed
+            (e.g. local, opentopography, linz, etc)
+        data_type
+            The string identifying the data type (e.g. raster, lidar, vector)
         """
 
-        if "apis" in self.instructions and api_type in self.instructions["apis"]:
+        if "datasets" in self.instructions and data_type in self.instructions["datasets"]:
             # 'apis' included instructions and Key included in the APIs
-            return key in self.instructions["apis"][api_type]
+            return key in self.instructions["datasets"][data_type]
         else:
             return False
 
@@ -303,18 +304,18 @@ class BaseProcessor(abc.ABC):
         if "data_paths" in self.instructions and key in self.instructions["data_paths"]:
             # Key included in the data paths
             return True
-        elif "apis" in self.instructions and api_type in self.instructions["apis"]:
+        elif "datasets" in self.instructions and api_type in self.instructions["datasets"]:
             for data_service in data_services:
                 if (
-                    data_service in self.instructions["apis"][api_type]
-                    and key in self.instructions["apis"][api_type][data_service]
+                    data_service in self.instructions["datasets"][api_type]
+                    and key in self.instructions["datasets"][api_type][data_service]
                 ):
                     # Key is included in one or more of the data_service's APIs
                     return True
         else:
             return False
 
-    def get_vector_or_raster_paths(self, key: str, api_type: str) -> list:
+    def get_vector_or_raster_paths(self, key: str, data_type: str) -> list:
         """Get the path to the vector/raster key data included either as a file path or
         as an API. Return all paths where the vector key is specified. In the case that
         an API is specified ensure the data is fetched as well.
@@ -324,7 +325,7 @@ class BaseProcessor(abc.ABC):
 
         key
             The string identifying the vector/raster
-        api_type
+        data_type
             The string identifying if the key is a vector or raster
         """
 
@@ -338,22 +339,22 @@ class BaseProcessor(abc.ABC):
                 paths.extend(data_paths)
             else:
                 paths.append(data_paths)
-        if api_type == "vector":
-            # Define the supported vector 'apis' keywords and the geoapis class for
+        if data_type == "vector":
+            # Define the supported vector 'datasets' keywords and the geoapis class for
             # accessing that data service
             data_services = {
                 "linz": geoapis.vector.Linz,
                 "lris": geoapis.vector.Lris,
                 "statsnz": geoapis.vector.StatsNz,
             }
-        elif api_type == "raster":
+        elif data_type == "raster":
             data_services = {
                 "linz": geoapis.raster.Linz,
                 "lris": geoapis.raster.Lris,
                 "statsnz": geoapis.raster.StatsNz,
             }
         else:
-            logging.warning(f"Unsupported API type specified: {api_type}. Ignored.")
+            logging.warning(f"Unsupported API type specified: {data_type}. Ignored.")
             return
         # Check the instructions for vector data hosted in the supported vector data
         # services: LINZ and LRIS
@@ -366,8 +367,8 @@ class BaseProcessor(abc.ABC):
         )
         for data_service in data_services.keys():
             if (
-                self.check_apis(data_service, api_type=api_type)
-                and key in self.instructions["apis"][api_type][data_service]
+                self.check_datasets(data_service, data_type=data_type)
+                and key in self.instructions["datasets"][data_type][data_service]
             ):
                 # Get the location to cache vector data downloaded from data services
                 assert self.check_instruction_path("local_cache"), (
@@ -376,21 +377,21 @@ class BaseProcessor(abc.ABC):
                 )
 
                 # Get the API key for the data_serive being checked
-                assert "key" in self.instructions["apis"][api_type][data_service], (
-                    f"A 'key' must be specified for the {api_type}:{data_service} data"
+                assert "key" in self.instructions["datasets"][data_type][data_service], (
+                    f"A 'key' must be specified for the {data_type}:{data_service} data"
                     "  service instead the instruction only includes: "
-                    f"{self.instructions['apis'][api_type][data_service]}"
+                    f"{self.instructions['datasets'][data_type][data_service]}"
                 )
-                api_key = self.instructions["apis"][api_type][data_service]["key"]
+                api_key = self.instructions["datasets"][data_type][data_service]["key"]
 
                 # Instantiate the geoapis object for downloading vectors from the data
                 # service.
-                if api_type == "vector":
+                if data_type == "vector":
                     fetcher = data_services[data_service](
                         api_key, bounding_polygon=bounding_polygon, verbose=True
                     )
 
-                    api_instruction = self.instructions["apis"][api_type][data_service][
+                    api_instruction = self.instructions["datasets"][data_type][data_service][
                         key
                     ]
                     geometry_type = (
@@ -418,7 +419,7 @@ class BaseProcessor(abc.ABC):
                             layer_file.parent.mkdir(parents=True, exist_ok=True)
                             vector.to_file(layer_file)
                         paths.append(layer_file)
-                elif api_type == "raster":
+                elif data_type == "raster":
                     # simplify the bounding_polygon geometry
                     if bounding_polygon is not None:
                         bounds = bounding_polygon.bounds
@@ -441,7 +442,7 @@ class BaseProcessor(abc.ABC):
                         cache_path=raster_dir,
                     )
 
-                    api_instruction = self.instructions["apis"][api_type][data_service][
+                    api_instruction = self.instructions["datasets"][data_type][data_service][
                         key
                     ]
 
@@ -462,21 +463,21 @@ class BaseProcessor(abc.ABC):
         return paths
 
     def get_lidar_dataset_crs(self, data_service, dataset_name) -> dict:
-        """Checks to see if source CRS of an associated LiDAR datasets has be specified
+        """Checks to see if source CRS of an associated LiDAR dataset has be specified
         in the instruction file. If it has been specified, this CRS is returned, and
         will later be used to override the CRS encoded in the LAS files.
         """
 
-        api_type = "lidar"
-        apis_instructions = self.instructions["apis"]
+        dataset_type = "lidar"
+        apis_instructions = self.instructions["datasets"]
 
         if (
-            self.check_apis(data_service, api_type=api_type)
-            and type(apis_instructions[api_type][data_service]) is dict
-            and dataset_name in apis_instructions[api_type][data_service]
-            and type(apis_instructions[api_type][data_service][dataset_name]) is dict
+            self.check_datasets(data_service, data_type=dataset_type)
+            and type(apis_instructions[dataset_type][data_service]) is dict
+            and dataset_name in apis_instructions[dataset_type][data_service]
+            and type(apis_instructions[dataset_type][data_service][dataset_name]) is dict
         ):
-            dataset_instruction = apis_instructions[api_type][data_service][
+            dataset_instruction = apis_instructions[dataset_type][data_service][
                 dataset_name
             ]
 
@@ -485,10 +486,7 @@ class BaseProcessor(abc.ABC):
                 and "horizontal" in dataset_instruction["crs"]
                 and "vertical" in dataset_instruction["crs"]
             ):
-                dataset_crs = {
-                    "horizontal": dataset_instruction["crs"]["horizontal"],
-                    "vertical": dataset_instruction["crs"]["vertical"],
-                }
+                dataset_crs = dataset_instruction["crs"]
                 logging.info(
                     f"The LiDAR dataset {dataset_name} is assumed to have the source "
                     f"coordinate system EPSG: {dataset_crs} as defined in the "
@@ -510,32 +508,33 @@ class BaseProcessor(abc.ABC):
 
     def get_lidar_datasets_info(self) -> dict:
         """Return a dictionary with three enties 'file_paths', 'crs' and
-        'tile_index_file'. The 'file_paths' contains a list of LiDAR tiles to process.
+        'tile_index_file'. The 'file_paths' contains a list of LiDAR tiles to
+        process.
 
-        The 'crs' (or coordinate system of the LiDAR data as defined by an EPSG code) is
-        only optionally set (if unset the value is None). The 'crs' should only be set
-        if the CRS information is not correctly encoded in the LAZ/LAS files. Currently
+        The 'crs' (or coordinate system of the LiDAR data as defined by an EPSG
+        code) is only optionally set (if unset the value is None). The 'crs'
+        should only be set if the CRS information is not correctly encoded in
         this is only supported for OpenTopography LiDAR.
 
-        The 'tile_index_file' is also optional (if unset the value is None). The
-        'tile_index_file' should be given if a tile index file exists for the LiDAR
-        files specifying the extents of each tile. This is currently only supported for
-        OpenTopography files.
+        The 'tile_index_file' is also optional (if unset the value is None).
+        The 'tile_index_file' should be given if a tile index file exists for
+        the LiDAR files specifying the extents of each tile. This is currently
+        only supported for OpenTopography files.
 
-        If a LiDAR API is specified this is checked and all files within the catchment
-        area are downloaded and used to construct the file list. If none is specified,
-        the instruction 'data_paths' is checked for 'lidars' and these are returned.
+        If a LiDAR dataset (either through an API or locally) is specified this
+        is checked and all files within the catchment area are downloaded and
+        used to construct the file list. If none is specified, the instruction
+        'data_paths' is checked for 'lidars' and these are returned.
         """
 
         # Store dataset information in a dictionary of dictionaries
         lidar_datasets_info = {}
-
-        data_service = "open_topography"  # currently only open topography supported
-        api_type = "lidar"
+        data_type = "lidar"
 
         # See if 'OpenTopography' or another data_service has been specified as an area
         # to look first
-        if self.check_apis(data_service, api_type="lidar"):
+        data_service = "open_topography"
+        if self.check_datasets(data_service, data_type="lidar"):
             assert self.check_instruction_path("local_cache"), (
                 "A 'local_cache' must be specified under the 'file_paths' in the "
                 "instruction file if you are going to use an API - like "
@@ -558,7 +557,7 @@ class BaseProcessor(abc.ABC):
                 ),
             )
             # Loop through each specified dataset and download it
-            for dataset_name in self.instructions["apis"][api_type][
+            for dataset_name in self.instructions["datasets"][data_type][
                 data_service
             ].keys():
                 logging.info(f"Fetching dataset: {dataset_name}")
@@ -578,27 +577,41 @@ class BaseProcessor(abc.ABC):
                     / f"{dataset_name}_TileIndex.zip"
                 )
         # Next check for any additional local LiDAR datasets.
-            # for multiple local lidar datasets - must be in separate folders
-        if (
-            "local" in self.instructions.keys()
-            and "lidar" in self.instructions["local"].keys()
-        ):
-            local_datasets = self.instructions["local"]["lidar"]
+        # for multiple local lidar datasets - must be in separate folders
+        data_service = "local"
+        if self.check_datasets(data_service, data_type="lidar"):
+            local_datasets = copy.deepcopy(self.instructions["datasets"][data_type][data_service])
 
-            for key, dataset in local_datasets.items():
+            for dataset_name, dataset in local_datasets.items():
+                # Ensure the file_paths (LAZ files) are specified
                 if "file_paths" not in dataset and "folder_path" in dataset:
                     dataset["file_paths"] = sorted(
-                        pathlib.Path(self.lidar_fetcher.cache_path / dataset_name).rglob(
+                        pathlib.Path(dataset["folder_path"]).rglob(
                             "*.laz"
                         )
                     )
-                    # Remove the now unneeded folder path
-                    dataset.pop("folder_path");
                 elif 'file_paths' not in dataset and 'folder_path' not in dataset:
                     raise Exception(
                         "Local datasets must have either a `folder_path` or "
                         "file_paths specified. Both are missing for dataset:"
-                        f"{key}."
+                        f"{dataset_name}."
+                    )
+                # Ensure the tile_index file is specified
+                if "tile_index_file" not in dataset and "folder_path" in dataset:
+                    dataset["tile_index_file"] = pathlib.Path(dataset["folder_path"]) / f"{dataset_name}_TileIndex.zip"
+                    if not dataset["tile_index_file"].exists():
+                        raise Exception(
+                            f"{dataset['tile_index_file']} does not exist. If "
+                            "the tile index file has a different name it must "
+                            "be specified with the key `tile_index_file`. If "
+                            "there is not tile index file the lidar files "
+                            "need to be included as `cache_path:lidar_files`."
+                        )
+                elif 'tile_index_file' not in dataset and 'folder_path' not in dataset:
+                    raise Exception(
+                        "Local datasets must have either a `folder_path` or "
+                        "file_paths specified. Both are missing for dataset:"
+                        f"{dataset_name}."
                     )
             # Check no overlap between local and remote (API) keys
             if len(lidar_datasets_info.keys() & local_datasets.keys()) > 0:
@@ -619,6 +632,11 @@ class BaseProcessor(abc.ABC):
             ] = self.get_instruction_path("lidar_files")
             lidar_datasets_info["local_files"]["crs"] = None
             lidar_datasets_info["local_files"]["tile_index_file"] = None
+            # Ensure this is added to the LiDAR mapping - add if missing
+            if "dataset_mapping" not in self.instructions or "lidar" not in self.instructions["dataset_mapping"]:
+                if "dataset_mapping" not in self.instructions:
+                    self.instructions["dataset_mapping"] = {}
+                self.instructions["dataset_mapping"]["lidar"] = {"local_files": 1}
         elif len(lidar_datasets_info) == 0 and not self.check_instruction_path("lidar_files"):
             logging.warning("No LiDAR datasets or `lidar_files` have been "
                             "specified. Please check your instruction file/"
@@ -627,6 +645,46 @@ class BaseProcessor(abc.ABC):
             logging.warning("Full LiDAR datasets have been specified (either "
                             "through the APIs or locally) as well as "
                             "`lidar_files`. These will be ignored.")
+        # Ensure the data_mapping exists and matches the datasets
+        if len(lidar_datasets_info) > 0:
+            if "dataset_mapping" not in self.instructions or "lidar" not in self.instructions["dataset_mapping"]:
+                # Either create if only one dataset or raise and error if many
+                if len(lidar_datasets_info) == 1:
+                    # only one dataset so can unabiguously create a dataset mapping
+                    if "dataset_mapping" not in self.instructions:
+                        self.instructions["dataset_mapping"] = {}
+                    self.instructions["dataset_mapping"]["lidar"] = {list(lidar_datasets_info.keys())[0]: 1}
+                else:
+                    raise Exception("A lidar dataset mapping mut be specified in "
+                                    "the instructions if there are mutliple LiDAR "
+                                    "datasets. See the GitHub wiki.")
+            else:
+                # Ensure all lidar dataset names are included in the mapping
+                lidar_dataset_mapping = self.instructions["dataset_mapping"]["lidar"]
+                if len(lidar_datasets_info) < len(lidar_datasets_info.keys() & lidar_dataset_mapping.keys()):
+                    raise Exception("One of the LiDAR dataset names is missing"
+                                    "from the LiDAR dataset mapping. Dataset "
+                                    f"name are: {lidar_datasets_info.keys()}, "
+                                    "and the mappings are: "
+                                    f"{lidar_dataset_mapping.keys()}")
+            # Check the reserved '-1' code for 'no LiDAR' isn't already used
+            lidar_dataset_mapping = self.instructions["dataset_mapping"]["lidar"]
+            if -1 in lidar_dataset_mapping.values():
+                raise Exception("The mapping value of -1 is reserved for "
+                                "no lidar data. Please select a different "
+                                f"mapping value. {lidar_dataset_mapping}")
+            # Add a no LiDAR mapping value
+            self.instructions["dataset_mapping"]["lidar"]['no LiDAR'] = dem.DemBase.SOURCE_CLASSIFICATION['no data']
+            # Sort the lidar_dataset_info order by lidar_dataset_mapping values
+            # First sort the lidar_dataset_mapping by value
+            lidar_dataset_mapping = self.instructions["dataset_mapping"]["lidar"]
+            lidar_dataset_mapping = dict(sorted(lidar_dataset_mapping.items(),
+                                                key=lambda item: item[1]))
+            # Next sort the lidar_datasets_info by the lidar_dataset_mapping value
+            lidar_datasets_info = {key: lidar_datasets_info[key]
+                                   for key in lidar_dataset_mapping.keys()
+                                   if key in lidar_datasets_info.keys()}
+
         return lidar_datasets_info
 
     def create_catchment(self) -> geometry.CatchmentGeometry:
@@ -639,7 +697,7 @@ class BaseProcessor(abc.ABC):
         catchment_geometry = geometry.CatchmentGeometry(
             catchment_dirs, self.get_crs(), self.get_resolution(), foreshore_buffer=2
         )
-        land_dirs = self.get_vector_or_raster_paths(key="land", api_type="vector")
+        land_dirs = self.get_vector_or_raster_paths(key="land", data_type="vector")
         # Use the catchment outline as the land outline if the land is not specified
         if len(land_dirs) == 0:
             catchment_geometry.land = catchment_dirs
@@ -748,7 +806,7 @@ class RawLidarDemGenerator(BaseProcessor):
                 > self.catchment_geometry.land_and_foreshore.area.sum() * area_threshold
             ):
                 coarse_dem_paths = self.get_vector_or_raster_paths(
-                    key="coarse_dems", api_type="raster"
+                    key="coarse_dems", data_type="raster"
                 )
 
                 logging.info(f"Incorporating background DEM: {coarse_dem_paths}")
@@ -828,7 +886,7 @@ class HydrologicDemGenerator(BaseProcessor):
         ):
             # Get the bathymetry data directory
             bathy_contour_dirs = self.get_vector_or_raster_paths(
-                key="bathymetry_contours", api_type="vector"
+                key="bathymetry_contours", data_type="vector"
             )
             assert len(bathy_contour_dirs) == 1, (
                 f"{len(bathy_contour_dirs)} bathymetry_contours's provided. "
@@ -854,10 +912,10 @@ class HydrologicDemGenerator(BaseProcessor):
         ) and self.check_vector_or_raster("river_bathymetry", api_type="vector"):
             # Get the polygons and bathymetry and can be multiple
             bathy_dirs = self.get_vector_or_raster_paths(
-                key="river_bathymetry", api_type="vector"
+                key="river_bathymetry", data_type="vector"
             )
             poly_dirs = self.get_vector_or_raster_paths(
-                key="river_polygons", api_type="vector"
+                key="river_polygons", data_type="vector"
             )
 
             logging.info(f"Incorporating river and waterbed: {bathy_dirs}")
@@ -1044,7 +1102,7 @@ class MeasuredRiverGenerator(BaseProcessor):
             "result_polygon", defaults=defaults
         )
         ocean_contour_file = self.get_vector_or_raster_paths(
-            key="bathymetry_contours", api_type="vector"
+            key="bathymetry_contours", data_type="vector"
         )[0]
         ocean_contour_depth_label = self.get_instruction_general(
             "bathymetry_contours_z_label"
@@ -1420,8 +1478,8 @@ class RiverBathymetryGenerator(BaseProcessor):
         bathy_apis = None
         if "bathymetry_contours" in instruction_paths:
             bathy_data_paths = instruction_paths.pop("bathymetry_contours")
-        if "bathymetry_contours" in self.instructions["apis"]["vector"]["linz"]:
-            bathy_apis = self.instructions["apis"]["vector"]["linz"].pop(
+        if "bathymetry_contours" in self.instructions["datasets"]["vector"]["linz"]:
+            bathy_apis = self.instructions["datasets"]["vector"]["linz"].pop(
                 "bathymetry_contours"
             )
         # Get the ground DEM
@@ -1467,7 +1525,7 @@ class RiverBathymetryGenerator(BaseProcessor):
         if bathy_data_paths is not None:
             instruction_paths["bathymetry_contours"] = bathy_data_paths
         if bathy_apis is not None:
-            self.instructions["apis"]["vector"]["linz"][
+            self.instructions["datasets"]["vector"]["linz"][
                 "bathymetry_contours"
             ] = bathy_apis
         return gnd_dem, veg_dem

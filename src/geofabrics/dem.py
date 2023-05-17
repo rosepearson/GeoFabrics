@@ -328,12 +328,12 @@ class DemBase(abc.ABC):
         if "z" in dem:
             dem.z.rio.write_crs(crs_dict["horizontal"], inplace=True)
             dem.z.rio.write_nodata(numpy.nan, encoded=True, inplace=True)
-        if "source_class" in dem:
-            dem.source_class.rio.write_crs(crs_dict["horizontal"], inplace=True)
-            dem.source_class.rio.write_nodata(numpy.nan, encoded=True, inplace=True)
-        if "dataset_id" in dem:
-            dem.dataset_id.rio.write_crs(crs_dict["horizontal"], inplace=True)
-            dem.dataset_id.rio.write_nodata(numpy.nan, encoded=True, inplace=True)
+        if "data_source" in dem:
+            dem.data_source.rio.write_crs(crs_dict["horizontal"], inplace=True)
+            dem.data_source.rio.write_nodata(numpy.nan, encoded=True, inplace=True)
+        if "lidar_source" in dem:
+            dem.lidar_source.rio.write_crs(crs_dict["horizontal"], inplace=True)
+            dem.lidar_source.rio.write_nodata(numpy.nan, encoded=True, inplace=True)
         if "zo" in dem:
             dem.zo.rio.write_crs(crs_dict["horizontal"], inplace=True)
             dem.zo.rio.write_nodata(numpy.nan, encoded=True, inplace=True)
@@ -438,11 +438,14 @@ class HydrologicallyConditionedDem(DemBase):
                 self._dem["z"] = self._dem.z.rio.interpolate_na(method="nearest")
             # Only set areas with successful interpolation as interpolated
             interpolation_mask &= numpy.logical_not(numpy.isnan(self._dem.z.data))
-            self._dem.source_class.data[
+            self._dem.data_source.data[
                 interpolation_mask
             ] = self.SOURCE_CLASSIFICATION["interpolated"]
         # Ensure all area's with NaN values are marked as no-data
-        self._dem.source_class.data[
+        self._dem.data_source.data[
+            numpy.isnan(self._dem.z.data)
+        ] = self.SOURCE_CLASSIFICATION["no data"]
+        self._dem.lidar_source.data[
             numpy.isnan(self._dem.z.data)
         ] = self.SOURCE_CLASSIFICATION["no data"]
         self._dem = self._dem.rio.clip(
@@ -630,9 +633,10 @@ class HydrologicallyConditionedDem(DemBase):
         # set all zero (or to ocean bathy classification) then clip out dense region
         # where we don't need to interpolate
         self._offshore_dem.z.data[:] = 0
-        self._offshore_dem.source_class.data[:] = self.SOURCE_CLASSIFICATION[
+        self._offshore_dem.data_source.data[:] = self.SOURCE_CLASSIFICATION[
             "ocean bathymetry"
         ]
+        self._offshore_dem.lidar_source.data[:] = self.SOURCE_CLASSIFICATION["no data"]
         self._offshore_dem = self._offshore_dem.rio.clip(
             offshore_no_dense_data.geometry
         )
@@ -736,7 +740,8 @@ class HydrologicallyConditionedDem(DemBase):
         estimated_dem = combined_dem.rio.clip(estimated_polygons.geometry)
         # Set value for all, then use clip to set regions outside polygon to NaN
         estimated_dem.z.data[:] = 0
-        estimated_dem.source_class.data[:] = self.SOURCE_CLASSIFICATION[type_label]
+        estimated_dem.data_source.data[:] = self.SOURCE_CLASSIFICATION[type_label]
+        estimated_dem.lidar_source.data[:] = self.SOURCE_CLASSIFICATION["no data"]
         estimated_dem = estimated_dem.rio.clip(estimated_polygons.geometry)
 
         grid_x, grid_y = numpy.meshgrid(estimated_dem.x, estimated_dem.y)
@@ -863,8 +868,11 @@ class HydrologicallyConditionedDem(DemBase):
         estimated_dem = combined_dem.rio.clip(estimated_polygons.geometry)
         # Set value for all, then use clip to set regions outside polygon to NaN
         estimated_dem.z.data[:] = 0
-        estimated_dem.source_class.data[:] = self.SOURCE_CLASSIFICATION[
+        estimated_dem.data_source.data[:] = self.SOURCE_CLASSIFICATION[
             "rivers and fans"
+        ]
+        estimated_dem.lidar_source.data[:] = self.SOURCE_CLASSIFICATION[
+            "no data"
         ]
         estimated_dem = estimated_dem.rio.clip(estimated_polygons.geometry)
 
@@ -1170,10 +1178,9 @@ class LidarBase(DemBase):
 
     def _add_lidar_no_chunking(
         self,
-        lidar_file: typing.Union[str, pathlib.Path],
+        lidar_datasets_info: dict,
         region_to_rasterise: geopandas.GeoDataFrame,
         options: dict,
-        source_crs: dict,
         metadata: dict,
     ) -> xarray.Dataset:
         """Create/Update dataset from a single LiDAR file."""
@@ -1320,7 +1327,7 @@ class RawDem(LidarBase):
         # Don't use dask delayed if there is no chunking
         if chunk_size is None:
             dem = self._add_lidar_no_chunking(
-                lidar_dataset_info=next(iter(lidar_datasets_info.values())),
+                lidar_datasets_info=lidar_datasets_info,
                 region_to_rasterise=region_to_rasterise,
                 options=raster_options,
                 metadata=metadata,
@@ -1377,15 +1384,13 @@ class RawDem(LidarBase):
         # get chunking information
         chunked_dim_x, chunked_dim_y = self._set_up_chunks(chunk_size)
         elevations = []
-        dataset_name_list = []
 
         logging.info(f"Preparing {[len(chunked_dim_x), len(chunked_dim_y)]} chunks")
-        for dataset_name in lidar_datasets_info.keys():
+        for dataset_name, dataset_info in lidar_datasets_info.items():
             # Pull out the dataset information
-            lidar_files = lidar_datasets_info[dataset_name]["file_paths"]
-            tile_index_file = lidar_datasets_info[dataset_name]["tile_index_file"]
-            source_crs = lidar_datasets_info[dataset_name]["crs"]
-            dataset_name_list.append(dataset_name)
+            lidar_files = dataset_info["file_paths"]
+            tile_index_file = dataset_info["tile_index_file"]
+            source_crs = dataset_info["crs"]
 
             # create a map from tile name to tile file name
             lidar_files_map = {
@@ -1447,7 +1452,7 @@ class RawDem(LidarBase):
             y=numpy.concatenate(chunked_dim_y),
             elevations=elevations,
             metadata=metadata,
-            dataset_name=dataset_name_list,
+            dataset_names=list(lidar_datasets_info.keys()),
         )
         logging.info("Computing chunks")
         chunked_dem = chunked_dem.compute()
@@ -1457,15 +1462,17 @@ class RawDem(LidarBase):
 
     def _add_lidar_no_chunking(
         self,
-        lidar_dataset_info: dict,
+        lidar_datasets_info: dict,
         region_to_rasterise: geopandas.GeoDataFrame,
         options: dict,
         metadata: dict,
     ) -> xarray.Dataset:
         """Create a 'raw' DEM from a single LiDAR file with no chunking."""
 
-        lidar_file = lidar_dataset_info["file_paths"][0]
-        source_crs = lidar_dataset_info["crs"]
+        # Note only support for a single LiDAR file without tile information
+        lidar_name = list(lidar_datasets_info.keys())[0]
+        lidar_file = lidar_datasets_info[lidar_name]["file_paths"][0]
+        source_crs = lidar_datasets_info[lidar_name]["crs"]
         logging.info(f"On LiDAR tile 1 of 1: {lidar_file}")
 
         # Use PDAL to load in file
@@ -1504,7 +1511,8 @@ class RawDem(LidarBase):
 
         # Create xarray
         dem = self._create_data_set(
-            x=dim_x, y=dim_y, elevations=[elevation], metadata=metadata
+            x=dim_x, y=dim_y, elevations=[elevation], metadata=metadata,
+            lidar_names = [lidar_name]
         )
 
         return dem
@@ -1553,7 +1561,7 @@ class RawDem(LidarBase):
         y: numpy.ndarray,
         elevations: list,
         metadata: dict,
-        dataset_name: list = None,
+        dataset_names: list = None,
     ) -> xarray.Dataset:
         """A function to create a new dataset from x, y and z arrays.
 
@@ -1567,42 +1575,21 @@ class RawDem(LidarBase):
             elevations
                 A list of elevations over the x, and y coordiantes.One for each dataset
         """
-        # check mapping dict exist to map the dataset name to the dataset id
-        # if dataset_name or dataset_mapping is not exist,
-        # then the dataset_id variable is array of 0.
-        if "dataset_mapping" in metadata["instructions"] and dataset_name is not None:
-            dataset_mapping = metadata["instructions"]["dataset_mapping"]
-            dataset_mapping_result = {
-                k: v for k, v in dataset_mapping.items() if k in dataset_name
-            }
-            assert len(dataset_mapping_result) == (
-                len(dataset_name)
-            ), f"Dataset name not found in the mapping dict."
-        else:
-            dataset_mapping = None
-            dataset_mapping_result = "Unknown dataset name"
 
-        # Lood over each dataset and add data to the DEM
+        # Cycle over each elevation dataset populating a DEM - merge after
         dems = []
-        for i, z in enumerate(elevations):
+        dataset_mapping = metadata["instructions"]["dataset_mapping"]["lidar"]
+        for dataset_name, z in zip(dataset_names, elevations):
             # Create source variable - assume all values are defined from LiDAR
-            source_class = numpy.ones_like(z) * numpy.nan
-            source_class[
+            data_source = numpy.ones_like(z) * numpy.nan
+            data_source[
                 numpy.logical_not(numpy.isnan(z))
             ] = self.SOURCE_CLASSIFICATION["LiDAR"]
-            # check if dataset name is in the mapping dict to get the dataset id
-            if dataset_mapping is not None and dataset_name[i] in dataset_mapping:
-                dataset_id = [
-                    v for k, v in dataset_mapping.items() if k == dataset_name[i]
-                ]
-                assert isinstance(dataset_id[0], int), (
-                    f"dataset id {dataset_id[0]} for dataset name "
-                    f"{dataset_name[i]} is not an integer."
-                )
-            else:
-                dataset_id = [0]
-            dataset_id_array = numpy.ones_like(z) * numpy.nan
-            dataset_id_array[numpy.logical_not(numpy.isnan(z))] = dataset_id[0]
+            # Create LiDAR id variable - name and value info in the metadata
+            lidar_source = numpy.ones_like(z) * numpy.nan
+            lidar_source[numpy.logical_not(numpy.isnan(z))] = dataset_mapping[dataset_name]
+            print(dataset_name)
+            print(dataset_mapping[dataset_name])
             dem = xarray.Dataset(
                 data_vars=dict(
                     z=(
@@ -1615,22 +1602,22 @@ class RawDem(LidarBase):
                             f"{self.catchment_geometry.crs['vertical']}",
                         },
                     ),
-                    source_class=(
+                    data_source=(
                         ["y", "x"],
-                        source_class,
+                        data_source,
                         {
                             "units": "",
                             "long_name": "source data classification",
-                            "classifications": f"{self.SOURCE_CLASSIFICATION}",
+                            "mapping": f"{self.SOURCE_CLASSIFICATION}",
                         },
                     ),
-                    dataset_id=(
+                    lidar_source=(
                         ["y", "x"],
-                        dataset_id_array,
+                        lidar_source,
                         {
                             "units": "",
-                            "long_name": "source dataset id",
-                            "dataset_mapping": f"{dataset_mapping_result}",
+                            "long_name": "source lidar ID",
+                            "mapping": f"{dataset_mapping}",
                         },
                     ),
                 ),
@@ -1655,12 +1642,15 @@ class RawDem(LidarBase):
             dem = dems[0]
         else:
             dem = rioxarray.merge.merge_datasets(dems, method="first")
-        # Set areas with no values to No Data
-        dem.source_class.data[
-            numpy.isnan(dem.source_class.data)
+        # data_source: set areas with no values to No Data
+        dem.data_source.data[
+            numpy.isnan(dem.data_source.data)
         ] = self.SOURCE_CLASSIFICATION["no data"]
-
-        # set any offshre values to ocean assuming drop offshore is selected
+        # lidar_source: Set areas with no LiDAR to "No LiDAR"
+        dem.lidar_source.data[
+            numpy.logical_not(dem.data_source.data == self.SOURCE_CLASSIFICATION["LiDAR"])
+        ] = dataset_mapping["no LiDAR"]
+        # set any offshore values to ocean assuming drop offshore is selected
         if (
             self.catchment_geometry.foreshore_and_offshore.area.sum() > 0
             and self.drop_offshore_lidar
@@ -1673,9 +1663,10 @@ class RawDem(LidarBase):
                     ).data
                 )
             )
-            dem.source_class.data[ocean_mask] = self.SOURCE_CLASSIFICATION[
+            dem.data_source.data[ocean_mask] = self.SOURCE_CLASSIFICATION[
                 "ocean bathymetry"
             ]
+            dem.lidar_source.data[ocean_mask] = dataset_mapping["no LiDAR"]
         return dem
 
     def add_coarse_dem(self, coarse_dem: CoarseDem):
@@ -1726,8 +1717,9 @@ class RawDem(LidarBase):
 
         # Update the DEM
         self._dem.z.data[mask] = z_flat
-        # Update the source layer - where defined by the coarse DEM and set foreshore
-        self._dem.source_class.data[
+        # Update the data source layer - where defined by the coarse DEM
+        # and set foreshore
+        self._dem.data_source.data[
             mask & numpy.logical_not(numpy.isnan(self._dem.z.data))
         ] = self.SOURCE_CLASSIFICATION["coarse DEM"]
         if (
@@ -1742,7 +1734,7 @@ class RawDem(LidarBase):
                     ).data
                 )
             )
-            self._dem.source_class.data[
+            self._dem.data_source.data[
                 mask & foreshore_mask
             ] = self.SOURCE_CLASSIFICATION["ocean bathymetry"]
         # Update the dense DEM extents
@@ -1818,7 +1810,7 @@ class RoughnessDem(LidarBase):
         """Calculate the extents of the LiDAR data."""
 
         # Defines extents where raw DEM values exist
-        mask = self._dem.source_class.data == self.SOURCE_CLASSIFICATION["LiDAR"]
+        mask = self._dem.data_source.data == self.SOURCE_CLASSIFICATION["LiDAR"]
         extents = self._extents_from_mask(mask, self._dem)
         return extents
 
@@ -1878,7 +1870,7 @@ class RoughnessDem(LidarBase):
         lidar_classifications_to_keep: list,
         metadata: dict,
     ):
-        """Read in all LiDAR files and use the point cloud distribution, source_class
+        """Read in all LiDAR files and use the point cloud distribution, data_source
         information, and hydrologiaclly conditioned elevations to estimate the roughness
         across the DEM.
 
@@ -1917,7 +1909,7 @@ class RoughnessDem(LidarBase):
         # Set roughness where LiDAR
         if chunk_size is None:  # If one file it's ok if there is no tile_index
             self._dem = self._add_lidar_no_chunking(
-                lidar_dataset_info=next(iter(lidar_datasets_info.values())),
+                lidar_datasets_info=lidar_datasets_info.values,
                 region_to_rasterise=region_to_rasterise,
                 options=raster_options,
                 metadata=metadata,
@@ -1933,18 +1925,18 @@ class RoughnessDem(LidarBase):
         # Set roughness where water
         self._dem.zo.data[
             (
-                self._dem.source_class.data
+                self._dem.data_source.data
                 == self.SOURCE_CLASSIFICATION["ocean bathymetry"]
             )
             | (
-                self._dem.source_class.data
+                self._dem.data_source.data
                 == self.SOURCE_CLASSIFICATION["rivers and fans"]
             )
-            | (self._dem.source_class.data == self.SOURCE_CLASSIFICATION["waterways"])
+            | (self._dem.data_source.data == self.SOURCE_CLASSIFICATION["waterways"])
         ] = self.ROUGHNESS_DEFAULTS["water"]
         # Set roughness where land and no LiDAR
         self._dem.zo.data[
-            self._dem.source_class.data == self.SOURCE_CLASSIFICATION["coarse DEM"]
+            self._dem.data_source.data == self.SOURCE_CLASSIFICATION["coarse DEM"]
         ] = self.ROUGHNESS_DEFAULTS[
             "land"
         ]  # or LiDAR with no roughness estimate
@@ -2058,7 +2050,7 @@ class RoughnessDem(LidarBase):
 
     def _add_lidar_no_chunking(
         self,
-        lidar_dataset_info: dict,
+        lidar_datasets_info: dict,
         region_to_rasterise: geopandas.GeoDataFrame,
         options: dict,
         metadata: dict,
@@ -2066,8 +2058,10 @@ class RoughnessDem(LidarBase):
         """Create a roughness layer with estimates where there is LiDAR from a single
         LiDAR file with no chunking."""
 
-        lidar_file = lidar_dataset_info["file_paths"][0]
-        source_crs = lidar_dataset_info["crs"]
+        # Note only support for a single LiDAR file without tile information
+        lidar_name = list(lidar_datasets_info.keys())[0]
+        lidar_file = lidar_datasets_info[lidar_name]["file_paths"][0]
+        source_crs = lidar_datasets_info[lidar_name]["crs"]
         logging.info(f"On LiDAR tile 1 of 1: {lidar_file}")
 
         # Use PDAL to load in file
