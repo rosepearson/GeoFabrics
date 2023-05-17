@@ -43,9 +43,8 @@ class Test(unittest.TestCase):
         """Create a CatchmentGeometry object and then run the DemGenerator processing
         chain to download remote files and produce a DEM prior to testing."""
 
-        test_path = pathlib.Path().cwd() / pathlib.Path(
-            "tests/test_many_stages_multiple"
-        )
+        name = "test_many_stages_multiple_1"
+        test_path = pathlib.Path().cwd() / "tests" / name
 
         # Setup logging
         logging.basicConfig(
@@ -54,7 +53,7 @@ class Test(unittest.TestCase):
             level=logging.INFO,
             force=True,
         )
-        logging.info("In test_many_stages_multiple")
+        logging.info(f"In {name}")
 
         # load in the test instructions
         instruction_file_path = test_path / "instruction.json"
@@ -143,6 +142,19 @@ class Test(unittest.TestCase):
             + "benchmark_dem",
         )
 
+        # compare the generated LiDAR data source maps
+        diff_array = (
+            test.lidar_source.data
+            - benchmark.lidar_source.data
+        )
+        logging.info(f"DEM array diff is: {diff_array[diff_array != 0]}")
+        numpy.testing.assert_array_almost_equal(
+            test.lidar_source.data,
+            benchmark.lidar_source.data,
+            err_msg="The generated lidar_source test has different data from "
+            "the benchmark",
+        )
+
         # Compare the generated and benchmark roughness
         diff_array = (
             test.zo.data[~numpy.isnan(test.zo.data)]
@@ -197,6 +209,17 @@ class Test(unittest.TestCase):
             "More than 0.4% of DEM values differ by more than {threshold} on Linux test"
             f" run: {diff_array[numpy.abs(diff_array) > threshold]} or "
             f"{len(diff_array[numpy.abs(diff_array) > threshold]) / len(diff_array.flatten()) * 100}%",
+        )
+
+        # compare the generated and benchmark lidar source
+        diff_array = test.lidar_source.data - benchmark.lidar_source.data
+        numpy.testing.assert_array_almost_equal(
+            test.lidar_source.data,
+            benchmark.lidar_source.data,
+            decimal=3,
+            err_msg="The generated test has significantly different lidar "
+            "source values from the benchmark where there is LiDAR: "
+            f"{diff_array}",
         )
 
         # Compare the generated and benchmark roughnesses

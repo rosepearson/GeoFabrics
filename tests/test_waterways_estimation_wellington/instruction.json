@@ -21,7 +21,7 @@
 		"closed_waterways_polygon_benchmark": "closed_waterways_polygon_benchmark.geojson",
 		"closed_waterways_bathymetry_benchmark": "closed_waterways_elevation_benchmark.geojson"
 	},
-	"apis": {
+	"datasets": {
 		"lidar": {
 			"open_topography": {
 				"Wellington_2013": {

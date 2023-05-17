@@ -43,11 +43,6 @@ class Test(unittest.TestCase):
     FILE_SIZES = {
         "CL2_BR20_2020_1000_4012.laz": 2636961,
         "CL2_BR20_2020_1000_4013.laz": 3653378,
-        "CL2_BR20_2020_1000_4014.laz": 4470413,
-        "CL2_BR20_2020_1000_4112.laz": 9036407,
-        "CL2_BR20_2020_1000_4212.laz": 8340310,
-        "CL2_BR20_2020_1000_4213.laz": 6094309,
-        "CL2_BR20_2020_1000_4214.laz": 8492543,
         DATASET + "_TileIndex.zip": 1125874,
     }
 
@@ -81,22 +76,15 @@ class Test(unittest.TestCase):
 
         # create fake catchment boundary
         x0 = 1473354
-        x1 = 1473704
-        x2 = 1474598
+        x1 = 1473804
         y0 = 5377655
         y1 = 5377335
-        y2 = 5376291
-        y3 = 5375824
         catchment = shapely.geometry.Polygon(
             [
                 (x0, y0),
-                (x0, y3),
-                (x2, y3),
-                (x2, y2),
-                (x1, y2),
+                (x0, y1),
                 (x1, y1),
-                (x2, y1),
-                (x2, y0),
+                (x1, y0),
             ]
         )
         catchment = geopandas.GeoSeries([catchment])

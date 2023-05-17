@@ -47,7 +47,6 @@ class Test(unittest.TestCase):
     LIDAR_SIZES = {
         "CL2_BR21_2020_1000_4704.laz": 20851153,
         "CL2_BR21_2020_1000_4705.laz": 19749374,
-        "CL2_BR21_2020_1000_4706.laz": 17977826,
         "CL2_BR21_2020_1000_4804.laz": 18379794,
         DATASETS[0] + "_TileIndex.zip": 1125874,
     }
@@ -77,8 +76,8 @@ class Test(unittest.TestCase):
         # Load in environment variables to get and set the private API keys
         dotenv.load_dotenv()
         linz_key = os.environ.get("LINZ_API", None)
-        cls.instructions["apis"]["vector"]["linz"]["key"] = linz_key
-        cls.instructions["apis"]["raster"]["linz"]["key"] = linz_key
+        cls.instructions["datasets"]["vector"]["linz"]["key"] = linz_key
+        cls.instructions["datasets"]["raster"]["linz"]["key"] = linz_key
 
         # Remove any files from last test, then create a results directory
         cls.cache_dir = test_path / "data"
@@ -88,9 +87,9 @@ class Test(unittest.TestCase):
 
         # Create fake catchment boundary
         x0 = 1493600
-        x1 = 1494400
-        y0 = 5372300
-        y1 = 5371700
+        x1 = 1494100
+        y0 = 5372250
+        y1 = 5371900
         catchment = shapely.geometry.Polygon(
             [
                 (x0, y0),

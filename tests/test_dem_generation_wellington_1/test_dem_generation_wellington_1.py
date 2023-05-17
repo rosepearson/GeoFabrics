@@ -195,28 +195,41 @@ class Test(unittest.TestCase):
         """A basic comparison between the generated and benchmark DEM"""
 
         file_path = self.cache_dir / self.instructions["data_paths"]["benchmark_dem"]
-        with rioxarray.rioxarray.open_rasterio(file_path, masked=True) as benchmark_dem:
-            benchmark_dem.load()
+        with rioxarray.rioxarray.open_rasterio(file_path, masked=True) as benchmark:
+            benchmark.load()
         # Load in test DEM
         file_path = self.results_dir / self.instructions["data_paths"]["result_dem"]
-        with rioxarray.rioxarray.open_rasterio(file_path, masked=True) as test_dem:
-            test_dem.load()
+        with rioxarray.rioxarray.open_rasterio(file_path, masked=True) as test:
+            test.load()
         # compare the generated and benchmark DEMs
         diff_array = (
-            test_dem.z.data[~numpy.isnan(test_dem.z.data)]
-            - benchmark_dem.z.data[~numpy.isnan(benchmark_dem.z.data)]
+            test.z.data[~numpy.isnan(test.z.data)]
+            - benchmark.z.data[~numpy.isnan(benchmark.z.data)]
         )
         logging.info(f"DEM array diff is: {diff_array[diff_array != 0]}")
         numpy.testing.assert_array_almost_equal(
-            test_dem.z.data,
-            benchmark_dem.z.data,
+            test.z.data,
+            benchmark.z.data,
             err_msg="The generated result_dem has different data from the "
             + "benchmark_dem",
         )
 
+        # compare the generated LiDAR data source maps
+        diff_array = (
+            test.lidar_source.data
+            - benchmark.lidar_source.data
+        )
+        logging.info(f"DEM array diff is: {diff_array[diff_array != 0]}")
+        numpy.testing.assert_array_almost_equal(
+            test.lidar_source.data,
+            benchmark.lidar_source.data,
+            err_msg="The generated lidar_source test has different data from "
+            "the benchmark",
+        )
+
         # explicitly free memory as xarray seems to be hanging onto memory
-        del test_dem
-        del benchmark_dem
+        del test
+        del benchmark
         gc.collect()
 
     @pytest.mark.skipif(
@@ -227,16 +240,17 @@ class Test(unittest.TestCase):
 
         # load in benchmark DEM
         file_path = self.cache_dir / self.instructions["data_paths"]["benchmark_dem"]
-        with rioxarray.rioxarray.open_rasterio(file_path, masked=True) as benchmark_dem:
-            benchmark_dem.load()
+        with rioxarray.rioxarray.open_rasterio(file_path, masked=True) as benchmark:
+            benchmark.load()
         # Load in test DEM
         file_path = self.results_dir / self.instructions["data_paths"]["result_dem"]
-        with rioxarray.rioxarray.open_rasterio(file_path, masked=True) as test_dem:
-            test_dem.load()
+        with rioxarray.rioxarray.open_rasterio(file_path, masked=True) as test:
+            test.load()
+
         # compare the generated and benchmark DEMs
         diff_array = (
-            test_dem.z.data[~numpy.isnan(test_dem.z.data)]
-            - benchmark_dem.z.data[~numpy.isnan(benchmark_dem.z.data)]
+            test.z.data[~numpy.isnan(test.z.data)]
+            - benchmark.z.data[~numpy.isnan(benchmark.z.data)]
         )
         logging.info(f"DEM array diff is: {diff_array[diff_array != 0]}")
 
@@ -254,9 +268,20 @@ class Test(unittest.TestCase):
             f"{number_under_threshold / len(diff_array.flatten()) * 100}%",
         )
 
+        # compare the generated and benchmark lidar source
+        diff_array = test.lidar_source.data - benchmark.lidar_source.data
+        numpy.testing.assert_array_almost_equal(
+            test.lidar_source.data,
+            benchmark.lidar_source.data,
+            decimal=3,
+            err_msg="The generated test has significantly different lidar "
+            "source values from the benchmark where there is LiDAR: "
+            f"{diff_array}",
+        )
+
         # explicitly free memory as xarray seems to be hanging onto memory
-        del test_dem
-        del benchmark_dem
+        del test
+        del benchmark
         gc.collect()
 
 
