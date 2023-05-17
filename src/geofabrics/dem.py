@@ -438,9 +438,9 @@ class HydrologicallyConditionedDem(DemBase):
                 self._dem["z"] = self._dem.z.rio.interpolate_na(method="nearest")
             # Only set areas with successful interpolation as interpolated
             interpolation_mask &= numpy.logical_not(numpy.isnan(self._dem.z.data))
-            self._dem.data_source.data[
-                interpolation_mask
-            ] = self.SOURCE_CLASSIFICATION["interpolated"]
+            self._dem.data_source.data[interpolation_mask] = self.SOURCE_CLASSIFICATION[
+                "interpolated"
+            ]
             self._dem.lidar_source.data[
                 interpolation_mask
             ] = self.SOURCE_CLASSIFICATION["no data"]
@@ -874,9 +874,7 @@ class HydrologicallyConditionedDem(DemBase):
         estimated_dem.data_source.data[:] = self.SOURCE_CLASSIFICATION[
             "rivers and fans"
         ]
-        estimated_dem.lidar_source.data[:] = self.SOURCE_CLASSIFICATION[
-            "no data"
-        ]
+        estimated_dem.lidar_source.data[:] = self.SOURCE_CLASSIFICATION["no data"]
         estimated_dem = estimated_dem.rio.clip(estimated_polygons.geometry)
 
         grid_x, grid_y = numpy.meshgrid(estimated_dem.x, estimated_dem.y)
@@ -1515,8 +1513,11 @@ class RawDem(LidarBase):
 
         # Create xarray
         dem = self._create_data_set(
-            x=dim_x, y=dim_y, elevations=[elevation], metadata=metadata,
-            dataset_names = [lidar_name]
+            x=dim_x,
+            y=dim_y,
+            elevations=[elevation],
+            metadata=metadata,
+            dataset_names=[lidar_name],
         )
 
         return dem
@@ -1586,12 +1587,14 @@ class RawDem(LidarBase):
         for dataset_name, z in zip(dataset_names, elevations):
             # Create source variable - assume all values are defined from LiDAR
             data_source = numpy.ones_like(z) * numpy.nan
-            data_source[
-                numpy.logical_not(numpy.isnan(z))
-            ] = self.SOURCE_CLASSIFICATION["LiDAR"]
+            data_source[numpy.logical_not(numpy.isnan(z))] = self.SOURCE_CLASSIFICATION[
+                "LiDAR"
+            ]
             # Create LiDAR id variable - name and value info in the metadata
             lidar_source = numpy.ones_like(z) * numpy.nan
-            lidar_source[numpy.logical_not(numpy.isnan(z))] = dataset_mapping[dataset_name]
+            lidar_source[numpy.logical_not(numpy.isnan(z))] = dataset_mapping[
+                dataset_name
+            ]
             print(dataset_name)
             print(dataset_mapping[dataset_name])
             dem = xarray.Dataset(
@@ -1652,7 +1655,9 @@ class RawDem(LidarBase):
         ] = self.SOURCE_CLASSIFICATION["no data"]
         # lidar_source: Set areas with no LiDAR to "No LiDAR"
         dem.lidar_source.data[
-            numpy.logical_not(dem.data_source.data == self.SOURCE_CLASSIFICATION["LiDAR"])
+            numpy.logical_not(
+                dem.data_source.data == self.SOURCE_CLASSIFICATION["LiDAR"]
+            )
         ] = dataset_mapping["no LiDAR"]
         # set any offshore values to ocean assuming drop offshore is selected
         if (

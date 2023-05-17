@@ -276,7 +276,10 @@ class BaseProcessor(abc.ABC):
             The string identifying the data type (e.g. raster, lidar, vector)
         """
 
-        if "datasets" in self.instructions and data_type in self.instructions["datasets"]:
+        if (
+            "datasets" in self.instructions
+            and data_type in self.instructions["datasets"]
+        ):
             # 'apis' included instructions and Key included in the APIs
             return key in self.instructions["datasets"][data_type]
         else:
@@ -304,7 +307,10 @@ class BaseProcessor(abc.ABC):
         if "data_paths" in self.instructions and key in self.instructions["data_paths"]:
             # Key included in the data paths
             return True
-        elif "datasets" in self.instructions and api_type in self.instructions["datasets"]:
+        elif (
+            "datasets" in self.instructions
+            and api_type in self.instructions["datasets"]
+        ):
             for data_service in data_services:
                 if (
                     data_service in self.instructions["datasets"][api_type]
@@ -377,7 +383,9 @@ class BaseProcessor(abc.ABC):
                 )
 
                 # Get the API key for the data_serive being checked
-                assert "key" in self.instructions["datasets"][data_type][data_service], (
+                assert (
+                    "key" in self.instructions["datasets"][data_type][data_service]
+                ), (
                     f"A 'key' must be specified for the {data_type}:{data_service} data"
                     "  service instead the instruction only includes: "
                     f"{self.instructions['datasets'][data_type][data_service]}"
@@ -391,9 +399,9 @@ class BaseProcessor(abc.ABC):
                         api_key, bounding_polygon=bounding_polygon, verbose=True
                     )
 
-                    api_instruction = self.instructions["datasets"][data_type][data_service][
-                        key
-                    ]
+                    api_instruction = self.instructions["datasets"][data_type][
+                        data_service
+                    ][key]
                     geometry_type = (
                         api_instruction["geometry_name "]
                         if "geometry_name " in api_instruction
@@ -442,9 +450,9 @@ class BaseProcessor(abc.ABC):
                         cache_path=raster_dir,
                     )
 
-                    api_instruction = self.instructions["datasets"][data_type][data_service][
-                        key
-                    ]
+                    api_instruction = self.instructions["datasets"][data_type][
+                        data_service
+                    ][key]
 
                     logging.info(
                         f"Downloading rater layers {api_instruction['layers']} from"
@@ -475,7 +483,8 @@ class BaseProcessor(abc.ABC):
             self.check_datasets(data_service, data_type=dataset_type)
             and type(apis_instructions[dataset_type][data_service]) is dict
             and dataset_name in apis_instructions[dataset_type][data_service]
-            and type(apis_instructions[dataset_type][data_service][dataset_name]) is dict
+            and type(apis_instructions[dataset_type][data_service][dataset_name])
+            is dict
         ):
             dataset_instruction = apis_instructions[dataset_type][data_service][
                 dataset_name
@@ -580,16 +589,16 @@ class BaseProcessor(abc.ABC):
         # for multiple local lidar datasets - must be in separate folders
         data_service = "local"
         if self.check_datasets(data_service, data_type="lidar"):
-            local_datasets = copy.deepcopy(self.instructions["datasets"][data_type][data_service])
+            local_datasets = copy.deepcopy(
+                self.instructions["datasets"][data_type][data_service]
+            )
             for dataset_name, dataset in local_datasets.items():
                 # Ensure the file_paths (LAZ files) are specified
                 if "file_paths" not in dataset and "folder_path" in dataset:
                     dataset["file_paths"] = sorted(
-                        pathlib.Path(dataset["folder_path"]).rglob(
-                            "*.laz"
-                        )
+                        pathlib.Path(dataset["folder_path"]).rglob("*.laz")
                     )
-                elif 'file_paths' not in dataset and 'folder_path' not in dataset:
+                elif "file_paths" not in dataset and "folder_path" not in dataset:
                     raise Exception(
                         "Local datasets must have either a `folder_path` or "
                         "file_paths specified. Both are missing for dataset:"
@@ -597,7 +606,10 @@ class BaseProcessor(abc.ABC):
                     )
                 # Ensure the tile_index file is specified
                 if "tile_index_file" not in dataset and "folder_path" in dataset:
-                    dataset["tile_index_file"] = pathlib.Path(dataset["folder_path"]) / f"{dataset_name}_TileIndex.zip"
+                    dataset["tile_index_file"] = (
+                        pathlib.Path(dataset["folder_path"])
+                        / f"{dataset_name}_TileIndex.zip"
+                    )
                     if not dataset["tile_index_file"].exists():
                         raise Exception(
                             f"{dataset['tile_index_file']} does not exist. If "
@@ -606,7 +618,7 @@ class BaseProcessor(abc.ABC):
                             "there is not tile index file the lidar files "
                             "need to be included as `cache_path:lidar_files`."
                         )
-                elif 'tile_index_file' not in dataset and 'folder_path' not in dataset:
+                elif "tile_index_file" not in dataset and "folder_path" not in dataset:
                     raise Exception(
                         "Local datasets must have either a `folder_path` or "
                         "file_paths specified. Both are missing for dataset:"
@@ -632,57 +644,84 @@ class BaseProcessor(abc.ABC):
             lidar_datasets_info["local_files"]["crs"] = None
             lidar_datasets_info["local_files"]["tile_index_file"] = None
             # Ensure this is added to the LiDAR mapping - add if missing
-            if "dataset_mapping" not in self.instructions or "lidar" not in self.instructions["dataset_mapping"]:
+            if (
+                "dataset_mapping" not in self.instructions
+                or "lidar" not in self.instructions["dataset_mapping"]
+            ):
                 if "dataset_mapping" not in self.instructions:
                     self.instructions["dataset_mapping"] = {}
                 self.instructions["dataset_mapping"]["lidar"] = {"local_files": 1}
-        elif len(lidar_datasets_info) == 0 and not self.check_instruction_path("lidar_files"):
-            logging.warning("No LiDAR datasets or `lidar_files` have been "
-                            "specified. Please check your instruction file/"
-                            "dict if this is unexpected.")
+        elif len(lidar_datasets_info) == 0 and not self.check_instruction_path(
+            "lidar_files"
+        ):
+            logging.warning(
+                "No LiDAR datasets or `lidar_files` have been "
+                "specified. Please check your instruction file/"
+                "dict if this is unexpected."
+            )
         elif self.check_instruction_path("lidar_files"):
-            logging.warning("Full LiDAR datasets have been specified (either "
-                            "through the APIs or locally) as well as "
-                            "`lidar_files`. These will be ignored.")
+            logging.warning(
+                "Full LiDAR datasets have been specified (either "
+                "through the APIs or locally) as well as "
+                "`lidar_files`. These will be ignored."
+            )
         # Ensure the data_mapping exists and matches the datasets
         if len(lidar_datasets_info) > 0:
-            if "dataset_mapping" not in self.instructions or "lidar" not in self.instructions["dataset_mapping"]:
+            if (
+                "dataset_mapping" not in self.instructions
+                or "lidar" not in self.instructions["dataset_mapping"]
+            ):
                 # Either create if only one dataset or raise and error if many
                 if len(lidar_datasets_info) == 1:
                     # only one dataset so can unabiguously create a dataset mapping
                     if "dataset_mapping" not in self.instructions:
                         self.instructions["dataset_mapping"] = {}
-                    self.instructions["dataset_mapping"]["lidar"] = {list(lidar_datasets_info.keys())[0]: 1}
+                    self.instructions["dataset_mapping"]["lidar"] = {
+                        list(lidar_datasets_info.keys())[0]: 1
+                    }
                 else:
-                    raise Exception("A lidar dataset mapping mut be specified in "
-                                    "the instructions if there are mutliple LiDAR "
-                                    "datasets. See the GitHub wiki.")
+                    raise Exception(
+                        "A lidar dataset mapping mut be specified in "
+                        "the instructions if there are mutliple LiDAR "
+                        "datasets. See the GitHub wiki."
+                    )
             else:
                 # Ensure all lidar dataset names are included in the mapping
                 lidar_dataset_mapping = self.instructions["dataset_mapping"]["lidar"]
-                if len(lidar_datasets_info) < len(lidar_datasets_info.keys() & lidar_dataset_mapping.keys()):
-                    raise Exception("One of the LiDAR dataset names is missing"
-                                    "from the LiDAR dataset mapping. Dataset "
-                                    f"name are: {lidar_datasets_info.keys()}, "
-                                    "and the mappings are: "
-                                    f"{lidar_dataset_mapping.keys()}")
+                if len(lidar_datasets_info) < len(
+                    lidar_datasets_info.keys() & lidar_dataset_mapping.keys()
+                ):
+                    raise Exception(
+                        "One of the LiDAR dataset names is missing"
+                        "from the LiDAR dataset mapping. Dataset "
+                        f"name are: {lidar_datasets_info.keys()}, "
+                        "and the mappings are: "
+                        f"{lidar_dataset_mapping.keys()}"
+                    )
             # Check the reserved '-1' code for 'no LiDAR' isn't already used
             lidar_dataset_mapping = self.instructions["dataset_mapping"]["lidar"]
             if -1 in lidar_dataset_mapping.values():
-                raise Exception("The mapping value of -1 is reserved for "
-                                "no lidar data. Please select a different "
-                                f"mapping value. {lidar_dataset_mapping}")
+                raise Exception(
+                    "The mapping value of -1 is reserved for "
+                    "no lidar data. Please select a different "
+                    f"mapping value. {lidar_dataset_mapping}"
+                )
             # Add a no LiDAR mapping value
-            self.instructions["dataset_mapping"]["lidar"]['no LiDAR'] = dem.DemBase.SOURCE_CLASSIFICATION['no data']
+            self.instructions["dataset_mapping"]["lidar"][
+                "no LiDAR"
+            ] = dem.DemBase.SOURCE_CLASSIFICATION["no data"]
             # Sort the lidar_dataset_info order by lidar_dataset_mapping values
             # First sort the lidar_dataset_mapping by value
             lidar_dataset_mapping = self.instructions["dataset_mapping"]["lidar"]
-            lidar_dataset_mapping = dict(sorted(lidar_dataset_mapping.items(),
-                                                key=lambda item: item[1]))
+            lidar_dataset_mapping = dict(
+                sorted(lidar_dataset_mapping.items(), key=lambda item: item[1])
+            )
             # Next sort the lidar_datasets_info by the lidar_dataset_mapping value
-            lidar_datasets_info = {key: lidar_datasets_info[key]
-                                   for key in lidar_dataset_mapping.keys()
-                                   if key in lidar_datasets_info.keys()}
+            lidar_datasets_info = {
+                key: lidar_datasets_info[key]
+                for key in lidar_dataset_mapping.keys()
+                if key in lidar_datasets_info.keys()
+            }
 
         return lidar_datasets_info
 
