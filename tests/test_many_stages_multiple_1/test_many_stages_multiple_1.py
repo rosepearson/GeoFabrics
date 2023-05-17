@@ -143,10 +143,7 @@ class Test(unittest.TestCase):
         )
 
         # compare the generated LiDAR data source maps
-        diff_array = (
-            test.lidar_source.data
-            - benchmark.lidar_source.data
-        )
+        diff_array = test.lidar_source.data - benchmark.lidar_source.data
         logging.info(f"DEM array diff is: {diff_array[diff_array != 0]}")
         numpy.testing.assert_array_almost_equal(
             test.lidar_source.data,

@@ -192,14 +192,10 @@ class Test(unittest.TestCase):
         with rioxarray.rioxarray.open_rasterio(file_path, masked=True) as test:
             test.load()
         # Get data generated from LiDAR
-        lidar_mask = (test.data_source.data == 1) & (
-            benchmark.data_source.data == 1
-        )
+        lidar_mask = (test.data_source.data == 1) & (benchmark.data_source.data == 1)
 
         # Compare the generated and benchmark elevations
-        lidar_diff = (
-            test.z.data[lidar_mask] - benchmark.z.data[lidar_mask]
-        )
+        lidar_diff = test.z.data[lidar_mask] - benchmark.z.data[lidar_mask]
         numpy.testing.assert_array_almost_equal(
             test.z.data[lidar_mask],
             benchmark.z.data[lidar_mask],
