@@ -441,6 +441,9 @@ class HydrologicallyConditionedDem(DemBase):
             self._dem.data_source.data[
                 interpolation_mask
             ] = self.SOURCE_CLASSIFICATION["interpolated"]
+            self._dem.lidar_source.data[
+                interpolation_mask
+            ] = self.SOURCE_CLASSIFICATION["no data"]
         # Ensure all area's with NaN values are marked as no-data
         self._dem.data_source.data[
             numpy.isnan(self._dem.z.data)
@@ -1117,14 +1120,15 @@ class LidarBase(DemBase):
                 ), "chunk_size must be a positive integer"
                 tile_index_file = lidar_datasets_info[dataset_name]["tile_index_file"]
                 assert tile_index_file is not None, (
-                    "A tile index file must be provided if chunking is defined for"
-                    f"for {dataset_name}"
+                    "A tile index file must be provided if chunking is "
+                    f"defined for {dataset_name}"
                 )
         # There should only be one dataset if there is no chunking information
         if chunk_size is None:
             assert len(lidar_datasets_info) == 1, (
-                "If there is no chunking there must only be one LiDAR dataset. Instead"
-                "there is {len(lidar_file_info)} with keys {lidar_file_info.keys()}"
+                "If there is no chunking there must only be one LiDAR dataset."
+                f" Instead there is {len(lidar_datasets_info)} "
+                f"with keys f{lidar_datasets_info.keys()}"
             )
 
     def add_lidar(

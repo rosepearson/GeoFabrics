@@ -1511,6 +1511,9 @@ class RiverBathymetryGenerator(BaseProcessor):
             instruction_paths["raw_dem_extents"] = str(
                 self.get_result_file_name(key="veg_dem_extents")
             )
+            # remove the added reserved no LiDAR map value
+            if "dataset_mapping" in self.instructions and "lidar" in self.instructions["dataset_mapping"] and "no LiDAR" in self.instructions["dataset_mapping"]["lidar"]:
+                self.instructions["dataset_mapping"]["lidar"].pop("no LiDAR")
             runner = RawLidarDemGenerator(self.instructions)
             runner.run()
             veg_dem = runner.raw_dem.dem
@@ -2168,7 +2171,7 @@ class RiverBathymetryGenerator(BaseProcessor):
         river_bathymetry_file = self.get_result_file_path(key="river_bathymetry")
         river_polygon_file = self.get_result_file_path(key="river_polygon")
         ocean_contour_file = self.get_vector_or_raster_paths(
-            key="bathymetry_contours", api_type="vector"
+            key="bathymetry_contours", data_type="vector"
         )[0]
         aligned_channel_file = self.get_result_file_path(key="aligned")
         ocean_contour_depth_label = self.get_instruction_general(
