@@ -531,7 +531,7 @@ class BaseProcessor(abc.ABC):
         lidar_datasets_info = {}
         data_type = "lidar"
 
-        # See if 'OpenTopography' or another data_service has been specified as an area
+        ## See if 'OpenTopography' or another data_service has been specified as an area
         # to look first
         data_service = "open_topography"
         if self.check_datasets(data_service, data_type="lidar"):
@@ -576,12 +576,11 @@ class BaseProcessor(abc.ABC):
                     / dataset_name
                     / f"{dataset_name}_TileIndex.zip"
                 )
-        # Next check for any additional local LiDAR datasets.
+        ## Next check for any additional local LiDAR datasets.
         # for multiple local lidar datasets - must be in separate folders
         data_service = "local"
         if self.check_datasets(data_service, data_type="lidar"):
             local_datasets = copy.deepcopy(self.instructions["datasets"][data_type][data_service])
-
             for dataset_name, dataset in local_datasets.items():
                 # Ensure the file_paths (LAZ files) are specified
                 if "file_paths" not in dataset and "folder_path" in dataset:
@@ -622,7 +621,7 @@ class BaseProcessor(abc.ABC):
                 )
             # Add the local datasets to any remote (API) datasets
             lidar_datasets_info.update(local_datasets)
-        # Finally if there are no LiDAR datasets see if invidividual LiDAR
+        ## Finally if there are no LiDAR datasets see if invidividual LiDAR
         # files have been specified.
         if len(lidar_datasets_info) == 0 and self.check_instruction_path("lidar_files"):
             # get the specified file paths from the instructions,
