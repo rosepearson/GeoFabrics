@@ -230,16 +230,24 @@ class Test(unittest.TestCase):
             + "benchmark_dem",
         )
 
-        # Compare DEMs source classification
-        diff_array = test_dem.source_class.data - benchmark_dem.source_class.data
-        logging.info(
-            f"DEM source classification array diff is: {diff_array[diff_array != 0]}"
-        )
+        # Compare DEMs data source classification
+        diff_array = test_dem.data_source.data - benchmark_dem.data_source.data
+        logging.info(f"DEM z array diff is: {diff_array[diff_array != 0]}")
         numpy.testing.assert_array_almost_equal(
-            test_dem.source_class.data,
-            benchmark_dem.source_class.data,
-            err_msg="The generated result_dem source_class has different data "
-            "from the benchmark_dem",
+            test_dem.data_source.data,
+            benchmark_dem.data_source.data,
+            err_msg="The generated test data_source layer has different data "
+            "from the benchmark",
+        )
+
+        # Compare DEMs lidar source classification
+        diff_array = test_dem.lidar_source.data - benchmark_dem.lidar_source.data
+        logging.info(f"DEM z array diff is: {diff_array[diff_array != 0]}")
+        numpy.testing.assert_array_almost_equal(
+            test_dem.lidar_source.data,
+            benchmark_dem.lidar_source.data,
+            err_msg="The generated test lidar_source layer has different data "
+            "from the benchmark",
         )
 
         # explicitly free memory as xarray seems to be hanging onto memory
