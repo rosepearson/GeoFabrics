@@ -239,10 +239,15 @@ class CoarseDem:
 
 
 class DemBase(abc.ABC):
-    """An abstract class to manage the dense DEM in a catchment context.
+    """An abstract class to manage the different geofabric layers in a
+    catchment context. The geofabruc has a z, and data_source layer and may
+    sometimes also have a zo (roughness length) and lidar_source layer.
 
-    The dense DEM is made up of a dense DEM that is loaded in, and an offshore DEM that
-    is interpolated from bathymetry contours offshore and outside all LiDAR tiles.
+    It is represented by an XArray dataset and is expected to be saved as a
+    netCDF file.
+
+    Standard data catcegories are specified in the SOURCE_CLASSIFICATION
+    variable.
 
     Parameters
     ----------
