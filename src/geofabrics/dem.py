@@ -1090,7 +1090,7 @@ class LidarBase(DemBase):
 
         lidar_datasets_info
             A dictionary of dictionaties of LiDAR dataset information. The CRS, list of
-            LAS files and tile index file are included for each dataset.
+            LAS files, and tile index file are included for each dataset.
         chunk_size
             The chunk size in pixels for parallel/staged processing
         """
@@ -1129,41 +1129,36 @@ class LidarBase(DemBase):
         # There should only be one dataset if there is no chunking information
         if chunk_size is None:
             assert len(lidar_datasets_info) == 1, (
-                "If there is no chunking there must only be one LiDAR dataset."
+                "If there is no chunking there must only be one LiDAR file."
                 f" Instead there is {len(lidar_datasets_info)} "
                 f"with keys f{lidar_datasets_info.keys()}"
             )
 
     def add_lidar(
         self,
-        lidar_files: typing.List[typing.Union[str, pathlib.Path]],
-        tile_index_file: typing.Union[str, pathlib.Path],
+        lidar_datasets_info: dict,
         chunk_size: int,
         lidar_classifications_to_keep: list,
-        source_crs: dict,
         metadata: dict,
     ):
-        """Read in all LiDAR files and use to create a dense DEM.
+        """Read in all LiDAR files and use to create a 'raw' DEM.
 
         Parameters
         ----------
 
-        source_crs
-            Coordinate reference system information
+        lidar_datasets_info
+            A dictionary of information for each specified LIDAR dataset - For
+            each this includes: a list of LAS files, CRS, and tile index file.
         chunk_size
             The chunk size in pixels for parallel/staged processing
-        lidar_files
-            The list of LiDAR files to read in
-        tile_index_file
-            A file specifying the spatial extents of the LiDAR files.
         lidar_classifications_to_keep
             A list of LiDAR classifications to keep - '2' for ground, '9' for water.
             See https://www.asprs.org/wp-content/uploads/2010/12/LAS_1_4_r13.pdf for
             standard list
         meta_data
-            Information to include in the created DEM.
+            Information to include in the created DEM - must include
+            `dataset_mapping` key if datasets (not a single LAZ file) included.
         """
-
         raise NotImplementedError("add_lidar must be instantiated in the child class")
 
     def _add_tiled_lidar_chunked(
@@ -1293,15 +1288,14 @@ class RawDem(LidarBase):
         lidar_classifications_to_keep: list,
         metadata: dict,
     ):
-        """Read in all LiDAR files and use to define a 'raw' DEM with elevations in
-        pixels where there is LiDAR or coarse DEM information.
+        """Read in all LiDAR files and use to create a 'raw' DEM.
 
         Parameters
         ----------
 
         lidar_datasets_info
-            One of more dictionaries of LiDAR dataset information - including a list of
-            LAS files, CRS and tile index file for each.
+            A dictionary of information for each specified LIDAR dataset - For
+            each this includes: a list of LAS files, CRS, and tile index file.
         chunk_size
             The chunk size in pixels for parallel/staged processing
         lidar_classifications_to_keep
@@ -1309,7 +1303,8 @@ class RawDem(LidarBase):
             See https://www.asprs.org/wp-content/uploads/2010/12/LAS_1_4_r13.pdf for
             standard list
         meta_data
-            Information to include in the created DEM.
+            Information to include in the created DEM - must include
+            `dataset_mapping` key if datasets (not a single LAZ file) included.
         """
 
         # Check valid inputs
@@ -1390,7 +1385,7 @@ class RawDem(LidarBase):
 
         # get chunking information
         chunked_dim_x, chunked_dim_y = self._set_up_chunks(chunk_size)
-        elevations = []
+        elevations = {}
 
         logging.info(f"Preparing {[len(chunked_dim_x), len(chunked_dim_y)]} chunks")
         for dataset_name, dataset_info in lidar_datasets_info.items():
@@ -1453,13 +1448,12 @@ class RawDem(LidarBase):
                     )
                 delayed_chunked_matrix.append(delayed_chunked_x)
             # Combine chunks into a dataset
-            elevations.append(dask.array.block(delayed_chunked_matrix))
+            elevations[dataset_name] = dask.array.block(delayed_chunked_matrix)
         chunked_dem = self._create_data_set(
             x=numpy.concatenate(chunked_dim_x),
             y=numpy.concatenate(chunked_dim_y),
             elevations=elevations,
             metadata=metadata,
-            dataset_names=list(lidar_datasets_info.keys()),
         )
         logging.info("Computing chunks")
         chunked_dem = chunked_dem.compute()
@@ -1520,9 +1514,8 @@ class RawDem(LidarBase):
         dem = self._create_data_set(
             x=dim_x,
             y=dim_y,
-            elevations=[elevation],
+            elevations={lidar_name: elevation},
             metadata=metadata,
-            dataset_names=[lidar_name],
         )
 
         return dem
@@ -1569,9 +1562,8 @@ class RawDem(LidarBase):
         self,
         x: numpy.ndarray,
         y: numpy.ndarray,
-        elevations: list,
+        elevations: dict,
         metadata: dict,
-        dataset_names: list = None,
     ) -> xarray.Dataset:
         """A function to create a new dataset from x, y and z arrays.
 
@@ -1583,13 +1575,17 @@ class RawDem(LidarBase):
             y
                 Y coordinates of the dataset.
             elevations
-                A list of elevations over the x, and y coordiantes.One for each dataset
+                A dictionary of elevations over the x, and y coordiantes.Keyed
+                by the dataset name.
+            metadata
+                Used to pull out the dataset mapping for creating the
+                lidar_source layer
         """
 
         # Cycle over each elevation dataset populating a DEM - merge after
         dems = []
         dataset_mapping = metadata["instructions"]["dataset_mapping"]["lidar"]
-        for dataset_name, z in zip(dataset_names, elevations):
+        for dataset_name, z in elevations.items():
             # Create source variable - assume all values are defined from LiDAR
             data_source = numpy.ones_like(z) * numpy.nan
             data_source[numpy.logical_not(numpy.isnan(z))] = self.SOURCE_CLASSIFICATION[
@@ -1600,8 +1596,6 @@ class RawDem(LidarBase):
             lidar_source[numpy.logical_not(numpy.isnan(z))] = dataset_mapping[
                 dataset_name
             ]
-            print(dataset_name)
-            print(dataset_mapping[dataset_name])
             dem = xarray.Dataset(
                 data_vars=dict(
                     z=(
@@ -1884,16 +1878,16 @@ class RoughnessDem(LidarBase):
         lidar_classifications_to_keep: list,
         metadata: dict,
     ):
-        """Read in all LiDAR files and use the point cloud distribution, data_source
-        information, and hydrologiaclly conditioned elevations to estimate the roughness
-        across the DEM.
+        """Read in all LiDAR files and use the point cloud distribution,
+        data_source layer, and hydrologiaclly conditioned elevations to
+        estimate the roughness across the DEM.
 
         Parameters
         ----------
 
         lidar_datasets_info
-            One of more dictionaries of LiDAR dataset information - including a list of
-            LAS files, CRS and tile index file for each.
+            A dictionary of information for each specified LIDAR dataset - For
+            each this includes: a list of LAS files, CRS, and tile index file.
         chunk_size
             The chunk size in pixels for parallel/staged processing
         lidar_classifications_to_keep
@@ -1901,7 +1895,8 @@ class RoughnessDem(LidarBase):
             See https://www.asprs.org/wp-content/uploads/2010/12/LAS_1_4_r13.pdf for
             standard list
         meta_data
-            Information to include in the created DEM.
+            Information to include in the created DEM - must include
+            `dataset_mapping` key if datasets (not a single LAZ file) included.
         """
 
         # Check valid inputs
