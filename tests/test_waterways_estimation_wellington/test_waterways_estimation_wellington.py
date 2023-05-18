@@ -56,7 +56,7 @@ class Test(unittest.TestCase):
         # Load in environment variables to get and set the private API keys
         dotenv.load_dotenv()
         linz_key = os.environ.get("LINZ_API", None)
-        cls.instructions["apis"]["vector"]["linz"]["key"] = linz_key
+        cls.instructions["datasets"]["vector"]["linz"]["key"] = linz_key
 
         # define the cache directory location - from the instruction file
         path_instructions = cls.instructions["data_paths"]
