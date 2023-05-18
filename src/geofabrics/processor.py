@@ -321,9 +321,9 @@ class BaseProcessor(abc.ABC):
         else:
             return False
 
-    def get_vector_or_raster_paths(self, key: str,
-                                   data_type: str,
-                                   required: bool=True) -> list:
+    def get_vector_or_raster_paths(
+        self, key: str, data_type: str, required: bool = True
+    ) -> list:
         """Get the path to the vector/raster key data included either as a file path or
         as an API. Return all paths where the vector key is specified. In the case that
         an API is specified ensure the data is fetched as well.
@@ -746,9 +746,9 @@ class BaseProcessor(abc.ABC):
         catchment_geometry = geometry.CatchmentGeometry(
             catchment_dirs, self.get_crs(), self.get_resolution(), foreshore_buffer=2
         )
-        land_dirs = self.get_vector_or_raster_paths(key="land",
-                                                    data_type="vector",
-                                                    required=False)
+        land_dirs = self.get_vector_or_raster_paths(
+            key="land", data_type="vector", required=False
+        )
         # Use the catchment outline as the land outline if the land is not specified
         if len(land_dirs) == 0:
             catchment_geometry.land = catchment_dirs
