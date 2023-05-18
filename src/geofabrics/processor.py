@@ -469,9 +469,11 @@ class BaseProcessor(abc.ABC):
                         for raster_path in raster_paths:
                             paths.append(raster_path)
         if len(paths) == 0:
-            raise Exception(f"Error the expected {data_type} key '{key}' "
-                            "is not included in either the `data_paths` "
-                            "or in the `datasets. Please add then re-run.")
+            raise Exception(
+                f"Error the expected {data_type} key '{key}' "
+                "is not included in either the `data_paths` "
+                "or in the `datasets. Please add then re-run."
+            )
         return paths
 
     def get_lidar_dataset_crs(self, data_service, dataset_name) -> dict:
