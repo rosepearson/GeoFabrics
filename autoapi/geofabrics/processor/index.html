@@ -220,15 +220,16 @@ the default is used it is added to the instructions.</p>
 </dd></dl>
 
 <dl class="py method">
-<dt class="sig sig-object py" id="geofabrics.processor.BaseProcessor.check_apis">
-<span class="sig-name descname"><span class="pre">check_apis</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">key</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">api_type</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#geofabrics.processor.BaseProcessor.check_apis" title="Permalink to this definition"></a></dt>
-<dd><p>Check to see if APIs are included in the instructions and if the key is
-included in specified apis</p>
+<dt class="sig sig-object py" id="geofabrics.processor.BaseProcessor.check_datasets">
+<span class="sig-name descname"><span class="pre">check_datasets</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">key</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">data_type</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#geofabrics.processor.BaseProcessor.check_datasets" title="Permalink to this definition"></a></dt>
+<dd><p>Check to see if the dataset is included in the instructions:
+key = dataservice (i.e. local, opentogaphy, linxz, lris)</p>
 <dl class="field-list simple">
 <dt class="field-odd">Parameters<span class="colon">:</span></dt>
 <dd class="field-odd"><ul class="simple">
-<li><p><strong>key</strong> (<em>str</em>) – The string identifying the vector/raster</p></li>
-<li><p><strong>api_type</strong> (<em>str</em>) – The string identifying if the key is a vector or raster</p></li>
+<li><p><strong>key</strong> (<em>str</em>) – The string identifying how the data is accessed
+(e.g. local, opentopography, linz, etc)</p></li>
+<li><p><strong>data_type</strong> (<em>str</em>) – The string identifying the data type (e.g. raster, lidar, vector)</p></li>
 </ul>
 </dd>
 <dt class="field-even">Return type<span class="colon">:</span></dt>
@@ -257,7 +258,7 @@ included either as a file path, or within any of API’s (i.e. LINZ or LRIS).</p
 
 <dl class="py method">
 <dt class="sig sig-object py" id="geofabrics.processor.BaseProcessor.get_vector_or_raster_paths">
-<span class="sig-name descname"><span class="pre">get_vector_or_raster_paths</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">key</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">api_type</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#geofabrics.processor.BaseProcessor.get_vector_or_raster_paths" title="Permalink to this definition"></a></dt>
+<span class="sig-name descname"><span class="pre">get_vector_or_raster_paths</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">key</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">data_type</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">required</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">True</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#geofabrics.processor.BaseProcessor.get_vector_or_raster_paths" title="Permalink to this definition"></a></dt>
 <dd><p>Get the path to the vector/raster key data included either as a file path or
 as an API. Return all paths where the vector key is specified. In the case that
 an API is specified ensure the data is fetched as well.</p>
@@ -265,7 +266,8 @@ an API is specified ensure the data is fetched as well.</p>
 <dt class="field-odd">Parameters<span class="colon">:</span></dt>
 <dd class="field-odd"><ul class="simple">
 <li><p><strong>key</strong> (<em>str</em>) – The string identifying the vector/raster</p></li>
-<li><p><strong>api_type</strong> (<em>str</em>) – The string identifying if the key is a vector or raster</p></li>
+<li><p><strong>data_type</strong> (<em>str</em>) – The string identifying if the key is a vector or raster</p></li>
+<li><p><strong>required</strong> (<em>bool</em>) – If <cite>True</cite>, an exception will be raised if no path(s) are found.</p></li>
 </ul>
 </dd>
 <dt class="field-even">Return type<span class="colon">:</span></dt>
@@ -277,7 +279,7 @@ an API is specified ensure the data is fetched as well.</p>
 <dl class="py method">
 <dt class="sig sig-object py" id="geofabrics.processor.BaseProcessor.get_lidar_dataset_crs">
 <span class="sig-name descname"><span class="pre">get_lidar_dataset_crs</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">data_service</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">dataset_name</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#geofabrics.processor.BaseProcessor.get_lidar_dataset_crs" title="Permalink to this definition"></a></dt>
-<dd><p>Checks to see if source CRS of an associated LiDAR datasets has be specified
+<dd><p>Checks to see if source CRS of an associated LiDAR dataset has be specified
 in the instruction file. If it has been specified, this CRS is returned, and
 will later be used to override the CRS encoded in the LAS files.</p>
 <dl class="field-list simple">
@@ -291,18 +293,20 @@ will later be used to override the CRS encoded in the LAS files.</p>
 <dt class="sig sig-object py" id="geofabrics.processor.BaseProcessor.get_lidar_datasets_info">
 <span class="sig-name descname"><span class="pre">get_lidar_datasets_info</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="headerlink" href="#geofabrics.processor.BaseProcessor.get_lidar_datasets_info" title="Permalink to this definition"></a></dt>
 <dd><p>Return a dictionary with three enties ‘file_paths’, ‘crs’ and
-‘tile_index_file’. The ‘file_paths’ contains a list of LiDAR tiles to process.</p>
-<p>The ‘crs’ (or coordinate system of the LiDAR data as defined by an EPSG code) is
-only optionally set (if unset the value is None). The ‘crs’ should only be set
-if the CRS information is not correctly encoded in the LAZ/LAS files. Currently
+‘tile_index_file’. The ‘file_paths’ contains a list of LiDAR tiles to
+process.</p>
+<p>The ‘crs’ (or coordinate system of the LiDAR data as defined by an EPSG
+code) is only optionally set (if unset the value is None). The ‘crs’
+should only be set if the CRS information is not correctly encoded in
 this is only supported for OpenTopography LiDAR.</p>
-<p>The ‘tile_index_file’ is also optional (if unset the value is None). The
-‘tile_index_file’ should be given if a tile index file exists for the LiDAR
-files specifying the extents of each tile. This is currently only supported for
-OpenTopography files.</p>
-<p>If a LiDAR API is specified this is checked and all files within the catchment
-area are downloaded and used to construct the file list. If none is specified,
-the instruction ‘data_paths’ is checked for ‘lidars’ and these are returned.</p>
+<p>The ‘tile_index_file’ is also optional (if unset the value is None).
+The ‘tile_index_file’ should be given if a tile index file exists for
+the LiDAR files specifying the extents of each tile. This is currently
+only supported for OpenTopography files.</p>
+<p>If a LiDAR dataset (either through an API or locally) is specified this
+is checked and all files within the catchment area are downloaded and
+used to construct the file list. If none is specified, the instruction
+‘data_paths’ is checked for ‘lidars’ and these are returned.</p>
 <dl class="field-list simple">
 <dt class="field-odd">Return type<span class="colon">:</span></dt>
 <dd class="field-odd"><p>dict</p>

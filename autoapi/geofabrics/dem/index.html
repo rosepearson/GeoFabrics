@@ -81,7 +81,7 @@ DEMs.</p>
 <td><p>A class to manage coarse or background DEMs in the catchment context</p></td>
 </tr>
 <tr class="row-even"><td><p><a class="reference internal" href="#geofabrics.dem.DemBase" title="geofabrics.dem.DemBase"><code class="xref py py-obj docutils literal notranslate"><span class="pre">DemBase</span></code></a></p></td>
-<td><p>An abstract class to manage the dense DEM in a catchment context.</p></td>
+<td><p>An abstract class to manage the different geofabric layers in a</p></td>
 </tr>
 <tr class="row-odd"><td><p><a class="reference internal" href="#geofabrics.dem.HydrologicallyConditionedDem" title="geofabrics.dem.HydrologicallyConditionedDem"><code class="xref py py-obj docutils literal notranslate"><span class="pre">HydrologicallyConditionedDem</span></code></a></p></td>
 <td><p>A class to manage loading in an already created and saved dense DEM that has yet</p></td>
@@ -215,9 +215,13 @@ filtering.</p>
 <dt class="sig sig-object py" id="geofabrics.dem.DemBase">
 <em class="property"><span class="pre">class</span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">geofabrics.dem.</span></span><span class="sig-name descname"><span class="pre">DemBase</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">catchment_geometry</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">extents</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#geofabrics.dem.DemBase" title="Permalink to this definition"></a></dt>
 <dd><p>Bases: <code class="xref py py-obj docutils literal notranslate"><span class="pre">abc.ABC</span></code></p>
-<p>An abstract class to manage the dense DEM in a catchment context.</p>
-<p>The dense DEM is made up of a dense DEM that is loaded in, and an offshore DEM that
-is interpolated from bathymetry contours offshore and outside all LiDAR tiles.</p>
+<p>An abstract class to manage the different geofabric layers in a
+catchment context. The geofabruc has a z, and data_source layer and may
+sometimes also have a zo (roughness length) and lidar_source layer.</p>
+<p>It is represented by an XArray dataset and is expected to be saved as a
+netCDF file.</p>
+<p>Standard data catcegories are specified in the SOURCE_CLASSIFICATION
+variable.</p>
 <dl class="field-list simple">
 <dt class="field-odd">Parameters<span class="colon">:</span></dt>
 <dd class="field-odd"><ul class="simple">
@@ -354,19 +358,19 @@ polygons using various interpolation techniques.</p>
 
 <dl class="py method">
 <dt class="sig sig-object py" id="geofabrics.dem.LidarBase.add_lidar">
-<em class="property"><span class="pre">abstract</span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">add_lidar</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">lidar_files</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">tile_index_file</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">chunk_size</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">lidar_classifications_to_keep</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">source_crs</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">metadata</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#geofabrics.dem.LidarBase.add_lidar" title="Permalink to this definition"></a></dt>
-<dd><p>Read in all LiDAR files and use to create a dense DEM.</p>
+<em class="property"><span class="pre">abstract</span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">add_lidar</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">lidar_datasets_info</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">chunk_size</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">lidar_classifications_to_keep</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">metadata</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#geofabrics.dem.LidarBase.add_lidar" title="Permalink to this definition"></a></dt>
+<dd><p>Read in all LiDAR files and use to create a ‘raw’ DEM.</p>
 <dl class="field-list simple">
 <dt class="field-odd">Parameters<span class="colon">:</span></dt>
 <dd class="field-odd"><ul class="simple">
-<li><p><strong>source_crs</strong> (<em>dict</em>) – Coordinate reference system information</p></li>
+<li><p><strong>lidar_datasets_info</strong> (<em>dict</em>) – A dictionary of information for each specified LIDAR dataset - For
+each this includes: a list of LAS files, CRS, and tile index file.</p></li>
 <li><p><strong>chunk_size</strong> (<em>int</em>) – The chunk size in pixels for parallel/staged processing</p></li>
-<li><p><strong>lidar_files</strong> (<em>List</em><em>[</em><em>Union</em><em>[</em><em>str</em><em>, </em><em>pathlib.Path</em><em>]</em><em>]</em>) – The list of LiDAR files to read in</p></li>
-<li><p><strong>tile_index_file</strong> (<em>Union</em><em>[</em><em>str</em><em>, </em><em>pathlib.Path</em><em>]</em>) – A file specifying the spatial extents of the LiDAR files.</p></li>
 <li><p><strong>lidar_classifications_to_keep</strong> (<em>list</em>) – A list of LiDAR classifications to keep - ‘2’ for ground, ‘9’ for water.
 See <a class="reference external" href="https://www.asprs.org/wp-content/uploads/2010/12/LAS_1_4_r13.pdf">https://www.asprs.org/wp-content/uploads/2010/12/LAS_1_4_r13.pdf</a> for
 standard list</p></li>
-<li><p><strong>meta_data</strong> – Information to include in the created DEM.</p></li>
+<li><p><strong>meta_data</strong> – Information to include in the created DEM - must include
+<cite>dataset_mapping</cite> key if datasets (not a single LAZ file) included.</p></li>
 <li><p><strong>metadata</strong> (<em>dict</em>) – </p></li>
 </ul>
 </dd>
@@ -397,18 +401,18 @@ Options are: mean, median, IDW, max, min, STD.</p></li>
 <dl class="py method">
 <dt class="sig sig-object py" id="geofabrics.dem.RawDem.add_lidar">
 <span class="sig-name descname"><span class="pre">add_lidar</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">lidar_datasets_info</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">chunk_size</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">lidar_classifications_to_keep</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">metadata</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#geofabrics.dem.RawDem.add_lidar" title="Permalink to this definition"></a></dt>
-<dd><p>Read in all LiDAR files and use to define a ‘raw’ DEM with elevations in
-pixels where there is LiDAR or coarse DEM information.</p>
+<dd><p>Read in all LiDAR files and use to create a ‘raw’ DEM.</p>
 <dl class="field-list simple">
 <dt class="field-odd">Parameters<span class="colon">:</span></dt>
 <dd class="field-odd"><ul class="simple">
-<li><p><strong>lidar_datasets_info</strong> (<em>dict</em>) – One of more dictionaries of LiDAR dataset information - including a list of
-LAS files, CRS and tile index file for each.</p></li>
+<li><p><strong>lidar_datasets_info</strong> (<em>dict</em>) – A dictionary of information for each specified LIDAR dataset - For
+each this includes: a list of LAS files, CRS, and tile index file.</p></li>
 <li><p><strong>chunk_size</strong> (<em>int</em>) – The chunk size in pixels for parallel/staged processing</p></li>
 <li><p><strong>lidar_classifications_to_keep</strong> (<em>list</em>) – A list of LiDAR classifications to keep - ‘2’ for ground, ‘9’ for water.
 See <a class="reference external" href="https://www.asprs.org/wp-content/uploads/2010/12/LAS_1_4_r13.pdf">https://www.asprs.org/wp-content/uploads/2010/12/LAS_1_4_r13.pdf</a> for
 standard list</p></li>
-<li><p><strong>meta_data</strong> – Information to include in the created DEM.</p></li>
+<li><p><strong>meta_data</strong> – Information to include in the created DEM - must include
+<cite>dataset_mapping</cite> key if datasets (not a single LAZ file) included.</p></li>
 <li><p><strong>metadata</strong> (<em>dict</em>) – </p></li>
 </ul>
 </dd>
@@ -455,19 +459,20 @@ to estimate roughness emperically.</p>
 <dl class="py method">
 <dt class="sig sig-object py" id="geofabrics.dem.RoughnessDem.add_lidar">
 <span class="sig-name descname"><span class="pre">add_lidar</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">lidar_datasets_info</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">chunk_size</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">lidar_classifications_to_keep</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">metadata</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#geofabrics.dem.RoughnessDem.add_lidar" title="Permalink to this definition"></a></dt>
-<dd><p>Read in all LiDAR files and use the point cloud distribution, source_class
-information, and hydrologiaclly conditioned elevations to estimate the roughness
-across the DEM.</p>
+<dd><p>Read in all LiDAR files and use the point cloud distribution,
+data_source layer, and hydrologiaclly conditioned elevations to
+estimate the roughness across the DEM.</p>
 <dl class="field-list simple">
 <dt class="field-odd">Parameters<span class="colon">:</span></dt>
 <dd class="field-odd"><ul class="simple">
-<li><p><strong>lidar_datasets_info</strong> (<em>dict</em>) – One of more dictionaries of LiDAR dataset information - including a list of
-LAS files, CRS and tile index file for each.</p></li>
+<li><p><strong>lidar_datasets_info</strong> (<em>dict</em>) – A dictionary of information for each specified LIDAR dataset - For
+each this includes: a list of LAS files, CRS, and tile index file.</p></li>
 <li><p><strong>chunk_size</strong> (<em>int</em>) – The chunk size in pixels for parallel/staged processing</p></li>
 <li><p><strong>lidar_classifications_to_keep</strong> (<em>list</em>) – A list of LiDAR classifications to keep - ‘2’ for ground, ‘9’ for water.
 See <a class="reference external" href="https://www.asprs.org/wp-content/uploads/2010/12/LAS_1_4_r13.pdf">https://www.asprs.org/wp-content/uploads/2010/12/LAS_1_4_r13.pdf</a> for
 standard list</p></li>
-<li><p><strong>meta_data</strong> – Information to include in the created DEM.</p></li>
+<li><p><strong>meta_data</strong> – Information to include in the created DEM - must include
+<cite>dataset_mapping</cite> key if datasets (not a single LAZ file) included.</p></li>
 <li><p><strong>metadata</strong> (<em>dict</em>) – </p></li>
 </ul>
 </dd>

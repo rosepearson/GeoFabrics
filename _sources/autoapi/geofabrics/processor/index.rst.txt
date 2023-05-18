@@ -95,13 +95,14 @@ Classes
       :param key: The string identifying the instruction
 
 
-   .. py:method:: check_apis(key, api_type)
+   .. py:method:: check_datasets(key, data_type)
 
-      Check to see if APIs are included in the instructions and if the key is
-      included in specified apis
+      Check to see if the dataset is included in the instructions:
+      key = dataservice (i.e. local, opentogaphy, linxz, lris)
 
-      :param key: The string identifying the vector/raster
-      :param api_type: The string identifying if the key is a vector or raster
+      :param key: The string identifying how the data is accessed
+                  (e.g. local, opentopography, linz, etc)
+      :param data_type: The string identifying the data type (e.g. raster, lidar, vector)
 
 
    .. py:method:: check_vector_or_raster(key, api_type)
@@ -113,19 +114,20 @@ Classes
       :param api_type: The string identifying if the key is a vector or raster
 
 
-   .. py:method:: get_vector_or_raster_paths(key, api_type)
+   .. py:method:: get_vector_or_raster_paths(key, data_type, required = True)
 
       Get the path to the vector/raster key data included either as a file path or
       as an API. Return all paths where the vector key is specified. In the case that
       an API is specified ensure the data is fetched as well.
 
       :param key: The string identifying the vector/raster
-      :param api_type: The string identifying if the key is a vector or raster
+      :param data_type: The string identifying if the key is a vector or raster
+      :param required: If `True`, an exception will be raised if no path(s) are found.
 
 
    .. py:method:: get_lidar_dataset_crs(data_service, dataset_name)
 
-      Checks to see if source CRS of an associated LiDAR datasets has be specified
+      Checks to see if source CRS of an associated LiDAR dataset has be specified
       in the instruction file. If it has been specified, this CRS is returned, and
       will later be used to override the CRS encoded in the LAS files.
 
@@ -133,21 +135,23 @@ Classes
    .. py:method:: get_lidar_datasets_info()
 
       Return a dictionary with three enties 'file_paths', 'crs' and
-      'tile_index_file'. The 'file_paths' contains a list of LiDAR tiles to process.
+      'tile_index_file'. The 'file_paths' contains a list of LiDAR tiles to
+      process.
 
-      The 'crs' (or coordinate system of the LiDAR data as defined by an EPSG code) is
-      only optionally set (if unset the value is None). The 'crs' should only be set
-      if the CRS information is not correctly encoded in the LAZ/LAS files. Currently
+      The 'crs' (or coordinate system of the LiDAR data as defined by an EPSG
+      code) is only optionally set (if unset the value is None). The 'crs'
+      should only be set if the CRS information is not correctly encoded in
       this is only supported for OpenTopography LiDAR.
 
-      The 'tile_index_file' is also optional (if unset the value is None). The
-      'tile_index_file' should be given if a tile index file exists for the LiDAR
-      files specifying the extents of each tile. This is currently only supported for
-      OpenTopography files.
+      The 'tile_index_file' is also optional (if unset the value is None).
+      The 'tile_index_file' should be given if a tile index file exists for
+      the LiDAR files specifying the extents of each tile. This is currently
+      only supported for OpenTopography files.
 
-      If a LiDAR API is specified this is checked and all files within the catchment
-      area are downloaded and used to construct the file list. If none is specified,
-      the instruction 'data_paths' is checked for 'lidars' and these are returned.
+      If a LiDAR dataset (either through an API or locally) is specified this
+      is checked and all files within the catchment area are downloaded and
+      used to construct the file list. If none is specified, the instruction
+      'data_paths' is checked for 'lidars' and these are returned.
 
 
    .. py:method:: run()
