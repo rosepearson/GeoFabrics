@@ -1,0 +1,107 @@
+{
+"dem":
+{
+	"output": {
+		"crs": {
+			"horizontal": 2193,
+			"vertical": 7839
+		},
+		"grid_params": {
+			"resolution": 2
+		}
+	},
+	"processing": {
+		"chunk_size": 500,
+		"number_of_cores": 2
+	},
+	"data_paths": {
+		"local_cache": "tests/test_many_stages_multiple_2/data",
+		"subfolder": "results",
+		"catchment_boundary": "catchment.geojson",
+		"land": "catchment.geojson",
+		"result_dem": "test_dem.nc"
+	},
+	"datasets": {
+		"lidar": {
+			"open_topography": {
+				"NZ21_Kapiti": true
+			},
+			"local": {
+				"Wellington_2013": {
+					"crs": {
+						"horizontal": 2193,
+						"vertical": 7839
+					},
+					"folder_path": "tests/test_many_stages_multiple_2/data/Wellington_2013"
+				}
+			}
+					
+		}
+	},
+	"dataset_mapping": {
+		"lidar": {
+			"Rangiora_2014": 3,
+			"NZ20_Cant2": 31,
+			"NZ21_Kapiti": 1,
+			"Wellington_2013": 2
+		}
+    },
+	"general": {
+		"drop_offshore_lidar": true,
+		"lidar_classifications_to_keep": [2],
+		"interpolation_method": null
+	}
+},
+"roughness":
+{
+	"output": {
+		"crs": {
+			"horizontal": 2193,
+			"vertical": 7839
+		},
+		"grid_params": {
+			"resolution": 2
+		}
+	},
+	"processing": {
+		"chunk_size": 500,
+		"number_of_cores": 2
+	},
+	"data_paths": {
+		"local_cache": "tests/test_many_stages_multiple_2/data",
+		"subfolder": "results",
+		"catchment_boundary": "catchment.geojson",
+		"land": "catchment.geojson",
+		"result_dem": "test_dem.nc",
+		"result_geofabric": "test_geofabric.nc",
+		"benchmark": "benchmark.nc"
+	},
+	"datasets": {
+		"lidar": {
+			"open_topography": {
+				"NZ21_Kapiti": true
+			},
+			"local": {
+				"Wellington_2013": {
+					"crs": {
+						"horizontal": 2193,
+						"vertical": 7839
+					},
+					"folder_path": "tests/test_many_stages_multiple_2/data/Wellington_2013"
+				}
+			}
+		}
+	},
+	"dataset_mapping": {
+		"lidar": {
+			"NZ21_Kapiti": 1,
+			"Wellington_2013": 2
+		}
+    },
+	"general": {
+		"drop_offshore_lidar": true,
+		"lidar_classifications_to_keep": [1, 2, 4, 9],
+		"interpolation_method": null
+	}
+}
+}

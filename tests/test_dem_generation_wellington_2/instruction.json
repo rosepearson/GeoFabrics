@@ -20,7 +20,7 @@
 		"result_dem": "test_dem.nc",
 		"benchmark_dem": "benchmark_dem.nc"
 	},
-	"apis": {
+	"datasets": {
 		"lidar": {
 			"open_topography": {
 				"Wellington_2013": {

@@ -20,7 +20,7 @@
 		"fan_polygon_benchmark": "fan_polygon_benchmark.geojson",
 		"fan_bathymetry_benchmark": "fan_bathymetry_benchmark.geojson"
 	},
-	"apis": {
+	"datasets": {
 		"lidar": {
 			"open_topography": {
 				"Wellington_2013": {
