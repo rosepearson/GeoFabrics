@@ -611,8 +611,9 @@ class BaseProcessor(abc.ABC):
                         pathlib.Path(dataset["folder_path"]).rglob("*.laz")
                     )
                     # uncompressed file type
-                    dataset["file_paths"].extend(sorted(
-                        pathlib.Path(dataset["folder_path"]).rglob("*.las")))
+                    dataset["file_paths"].extend(
+                        sorted(pathlib.Path(dataset["folder_path"]).rglob("*.las"))
+                    )
                 elif "file_paths" not in dataset and "folder_path" not in dataset:
                     raise Exception(
                         "Local datasets must have either a `folder_path` or "
