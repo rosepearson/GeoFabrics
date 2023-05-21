@@ -604,11 +604,15 @@ class BaseProcessor(abc.ABC):
                 self.instructions["datasets"][data_type][data_service]
             )
             for dataset_name, dataset in local_datasets.items():
-                # Ensure the file_paths (LAZ files) are specified
+                # Ensure the file_paths (LAZ, and LAS files) are specified
                 if "file_paths" not in dataset and "folder_path" in dataset:
+                    # Compressed file type
                     dataset["file_paths"] = sorted(
                         pathlib.Path(dataset["folder_path"]).rglob("*.laz")
                     )
+                    # uncompressed file type
+                    dataset["file_paths"].extend(sorted(
+                        pathlib.Path(dataset["folder_path"]).rglob("*.las")))
                 elif "file_paths" not in dataset and "folder_path" not in dataset:
                     raise Exception(
                         "Local datasets must have either a `folder_path` or "

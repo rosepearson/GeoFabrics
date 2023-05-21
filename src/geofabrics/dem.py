@@ -1076,7 +1076,7 @@ class LidarBase(DemBase):
             column_names = tile_index_extents.columns
             tile_index_name_column = column_names[
                 [
-                    "filename" == name.lower() or "file_name" == name.lower()
+                    "filename" == name.lower() or "file_name" == name.lower()  or "name" == name.lower()
                     for name in column_names
                 ]
             ][0]
