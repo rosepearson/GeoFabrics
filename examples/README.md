@@ -6,7 +6,7 @@ There are several steps you will need to undertake **before** you can run these 
 1. Install or clone GeoFabrics and ensure you have all dependencies installed.
 2. Create a LINZ Data Service API Key with all manual permissions selected. Follow [link](https://github.com/niwa/geoapis/wiki/Package-Requirements) for detailed API key setup instructions.
 3. Use this key value in place all 'INSERT_LINZ_KEY' in the example instruction files.
-4. Review the example instruction files `processing` values (e.g. `chunk_size`, `number_of_cores`, and `memory_limit`). These were set for use on a supercomputer. You will need to ensure these values do not exceed your machines avalible hardware.
+4. Review the example instruction files `processing` values (e.g. `chunk_size`, `number_of_cores`, and `memory_limit`). These were set for use on a supercomputer. You will need to ensure these values do not exceed your machines avalible hardware. See [link](https://github.com/rosepearson/GeoFabrics/wiki/Performance-and-benchmarking) for more information.
 
 ## Running GeoFabrics
 Once you've run through the steps in the setup section, you can run GeoFabrics using the `JSON` files in each example folder as instruction file inputs. Follow [link](https://github.com/rosepearson/GeoFabrics/wiki/Basic-Usage-instructions) for detailed usage instructions.
