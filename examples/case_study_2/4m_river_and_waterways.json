@@ -31,6 +31,7 @@
 			"river_corridor_width": 220,
 			"min_bank_height": 0.75,
 			"cross_section_spacing": 10,
+			"estimate_fan": true,
 			"network_file": "river_network.geojson",
 			"network_columns": {"id": "NZREACH", "to_node": "to_node", "from_node": "from_node", "flow": "flow", "mannings_n": "n", "area": "CATCHAREA"},
 			"veg_lidar_classifications_to_keep": [2, 3, 4, 5, 9]
