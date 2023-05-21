@@ -47,7 +47,7 @@
 							   "river/fan_polygon.geojson"],
 			"river_bathymetry": ["river/river_bathymetry.geojson",
 								 "river/fan_bathymetry.geojson"],
-			"raw_dem": "raw_dem_8m.nc", "result_dem": "dem_8m_rupp_and_smart.nc"
+			"raw_dem": "raw_dem_8m.nc", "result_dem": "dem_8m_conceptual_multivariate.nc"
 		},
 		"datasets": {
 			"lidar": { "open_topography": { "NZ20_Westport": true } },
@@ -73,7 +73,7 @@
 			"local_cache": "results",
 			"subfolder": "geofabrics",
 			"catchment_boundary": "../../catchment.geojson",
-			"result_dem": "dem_8m_rupp_and_smart.nc", "result_geofabric": "geofabric_8m_rupp_and_smart.nc"
+			"result_dem": "dem_8m_conceptual_multivariate.nc", "result_geofabric": "geofabric_8m_conceptual_multivariate.nc"
 		},
 		"datasets": {
 			"lidar": { "open_topography": { "NZ20_Westport": true } },
