@@ -1,0 +1,115 @@
+{
+	"rivers": 
+	{
+		"output": {
+			"grid_params": { "resolution": 1 }, "crs": { "horizontal": 2193, "vertical": 7839 } },
+		"processing": {
+			"chunk_size": 1400, "number_of_cores": 20, "memory_limit": "20GiB" },
+		"data_paths": {
+			"local_cache": "results",
+			"subfolder": "geofabrics/river",
+			"land": "river_catchment_100000000.geojson"
+		},
+		"apis": {
+			"lidar": { "open_topography": { "Wellington_2013": { "crs": { "horizontal": 2193, "vertical": 7839 } } } },
+			"vector": { "linz": {
+				"key": "INSERT_LINZ_KEY",
+				"bathymetry_contours": { "layers": [50849] } } } },
+		"general": {
+			"elevation_range": [-10, 4000],
+			"interpolate_missing_values": false, "drop_offshore_lidar": true,
+			"bathymetry_contours_z_label": "valdco", "lidar_classifications_to_keep": [2, 9]
+		},
+		"rivers": {
+			"osm_id": 132793862,
+			"area_threshold": 100000000,
+			"minimum_slope": 0.002,
+			"network_id": 9003742,
+			"max_channel_width": 120,
+			"min_channel_width": 10,
+			"max_bank_height": 2,
+			"river_corridor_width": 220,
+			"min_bank_height": 0.75,
+			"cross_section_spacing": 10,
+			"network_file": "river_network.geojson",
+			"network_columns": {"id": "NZREACH", "to_node": "to_node", "from_node": "from_node", "flow": "flow", "mannings_n": "n", "area": "CATCHAREA"},
+			"veg_lidar_classifications_to_keep": [2, 3, 4, 5, 9]
+		}
+	},
+	"waterways":
+	{
+		"output": {
+			"grid_params": { "resolution": 1 }, "crs": { "horizontal": 2193, "vertical": 7839 } },
+		"processing": {
+			"chunk_size": 1400, "number_of_cores": 20, "memory_limit": "20GiB" },
+		"data_paths": {
+			"local_cache": "results",
+			"subfolder": "geofabrics/waterways",
+			"catchment_boundary": "../../catchment.geojson"
+		},
+		"apis": {
+			"lidar": { "open_topography": { "Wellington_2013": { "crs": { "horizontal": 2193, "vertical": 7839 } } } },
+			"vector": { "linz": {
+				"key": "INSERT_LINZ_KEY",
+				"land": { "layers": [51559] } } } },
+		"general": {
+			"lidar_classifications_to_keep": [2, 9],
+            "elevation_range": [-10, 4000]
+		},
+		"drains": {
+			"widths": {"drain": 4, "stream": 6, "river": 8}
+		}
+	},
+	"dem": 
+	{
+		"output": {
+			"grid_params": { "resolution": 4 }, "crs": { "horizontal": 2193, "vertical": 7839 } },
+		"processing": {
+			"chunk_size": 300, "number_of_cores": 20, "memory_limit": "20GiB" },
+		"data_paths": {
+			"local_cache": "results",
+			"subfolder": "geofabrics",
+			"catchment_boundary": "../../catchment.geojson",
+			"river_polygons": ["river/river_polygon.geojson", "river/fan_polygon.geojson",
+								"waterways/closed_waterways_polygon.geojson", "waterways/open_waterways_polygon.geojson"],
+			"river_bathymetry": ["river/river_bathymetry.geojson", "river/fan_bathymetry.geojson",
+									"waterways/closed_waterways_elevation.geojson", "waterways/open_waterways_elevation.geojson"],
+			"raw_dem": "raw_dem_4m.nc", "result_dem": "dem_4m_all_smart.nc"
+		},
+		"apis": {
+			"lidar": { "open_topography": { "Wellington_2013": { "crs": { "horizontal": 2193, "vertical": 7839 } } } },
+			"vector": { "linz": {
+				"key": "INSERT_LINZ_KEY",
+				"land": { "layers": [51559] },
+				"bathymetry_contours": { "layers": [50849] } } } },
+		"general": {
+			"elevation_range": [-10, 4000],
+			"interpolation_method": "linear", "drop_offshore_lidar": true,
+			"bathymetry_contours_z_label": "valdco", "lidar_classifications_to_keep": [2, 9],
+			"bathymetry_points_type": ["rivers", "fans", "waterways", "waterways"],
+			"bathymetry_points_z_label": ["bed_elevation_Rupp_and_Smart", "bed_elevation_Rupp_and_Smart", "elevation", "elevation"] } },
+	"roughness":
+	{
+		"output": {
+			"grid_params": { "resolution": 4 }, "crs": { "horizontal": 2193, "vertical": 7839 } },
+		"processing": {
+			"chunk_size": 300, "number_of_cores": 20, "memory_limit": "20GiB" },
+		"data_paths": {
+			"local_cache": "results",
+			"subfolder": "geofabrics",
+			"catchment_boundary": "../../catchment.geojson",
+			"result_dem": "dem_4m_all_smart.nc", "result_geofabric": "geofabric_4m_all_smart.nc"
+		},
+		"apis": {
+			"lidar": { "open_topography": { "Wellington_2013": { "crs": { "horizontal": 2193, "vertical": 7839 } } } },
+			"vector": { "linz": {
+				"key": "INSERT_LINZ_KEY",
+				"land": { "layers": [51559] },
+				"bathymetry_contours": { "layers": [50849] } } } },
+		"general": {
+			"elevation_range": [-10, 4000],
+			"interpolation_method": "linear", "lidar_classifications_to_keep": [1, 2, 4, 9]
+		}
+	}
+}
+
