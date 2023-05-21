@@ -1,0 +1,45 @@
+{
+	"dem": 
+	{
+		"output": {
+			"grid_params": { "resolution": 8 }, "crs": { "horizontal": 2193, "vertical": 7839 } },
+		"processing": {
+			"chunk_size": 300, "number_of_cores": 20, "memory_limit": "20GiB" },
+		"data_paths": {
+			"local_cache": "results",
+			"subfolder": "geofabrics",
+			"catchment_boundary": "../../catchment.geojson",
+			"raw_dem": "raw_dem_8m.nc", "result_dem": "dem_8m_unconditioned.nc"
+		},
+		"datasets": {
+			"lidar": { "open_topography": { "NZ20_Westport": true } },
+			"vector": { "linz": {
+					"key": "INSERT_LINZ_KEY",
+					"land": { "layers": [51153] },
+					"bathymetry_contours": { "layers": [50849] } } },
+			"raster": { "linz": {
+					"key": "INSERT_LINZ_KEY",
+					"coarse_dems": { "layers": [51768] } } } },
+		"general": {
+			"interpolation_method": "linear", "drop_offshore_lidar": true,
+			"bathymetry_contours_z_label": "valdco", "lidar_classifications_to_keep": [2, 9] } },
+	"roughness":
+	{
+		"output": {
+			"grid_params": { "resolution": 8 }, "crs": { "horizontal": 2193, "vertical": 7839 } },
+		"processing": {
+			"chunk_size": 300, "number_of_cores": 20, "memory_limit": "20GiB" },
+		"data_paths": {
+			"local_cache": "results",
+			"subfolder": "geofabrics",
+			"catchment_boundary": "../../catchment.geojson",
+			"result_dem": "dem_8m_unconditioned.nc", "result_geofabric": "geofabric_8m_unconditioned.nc"
+		},
+		"datasets": {
+			"lidar": { "open_topography": { "NZ20_Westport": true } },
+			"vector": { "linz": {
+					"key": "INSERT_LINZ_KEY",
+					"land": { "layers": [51153] } } } },
+		"general": { "interpolation_method": "linear", "lidar_classifications_to_keep": [1, 2, 3, 4, 5, 9] }
+	}
+}
