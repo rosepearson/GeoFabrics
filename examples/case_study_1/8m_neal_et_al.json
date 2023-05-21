@@ -20,6 +20,7 @@
 		"rivers": {
 			"veg_lidar_classifications_to_keep": [2, 3, 4, 5, 9],
 			"osm_id": 8110304,
+			"osm_date": "2023-05-05T00:00:00Z",
 			"area_threshold": 6308000000,
 			"minimum_slope": 0.0005,
 			"network_id": 12009639,

@@ -22,6 +22,7 @@
 		},
 		"rivers": {
 			"osm_id": 132793862,
+			"osm_date": "2023-05-05T00:00:00Z",
 			"area_threshold": 100000000,
 			"minimum_slope": 0.002,
 			"network_id": 9003742,
