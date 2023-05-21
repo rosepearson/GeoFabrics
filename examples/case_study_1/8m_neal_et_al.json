@@ -9,7 +9,7 @@
 			"subfolder": "geofabrics/river",
 			"land": "river_catchment_6308000000.geojson"
 		},
-		"apis": {
+		"datasets": {
 			"lidar": { "open_topography": { "NZ20_Westport": true } },
 			"vector": { "linz": {
 					"key": "INSERT_LINZ_KEY",
@@ -48,7 +48,7 @@
 								 "river/fan_bathymetry.geojson"],
 			"raw_dem": "raw_dem_8m.nc", "result_dem": "dem_8m_neal_et_al.nc"
 		},
-		"apis": {
+		"datasets": {
 			"lidar": { "open_topography": { "NZ20_Westport": true } },
 			"vector": { "linz": {
 					"key": "INSERT_LINZ_KEY",
@@ -74,7 +74,7 @@
 			"catchment_boundary": "../../catchment.geojson",
 			"result_dem": "dem_8m_neal_et_al.nc", "result_geofabric": "geofabric_8m_neal_et_al.nc"
 		},
-		"apis": {
+		"datasets": {
 			"lidar": { "open_topography": { "NZ20_Westport": true } },
 			"vector": { "linz": {
 					"key": "INSERT_LINZ_KEY",

@@ -11,7 +11,7 @@
 			"catchment_boundary": "../../catchment.geojson",
 			"raw_dem": "raw_dem_8m.nc", "result_dem": "dem_8m_unconditioned.nc"
 		},
-		"apis": {
+		"datasets": {
 			"lidar": { "open_topography": { "NZ20_Westport": true } },
 			"vector": { "linz": {
 					"key": "INSERT_LINZ_KEY",
@@ -35,7 +35,7 @@
 			"catchment_boundary": "../../catchment.geojson",
 			"result_dem": "dem_8m_unconditioned.nc", "result_geofabric": "geofabric_8m_unconditioned.nc"
 		},
-		"apis": {
+		"datasets": {
 			"lidar": { "open_topography": { "NZ20_Westport": true } },
 			"vector": { "linz": {
 					"key": "INSERT_LINZ_KEY",

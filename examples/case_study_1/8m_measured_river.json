@@ -5,10 +5,10 @@
 		"data_paths": {
 			"local_cache": "results",
 			"subfolder": "geofabrics/measured",
-			"measured_sections": "../../surveyed_cross_sections.geojson",
-			"riverbanks": "../../riverbanks.geojson"
+			"measured_sections": "../../../surveyed_cross_sections.geojson",
+			"riverbanks": "../../../riverbanks.geojson"
 		},
-		"apis": {
+		"datasets": {
 			"vector": { "linz": {
 					"key": "INSERT_LINZ_KEY",
 					"bathymetry_contours": { "layers": [50849] } } } },
@@ -34,7 +34,7 @@
 			"river_bathymetry": ["measured/river_elevations.geojson", "measured/fan_bathymetry.geojson"],
 			"raw_dem": "raw_dem_8m.nc", "result_dem": "dem_8m_measured_river_fan.nc"
 		},
-		"apis": {
+		"datasets": {
 			"lidar": { "open_topography": { "NZ20_Westport": true } },
 			"vector": { "linz": {
 					"key": "INSERT_LINZ_KEY",
@@ -60,7 +60,7 @@
 			"catchment_boundary": "../../catchment.geojson",
 			"result_dem": "dem_8m_measured_river_fan.nc", "result_geofabric": "geofabric_8m_measured_river_fan.nc"
 		},
-		"apis": {
+		"datasets": {
 			"lidar": { "open_topography": { "NZ20_Westport": true } },
 			"vector": { "linz": {
 					"key": "INSERT_LINZ_KEY",

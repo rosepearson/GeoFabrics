@@ -1,5 +1,5 @@
 # GeoFabrics usage examples
-This folder contains various real-word examples for using GeoFabrics to created Hydrologically conditioned DEMs.
+This folder contains various real-word examples for using GeoFabrics to created Hydrologically conditioned DEMs. Please note that some examples contain multiple instruction files for producing DEMs with different levels of hydrological conditoining.
 
 ## Setup
 There are several steps you will need to undertake **before** you can run these examples.
@@ -11,7 +11,7 @@ There are several steps you will need to undertake **before** you can run these 
 ## Running GeoFabrics
 Once you've run through the steps in the setup section, you can run GeoFabrics using the `JSON` files in each example folder as instruction file inputs. Follow [link](https://github.com/rosepearson/GeoFabrics/wiki/Basic-Usage-instructions) for detailed usage instructions.
 
-Please note that some examples contain multiple instruction files for producing DEMs with different levels of hydrological conditoining.
+Please note that the file paths in the instruction files are all setup for if the working directory at execution is the folder containing the instruction files. You may need to update the relative paths to absolute paths if running from another location.
 
 ## Examples
 The following table contains information about the different tests.
