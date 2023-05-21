@@ -17,7 +17,7 @@ Please note that the file paths in the instruction files are all setup for if th
 The following table contains information about the different tests.
 
 | Name | Instruction Files | Description |
-| --- | ----------- | ----------- | ----------- |
+| --- | ----------- | ----------- |
 | case_study_1 | `8m_unconditioned.json`, `8m_measured_river.json`, `8m_rupp_and_smart.json`, `8m_neal_et_al.json` | Includes four different instructions for producing a DEM over the lower Buller River (NZ) floodplain from LiDAR (where avalaible), raster (elsewhere on land) and ocean bathymetry contours. The instruction files range from no additional conditioning, to including riverbed values (either interpolated from surveyed cross sections, or estimated using the two avaliable approaches). |
 | case_study_2 | `4m_river.json`, `8m_river_and_waterways.json` | Includes two different instructions for producing a DEM over the lower Waikanae River (NZ) floodplain from LiDAR, ocean bathymetry contours, and river centrelines for estimating riverbed elevations. One instruction file also includes waterway bed elevations. |
 
