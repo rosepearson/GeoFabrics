@@ -1957,7 +1957,7 @@ class RoughnessDem(LidarBase):
                 method=self.interpolation_method
             )
             # If any NaN remain apply nearest neighbour interpolation
-            if numpy.isnan(self._dem.z.data).any():
+            if numpy.isnan(self._dem.zo.data).any():
                 self._dem["zo"] = self._dem.zo.rio.interpolate_na(method="nearest")
         self._dem = self._dem.rio.clip(
             self.catchment_geometry.catchment.geometry, drop=True
