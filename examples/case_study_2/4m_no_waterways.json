@@ -72,7 +72,7 @@
 			"chunk_size": 300, "number_of_cores": 20, "memory_limit": "20GiB" },
 		"data_paths": {
 			"local_cache": "results",
-			"subfolder": "paper",
+			"subfolder": "geofabrics",
 			"catchment_boundary": "../../catchment.geojson",
 			"result_dem": "dem_4m_no_waterways.nc", "result_geofabric": "geofabric_4m_no_waterways.nc"
 		},
