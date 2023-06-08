@@ -2389,6 +2389,14 @@ class WaterwayBedElevationEstimator(BaseProcessor):
         # If not - estimate elevations along close drains
         closed_waterways = waterways[waterways["tunnel"]]
         closed_waterways["polygon"] = closed_waterways.buffer(closed_waterways["width"])
+        # If no closed waterways write out empty files and return
+        if len(closed_waterways) == 0:
+            closed_waterways["elevation"] = []
+            closed_waterways.set_geometry("polygon", drop=True)[
+                ["geometry", "width", "elevation"]
+            ].to_file(polygon_file)
+            closed_waterways.drop(columns=["polygon"]).to_file(elevation_file)
+            return
 
         # Sample the minimum elevation at each tunnel
         elevations = closed_waterways.apply(
@@ -2420,7 +2428,7 @@ class WaterwayBedElevationEstimator(BaseProcessor):
                 "geometry": points,
                 "width": closed_waterways["width"],
             },
-            crs=2193,
+            crs=closed_waterways.crs,
         )
         closed_waterways["elevation"] = elevations
         # Remove any NaN areas (where no LiDAR data to estimate elevations)
