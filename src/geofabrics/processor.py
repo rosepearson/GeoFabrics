@@ -2556,15 +2556,16 @@ class WaterwayBedElevationEstimator(BaseProcessor):
             self.get_result_file_path(key="closed_polygon")
         )
         # Check each culvert
-        for closed_polygon, closed_elevation in zip(
-            closed_polygons["geometry"], closed_polygons["elevation"]
-        ):
-            # Take the nearest closed elevation if lower
-            elevations_near_culvert = open_waterways.clip(closed_polygon)
-            indices_to_replace = elevations_near_culvert.index[
-                elevations_near_culvert["elevation"] > closed_elevation
-            ]
-            open_waterways.loc[indices_to_replace, "elevation"] = closed_elevation
+        if len(closed_polygons) > 0:
+            for closed_polygon, closed_elevation in zip(
+                closed_polygons["geometry"], closed_polygons["elevation"]
+            ):
+                # Take the nearest closed elevation if lower
+                elevations_near_culvert = open_waterways.clip(closed_polygon)
+                indices_to_replace = elevations_near_culvert.index[
+                    elevations_near_culvert["elevation"] > closed_elevation
+                ]
+                open_waterways.loc[indices_to_replace, "elevation"] = closed_elevation
         # Ensure the sampled elevations monotonically decrease
         for index, drain_points in open_waterways.groupby(level=0):
             open_waterways.loc[(index,), ("elevation")] = numpy.fmin.accumulate(
