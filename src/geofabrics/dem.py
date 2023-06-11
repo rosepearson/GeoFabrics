@@ -104,8 +104,17 @@ class CoarseDem:
         else:
             # If no LiDAR - only use the coarse DEM on land
             self._extents = buffered_land_and_foreshore
-        self._dem = self._dem.rio.clip(self._extents.geometry, drop=True)
-        self._extract_points()
+
+        # Try clip - catch if no DEM in clipping bounds
+        try:
+            self._dem = self._dem.rio.clip(self._extents.geometry, drop=True)
+            self._extract_points()
+        except rioxarray.exceptions.NoDataInBounds:
+            logging.warning(
+                "No coarse DEM values in the region of interest. Will set to empty."
+            )
+            self._dem = None
+            self._points = None
 
     def _extract_points(self):
         """Create a points list from the DEM"""
@@ -236,6 +245,12 @@ class CoarseDem:
         """The extents for the coarse DEM"""
 
         return self._extents
+
+    @property
+    def empty(self) -> bool:
+        """True if the DEM is empty"""
+
+        return self._points is None and self._dem is None
 
 
 class DemBase(abc.ABC):

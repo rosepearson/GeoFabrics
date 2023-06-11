@@ -796,7 +796,6 @@ class RawLidarDemGenerator(BaseProcessor):
         super(RawLidarDemGenerator, self).__init__(json_instructions=json_instructions)
 
         self.raw_dem = None
-        self.coarse_dem = None
         self.debug = debug
 
     def run(self):
@@ -869,7 +868,7 @@ class RawLidarDemGenerator(BaseProcessor):
 
                 # Load in background DEM - cut away within the LiDAR extents
                 for coarse_dem_path in coarse_dem_paths:
-                    self.coarse_dem = dem.CoarseDem(
+                    coarse_dem = dem.CoarseDem(
                         dem_file=coarse_dem_path,
                         catchment_geometry=self.catchment_geometry,
                         set_foreshore=self.get_instruction_general(
@@ -878,7 +877,8 @@ class RawLidarDemGenerator(BaseProcessor):
                         exclusion_extent=self.raw_dem.extents,
                     )
                     # Add the coarse DEM data where there's no LiDAR updating the extents
-                    self.raw_dem.add_coarse_dem(coarse_dem=self.coarse_dem)
+                    if not coarse_dem.empty:
+                        self.raw_dem.add_coarse_dem(coarse_dem=coarse_dem)
         # save raw DEM and extents
         logging.info("In processor.DemGenerator - write out the raw DEM")
         self.raw_dem.dem.to_netcdf(
@@ -2389,6 +2389,14 @@ class WaterwayBedElevationEstimator(BaseProcessor):
         # If not - estimate elevations along close drains
         closed_waterways = waterways[waterways["tunnel"]]
         closed_waterways["polygon"] = closed_waterways.buffer(closed_waterways["width"])
+        # If no closed waterways write out empty files and return
+        if len(closed_waterways) == 0:
+            closed_waterways["elevation"] = []
+            closed_waterways.set_geometry("polygon", drop=True)[
+                ["geometry", "width", "elevation"]
+            ].to_file(polygon_file)
+            closed_waterways.drop(columns=["polygon"]).to_file(elevation_file)
+            return
 
         # Sample the minimum elevation at each tunnel
         elevations = closed_waterways.apply(
@@ -2420,7 +2428,7 @@ class WaterwayBedElevationEstimator(BaseProcessor):
                 "geometry": points,
                 "width": closed_waterways["width"],
             },
-            crs=2193,
+            crs=closed_waterways.crs,
         )
         closed_waterways["elevation"] = elevations
         # Remove any NaN areas (where no LiDAR data to estimate elevations)
@@ -2548,15 +2556,16 @@ class WaterwayBedElevationEstimator(BaseProcessor):
             self.get_result_file_path(key="closed_polygon")
         )
         # Check each culvert
-        for closed_polygon, closed_elevation in zip(
-            closed_polygons["geometry"], closed_polygons["elevation"]
-        ):
-            # Take the nearest closed elevation if lower
-            elevations_near_culvert = open_waterways.clip(closed_polygon)
-            indices_to_replace = elevations_near_culvert.index[
-                elevations_near_culvert["elevation"] > closed_elevation
-            ]
-            open_waterways.loc[indices_to_replace, "elevation"] = closed_elevation
+        if len(closed_polygons) > 0:
+            for closed_polygon, closed_elevation in zip(
+                closed_polygons["geometry"], closed_polygons["elevation"]
+            ):
+                # Take the nearest closed elevation if lower
+                elevations_near_culvert = open_waterways.clip(closed_polygon)
+                indices_to_replace = elevations_near_culvert.index[
+                    elevations_near_culvert["elevation"] > closed_elevation
+                ]
+                open_waterways.loc[indices_to_replace, "elevation"] = closed_elevation
         # Ensure the sampled elevations monotonically decrease
         for index, drain_points in open_waterways.groupby(level=0):
             open_waterways.loc[(index,), ("elevation")] = numpy.fmin.accumulate(
