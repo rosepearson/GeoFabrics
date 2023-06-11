@@ -33,6 +33,7 @@ Classes
 
 .. py:class:: BaseProcessor(json_instructions)
 
+
    Bases: :py:obj:`abc.ABC`
 
    An abstract class with general methods for accessing elements in
@@ -163,6 +164,7 @@ Classes
 
 .. py:class:: RawLidarDemGenerator(json_instructions, debug = True)
 
+
    Bases: :py:obj:`BaseProcessor`
 
    RawLidarDemGenerator executes a pipeline for creating a DEM from LiDAR and
@@ -192,6 +194,7 @@ Classes
 
 
 .. py:class:: HydrologicDemGenerator(json_instructions, debug = True)
+
 
    Bases: :py:obj:`BaseProcessor`
 
@@ -225,6 +228,7 @@ Classes
 
 .. py:class:: RoughnessLengthGenerator(json_instructions, debug = True)
 
+
    Bases: :py:obj:`BaseProcessor`
 
    RoughnessLengthGenerator executes a pipeline for loading in a hydrologically
@@ -246,6 +250,7 @@ Classes
 
 
 .. py:class:: MeasuredRiverGenerator(json_instructions, debug = True)
+
 
    Bases: :py:obj:`BaseProcessor`
 
@@ -276,6 +281,7 @@ Classes
 
 
 .. py:class:: RiverBathymetryGenerator(json_instructions, debug = True)
+
 
    Bases: :py:obj:`BaseProcessor`
 
@@ -426,6 +432,7 @@ Classes
 
 
 .. py:class:: WaterwayBedElevationEstimator(json_instructions, debug = True)
+
 
    Bases: :py:obj:`BaseProcessor`
 

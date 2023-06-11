@@ -29,6 +29,7 @@ Classes
 
 .. py:class:: CatchmentGeometry(catchment_file, crs, resolution, foreshore_buffer = 2)
 
+
    A class defining revelant catchment regions by polygons.
 
    The CRS is a dictionary containing the EPSG code for a 'horizontal' and
@@ -105,6 +106,7 @@ Classes
 
 .. py:class:: BathymetryContours(contour_file, catchment_geometry, z_label=None, exclusion_extent=None)
 
+
    A class for sampling from bathymetry contours.
 
    Assumes contours to be sampled to the catchment_geometry resolution
@@ -116,6 +118,7 @@ Classes
 
 
 .. py:class:: MarineBathymetryPoints(points_file, catchment_geometry, exclusion_extent=None)
+
 
    A class for accesing marine bathymetry points. These can be used as
    depths to interpolate elevations offshore.
@@ -138,6 +141,7 @@ Classes
 
 
 .. py:class:: EstimatedBathymetryPoints(points_files, polygon_files, catchment_geometry, type_labels, z_labels = None)
+
 
    A class for accessing river and mouth bathymetry points. Paired river
    and mouth elevation and polygon files are expected. These depths can be
@@ -182,6 +186,7 @@ Classes
 
 .. py:class:: TileInfo(tile_file, catchment_geometry)
 
+
    A class for working with tiling information.
 
    .. py:property:: tile_names
@@ -190,6 +195,7 @@ Classes
 
 
 .. py:class:: RiverMouthFan(aligned_channel_file, river_bathymetry_file, river_polygon_file, ocean_contour_file, crs, cross_section_spacing, elevation_labels, ocean_contour_depth_label = None)
+
 
    A class for creating an appropiate river mouth fan to transition from
    river depth estimates to the ocean bathymetry values. This fan region defines a

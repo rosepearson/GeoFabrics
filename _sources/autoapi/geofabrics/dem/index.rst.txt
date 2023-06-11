@@ -54,6 +54,7 @@ Attributes
 
 .. py:class:: CoarseDem(dem_file, catchment_geometry, set_foreshore = True, exclusion_extent = None)
 
+
    A class to manage coarse or background DEMs in the catchment context
 
    Specifically, clip within the catchment land and foreshore. There is the option to
@@ -83,6 +84,11 @@ Attributes
 
       The extents for the coarse DEM
 
+   .. py:property:: empty
+      :type: bool
+
+      True if the DEM is empty
+
    .. py:method:: __del__()
 
       Ensure the memory associated with netCDF files is properly freed.
@@ -90,6 +96,7 @@ Attributes
 
 
 .. py:class:: DemBase(catchment_geometry, extents)
+
 
    Bases: :py:obj:`abc.ABC`
 
@@ -119,6 +126,7 @@ Attributes
 
 
 .. py:class:: HydrologicallyConditionedDem(catchment_geometry, raw_dem_path, extents_path, interpolation_method)
+
 
    Bases: :py:obj:`DemBase`
 
@@ -165,6 +173,7 @@ Attributes
 
 .. py:class:: LidarBase(catchment_geometry, elevation_range = None)
 
+
    Bases: :py:obj:`DemBase`
 
    A class with some base methods for reading in LiDAR data.
@@ -198,6 +207,7 @@ Attributes
 
 
 .. py:class:: RawDem(catchment_geometry, lidar_interpolation_method, drop_offshore_lidar = True, elevation_range = None)
+
 
    Bases: :py:obj:`LidarBase`
 
@@ -236,6 +246,7 @@ Attributes
 
 
 .. py:class:: RoughnessDem(catchment_geometry, hydrological_dem_path, interpolation_method, elevation_range = None)
+
 
    Bases: :py:obj:`LidarBase`
 

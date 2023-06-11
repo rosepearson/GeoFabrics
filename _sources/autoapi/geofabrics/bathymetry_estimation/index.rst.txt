@@ -27,6 +27,7 @@ Classes
 
 .. py:class:: Channel(channel, resolution, sampling_direction = 1)
 
+
    A class to define a channel centre line from a digital network.
 
    .. py:method:: from_network(network_file, crs, starting_id, resolution, area_threshold, name_dict, sampling_direction = -1)
@@ -122,6 +123,7 @@ Classes
 
 .. py:class:: InterpolateMeasuredElevations(riverbank_file, measured_sections_file, cross_section_spacing, crs)
 
+
    Interpolate measured river bed elevations. Requires LineStrings of
    riverbed elevations, and the LineStrings defining the left and right
    riverbank.
@@ -155,6 +157,7 @@ Classes
 
 
 .. py:class:: ChannelCharacteristics(gnd_dem, veg_dem, cross_section_spacing, resolution, debug = False)
+
 
    A class to estimate the width, slope and other characteristics of a
    channel from a detailed DEM and a river network.
