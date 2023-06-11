@@ -111,7 +111,7 @@ class CoarseDem:
             self._extract_points()
         except rioxarray.exceptions.NoDataInBounds:
             logging.warning(
-                "No coarse DEM values in the region of interest. " "Will set to empty."
+                "No coarse DEM values in the region of interest. Will set to empty."
             )
             self._dem = None
             self._points = None
