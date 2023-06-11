@@ -796,7 +796,6 @@ class RawLidarDemGenerator(BaseProcessor):
         super(RawLidarDemGenerator, self).__init__(json_instructions=json_instructions)
 
         self.raw_dem = None
-        self.coarse_dem = None
         self.debug = debug
 
     def run(self):
@@ -869,7 +868,7 @@ class RawLidarDemGenerator(BaseProcessor):
 
                 # Load in background DEM - cut away within the LiDAR extents
                 for coarse_dem_path in coarse_dem_paths:
-                    self.coarse_dem = dem.CoarseDem(
+                    coarse_dem = dem.CoarseDem(
                         dem_file=coarse_dem_path,
                         catchment_geometry=self.catchment_geometry,
                         set_foreshore=self.get_instruction_general(
@@ -878,7 +877,8 @@ class RawLidarDemGenerator(BaseProcessor):
                         exclusion_extent=self.raw_dem.extents,
                     )
                     # Add the coarse DEM data where there's no LiDAR updating the extents
-                    self.raw_dem.add_coarse_dem(coarse_dem=self.coarse_dem)
+                    if not coarse_dem.empty():
+                        self.raw_dem.add_coarse_dem(coarse_dem=coarse_dem)
         # save raw DEM and extents
         logging.info("In processor.DemGenerator - write out the raw DEM")
         self.raw_dem.dem.to_netcdf(
