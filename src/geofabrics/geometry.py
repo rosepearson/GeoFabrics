@@ -529,22 +529,9 @@ class EstimatedBathymetryPoints:
         f"{len(points_files)} points files and {len(type_labels)} type labels"
 
         # Points - rename depth labels to standard if a non standard one is specified
-        points_i = geopandas.read_file(points_files[0])
-        points_i[self.TYPE_LABEL] = type_labels[0]
-        if z_labels is not None:
-            points_i = points_i.rename(columns={z_labels[0]: self.DEPTH_LABEL})
-        columns_i = [self.DEPTH_LABEL, self.TYPE_LABEL, "geometry"]
-        if self.BANK_HEIGHT_LABEL in points_i.columns:
-            columns_i.append(self.BANK_HEIGHT_LABEL)
-        if self.WIDTH_LABEL in points_i.columns:
-            columns_i.append(self.WIDTH_LABEL)
-        points_i = points_i[columns_i]
-        points_list = [points_i]
-        # Polygon where the points are relevent
-        polygon_i = geopandas.read_file(polygon_files[0])
-        polygon_i[self.TYPE_LABEL] = type_labels[0]
-        polygon_list = [polygon_i]
-        for i in range(1, len(points_files)):
+        points_list = []
+        polygon_list = []
+        for i in range(0, len(points_files)):
             # Points - rename depth labels to standard if  specified
             points_i = geopandas.read_file(points_files[i])
             points_i[self.TYPE_LABEL] = type_labels[i]
@@ -555,12 +542,14 @@ class EstimatedBathymetryPoints:
                 columns_i.append(self.BANK_HEIGHT_LABEL)
             if self.WIDTH_LABEL in points_i.columns:
                 columns_i.append(self.WIDTH_LABEL)
-            points_i = points_i[columns_i]
-            points_list.append(points_i)
-            # Polygon where the points are relevent
-            polygon_i = geopandas.read_file(polygon_files[i])
-            polygon_i[self.TYPE_LABEL] = type_labels[i]
-            polygon_list.append(polygon_i)
+            # Only add the points and polygons if their are points
+            if len(points_i) > 0:
+                points_i = points_i[columns_i]
+                points_list.append(points_i)
+                # Polygon where the points are relevent
+                polygon_i = geopandas.read_file(polygon_files[i])
+                polygon_i[self.TYPE_LABEL] = type_labels[i]
+                polygon_list.append(polygon_i)
         # Set CRS, clip to size and reset index
         points = geopandas.GeoDataFrame(
             pandas.concat(points_list, ignore_index=True), crs=points_list[0].crs
