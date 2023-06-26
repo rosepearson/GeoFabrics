@@ -829,26 +829,16 @@ class RawLidarDemGenerator(BaseProcessor):
             elevation_range=self.get_instruction_general("elevation_range"),
         )
 
-        # Setup Dask cluster and client
-        cluster_kwargs = {
-            "n_workers": self.get_processing_instructions("number_of_cores"),
-            "threads_per_worker": 1,
-            "processes": True,
-            "memory_limit": self.get_processing_instructions("memory_limit"),
-        }
-        with distributed.LocalCluster(**cluster_kwargs) as cluster, distributed.Client(
-            cluster
-        ) as client:
-            print(client)
-            # Load in LiDAR tiles
-            self.raw_dem.add_lidar(
-                lidar_datasets_info=lidar_datasets_info,
-                lidar_classifications_to_keep=self.get_instruction_general(
-                    "lidar_classifications_to_keep"
-                ),
-                chunk_size=self.get_processing_instructions("chunk_size"),
-                metadata=self.create_metadata(),
-            )  # Note must be called after all others if it is to be complete
+        # Load in LiDAR tiles
+        self.raw_dem.add_lidar(
+            lidar_datasets_info=lidar_datasets_info,
+            lidar_classifications_to_keep=self.get_instruction_general(
+                "lidar_classifications_to_keep"
+            ),
+            chunk_size=self.get_processing_instructions("chunk_size"),
+            metadata=self.create_metadata(),
+        )  # Note must be called after all others if it is to be complete
+
         # Load in coarse DEM if any significant land/foreshore not covered by LiDAR
         if self.check_vector_or_raster(key="coarse_dems", api_type="raster"):
             area_without_lidar = (
@@ -879,11 +869,25 @@ class RawLidarDemGenerator(BaseProcessor):
                     # Add the coarse DEM data where there's no LiDAR updating the extents
                     if not coarse_dem.empty:
                         self.raw_dem.add_coarse_dem(coarse_dem=coarse_dem)
-        # save raw DEM and extents
-        logging.info("In processor.DemGenerator - write out the raw DEM")
-        self.raw_dem.dem.to_netcdf(
-            self.get_instruction_path("raw_dem"), format="NETCDF4", engine="netcdf4"
-        )
+
+        # Setup Dask cluster and client
+        cluster_kwargs = {
+            "n_workers": self.get_processing_instructions("number_of_cores"),
+            "threads_per_worker": 1,
+            "processes": True,
+            "memory_limit": self.get_processing_instructions("memory_limit"),
+        }
+        cluster = distributed.LocalCluster(**cluster_kwargs)
+        with cluster, distributed.Client(cluster) as client:
+            print(client)
+
+            # compute and save raw DEM
+            logging.info("In processor.DemGenerator - write out the raw DEM")
+            self.raw_dem.dem.to_netcdf(
+                self.get_instruction_path("raw_dem"), format="NETCDF4", engine="netcdf4"
+            )
+
+        # save extends
         if self.raw_dem.extents is not None:
             logging.info("In processor.DemGenerator - write out the raw DEM extents")
             self.raw_dem.extents.to_file(self.get_instruction_path("raw_dem_extents"))
@@ -892,6 +896,7 @@ class RawLidarDemGenerator(BaseProcessor):
                 "In processor.DemGenerator - no LiDAR extents exist so no extents file "
                 "written"
             )
+
         if self.debug:
             # Record the parameter used during execution - append to existing
             with open(

@@ -1359,6 +1359,7 @@ class RawDem(LidarBase):
                 chunk_size=chunk_size,
                 metadata=metadata,
             )
+
         # Clip DEM to Catchment and ensure NaN outside region to rasterise
         dem = dem.rio.clip(self.catchment_geometry.catchment.geometry, drop=True)
         dem = dem.rio.clip(region_to_rasterise.geometry, drop=False)
@@ -1384,10 +1385,13 @@ class RawDem(LidarBase):
             )
 
             # get coarse DEM points on the foreshore - with any positive set to zero
+            # TODO this will liekely fail with Dask-based xarray
             dem.z.data[mask & (dem.z.data > 0)] = 0
+
         self._dem = dem
         # Create a polygon defining the region where there are dense DEM values
-        self._extents = self._calculate_raw_extents()
+        # TODO move this computation after saving _dem on disk in processor.py
+        # self._extents = self._calculate_raw_extents()
 
     def _add_tiled_lidar_chunked(
         self,
@@ -1472,9 +1476,6 @@ class RawDem(LidarBase):
             elevations=elevations,
             metadata=metadata,
         )
-        logging.info("Computing chunks")
-        chunked_dem = chunked_dem.compute()
-        logging.debug("Chunked DEM computed")
 
         return chunked_dem
 
