@@ -1010,6 +1010,7 @@ class HydrologicDemGenerator(BaseProcessor):
         self.catchment_geometry = self.create_catchment()
 
         # setup the hydrologically conditioned DEM generator
+        breakpoint()
         self.hydrologic_dem = dem.HydrologicallyConditionedDem(
             catchment_geometry=self.catchment_geometry,
             raw_dem_path=self.get_instruction_path("raw_dem"),
