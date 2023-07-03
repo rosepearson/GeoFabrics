@@ -2244,8 +2244,7 @@ def read_file_with_pdal(
         pdal_pipeline_instructions.append(
             {
                 "type": "filters.reprojection",
-                "out_srs": f"EPSG:{crs['horizontal']}+"
-                f"{crs['vertical']}",
+                "out_srs": f"EPSG:{crs['horizontal']}+" f"{crs['vertical']}",
             }
         )
     else:
@@ -2254,8 +2253,7 @@ def read_file_with_pdal(
                 "type": "filters.reprojection",
                 "in_srs": f"EPSG:{source_crs['horizontal']}+"
                 f"{source_crs['vertical']}",
-                "out_srs": f"EPSG:{crs['horizontal']}+"
-                f"{crs['vertical']}",
+                "out_srs": f"EPSG:{crs['horizontal']}+" f"{crs['vertical']}",
             }
         )
     # Add instructions for clip within either the catchment, or the land and foreshore
