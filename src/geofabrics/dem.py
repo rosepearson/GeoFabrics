@@ -1605,16 +1605,18 @@ class RawDem(LidarBase):
         dems = []
         dataset_mapping = metadata["instructions"]["dataset_mapping"]["lidar"]
         for dataset_name, z in elevations.items():
+            z_nan_mask = dask.array.isnan(z)
+
             # Create source variable - assume all values are defined from LiDAR
-            data_source = numpy.ones_like(z) * numpy.nan
-            data_source[numpy.logical_not(numpy.isnan(z))] = self.SOURCE_CLASSIFICATION[
-                "LiDAR"
-            ]
+            data_source = dask.array.where(
+                z_nan_mask, numpy.nan, self.SOURCE_CLASSIFICATION["LiDAR"]
+            )
+
             # Create LiDAR id variable - name and value info in the metadata
-            lidar_source = numpy.ones_like(z) * numpy.nan
-            lidar_source[numpy.logical_not(numpy.isnan(z))] = dataset_mapping[
-                dataset_name
-            ]
+            lidar_source = dask.array.where(
+                z_nan_mask, numpy.nan, dataset_mapping[dataset_name]
+            )
+
             dem = xarray.Dataset(
                 data_vars=dict(
                     z=(
