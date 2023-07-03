@@ -1665,20 +1665,25 @@ class RawDem(LidarBase):
             # ensure the expected CF conventions are followed
             self._write_netcdf_conventions_in_place(dem, self.catchment_geometry.crs)
             dems.append(dem)
+
         if len(dems) == 1:
             dem = dems[0]
         else:
             dem = rioxarray.merge.merge_datasets(dems, method="first")
+
         # data_source: set areas with no values to No Data
-        dem.data_source.data[
-            numpy.isnan(dem.data_source.data)
-        ] = self.SOURCE_CLASSIFICATION["no data"]
+        # TODO incorporate this in the loop before merging?
+        dem["data_source"] = dem.data_source.where(
+            dem.data_source.notnull(), self.SOURCE_CLASSIFICATION["no data"]
+        )
+
         # lidar_source: Set areas with no LiDAR to "No LiDAR"
-        dem.lidar_source.data[
-            numpy.logical_not(
-                dem.data_source.data == self.SOURCE_CLASSIFICATION["LiDAR"]
-            )
-        ] = dataset_mapping["no LiDAR"]
+        # TODO incorporate this in the loop before merging?
+        dem["lidar_source"] = dem.lidar_source.where(
+            dem.data_source == self.SOURCE_CLASSIFICATION["LiDAR"],
+            dataset_mapping["no LiDAR"]
+        )
+
         # set any offshore values to ocean assuming drop offshore is selected
         if (
             self.catchment_geometry.foreshore_and_offshore.area.sum() > 0
@@ -1696,6 +1701,7 @@ class RawDem(LidarBase):
                 "ocean bathymetry"
             ]
             dem.lidar_source.data[ocean_mask] = dataset_mapping["no LiDAR"]
+
         return dem
 
     def add_coarse_dem(self, coarse_dem: CoarseDem):
