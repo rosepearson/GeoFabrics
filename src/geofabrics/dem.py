@@ -1341,6 +1341,7 @@ class RawDem(LidarBase):
             "elevation_range": self.elevation_range,
             "radius": self.catchment_geometry.resolution / numpy.sqrt(2),
             "method": self.lidar_interpolation_method,
+            "crs": self.catchment_geometry.crs,
         }
 
         # Don't use dask delayed if there is no chunking
@@ -1452,7 +1453,7 @@ class RawDem(LidarBase):
                         lidar_files=chunk_lidar_files,
                         source_crs=source_crs,
                         chunk_region_to_tile=chunk_region_to_tile,
-                        catchment_geometry=self.catchment_geometry,
+                        crs=raster_options["crs"],
                     )
                     # Rasterise tiles
                     delayed_chunked_x.append(
@@ -1500,7 +1501,7 @@ class RawDem(LidarBase):
             source_crs=source_crs,
             region_to_tile=region_to_rasterise,
             get_extents=True,
-            catchment_geometry=self.catchment_geometry,
+            crs=options["crs"],
         )
 
         # Load LiDAR points from pipeline
@@ -1931,6 +1932,7 @@ class RoughnessDem(LidarBase):
             "raster_type": geometry.RASTER_TYPE,
             "elevation_range": self.elevation_range,
             "radius": self.catchment_geometry.resolution / numpy.sqrt(2),
+            "crs": self.catchment_geometry.crs,
         }
 
         # Set roughness where LiDAR
@@ -2040,7 +2042,7 @@ class RoughnessDem(LidarBase):
                         lidar_files=chunk_lidar_files,
                         source_crs=source_crs,
                         chunk_region_to_tile=chunk_region_to_tile,
-                        catchment_geometry=self.catchment_geometry,
+                        crs=raster_options["crs"],
                     )
                     # Rasterise tiles
                     xy_ground = self._dem.z.sel(
@@ -2097,7 +2099,7 @@ class RoughnessDem(LidarBase):
             source_crs=source_crs,
             region_to_tile=region_to_rasterise,
             get_extents=True,
-            catchment_geometry=self.catchment_geometry,
+            crs=options["crs"],
         )
 
         # Load LiDAR points from pipeline
@@ -2227,11 +2229,11 @@ class RoughnessDem(LidarBase):
 def read_file_with_pdal(
     lidar_file: typing.Union[str, pathlib.Path],
     region_to_tile: geopandas.GeoDataFrame,
-    catchment_geometry: geometry.CatchmentGeometry,
+    crs: dict,
     source_crs: dict = None,
     get_extents: bool = False,
 ):
-    """Read a tile file in using PDAL"""
+    """Read a tile file in using PDAL with input and output CRS specified."""
 
     # Define instructions for loading in LiDAR
     pdal_pipeline_instructions = [{"type": "readers.las", "filename": str(lidar_file)}]
@@ -2242,17 +2244,18 @@ def read_file_with_pdal(
         pdal_pipeline_instructions.append(
             {
                 "type": "filters.reprojection",
-                "out_srs": f"EPSG:{catchment_geometry.crs['horizontal']}+"
-                + f"{catchment_geometry.crs['vertical']}",
+                "out_srs": f"EPSG:{crs['horizontal']}+"
+                f"{crs['vertical']}",
             }
         )
     else:
         pdal_pipeline_instructions.append(
             {
                 "type": "filters.reprojection",
-                "in_srs": f"EPSG:{source_crs['horizontal']}+{source_crs['vertical']}",
-                "out_srs": f"EPSG:{catchment_geometry.crs['horizontal']}+"
-                + f"{catchment_geometry.crs['vertical']}",
+                "in_srs": f"EPSG:{source_crs['horizontal']}+"
+                f"{source_crs['vertical']}",
+                "out_srs": f"EPSG:{crs['horizontal']}+"
+                f"{crs['vertical']}",
             }
         )
     # Add instructions for clip within either the catchment, or the land and foreshore
@@ -2442,10 +2445,10 @@ def load_tiles_in_chunk(
     lidar_files: typing.List[pathlib.Path],
     source_crs: dict,
     chunk_region_to_tile: geopandas.GeoDataFrame,
-    catchment_geometry: geometry.CatchmentGeometry,
+    crs: dict,
 ):
-    """Read in all LiDAR files within the chunked region - clipped to within the region
-    within which to rasterise."""
+    """Read in all LiDAR files within the chunked region - clipped to within
+    the region within which to rasterise."""
 
     logging.info(f"Reading all {len(lidar_files)} files in chunk.")
 
@@ -2461,7 +2464,7 @@ def load_tiles_in_chunk(
             lidar_file=lidar_file,
             region_to_tile=chunk_region_to_tile,
             source_crs=source_crs,
-            catchment_geometry=catchment_geometry,
+            crs=crs,
             get_extents=False,
         )
         lidar_points.append(pdal_pipeline.arrays[0])
