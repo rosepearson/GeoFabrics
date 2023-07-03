@@ -133,7 +133,7 @@ class ProcessorRemoteTilesWestportTest(unittest.TestCase):
     def test_correct_dataset(self):
         """A test to see if the correct dataset is downloaded"""
 
-        dataset_dir = self.cache_dir / self.DATASET
+        dataset_dir = self.cache_dir / "downloads" / "lidar" / self.DATASET
 
         # Check the right dataset is downloaded - self.DATASET
         self.assertEqual(
@@ -161,7 +161,7 @@ class ProcessorRemoteTilesWestportTest(unittest.TestCase):
     def test_correct_files_downloaded(self):
         """A test to see if all expected dataset files are downloaded"""
 
-        dataset_dir = self.cache_dir / self.DATASET
+        dataset_dir = self.cache_dir / "downloads" / "lidar" / self.DATASET
         downloaded_files = [dataset_dir / file for file in self.FILE_SIZES.keys()]
 
         # Check files are correct
@@ -184,7 +184,7 @@ class ProcessorRemoteTilesWestportTest(unittest.TestCase):
     def test_correct_file_size(self):
         """A test to see if all expected dataset files are of the right size"""
 
-        dataset_dir = self.cache_dir / self.DATASET
+        dataset_dir = self.cache_dir / "downloads" / "lidar" / self.DATASET
         downloaded_files = [dataset_dir / file for file in self.FILE_SIZES.keys()]
 
         # Check sizes are correct

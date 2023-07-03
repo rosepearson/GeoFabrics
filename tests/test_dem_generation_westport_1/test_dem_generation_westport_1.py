@@ -47,7 +47,8 @@ class Test(unittest.TestCase):
 
     # The expected datasets and files to be downloaded - used for comparison in the
     # later tests
-    DATASETS = ["NZ20_Westport", "vector"]
+    DATATYPES = ["lidar", "vector"]
+    DATASET = "NZ20_Westport"
     LIDAR_SIZES = {
         "CL2_BR20_2020_1000_4012.laz": 2636961,
         "CL2_BR20_2020_1000_4013.laz": 3653378,
@@ -56,7 +57,7 @@ class Test(unittest.TestCase):
         "CL2_BR20_2020_1000_4212.laz": 8340310,
         "CL2_BR20_2020_1000_4213.laz": 6094309,
         "CL2_BR20_2020_1000_4214.laz": 8492543,
-        DATASETS[0] + "_TileIndex.zip": 1125874,
+        DATASET + "_TileIndex.zip": 1125874,
     }
 
     @classmethod
@@ -154,7 +155,7 @@ class Test(unittest.TestCase):
     def test_correct_datasets(self):
         """A test to see if the correct datasets were downloaded"""
 
-        dataset_dirs = [self.cache_dir / dataset for dataset in self.DATASETS]
+        dataset_dirs = [self.cache_dir / "downloads" / dataset for dataset in self.DATATYPES]
 
         # Check the right dataset is downloaded - self.DATASET
         self.assertEqual(
@@ -188,7 +189,7 @@ class Test(unittest.TestCase):
     def test_correct_lidar_files_downloaded(self):
         """A test to see if all expected LiDAR dataset files are downloaded"""
 
-        dataset_dir = self.cache_dir / self.DATASETS[0]
+        dataset_dir = self.cache_dir / "downloads" / "lidar" / self.DATASET
         downloaded_files = [dataset_dir / file for file in self.LIDAR_SIZES.keys()]
         for file in downloaded_files:
             print(f"{file.name} of size {file.stat().st_size}")
@@ -210,7 +211,7 @@ class Test(unittest.TestCase):
     def test_correct_lidar_file_size(self):
         """A test to see if all expected LiDAR dataset files are of the right size"""
 
-        dataset_dir = self.cache_dir / self.DATASETS[0]
+        dataset_dir = self.cache_dir / "downloads" / "lidar" / self.DATASET
         downloaded_files = [dataset_dir / file for file in self.LIDAR_SIZES.keys()]
 
         # Check sizes are correct
