@@ -1681,7 +1681,7 @@ class RawDem(LidarBase):
         # TODO incorporate this in the loop before merging?
         dem["lidar_source"] = dem.lidar_source.where(
             dem.data_source == self.SOURCE_CLASSIFICATION["LiDAR"],
-            dataset_mapping["no LiDAR"]
+            dataset_mapping["no LiDAR"],
         )
 
         # set any offshore values to ocean assuming drop offshore is selected
