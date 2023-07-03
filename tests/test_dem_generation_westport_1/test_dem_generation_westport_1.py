@@ -155,7 +155,9 @@ class Test(unittest.TestCase):
     def test_correct_datasets(self):
         """A test to see if the correct datasets were downloaded"""
         downloads_dir = self.cache_dir / "downloads" / "lidar"
-        dataset_dirs = [self.cache_dir / "downloads" / dataset for dataset in self.DATATYPES]
+        dataset_dirs = [
+            self.cache_dir / "downloads" / dataset for dataset in self.DATATYPES
+        ]
 
         # Check the right dataset is downloaded - self.DATASET
         self.assertEqual(
