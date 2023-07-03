@@ -140,9 +140,9 @@ class Test(unittest.TestCase):
 
     def test_correct_datasets(self):
         """A test to see if the correct datasets were downloaded"""
-
+        downloads_dir = self.cache_dir / "downloads"
         dataset_dirs = [
-            self.cache_dir / "downloads" / dataset for dataset in self.DATATYPES
+            downloads_dir / dataset for dataset in self.DATATYPES
         ]
 
         # Check the right dataset is downloaded - self.DATASET
@@ -150,28 +150,27 @@ class Test(unittest.TestCase):
             len(
                 [
                     directory
-                    for directory in self.cache_dir.glob("*")
+                    for directory in downloads_dir.glob("*")
                     if directory.is_dir()
                 ]
             ),
-            len(dataset_dirs) + 1,
-            f"There should only be {len(dataset_dirs)} datasets named {dataset_dirs} "
-            f"and the results dir {self.results_dir}, but instead there are "
-            f" {len(list(self.cache_dir.glob('*/**')))} list "
-            f"{list(self.cache_dir.glob('*/**'))}",
+            len(dataset_dirs),
+            f"There should only be {len(dataset_dirs)} datasets named {dataset_dirs}, "
+            f"but instead there are {len(list(downloads_dir.glob('*/**')))} list "
+            f"{list(downloads_dir.glob('*/**'))}",
         )
 
         self.assertEqual(
             len(
                 [
                     file
-                    for file in self.cache_dir.iterdir()
+                    for file in downloads_dir.iterdir()
                     if file.is_dir() and file in dataset_dirs
                 ]
             ),
             len(dataset_dirs),
             f"Only the {dataset_dirs} directories should have been downloaded. Instead "
-            f"we have: {[file for file in self.cache_dir.iterdir() if file.is_dir()]}",
+            f"we have: {[file for file in downloads_dir.iterdir() if file.is_dir()]}",
         )
 
     def test_correct_lidar_files_downloaded(self):
