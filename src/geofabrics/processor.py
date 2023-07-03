@@ -879,7 +879,8 @@ class RawLidarDemGenerator(BaseProcessor):
         }
         cluster = distributed.LocalCluster(**cluster_kwargs)
         with cluster, distributed.Client(cluster) as client:
-            print(client)
+            print("Dask client:", client)
+            print("Dask dashboard:", client.dashboard_link)
 
             # compute and save raw DEM
             logging.info("In processor.DemGenerator - write out the raw DEM")
