@@ -140,8 +140,8 @@ class Test(unittest.TestCase):
 
     def test_correct_datasets(self):
         """A test to see if the correct datasets were downloaded"""
-        downloads_dir = self.cache_dir / "downloads" / "lidar"
-        dataset_dirs = [self.cache_dir / "downloads" / dataset for dataset in self.DATATYPES]
+        downloads_dir = self.cache_dir / "downloads"
+        dataset_dirs = [downloads_dir / dataset for dataset in self.DATATYPES]
 
         # Check the right dataset is downloaded - self.DATASET
         self.assertEqual(
@@ -154,8 +154,8 @@ class Test(unittest.TestCase):
             ),
             len(dataset_dirs),
             f"There should only be {len(dataset_dirs)} datasets named {dataset_dirs}, "
-            f"but instead there are {len(list(downloads_dir.glob('*/**')))} list "
-            f"{list(downloads_dir.glob('*/**'))}",
+            f"but instead there are {len(list(downloads_dir.glob('*')))} list "
+            f"{list(downloads_dir.glob('*'))}",
         )
 
         self.assertEqual(
