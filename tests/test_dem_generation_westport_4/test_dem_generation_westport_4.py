@@ -183,7 +183,7 @@ class Test(unittest.TestCase):
             len(list(dataset_dir.glob("*"))),
             len(downloaded_files),
             f"There should have been {len(downloaded_files)} files downloaded into the "
-            f"{self.DATASETS[0]} directory, instead there are "
+            f"{self.DATASET} directory, instead there are "
             f" {len(list(dataset_dir.glob('*')))} files/dirs in the directory",
         )
 
