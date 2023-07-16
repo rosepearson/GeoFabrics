@@ -132,36 +132,35 @@ class ProcessorRemoteTilesWestportTest(unittest.TestCase):
 
     def test_correct_dataset(self):
         """A test to see if the correct dataset is downloaded"""
-
-        dataset_dir = self.cache_dir / self.DATASET
+        downloads_dir = self.cache_dir / "downloads" / "lidar"
+        dataset_dir = downloads_dir / self.DATASET
 
         # Check the right dataset is downloaded - self.DATASET
         self.assertEqual(
-            len(list(self.cache_dir.glob("*/**"))),
-            2,
-            f"There should only be one dataset folder named {self.DATASET} as well as "
-            f"the generated results folder {self.results_dir} instead there are "
-            f"{len(list(self.cache_dir.glob('*/**')))} list "
-            f"{list(self.cache_dir.glob('*/**'))}",
+            len(list(downloads_dir.glob("*/**"))),
+            1,
+            f"There should only be one dataset folder named {self.DATASET} "
+            f"instead there are {len(list(downloads_dir.glob('*/**')))} list "
+            f"{list(downloads_dir.glob('*/**'))}",
         )
 
         self.assertEqual(
             len(
                 [
                     file
-                    for file in self.cache_dir.iterdir()
+                    for file in downloads_dir.iterdir()
                     if file.is_dir() and file == dataset_dir
                 ]
             ),
             1,
             f"Only the {self.DATASET} directory should have been downloaded. Instead we"
-            f" have: {[file for file in self.cache_dir.iterdir() if file.is_dir()]}",
+            f" have: {[file for file in downloads_dir.iterdir() if file.is_dir()]}",
         )
 
     def test_correct_files_downloaded(self):
         """A test to see if all expected dataset files are downloaded"""
 
-        dataset_dir = self.cache_dir / self.DATASET
+        dataset_dir = self.cache_dir / "downloads" / "lidar" / self.DATASET
         downloaded_files = [dataset_dir / file for file in self.FILE_SIZES.keys()]
 
         # Check files are correct
@@ -184,7 +183,7 @@ class ProcessorRemoteTilesWestportTest(unittest.TestCase):
     def test_correct_file_size(self):
         """A test to see if all expected dataset files are of the right size"""
 
-        dataset_dir = self.cache_dir / self.DATASET
+        dataset_dir = self.cache_dir / "downloads" / "lidar" / self.DATASET
         downloaded_files = [dataset_dir / file for file in self.FILE_SIZES.keys()]
 
         # Check sizes are correct

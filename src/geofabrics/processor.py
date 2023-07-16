@@ -73,6 +73,7 @@ class BaseProcessor(abc.ABC):
                 "raw_dem": "raw_dem.nc",
                 "raw_dem_extents": "raw_extents.geojson",
                 "subfolder": "results",
+                "downloads": "downloads",
             },
         )
 
@@ -88,9 +89,17 @@ class BaseProcessor(abc.ABC):
             if "subfolder" in path_instructions
             else defaults["subfolder"]
         )
-
+        # Return the subfolder outputs folder
         if key == "subfolder":
             return local_cache / subfolder
+        # return the downloads cache folder
+        if key == "downloads":
+            downloads = (
+                path_instructions["downloads"]
+                if "downloads" in path_instructions
+                else defaults["downloads"]
+            )
+            return local_cache / downloads
         # return the full path of the specified key
         if key in path_instructions:
             # check if a list or single path
@@ -136,6 +145,7 @@ class BaseProcessor(abc.ABC):
             "raw_dem",
             "subfolder",
             "result_geofabric",
+            "downloads",
         ]
 
         if key in self.instructions["data_paths"]:
@@ -368,8 +378,9 @@ class BaseProcessor(abc.ABC):
             return
         # Check the instructions for vector data hosted in the supported vector data
         # services: LINZ and LRIS
-        cache_dir = pathlib.Path(self.get_instruction_path("local_cache"))
-        subfolder = self.get_instruction_path("subfolder").relative_to(cache_dir)
+        base_dir = pathlib.Path(self.get_instruction_path("local_cache"))
+        subfolder = self.get_instruction_path("subfolder").relative_to(base_dir)
+        cache_dir = pathlib.Path(self.get_instruction_path("downloads"))
         bounding_polygon = (
             self.catchment_geometry.catchment
             if self.catchment_geometry is not None
@@ -569,7 +580,7 @@ class BaseProcessor(abc.ABC):
                 else None
             )
             self.lidar_fetcher = geoapis.lidar.OpenTopography(
-                cache_path=self.get_instruction_path("local_cache"),
+                cache_path=self.get_instruction_path("downloads") / "lidar",
                 search_polygon=search_polygon,
                 verbose=True,
                 download_limit_gbytes=self.get_instruction_general(

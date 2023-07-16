@@ -43,12 +43,13 @@ class Test(unittest.TestCase):
 
     # The expected datasets and files to be downloaded - used for comparison in the
     # later tests
-    DATASETS = ["NZ20_Westport", "vector", "raster"]
+    DATATYPES = ["lidar", "vector", "raster"]
+    DATASET = "NZ20_Westport"
     LIDAR_SIZES = {
         "CL2_BR21_2020_1000_4704.laz": 20851153,
         "CL2_BR21_2020_1000_4705.laz": 19749374,
         "CL2_BR21_2020_1000_4804.laz": 18379794,
-        DATASETS[0] + "_TileIndex.zip": 1125874,
+        DATASET + "_TileIndex.zip": 1125874,
     }
 
     @classmethod
@@ -139,42 +140,41 @@ class Test(unittest.TestCase):
 
     def test_correct_datasets(self):
         """A test to see if the correct datasets were downloaded"""
-
-        dataset_dirs = [self.cache_dir / dataset for dataset in self.DATASETS]
+        downloads_dir = self.cache_dir / "downloads"
+        dataset_dirs = [downloads_dir / dataset for dataset in self.DATATYPES]
 
         # Check the right dataset is downloaded - self.DATASET
         self.assertEqual(
             len(
                 [
                     directory
-                    for directory in self.cache_dir.glob("*")
+                    for directory in downloads_dir.glob("*")
                     if directory.is_dir()
                 ]
             ),
-            len(dataset_dirs) + 1,
-            f"There should only be {len(dataset_dirs)} datasets named {dataset_dirs} "
-            f"and the results dir {self.results_dir}, but instead there are "
-            f" {len(list(self.cache_dir.glob('*/**')))} list "
-            f"{list(self.cache_dir.glob('*/**'))}",
+            len(dataset_dirs),
+            f"There should only be {len(dataset_dirs)} datasets named {dataset_dirs}, "
+            f"but instead there are {len(list(downloads_dir.glob('*')))} list "
+            f"{list(downloads_dir.glob('*'))}",
         )
 
         self.assertEqual(
             len(
                 [
                     file
-                    for file in self.cache_dir.iterdir()
+                    for file in downloads_dir.iterdir()
                     if file.is_dir() and file in dataset_dirs
                 ]
             ),
             len(dataset_dirs),
             f"Only the {dataset_dirs} directories should have been downloaded. Instead "
-            f"we have: {[file for file in self.cache_dir.iterdir() if file.is_dir()]}",
+            f"we have: {[file for file in downloads_dir.iterdir() if file.is_dir()]}",
         )
 
     def test_correct_lidar_files_downloaded(self):
         """A test to see if all expected LiDAR dataset files are downloaded"""
 
-        dataset_dir = self.cache_dir / self.DATASETS[0]
+        dataset_dir = self.cache_dir / "downloads" / "lidar" / self.DATASET
         downloaded_files = [dataset_dir / file for file in self.LIDAR_SIZES.keys()]
         for file in downloaded_files:
             print(f"{file.name} of size {file.stat().st_size}")
@@ -183,7 +183,7 @@ class Test(unittest.TestCase):
             len(list(dataset_dir.glob("*"))),
             len(downloaded_files),
             f"There should have been {len(downloaded_files)} files downloaded into the "
-            f"{self.DATASETS[0]} directory, instead there are "
+            f"{self.DATASET} directory, instead there are "
             f" {len(list(dataset_dir.glob('*')))} files/dirs in the directory",
         )
 
@@ -196,7 +196,7 @@ class Test(unittest.TestCase):
     def test_correct_lidar_file_size(self):
         """A test to see if all expected LiDAR dataset files are of the right size"""
 
-        dataset_dir = self.cache_dir / self.DATASETS[0]
+        dataset_dir = self.cache_dir / "downloads" / "lidar" / self.DATASET
         downloaded_files = [dataset_dir / file for file in self.LIDAR_SIZES.keys()]
 
         # Check sizes are correct

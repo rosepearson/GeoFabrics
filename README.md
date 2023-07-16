@@ -4,6 +4,8 @@
 
 The `geofabrics` package includes routines and classes for combining point (i.e. LiDAR), vector (i.e. catchment of interest, infrastructure), and raster (i.e. reference DEM) to generate a hydrologically conditioned raster.
 
+Preprint of the package and methodogy can be found at: [https://dx.doi.org/10.2139/ssrn.4463610](https://dx.doi.org/10.2139/ssrn.4463610)
+
 ## Installation
 `geofabrics` is avaliable on [conda-forge](https://anaconda.org/conda-forge/geofabrics) and [PyPI](https://pypi.org/project/geofabrics/). Conda is recommended due to difficulties installing geopandas (a dependency) with pip on Windows. See the [Wiki Install Instructions](https://github.com/rosepearson/GeoFabrics/wiki/Package-Install-Instructions) for more information.
 
