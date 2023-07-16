@@ -1083,9 +1083,15 @@ class LidarBase(DemBase):
             tile_index_extents = tile_index_extents.to_crs(
                 self.catchment_geometry.crs["horizontal"]
             )
-            tile_index_extents = geopandas.sjoin(
-                tile_index_extents, self.catchment_geometry.catchment
-            )
+            # ensure there is no overlap in the name columns
+            catchment = self.catchment_geometry.catchment.copy(deep=True)
+            if "filename" in catchment.columns:
+                catchment = catchment.drop(columns=["filename"])
+            elif "file_name" in catchment.columns:
+                catchment = catchment.drop(columns=["file_name"])
+            elif "name" in catchment.columns:
+                catchment = catchment.drop(columns=["name"])
+            tile_index_extents = geopandas.sjoin(tile_index_extents, catchment)
             tile_index_extents = tile_index_extents.reset_index(drop=True)
 
             column_names = tile_index_extents.columns
@@ -1126,14 +1132,17 @@ class LidarBase(DemBase):
                     "horizontal and vertical CRS need to be defined. The source_crs "
                     f"specified is: {self.source_crs} for {dataset_name}"
                 )
-            # Check some LiDAR files are soecified
+            # Check some LiDAR files are specified
             lidar_files = lidar_datasets_info[dataset_name]["file_paths"]
-            assert len(lidar_files) >= 1, "There are no LiDAR files specified"
+            assert len(lidar_files) >= 1, (
+                "There are no LiDAR files specified in dataset: " f"{dataset_name}"
+            )
             # Check for valid combination of chunk_size, lidar_files and tile_index_file
             if chunk_size is None:
-                assert (
-                    len(lidar_files) == 1
-                ), "If there is no chunking there must be only one LiDAR file"
+                assert len(lidar_files) == 1, (
+                    "If there is no chunking there must be only one LiDAR file. This "
+                    f"isn't the case in dataset {dataset_name}"
+                )
             else:
                 assert (
                     chunk_size > 0 and type(chunk_size) is int

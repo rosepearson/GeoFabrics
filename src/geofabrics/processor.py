@@ -1545,7 +1545,10 @@ class RiverBathymetryGenerator(BaseProcessor):
         bathy_apis = None
         if "bathymetry_contours" in instruction_paths:
             bathy_data_paths = instruction_paths.pop("bathymetry_contours")
-        if "bathymetry_contours" in self.instructions["datasets"]["vector"]["linz"]:
+        if (
+            "vector" in self.instructions["datasets"]
+            and "bathymetry_contours" in self.instructions["datasets"]["vector"]["linz"]
+        ):
             bathy_apis = self.instructions["datasets"]["vector"]["linz"].pop(
                 "bathymetry_contours"
             )
