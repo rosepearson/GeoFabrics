@@ -978,7 +978,6 @@ class LidarBase(DemBase):
 
         super(LidarBase, self).__init__(
             catchment_geometry=catchment_geometry,
-            extents=None,
         )
 
     def __del__(self):
