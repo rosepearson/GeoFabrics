@@ -71,7 +71,6 @@ class BaseProcessor(abc.ABC):
                 "result_dem": "generated_dem.nc",
                 "result_geofabric": "generated_geofabric.nc",
                 "raw_dem": "raw_dem.nc",
-                "raw_dem_extents": "raw_extents.geojson",
                 "subfolder": "results",
             },
         )
@@ -132,7 +131,6 @@ class BaseProcessor(abc.ABC):
 
         defaults = [
             "result_dem",
-            "raw_dem_extents",
             "raw_dem",
             "subfolder",
             "result_geofabric",
@@ -811,7 +809,7 @@ class RawLidarDemGenerator(BaseProcessor):
         self.create_results_folder()
 
         # Only include data in addition to LiDAR if the area_threshold is not covered
-        area_threshold = 10.0 / 100  # Used to decide if bathymetry should be included
+        area_threshold = 10.0 / 100  # Used to decide if non-LiDAR data should be included
 
         # create the catchment geometry object
         self.catchment_geometry = self.create_catchment()
@@ -839,38 +837,7 @@ class RawLidarDemGenerator(BaseProcessor):
             metadata=self.create_metadata(),
         )  # Note must be called after all others if it is to be complete
 
-        # Load in coarse DEM if any significant land/foreshore not covered by LiDAR
-        if self.check_vector_or_raster(key="coarse_dems", api_type="raster"):
-            area_without_lidar = (
-                self.catchment_geometry.land_and_foreshore_without_lidar(
-                    self.raw_dem.extents
-                ).geometry.area.sum()
-            )
-            if (
-                area_without_lidar
-                > self.catchment_geometry.land_and_foreshore.area.sum() * area_threshold
-            ):
-                coarse_dem_paths = self.get_vector_or_raster_paths(
-                    key="coarse_dems", data_type="raster"
-                )
-
-                logging.info(f"Incorporating background DEM: {coarse_dem_paths}")
-
-                # Load in background DEM - cut away within the LiDAR extents
-                for coarse_dem_path in coarse_dem_paths:
-                    coarse_dem = dem.CoarseDem(
-                        dem_file=coarse_dem_path,
-                        catchment_geometry=self.catchment_geometry,
-                        set_foreshore=self.get_instruction_general(
-                            "drop_offshore_lidar"
-                        ),
-                        exclusion_extent=self.raw_dem.extents,
-                    )
-                    # Add the coarse DEM data where there's no LiDAR updating the extents
-                    if not coarse_dem.empty:
-                        self.raw_dem.add_coarse_dem(coarse_dem=coarse_dem)
-
-        # Setup Dask cluster and client
+        # Setup Dask cluster and client - LAZY SAVE LIDAR DEM
         cluster_kwargs = {
             "n_workers": self.get_processing_instructions("number_of_cores"),
             "threads_per_worker": 1,
@@ -883,20 +850,46 @@ class RawLidarDemGenerator(BaseProcessor):
             print("Dask dashboard:", client.dashboard_link)
 
             # compute and save raw DEM
-            logging.info("In processor.DemGenerator - write out the raw DEM")
+            logging.info("In processor.DemGenerator - write out the raw DEM "
+                         "from LiDAR")
             self.raw_dem.dem.to_netcdf(
                 self.get_instruction_path("raw_dem"), format="NETCDF4", engine="netcdf4"
             )
 
-        # save extends
-        if self.raw_dem.extents is not None:
-            logging.info("In processor.DemGenerator - write out the raw DEM extents")
-            self.raw_dem.extents.to_file(self.get_instruction_path("raw_dem_extents"))
-        else:
-            logging.warning(
-                "In processor.DemGenerator - no LiDAR extents exist so no extents file "
-                "written"
+        # Add a coarse DEM if significant area without LiDAR and a coarse DEM
+        if self.check_vector_or_raster(key="coarse_dems", api_type="raster"):
+            coarse_dem_paths = self.get_vector_or_raster_paths(
+                key="coarse_dems", data_type="raster"
             )
+
+            # Add coarse DEMs if there are any and if area
+            if self.raw_dem.add_coarse_dems(coarse_dem_paths=coarse_dem_paths,
+                                         area_threshold=area_threshold,
+                                         buffer_cells=5):
+
+                # TODO setup internals to chunked adding of coarse DEM values
+                logging.info("In processor.DemGenerator - yet to setup lazy "
+                             "save of the coarse DEM info")
+                # Setup Dask cluster and client - LAZY SAVE LIDAR & COARSE DEM
+                '''cluster_kwargs = {
+                    "n_workers": self.get_processing_instructions("number_of_cores"),
+                    "threads_per_worker": 1,
+                    "processes": True,
+                    "memory_limit": self.get_processing_instructions("memory_limit"),
+                }
+                cluster = distributed.LocalCluster(**cluster_kwargs)
+                with cluster, distributed.Client(cluster) as client:
+                    print("Dask client:", client)
+                    print("Dask dashboard:", client.dashboard_link)
+
+                    # compute and save raw DEM
+                    logging.info("In processor.DemGenerator - write out the "
+                                 "raw DEM with coarse DEM added")
+                    self.raw_dem.dem.to_netcdf(
+                        self.get_instruction_path("raw_dem"),
+                        format="NETCDF4",
+                        engine="netcdf4"
+                    )'''
 
         if self.debug:
             # Record the parameter used during execution - append to existing
@@ -1014,7 +1007,6 @@ class HydrologicDemGenerator(BaseProcessor):
         self.hydrologic_dem = dem.HydrologicallyConditionedDem(
             catchment_geometry=self.catchment_geometry,
             raw_dem_path=self.get_instruction_path("raw_dem"),
-            extents_path=self.get_instruction_path("raw_dem_extents"),
             interpolation_method=self.get_instruction_general("interpolation_method"),
         )
 
@@ -1549,14 +1541,10 @@ class RiverBathymetryGenerator(BaseProcessor):
             # Create the ground DEM file if this has not be created yet!
             print("Generating ground DEM.")
             instruction_paths["raw_dem"] = str(self.get_result_file_name(key="gnd_dem"))
-            instruction_paths["raw_dem_extents"] = str(
-                self.get_result_file_name(key="gnd_dem_extents")
-            )
             runner = RawLidarDemGenerator(self.instructions)
             runner.run()
             gnd_dem = runner.raw_dem.dem
             instruction_paths.pop("raw_dem")
-            instruction_paths.pop("raw_dem_extents")
         else:
             print("Loading ground DEM.")  # drop band added by rasterio.open()
             gnd_dem = rioxarray.rioxarray.open_rasterio(gnd_file, masked=True).squeeze(
@@ -1570,14 +1558,10 @@ class RiverBathymetryGenerator(BaseProcessor):
                 "lidar_classifications_to_keep"
             ] = self.get_bathymetry_instruction("veg_lidar_classifications_to_keep")
             instruction_paths["raw_dem"] = str(self.get_result_file_name(key="veg_dem"))
-            instruction_paths["raw_dem_extents"] = str(
-                self.get_result_file_name(key="veg_dem_extents")
-            )
             runner = RawLidarDemGenerator(self.instructions)
             runner.run()
             veg_dem = runner.raw_dem.dem
             instruction_paths.pop("raw_dem")
-            instruction_paths.pop("raw_dem_extents")
         else:
             print("Loading the vegetation DEM.")  # drop band added by rasterio.open()
             veg_dem = dem.rioxarray.rioxarray.open_rasterio(
@@ -2311,7 +2295,6 @@ class WaterwayBedElevationEstimator(BaseProcessor):
         # key to output name mapping
         name_dictionary = {
             "raw_dem": "waterways_raw_dem.nc",
-            "raw_dem_extents": "waterways_raw_extents.geojson",
             "open_polygon": "open_waterways_polygon.geojson",
             "open_elevation": "open_waterways_elevation.geojson",
             "closed_polygon": "closed_waterways_polygon.geojson",
@@ -2607,9 +2590,6 @@ class WaterwayBedElevationEstimator(BaseProcessor):
                 key="waterways_polygon"
             )
             dem_instruction_paths["raw_dem"] = self.get_result_file_name(key="raw_dem")
-            dem_instruction_paths["raw_dem_extents"] = self.get_result_file_name(
-                "raw_dem_extents"
-            )
 
             # Create the ground DEM file if this has not be created yet!
             print("Generating drain DEM.")

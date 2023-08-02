@@ -40,7 +40,7 @@ class CoarseDem:
         dem_file,
         catchment_geometry: geometry.CatchmentGeometry,
         set_foreshore: bool = True,
-        exclusion_extent: geopandas.GeoDataFrame = None,
+        extent: geopandas.GeoDataFrame = None,
     ):
         """Load in the coarse DEM, clip and extract points"""
 
@@ -54,7 +54,7 @@ class CoarseDem:
         self._extents = None
         self._points = None
 
-        self._set_up(exclusion_extent)
+        self._set_up(extent)
 
     def __del__(self):
         """Ensure the memory associated with netCDF files is properly freed."""
@@ -77,31 +77,41 @@ class CoarseDem:
         resolution = max(abs(resolution[0]), abs(resolution[1]))
         return resolution
 
-    def _set_up(self, exclusion_extent):
+    @property
+    def points(self) -> numpy.ndarray:
+        """The coarse DEM points after any extent or foreshore value
+        filtering."""
+
+        return self._points
+
+    @property
+    def extents(self) -> geopandas.GeoDataFrame:
+        """The extents for the coarse DEM"""
+
+        return self._extents
+
+    @property
+    def empty(self) -> bool:
+        """True if the DEM is empty"""
+
+        return self._points is None and self._dem is None
+
+    def _set_up(self, extent):
         """Set DEM CRS and trim the DEM to size"""
 
         self._dem.rio.set_crs(self.catchment_geometry.crs["horizontal"])
 
-        # Define a buffered land & foreshore
-        buffered_land_and_foreshore = geopandas.GeoDataFrame(
-            geometry=self.catchment_geometry.land_and_foreshore.buffer(
-                self.resolution * numpy.sqrt(2)
-            )
-        )
+        if extent is not None:
 
-        if exclusion_extent is not None:
-            # Remove any sub-pixel polygons
-            exclusion_extent = exclusion_extent[
-                exclusion_extent.area
-                > self.catchment_geometry.resolution
-                * self.catchment_geometry.resolution
-            ]
-            # Keep the coarse DEM where there's no LiDAR & trim outside buffered area
-            self._extents = buffered_land_and_foreshore.overlay(
-                exclusion_extent,
-                how="difference",
-            )
+            # Keep values where there's no LiDAR & trim outside buffered area
+            self._extents = extent
         else:
+            # Define a buffered land & foreshore
+            buffered_land_and_foreshore = geopandas.GeoDataFrame(
+                geometry=self.catchment_geometry.land_and_foreshore.buffer(
+                    self.resolution * numpy.sqrt(2)
+                )
+            )
             # If no LiDAR - only use the coarse DEM on land
             self._extents = buffered_land_and_foreshore
 
@@ -233,25 +243,6 @@ class CoarseDem:
         self._points["Y"][len(land_x) :] = foreshore_y
         self._points["Z"][len(land_x) :] = foreshore_z
 
-    @property
-    def points(self) -> numpy.ndarray:
-        """The coarse DEM points after any extent or foreshore value
-        filtering."""
-
-        return self._points
-
-    @property
-    def extents(self) -> geopandas.GeoDataFrame:
-        """The extents for the coarse DEM"""
-
-        return self._extents
-
-    @property
-    def empty(self) -> bool:
-        """True if the DEM is empty"""
-
-        return self._points is None and self._dem is None
-
 
 class DemBase(abc.ABC):
     """An abstract class to manage the different geofabric layers in a
@@ -293,17 +284,6 @@ class DemBase(abc.ABC):
         """Setup base DEM to add future tiles too"""
 
         self.catchment_geometry = catchment_geometry
-        self._extents = extents
-
-    @property
-    def extents(self):
-        """The combined extents for all added LiDAR tiles"""
-
-        if self._extents is None:
-            logging.warning(
-                "Warning in DenseDem.extents: No tiles with extents have been added yet"
-            )
-        return self._extents
 
     @property
     def dem(self) -> xarray.Dataset:
@@ -358,6 +338,54 @@ class DemBase(abc.ABC):
             dem.zo.rio.write_crs(crs_dict["horizontal"], inplace=True)
             dem.zo.rio.write_nodata(numpy.nan, encoded=True, inplace=True)
 
+    def _extents_from_mask(self, mask: numpy.ndarray, transform: dict):
+        """Define the spatial extents of the pixels in the DEM as defined by the mask
+        (i.e. what are the spatial extents of pixels in the DEM that are marked True in
+         the mask).
+
+        transform -> data_array.rio.transform()
+
+         Remove holes as these can cause self intersection warnings."""
+
+        dense_extents = [
+            shapely.geometry.shape(polygon[0])
+            for polygon in rasterio.features.shapes(numpy.uint8(mask))
+            if polygon[1] == 1.0
+        ]
+        dense_extents = shapely.ops.unary_union(dense_extents)
+
+        # Remove internal holes for select types as these may cause self-intersections
+        if type(dense_extents) is shapely.geometry.Polygon:
+            dense_extents = shapely.geometry.Polygon(dense_extents.exterior)
+        elif type(dense_extents) is shapely.geometry.MultiPolygon:
+            dense_extents = shapely.geometry.MultiPolygon(
+                [
+                    shapely.geometry.Polygon(polygon.exterior)
+                    for polygon in dense_extents.geoms
+                ]
+            )
+        # Convert into a Geopandas dataframe
+        dense_extents = geopandas.GeoDataFrame(
+            {"geometry": [dense_extents]}, crs=self.catchment_geometry.crs["horizontal"]
+        )
+
+        # Move from image to the dem space & buffer(0) to reduce self-intersections
+        dense_extents = dense_extents.affine_transform(
+            [
+                transform.a,
+                transform.b,
+                transform.d,
+                transform.e,
+                transform.xoff,
+                transform.yoff,
+            ]
+        ).buffer(0)
+
+        # And make our GeoSeries into a GeoDataFrame
+        dense_extents = geopandas.GeoDataFrame(geometry=dense_extents)
+
+        return dense_extents
+
 
 class HydrologicallyConditionedDem(DemBase):
     """A class to manage loading in an already created and saved dense DEM that has yet
@@ -376,14 +404,10 @@ class HydrologicallyConditionedDem(DemBase):
         self,
         catchment_geometry: geometry.CatchmentGeometry,
         raw_dem_path: typing.Union[str, pathlib.Path],
-        extents_path: typing.Union[str, pathlib.Path],
         interpolation_method: str,
     ):
         """Load in the extents and dense DEM. Ensure the dense DEM is clipped within the
         extents"""
-
-        # Load in dense DEM and extents
-        extents = geopandas.read_file(pathlib.Path(extents_path))
 
         # Read in the dense DEM raster - and free up file by performing a deep copy.
         raw_dem = rioxarray.rioxarray.open_rasterio(
@@ -398,17 +422,20 @@ class HydrologicallyConditionedDem(DemBase):
         # Ensure all values outside the exents are nan as that defines the dense extents
         # and clip the dense dem to the catchment extents to ensure performance
         raw_dem = raw_dem.rio.clip(catchment_geometry.catchment.geometry, drop=True)
-        raw_dem = raw_dem.rio.clip(extents.geometry, drop=False)
 
         # Setup the DenseDemBase class
         super(HydrologicallyConditionedDem, self).__init__(
             catchment_geometry=catchment_geometry,
-            extents=extents,
         )
 
         # Set attributes
         self._raw_dem = raw_dem
         self.interpolation_method = interpolation_method
+
+        # Calculate extents of pre-hydrological conditioning DEM
+        self._extents = self._extents_from_mask(
+            mask=numpy.logical_not(numpy.isnan(self._raw_dem.z.data)),
+            transform=self._raw_dem.z.rio.transform())
 
         # DEMs for hydrologically conditioning
         self._offshore_dem = None
@@ -971,53 +998,6 @@ class LidarBase(DemBase):
         self._dem = self._ensure_positive_indexing(self._dem)
         return self._dem
 
-    def _extents_from_mask(self, mask: numpy.ndarray, dem: xarray.Dataset):
-        """Define the spatial extents of the pixels in the DEM as defined by the mask
-        (i.e. what are the spatial extents of pixels in the DEM that are marked True in
-         the mask).
-
-         Remove holes as these can cause self intersection warnings."""
-
-        dense_extents = [
-            shapely.geometry.shape(polygon[0])
-            for polygon in rasterio.features.shapes(numpy.uint8(mask))
-            if polygon[1] == 1.0
-        ]
-        dense_extents = shapely.ops.unary_union(dense_extents)
-
-        # Remove internal holes for select types as these may cause self-intersections
-        if type(dense_extents) is shapely.geometry.Polygon:
-            dense_extents = shapely.geometry.Polygon(dense_extents.exterior)
-        elif type(dense_extents) is shapely.geometry.MultiPolygon:
-            dense_extents = shapely.geometry.MultiPolygon(
-                [
-                    shapely.geometry.Polygon(polygon.exterior)
-                    for polygon in dense_extents.geoms
-                ]
-            )
-        # Convert into a Geopandas dataframe
-        dense_extents = geopandas.GeoDataFrame(
-            {"geometry": [dense_extents]}, crs=self.catchment_geometry.crs["horizontal"]
-        )
-
-        # Move from image to the dem space & buffer(0) to reduce self-intersections
-        dense_dem_affine = dem.z.rio.transform()
-        dense_extents = dense_extents.affine_transform(
-            [
-                dense_dem_affine.a,
-                dense_dem_affine.b,
-                dense_dem_affine.d,
-                dense_dem_affine.e,
-                dense_dem_affine.xoff,
-                dense_dem_affine.yoff,
-            ]
-        ).buffer(0)
-
-        # And make our GeoSeries into a GeoDataFrame
-        dense_extents = geopandas.GeoDataFrame(geometry=dense_extents)
-
-        return dense_extents
-
     def _set_up_chunks(self, chunk_size: int) -> (list, list):
         """Define the chunked coordinates to cover the catchment"""
 
@@ -1391,8 +1371,6 @@ class RawDem(LidarBase):
 
         self._dem = dem
         # Create a polygon defining the region where there are dense DEM values
-        # TODO move this computation after saving _dem on disk in processor.py
-        # self._extents = self._calculate_raw_extents()
 
     def _add_tiled_lidar_chunked(
         self,
@@ -1704,12 +1682,81 @@ class RawDem(LidarBase):
 
         return dem
 
+    def add_coarse_dems(self, coarse_dem_paths: list,
+                        area_threshold: float,
+                        buffer_cells: int):
+        """Check if area requring infill, if so iterate through coarse DEMs
+        adding missing detail.
+
+        Currently doesn't use chunking - this may be required if a large area is covered
+        by the coarse DEM.
+
+        Parameters
+        ----------
+
+            coarse_dem_paths - list of coarse DEM file paths to try add in turn
+            area_threshold - the ratio of area without LiDAR required to for
+                coarse DEMs to be used.
+            buffer_cells - the number of empty cells to keep around LiDAR cells
+                for interpolation after the coarse DEM added to ensure a smooth
+                boundary.
+
+        """
+        # TODO in future check if no_data and load in the coarse DEMs chunk by
+        # chunk
+        logging.info("Consider adding coarse DEMs to fill areas outside the "
+                     "LiDAR extents")
+
+        ## Determine the areas without LiDAR meeting the area threshold size
+        # Get areas with LiDAR with the cell buffer added
+        data_extents = self._extents_from_mask(
+            mask=numpy.logical_not(numpy.isnan(self.dem.z.data)),
+            transform=self.dem.z.rio.transform()).buffer(
+                buffer_cells * self.catchment_geometry.resolution)
+        # Get areas without LiDAR data in the land and foreshore region
+        data_extents = data_extents.clip(
+            self.catchment_geometry.land_and_foreshore, keep_geom_type=True)
+        no_data_extents = self.catchment_geometry.land_and_foreshore.overlay(
+            data_extents,
+            how="difference",
+        )
+        # Keep areas without LiDAR data above the area threshold
+        no_data_extents = no_data_extents.explode(index_parts=False)
+        no_data_extents = no_data_extents[
+            no_data_extents.area > area_threshold
+            ]
+
+        # Check if enough without LiDAR to use coarse DEMs
+        if len(no_data_extents) == 0:
+            logging.INFO(f"Not on land areas greater than {area_threshold} "
+                         "without LiDAR values. Ignoring all coarse DEMs.")
+            return False
+
+        # Iterate through DEMs
+        return_value = False
+        logging.info(f"Incorporating coarse DEMs: {coarse_dem_paths}")
+        for coarse_dem_path in coarse_dem_paths:
+            logging.info(f"\tLoad coarse DEM: {coarse_dem_path}")
+            coarse_dem = CoarseDem(
+                dem_file=coarse_dem_path,
+                catchment_geometry=self.catchment_geometry,
+                set_foreshore=self.drop_offshore_lidar,
+                extents=no_data_extents,
+            )
+            # Add the coarse DEM data where there's no LiDAR updating the extents
+            if not coarse_dem.empty:
+                logging.info("\t\tInclude coarse DEM")
+                self.add_coarse_dem(coarse_dem=coarse_dem)
+                return_value = True
+        return return_value
+
     def add_coarse_dem(self, coarse_dem: CoarseDem):
         """Fill gaps in dense DEM from areas with no LiDAR with the coarse DEM.
         Perform linear interpolation.
 
-        Currently doesn't use chunking - this may be required if a large area is covered
-        by the coarse DEM."""
+        # TODO
+        Currently doesn't use chunking - this may be required if a large area
+        is covered by the coarse DEM."""
 
         logging.info("Add a coarse DEM to fill areas outside the LiDAR extents")
         # Only rasterise on land/foreshore and outside where there is LiDAR
