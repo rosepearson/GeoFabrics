@@ -279,7 +279,6 @@ class DemBase(abc.ABC):
     def __init__(
         self,
         catchment_geometry: geometry.CatchmentGeometry,
-        extents: geopandas.GeoDataFrame,
     ):
         """Setup base DEM to add future tiles too"""
 
