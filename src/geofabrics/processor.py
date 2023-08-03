@@ -932,7 +932,7 @@ class HydrologicDemGenerator(BaseProcessor):
         # Load in bathymetry and interpolate offshore if significant offshore is not
         # covered by LiDAR
         area_without_lidar = self.catchment_geometry.offshore_without_lidar(
-            self.hydrologic_dem.extents
+            self.hydrologic_dem.raw_extents
         ).geometry.area.sum()
         if (
             self.check_vector_or_raster(key="bathymetry_contours", api_type="vector")
@@ -956,7 +956,7 @@ class HydrologicDemGenerator(BaseProcessor):
                 bathy_contour_dirs[0],
                 self.catchment_geometry,
                 z_label=self.get_instruction_general("bathymetry_contours_z_label"),
-                exclusion_extent=self.hydrologic_dem.extents,
+                exclusion_extent=self.hydrologic_dem.raw_extents,
             )
 
             # interpolate

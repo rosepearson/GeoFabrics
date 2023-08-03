@@ -432,7 +432,7 @@ class HydrologicallyConditionedDem(DemBase):
         self.interpolation_method = interpolation_method
 
         # Calculate extents of pre-hydrological conditioning DEM
-        self._extents = self._extents_from_mask(
+        self._raw_extents = self._extents_from_mask(
             mask=numpy.logical_not(numpy.isnan(self._raw_dem.z.data)),
             transform=self._raw_dem.z.rio.transform())
 
@@ -464,6 +464,11 @@ class HydrologicallyConditionedDem(DemBase):
         if self._dem is not None:
             self._dem.close()
             del self._dem
+
+    @property
+    def raw_extents(self):
+        """Return the combined DEM from tiles and any interpolated offshore values"""
+        return self._raw_extents
 
     @property
     def dem(self):
@@ -542,7 +547,7 @@ class HydrologicallyConditionedDem(DemBase):
         )
 
         offshore_dense_data_edge = self.catchment_geometry.offshore_dense_data_edge(
-            self._extents
+            self._raw_extents
         )
         offshore_edge_dem = self._raw_dem.rio.clip(offshore_dense_data_edge.geometry)
 
@@ -673,7 +678,7 @@ class HydrologicallyConditionedDem(DemBase):
             offshore_points = numpy.concatenate([offshore_edge_points, bathy_points])
         # Setup the empty offshore area ready for interpolation
         offshore_no_dense_data = self.catchment_geometry.offshore_no_dense_data(
-            self._extents
+            self._raw_extents
         )
         self._offshore_dem = self._raw_dem.rio.clip(
             self.catchment_geometry.offshore.geometry
