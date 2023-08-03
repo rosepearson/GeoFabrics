@@ -890,6 +890,12 @@ class RawLidarDemGenerator(BaseProcessor):
                         format="NETCDF4",
                         engine="netcdf4"
                     )'''
+                # compute and save raw DEM
+                logging.info("In processor.DemGenerator - write out the raw DEM "
+                             "with coarse DEM information added")
+                self.raw_dem.dem.to_netcdf(
+                    self.get_instruction_path("raw_dem"), format="NETCDF4", engine="netcdf4"
+                )
 
         if self.debug:
             # Record the parameter used during execution - append to existing
