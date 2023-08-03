@@ -855,7 +855,7 @@ class RawLidarDemGenerator(BaseProcessor):
             self.raw_dem.dem.to_netcdf(
                 self.get_instruction_path("raw_dem"), format="NETCDF4", engine="netcdf4"
             )
-
+            
         # Add a coarse DEM if significant area without LiDAR and a coarse DEM
         if self.check_vector_or_raster(key="coarse_dems", api_type="raster"):
             coarse_dem_paths = self.get_vector_or_raster_paths(

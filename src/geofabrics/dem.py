@@ -1370,9 +1370,9 @@ class RawDem(LidarBase):
 
             # Set any positive LiDAR foreshore points to zero
             dem["z"] = dem.z.where(mask & (dem.z.data > 0), 0)
-
+        # Rewrite CRS and other conventions in place as where seems to drop them
+        self._write_netcdf_conventions_in_place(dem, self.catchment_geometry.crs)
         self._dem = dem
-        # Create a polygon defining the region where there are dense DEM values
 
     def _add_tiled_lidar_chunked(
         self,
@@ -1685,7 +1685,6 @@ class RawDem(LidarBase):
                 ocean_mask,
                 dataset_mapping["no LiDAR"],
             )
-
         return dem
 
     def add_coarse_dems(self, coarse_dem_paths: list,
