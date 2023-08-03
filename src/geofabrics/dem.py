@@ -1368,9 +1368,8 @@ class RawDem(LidarBase):
                 )
             )
 
-            # get coarse DEM points on the foreshore - with any positive set to zero
-            # TODO this will liekely fail with Dask-based xarray
-            dem.z.data[mask & (dem.z.data > 0)] = 0
+            # Set any positive LiDAR foreshore points to zero
+            dem["z"] = dem.z.where(mask & (dem.z.data > 0), 0)
 
         self._dem = dem
         # Create a polygon defining the region where there are dense DEM values
@@ -1721,8 +1720,8 @@ class RawDem(LidarBase):
             transform=self.dem.z.rio.transform()).buffer(
                 buffer_cells * self.catchment_geometry.resolution)
         # Get areas without LiDAR data in the land and foreshore region
-        data_extents = data_extents.clip(
-            self.catchment_geometry.land_and_foreshore, keep_geom_type=True)
+        data_extents = geopandas.GeoDataFrame(geometry=data_extents.clip(
+            self.catchment_geometry.land_and_foreshore, keep_geom_type=True))
         no_data_extents = self.catchment_geometry.land_and_foreshore.overlay(
             data_extents,
             how="difference",
@@ -1748,28 +1747,23 @@ class RawDem(LidarBase):
                 dem_file=coarse_dem_path,
                 catchment_geometry=self.catchment_geometry,
                 set_foreshore=self.drop_offshore_lidar,
-                extents=no_data_extents,
+                extent=no_data_extents,
             )
             # Add the coarse DEM data where there's no LiDAR updating the extents
             if not coarse_dem.empty:
                 logging.info("\t\tInclude coarse DEM")
-                self.add_coarse_dem(coarse_dem=coarse_dem)
+                self.add_coarse_dem(coarse_dem=coarse_dem,
+                                    region_to_rasterise=no_data_extents)
                 return_value = True
         return return_value
 
-    def add_coarse_dem(self, coarse_dem: CoarseDem):
+    def add_coarse_dem(self, coarse_dem: CoarseDem, region_to_rasterise: geopandas.GeoDataFrame):
         """Fill gaps in dense DEM from areas with no LiDAR with the coarse DEM.
         Perform linear interpolation.
 
         # TODO
         Currently doesn't use chunking - this may be required if a large area
         is covered by the coarse DEM."""
-
-        logging.info("Add a coarse DEM to fill areas outside the LiDAR extents")
-        # Only rasterise on land/foreshore and outside where there is LiDAR
-        region_to_rasterise = self.catchment_geometry.land_and_foreshore.overlay(
-            self._extents, how="difference"
-        )
 
         # Create a mask of area not covered by LiDAR (excludes holes in LiDAR tiles)
         z = self._dem.z.copy(deep=True)
@@ -1808,9 +1802,10 @@ class RawDem(LidarBase):
         self._dem.z.data[mask] = z_flat
         # Update the data source layer - where defined by the coarse DEM
         # and set foreshore
-        self._dem.data_source.data[
-            mask & numpy.logical_not(numpy.isnan(self._dem.z.data))
-        ] = self.SOURCE_CLASSIFICATION["coarse DEM"]
+        self._dem["data_source"] = self._dem.data_source.where(
+            mask & numpy.logical_not(numpy.isnan(self._dem.z.data)),
+            self.SOURCE_CLASSIFICATION["coarse DEM"],
+        )
         if (
             self.catchment_geometry.foreshore.area.sum() > 0
             and coarse_dem.set_foreshore
@@ -1823,11 +1818,10 @@ class RawDem(LidarBase):
                     ).data
                 )
             )
-            self._dem.data_source.data[
-                mask & foreshore_mask
-            ] = self.SOURCE_CLASSIFICATION["ocean bathymetry"]
-        # Update the dense DEM extents
-        self._extents = self._calculate_raw_extents()
+            self._dem["data_source"] = self._dem.data_source.where(
+                mask & foreshore_mask,
+                self.SOURCE_CLASSIFICATION["ocean bathymetry"],
+            )
 
 
 class RoughnessDem(LidarBase):
