@@ -1647,20 +1647,20 @@ class RawDem(LidarBase):
         else:
             dem = rioxarray.merge.merge_datasets(dems, method="first")
 
+        ## After merging LiDAR datasets set remaining NaN to no data/LiDAR
         # data_source: set areas with no values to No Data
-        # TODO incorporate this in the loop before merging?
         dem["data_source"] = dem.data_source.where(
             dem.data_source.notnull(), self.SOURCE_CLASSIFICATION["no data"]
         )
 
         # lidar_source: Set areas with no LiDAR to "No LiDAR"
-        # TODO incorporate this in the loop before merging?
         dem["lidar_source"] = dem.lidar_source.where(
             dem.data_source == self.SOURCE_CLASSIFICATION["LiDAR"],
             dataset_mapping["no LiDAR"],
         )
 
         # set any offshore values to ocean assuming drop offshore is selected
+        # TODO - see why this step is here. Shouldn't z be set to NaN too?
         if (
             self.catchment_geometry.foreshore_and_offshore.area.sum() > 0
             and self.drop_offshore_lidar
@@ -1673,10 +1673,14 @@ class RawDem(LidarBase):
                     ).data
                 )
             )
-            dem.data_source.data[ocean_mask] = self.SOURCE_CLASSIFICATION[
-                "ocean bathymetry"
-            ]
-            dem.lidar_source.data[ocean_mask] = dataset_mapping["no LiDAR"]
+            dem["data_source"] = dem.data_source.where(
+                ocean_mask,
+                self.SOURCE_CLASSIFICATION["ocean bathymetry"],
+            )
+            dem["lidar_source"] = dem.lidar_source.where(
+                ocean_mask,
+                dataset_mapping["no LiDAR"],
+            )
 
         return dem
 
