@@ -434,7 +434,7 @@ class HydrologicallyConditionedDem(DemBase):
 
         # Calculate extents of pre-hydrological conditioning DEM
         self._raw_extents = self._extents_from_mask(
-            mask=numpy.logical_not(numpy.isnan(self._raw_dem.z.data)),
+            mask=self._raw_dem.z.notnull().data,
             transform=self._raw_dem.z.rio.transform())
 
         # DEMs for hydrologically conditioning
@@ -1652,7 +1652,7 @@ class RawDem(LidarBase):
         ## After merging LiDAR datasets set remaining NaN to no data/LiDAR
         # data_source: set areas with no values to No Data
         dem.data_source.data = xarray.where(
-            dem.data_source.notnull(), dem.data_source, self.SOURCE_CLASSIFICATION["no data"], 
+            dem.data_source.notnull(), dem.data_source, self.SOURCE_CLASSIFICATION["no data"],
             keep_attrs=True
         )
 
