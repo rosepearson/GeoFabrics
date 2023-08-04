@@ -1690,18 +1690,15 @@ class RawDem(LidarBase):
                      "LiDAR extents")
 
         ## Determine the areas without LiDAR meeting the area threshold size
-        # Get areas with LiDAR with the cell buffer added
+        # Generate a polygon of where there is LiDAR
         data_extents = self._extents_from_mask(
             mask=self.dem.z.notnull().data,
             transform=self.dem.z.rio.transform())
         data_extents = data_extents.buffer(buffer_cells * self.catchment_geometry.resolution)
-        # Get areas without LiDAR data in the land and foreshore region
-        data_extents = geopandas.GeoDataFrame(geometry=data_extents.clip(
-            self.catchment_geometry.land_and_foreshore, keep_geom_type=True))
-        no_data_extents = self.catchment_geometry.land_and_foreshore.overlay(
-            data_extents,
-            how="difference",
-        )
+        # Clip to within the full DEM extents
+        full_extents = self.catchment_geometry.land_and_foreshore.buffer(self.catchment_geometry.resolution / numpy.sqrt(2))
+        data_extents = geopandas.GeoDataFrame(geometry=data_extents.clip(full_extents, keep_geom_type=True))
+        no_data_extents = full_extents.overlay(data_extents, how="difference")
         # Keep areas without LiDAR data above the area threshold
         no_data_extents = no_data_extents.explode(index_parts=False)
         no_data_extents = no_data_extents[
