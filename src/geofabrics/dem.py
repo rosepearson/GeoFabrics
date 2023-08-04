@@ -303,6 +303,7 @@ class DemBase(abc.ABC):
         if y[0] > y[-1]:
             y = y[::-1]
         dem = dem.reindex(x=x, y=y)
+        dem.rio.write_transform(inplace=True)
         return dem
 
     @staticmethod
@@ -367,7 +368,7 @@ class DemBase(abc.ABC):
         dense_extents = geopandas.GeoDataFrame(
             {"geometry": [dense_extents]}, crs=self.catchment_geometry.crs["horizontal"]
         )
-        
+
         # Move from image to the dem space & buffer(0) to reduce self-intersections
         dense_extents = dense_extents.affine_transform(
             [
@@ -1693,24 +1694,19 @@ class RawDem(LidarBase):
         data_extents = self._extents_from_mask(
             mask=self.dem.z.notnull().data,
             transform=self.dem.z.rio.transform())
-        data_extents.to_file("/nesi/project/niwa03440/geofabrics/GeoFabrics/tests/test_dem_generation_local_1/data/results/extents1.geojson")
         data_extents = data_extents.buffer(buffer_cells * self.catchment_geometry.resolution)
-        data_extents.to_file("/nesi/project/niwa03440/geofabrics/GeoFabrics/tests/test_dem_generation_local_1/data/results/extents2.geojson")
         # Get areas without LiDAR data in the land and foreshore region
         data_extents = geopandas.GeoDataFrame(geometry=data_extents.clip(
             self.catchment_geometry.land_and_foreshore, keep_geom_type=True))
-        data_extents.to_file("/nesi/project/niwa03440/geofabrics/GeoFabrics/tests/test_dem_generation_local_1/data/results/extents3.geojson")
         no_data_extents = self.catchment_geometry.land_and_foreshore.overlay(
             data_extents,
             how="difference",
         )
-        no_data_extents.to_file("/nesi/project/niwa03440/geofabrics/GeoFabrics/tests/test_dem_generation_local_1/data/results/no_extents1.geojson")
         # Keep areas without LiDAR data above the area threshold
         no_data_extents = no_data_extents.explode(index_parts=False)
         no_data_extents = no_data_extents[
             no_data_extents.area > area_threshold
             ]
-        no_data_extents.to_file("/nesi/project/niwa03440/geofabrics/GeoFabrics/tests/test_dem_generation_local_1/data/results/no_extents2.geojson")
 
         # Check if enough without LiDAR to use coarse DEMs
         if len(no_data_extents) == 0:
@@ -1783,21 +1779,6 @@ class RawDem(LidarBase):
             mask & self._dem.z.notnull().data,
             self.SOURCE_CLASSIFICATION["coarse DEM"], self._dem.data_source.data,
         )
-        # Check if foreshore might have been set from coarse DEM
-        if (
-            self.catchment_geometry.foreshore.area.sum() > 0
-            and coarse_dem.set_foreshore
-        ):
-            # Update the data_source for any foreshore locations set from the coarse DEM.
-            foreshore_mask = self._dem.z.rio.clip(
-                        self.catchment_geometry.foreshore.geometry,
-                        drop=False,
-                    ).notnull().data
-            # Use numpy.where as otherwise CRS lost
-            self._dem["data_source"].data = numpy.where(
-                mask & foreshore_mask,
-                self.SOURCE_CLASSIFICATION["ocean bathymetry"], self._dem.data_source.data,
-            )
 
 
 class RoughnessDem(LidarBase):
