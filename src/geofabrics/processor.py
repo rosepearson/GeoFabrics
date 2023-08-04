@@ -871,7 +871,7 @@ class RawLidarDemGenerator(BaseProcessor):
                 logging.info("In processor.DemGenerator - yet to setup lazy "
                              "save of the coarse DEM info")
                 # Setup Dask cluster and client - LAZY SAVE LIDAR & COARSE DEM
-                '''cluster_kwargs = {
+                cluster_kwargs = {
                     "n_workers": self.get_processing_instructions("number_of_cores"),
                     "threads_per_worker": 1,
                     "processes": True,
@@ -889,7 +889,7 @@ class RawLidarDemGenerator(BaseProcessor):
                         self.get_instruction_path("raw_dem"),
                         format="NETCDF4",
                         engine="netcdf4"
-                    )'''
+                    )
                 # compute and save raw DEM
                 logging.info("In processor.DemGenerator - write out the raw DEM "
                              "with coarse DEM information added")

@@ -367,7 +367,7 @@ class DemBase(abc.ABC):
         dense_extents = geopandas.GeoDataFrame(
             {"geometry": [dense_extents]}, crs=self.catchment_geometry.crs["horizontal"]
         )
-
+        
         # Move from image to the dem space & buffer(0) to reduce self-intersections
         dense_extents = dense_extents.affine_transform(
             [
@@ -1278,7 +1278,7 @@ class RawDem(LidarBase):
 
         # Defines extents where raw DEM values exist
         mask = numpy.logical_not(numpy.isnan(self._dem.z.data))
-        extents = self._extents_from_mask(mask, self._dem)
+        extents = self._extents_from_mask(mask=mask, transform=self._dem.rio.transform())
         return extents
 
     def add_lidar(
@@ -1362,16 +1362,13 @@ class RawDem(LidarBase):
                 self.catchment_geometry.full_land, how="difference", keep_geom_type=True
             )
             # Clip DEM to buffered foreshore
-            mask = numpy.logical_not(
-                numpy.isnan(
-                    dem.z.rio.clip(buffered_foreshore.geometry, drop=False).data
-                )
-            )
+            foreshore_mask = dem.z.rio.clip(buffered_foreshore.geometry,
+                                            drop=False).notnull().data
 
             # Set any positive LiDAR foreshore points to zero
-            dem["z"] = dem.z.where(mask & (dem.z.data > 0), 0)
+            dem.z.data = numpy.where(foreshore_mask & (dem.z.data > 0), 0, dem.z.data)
         # Rewrite CRS and other conventions in place as where seems to drop them
-        self._write_netcdf_conventions_in_place(dem, self.catchment_geometry.crs)
+        #self._write_netcdf_conventions_in_place(dem, self.catchment_geometry.crs)
         self._dem = dem
 
     def _add_tiled_lidar_chunked(
@@ -1480,7 +1477,6 @@ class RawDem(LidarBase):
             lidar_file,
             source_crs=source_crs,
             region_to_tile=region_to_rasterise,
-            get_extents=True,
             crs=options["crs"],
         )
 
@@ -1585,16 +1581,17 @@ class RawDem(LidarBase):
         dems = []
         dataset_mapping = metadata["instructions"]["dataset_mapping"]["lidar"]
         for dataset_name, z in elevations.items():
-            z_nan_mask = dask.array.isnan(z)
+            # Set NaN where not z values so merging occurs correctly
+            z_values_mask = dask.array.notnull(z)
 
             # Create source variable - assume all values are defined from LiDAR
             data_source = dask.array.where(
-                z_nan_mask, numpy.nan, self.SOURCE_CLASSIFICATION["LiDAR"]
+                z_values_mask, self.SOURCE_CLASSIFICATION["LiDAR"], numpy.nan,
             )
 
             # Create LiDAR id variable - name and value info in the metadata
             lidar_source = dask.array.where(
-                z_nan_mask, numpy.nan, dataset_mapping[dataset_name]
+                z_values_mask, dataset_mapping[dataset_name], numpy.nan,
             )
 
             dem = xarray.Dataset(
@@ -1653,38 +1650,17 @@ class RawDem(LidarBase):
 
         ## After merging LiDAR datasets set remaining NaN to no data/LiDAR
         # data_source: set areas with no values to No Data
-        dem["data_source"] = dem.data_source.where(
-            dem.data_source.notnull(), self.SOURCE_CLASSIFICATION["no data"]
+        dem.data_source.data = xarray.where(
+            dem.data_source.notnull(), dem.data_source, self.SOURCE_CLASSIFICATION["no data"], 
+            keep_attrs=True
         )
 
         # lidar_source: Set areas with no LiDAR to "No LiDAR"
-        dem["lidar_source"] = dem.lidar_source.where(
-            dem.data_source == self.SOURCE_CLASSIFICATION["LiDAR"],
-            dataset_mapping["no LiDAR"],
+        dem.lidar_source.data = xarray.where(
+            dem.lidar_source.notnull(),
+            dem.lidar_source, dataset_mapping["no LiDAR"], keep_attrs=True
         )
 
-        # set any offshore values to ocean assuming drop offshore is selected
-        # TODO - see why this step is here. Shouldn't z be set to NaN too?
-        if (
-            self.catchment_geometry.foreshore_and_offshore.area.sum() > 0
-            and self.drop_offshore_lidar
-        ):
-            ocean_mask = numpy.logical_not(
-                numpy.isnan(
-                    dem.z.rio.clip(
-                        self.catchment_geometry.foreshore_and_offshore.geometry,
-                        drop=False,
-                    ).data
-                )
-            )
-            dem["data_source"] = dem.data_source.where(
-                ocean_mask,
-                self.SOURCE_CLASSIFICATION["ocean bathymetry"],
-            )
-            dem["lidar_source"] = dem.lidar_source.where(
-                ocean_mask,
-                dataset_mapping["no LiDAR"],
-            )
         return dem
 
     def add_coarse_dems(self, coarse_dem_paths: list,
@@ -1715,21 +1691,26 @@ class RawDem(LidarBase):
         ## Determine the areas without LiDAR meeting the area threshold size
         # Get areas with LiDAR with the cell buffer added
         data_extents = self._extents_from_mask(
-            mask=numpy.logical_not(numpy.isnan(self.dem.z.data)),
-            transform=self.dem.z.rio.transform()).buffer(
-                buffer_cells * self.catchment_geometry.resolution)
+            mask=self.dem.z.notnull().data,
+            transform=self.dem.z.rio.transform())
+        data_extents.to_file("/nesi/project/niwa03440/geofabrics/GeoFabrics/tests/test_dem_generation_local_1/data/results/extents1.geojson")
+        data_extents = data_extents.buffer(buffer_cells * self.catchment_geometry.resolution)
+        data_extents.to_file("/nesi/project/niwa03440/geofabrics/GeoFabrics/tests/test_dem_generation_local_1/data/results/extents2.geojson")
         # Get areas without LiDAR data in the land and foreshore region
         data_extents = geopandas.GeoDataFrame(geometry=data_extents.clip(
             self.catchment_geometry.land_and_foreshore, keep_geom_type=True))
+        data_extents.to_file("/nesi/project/niwa03440/geofabrics/GeoFabrics/tests/test_dem_generation_local_1/data/results/extents3.geojson")
         no_data_extents = self.catchment_geometry.land_and_foreshore.overlay(
             data_extents,
             how="difference",
         )
+        no_data_extents.to_file("/nesi/project/niwa03440/geofabrics/GeoFabrics/tests/test_dem_generation_local_1/data/results/no_extents1.geojson")
         # Keep areas without LiDAR data above the area threshold
         no_data_extents = no_data_extents.explode(index_parts=False)
         no_data_extents = no_data_extents[
             no_data_extents.area > area_threshold
             ]
+        no_data_extents.to_file("/nesi/project/niwa03440/geofabrics/GeoFabrics/tests/test_dem_generation_local_1/data/results/no_extents2.geojson")
 
         # Check if enough without LiDAR to use coarse DEMs
         if len(no_data_extents) == 0:
@@ -1764,16 +1745,14 @@ class RawDem(LidarBase):
         Currently doesn't use chunking - this may be required if a large area
         is covered by the coarse DEM."""
 
-        # Create a mask of area not covered by LiDAR (excludes holes in LiDAR tiles)
+        # Create a mask of the region to rasterise (e.g. area not covered by LiDAR excluding small holes)
         z = self._dem.z.copy(deep=True)
         z.data[:] = 0
-        mask = numpy.logical_not(
-            numpy.isnan(z.rio.clip(region_to_rasterise.geometry, drop=False).data)
-        )
+        mask = z.rio.clip(region_to_rasterise.geometry, drop=False).notnull().data
 
         if mask.sum() == 0:
             logging.warning(
-                "RawDem.add_coarse_dem: LiDAR covers all raster values so the "
+                "RawDem.add_coarse_dem: LiDAR covers all raster values, so the "
                 "coarse DEM is being ignored."
             )
             return
@@ -1799,27 +1778,25 @@ class RawDem(LidarBase):
 
         # Update the DEM
         self._dem.z.data[mask] = z_flat
-        # Update the data source layer - where defined by the coarse DEM
-        # and set foreshore
-        self._dem["data_source"] = self._dem.data_source.where(
-            mask & numpy.logical_not(numpy.isnan(self._dem.z.data)),
-            self.SOURCE_CLASSIFICATION["coarse DEM"],
+        # Update the data source with values just set (mask + not NaN). Use numpy.where as otherwise CRS lost
+        self._dem["data_source"].data = numpy.where(
+            mask & self._dem.z.notnull().data,
+            self.SOURCE_CLASSIFICATION["coarse DEM"], self._dem.data_source.data,
         )
+        # Check if foreshore might have been set from coarse DEM
         if (
             self.catchment_geometry.foreshore.area.sum() > 0
             and coarse_dem.set_foreshore
         ):
-            foreshore_mask = numpy.logical_not(
-                numpy.isnan(
-                    self._dem.z.rio.clip(
+            # Update the data_source for any foreshore locations set from the coarse DEM.
+            foreshore_mask = self._dem.z.rio.clip(
                         self.catchment_geometry.foreshore.geometry,
                         drop=False,
-                    ).data
-                )
-            )
-            self._dem["data_source"] = self._dem.data_source.where(
+                    ).notnull().data
+            # Use numpy.where as otherwise CRS lost
+            self._dem["data_source"].data = numpy.where(
                 mask & foreshore_mask,
-                self.SOURCE_CLASSIFICATION["ocean bathymetry"],
+                self.SOURCE_CLASSIFICATION["ocean bathymetry"], self._dem.data_source.data,
             )
 
 
@@ -1893,7 +1870,7 @@ class RoughnessDem(LidarBase):
 
         # Defines extents where raw DEM values exist
         mask = self._dem.data_source.data == self.SOURCE_CLASSIFICATION["LiDAR"]
-        extents = self._extents_from_mask(mask, self._dem)
+        extents = self._extents_from_mask(mask=mask, transform=self._dem.rio.transform())
         return extents
 
     def _set_up_chunks(self, chunk_size: int) -> (list, list):
@@ -2153,7 +2130,6 @@ class RoughnessDem(LidarBase):
             lidar_file,
             source_crs=source_crs,
             region_to_tile=region_to_rasterise,
-            get_extents=True,
             crs=options["crs"],
         )
 
@@ -2286,7 +2262,6 @@ def read_file_with_pdal(
     region_to_tile: geopandas.GeoDataFrame,
     crs: dict,
     source_crs: dict = None,
-    get_extents: bool = False,
 ):
     """Read a tile file in using PDAL with input and output CRS specified."""
 
@@ -2316,9 +2291,6 @@ def read_file_with_pdal(
         {"type": "filters.crop", "polygon": str(region_to_tile.loc[0].geometry)}
     )
 
-    # Add instructions for creating a polygon extents of the remaining point cloud
-    if get_extents:
-        pdal_pipeline_instructions.append({"type": "filters.hexbin"})
     # Load in LiDAR and perform operations
     pdal_pipeline = pdal.Pipeline(json.dumps(pdal_pipeline_instructions))
     pdal_pipeline.execute()
@@ -2518,7 +2490,6 @@ def load_tiles_in_chunk(
             region_to_tile=chunk_region_to_tile,
             source_crs=source_crs,
             crs=crs,
-            get_extents=False,
         )
         lidar_points.append(pdal_pipeline.arrays[0])
     if len(lidar_points) > 0:
