@@ -1696,7 +1696,7 @@ class RawDem(LidarBase):
             transform=self.dem.z.rio.transform())
         data_extents = data_extents.buffer(buffer_cells * self.catchment_geometry.resolution)
         # Clip to within the full DEM extents
-        full_extents = self.catchment_geometry.land_and_foreshore.buffer(self.catchment_geometry.resolution / numpy.sqrt(2))
+        full_extents = geopandas.GeoDataFrame(geometry=self.catchment_geometry.land_and_foreshore.buffer(self.catchment_geometry.resolution / numpy.sqrt(2)))
         data_extents = geopandas.GeoDataFrame(geometry=data_extents.clip(full_extents, keep_geom_type=True))
         no_data_extents = full_extents.overlay(data_extents, how="difference")
         # Keep areas without LiDAR data above the area threshold
