@@ -22,6 +22,7 @@
 	"general": {
 		"drop_offshore_lidar": true,
 		"lidar_classifications_to_keep": [2],
-		"interpolation_method": "linear"
+		"interpolation_method": "linear",
+		"lidar_buffer": 5
 	}
 }
