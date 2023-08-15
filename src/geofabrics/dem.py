@@ -419,10 +419,10 @@ class HydrologicallyConditionedDem(DemBase):
         raw_dem = raw_dem.squeeze("band", drop=True)
         self._write_netcdf_conventions_in_place(raw_dem, catchment_geometry.crs)
 
-        # Ensure all values outside the exents are nan as that defines the dense extents
-        # and clip the dense dem to the catchment extents to ensure performance
+        # Clip to catchment and set the data_source layer to NaN where there is no data
         raw_dem = raw_dem.rio.clip(catchment_geometry.catchment.geometry, drop=True)
-
+        raw_dem.data_source.data[raw_dem.data_source
+                                 == self.SOURCE_CLASSIFICATION["no data"]] = numpy.nan
         # Setup the DenseDemBase class
         super(HydrologicallyConditionedDem, self).__init__(
             catchment_geometry=catchment_geometry,
