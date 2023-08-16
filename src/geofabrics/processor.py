@@ -50,7 +50,8 @@ class BaseProcessor(abc.ABC):
             for data_type in cleaned_instructions["datasets"].keys():
                 for data_service in cleaned_instructions["datasets"][data_type].keys():
                     if "key" in data_service:
-                        cleaned_instructions["datasets"][data_type]["key"].pop()
+                        cleaned_instructions["datasets"][data_type]["key"].pop(
+                        )
         metadata = {
             "library_name": "GeoFabrics",
             "library_version": version.__version__,
@@ -247,7 +248,8 @@ class BaseProcessor(abc.ABC):
             The string identifying the instruction
         """
 
-        defaults = {"number_of_cores": 1, "chunk_size": None, "memory_limit": "10GiB"}
+        defaults = {"number_of_cores": 1,
+                    "chunk_size": None, "memory_limit": "10GiB"}
 
         assert key in defaults or key in self.instructions["processing"], (
             f"The key: {key} is missing "
@@ -345,9 +347,9 @@ class BaseProcessor(abc.ABC):
             # Key included in the data paths - add - either list or individual path
             data_paths = self.get_instruction_path(key)
             if type(data_paths) is list:
-                paths.extend(data_paths)
+                paths.extend([pathlib.Path(data_path) for data_path in data_paths])
             else:
-                paths.append(data_paths)
+                paths.append(pathlib.Path(data_paths))
         if data_type == "vector":
             # Define the supported vector 'datasets' keywords and the geoapis class for
             # accessing that data service
@@ -363,12 +365,14 @@ class BaseProcessor(abc.ABC):
                 "statsnz": geoapis.raster.StatsNz,
             }
         else:
-            logging.warning(f"Unsupported API type specified: {data_type}. Ignored.")
+            logging.warning(
+                f"Unsupported API type specified: {data_type}. Ignored.")
             return
         # Check the instructions for vector data hosted in the supported vector data
         # services: LINZ and LRIS
         cache_dir = pathlib.Path(self.get_instruction_path("local_cache"))
-        subfolder = self.get_instruction_path("subfolder").relative_to(cache_dir)
+        subfolder = self.get_instruction_path(
+            "subfolder").relative_to(cache_dir)
         bounding_polygon = (
             self.catchment_geometry.catchment
             if self.catchment_geometry is not None
@@ -424,10 +428,12 @@ class BaseProcessor(abc.ABC):
 
                         # Write out file if not already recorded
                         layer_file = (
-                            cache_dir / "vector" / subfolder / f"{layer}.geojson"
+                            cache_dir / "vector" /
+                            subfolder / f"{layer}.geojson"
                         )
                         if not layer_file.exists():
-                            layer_file.parent.mkdir(parents=True, exist_ok=True)
+                            layer_file.parent.mkdir(
+                                parents=True, exist_ok=True)
                             vector.to_file(layer_file)
                         paths.append(layer_file)
                 elif data_type == "raster":
@@ -550,7 +556,7 @@ class BaseProcessor(abc.ABC):
         lidar_datasets_info = {}
         data_type = "lidar"
 
-        ## See if 'OpenTopography' or another data_service has been specified as an area
+        # See if 'OpenTopography' or another data_service has been specified as an area
         # to look first
         data_service = "open_topography"
         if self.check_datasets(data_service, data_type="lidar"):
@@ -595,7 +601,7 @@ class BaseProcessor(abc.ABC):
                     / dataset_name
                     / f"{dataset_name}_TileIndex.zip"
                 )
-        ## Next check for any additional local LiDAR datasets.
+        # Next check for any additional local LiDAR datasets.
         # for multiple local lidar datasets - must be in separate folders
         data_service = "local"
         if self.check_datasets(data_service, data_type="lidar"):
@@ -611,7 +617,8 @@ class BaseProcessor(abc.ABC):
                     )
                     # uncompressed file type
                     dataset["file_paths"].extend(
-                        sorted(pathlib.Path(dataset["folder_path"]).rglob("*.las"))
+                        sorted(pathlib.Path(
+                            dataset["folder_path"]).rglob("*.las"))
                     )
                 elif "file_paths" not in dataset and "folder_path" not in dataset:
                     raise Exception(
@@ -648,7 +655,7 @@ class BaseProcessor(abc.ABC):
                 )
             # Add the local datasets to any remote (API) datasets
             lidar_datasets_info.update(local_datasets)
-        ## Finally if there are no LiDAR datasets see if invidividual LiDAR
+        # Finally if there are no LiDAR datasets see if invidividual LiDAR
         # files have been specified.
         if len(lidar_datasets_info) == 0 and self.check_instruction_path("lidar_files"):
             # get the specified file paths from the instructions,
@@ -665,7 +672,8 @@ class BaseProcessor(abc.ABC):
             ):
                 if "dataset_mapping" not in self.instructions:
                     self.instructions["dataset_mapping"] = {}
-                self.instructions["dataset_mapping"]["lidar"] = {"local_files": 1}
+                self.instructions["dataset_mapping"]["lidar"] = {
+                    "local_files": 1}
         elif len(lidar_datasets_info) == 0 and not self.check_instruction_path(
             "lidar_files"
         ):
@@ -770,7 +778,8 @@ class BaseProcessor(abc.ABC):
     def run(self):
         """This method controls the processor execution and code-flow."""
 
-        raise NotImplementedError("NETLOC_API must be instantiated in the child class")
+        raise NotImplementedError(
+            "NETLOC_API must be instantiated in the child class")
 
 
 class RawLidarDemGenerator(BaseProcessor):
@@ -792,7 +801,8 @@ class RawLidarDemGenerator(BaseProcessor):
     """
 
     def __init__(self, json_instructions: json, debug: bool = True):
-        super(RawLidarDemGenerator, self).__init__(json_instructions=json_instructions)
+        super(RawLidarDemGenerator, self).__init__(
+            json_instructions=json_instructions)
 
         self.raw_dem = None
         self.debug = debug
@@ -821,7 +831,8 @@ class RawLidarDemGenerator(BaseProcessor):
         # setup the raw DEM generator
         self.raw_dem = dem.RawDem(
             catchment_geometry=self.catchment_geometry,
-            drop_offshore_lidar=self.get_instruction_general("drop_offshore_lidar"),
+            drop_offshore_lidar=self.get_instruction_general(
+                "drop_offshore_lidar"),
             lidar_interpolation_method=self.get_instruction_general(
                 "lidar_interpolation_method"
             ),
@@ -864,9 +875,11 @@ class RawLidarDemGenerator(BaseProcessor):
             )
 
             # Add coarse DEMs if there are any and if area
-            if self.raw_dem.add_coarse_dems(coarse_dem_paths=coarse_dem_paths,
-                                         area_threshold=area_threshold,
-                                         buffer_cells=self.get_instruction_general("lidar_buffer")):
+            if self.raw_dem.add_coarse_dems(
+                    coarse_dem_paths=coarse_dem_paths,
+                    area_threshold=area_threshold,
+                    buffer_cells=self.get_instruction_general("lidar_buffer"),
+                    chunk_size=self.get_processing_instructions("chunk_size")):
 
                 # TODO setup internals to chunked adding of coarse DEM values
                 logging.info("In processor.DemGenerator - yet to setup lazy "
@@ -901,7 +914,8 @@ class RawLidarDemGenerator(BaseProcessor):
         if self.debug:
             # Record the parameter used during execution - append to existing
             with open(
-                self.get_instruction_path("subfolder") / "dem_instructions.json", "a"
+                self.get_instruction_path(
+                    "subfolder") / "dem_instructions.json", "a"
             ) as file_pointer:
                 json.dump(self.instructions, file_pointer)
 
@@ -942,7 +956,8 @@ class HydrologicDemGenerator(BaseProcessor):
             self.hydrologic_dem.raw_extents
         ).geometry.area.sum()
         if (
-            self.check_vector_or_raster(key="bathymetry_contours", api_type="vector")
+            self.check_vector_or_raster(
+                key="bathymetry_contours", api_type="vector")
             and area_without_lidar
             > self.catchment_geometry.offshore.area.sum() * area_threshold
         ):
@@ -962,12 +977,14 @@ class HydrologicDemGenerator(BaseProcessor):
             self.bathy_contours = geometry.BathymetryContours(
                 bathy_contour_dirs[0],
                 self.catchment_geometry,
-                z_label=self.get_instruction_general("bathymetry_contours_z_label"),
+                z_label=self.get_instruction_general(
+                    "bathymetry_contours_z_label"),
                 exclusion_extent=self.hydrologic_dem.raw_extents,
             )
 
             # interpolate
-            self.hydrologic_dem.interpolate_ocean_bathymetry(self.bathy_contours)
+            self.hydrologic_dem.interpolate_ocean_bathymetry(
+                self.bathy_contours)
         # Load in river bathymetry and incorporate where discernable at the resolution
         if self.check_vector_or_raster(
             "river_polygons", api_type="vector"
@@ -987,8 +1004,10 @@ class HydrologicDemGenerator(BaseProcessor):
                 points_files=bathy_dirs,
                 polygon_files=poly_dirs,
                 catchment_geometry=self.catchment_geometry,
-                z_labels=self.get_instruction_general("bathymetry_points_z_label"),
-                type_labels=self.get_instruction_general("bathymetry_points_type"),
+                z_labels=self.get_instruction_general(
+                    "bathymetry_points_z_label"),
+                type_labels=self.get_instruction_general(
+                    "bathymetry_points_type"),
             )
 
             # Call interpolate river on the DEM - the class checks to see if any pixels
@@ -1014,7 +1033,8 @@ class HydrologicDemGenerator(BaseProcessor):
         self.hydrologic_dem = dem.HydrologicallyConditionedDem(
             catchment_geometry=self.catchment_geometry,
             raw_dem_path=self.get_instruction_path("raw_dem"),
-            interpolation_method=self.get_instruction_general("interpolation_method"),
+            interpolation_method=self.get_instruction_general(
+                "interpolation_method"),
         )
 
         # Check for and add any bathymetry information
@@ -1030,7 +1050,8 @@ class HydrologicDemGenerator(BaseProcessor):
         if self.debug:
             # Record the parameter used during execution - append to existing
             with open(
-                self.get_instruction_path("subfolder") / "dem_instructions.json", "a"
+                self.get_instruction_path(
+                    "subfolder") / "dem_instructions.json", "a"
             ) as file_pointer:
                 json.dump(self.instructions, file_pointer)
 
@@ -1076,7 +1097,8 @@ class RoughnessLengthGenerator(BaseProcessor):
             catchment_geometry=self.catchment_geometry,
             hydrological_dem_path=self.get_instruction_path("result_dem"),
             elevation_range=self.get_instruction_general("elevation_range"),
-            interpolation_method=self.get_instruction_general("interpolation_method"),
+            interpolation_method=self.get_instruction_general(
+                "interpolation_method"),
         )
 
         # Setup Dask cluster and client
@@ -1108,7 +1130,8 @@ class RoughnessLengthGenerator(BaseProcessor):
         if self.debug:
             # Record the parameter used during execution - append to existing
             with open(
-                self.get_instruction_path("subfolder") / "roughness_instructions.json",
+                self.get_instruction_path(
+                    "subfolder") / "roughness_instructions.json",
                 "a",
             ) as file_pointer:
                 json.dump(self.instructions, file_pointer)
@@ -1155,7 +1178,8 @@ class MeasuredRiverGenerator(BaseProcessor):
 
         # Get the required inputs that already exist
         crs = self.get_crs()["horizontal"]
-        cross_section_spacing = self.get_measured_instruction("cross_section_spacing")
+        cross_section_spacing = self.get_measured_instruction(
+            "cross_section_spacing")
         river_elevation_file = self.get_instruction_path(
             "result_elevation", defaults=defaults
         )
@@ -1171,7 +1195,8 @@ class MeasuredRiverGenerator(BaseProcessor):
         # Create the required river centreline and bathymtries that don't exist
         # Only create for the two closest points to the river mouth
         # And ensure is perpindicular to the river mouth
-        riverlines = geopandas.read_file(self.get_instruction_path("riverbanks"))
+        riverlines = geopandas.read_file(
+            self.get_instruction_path("riverbanks"))
         elevations = geopandas.read_file(river_elevation_file)
         # Resample river edges at same spacing as used to interpolate
         n = len(elevations.groupby("level_0"))
@@ -1189,10 +1214,13 @@ class MeasuredRiverGenerator(BaseProcessor):
         mouth_tangent = shapely.geometry.Point(
             [segment_dx / segment_length, segment_dy / segment_length]
         )
-        mouth_normal = shapely.geometry.Point([-mouth_tangent.y, mouth_tangent.x])
-        mouth_centre = shapely.geometry.MultiPoint([points_0[0], points_1[0]]).centroid
+        mouth_normal = shapely.geometry.Point(
+            [-mouth_tangent.y, mouth_tangent.x])
+        mouth_centre = shapely.geometry.MultiPoint(
+            [points_0[0], points_1[0]]).centroid
         spacing = max(
-            points_0[0].distance(points_0[1]), points_1[0].distance(points_1[1])
+            points_0[0].distance(
+                points_0[1]), points_1[0].distance(points_1[1])
         )
         # Generate and save out a river centreline file normal to the river mouth
         river_centreline = shapely.geometry.LineString(
@@ -1210,7 +1238,8 @@ class MeasuredRiverGenerator(BaseProcessor):
         river_centreline_file = self.get_instruction_path(
             "river_centreline", defaults=defaults
         )
-        river_centreline = geopandas.GeoDataFrame(geometry=[river_centreline], crs=crs)
+        river_centreline = geopandas.GeoDataFrame(
+            geometry=[river_centreline], crs=crs)
         river_centreline.to_file(river_centreline_file)
         # Create the river bathmetries with needed widths and geometry
         defaults["river_bathymetry"] = "river_bathymetry_for_fan.geojson"
@@ -1218,13 +1247,15 @@ class MeasuredRiverGenerator(BaseProcessor):
             "river_bathymetry", defaults=defaults
         )
         elevations_clean = (
-            elevations[["level_0", "z"]].groupby("level_0").min().reset_index(drop=True)
+            elevations[["level_0", "z"]].groupby(
+                "level_0").min().reset_index(drop=True)
         )
         elevations_clean["geometry"] = elevations[
             elevations["level_1"] == int(elevations["level_1"].median())
         ]["geometry"].reset_index(drop=True)
         elevations_clean = elevations_clean.iloc[[0, 1]]
-        elevations_clean = elevations_clean.set_geometry("geometry").set_crs(crs)
+        elevations_clean = elevations_clean.set_geometry(
+            "geometry").set_crs(crs)
         elevations_clean["width"] = [
             point_0.distance(point_1)
             for point_0, point_1 in zip(points_0[0:2], points_1[0:2])
@@ -1245,7 +1276,8 @@ class MeasuredRiverGenerator(BaseProcessor):
 
         # Estimate the fan extents and bathymetry
         fan_polygon, fan_bathymetry = fan.polygon_and_bathymetry()
-        fan_polygon.to_file(self.get_instruction_path("fan_polygon", defaults=defaults))
+        fan_polygon.to_file(self.get_instruction_path(
+            "fan_polygon", defaults=defaults))
         fan_bathymetry.to_file(
             self.get_instruction_path("fan_bathymetry", defaults=defaults)
         )
@@ -1279,7 +1311,8 @@ class MeasuredRiverGenerator(BaseProcessor):
             print("Interpolating measured sections.")
             measured_rivers = bathymetry_estimation.InterpolateMeasuredElevations(
                 riverbank_file=self.get_instruction_path("riverbanks"),
-                measured_sections_file=self.get_instruction_path("measured_sections"),
+                measured_sections_file=self.get_instruction_path(
+                    "measured_sections"),
                 cross_section_spacing=self.get_measured_instruction(
                     "cross_section_spacing"
                 ),
@@ -1315,7 +1348,8 @@ class MeasuredRiverGenerator(BaseProcessor):
         if self.debug:
             # Record the parameter used during execution - append to existing
             with open(
-                self.get_instruction_path("subfolder") / "measured_instructions.json",
+                self.get_instruction_path(
+                    "subfolder") / "measured_instructions.json",
                 "a",
             ) as file_pointer:
                 json.dump(self.instructions, file_pointer)
@@ -1363,13 +1397,15 @@ class RiverBathymetryGenerator(BaseProcessor):
         """Return true if the river channel and bathymetry files exist."""
 
         # Check if the expected bathymetry and polygon files exist
-        river_bathymetry_file = self.get_result_file_path(key="river_bathymetry")
+        river_bathymetry_file = self.get_result_file_path(
+            key="river_bathymetry")
         river_polygon_file = self.get_result_file_path(key="river_polygon")
 
         if not self.get_bathymetry_instruction("estimate_fan"):
             return river_bathymetry_file.is_file() and river_polygon_file.is_file()
         else:
-            fan_bathymetry_file = self.get_result_file_path(key="fan_bathymetry")
+            fan_bathymetry_file = self.get_result_file_path(
+                key="fan_bathymetry")
             fan_polygon_file = self.get_result_file_path(key="fan_polygon")
             return (
                 river_bathymetry_file.is_file()
@@ -1470,7 +1506,8 @@ class RiverBathymetryGenerator(BaseProcessor):
         """Read in or create a channel from a river network."""
 
         # Get instructions
-        cross_section_spacing = self.get_bathymetry_instruction("cross_section_spacing")
+        cross_section_spacing = self.get_bathymetry_instruction(
+            "cross_section_spacing")
 
         # Check if file exists
         network_name = self.get_result_file_path(key="network")
@@ -1489,7 +1526,8 @@ class RiverBathymetryGenerator(BaseProcessor):
                 crs=self.get_crs()["horizontal"],
                 starting_id=self.get_bathymetry_instruction("network_id"),
                 resolution=cross_section_spacing,
-                area_threshold=self.get_bathymetry_instruction("area_threshold"),
+                area_threshold=self.get_bathymetry_instruction(
+                    "area_threshold"),
                 name_dict=self.get_bathymetry_instruction("network_columns"),
                 sampling_direction=self.get_bathymetry_instruction(
                     "sampling_direction"
@@ -1501,7 +1539,8 @@ class RiverBathymetryGenerator(BaseProcessor):
                 network_name = self.get_result_file_path(key="network")
                 if not network_name.is_file():
                     channel.channel.to_file(network_name)
-                smoothed_rec_name = self.get_result_file_path(key="network_smoothed")
+                smoothed_rec_name = self.get_result_file_path(
+                    key="network_smoothed")
                 if not smoothed_rec_name.is_file():
                     channel.get_parametric_spline_fit().to_file(smoothed_rec_name)
         return channel
@@ -1518,7 +1557,8 @@ class RiverBathymetryGenerator(BaseProcessor):
         instruction_paths = self.instructions["data_paths"]
 
         # Extract instructions from JSON
-        river_corridor_width = self.get_bathymetry_instruction("river_corridor_width")
+        river_corridor_width = self.get_bathymetry_instruction(
+            "river_corridor_width")
 
         # Define ground and veg files
         gnd_file = self.get_result_file_path(key="gnd_dem")
@@ -1547,7 +1587,8 @@ class RiverBathymetryGenerator(BaseProcessor):
         if not gnd_file.is_file():
             # Create the ground DEM file if this has not be created yet!
             print("Generating ground DEM.")
-            instruction_paths["raw_dem"] = str(self.get_result_file_name(key="gnd_dem"))
+            instruction_paths["raw_dem"] = str(
+                self.get_result_file_name(key="gnd_dem"))
             runner = RawLidarDemGenerator(self.instructions)
             runner.run()
             gnd_dem = runner.raw_dem.dem
@@ -1564,13 +1605,15 @@ class RiverBathymetryGenerator(BaseProcessor):
             self.instructions["general"][
                 "lidar_classifications_to_keep"
             ] = self.get_bathymetry_instruction("veg_lidar_classifications_to_keep")
-            instruction_paths["raw_dem"] = str(self.get_result_file_name(key="veg_dem"))
+            instruction_paths["raw_dem"] = str(
+                self.get_result_file_name(key="veg_dem"))
             runner = RawLidarDemGenerator(self.instructions)
             runner.run()
             veg_dem = runner.raw_dem.dem
             instruction_paths.pop("raw_dem")
         else:
-            print("Loading the vegetation DEM.")  # drop band added by rasterio.open()
+            # drop band added by rasterio.open()
+            print("Loading the vegetation DEM.")
             veg_dem = dem.rioxarray.rioxarray.open_rasterio(
                 veg_file, masked=True
             ).squeeze("band", drop=True)
@@ -1599,11 +1642,13 @@ class RiverBathymetryGenerator(BaseProcessor):
         """
 
         # Get instruciton parameters
-        min_channel_width = self.get_bathymetry_instruction("min_channel_width")
+        min_channel_width = self.get_bathymetry_instruction(
+            "min_channel_width")
         network_alignment_tolerance = self.get_bathymetry_instruction(
             "network_alignment_tolerance"
         )
-        river_corridor_width = self.get_bathymetry_instruction("river_corridor_width")
+        river_corridor_width = self.get_bathymetry_instruction(
+            "river_corridor_width")
 
         bank_threshold = self.get_bathymetry_instruction("min_bank_height")
         width_centre_smoothing_multiplier = self.get_bathymetry_instruction(
@@ -1632,7 +1677,8 @@ class RiverBathymetryGenerator(BaseProcessor):
                 self.get_result_file_path(name="initial_widths.geojson")
             )
             sampled_cross_sections[["geometry", "channel_count", "valid"]].to_file(
-                self.get_result_file_path(name="initial_cross_sections.geojson")
+                self.get_result_file_path(
+                    name="initial_cross_sections.geojson")
             )
         return aligned_channel
 
@@ -1652,11 +1698,14 @@ class RiverBathymetryGenerator(BaseProcessor):
         """
 
         # Get instruciton parameters
-        max_channel_width = self.get_bathymetry_instruction("max_channel_width")
-        min_channel_width = self.get_bathymetry_instruction("min_channel_width")
+        max_channel_width = self.get_bathymetry_instruction(
+            "max_channel_width")
+        min_channel_width = self.get_bathymetry_instruction(
+            "min_channel_width")
         bank_threshold = self.get_bathymetry_instruction("min_bank_height")
         max_bank_height = self.get_bathymetry_instruction("max_bank_height")
-        river_corridor_width = self.get_bathymetry_instruction("river_corridor_width")
+        river_corridor_width = self.get_bathymetry_instruction(
+            "river_corridor_width")
 
         sampled_cross_sections, river_polygon = channel_width.estimate_width_and_slope(
             aligned_channel=aligned_channel,
@@ -1705,7 +1754,8 @@ class RiverBathymetryGenerator(BaseProcessor):
 
         """
 
-        logging.info("The channel hasn't been characerised. Charactreising now.")
+        logging.info(
+            "The channel hasn't been characerised. Charactreising now.")
 
         # Decide if aligning from river network alone, or OSM and river network
         if "osm_id" in self.instructions["rivers"]:
@@ -1728,7 +1778,8 @@ class RiverBathymetryGenerator(BaseProcessor):
         logging.info("Align from river network.")
 
         # Extract instructions
-        cross_section_spacing = self.get_bathymetry_instruction("cross_section_spacing")
+        cross_section_spacing = self.get_bathymetry_instruction(
+            "cross_section_spacing")
         resolution = self.get_resolution()
 
         # Create river network defined channel
@@ -1769,7 +1820,8 @@ class RiverBathymetryGenerator(BaseProcessor):
         logging.info("Align from OSM.")
 
         # Extract instructions
-        cross_section_spacing = self.get_bathymetry_instruction("cross_section_spacing")
+        cross_section_spacing = self.get_bathymetry_instruction(
+            "cross_section_spacing")
         resolution = self.get_resolution()
 
         # Create river network defined channel
@@ -1803,7 +1855,8 @@ class RiverBathymetryGenerator(BaseProcessor):
         # Get the start and end point of the smoothed network line
         channel = channel.get_parametric_spline_fit()
         network_extents = channel.boundary.explode(index_parts=False)
-        network_start, network_end = (network_extents.iloc[0], network_extents.iloc[1])
+        network_start, network_end = (
+            network_extents.iloc[0], network_extents.iloc[1])
         # Get the distance along the OSM that the start/end points are.
         # Note projection function is limited between [0, osm_channel.length]
         end_split_length = float(osm_channel.project(network_end))
@@ -1928,7 +1981,8 @@ class RiverBathymetryGenerator(BaseProcessor):
         upstream_smoothing_factor = self.get_bathymetry_instruction(
             "upstream_smoothing_factor"
         )
-        cross_section_spacing = self.get_bathymetry_instruction("cross_section_spacing")
+        cross_section_spacing = self.get_bathymetry_instruction(
+            "cross_section_spacing")
         # Cycle through and caluclate the rolling mean
         label = f"{cross_section_spacing*upstream_smoothing_factor/1000}km"
 
@@ -1978,11 +2032,13 @@ class RiverBathymetryGenerator(BaseProcessor):
             numpy.ones(len(width_values["widths"]), dtype=float) * numpy.nan
         )
         # Add the friction and flow values to the widths and slopes
-        width_values["mannings_n"] = numpy.zeros(len(width_values["id"]), dtype=int)
+        width_values["mannings_n"] = numpy.zeros(
+            len(width_values["id"]), dtype=int)
         width_values["flow"] = numpy.zeros(len(width_values["id"]), dtype=int)
         for i, row in width_values.iterrows():
             if row.geometry is not None and not row.geometry.is_empty:
-                distances = channel.channel.distance(width_values.loc[i].geometry)
+                distances = channel.channel.distance(
+                    width_values.loc[i].geometry)
                 width_values.loc[i, ("id", "flow", "mannings_n")] = channel.channel[
                     distances == distances.min()
                 ][["id", "flow", "mannings_n"]].min()
@@ -1995,7 +2051,8 @@ class RiverBathymetryGenerator(BaseProcessor):
             width_values["flow"].fillna(method="ffill").fillna(method="bfill")
         )
         width_values["mannings_n"] = (
-            width_values["mannings_n"].fillna(method="ffill").fillna(method="bfill")
+            width_values["mannings_n"].fillna(
+                method="ffill").fillna(method="bfill")
         )
 
         # Get the level of upstream smoothing to apply
@@ -2217,8 +2274,10 @@ class RiverBathymetryGenerator(BaseProcessor):
 
         # Required inputs
         crs = self.get_crs()["horizontal"]
-        cross_section_spacing = self.get_bathymetry_instruction("cross_section_spacing")
-        river_bathymetry_file = self.get_result_file_path(key="river_bathymetry")
+        cross_section_spacing = self.get_bathymetry_instruction(
+            "cross_section_spacing")
+        river_bathymetry_file = self.get_result_file_path(
+            key="river_bathymetry")
         river_polygon_file = self.get_result_file_path(key="river_polygon")
         ocean_contour_file = self.get_vector_or_raster_paths(
             key="bathymetry_contours", data_type="vector"
@@ -2253,7 +2312,8 @@ class RiverBathymetryGenerator(BaseProcessor):
         pipeline to produce a DEM before sampling this to extimate width, slope
         and eventually depth."""
 
-        logging.info("Adding river and fan bathymetry if it doesn't already exist.")
+        logging.info(
+            "Adding river and fan bathymetry if it doesn't already exist.")
 
         # Ensure the results folder has been created
         self.create_results_folder()
@@ -2276,7 +2336,8 @@ class RiverBathymetryGenerator(BaseProcessor):
         if self.debug:
             # Record the parameter used during execution - append to existing
             with open(
-                self.get_instruction_path("subfolder") / "rivers_instructions.json", "a"
+                self.get_instruction_path(
+                    "subfolder") / "rivers_instructions.json", "a"
             ) as file_pointer:
                 json.dump(self.instructions, file_pointer)
 
@@ -2329,7 +2390,8 @@ class WaterwayBedElevationEstimator(BaseProcessor):
         estimated."""
 
         closed_polygon_file = self.get_result_file_path(key="closed_polygon")
-        closed_elevation_file = self.get_result_file_path(key="closed_elevation")
+        closed_elevation_file = self.get_result_file_path(
+            key="closed_elevation")
         open_polygon_file = self.get_result_file_path(key="open_polygon")
         open_elevation_file = self.get_result_file_path(key="open_elevation")
         if (
@@ -2384,7 +2446,8 @@ class WaterwayBedElevationEstimator(BaseProcessor):
             return
         # If not - estimate elevations along close drains
         closed_waterways = waterways[waterways["tunnel"]]
-        closed_waterways["polygon"] = closed_waterways.buffer(closed_waterways["width"])
+        closed_waterways["polygon"] = closed_waterways.buffer(
+            closed_waterways["width"])
         # If no closed waterways write out empty files and return
         if len(closed_waterways) == 0:
             closed_waterways["elevation"] = []
@@ -2469,7 +2532,8 @@ class WaterwayBedElevationEstimator(BaseProcessor):
         open_waterways = waterways[numpy.logical_not(waterways["tunnel"])]
 
         # sample the ends of the drain - sample over a polygon at each end
-        polygons = open_waterways.interpolate(0).buffer(open_waterways["width"])
+        polygons = open_waterways.interpolate(
+            0).buffer(open_waterways["width"])
         open_waterways["start_elevation"] = polygons.apply(
             lambda geometry: self.minimum_elevation_in_polygon(
                 geometry=geometry, dem=dem
@@ -2511,7 +2575,8 @@ class WaterwayBedElevationEstimator(BaseProcessor):
                 )
             else:
                 sample_range = range(
-                    int(numpy.ceil(row.geometry.length / self.get_resolution())), -1, -1
+                    int(numpy.ceil(row.geometry.length /
+                        self.get_resolution())), -1, -1
                 )
             sampled_sampled_multipoints = [
                 # Ensure even spacing across the length of the drain
@@ -2540,7 +2605,8 @@ class WaterwayBedElevationEstimator(BaseProcessor):
         open_waterways = open_waterways.sort_index(ascending=True).explode(
             ignore_index=False, index_parts=True, column="geometry"
         )
-        open_waterways["polygons"] = open_waterways.buffer(open_waterways["width"])
+        open_waterways["polygons"] = open_waterways.buffer(
+            open_waterways["width"])
         # Sample the minimum elevations along each  open waterway
         open_waterways["elevation"] = open_waterways["polygons"].apply(
             lambda geometry: self.minimum_elevation_in_polygon(
@@ -2561,14 +2627,16 @@ class WaterwayBedElevationEstimator(BaseProcessor):
                 indices_to_replace = elevations_near_culvert.index[
                     elevations_near_culvert["elevation"] > closed_elevation
                 ]
-                open_waterways.loc[indices_to_replace, "elevation"] = closed_elevation
+                open_waterways.loc[indices_to_replace,
+                                   "elevation"] = closed_elevation
         # Ensure the sampled elevations monotonically decrease
         for index, drain_points in open_waterways.groupby(level=0):
             open_waterways.loc[(index,), ("elevation")] = numpy.fmin.accumulate(
                 drain_points["elevation"]
             )
         # Save bathymetry
-        open_waterways[["geometry", "width", "elevation"]].to_file(elevation_file)
+        open_waterways[["geometry", "width", "elevation"]
+                       ].to_file(elevation_file)
 
     def create_dem(self, waterways: geopandas.GeoDataFrame) -> xarray.Dataset:
         """Create and return a DEM at a resolution 1.5x the drain width."""
@@ -2582,10 +2650,12 @@ class WaterwayBedElevationEstimator(BaseProcessor):
             )
         else:  # Create DEM over the drain region
             # Save out the drain polygons as a file with a single multipolygon
-            waterways_polygon_file = self.get_result_file_path(key="waterways_polygon")
+            waterways_polygon_file = self.get_result_file_path(
+                key="waterways_polygon")
             waterways_polygon = waterways.buffer(waterways["width"])
             waterways_polygon = geopandas.GeoDataFrame(
-                geometry=[shapely.ops.unary_union(waterways_polygon.geometry.array)],
+                geometry=[shapely.ops.unary_union(
+                    waterways_polygon.geometry.array)],
                 crs=waterways_polygon.crs,
             )
             waterways_polygon.to_file(waterways_polygon_file)
@@ -2596,7 +2666,8 @@ class WaterwayBedElevationEstimator(BaseProcessor):
             dem_instruction_paths["catchment_boundary"] = self.get_result_file_name(
                 key="waterways_polygon"
             )
-            dem_instruction_paths["raw_dem"] = self.get_result_file_name(key="raw_dem")
+            dem_instruction_paths["raw_dem"] = self.get_result_file_name(
+                key="raw_dem")
 
             # Create the ground DEM file if this has not be created yet!
             print("Generating drain DEM.")
@@ -2614,7 +2685,8 @@ class WaterwayBedElevationEstimator(BaseProcessor):
             waterways = geopandas.read_file(waterways_file_path)
         else:  # Download from OSM
             # Create area to query within
-            bbox_lat_long = self.catchment_geometry.catchment.to_crs(self.OSM_CRS)
+            bbox_lat_long = self.catchment_geometry.catchment.to_crs(
+                self.OSM_CRS)
 
             # Construct query
             query = OSMPythonTools.overpass.overpassQueryBuilder(
@@ -2651,7 +2723,8 @@ class WaterwayBedElevationEstimator(BaseProcessor):
                 element_dict["geometry"].append(element.geometry())
                 element_dict["OSM_id"].append(element.id())
                 element_dict["waterway"].append(element.tags()["waterway"])
-                element_dict["tunnel"].append("tunnel" in element.tags().keys())
+                element_dict["tunnel"].append(
+                    "tunnel" in element.tags().keys())
             waterways = (
                 geopandas.GeoDataFrame(element_dict, crs=self.OSM_CRS)
                 .to_crs(self.catchment_geometry.crs["horizontal"])
@@ -2671,7 +2744,8 @@ class WaterwayBedElevationEstimator(BaseProcessor):
             # Identify and remove undefined waterway types
             for waterway_label in waterways["waterway"].unique():
                 if waterway_label not in widths.keys():
-                    waterways = waterways[waterways["waterway"] != waterway_label]
+                    waterways = waterways[waterways["waterway"]
+                                          != waterway_label]
                     print(
                         f"{waterway_label} is not in the specified widths and"
                         " is being removed"
@@ -2702,9 +2776,11 @@ class WaterwayBedElevationEstimator(BaseProcessor):
 
         # Don't reprocess if already estimated
         if self.waterway_elevations_exists():
-            logging.info("Waterway and tunnel bed elevations already estimated.")
+            logging.info(
+                "Waterway and tunnel bed elevations already estimated.")
             return
-        logging.info("Estimating waterway and tunnel bed elevation from OpenStreetMap.")
+        logging.info(
+            "Estimating waterway and tunnel bed elevation from OpenStreetMap.")
 
         # Ensure the results folder has been created
         self.create_results_folder()
@@ -2725,7 +2801,8 @@ class WaterwayBedElevationEstimator(BaseProcessor):
         if self.debug:
             # Record the parameter used during execution - append to existing
             with open(
-                self.get_instruction_path("subfolder") / "waterway_instructions.json",
+                self.get_instruction_path(
+                    "subfolder") / "waterway_instructions.json",
                 "a",
             ) as file_pointer:
                 json.dump(self.instructions, file_pointer)
