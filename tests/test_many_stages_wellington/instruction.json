@@ -11,8 +11,9 @@
 			}
 		},
 		"processing": {
-			"chunk_size": 2000,
-			"number_of_cores": 2
+			"chunk_size": 2500,
+			"number_of_cores": 2,
+			"memory_limit": "5GBi"
 		},
 		"data_paths": {
 			"local_cache": "tests/test_many_stages_wellington/data",
@@ -74,8 +75,9 @@
 			}
 		},
 		"processing": {
-			"chunk_size": 2000,
-			"number_of_cores": 2
+			"chunk_size": 2500,
+			"number_of_cores": 2,
+			"memory_limit": "5GBi"
 		},
 		"data_paths": {
 			"local_cache": "tests/test_many_stages_wellington/data",
@@ -120,8 +122,9 @@
 			}
 		},
 		"processing": {
-			"chunk_size": 200,
-			"number_of_cores": 2
+			"chunk_size": 400,
+			"number_of_cores": 2,
+			"memory_limit": "5GBi"
 		},
 		"data_paths": {
 			"local_cache": "tests/test_many_stages_wellington/data",
@@ -181,8 +184,9 @@
 			}
 		},
 		"processing": {
-			"chunk_size": 200,
-			"number_of_cores": 2
+			"chunk_size": 400,
+			"number_of_cores": 2,
+			"memory_limit": "5GBi"
 		},
 		"data_paths": {
 			"local_cache": "tests/test_many_stages_wellington/data",
