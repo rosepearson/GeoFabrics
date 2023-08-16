@@ -1466,12 +1466,12 @@ class RawDem(LidarBase):
             dem.data_source.data = numpy.where(
                 foreshore_mask & (dem.z.data > 0),
                 self.SOURCE_CLASSIFICATION["ocean bathymetry"],
-                dem.z.data_source,
+                dem.data_source.data,
             )
             dem.lidar_source.data = numpy.where(
                 foreshore_mask & (dem.z.data > 0),
                 self.SOURCE_CLASSIFICATION["no data"],
-                dem.z.lidar_source,
+                dem.lidar_source.data,
             )
             dem.z.data = numpy.where(foreshore_mask & (dem.z.data > 0), 0, dem.z.data)
 
