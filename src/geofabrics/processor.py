@@ -1578,13 +1578,12 @@ class RiverBathymetryGenerator(BaseProcessor):
                 self.get_result_file_name(key="gnd_dem"))
             runner = RawLidarDemGenerator(self.instructions)
             runner.run()
-            gnd_dem = runner.raw_dem.dem
             instruction_paths.pop("raw_dem")
-        else:
-            print("Loading ground DEM.")  # drop band added by rasterio.open()
-            gnd_dem = rioxarray.rioxarray.open_rasterio(gnd_file, masked=True).squeeze(
-                "band", drop=True
-            )
+        # Load the Ground DEM
+        print("Loading ground DEM.")  # drop band added by rasterio.open()
+        gnd_dem = rioxarray.rioxarray.open_rasterio(gnd_file, masked=True).squeeze(
+            "band", drop=True
+        )
         # Get the vegetation DEM
         if not veg_file.is_file():
             # Create the catchment file if this has not be created yet!
@@ -1596,14 +1595,12 @@ class RiverBathymetryGenerator(BaseProcessor):
                 self.get_result_file_name(key="veg_dem"))
             runner = RawLidarDemGenerator(self.instructions)
             runner.run()
-            veg_dem = runner.raw_dem.dem
             instruction_paths.pop("raw_dem")
-        else:
-            # drop band added by rasterio.open()
-            print("Loading the vegetation DEM.")
-            veg_dem = dem.rioxarray.rioxarray.open_rasterio(
-                veg_file, masked=True
-            ).squeeze("band", drop=True)
+        # Load the Veg DEM - drop band added by rasterio.open()
+        print("Loading the vegetation DEM.")
+        veg_dem = dem.rioxarray.rioxarray.open_rasterio(
+            veg_file, masked=True
+        ).squeeze("band", drop=True)
         # Replace bathymetry contour information if it exists
         if bathy_data_paths is not None:
             instruction_paths["bathymetry_contours"] = bathy_data_paths
@@ -2631,11 +2628,8 @@ class WaterwayBedElevationEstimator(BaseProcessor):
         dem_file = self.get_result_file_path(key="raw_dem")
 
         # Load already created DEM file in
-        if dem_file.is_file():
-            dem = rioxarray.rioxarray.open_rasterio(dem_file, masked=True).squeeze(
-                "band", drop=True
-            )
-        else:  # Create DEM over the drain region
+        if not dem_file.is_file():
+            # Create DEM over the drain region
             # Save out the drain polygons as a file with a single multipolygon
             waterways_polygon_file = self.get_result_file_path(
                 key="waterways_polygon")
@@ -2660,7 +2654,10 @@ class WaterwayBedElevationEstimator(BaseProcessor):
             print("Generating drain DEM.")
             runner = RawLidarDemGenerator(self.instructions)
             runner.run()
-            dem = runner.raw_dem.dem
+        # Load in the DEM
+        dem = rioxarray.rioxarray.open_rasterio(dem_file, masked=True).squeeze(
+            "band", drop=True
+        )
         return dem
 
     def download_osm_values(self) -> bool:
