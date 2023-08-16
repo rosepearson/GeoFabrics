@@ -11,7 +11,7 @@
 			}
 		},
 		"processing": {
-			"chunk_size": 1000,
+			"chunk_size": 2000,
 			"number_of_cores": 2
 		},
 		"data_paths": {
@@ -74,7 +74,7 @@
 			}
 		},
 		"processing": {
-			"chunk_size": 1000,
+			"chunk_size": 2000,
 			"number_of_cores": 2
 		},
 		"data_paths": {
@@ -120,7 +120,7 @@
 			}
 		},
 		"processing": {
-			"chunk_size": 100,
+			"chunk_size": 200,
 			"number_of_cores": 2
 		},
 		"data_paths": {
@@ -181,7 +181,7 @@
 			}
 		},
 		"processing": {
-			"chunk_size": 100,
+			"chunk_size": 200,
 			"number_of_cores": 2
 		},
 		"data_paths": {
