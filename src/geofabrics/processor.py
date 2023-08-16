@@ -73,6 +73,7 @@ class BaseProcessor(abc.ABC):
                 "result_geofabric": "generated_geofabric.nc",
                 "raw_dem": "raw_dem.nc",
                 "subfolder": "results",
+                "downloads": "downloads",
             },
         )
 
@@ -88,9 +89,17 @@ class BaseProcessor(abc.ABC):
             if "subfolder" in path_instructions
             else defaults["subfolder"]
         )
-
+        # Return the subfolder outputs folder
         if key == "subfolder":
             return local_cache / subfolder
+        # return the downloads cache folder
+        if key == "downloads":
+            downloads = (
+                path_instructions["downloads"]
+                if "downloads" in path_instructions
+                else defaults["downloads"]
+            )
+            return local_cache / downloads
         # return the full path of the specified key
         if key in path_instructions:
             # check if a list or single path
@@ -135,6 +144,7 @@ class BaseProcessor(abc.ABC):
             "raw_dem",
             "subfolder",
             "result_geofabric",
+            "downloads",
         ]
 
         if key in self.instructions["data_paths"]:
@@ -347,7 +357,8 @@ class BaseProcessor(abc.ABC):
             # Key included in the data paths - add - either list or individual path
             data_paths = self.get_instruction_path(key)
             if type(data_paths) is list:
-                paths.extend([pathlib.Path(data_path) for data_path in data_paths])
+                paths.extend([pathlib.Path(data_path)
+                             for data_path in data_paths])
             else:
                 paths.append(pathlib.Path(data_paths))
         if data_type == "vector":
@@ -370,9 +381,10 @@ class BaseProcessor(abc.ABC):
             return
         # Check the instructions for vector data hosted in the supported vector data
         # services: LINZ and LRIS
-        cache_dir = pathlib.Path(self.get_instruction_path("local_cache"))
+        base_dir = pathlib.Path(self.get_instruction_path("local_cache"))
         subfolder = self.get_instruction_path(
-            "subfolder").relative_to(cache_dir)
+            "subfolder").relative_to(base_dir)
+        cache_dir = pathlib.Path(self.get_instruction_path("downloads"))
         bounding_polygon = (
             self.catchment_geometry.catchment
             if self.catchment_geometry is not None
@@ -574,7 +586,7 @@ class BaseProcessor(abc.ABC):
                 else None
             )
             self.lidar_fetcher = geoapis.lidar.OpenTopography(
-                cache_path=self.get_instruction_path("local_cache"),
+                cache_path=self.get_instruction_path("downloads") / "lidar",
                 search_polygon=search_polygon,
                 verbose=True,
                 download_limit_gbytes=self.get_instruction_general(
@@ -1579,7 +1591,10 @@ class RiverBathymetryGenerator(BaseProcessor):
         bathy_apis = None
         if "bathymetry_contours" in instruction_paths:
             bathy_data_paths = instruction_paths.pop("bathymetry_contours")
-        if "bathymetry_contours" in self.instructions["datasets"]["vector"]["linz"]:
+        if (
+            "vector" in self.instructions["datasets"]
+            and "bathymetry_contours" in self.instructions["datasets"]["vector"]["linz"]
+        ):
             bathy_apis = self.instructions["datasets"]["vector"]["linz"].pop(
                 "bathymetry_contours"
             )
