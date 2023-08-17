@@ -1507,7 +1507,7 @@ class RawDem(LidarBase):
                 tile_index_name_column,
             ) = self._tile_index_column_name(
                 tile_index_file=tile_index_file,
-                region_to_rasterise=region_to_rasterise,
+                region_to_rasterise=self.catchment_geometry.catchment,
             )
 
             # cycle through index chunks - and collect in a delayed array
@@ -2205,7 +2205,7 @@ class RoughnessDem(LidarBase):
                 tile_index_name_column,
             ) = self._tile_index_column_name(
                 tile_index_file=tile_index_file,
-                region_to_rasterise=region_to_rasterise,
+                region_to_rasterise=self.catchment_geometry.catchment,
             )
 
             # cycle through chunks - and collect in a delayed array
