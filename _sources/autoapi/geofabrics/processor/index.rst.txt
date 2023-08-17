@@ -199,7 +199,7 @@ Classes
    Bases: :py:obj:`BaseProcessor`
 
    HydrologicDemGenerator executes a pipeline for loading in a raw DEM and extents
-   before incorporating bathymetry (offshore, rivers and drains) to produce a
+   before incorporating bathymetry (offshore, rivers and waterways) to produce a
    hydrologically conditioned DEM. The data and pipeline logic is defined in
    the json_instructions file.
 
@@ -436,9 +436,9 @@ Classes
 
    Bases: :py:obj:`BaseProcessor`
 
-   DrainBathymetryGenerator executes a pipeline to pull in OpenStreetMap waterway
+   WaterwayBedElevationGenerator executes a pipeline to pull in OpenStreetMap waterway
    and tunnel information. A DEM is generated of the surrounding area and this used to
-   unblock drains and tunnels - by taking the lowest value in the area around a tunnel
+   unblock waterways and tunnels - by taking the lowest value in the area around a tunnel
    to be the tunnel elevation, and ensuring opne waterways flow downhill.
 
 
@@ -456,7 +456,7 @@ Classes
 
    .. py:method:: waterway_elevations_exists()
 
-      Check to see if the drain and culvert bathymeties have already been
+      Check to see if the waterway and culvert bathymeties have already been
       estimated.
 
 
@@ -479,21 +479,21 @@ Classes
 
    .. py:method:: create_dem(waterways)
 
-      Create and return a DEM at a resolution 1.5x the drain width.
+      Create and return a DEM at a resolution 1.5x the waterway width.
 
 
    .. py:method:: download_osm_values()
 
-      Download OpenStreetMap drains and tunnels within the catchment BBox.
+      Download OpenStreetMap waterways and tunnels within the catchment BBox.
 
 
    .. py:method:: run()
 
       This method runs a pipeline that:
-      * downloads all tunnels and drains within a catchment.
+      * downloads all tunnels and waterways within a catchment.
       * creates and samples a DEM around each feature to estimate the bed
         elevation.
-      * saves out extents and bed elevations of the drain and tunnel network
+      * saves out extents and bed elevations of the waterway and tunnel network
 
 
 

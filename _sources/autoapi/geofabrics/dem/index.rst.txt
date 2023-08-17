@@ -52,7 +52,7 @@ Attributes
    geofabrics.dem.delayed_elevation_over_chunk
 
 
-.. py:class:: CoarseDem(dem_file, catchment_geometry, set_foreshore = True, exclusion_extent = None)
+.. py:class:: CoarseDem(dem_file, catchment_geometry, set_foreshore = True, extent = None)
 
 
    A class to manage coarse or background DEMs in the catchment context
@@ -94,8 +94,14 @@ Attributes
       Ensure the memory associated with netCDF files is properly freed.
 
 
+   .. py:method:: chunk_points(chunk)
 
-.. py:class:: DemBase(catchment_geometry, extents)
+      The coarse DEM points after any extent or foreshore value
+      filtering.
+
+
+
+.. py:class:: DemBase(catchment_geometry)
 
 
    Bases: :py:obj:`abc.ABC`
@@ -114,10 +120,6 @@ Attributes
                               regions
    :param extents: Defines the extents of any dense (LiDAR or refernence DEM) values already added.
 
-   .. py:property:: extents
-
-      The combined extents for all added LiDAR tiles
-
    .. py:property:: dem
       :type: xarray.Dataset
       :abstractmethod:
@@ -125,7 +127,7 @@ Attributes
       Return the DEM over the catchment region
 
 
-.. py:class:: HydrologicallyConditionedDem(catchment_geometry, raw_dem_path, extents_path, interpolation_method)
+.. py:class:: HydrologicallyConditionedDem(catchment_geometry, raw_dem_path, interpolation_method)
 
 
    Bases: :py:obj:`DemBase`
@@ -137,6 +139,10 @@ Attributes
                                        interpolation_method
                                            If not None, interpolate using that method. Valid options are 'linear',
                                            'nearest', and 'cubic'
+
+   .. py:property:: raw_extents
+
+      Return the combined DEM from tiles and any interpolated offshore values
 
    .. py:property:: dem
 
@@ -235,13 +241,37 @@ Attributes
                         `dataset_mapping` key if datasets (not a single LAZ file) included.
 
 
-   .. py:method:: add_coarse_dem(coarse_dem)
+   .. py:method:: add_coarse_dems(coarse_dem_paths, area_threshold, buffer_cells, chunk_size)
+
+      Check if area requring infill, if so iterate through coarse DEMs
+      adding missing detail.
+
+      Currently doesn't use chunking - this may be required if a large area is covered
+      by the coarse DEM.
+
+      :param coarse_dem_paths - list of coarse DEM file paths to try add in turn:
+      :param area_threshold - the ratio of area without LiDAR required to for: coarse DEMs to be used.
+      :param buffer_cells - the number of empty cells to keep around LiDAR cells: for interpolation after the coarse DEM added to ensure a smooth
+                                                                                  boundary.
+
+
+   .. py:method:: add_coarse_dem_no_chunking(coarse_dem, region_to_rasterise, mask)
 
       Fill gaps in dense DEM from areas with no LiDAR with the coarse DEM.
       Perform linear interpolation.
 
-      Currently doesn't use chunking - this may be required if a large area is covered
-      by the coarse DEM.
+      :param coarse_dem - The coarse DEM to use for rasterising:
+      :param region_to_rasterise - the area to rasterise using the coarse DEM:
+
+
+   .. py:method:: add_coarse_dem_chunked(coarse_dem, region_to_rasterise, chunk_size, mask)
+
+      Fill gaps in dense DEM from areas with no LiDAR with the coarse DEM.
+      Perform linear interpolation.
+
+      :param coarse_dem - The coarse DEM to use for rasterising:
+      :param region_to_rasterise - the area to rasterise using the coarse DEM:
+      :param chunk_size - the size of each chunk:
 
 
 
@@ -281,9 +311,9 @@ Attributes
 
 
 
-.. py:function:: read_file_with_pdal(lidar_file, region_to_tile, catchment_geometry, source_crs = None, get_extents = False)
+.. py:function:: read_file_with_pdal(lidar_file, region_to_tile, crs, source_crs = None)
 
-   Read a tile file in using PDAL
+   Read a tile file in using PDAL with input and output CRS specified.
 
 
 .. py:function:: roughness_from_points(point_cloud, xy_out, xy_ground, options, eps = 0, leaf_size = 10)
@@ -312,10 +342,10 @@ Attributes
    mean if the points are co-linear or too few for linear interpolation.
 
 
-.. py:function:: load_tiles_in_chunk(lidar_files, source_crs, chunk_region_to_tile, catchment_geometry)
+.. py:function:: load_tiles_in_chunk(lidar_files, source_crs, chunk_region_to_tile, crs)
 
-   Read in all LiDAR files within the chunked region - clipped to within the region
-   within which to rasterise.
+   Read in all LiDAR files within the chunked region - clipped to within
+   the region within which to rasterise.
 
 
 .. py:function:: roughness_over_chunk(dim_x, dim_y, tile_points, xy_ground, options)

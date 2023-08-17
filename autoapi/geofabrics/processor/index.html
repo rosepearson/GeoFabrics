@@ -119,7 +119,7 @@ LiDAR and bathymetry contours based on the instructions contained in a JSON file
 <td><p>RiverbathymetryGenerator executes a pipeline to estimate river</p></td>
 </tr>
 <tr class="row-odd"><td><p><a class="reference internal" href="#geofabrics.processor.WaterwayBedElevationEstimator" title="geofabrics.processor.WaterwayBedElevationEstimator"><code class="xref py py-obj docutils literal notranslate"><span class="pre">WaterwayBedElevationEstimator</span></code></a></p></td>
-<td><p>DrainBathymetryGenerator executes a pipeline to pull in OpenStreetMap waterway</p></td>
+<td><p>WaterwayBedElevationGenerator executes a pipeline to pull in OpenStreetMap waterway</p></td>
 </tr>
 </tbody>
 </table>
@@ -389,7 +389,7 @@ See ‘get_lidar_datasets_info’ for where to change this.</p>
 <em class="property"><span class="pre">class</span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">geofabrics.processor.</span></span><span class="sig-name descname"><span class="pre">HydrologicDemGenerator</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">json_instructions</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">debug</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">True</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#geofabrics.processor.HydrologicDemGenerator" title="Permalink to this definition"></a></dt>
 <dd><p>Bases: <a class="reference internal" href="#geofabrics.processor.BaseProcessor" title="geofabrics.processor.BaseProcessor"><code class="xref py py-obj docutils literal notranslate"><span class="pre">BaseProcessor</span></code></a></p>
 <p>HydrologicDemGenerator executes a pipeline for loading in a raw DEM and extents
-before incorporating bathymetry (offshore, rivers and drains) to produce a
+before incorporating bathymetry (offshore, rivers and waterways) to produce a
 hydrologically conditioned DEM. The data and pipeline logic is defined in
 the json_instructions file.</p>
 <dl class="simple">
@@ -782,9 +782,9 @@ and eventually depth.</p>
 <dt class="sig sig-object py" id="geofabrics.processor.WaterwayBedElevationEstimator">
 <em class="property"><span class="pre">class</span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">geofabrics.processor.</span></span><span class="sig-name descname"><span class="pre">WaterwayBedElevationEstimator</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">json_instructions</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">debug</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">True</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#geofabrics.processor.WaterwayBedElevationEstimator" title="Permalink to this definition"></a></dt>
 <dd><p>Bases: <a class="reference internal" href="#geofabrics.processor.BaseProcessor" title="geofabrics.processor.BaseProcessor"><code class="xref py py-obj docutils literal notranslate"><span class="pre">BaseProcessor</span></code></a></p>
-<p>DrainBathymetryGenerator executes a pipeline to pull in OpenStreetMap waterway
+<p>WaterwayBedElevationGenerator executes a pipeline to pull in OpenStreetMap waterway
 and tunnel information. A DEM is generated of the surrounding area and this used to
-unblock drains and tunnels - by taking the lowest value in the area around a tunnel
+unblock waterways and tunnels - by taking the lowest value in the area around a tunnel
 to be the tunnel elevation, and ensuring opne waterways flow downhill.</p>
 <dl class="field-list simple">
 <dt class="field-odd">Parameters<span class="colon">:</span></dt>
@@ -828,7 +828,7 @@ to be the tunnel elevation, and ensuring opne waterways flow downhill.</p>
 <dl class="py method">
 <dt class="sig sig-object py" id="geofabrics.processor.WaterwayBedElevationEstimator.waterway_elevations_exists">
 <span class="sig-name descname"><span class="pre">waterway_elevations_exists</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="headerlink" href="#geofabrics.processor.WaterwayBedElevationEstimator.waterway_elevations_exists" title="Permalink to this definition"></a></dt>
-<dd><p>Check to see if the drain and culvert bathymeties have already been
+<dd><p>Check to see if the waterway and culvert bathymeties have already been
 estimated.</p>
 </dd></dl>
 
@@ -879,7 +879,7 @@ then returning the minimum elevation.</p>
 <dl class="py method">
 <dt class="sig sig-object py" id="geofabrics.processor.WaterwayBedElevationEstimator.create_dem">
 <span class="sig-name descname"><span class="pre">create_dem</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">waterways</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#geofabrics.processor.WaterwayBedElevationEstimator.create_dem" title="Permalink to this definition"></a></dt>
-<dd><p>Create and return a DEM at a resolution 1.5x the drain width.</p>
+<dd><p>Create and return a DEM at a resolution 1.5x the waterway width.</p>
 <dl class="field-list simple">
 <dt class="field-odd">Parameters<span class="colon">:</span></dt>
 <dd class="field-odd"><p><strong>waterways</strong> (<em>geopandas.GeoDataFrame</em>) – </p>
@@ -893,7 +893,7 @@ then returning the minimum elevation.</p>
 <dl class="py method">
 <dt class="sig sig-object py" id="geofabrics.processor.WaterwayBedElevationEstimator.download_osm_values">
 <span class="sig-name descname"><span class="pre">download_osm_values</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="headerlink" href="#geofabrics.processor.WaterwayBedElevationEstimator.download_osm_values" title="Permalink to this definition"></a></dt>
-<dd><p>Download OpenStreetMap drains and tunnels within the catchment BBox.</p>
+<dd><p>Download OpenStreetMap waterways and tunnels within the catchment BBox.</p>
 <dl class="field-list simple">
 <dt class="field-odd">Return type<span class="colon">:</span></dt>
 <dd class="field-odd"><p>bool</p>
@@ -905,13 +905,13 @@ then returning the minimum elevation.</p>
 <dt class="sig sig-object py" id="geofabrics.processor.WaterwayBedElevationEstimator.run">
 <span class="sig-name descname"><span class="pre">run</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="headerlink" href="#geofabrics.processor.WaterwayBedElevationEstimator.run" title="Permalink to this definition"></a></dt>
 <dd><p>This method runs a pipeline that:
-* downloads all tunnels and drains within a catchment.
+* downloads all tunnels and waterways within a catchment.
 * creates and samples a DEM around each feature to estimate the bed</p>
 <blockquote>
 <div><p>elevation.</p>
 </div></blockquote>
 <ul class="simple">
-<li><p>saves out extents and bed elevations of the drain and tunnel network</p></li>
+<li><p>saves out extents and bed elevations of the waterway and tunnel network</p></li>
 </ul>
 </dd></dl>
 
