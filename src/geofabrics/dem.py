@@ -447,11 +447,14 @@ class HydrologicallyConditionedDem(DemBase):
 
         # Clip to catchment and set the data_source layer to NaN where there is no data
         raw_dem = raw_dem.rio.clip(catchment_geometry.catchment.geometry, drop=True)
-        raw_dem["data_source"].data = numpy.where(
-            raw_dem.data_source == self.SOURCE_CLASSIFICATION["no data"],
+        raw_dem["data_source"] = xarray.where(
+            numpy.logical_not(raw_dem.data_source == self.SOURCE_CLASSIFICATION["no data"]),
+            raw_dem.data_source,
             numpy.nan,
-            raw_dem.data_source.data,
+            keep_attrs=True,
         )
+        # Rerun as otherwise the no data as NaN seems to be lost for the data_source layer
+        self._write_netcdf_conventions_in_place(raw_dem, catchment_geometry.crs)
         # Setup the DenseDemBase class
         super(HydrologicallyConditionedDem, self).__init__(
             catchment_geometry=catchment_geometry,
@@ -1455,17 +1458,23 @@ class RawDem(LidarBase):
             )
 
             # Set any positive LiDAR foreshore points to zero
-            dem.data_source.data = numpy.where(
-                foreshore_mask & (dem.z.data > 0),
+            dem["data_source"] = xarray.where(
+                numpy.logical_not(foreshore_mask & (dem.z.data > 0)),
+                dem.data_source,
                 self.SOURCE_CLASSIFICATION["ocean bathymetry"],
-                dem.data_source.data,
+                keep_attrs=True,
             )
-            dem.lidar_source.data = numpy.where(
-                foreshore_mask & (dem.z.data > 0),
+            dem["lidar_source"] = xarray.where(
+                numpy.logical_not(foreshore_mask & (dem.z.data > 0)),
+                dem.lidar_source,
                 self.SOURCE_CLASSIFICATION["no data"],
-                dem.lidar_source.data,
+                keep_attrs=True,
             )
-            dem.z.data = numpy.where(foreshore_mask & (dem.z.data > 0), 0, dem.z.data)
+            dem["z"] = xarray.where(
+                numpy.logical_not(foreshore_mask & (dem.z.data > 0)),
+                dem.z,
+                0,
+                keep_attrs=True,)
 
         self._dem = dem
 
@@ -1871,10 +1880,11 @@ class RawDem(LidarBase):
             z = self._dem.z.copy(deep=True)
             z.data[:] = 0
             mask = z.rio.clip(no_data_extents.geometry, drop=False).notnull().data
-            self._dem["data_source"].data = numpy.where(
-                mask & self._dem.z.notnull().data,
+            self._dem["data_source"] = xarray.where(
+                numpy.logical_not(mask & self._dem.z.notnull().data),
+                self._dem.data_source,
                 self.SOURCE_CLASSIFICATION["coarse DEM"],
-                self._dem.data_source.data,
+                keep_attrs=True,
             )
         return coarse_dem_added
 
@@ -1991,7 +2001,12 @@ class RawDem(LidarBase):
 
         # Combine chunks into a array and replace missing values in dataset
         elevations = dask.array.block(delayed_chunked_matrix)
-        self._dem["z"].data = numpy.where(mask, elevations, self._dem.z.data)
+        self._dem["z"] = xarray.where(
+            numpy.logical_not(mask), 
+            self._dem.z,
+            elevations, 
+            keep_attrs=True,
+        )
 
 
 class RoughnessDem(LidarBase):
