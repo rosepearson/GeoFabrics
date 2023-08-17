@@ -448,7 +448,9 @@ class HydrologicallyConditionedDem(DemBase):
         # Clip to catchment and set the data_source layer to NaN where there is no data
         raw_dem = raw_dem.rio.clip(catchment_geometry.catchment.geometry, drop=True)
         raw_dem["data_source"] = xarray.where(
-            numpy.logical_not(raw_dem.data_source == self.SOURCE_CLASSIFICATION["no data"]),
+            numpy.logical_not(
+                raw_dem.data_source == self.SOURCE_CLASSIFICATION["no data"]
+            ),
             raw_dem.data_source,
             numpy.nan,
             keep_attrs=True,
@@ -1474,7 +1476,8 @@ class RawDem(LidarBase):
                 numpy.logical_not(foreshore_mask & (dem.z.data > 0)),
                 dem.z,
                 0,
-                keep_attrs=True,)
+                keep_attrs=True,
+            )
 
         self._dem = dem
 
@@ -2002,9 +2005,9 @@ class RawDem(LidarBase):
         # Combine chunks into a array and replace missing values in dataset
         elevations = dask.array.block(delayed_chunked_matrix)
         self._dem["z"] = xarray.where(
-            numpy.logical_not(mask), 
+            numpy.logical_not(mask),
             self._dem.z,
-            elevations, 
+            elevations,
             keep_attrs=True,
         )
 
