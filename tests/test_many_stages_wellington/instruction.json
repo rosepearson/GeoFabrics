@@ -122,7 +122,7 @@
 			}
 		},
 		"processing": {
-			"chunk_size": 400,
+			"chunk_size": 500,
 			"number_of_cores": 2,
 			"memory_limit": "5GiB"
 		},
@@ -184,7 +184,7 @@
 			}
 		},
 		"processing": {
-			"chunk_size": 400,
+			"chunk_size": 500,
 			"number_of_cores": 2,
 			"memory_limit": "5GiB"
 		},

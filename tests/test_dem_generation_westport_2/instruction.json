@@ -10,7 +10,8 @@
 	},
 	"processing": {
 		"chunk_size": 100,
-		"number_of_cores": 2
+		"number_of_cores": 2,
+		"memory_limit": "5GiB"
 	},
 	"data_paths": {
 		"local_cache": "tests/test_dem_generation_westport_2/data",

@@ -12,7 +12,8 @@
 	},
 	"processing": {
 		"chunk_size": 500,
-		"number_of_cores": 2
+		"number_of_cores": 2,
+		"memory_limit": "5GiB"
 	},
 	"data_paths": {
 		"local_cache": "tests/test_many_stages_multiple_2/data",
@@ -65,7 +66,8 @@
 	},
 	"processing": {
 		"chunk_size": 500,
-		"number_of_cores": 2
+		"number_of_cores": 2,
+		"memory_limit": "5GiB"
 	},
 	"data_paths": {
 		"local_cache": "tests/test_many_stages_multiple_2/data",
