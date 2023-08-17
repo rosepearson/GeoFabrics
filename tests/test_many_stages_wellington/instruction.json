@@ -11,12 +11,13 @@
 			}
 		},
 		"processing": {
-			"chunk_size": 1000,
-			"number_of_cores": 2
+			"chunk_size": 2500,
+			"number_of_cores": 2,
+			"memory_limit": "5GiB"
 		},
 		"data_paths": {
 			"local_cache": "tests/test_many_stages_wellington/data",
-			"subfolder": "results"
+			"subfolder": "results/rivers"
 		},
 		"datasets": {
 			"lidar": {
@@ -74,12 +75,14 @@
 			}
 		},
 		"processing": {
-			"chunk_size": 1000,
-			"number_of_cores": 2
+			"chunk_size": 2500,
+			"number_of_cores": 2,
+			"memory_limit": "5GiB"
 		},
 		"data_paths": {
 			"local_cache": "tests/test_many_stages_wellington/data",
-			"catchment_boundary": "catchment.geojson"
+			"subfolder": "results/waterways",
+			"catchment_boundary": "../catchment.geojson"
 		},
 		"datasets": {
 			"lidar": {
@@ -119,21 +122,23 @@
 			}
 		},
 		"processing": {
-			"chunk_size": 100,
-			"number_of_cores": 2
+			"chunk_size": 500,
+			"number_of_cores": 2,
+			"memory_limit": "5GiB"
 		},
 		"data_paths": {
-		  "local_cache": "tests/test_many_stages_wellington/data",
-		  "catchment_boundary": "catchment.geojson",
-		  "raw_dem": "raw_dem.nc",
-		  "river_polygons": ["river_polygon.geojson",
-							 "fan_polygon.geojson",
-							 "closed_waterways_polygon.geojson",
-							 "open_waterways_polygon.geojson"],
-			"river_bathymetry": ["river_bathymetry.geojson",
-								 "fan_bathymetry.geojson",
-								 "closed_waterways_elevation.geojson",
-								 "open_waterways_elevation.geojson"],
+			"local_cache": "tests/test_many_stages_wellington/data",
+			"subfolder": "results",
+			"catchment_boundary": "catchment.geojson",
+			"raw_dem": "raw_dem.nc",
+			"river_polygons": ["rivers/river_polygon.geojson",
+							   "rivers/fan_polygon.geojson",
+							   "waterways/closed_waterways_polygon.geojson",
+							   "waterways/open_waterways_polygon.geojson"],
+			"river_bathymetry": ["rivers/river_bathymetry.geojson",
+								 "rivers/fan_bathymetry.geojson",
+								 "waterways/closed_waterways_elevation.geojson",
+								 "waterways/open_waterways_elevation.geojson"],
 		  "result_dem": "test_dem.nc"
 		},
 		"datasets": {
@@ -179,15 +184,17 @@
 			}
 		},
 		"processing": {
-			"chunk_size": 100,
-			"number_of_cores": 2
+			"chunk_size": 500,
+			"number_of_cores": 2,
+			"memory_limit": "5GiB"
 		},
 		"data_paths": {
-		  "local_cache": "tests/test_many_stages_wellington/data",
-		  "catchment_boundary": "catchment.geojson",
-		  "result_dem": "test_dem.nc",
-		  "result_geofabric": "test_geofabric.nc",
-		  "benchmark_geofabric": "benchmark_geofabric.nc"
+			"local_cache": "tests/test_many_stages_wellington/data",
+			"subfolder": "results",
+			"catchment_boundary": "catchment.geojson",
+			"result_dem": "test_dem.nc",
+			"result_geofabric": "test_geofabric.nc",
+			"benchmark_geofabric": "benchmark_geofabric.nc"
 		},
 		"datasets": {
 			"lidar": {

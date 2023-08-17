@@ -71,7 +71,6 @@ class BaseProcessor(abc.ABC):
                 "result_dem": "generated_dem.nc",
                 "result_geofabric": "generated_geofabric.nc",
                 "raw_dem": "raw_dem.nc",
-                "raw_dem_extents": "raw_extents.geojson",
                 "subfolder": "results",
                 "downloads": "downloads",
             },
@@ -141,7 +140,6 @@ class BaseProcessor(abc.ABC):
 
         defaults = [
             "result_dem",
-            "raw_dem_extents",
             "raw_dem",
             "subfolder",
             "result_geofabric",
@@ -234,6 +232,7 @@ class BaseProcessor(abc.ABC):
             "elevation_range": None,
             "lidar_interpolation_method": "idw",
             "download_limit_gbytes": 100,
+            "lidar_buffer": 0,
         }
 
         assert key in defaults or key in self.instructions["general"], (
@@ -258,7 +257,11 @@ class BaseProcessor(abc.ABC):
             The string identifying the instruction
         """
 
-        defaults = {"number_of_cores": 1, "chunk_size": None, "memory_limit": "10GiB"}
+        defaults = {
+            "number_of_cores": 1,
+            "chunk_size": None,
+            "memory_limit": "10GiB",
+        }
 
         assert key in defaults or key in self.instructions["processing"], (
             f"The key: {key} is missing "
@@ -356,9 +359,9 @@ class BaseProcessor(abc.ABC):
             # Key included in the data paths - add - either list or individual path
             data_paths = self.get_instruction_path(key)
             if type(data_paths) is list:
-                paths.extend(data_paths)
+                paths.extend([pathlib.Path(data_path) for data_path in data_paths])
             else:
-                paths.append(data_paths)
+                paths.append(pathlib.Path(data_paths))
         if data_type == "vector":
             # Define the supported vector 'datasets' keywords and the geoapis class for
             # accessing that data service
@@ -411,7 +414,9 @@ class BaseProcessor(abc.ABC):
                 # service.
                 if data_type == "vector":
                     fetcher = data_services[data_service](
-                        api_key, bounding_polygon=bounding_polygon, verbose=True
+                        api_key,
+                        bounding_polygon=bounding_polygon,
+                        verbose=True,
                     )
 
                     api_instruction = self.instructions["datasets"][data_type][
@@ -562,7 +567,7 @@ class BaseProcessor(abc.ABC):
         lidar_datasets_info = {}
         data_type = "lidar"
 
-        ## See if 'OpenTopography' or another data_service has been specified as an area
+        # See if 'OpenTopography' or another data_service has been specified as an area
         # to look first
         data_service = "open_topography"
         if self.check_datasets(data_service, data_type="lidar"):
@@ -607,7 +612,7 @@ class BaseProcessor(abc.ABC):
                     / dataset_name
                     / f"{dataset_name}_TileIndex.zip"
                 )
-        ## Next check for any additional local LiDAR datasets.
+        # Next check for any additional local LiDAR datasets.
         # for multiple local lidar datasets - must be in separate folders
         data_service = "local"
         if self.check_datasets(data_service, data_type="lidar"):
@@ -660,7 +665,7 @@ class BaseProcessor(abc.ABC):
                 )
             # Add the local datasets to any remote (API) datasets
             lidar_datasets_info.update(local_datasets)
-        ## Finally if there are no LiDAR datasets see if invidividual LiDAR
+        # Finally if there are no LiDAR datasets see if invidividual LiDAR
         # files have been specified.
         if len(lidar_datasets_info) == 0 and self.check_instruction_path("lidar_files"):
             # get the specified file paths from the instructions,
@@ -760,7 +765,10 @@ class BaseProcessor(abc.ABC):
             + "where only one is supported."
         )
         catchment_geometry = geometry.CatchmentGeometry(
-            catchment_dirs, self.get_crs(), self.get_resolution(), foreshore_buffer=2
+            catchment_dirs,
+            self.get_crs(),
+            self.get_resolution(),
+            foreshore_buffer=2,
         )
         land_dirs = self.get_vector_or_raster_paths(
             key="land", data_type="vector", required=False
@@ -822,7 +830,9 @@ class RawLidarDemGenerator(BaseProcessor):
         self.create_results_folder()
 
         # Only include data in addition to LiDAR if the area_threshold is not covered
-        area_threshold = 10.0 / 100  # Used to decide if bathymetry should be included
+        area_threshold = (
+            10.0 / 100
+        )  # Used to decide if non-LiDAR data should be included
 
         # create the catchment geometry object
         self.catchment_geometry = self.create_catchment()
@@ -840,80 +850,64 @@ class RawLidarDemGenerator(BaseProcessor):
             elevation_range=self.get_instruction_general("elevation_range"),
         )
 
-        # Setup Dask cluster and client
+        # Load in LiDAR tiles
+        self.raw_dem.add_lidar(
+            lidar_datasets_info=lidar_datasets_info,
+            lidar_classifications_to_keep=self.get_instruction_general(
+                "lidar_classifications_to_keep"
+            ),
+            chunk_size=self.get_processing_instructions("chunk_size"),
+            metadata=self.create_metadata(),
+        )  # Note must be called after all others if it is to be complete
+
+        # Add a coarse DEM if significant area without LiDAR and a coarse DEM
+        if self.check_vector_or_raster(key="coarse_dems", api_type="raster"):
+            coarse_dem_paths = self.get_vector_or_raster_paths(
+                key="coarse_dems", data_type="raster"
+            )
+
+            # Add coarse DEMs if there are any and if area
+            self.raw_dem.add_coarse_dems(
+                coarse_dem_paths=coarse_dem_paths,
+                area_threshold=area_threshold,
+                buffer_cells=self.get_instruction_general("lidar_buffer"),
+                chunk_size=self.get_processing_instructions("chunk_size"),
+            )
+
+        # Setup Dask cluster and client - LAZY SAVE LIDAR DEM
         cluster_kwargs = {
             "n_workers": self.get_processing_instructions("number_of_cores"),
             "threads_per_worker": 1,
             "processes": True,
             "memory_limit": self.get_processing_instructions("memory_limit"),
         }
-        with distributed.LocalCluster(**cluster_kwargs) as cluster, distributed.Client(
-            cluster
-        ) as client:
-            print(client)
-            # Load in LiDAR tiles
-            self.raw_dem.add_lidar(
-                lidar_datasets_info=lidar_datasets_info,
-                lidar_classifications_to_keep=self.get_instruction_general(
-                    "lidar_classifications_to_keep"
-                ),
-                chunk_size=self.get_processing_instructions("chunk_size"),
-                metadata=self.create_metadata(),
-            )  # Note must be called after all others if it is to be complete
-        # Load in coarse DEM if any significant land/foreshore not covered by LiDAR
-        if self.check_vector_or_raster(key="coarse_dems", api_type="raster"):
-            area_without_lidar = (
-                self.catchment_geometry.land_and_foreshore_without_lidar(
-                    self.raw_dem.extents
-                ).geometry.area.sum()
-            )
-            if (
-                area_without_lidar
-                > self.catchment_geometry.land_and_foreshore.area.sum() * area_threshold
-            ):
-                coarse_dem_paths = self.get_vector_or_raster_paths(
-                    key="coarse_dems", data_type="raster"
-                )
+        cluster = distributed.LocalCluster(**cluster_kwargs)
+        with cluster, distributed.Client(cluster) as client:
+            print("Dask client:", client)
+            print("Dask dashboard:", client.dashboard_link)
 
-                logging.info(f"Incorporating background DEM: {coarse_dem_paths}")
-
-                # Load in background DEM - cut away within the LiDAR extents
-                for coarse_dem_path in coarse_dem_paths:
-                    coarse_dem = dem.CoarseDem(
-                        dem_file=coarse_dem_path,
-                        catchment_geometry=self.catchment_geometry,
-                        set_foreshore=self.get_instruction_general(
-                            "drop_offshore_lidar"
-                        ),
-                        exclusion_extent=self.raw_dem.extents,
-                    )
-                    # Add the coarse DEM data where there's no LiDAR updating the extents
-                    if not coarse_dem.empty:
-                        self.raw_dem.add_coarse_dem(coarse_dem=coarse_dem)
-        # save raw DEM and extents
-        logging.info("In processor.DemGenerator - write out the raw DEM")
-        self.raw_dem.dem.to_netcdf(
-            self.get_instruction_path("raw_dem"), format="NETCDF4", engine="netcdf4"
-        )
-        if self.raw_dem.extents is not None:
-            logging.info("In processor.DemGenerator - write out the raw DEM extents")
-            self.raw_dem.extents.to_file(self.get_instruction_path("raw_dem_extents"))
-        else:
-            logging.warning(
-                "In processor.DemGenerator - no LiDAR extents exist so no extents file "
-                "written"
+            # compute and save raw DEM
+            logging.info(
+                "In processor.DemGenerator - write out the raw DEM " "from LiDAR"
             )
+            self.raw_dem.dem.to_netcdf(
+                self.get_instruction_path("raw_dem"),
+                format="NETCDF4",
+                engine="netcdf4",
+            )
+
         if self.debug:
             # Record the parameter used during execution - append to existing
             with open(
-                self.get_instruction_path("subfolder") / "dem_instructions.json", "a"
+                self.get_instruction_path("subfolder") / "dem_instructions.json",
+                "a",
             ) as file_pointer:
                 json.dump(self.instructions, file_pointer)
 
 
 class HydrologicDemGenerator(BaseProcessor):
     """HydrologicDemGenerator executes a pipeline for loading in a raw DEM and extents
-    before incorporating bathymetry (offshore, rivers and drains) to produce a
+    before incorporating bathymetry (offshore, rivers and waterways) to produce a
     hydrologically conditioned DEM. The data and pipeline logic is defined in
     the json_instructions file.
 
@@ -944,7 +938,7 @@ class HydrologicDemGenerator(BaseProcessor):
         # Load in bathymetry and interpolate offshore if significant offshore is not
         # covered by LiDAR
         area_without_lidar = self.catchment_geometry.offshore_without_lidar(
-            self.hydrologic_dem.extents
+            self.hydrologic_dem.raw_extents
         ).geometry.area.sum()
         if (
             self.check_vector_or_raster(key="bathymetry_contours", api_type="vector")
@@ -968,7 +962,7 @@ class HydrologicDemGenerator(BaseProcessor):
                 bathy_contour_dirs[0],
                 self.catchment_geometry,
                 z_label=self.get_instruction_general("bathymetry_contours_z_label"),
-                exclusion_extent=self.hydrologic_dem.extents,
+                exclusion_extent=self.hydrologic_dem.raw_extents,
             )
 
             # interpolate
@@ -1019,7 +1013,6 @@ class HydrologicDemGenerator(BaseProcessor):
         self.hydrologic_dem = dem.HydrologicallyConditionedDem(
             catchment_geometry=self.catchment_geometry,
             raw_dem_path=self.get_instruction_path("raw_dem"),
-            extents_path=self.get_instruction_path("raw_dem_extents"),
             interpolation_method=self.get_instruction_general("interpolation_method"),
         )
 
@@ -1031,12 +1024,15 @@ class HydrologicDemGenerator(BaseProcessor):
 
         # fill combined dem - save results
         self.hydrologic_dem.dem.to_netcdf(
-            self.get_instruction_path("result_dem"), format="NETCDF4", engine="netcdf4"
+            self.get_instruction_path("result_dem"),
+            format="NETCDF4",
+            engine="netcdf4",
         )
         if self.debug:
             # Record the parameter used during execution - append to existing
             with open(
-                self.get_instruction_path("subfolder") / "dem_instructions.json", "a"
+                self.get_instruction_path("subfolder") / "dem_instructions.json",
+                "a",
             ) as file_pointer:
                 json.dump(self.instructions, file_pointer)
 
@@ -1085,6 +1081,16 @@ class RoughnessLengthGenerator(BaseProcessor):
             interpolation_method=self.get_instruction_general("interpolation_method"),
         )
 
+        # Load in LiDAR tiles
+        self.roughness_dem.add_lidar(
+            lidar_datasets_info=lidar_datasets_info,
+            lidar_classifications_to_keep=self.get_instruction_general(
+                "lidar_classifications_to_keep"
+            ),
+            chunk_size=self.get_processing_instructions("chunk_size"),
+            metadata=self.create_metadata(),
+        )  # Note must be called after all others if it is to be complete
+
         # Setup Dask cluster and client
         cluster_kwargs = {
             "n_workers": self.get_processing_instructions("number_of_cores"),
@@ -1095,22 +1101,14 @@ class RoughnessLengthGenerator(BaseProcessor):
         with distributed.LocalCluster(**cluster_kwargs) as cluster, distributed.Client(
             cluster
         ) as client:
-            print(client)
-            # Load in LiDAR tiles
-            self.roughness_dem.add_lidar(
-                lidar_datasets_info=lidar_datasets_info,
-                lidar_classifications_to_keep=self.get_instruction_general(
-                    "lidar_classifications_to_keep"
-                ),
-                chunk_size=self.get_processing_instructions("chunk_size"),
-                metadata=self.create_metadata(),
-            )  # Note must be called after all others if it is to be complete
-        # save results
-        self.roughness_dem.dem.to_netcdf(
-            self.get_instruction_path("result_geofabric"),
-            format="NETCDF4",
-            engine="netcdf4",
-        )
+            print("Dask client:", client)
+            print("Dask dashboard:", client.dashboard_link)
+            # save results
+            self.roughness_dem.dem.to_netcdf(
+                self.get_instruction_path("result_geofabric"),
+                format="NETCDF4",
+                engine="netcdf4",
+            )
         if self.debug:
             # Record the parameter used during execution - append to existing
             with open(
@@ -1198,7 +1196,8 @@ class MeasuredRiverGenerator(BaseProcessor):
         mouth_normal = shapely.geometry.Point([-mouth_tangent.y, mouth_tangent.x])
         mouth_centre = shapely.geometry.MultiPoint([points_0[0], points_1[0]]).centroid
         spacing = max(
-            points_0[0].distance(points_0[1]), points_1[0].distance(points_1[1])
+            points_0[0].distance(points_0[1]),
+            points_1[0].distance(points_1[1]),
         )
         # Generate and save out a river centreline file normal to the river mouth
         river_centreline = shapely.geometry.LineString(
@@ -1557,19 +1556,14 @@ class RiverBathymetryGenerator(BaseProcessor):
             # Create the ground DEM file if this has not be created yet!
             print("Generating ground DEM.")
             instruction_paths["raw_dem"] = str(self.get_result_file_name(key="gnd_dem"))
-            instruction_paths["raw_dem_extents"] = str(
-                self.get_result_file_name(key="gnd_dem_extents")
-            )
             runner = RawLidarDemGenerator(self.instructions)
             runner.run()
-            gnd_dem = runner.raw_dem.dem
             instruction_paths.pop("raw_dem")
-            instruction_paths.pop("raw_dem_extents")
-        else:
-            print("Loading ground DEM.")  # drop band added by rasterio.open()
-            gnd_dem = rioxarray.rioxarray.open_rasterio(gnd_file, masked=True).squeeze(
-                "band", drop=True
-            )
+        # Load the Ground DEM
+        print("Loading ground DEM.")  # drop band added by rasterio.open()
+        gnd_dem = rioxarray.rioxarray.open_rasterio(gnd_file, masked=True).squeeze(
+            "band", drop=True
+        )
         # Get the vegetation DEM
         if not veg_file.is_file():
             # Create the catchment file if this has not be created yet!
@@ -1578,19 +1572,14 @@ class RiverBathymetryGenerator(BaseProcessor):
                 "lidar_classifications_to_keep"
             ] = self.get_bathymetry_instruction("veg_lidar_classifications_to_keep")
             instruction_paths["raw_dem"] = str(self.get_result_file_name(key="veg_dem"))
-            instruction_paths["raw_dem_extents"] = str(
-                self.get_result_file_name(key="veg_dem_extents")
-            )
             runner = RawLidarDemGenerator(self.instructions)
             runner.run()
-            veg_dem = runner.raw_dem.dem
             instruction_paths.pop("raw_dem")
-            instruction_paths.pop("raw_dem_extents")
-        else:
-            print("Loading the vegetation DEM.")  # drop band added by rasterio.open()
-            veg_dem = dem.rioxarray.rioxarray.open_rasterio(
-                veg_file, masked=True
-            ).squeeze("band", drop=True)
+        # Load the Veg DEM - drop band added by rasterio.open()
+        print("Loading the vegetation DEM.")
+        veg_dem = dem.rioxarray.rioxarray.open_rasterio(veg_file, masked=True).squeeze(
+            "band", drop=True
+        )
         # Replace bathymetry contour information if it exists
         if bathy_data_paths is not None:
             instruction_paths["bathymetry_contours"] = bathy_data_paths
@@ -1675,7 +1664,10 @@ class RiverBathymetryGenerator(BaseProcessor):
         max_bank_height = self.get_bathymetry_instruction("max_bank_height")
         river_corridor_width = self.get_bathymetry_instruction("river_corridor_width")
 
-        sampled_cross_sections, river_polygon = channel_width.estimate_width_and_slope(
+        (
+            sampled_cross_sections,
+            river_polygon,
+        ) = channel_width.estimate_width_and_slope(
             aligned_channel=aligned_channel,
             threshold=bank_threshold,
             cross_section_radius=river_corridor_width / 2,
@@ -1776,7 +1768,9 @@ class RiverBathymetryGenerator(BaseProcessor):
             aligned_channel = geopandas.read_file(aligned_channel_file)
         return channel_width, aligned_channel
 
-    def align_channel_from_osm(self) -> bathymetry_estimation.ChannelCharacteristics:
+    def align_channel_from_osm(
+        self,
+    ) -> bathymetry_estimation.ChannelCharacteristics:
         """Calculate the channel width, slope and other characteristics. This requires a
         ground and vegetation DEM. This also may require alignment of the channel
         centreline.
@@ -1799,7 +1793,9 @@ class RiverBathymetryGenerator(BaseProcessor):
         overpass = OSMPythonTools.overpass.Overpass()
         if "osm_date" in self.instructions["rivers"]:
             osm_channel = overpass.query(
-                query, date=self.get_bathymetry_instruction("osm_date"), timeout=60
+                query,
+                date=self.get_bathymetry_instruction("osm_date"),
+                timeout=60,
             )
         else:
             osm_channel = overpass.query(query, timeout=60)
@@ -1820,7 +1816,10 @@ class RiverBathymetryGenerator(BaseProcessor):
         # Get the start and end point of the smoothed network line
         channel = channel.get_parametric_spline_fit()
         network_extents = channel.boundary.explode(index_parts=False)
-        network_start, network_end = (network_extents.iloc[0], network_extents.iloc[1])
+        network_start, network_end = (
+            network_extents.iloc[0],
+            network_extents.iloc[1],
+        )
         # Get the distance along the OSM that the start/end points are.
         # Note projection function is limited between [0, osm_channel.length]
         end_split_length = float(osm_channel.project(network_end))
@@ -2293,15 +2292,16 @@ class RiverBathymetryGenerator(BaseProcessor):
         if self.debug:
             # Record the parameter used during execution - append to existing
             with open(
-                self.get_instruction_path("subfolder") / "rivers_instructions.json", "a"
+                self.get_instruction_path("subfolder") / "rivers_instructions.json",
+                "a",
             ) as file_pointer:
                 json.dump(self.instructions, file_pointer)
 
 
 class WaterwayBedElevationEstimator(BaseProcessor):
-    """DrainBathymetryGenerator executes a pipeline to pull in OpenStreetMap waterway
+    """WaterwayBedElevationGenerator executes a pipeline to pull in OpenStreetMap waterway
     and tunnel information. A DEM is generated of the surrounding area and this used to
-    unblock drains and tunnels - by taking the lowest value in the area around a tunnel
+    unblock waterways and tunnels - by taking the lowest value in the area around a tunnel
     to be the tunnel elevation, and ensuring opne waterways flow downhill.
 
     """
@@ -2319,7 +2319,6 @@ class WaterwayBedElevationEstimator(BaseProcessor):
         # key to output name mapping
         name_dictionary = {
             "raw_dem": "waterways_raw_dem.nc",
-            "raw_dem_extents": "waterways_raw_extents.geojson",
             "open_polygon": "open_waterways_polygon.geojson",
             "open_elevation": "open_waterways_elevation.geojson",
             "closed_polygon": "closed_waterways_polygon.geojson",
@@ -2343,7 +2342,7 @@ class WaterwayBedElevationEstimator(BaseProcessor):
         return subfolder / name
 
     def waterway_elevations_exists(self):
-        """Check to see if the drain and culvert bathymeties have already been
+        """Check to see if the waterway and culvert bathymeties have already been
         estimated."""
 
         closed_polygon_file = self.get_result_file_path(key="closed_polygon")
@@ -2395,12 +2394,12 @@ class WaterwayBedElevationEstimator(BaseProcessor):
         polygon_file = self.get_result_file_path(key="closed_polygon")
         elevation_file = self.get_result_file_path(key="closed_elevation")
         if polygon_file.is_file() and elevation_file.is_file():
-            print("Closed drains already recorded. ")
+            print("Closed waterways already recorded. ")
             logging.info(
-                "Estimating closed drain and tunnel bed elevation from OpenStreetMap."
+                "Estimating closed waterway and tunnel bed elevation from OpenStreetMap."
             )
             return
-        # If not - estimate elevations along close drains
+        # If not - estimate elevations along close waterways
         closed_waterways = waterways[waterways["tunnel"]]
         closed_waterways["polygon"] = closed_waterways.buffer(closed_waterways["width"])
         # If no closed waterways write out empty files and return
@@ -2424,7 +2423,7 @@ class WaterwayBedElevationEstimator(BaseProcessor):
         points = closed_waterways["geometry"].apply(
             lambda row: shapely.geometry.MultiPoint(
                 [
-                    # Ensure even spacing across the length of the drain
+                    # Ensure even spacing across the length of the waterway
                     row.interpolate(
                         i
                         * row.length
@@ -2478,15 +2477,15 @@ class WaterwayBedElevationEstimator(BaseProcessor):
         polygon_file = self.get_result_file_path(key="open_polygon")
         elevation_file = self.get_result_file_path(key="open_elevation")
         if polygon_file.is_file() and elevation_file.is_file():
-            print("Open drains already recorded. ")
+            print("Open waterways already recorded. ")
             logging.info(
-                "Estimating open drain and tunnel bed elevation from OpenStreetMap."
+                "Estimating open waterway and tunnel bed elevation from OpenStreetMap."
             )
             return
         # If not - estimate the elevations along the open waterways
         open_waterways = waterways[numpy.logical_not(waterways["tunnel"])]
 
-        # sample the ends of the drain - sample over a polygon at each end
+        # sample the ends of the waterway - sample over a polygon at each end
         polygons = open_waterways.interpolate(0).buffer(open_waterways["width"])
         open_waterways["start_elevation"] = polygons.apply(
             lambda geometry: self.minimum_elevation_in_polygon(
@@ -2529,10 +2528,12 @@ class WaterwayBedElevationEstimator(BaseProcessor):
                 )
             else:
                 sample_range = range(
-                    int(numpy.ceil(row.geometry.length / self.get_resolution())), -1, -1
+                    int(numpy.ceil(row.geometry.length / self.get_resolution())),
+                    -1,
+                    -1,
                 )
             sampled_sampled_multipoints = [
-                # Ensure even spacing across the length of the drain
+                # Ensure even spacing across the length of the waterway
                 row.geometry.interpolate(
                     i
                     * row.geometry.length
@@ -2581,25 +2582,22 @@ class WaterwayBedElevationEstimator(BaseProcessor):
                 ]
                 open_waterways.loc[indices_to_replace, "elevation"] = closed_elevation
         # Ensure the sampled elevations monotonically decrease
-        for index, drain_points in open_waterways.groupby(level=0):
+        for index, waterway_points in open_waterways.groupby(level=0):
             open_waterways.loc[(index,), ("elevation")] = numpy.fmin.accumulate(
-                drain_points["elevation"]
+                waterway_points["elevation"]
             )
         # Save bathymetry
         open_waterways[["geometry", "width", "elevation"]].to_file(elevation_file)
 
     def create_dem(self, waterways: geopandas.GeoDataFrame) -> xarray.Dataset:
-        """Create and return a DEM at a resolution 1.5x the drain width."""
+        """Create and return a DEM at a resolution 1.5x the waterway width."""
 
         dem_file = self.get_result_file_path(key="raw_dem")
 
         # Load already created DEM file in
-        if dem_file.is_file():
-            dem = rioxarray.rioxarray.open_rasterio(dem_file, masked=True).squeeze(
-                "band", drop=True
-            )
-        else:  # Create DEM over the drain region
-            # Save out the drain polygons as a file with a single multipolygon
+        if not dem_file.is_file():
+            # Create DEM over the waterway region
+            # Save out the waterway polygons as a file with a single multipolygon
             waterways_polygon_file = self.get_result_file_path(key="waterways_polygon")
             waterways_polygon = waterways.buffer(waterways["width"])
             waterways_polygon = geopandas.GeoDataFrame(
@@ -2615,19 +2613,19 @@ class WaterwayBedElevationEstimator(BaseProcessor):
                 key="waterways_polygon"
             )
             dem_instruction_paths["raw_dem"] = self.get_result_file_name(key="raw_dem")
-            dem_instruction_paths["raw_dem_extents"] = self.get_result_file_name(
-                "raw_dem_extents"
-            )
 
             # Create the ground DEM file if this has not be created yet!
-            print("Generating drain DEM.")
+            print("Generating waterway DEM.")
             runner = RawLidarDemGenerator(self.instructions)
             runner.run()
-            dem = runner.raw_dem.dem
+        # Load in the DEM
+        dem = rioxarray.rioxarray.open_rasterio(dem_file, masked=True).squeeze(
+            "band", drop=True
+        )
         return dem
 
     def download_osm_values(self) -> bool:
-        """Download OpenStreetMap drains and tunnels within the catchment BBox."""
+        """Download OpenStreetMap waterways and tunnels within the catchment BBox."""
 
         waterways_file_path = self.get_result_file_path(key="waterways")
 
@@ -2655,7 +2653,9 @@ class WaterwayBedElevationEstimator(BaseProcessor):
             overpass = OSMPythonTools.overpass.Overpass()
             if "osm_date" in self.instructions["drains"]:
                 waterways = overpass.query(
-                    query, date=self.instructions["drains"]["osm_date"], timeout=60
+                    query,
+                    date=self.instructions["drains"]["osm_date"],
+                    timeout=60,
                 )
             else:
                 waterways = overpass.query(query, timeout=60)
@@ -2716,10 +2716,11 @@ class WaterwayBedElevationEstimator(BaseProcessor):
 
     def run(self):
         """This method runs a pipeline that:
-        * downloads all tunnels and drains within a catchment.
+        * downloads all tunnels and waterways within a catchment.
         * creates and samples a DEM around each feature to estimate the bed
           elevation.
-        * saves out extents and bed elevations of the drain and tunnel network"""
+        * saves out extents and bed elevations of the waterway and tunnel network
+        """
 
         # Don't reprocess if already estimated
         if self.waterway_elevations_exists():
@@ -2733,13 +2734,13 @@ class WaterwayBedElevationEstimator(BaseProcessor):
         # Load in catchment
         self.catchment_geometry = self.create_catchment()
 
-        # Download drains and tunnels from OSM
+        # Download waterways and tunnels from OSM
         waterways = self.download_osm_values()
 
-        # Create a DEM where the drains and tunnels are
+        # Create a DEM where the waterways and tunnels are
         dem = self.create_dem(waterways=waterways)
 
-        # Estimate the drain and tunnel bed elevations from the DEM
+        # Estimate the waterway and tunnel bed elevations from the DEM
         self.estimate_closed_elevations(waterways=waterways, dem=dem)
         self.estimate_open_elevations(waterways=waterways, dem=dem)
 
