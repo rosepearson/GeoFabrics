@@ -1849,7 +1849,7 @@ class RawDem(LidarBase):
 
         # After merging LiDAR datasets set remaining NaN to no data/LiDAR
         # data_source: set areas with no values to No Data
-        dem.data_source.data = xarray.where(
+        dem.data_source = xarray.where(
             dem.data_source.notnull(),
             dem.data_source,
             self.SOURCE_CLASSIFICATION["no data"],
@@ -1857,7 +1857,7 @@ class RawDem(LidarBase):
         )
 
         # lidar_source: Set areas with no LiDAR to "No LiDAR"
-        dem.lidar_source.data = xarray.where(
+        dem.lidar_source = xarray.where(
             dem.lidar_source.notnull(),
             dem.lidar_source,
             dataset_mapping["no LiDAR"],
