@@ -91,7 +91,7 @@ class CoarseDem:
         # Check for overlap in the chunk and the DEM
         chunk = chunk.overlay(self._dem_bounds, how="union")
         # Try clip if there is some overlap
-        if chunk_bounds.area.sum() > 0:
+        if chunk.area.sum() > 0:
             # Try clip - catch if no DEM in clipping bounds
             try:
                 bounds = chunk.bounds
