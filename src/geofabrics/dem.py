@@ -87,21 +87,30 @@ class CoarseDem:
     def chunk_points(self, chunk: geopandas.GeoDataFrame) -> numpy.ndarray:
         """The coarse DEM points after any extent or foreshore value
         filtering."""
-        # Try clip - catch if no DEM in clipping bounds
-        try:
-            bounds = chunk.bounds
-            dem_chunk = self._dem.rio.clip_box(
-                minx=bounds["minx"].min(),
-                miny=bounds["miny"].min(),
-                maxx=bounds["maxy"].max(),
-                maxy=bounds["maxy"].max(),
-                crs=chunk.crs,
-            )
-            chunk_points = self._extract_points(dem_chunk)
-        except rioxarray.exceptions.NoDataInBounds:
-            logging.warning(
-                "No coarse DEM values in the region of interest. Will set to empty."
-            )
+        
+        # Check for overlap in the chunk and the DEM
+        chunk = chunk.overlay(self._dem_bounds, how="union")
+        # Try clip if there is some overlap
+        if chunk_bounds.area.sum() > 0:
+            # Try clip - catch if no DEM in clipping bounds
+            try:
+                bounds = chunk.bounds
+                dem_chunk = self._dem.rio.clip_box(
+                    minx=bounds["minx"].min(),
+                    miny=bounds["miny"].min(),
+                    maxx=bounds["maxx"].max(),
+                    maxy=bounds["maxy"].max(),
+                    crs=chunk.crs,
+                )
+                chunk_points = self._extract_points(dem_chunk)
+            except rioxarray.exceptions.NoDataInBounds or ValueError or Exception:
+                # Error - assume error related to no points in bound so set to no points
+                logging.warning(
+                    "No coarse DEM values in the region of interest. Will set to empty."
+                )
+                chunk_points = None
+        else:
+            # No overlap so no points
             chunk_points = None
         return chunk_points
 
@@ -139,12 +148,30 @@ class CoarseDem:
         try:
             self._dem = self._dem.rio.clip(self._extents.geometry, drop=True)
             self._points = self._extract_points(self._dem)
+            
+            dem_bounds = self._dem.rio.bounds()
+            self._dem_bounds = geopandas.GeoDataFrame(
+                {
+                    "geometry": [
+                        shapely.geometry.Polygon(
+                            [
+                                [dem_bounds[0], dem_bounds[1]],
+                                [dem_bounds[2], dem_bounds[1]],
+                                [dem_bounds[2], dem_bounds[3]],
+                                [dem_bounds[0], dem_bounds[3]],
+                            ]
+                        )
+                    ]
+                },
+                crs=self.catchment_geometry.crs["horizontal"],
+            )
         except rioxarray.exceptions.NoDataInBounds:
             logging.warning(
                 "No coarse DEM values in the region of interest. Will set to empty."
             )
             self._dem = None
             self._points = None
+            self._dem_bounds = None
 
     def _extract_points(self, dem):
         """Create a points list from the DEM"""
