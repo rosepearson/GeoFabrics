@@ -87,7 +87,7 @@ class CoarseDem:
     def chunk_points(self, chunk: geopandas.GeoDataFrame) -> numpy.ndarray:
         """The coarse DEM points after any extent or foreshore value
         filtering."""
-        
+
         # Check for overlap in the chunk and the DEM
         chunk = chunk.overlay(self._dem_bounds, how="union")
         # Try clip if there is some overlap
@@ -148,7 +148,7 @@ class CoarseDem:
         try:
             self._dem = self._dem.rio.clip(self._extents.geometry, drop=True)
             self._points = self._extract_points(self._dem)
-            
+
             dem_bounds = self._dem.rio.bounds()
             self._dem_bounds = geopandas.GeoDataFrame(
                 {
