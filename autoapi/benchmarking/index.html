@@ -12,11 +12,11 @@
     <script src="../../_static/js/html5shiv.min.js"></script>
   <![endif]-->
   
-        <script src="../../_static/jquery.js"></script>
-        <script src="../../_static/_sphinx_javascript_frameworks_compat.js"></script>
-        <script data-url_root="../../" id="documentation_options" src="../../_static/documentation_options.js"></script>
-        <script src="../../_static/doctools.js"></script>
-        <script src="../../_static/sphinx_highlight.js"></script>
+        <script src="../../_static/jquery.js?v=5d32c60e"></script>
+        <script src="../../_static/_sphinx_javascript_frameworks_compat.js?v=2cd50e6c"></script>
+        <script src="../../_static/documentation_options.js?v=918ced64"></script>
+        <script src="../../_static/doctools.js?v=888ff710"></script>
+        <script src="../../_static/sphinx_highlight.js?v=dc90522c"></script>
     <script src="../../_static/js/theme.js"></script>
     <link rel="index" title="Index" href="../../genindex.html" />
     <link rel="search" title="Search" href="../../search.html" />
@@ -83,14 +83,14 @@
            <div itemprop="articleBody">
              
   <section id="module-benchmarking">
-<span id="benchmarking"></span><h1><a class="reference internal" href="#module-benchmarking" title="benchmarking"><code class="xref py py-mod docutils literal notranslate"><span class="pre">benchmarking</span></code></a><a class="headerlink" href="#module-benchmarking" title="Permalink to this heading"></a></h1>
+<span id="benchmarking"></span><h1><a class="reference internal" href="#module-benchmarking" title="benchmarking"><code class="xref py py-mod docutils literal notranslate"><span class="pre">benchmarking</span></code></a><a class="headerlink" href="#module-benchmarking" title="Link to this heading"></a></h1>
 <p>A convenience script for running many combinations of chunk_sizes and numbers_of_cores
 for a small sub-set of a catchment to help with the selection of an appropiate
 chink_size and number_of_cores before processing an entire catchment.</p>
 <section id="module-contents">
-<h2>Module Contents<a class="headerlink" href="#module-contents" title="Permalink to this heading"></a></h2>
+<h2>Module Contents<a class="headerlink" href="#module-contents" title="Link to this heading"></a></h2>
 <section id="functions">
-<h3>Functions<a class="headerlink" href="#functions" title="Permalink to this heading"></a></h3>
+<h3>Functions<a class="headerlink" href="#functions" title="Link to this heading"></a></h3>
 <table class="autosummary longtable docutils align-default">
 <tbody>
 <tr class="row-odd"><td><p><a class="reference internal" href="#benchmarking.parse_args" title="benchmarking.parse_args"><code class="xref py py-obj docutils literal notranslate"><span class="pre">parse_args</span></code></a>()</p></td>
@@ -106,14 +106,14 @@ chink_size and number_of_cores before processing an entire catchment.</p>
 </table>
 <dl class="py function">
 <dt class="sig sig-object py" id="benchmarking.parse_args">
-<span class="sig-prename descclassname"><span class="pre">benchmarking.</span></span><span class="sig-name descname"><span class="pre">parse_args</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="headerlink" href="#benchmarking.parse_args" title="Permalink to this definition"></a></dt>
+<span class="sig-prename descclassname"><span class="pre">benchmarking.</span></span><span class="sig-name descname"><span class="pre">parse_args</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="headerlink" href="#benchmarking.parse_args" title="Link to this definition"></a></dt>
 <dd><p>Expect a command line argument of the form:
 ‘–instructions path/to/json/instruction/file’</p>
 </dd></dl>
 
 <dl class="py function">
 <dt class="sig sig-object py" id="benchmarking.benchmark_processing">
-<span class="sig-prename descclassname"><span class="pre">benchmarking.</span></span><span class="sig-name descname"><span class="pre">benchmark_processing</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">args</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#benchmarking.benchmark_processing" title="Permalink to this definition"></a></dt>
+<span class="sig-prename descclassname"><span class="pre">benchmarking.</span></span><span class="sig-name descname"><span class="pre">benchmark_processing</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">args</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#benchmarking.benchmark_processing" title="Link to this definition"></a></dt>
 <dd><p>Run the DEM generation pipeline given the specified instructions for a range of
 different ‘number_of_cores’ and ‘chunk_sizes’ specified in the instructions.
 Optionally save each DEM separately. Plot the execution times all differnet
@@ -122,7 +122,7 @@ processing configurations at the end.</p>
 
 <dl class="py function">
 <dt class="sig sig-object py" id="benchmarking.main">
-<span class="sig-prename descclassname"><span class="pre">benchmarking.</span></span><span class="sig-name descname"><span class="pre">main</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="headerlink" href="#benchmarking.main" title="Permalink to this definition"></a></dt>
+<span class="sig-prename descclassname"><span class="pre">benchmarking.</span></span><span class="sig-name descname"><span class="pre">main</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="headerlink" href="#benchmarking.main" title="Link to this definition"></a></dt>
 <dd><p>The entry point to geofabrics.</p>
 </dd></dl>
 
