@@ -36,6 +36,7 @@
 		"memory_limit": "5GiB"
 		},
 		"data_paths": {
+			"catchment_boundary": "catchment.geojson",
 		    "river_polygons": ["river_polygon.geojson"],
 			"river_bathymetry": ["river_elevations.geojson"],
 			"result_dem": "test_dem.nc",

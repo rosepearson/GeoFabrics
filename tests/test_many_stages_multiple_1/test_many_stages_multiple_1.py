@@ -113,7 +113,7 @@ class Test(unittest.TestCase):
         """A basic comparison between the generated and benchmark DEM"""
 
         file_path = (
-            self.cache_dir / self.instructions["shared"]["data_paths"]["benchmark"]
+            self.cache_dir / self.instructions["roughness"]["data_paths"]["benchmark"]
         )
         with rioxarray.rioxarray.open_rasterio(file_path, masked=True) as benchmark:
             benchmark.load()
@@ -172,7 +172,7 @@ class Test(unittest.TestCase):
         """A basic comparison between the generated and benchmark DEM"""
 
         file_path = (
-            self.cache_dir / self.instructions["shared"]["data_paths"]["benchmark"]
+            self.cache_dir / self.instructions["roughness"]["data_paths"]["benchmark"]
         )
         with rioxarray.rioxarray.open_rasterio(file_path, masked=True) as benchmark:
             benchmark.load()

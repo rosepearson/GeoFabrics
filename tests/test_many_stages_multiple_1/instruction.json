@@ -19,7 +19,7 @@
 		"subfolder": "results",
 		"catchment_boundary": "catchment.geojson",
 		"land": "catchment.geojson",
-		"benchmark": "benchmark.nc"
+		"result_dem": "test_dem.nc"
 	},
 	"datasets": {
 		"lidar": {
@@ -41,9 +41,6 @@
 },
 "dem":
 {
-	"data_paths": {
-		"result_dem": "test_dem.nc"
-	},
 	"dataset_mapping": {
 		"lidar": {
 			"Wellington_2013": 2,
@@ -57,7 +54,8 @@
 "roughness":
 {
 	"data_paths": {
-		"result_geofabric": "test_geofabric.nc"
+		"result_geofabric": "test_geofabric.nc",
+		"benchmark": "benchmark.nc"
 	},
 	"dataset_mapping": {
 		"lidar": {

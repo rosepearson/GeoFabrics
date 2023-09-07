@@ -107,7 +107,7 @@
 			}
 		},
 		"processing": {
-			"chunk_size": 500,
+			"chunk_size": 500
 		},
 		"data_paths": {
 			"subfolder": "results",
@@ -146,7 +146,7 @@
 			}
 		},
 		"processing": {
-			"chunk_size": 500,
+			"chunk_size": 500
 		},
 		"data_paths": {
 			"subfolder": "results",
