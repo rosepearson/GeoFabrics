@@ -70,9 +70,7 @@ class Test(unittest.TestCase):
         y0 = 5470800
         x1 = 1778550
         y1 = 5470500
-        catchment = shapely.geometry.Polygon(
-            [(x0, y0), (x1, y0), (x1, y1), (x0, y1)]
-        )
+        catchment = shapely.geometry.Polygon([(x0, y0), (x1, y0), (x1, y1), (x0, y1)])
         catchment = geopandas.GeoSeries([catchment])
         catchment = catchment.set_crs(
             cls.instructions["shared"]["output"]["crs"]["horizontal"]
@@ -110,19 +108,14 @@ class Test(unittest.TestCase):
                         shutil.rmtree(file)
                 shutil.rmtree(path)
 
-    @pytest.mark.skipif(
-        sys.platform != "win32", reason="Windows test - this is strict"
-    )
+    @pytest.mark.skipif(sys.platform != "win32", reason="Windows test - this is strict")
     def test_result_dem_windows(self):
         """A basic comparison between the generated and benchmark DEM"""
 
         file_path = (
-            self.cache_dir
-            / self.instructions["shared"]["data_paths"]["benchmark"]
+            self.cache_dir / self.instructions["shared"]["data_paths"]["benchmark"]
         )
-        with rioxarray.rioxarray.open_rasterio(
-            file_path, masked=True
-        ) as benchmark:
+        with rioxarray.rioxarray.open_rasterio(file_path, masked=True) as benchmark:
             benchmark.load()
         # Load in test DEM
         file_path = (
@@ -179,12 +172,9 @@ class Test(unittest.TestCase):
         """A basic comparison between the generated and benchmark DEM"""
 
         file_path = (
-            self.cache_dir
-            / self.instructions["shared"]["data_paths"]["benchmark"]
+            self.cache_dir / self.instructions["shared"]["data_paths"]["benchmark"]
         )
-        with rioxarray.rioxarray.open_rasterio(
-            file_path, masked=True
-        ) as benchmark:
+        with rioxarray.rioxarray.open_rasterio(file_path, masked=True) as benchmark:
             benchmark.load()
         # Load in test DEM
         file_path = (
@@ -207,8 +197,7 @@ class Test(unittest.TestCase):
             f"on Linux test run: {diff_array[diff_array != 0]}",
         )
         self.assertTrue(
-            len(diff_array[numpy.abs(diff_array) > threshold])
-            < len(diff_array) / 250,
+            len(diff_array[numpy.abs(diff_array) > threshold]) < len(diff_array) / 250,
             "More than 0.4% of DEM values differ by more than {threshold} on Linux test"
             f" run: {diff_array[numpy.abs(diff_array) > threshold]} or "
             f"{len(diff_array[numpy.abs(diff_array) > threshold]) / len(diff_array.flatten()) * 100}%",
