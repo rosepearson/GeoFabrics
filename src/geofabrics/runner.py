@@ -115,6 +115,7 @@ def from_instructions_dict(instructions: dict):
     If a benchmark is specified compare the result to the benchmark"""
 
     # Construct the full instructions by adding the shared entries to each stage
+    instructions = copy.deepcopy(instructions)
     if "shared" in instructions:
         shared = instructions.pop("shared")
         for key in instructions:
@@ -172,14 +173,12 @@ def from_instructions_dict(instructions: dict):
                 / dem_paths["result_dem"]
             ).is_file()
         ):
-            # TODO add back once extends are saved
-            pass
             # Add bathymetry information to a raw DEM
-            # run_processor_class(
-            #     processor_class=processor.HydrologicDemGenerator,
-            #     processor_label="dem",
-            #    instructions=instructions,
-            # )
+            run_processor_class(
+                processor_class=processor.HydrologicDemGenerator,
+                processor_label="dem",
+                instructions=instructions,
+            )
     if "roughness" in instructions:
         # Create a roughness map and add to the hydrological DEM
         run_processor_class(

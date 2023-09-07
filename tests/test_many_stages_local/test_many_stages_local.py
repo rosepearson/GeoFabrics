@@ -73,7 +73,7 @@ class Test(unittest.TestCase):
         )
         catchment = geopandas.GeoSeries([catchment])
         catchment = catchment.set_crs(
-            cls.instructions["output"]["crs"]["horizontal"]
+            cls.instructions["shared"]["output"]["crs"]["horizontal"]
         )
         catchment.to_file(catchment_file)
 
@@ -87,7 +87,7 @@ class Test(unittest.TestCase):
             [(x0, y0), (x1, y0), (x1, y1), (x0, y1)]
         )
         land = geopandas.GeoSeries([land])
-        land = land.set_crs(cls.instructions["output"]["crs"]["horizontal"])
+        land = land.set_crs(cls.instructions["shared"]["output"]["crs"]["horizontal"])
         land.to_file(land_file)
 
         # Generate bathymetry data
@@ -114,7 +114,7 @@ class Test(unittest.TestCase):
             [contour_0, contour_1, contour_2, contour_3]
         )
         contours = contours.set_crs(
-            cls.instructions["output"]["crs"]["horizontal"]
+            cls.instructions["shared"]["output"]["crs"]["horizontal"]
         )
         contours.to_file(bathymetry_file)
 
@@ -139,7 +139,7 @@ class Test(unittest.TestCase):
             attrs={"scale_factor": 1.0, "add_offset": 0.0},
         )
         dem.rio.write_crs(
-            cls.instructions["output"]["crs"]["horizontal"],
+            cls.instructions["shared"]["output"]["crs"]["horizontal"],
             inplace=True,
         )
         dem.rio.write_transform(inplace=True)
@@ -182,8 +182,8 @@ class Test(unittest.TestCase):
             {
                 "type": "writers.las",
                 "a_srs": f"EPSG:"
-                f"{cls.instructions['output']['crs']['horizontal']}+"
-                f"{cls.instructions['output']['crs']['vertical']}",
+                f"{cls.instructions['shared']['output']['crs']['horizontal']}+"
+                f"{cls.instructions['shared']['output']['crs']['vertical']}",
                 "filename": str(lidar_file),
                 "compression": "laszip",
             }
@@ -227,8 +227,9 @@ class Test(unittest.TestCase):
         """A basic comparison between the generated and benchmark DEM"""
 
         # Load in benchmark DEM
+        print(self.instructions)
         file_path = (
-            self.cache_dir / self.instructions["data_paths"]["benchmark_dem"]
+            self.cache_dir / self.instructions["shared"]["data_paths"]["benchmark_dem"]
         )
         with rioxarray.rioxarray.open_rasterio(
             file_path, masked=True
@@ -237,7 +238,7 @@ class Test(unittest.TestCase):
         # Load in result DEM
         file_path = (
             self.results_dir
-            / self.instructions["data_paths"]["result_geofabric"]
+            / self.instructions["shared"]["data_paths"]["result_geofabric"]
         )
         with rioxarray.rioxarray.open_rasterio(
             file_path, masked=True
