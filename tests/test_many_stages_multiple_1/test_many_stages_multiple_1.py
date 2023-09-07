@@ -73,7 +73,7 @@ class Test(unittest.TestCase):
         catchment = shapely.geometry.Polygon([(x0, y0), (x1, y0), (x1, y1), (x0, y1)])
         catchment = geopandas.GeoSeries([catchment])
         catchment = catchment.set_crs(
-            cls.instructions["shared"]["output"]["crs"]["horizontal"]
+            cls.instructions["default"]["output"]["crs"]["horizontal"]
         )
 
         # save faked catchment boundary - used as land boundary as well

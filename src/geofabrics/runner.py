@@ -106,30 +106,30 @@ def from_instructions_dict(instructions: dict):
     """Run the DEM generation pipeline(s) given the specified instructions.
     If a benchmark is specified compare the result to the benchmark"""
 
-    # Construct the full instructions by adding the shared entries to each stage
+    # Construct the full instructions by adding the default entries to each stage
     instructions = copy.deepcopy(instructions)
-    if "shared" in instructions:
-        shared = instructions.pop("shared")
+    if "default" in instructions:
+        default = instructions.pop("default")
         # Auto-add dem and roughness keys if not included and outputs specified
         if (
             "dem" not in instructions
-            and "data_paths" in shared
+            and "data_paths" in default
             and (
-                "raw_dem" in shared["data_paths"]
-                or "result_dem" in shared["data_paths"]
+                "raw_dem" in default["data_paths"]
+                or "result_dem" in default["data_paths"]
             )
         ):
             instructions["dem"] = {}
         if (
             "roughness" not in instructions
-            and "data_paths" in shared
-            and "result_geofabric" in shared["data_paths"]
+            and "data_paths" in default
+            and "result_geofabric" in default["data_paths"]
         ):
             instructions["roughness"] = {}
         # Construct the full instructions
         for key in instructions:
             instructions[key] = merge_dicts(
-                dict_a=instructions[key], dict_b=shared, replace_a=False
+                dict_a=instructions[key], dict_b=default, replace_a=False
             )
 
     # Run the pipeline
