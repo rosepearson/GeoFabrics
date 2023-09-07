@@ -18,7 +18,7 @@ import sys
 import logging
 import gc
 
-from src.geofabrics import processor
+from src.geofabrics import runner
 
 
 class Test(unittest.TestCase):
@@ -73,7 +73,7 @@ class Test(unittest.TestCase):
         catchment = shapely.geometry.Polygon([(x0, y0), (x1, y0), (x1, y1), (x0, y1)])
         catchment = geopandas.GeoSeries([catchment])
         catchment = catchment.set_crs(
-            cls.instructions["dem"]["output"]["crs"]["horizontal"]
+            cls.instructions["default"]["output"]["crs"]["horizontal"]
         )
 
         # save faked catchment boundary - used as land boundary as well
@@ -81,12 +81,7 @@ class Test(unittest.TestCase):
         catchment.to_file(catchment_file)
 
         # Run pipeline - download files and generated DEM
-        runner = processor.RawLidarDemGenerator(cls.instructions["dem"])
-        runner.run()
-        runner = processor.HydrologicDemGenerator(cls.instructions["dem"])
-        runner.run()
-        runner = processor.RoughnessLengthGenerator(cls.instructions["roughness"])
-        runner.run()
+        runner.from_instructions_dict(cls.instructions)
 
     @classmethod
     def tearDownClass(cls):

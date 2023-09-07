@@ -9,6 +9,7 @@ import datetime
 import logging
 import pathlib
 import typing
+import copy
 
 
 def setup_logging_for_run(instructions: dict, label: str):
@@ -58,9 +59,82 @@ def run_processor_class(
     return runner
 
 
+def merge_dicts(dict_a: dict, dict_b: dict, replace_a: bool):
+    """Merge the contents of the dict_a and dict_b. Use recursion to merge
+    any nested dictionaries. replace_a determines if the dict_a values are
+    replaced or not if different values are in the dict_b.
+
+    Adapted from https://stackoverflow.com/questions/7204805/how-to-merge-dictionaries-of-dictionaries
+
+    Parameters:
+            dict_a  The dict to
+            dict_b  The location of the centre of the river mouth
+            replace_a If True any dict_a values are replaced if different values are in dict_b
+    """
+
+    def recursive_merge_dicts(
+        base_dict: dict, new_dict: dict, replace_base: bool, path: list = []
+    ):
+        """Recurively add the new_dict into the base_dict. dict_a is mutable."""
+        for key in new_dict:
+            if key in base_dict:
+                if isinstance(base_dict[key], dict) and isinstance(new_dict[key], dict):
+                    recursive_merge_dicts(
+                        base_dict=base_dict[key],
+                        new_dict=new_dict[key],
+                        replace_base=replace_base,
+                        path=path + [str(key)],
+                    )
+                elif base_dict[key] == new_dict[key]:
+                    pass  # same leaf value
+                else:
+                    if replace_base:
+                        print(
+                            f"Conflict with both dictionaries containing different values at {path + [str(key)]}."
+                            " Value replaced."
+                        )
+                        base_dict[key] = new_dict[key]
+                    else:
+                        print(
+                            f"Conflict with both dictionaries containing different values at {path + [str(key)]}"
+                            ". Value ignored."
+                        )
+            else:
+                base_dict[key] = new_dict[key]
+        return base_dict
+
+    return recursive_merge_dicts(copy.deepcopy(dict_a), dict_b, replace_base=replace_a)
+
+
 def from_instructions_dict(instructions: dict):
     """Run the DEM generation pipeline(s) given the specified instructions.
     If a benchmark is specified compare the result to the benchmark"""
+
+    # Construct the full instructions by adding the default entries to each stage
+    instructions = copy.deepcopy(instructions)
+    if "default" in instructions:
+        default = instructions.pop("default")
+        # Auto-add dem and roughness keys if not included and outputs specified
+        if (
+            "dem" not in instructions
+            and "data_paths" in default
+            and (
+                "raw_dem" in default["data_paths"]
+                or "result_dem" in default["data_paths"]
+            )
+        ):
+            instructions["dem"] = {}
+        if (
+            "roughness" not in instructions
+            and "data_paths" in default
+            and "result_geofabric" in default["data_paths"]
+        ):
+            instructions["roughness"] = {}
+        # Construct the full instructions
+        for key in instructions:
+            instructions[key] = merge_dicts(
+                dict_a=instructions[key], dict_b=default, replace_a=False
+            )
 
     # Run the pipeline
     initial_start_time = datetime.datetime.now()

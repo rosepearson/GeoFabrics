@@ -2450,7 +2450,7 @@ class WaterwayBedElevationEstimator(BaseProcessor):
             .notnull()
             .groupby(level=0)
             .all()
-            .array
+            .values
         )
         if not nan_filter.all():
             logging.warning(
@@ -2506,7 +2506,7 @@ class WaterwayBedElevationEstimator(BaseProcessor):
             open_waterways[["start_elevation", "end_elevation"]]
             .notnull()
             .all(axis=1)
-            .array
+            .values
         )
         if not nan_filter.all():
             logging.warning(

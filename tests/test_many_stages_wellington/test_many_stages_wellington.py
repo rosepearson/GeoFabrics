@@ -20,7 +20,7 @@ import pytest
 import logging
 import numpy
 
-from src.geofabrics import processor
+from src.geofabrics import runner
 
 
 class Test(unittest.TestCase):
@@ -55,10 +55,7 @@ class Test(unittest.TestCase):
         # Load in environment variables to get and set the private API keys
         dotenv.load_dotenv()
         linz_key = os.environ.get("LINZ_API", None)
-        cls.instructions["rivers"]["datasets"]["vector"]["linz"]["key"] = linz_key
-        cls.instructions["waterways"]["datasets"]["vector"]["linz"]["key"] = linz_key
-        cls.instructions["dem"]["datasets"]["vector"]["linz"]["key"] = linz_key
-        cls.instructions["roughness"]["datasets"]["vector"]["linz"]["key"] = linz_key
+        cls.instructions["default"] = {"datasets": {"vector": {"linz": {"key": linz_key} } } }
 
         # Remove any files from last test, then create a results directory
         cls.cache_dir = test_path / "data"
@@ -74,7 +71,7 @@ class Test(unittest.TestCase):
         catchment = shapely.geometry.Polygon([(x0, y0), (x1, y0), (x1, y1), (x0, y1)])
         catchment = geopandas.GeoSeries([catchment])
         catchment = catchment.set_crs(
-            cls.instructions["rivers"]["output"]["crs"]["horizontal"]
+            cls.instructions["dem"]["output"]["crs"]["horizontal"]
         )
 
         # save faked catchment boundary - used as land boundary as well
@@ -82,20 +79,7 @@ class Test(unittest.TestCase):
         catchment.to_file(catchment_file)
 
         # Run pipeline - download files and generated DEM
-        runner = processor.RiverBathymetryGenerator(
-            cls.instructions["rivers"], debug=False
-        )
-        runner.run()
-        runner = processor.WaterwayBedElevationEstimator(
-            cls.instructions["waterways"], debug=False
-        )
-        runner.run()
-        runner = processor.RawLidarDemGenerator(cls.instructions["dem"])
-        runner.run()
-        runner = processor.HydrologicDemGenerator(cls.instructions["dem"])
-        runner.run()
-        runner = processor.RoughnessLengthGenerator(cls.instructions["roughness"])
-        runner.run()
+        runner.from_instructions_dict(cls.instructions)
 
     @classmethod
     def tearDownClass(cls):
