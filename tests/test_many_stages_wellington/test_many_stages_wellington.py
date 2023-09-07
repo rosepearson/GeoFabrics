@@ -20,7 +20,7 @@ import pytest
 import logging
 import numpy
 
-from src.geofabrics import processor
+from src.geofabrics import runner
 
 
 class Test(unittest.TestCase):
@@ -55,10 +55,9 @@ class Test(unittest.TestCase):
         # Load in environment variables to get and set the private API keys
         dotenv.load_dotenv()
         linz_key = os.environ.get("LINZ_API", None)
-        cls.instructions["rivers"]["datasets"]["vector"]["linz"]["key"] = linz_key
-        cls.instructions["waterways"]["datasets"]["vector"]["linz"]["key"] = linz_key
-        cls.instructions["dem"]["datasets"]["vector"]["linz"]["key"] = linz_key
-        cls.instructions["roughness"]["datasets"]["vector"]["linz"]["key"] = linz_key
+        cls.instructions["shared"]["datasets"]["vector"]["linz"][
+            "key"
+        ] = linz_key
 
         # Remove any files from last test, then create a results directory
         cls.cache_dir = test_path / "data"
@@ -71,10 +70,12 @@ class Test(unittest.TestCase):
         y0 = 5473816
         x1 = 1769545
         y1 = 5472824
-        catchment = shapely.geometry.Polygon([(x0, y0), (x1, y0), (x1, y1), (x0, y1)])
+        catchment = shapely.geometry.Polygon(
+            [(x0, y0), (x1, y0), (x1, y1), (x0, y1)]
+        )
         catchment = geopandas.GeoSeries([catchment])
         catchment = catchment.set_crs(
-            cls.instructions["rivers"]["output"]["crs"]["horizontal"]
+            cls.instructions["shared"]["output"]["crs"]["horizontal"]
         )
 
         # save faked catchment boundary - used as land boundary as well
@@ -82,20 +83,7 @@ class Test(unittest.TestCase):
         catchment.to_file(catchment_file)
 
         # Run pipeline - download files and generated DEM
-        runner = processor.RiverBathymetryGenerator(
-            cls.instructions["rivers"], debug=False
-        )
-        runner.run()
-        runner = processor.WaterwayBedElevationEstimator(
-            cls.instructions["waterways"], debug=False
-        )
-        runner.run()
-        runner = processor.RawLidarDemGenerator(cls.instructions["dem"])
-        runner.run()
-        runner = processor.HydrologicDemGenerator(cls.instructions["dem"])
-        runner.run()
-        runner = processor.RoughnessLengthGenerator(cls.instructions["roughness"])
-        runner.run()
+        runner.from_instructions_dict(cls.instructions)
 
     @classmethod
     def tearDownClass(cls):
@@ -123,16 +111,22 @@ class Test(unittest.TestCase):
                         shutil.rmtree(file)
                 shutil.rmtree(path)
 
-    @pytest.mark.skipif(sys.platform != "win32", reason="Windows test - this is strict")
+    @pytest.mark.skipif(
+        sys.platform != "win32", reason="Windows test - this is strict"
+    )
     def test_result_geofabric_windows(self):
         """A basic comparison between the generated and benchmark DEM"""
 
         # Load in benchmark
         file_path = (
             self.cache_dir
-            / self.instructions["roughness"]["data_paths"]["benchmark_geofabric"]
+            / self.instructions["roughness"]["data_paths"][
+                "benchmark_geofabric"
+            ]
         )
-        with rioxarray.rioxarray.open_rasterio(file_path, masked=True) as benchmark:
+        with rioxarray.rioxarray.open_rasterio(
+            file_path, masked=True
+        ) as benchmark:
             benchmark.load()
         # Load in test
         file_path = (
@@ -180,9 +174,13 @@ class Test(unittest.TestCase):
         # load in benchmark
         file_path = (
             self.cache_dir
-            / self.instructions["roughness"]["data_paths"]["benchmark_geofabric"]
+            / self.instructions["roughness"]["data_paths"][
+                "benchmark_geofabric"
+            ]
         )
-        with rioxarray.rioxarray.open_rasterio(file_path, masked=True) as benchmark:
+        with rioxarray.rioxarray.open_rasterio(
+            file_path, masked=True
+        ) as benchmark:
             benchmark.load()
         # Load in test
         file_path = (
@@ -192,7 +190,9 @@ class Test(unittest.TestCase):
         with rioxarray.rioxarray.open_rasterio(file_path, masked=True) as test:
             test.load()
         # Get data generated from LiDAR
-        lidar_mask = (test.data_source.data == 1) & (benchmark.data_source.data == 1)
+        lidar_mask = (test.data_source.data == 1) & (
+            benchmark.data_source.data == 1
+        )
 
         # Compare the generated and benchmark elevations
         lidar_diff = test.z.data[lidar_mask] - benchmark.z.data[lidar_mask]
@@ -211,7 +211,9 @@ class Test(unittest.TestCase):
         logging.info(f"DEM array diff is: {diff_array[diff_array != 0]}")
         threshold = 10e-6
         percent = 2.5
-        number_above_threshold = len(diff_array[numpy.abs(diff_array) > threshold])
+        number_above_threshold = len(
+            diff_array[numpy.abs(diff_array) > threshold]
+        )
         self.assertTrue(
             number_above_threshold < len(diff_array) * percent / 100,
             f"More than {percent}% of DEM values differ by more than {threshold} on Linux test"

@@ -18,7 +18,7 @@ import numpy
 import rioxarray
 import gc
 
-from src.geofabrics import processor
+from src.geofabrics import runner
 
 
 class Test(unittest.TestCase):
@@ -66,10 +66,12 @@ class Test(unittest.TestCase):
         y0 = 5375247
         x1 = 1484180
         y1 = 5373303
-        catchment = shapely.geometry.Polygon([(x0, y0), (x1, y0), (x1, y1), (x0, y1)])
+        catchment = shapely.geometry.Polygon(
+            [(x0, y0), (x1, y0), (x1, y1), (x0, y1)]
+        )
         catchment = geopandas.GeoSeries([catchment])
         catchment = catchment.set_crs(
-            cls.instructions["dem"]["output"]["crs"]["horizontal"]
+            cls.instructions["shared"]["output"]["crs"]["horizontal"]
         )
 
         # save faked catchment boundary - used as land boundary as well
@@ -77,14 +79,7 @@ class Test(unittest.TestCase):
         catchment.to_file(catchment_file)
 
         # Run pipeline - download files and generated DEM
-        runner = processor.MeasuredRiverGenerator(
-            cls.instructions["measured"], debug=False
-        )
-        runner.run()
-        runner = processor.RawLidarDemGenerator(cls.instructions["dem"], debug=False)
-        runner.run()
-        runner = processor.HydrologicDemGenerator(cls.instructions["dem"], debug=False)
-        runner.run()
+        runner.from_instructions_dict(cls.instructions)
 
     @classmethod
     def tearDownClass(cls):
@@ -112,20 +107,28 @@ class Test(unittest.TestCase):
                         shutil.rmtree(file)
                 shutil.rmtree(path)
 
-    @pytest.mark.skipif(sys.platform != "win32", reason="Windows test - this is strict")
+    @pytest.mark.skipif(
+        sys.platform != "win32", reason="Windows test - this is strict"
+    )
     def test_result_dem_windows(self):
         """A basic comparison between the generated and benchmark DEM"""
 
         file_path = (
-            self.cache_dir / self.instructions["dem"]["data_paths"]["benchmark_dem"]
+            self.cache_dir
+            / self.instructions["dem"]["data_paths"]["benchmark_dem"]
         )
-        with rioxarray.rioxarray.open_rasterio(file_path, masked=True) as benchmark_dem:
+        with rioxarray.rioxarray.open_rasterio(
+            file_path, masked=True
+        ) as benchmark_dem:
             benchmark_dem.load()
         # Load in test DEM
         file_path = (
-            self.results_dir / self.instructions["dem"]["data_paths"]["result_dem"]
+            self.results_dir
+            / self.instructions["dem"]["data_paths"]["result_dem"]
         )
-        with rioxarray.rioxarray.open_rasterio(file_path, masked=True) as test_dem:
+        with rioxarray.rioxarray.open_rasterio(
+            file_path, masked=True
+        ) as test_dem:
             test_dem.load()
         # compare the generated and benchmark DEMs
         diff_array = (
@@ -152,15 +155,21 @@ class Test(unittest.TestCase):
         """A basic comparison between the generated and benchmark DEM"""
 
         file_path = (
-            self.cache_dir / self.instructions["dem"]["data_paths"]["benchmark_dem"]
+            self.cache_dir
+            / self.instructions["dem"]["data_paths"]["benchmark_dem"]
         )
-        with rioxarray.rioxarray.open_rasterio(file_path, masked=True) as benchmark_dem:
+        with rioxarray.rioxarray.open_rasterio(
+            file_path, masked=True
+        ) as benchmark_dem:
             benchmark_dem.load()
         # Load in test DEM
         file_path = (
-            self.results_dir / self.instructions["dem"]["data_paths"]["result_dem"]
+            self.results_dir
+            / self.instructions["dem"]["data_paths"]["result_dem"]
         )
-        with rioxarray.rioxarray.open_rasterio(file_path, masked=True) as test_dem:
+        with rioxarray.rioxarray.open_rasterio(
+            file_path, masked=True
+        ) as test_dem:
             test_dem.load()
         # compare the generated and benchmark DEMs
         diff_array = (
@@ -180,7 +189,8 @@ class Test(unittest.TestCase):
         )
         threshold = 10e-6
         self.assertTrue(
-            len(diff_array[numpy.abs(diff_array) > threshold]) < len(diff_array) / 100,
+            len(diff_array[numpy.abs(diff_array) > threshold])
+            < len(diff_array) / 100,
             f"{len(diff_array[numpy.abs(diff_array) > threshold])} or more than 1% of "
             f"DEM values differ by more than {threshold} on Linux test run: "
             f"{diff_array[numpy.abs(diff_array) > threshold]}",

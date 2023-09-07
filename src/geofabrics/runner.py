@@ -20,7 +20,9 @@ def setup_logging_for_run(instructions: dict, label: str):
         "this is where the log file will be written."
     )
 
-    log_path = pathlib.Path(pathlib.Path(instructions["data_paths"]["local_cache"]))
+    log_path = pathlib.Path(
+        pathlib.Path(instructions["data_paths"]["local_cache"])
+    )
     if "subfolder" in instructions["data_paths"].keys():
         log_path = log_path / instructions["data_paths"]["subfolder"]
     else:
@@ -36,7 +38,9 @@ def setup_logging_for_run(instructions: dict, label: str):
     logging.info(instructions)
 
 
-def run_processor_class(processor_class, processor_label: str, instructions: dict):
+def run_processor_class(
+    processor_class, processor_label: str, instructions: dict
+):
     """Run a processor class recording outputs in a unique log file and timing the
     execution."""
 
@@ -74,7 +78,9 @@ def merge_dicts(dict_a: dict, dict_b: dict, replace_a: bool):
         """Recurively add the new_dict into the base_dict. dict_a is mutable."""
         for key in new_dict:
             if key in base_dict:
-                if isinstance(base_dict[key], dict) and isinstance(new_dict[key], dict):
+                if isinstance(base_dict[key], dict) and isinstance(
+                    new_dict[key], dict
+                ):
                     recursive_merge_dicts(
                         base_dict=base_dict[key],
                         new_dict=new_dict[key],
@@ -99,7 +105,9 @@ def merge_dicts(dict_a: dict, dict_b: dict, replace_a: bool):
                 base_dict[key] = new_dict[key]
         return base_dict
 
-    return recursive_merge_dicts(copy.deepcopy(dict_a), dict_b, replace_base=replace_a)
+    return recursive_merge_dicts(
+        copy.deepcopy(dict_a), dict_b, replace_base=replace_a
+    )
 
 
 def from_instructions_dict(instructions: dict):
@@ -110,6 +118,23 @@ def from_instructions_dict(instructions: dict):
     instructions = copy.deepcopy(instructions)
     if "shared" in instructions:
         shared = instructions.pop("shared")
+        # Auto-add dem and roughness keys if not included and outputs specified
+        if (
+            "dem" not in instructions
+            and "data_paths" in shared
+            and (
+                "raw_dem" in shared["data_paths"]
+                or "result_dem" in shared["data_paths"]
+            )
+        ):
+            instructions["dem"] = {}
+        if (
+            "roughness" not in instructions
+            and "data_paths" in shared
+            and "result_geofabric" in shared["data_paths"]
+        ):
+            instructions["roughness"] = {}
+        # Construct the full instructions
         for key in instructions:
             instructions[key] = merge_dicts(
                 dict_a=instructions[key], dict_b=shared, replace_a=False
@@ -178,7 +203,9 @@ def from_instructions_dict(instructions: dict):
             processor_label="roughness",
             instructions=instructions,
         )
-    print(f"Total execution time is {datetime.datetime.now() - initial_start_time}")
+    print(
+        f"Total execution time is {datetime.datetime.now() - initial_start_time}"
+    )
 
 
 def from_instructions_file(

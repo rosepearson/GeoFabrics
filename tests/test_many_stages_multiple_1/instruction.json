@@ -1,6 +1,5 @@
 {
-"dem":
-{
+"shared": {
 	"output": {
 		"crs": {
 			"horizontal": 2193,
@@ -20,7 +19,7 @@
 		"subfolder": "results",
 		"catchment_boundary": "catchment.geojson",
 		"land": "catchment.geojson",
-		"result_dem": "test_dem.nc"
+		"benchmark": "benchmark.nc"
 	},
 	"datasets": {
 		"lidar": {
@@ -35,6 +34,16 @@
 			}
 		}
 	},
+	"general": {
+		"drop_offshore_lidar": true,
+		"interpolation_method": null
+	}
+}
+"dem":
+{
+	"data_paths": {
+		"result_dem": "test_dem.nc"
+	},
 	"dataset_mapping": {
 		"lidar": {
 			"Wellington_2013": 2,
@@ -42,48 +51,13 @@
 		}
     },
 	"general": {
-		"drop_offshore_lidar": true,
-		"lidar_classifications_to_keep": [2],
-		"interpolation_method": null
+		"lidar_classifications_to_keep": [2]
 	}
 },
 "roughness":
 {
-	"output": {
-		"crs": {
-			"horizontal": 2193,
-			"vertical": 7839
-		},
-		"grid_params": {
-			"resolution": 2
-		}
-	},
-	"processing": {
-		"chunk_size": 500,
-		"number_of_cores": 2,
-		"memory_limit": "5GiB"
-	},
 	"data_paths": {
-		"local_cache": "tests/test_many_stages_multiple_1/data",
-		"subfolder": "results",
-		"catchment_boundary": "catchment.geojson",
-		"land": "catchment.geojson",
-		"result_dem": "test_dem.nc",
-		"result_geofabric": "test_geofabric.nc",
-		"benchmark": "benchmark.nc"
-	},
-	"datasets": {
-		"lidar": {
-			"open_topography": {
-				"NZ21_Kapiti": true,
-				"Wellington_2013": {
-					"crs": {
-						"horizontal": 2193,
-						"vertical": 7839
-					}
-				}
-			}
-		}
+		"result_geofabric": "test_geofabric.nc"
 	},
 	"dataset_mapping": {
 		"lidar": {
@@ -92,9 +66,7 @@
 		}
     },
 	"general": {
-		"drop_offshore_lidar": true,
-		"lidar_classifications_to_keep": [1, 2, 4, 9],
-		"interpolation_method": null
+		"lidar_classifications_to_keep": [1, 2, 4, 9]
 	}
 }
 }
