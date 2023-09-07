@@ -21,6 +21,7 @@ Functions
 
    geofabrics.runner.setup_logging_for_run
    geofabrics.runner.run_processor_class
+   geofabrics.runner.merge_dicts
    geofabrics.runner.from_instructions_dict
    geofabrics.runner.from_instructions_file
 
@@ -35,6 +36,19 @@ Functions
 
    Run a processor class recording outputs in a unique log file and timing the
    execution.
+
+
+.. py:function:: merge_dicts(dict_a, dict_b, replace_a)
+
+   Merge the contents of the dict_a and dict_b. Use recursion to merge
+   any nested dictionaries. replace_a determines if the dict_a values are
+   replaced or not if different values are in the dict_b.
+
+   Adapted from https://stackoverflow.com/questions/7204805/how-to-merge-dictionaries-of-dictionaries
+
+   :param dict_a  The dict to:
+   :param dict_b  The location of the centre of the river mouth:
+   :param replace_a If True any dict_a values are replaced if different values are in dict_b:
 
 
 .. py:function:: from_instructions_dict(instructions)

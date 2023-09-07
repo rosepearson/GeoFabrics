@@ -107,10 +107,13 @@
 <tr class="row-even"><td><p><a class="reference internal" href="#geofabrics.runner.run_processor_class" title="geofabrics.runner.run_processor_class"><code class="xref py py-obj docutils literal notranslate"><span class="pre">run_processor_class</span></code></a>(processor_class, processor_label, ...)</p></td>
 <td><p>Run a processor class recording outputs in a unique log file and timing the</p></td>
 </tr>
-<tr class="row-odd"><td><p><a class="reference internal" href="#geofabrics.runner.from_instructions_dict" title="geofabrics.runner.from_instructions_dict"><code class="xref py py-obj docutils literal notranslate"><span class="pre">from_instructions_dict</span></code></a>(instructions)</p></td>
+<tr class="row-odd"><td><p><a class="reference internal" href="#geofabrics.runner.merge_dicts" title="geofabrics.runner.merge_dicts"><code class="xref py py-obj docutils literal notranslate"><span class="pre">merge_dicts</span></code></a>(dict_a, dict_b, replace_a)</p></td>
+<td><p>Merge the contents of the dict_a and dict_b. Use recursion to merge</p></td>
+</tr>
+<tr class="row-even"><td><p><a class="reference internal" href="#geofabrics.runner.from_instructions_dict" title="geofabrics.runner.from_instructions_dict"><code class="xref py py-obj docutils literal notranslate"><span class="pre">from_instructions_dict</span></code></a>(instructions)</p></td>
 <td><p>Run the DEM generation pipeline(s) given the specified instructions.</p></td>
 </tr>
-<tr class="row-even"><td><p><a class="reference internal" href="#geofabrics.runner.from_instructions_file" title="geofabrics.runner.from_instructions_file"><code class="xref py py-obj docutils literal notranslate"><span class="pre">from_instructions_file</span></code></a>(instructions_path)</p></td>
+<tr class="row-odd"><td><p><a class="reference internal" href="#geofabrics.runner.from_instructions_file" title="geofabrics.runner.from_instructions_file"><code class="xref py py-obj docutils literal notranslate"><span class="pre">from_instructions_file</span></code></a>(instructions_path)</p></td>
 <td><p>Run the DEM generation pipeline(s) given the specified instructions.</p></td>
 </tr>
 </tbody>
@@ -139,6 +142,27 @@ execution.</p>
 <dd class="field-odd"><ul class="simple">
 <li><p><strong>processor_label</strong> (<em>str</em>) – </p></li>
 <li><p><strong>instructions</strong> (<em>dict</em>) – </p></li>
+</ul>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py" id="geofabrics.runner.merge_dicts">
+<span class="sig-prename descclassname"><span class="pre">geofabrics.runner.</span></span><span class="sig-name descname"><span class="pre">merge_dicts</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">dict_a</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">dict_b</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">replace_a</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#geofabrics.runner.merge_dicts" title="Link to this definition"></a></dt>
+<dd><p>Merge the contents of the dict_a and dict_b. Use recursion to merge
+any nested dictionaries. replace_a determines if the dict_a values are
+replaced or not if different values are in the dict_b.</p>
+<p>Adapted from <a class="reference external" href="https://stackoverflow.com/questions/7204805/how-to-merge-dictionaries-of-dictionaries">https://stackoverflow.com/questions/7204805/how-to-merge-dictionaries-of-dictionaries</a></p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>to</strong> (<em>dict_a  The dict</em>) – </p></li>
+<li><p><strong>mouth</strong> (<em>dict_b  The location</em><em> of </em><em>the centre</em><em> of </em><em>the river</em>) – </p></li>
+<li><p><strong>dict_b</strong> (<em>dict</em>) – </p></li>
+<li><p><strong>dict_a</strong> (<em>dict</em>) – </p></li>
+<li><p><strong>dict_b</strong> – </p></li>
+<li><p><strong>replace_a</strong> (<em>bool</em>) – </p></li>
 </ul>
 </dd>
 </dl>
