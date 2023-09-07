@@ -2450,7 +2450,7 @@ class WaterwayBedElevationEstimator(BaseProcessor):
             .notnull()
             .groupby(level=0)
             .all()
-            .array
+            .values
         )
         if not nan_filter.all():
             logging.warning(
