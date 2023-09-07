@@ -38,7 +38,7 @@
 		"drop_offshore_lidar": true,
 		"interpolation_method": null
 	}
-}
+},
 "dem":
 {
 	"data_paths": {
