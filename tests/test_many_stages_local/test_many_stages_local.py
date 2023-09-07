@@ -18,7 +18,7 @@ import pdal
 import logging
 import gc
 
-from src.geofabrics import processor
+from src.geofabrics import runner
 
 
 class Test(unittest.TestCase):
@@ -39,7 +39,9 @@ class Test(unittest.TestCase):
         and also download the files used
         in the tests."""
 
-        test_path = pathlib.Path().cwd() / pathlib.Path("tests/test_many_stages_local")
+        test_path = pathlib.Path().cwd() / pathlib.Path(
+            "tests/test_many_stages_local"
+        )
 
         # Setup logging
         logging.basicConfig(
@@ -66,9 +68,13 @@ class Test(unittest.TestCase):
         y0 = -250
         x1 = 1250
         y1 = 750
-        catchment = shapely.geometry.Polygon([(x0, y0), (x1, y0), (x1, y1), (x0, y1)])
+        catchment = shapely.geometry.Polygon(
+            [(x0, y0), (x1, y0), (x1, y1), (x0, y1)]
+        )
         catchment = geopandas.GeoSeries([catchment])
-        catchment = catchment.set_crs(cls.instructions["output"]["crs"]["horizontal"])
+        catchment = catchment.set_crs(
+            cls.instructions["output"]["crs"]["horizontal"]
+        )
         catchment.to_file(catchment_file)
 
         # Generate land data
@@ -77,7 +83,9 @@ class Test(unittest.TestCase):
         y0 = 0
         x1 = 1500
         y1 = 1000
-        land = shapely.geometry.Polygon([(x0, y0), (x1, y0), (x1, y1), (x0, y1)])
+        land = shapely.geometry.Polygon(
+            [(x0, y0), (x1, y0), (x1, y1), (x0, y1)]
+        )
         land = geopandas.GeoSeries([land])
         land = land.set_crs(cls.instructions["output"]["crs"]["horizontal"])
         land.to_file(land_file)
@@ -102,8 +110,12 @@ class Test(unittest.TestCase):
         contour_3 = shapely.geometry.LineString(
             [(x0, y3, -y3 / 10), (x1, y3, -y3 / 10)]
         )
-        contours = geopandas.GeoSeries([contour_0, contour_1, contour_2, contour_3])
-        contours = contours.set_crs(cls.instructions["output"]["crs"]["horizontal"])
+        contours = geopandas.GeoSeries(
+            [contour_0, contour_1, contour_2, contour_3]
+        )
+        contours = contours.set_crs(
+            cls.instructions["output"]["crs"]["horizontal"]
+        )
         contours.to_file(bathymetry_file)
 
         # Create a reference DEM
@@ -154,7 +166,12 @@ class Test(unittest.TestCase):
         # scrub
         lidar_array = numpy.empty(
             [len(grid_lidar_x.flatten())],
-            dtype=[("X", "<f8"), ("Y", "<f8"), ("Z", "<f8"), ("Classification", "u1")],
+            dtype=[
+                ("X", "<f8"),
+                ("Y", "<f8"),
+                ("Z", "<f8"),
+                ("Classification", "u1"),
+            ],
         )
         lidar_array["X"] = grid_lidar_x.flatten()
         lidar_array["Y"] = grid_lidar_y.flatten()
@@ -178,12 +195,7 @@ class Test(unittest.TestCase):
         pdal_pipeline.execute()
 
         # Run pipeline
-        runner = processor.RawLidarDemGenerator(cls.instructions)
-        runner.run()
-        runner = processor.HydrologicDemGenerator(cls.instructions)
-        runner.run()
-        runner = processor.RoughnessLengthGenerator(cls.instructions)
-        runner.run()
+        runner.from_instructions_dict(cls.instructions)
 
     @classmethod
     def tearDownClass(cls):
@@ -215,14 +227,21 @@ class Test(unittest.TestCase):
         """A basic comparison between the generated and benchmark DEM"""
 
         # Load in benchmark DEM
-        file_path = self.cache_dir / self.instructions["data_paths"]["benchmark_dem"]
-        with rioxarray.rioxarray.open_rasterio(file_path, masked=True) as benchmark_dem:
+        file_path = (
+            self.cache_dir / self.instructions["data_paths"]["benchmark_dem"]
+        )
+        with rioxarray.rioxarray.open_rasterio(
+            file_path, masked=True
+        ) as benchmark_dem:
             benchmark_dem = benchmark_dem.squeeze("band", drop=True)
         # Load in result DEM
         file_path = (
-            self.results_dir / self.instructions["data_paths"]["result_geofabric"]
+            self.results_dir
+            / self.instructions["data_paths"]["result_geofabric"]
         )
-        with rioxarray.rioxarray.open_rasterio(file_path, masked=True) as test_dem:
+        with rioxarray.rioxarray.open_rasterio(
+            file_path, masked=True
+        ) as test_dem:
             test_dem = test_dem.squeeze("band", drop=True)
         # Compare DEMs z - load both from file as rioxarray.rioxarray.open_rasterio
         # ignores index order
@@ -246,7 +265,9 @@ class Test(unittest.TestCase):
         )
 
         # Compare DEMs lidar source classification
-        diff_array = test_dem.lidar_source.data - benchmark_dem.lidar_source.data
+        diff_array = (
+            test_dem.lidar_source.data - benchmark_dem.lidar_source.data
+        )
         logging.info(f"DEM z array diff is: {diff_array[diff_array != 0]}")
         numpy.testing.assert_array_almost_equal(
             test_dem.lidar_source.data,
