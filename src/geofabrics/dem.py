@@ -91,7 +91,7 @@ class CoarseDem:
         # Return no chunk points if the chunk area is zero
         if chunk.area.sum() <= 0:
             return []
-        
+
         # Check for overlap in the chunk and the DEM
         chunk = chunk.overlay(self._dem_bounds, how="intersection")
         # Try clip if there is some overlap

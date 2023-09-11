@@ -20,9 +20,7 @@ def setup_logging_for_run(instructions: dict, label: str):
         "this is where the log file will be written."
     )
 
-    log_path = pathlib.Path(
-        pathlib.Path(instructions["data_paths"]["local_cache"])
-    )
+    log_path = pathlib.Path(pathlib.Path(instructions["data_paths"]["local_cache"]))
     if "subfolder" in instructions["data_paths"].keys():
         log_path = log_path / instructions["data_paths"]["subfolder"]
     else:
@@ -38,9 +36,7 @@ def setup_logging_for_run(instructions: dict, label: str):
     logging.info(instructions)
 
 
-def run_processor_class(
-    processor_class, processor_label: str, instructions: dict
-):
+def run_processor_class(processor_class, processor_label: str, instructions: dict):
     """Run a processor class recording outputs in a unique log file and timing the
     execution."""
 
@@ -199,9 +195,7 @@ def from_instructions_dict(instructions: dict):
             processor_label="roughness",
             instructions=instructions,
         )
-    print(
-        f"Total execution time is {datetime.datetime.now() - initial_start_time}"
-    )
+    print(f"Total execution time is {datetime.datetime.now() - initial_start_time}")
 
 
 def from_instructions_file(
