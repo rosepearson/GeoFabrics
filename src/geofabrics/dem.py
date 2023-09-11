@@ -52,7 +52,7 @@ class CoarseDem:
         )
 
         self._extents = None
-        self._points = None
+        self._points = []
 
         self._set_up(extent)
 
@@ -88,8 +88,12 @@ class CoarseDem:
         """The coarse DEM points after any extent or foreshore value
         filtering."""
 
+        # Return no chunk points if the chunk area is zero
+        if chunk.area.sum() <= 0:
+            return []
+        
         # Check for overlap in the chunk and the DEM
-        chunk = chunk.overlay(self._dem_bounds, how="union")
+        chunk = chunk.overlay(self._dem_bounds, how="intersection")
         # Try clip if there is some overlap
         if chunk.area.sum() > 0:
             # Try clip - catch if no DEM in clipping bounds
@@ -108,10 +112,10 @@ class CoarseDem:
                 logging.warning(
                     "No coarse DEM values in the region of interest. Will set to empty."
                 )
-                chunk_points = None
+                chunk_points = []
         else:
             # No overlap so no points
-            chunk_points = None
+            chunk_points = []
         return chunk_points
 
     @property
@@ -124,7 +128,7 @@ class CoarseDem:
     def empty(self) -> bool:
         """True if the DEM is empty"""
 
-        return self._points is None and self._dem is None
+        return len(self._points) == 0 and self._dem is None
 
     def _set_up(self, extent):
         """Set DEM CRS and trim the DEM to size"""
@@ -170,14 +174,14 @@ class CoarseDem:
                 "No coarse DEM values in the region of interest. Will set to empty."
             )
             self._dem = None
-            self._points = None
+            self._points = []
             self._dem_bounds = None
 
     def _extract_points(self, dem):
         """Create a points list from the DEM"""
 
         # Get the DEM bounding box
-        dem_bounds = self._dem.rio.bounds()
+        dem_bounds = dem.rio.bounds()
         dem_bounds = geopandas.GeoDataFrame(
             {
                 "geometry": [
@@ -272,9 +276,10 @@ class CoarseDem:
             foreshore_x = []
             foreshore_y = []
             foreshore_z = []
-        assert (
-            len(land_x) + len(foreshore_x) > 0
-        ), "The coarse DEM has no values on the land or foreshore"
+        if len(land_x) + len(foreshore_x) == 0:
+            # If no points - give a warning and then return an empty array
+            logging.warning("The coarse DEM has no values on the land or foreshore")
+            return []
 
         # combine in an single array
         points = numpy.empty(
