@@ -243,7 +243,7 @@ class BaseProcessor(abc.ABC):
             },
         }
 
-        if key not in defaults or key not in self.instructions["general"]:
+        if key not in defaults and key not in self.instructions["general"]:
             raise ValueError(
                 f"The key: {key} is missing from the general instructions, and"
                 " does not have a default value"

@@ -46,6 +46,6 @@
 	},
 	"general": {
 		"bathymetry_contours_z_label": "valdco",
-		"lidar_classifications_to_keep": [1, 2, 3, 4, 5, 6, 7, 9, 18],
+		"lidar_classifications_to_keep": [1, 2, 3, 4, 5, 6, 7, 9, 18]
 	}
 }
