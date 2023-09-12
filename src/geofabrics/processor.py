@@ -1257,7 +1257,6 @@ class MeasuredRiverGenerator(BaseProcessor):
         ]
         # Add signifiers of being zero offset at bank edge and source of data
         elevations_clean["source"] = "measured"
-        elevations_clean["bank_height"] = 0  # Ensure zero bank height in ocean
         elevations_clean.to_file(river_bathymetry_file)
 
         # Create fan object
@@ -1278,7 +1277,6 @@ class MeasuredRiverGenerator(BaseProcessor):
 
         # Combine and save the river and fan geometries
         fan_bathymetry["source"] = "fan"
-        fan_bathymetry["bank_height"] = 0  # Ensure zero bank height in ocean
         combined_bathymetry = geopandas.GeoDataFrame(
             pandas.concat([elevations_clean, fan_bathymetry], ignore_index=True),
             crs=elevations_clean.crs,
@@ -2013,6 +2011,7 @@ class RiverBathymetryGenerator(BaseProcessor):
         width_values = geopandas.read_file(
             self.get_result_file_path(key="river_characteristics")
         )
+        width_values["source"] = "river"  # Specify as coming form river estimation
         channel = self.get_network_channel()
 
         # Match each channel midpoint to a reach ID - based on what reach is closest
@@ -2141,6 +2140,7 @@ class RiverBathymetryGenerator(BaseProcessor):
             min_z_name,
             width_name,
             flat_width_name,
+            "source",
         ]
         if self.debug:
             # Optionally write out additional depth information
@@ -2153,7 +2153,6 @@ class RiverBathymetryGenerator(BaseProcessor):
                 ]
             )
         # Save the widths and depths
-        width_values["source"] = "river"
         width_values[values_to_save].rename(
             columns={min_z_name: "bank_height", width_name: "width"}
         ).to_file(self.get_result_file_path(key="river_bathymetry"))
@@ -2293,13 +2292,14 @@ class RiverBathymetryGenerator(BaseProcessor):
 
         # Combine and save the river and fan geometries
         fan_bathymetry["source"] = "fan"
-        fan_bathymetry["bank_height"] = 0  # Ensure zero bank height in ocean
+        fan_bathymetry["bank_height"] = numpy.nan  # No bank height info in ocean
         combined_bathymetry = geopandas.GeoDataFrame(
-            pandas.concat([river_bathymetry, fan_bathymetry], ignore_index=True),
+            pandas.concat([fan_bathymetry.loc[::-1], river_bathymetry], ignore_index=True),
             crs=river_bathymetry.crs,
         )
         combined_bathymetry.to_file(river_bathymetry_file)
         combined_polygon = river_polygon.overlay(fan_polygon, how="union")
+        combined_polygon = geopandas.GeoDataFrame(geometry=combined_polygon.buffer(self.get_resolution())).dissolve().buffer(-self.get_resolution())
         combined_polygon.to_file(river_polygon_file)
 
     def run(self):
