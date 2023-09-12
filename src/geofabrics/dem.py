@@ -930,7 +930,7 @@ class HydrologicallyConditionedDem(DemBase):
             river_bank_points = estimated_bathymetry.filtered_bank_height_points(
                 type_label="rivers"
             )
-            river_bank_nan_mask = numpy.logical_not(numpy.isnan(river_bank_points))
+            river_bank_nan_mask = numpy.logical_not(numpy.isnan(river_bank_points['Z']))
             # Interpolate from the estimated river bank heights
             xy_out = numpy.concatenate(
                 [[flat_x[mask_z]], [flat_y[mask_z]]], axis=0
@@ -946,18 +946,11 @@ class HydrologicallyConditionedDem(DemBase):
                 options=options,
             )
 
-            # Take the estimated bank heights where lower than the DEM edge values
-            flat_z[
-                mask_z & (flat_z[mask_z] > estimated_river_edge_z)
-            ] = estimated_river_edge_z[flat_z[mask_z] > estimated_river_edge_z]
-            """river_edge_z = estimated_river_edge_z.copy()
-            river_edge_z[flat_z[mask_z] < estimated_river_edge_z] = flat_z[mask_z][
-                flat_z[mask_z] < estimated_river_edge_z
-            ]
-            river_edge_z[numpy.isnan(river_edge_z)] = flat_z[mask_z][
-                numpy.isnan(river_edge_z)
-            ]
-            flat_z[mask_z] = river_edge_z"""
+            # Use the estimated bank heights where lower than the DEM edge values
+            mask_z_river_edge = mask_z.copy()
+            mask_z_river_edge[:] = False
+            mask_z_river_edge[mask_z] = flat_z[mask_z] > estimated_river_edge_z
+            flat_z[mask_z_river_edge] = estimated_river_edge_z[flat_z[mask_z] > estimated_river_edge_z]
 
         # Use the flat_x/y/z to define edge points and heights
         edge_points = numpy.empty(
