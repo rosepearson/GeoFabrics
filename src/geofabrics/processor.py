@@ -229,9 +229,7 @@ class BaseProcessor(abc.ABC):
             "bathymetry_points_type": None,
             "drop_offshore_lidar": True,
             "lidar_classifications_to_keep": [2],
-            "interpolation_method": None,
             "elevation_range": None,
-            "lidar_interpolation_method": "idw",
             "download_limit_gbytes": 100,
             "lidar_buffer": 0,
             "interpolation": {
@@ -239,7 +237,7 @@ class BaseProcessor(abc.ABC):
                 "waterays": "cubic",
                 "ocean": "linear",
                 "lidar": "idw",
-                "no_data": "nearest",
+                "no_data": None,
             },
         }
 
