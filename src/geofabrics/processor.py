@@ -256,7 +256,7 @@ class BaseProcessor(abc.ABC):
             self.instructions["general"][key] = defaults[key]
         if subkey is None:
             # Return the key value
-            self.instructions["general"][key]
+            return self.instructions["general"][key]
         else:
             # Return the subkey value as specified
             if subkey not in self.instructions["general"][key]:
