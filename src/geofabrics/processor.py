@@ -2294,12 +2294,20 @@ class RiverBathymetryGenerator(BaseProcessor):
         fan_bathymetry["source"] = "fan"
         fan_bathymetry["bank_height"] = numpy.nan  # No bank height info in ocean
         combined_bathymetry = geopandas.GeoDataFrame(
-            pandas.concat([fan_bathymetry.loc[::-1], river_bathymetry], ignore_index=True),
+            pandas.concat(
+                [fan_bathymetry.loc[::-1], river_bathymetry], ignore_index=True
+            ),
             crs=river_bathymetry.crs,
         )
         combined_bathymetry.to_file(river_bathymetry_file)
         combined_polygon = river_polygon.overlay(fan_polygon, how="union")
-        combined_polygon = geopandas.GeoDataFrame(geometry=combined_polygon.buffer(self.get_resolution())).dissolve().buffer(-self.get_resolution())
+        combined_polygon = (
+            geopandas.GeoDataFrame(
+                geometry=combined_polygon.buffer(self.get_resolution())
+            )
+            .dissolve()
+            .buffer(-self.get_resolution())
+        )
         combined_polygon.to_file(river_polygon_file)
 
     def run(self):

@@ -966,7 +966,9 @@ class HydrologicallyConditionedDem(DemBase):
             river_edge_z[flat_z[mask_z_river] < estimated_river_edge_z] = flat_z[
                 mask_z_river
             ][flat_z[mask_z_river] < estimated_river_edge_z]
-            river_edge_z[numpy.isnan(river_edge_z)] = flat_z[mask_z_river][numpy.isnan(river_edge_z)]
+            river_edge_z[numpy.isnan(river_edge_z)] = flat_z[mask_z_river][
+                numpy.isnan(river_edge_z)
+            ]
             flat_z[mask_z_river] = river_edge_z
 
         # Use the flat_x/y/z to define edge points and heights
@@ -2625,17 +2627,19 @@ def calculate_linear(
     mean if the points are co-linear or too few for linear interpolation."""
 
     if len(near_indices) > 3:  # There are enough points for a linear interpolation
-        try: 
+        try:
             linear = scipy.interpolate.griddata(
                 points=tree.data[near_indices],
                 values=point_cloud["Z"][near_indices],
                 xi=point,
-                method="linear"
+                method="linear",
             )[0]
         except scipy.spatial.QhullError or Exception:
-            logging.warning(f"Exception {Exception} during linear interpolation. Set to NaN.")
+            logging.warning(
+                f"Exception {Exception} during linear interpolation. Set to NaN."
+            )
             linear = numpy.nan
-            
+
     elif len(near_indices) == 1:
         linear = point_cloud["Z"][near_indices][0]
     else:
