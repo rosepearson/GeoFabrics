@@ -12,7 +12,7 @@
 	"data_paths": {
 		"local_cache": "tests/test_many_stages_local/data",
 		"subfolder": "results",
-		"catchment_boundary": "catchment_boundary.geojson",
+		"extents": "catchment_boundary.geojson",
 		"land": "land.geojson",
 		"lidar_files": ["lidar.laz"],
 		"coarse_dems": ["coarse_dem.nc"],
@@ -22,7 +22,7 @@
 		"benchmark_dem": "benchmark_geofabric.nc"
 	},
 	"general": {
-		"interpolation_method": "linear"
+		"interpolation": {"no_data": "linear"}
 	}
 }
 }

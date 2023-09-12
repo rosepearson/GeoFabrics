@@ -11,7 +11,7 @@
 	"data_paths": {
 		"local_cache": "tests/test_dem_generation_local_2/data",
 		"subfolder": "results",
-		"catchment_boundary": "catchment_boundary.geojson",
+		"extents": "catchment_boundary.geojson",
 		"land": "land.geojson",
 		"lidar_files": ["lidar.laz"],
 		"bathymetry_contours": ["bathymetry.geojson"],
@@ -21,6 +21,6 @@
 	"general": {
 		"drop_offshore_lidar": true,
 		"lidar_classifications_to_keep": [2],
-		"interpolation_method": "linear"
+		"interpolation": {"no_data": "linear"}
 	}
 }

@@ -16,7 +16,7 @@
 	"data_paths": {
 		"local_cache": "tests/test_dem_generation_wellington_2/data",
 		"subfolder": "results",
-		"catchment_boundary": "catchment.geojson",
+		"extents": "catchment.geojson",
 		"land": "catchment.geojson",
 		"result_dem": "test_dem.nc",
 		"benchmark_dem": "benchmark_dem.nc"
@@ -35,7 +35,7 @@
 	},
 	"general": {
 		"lidar_classifications_to_keep": [1, 2, 4, 9],
-		"interpolation_method": "linear",
+		"interpolation": {"no_data": "linear"},
 		"elevation_range": [-10, 4000]
 	}
 }

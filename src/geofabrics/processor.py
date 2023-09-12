@@ -836,9 +836,9 @@ class BaseProcessor(abc.ABC):
 
     def create_catchment(self) -> geometry.CatchmentGeometry:
         # create the catchment geometry object
-        catchment_dirs = self.get_instruction_path("catchment_boundary")
+        catchment_dirs = self.get_instruction_path("extents")
         assert type(catchment_dirs) is not list, (
-            f"A list of catchment_boundary's is provided: {catchment_dirs}, "
+            f"A list of `extents`s is provided: {catchment_dirs}, "
             + "where only one is supported."
         )
         catchment_geometry = geometry.CatchmentGeometry(
@@ -1124,7 +1124,7 @@ class HydrologicDemGenerator(BaseProcessor):
         # Check for and add any bathymetry information
         self.add_bathymetry(
             area_threshold=area_threshold,
-            catchment_dirs=self.get_instruction_path("catchment_boundary"),
+            catchment_dirs=self.get_instruction_path("extents"),
         )
 
         # fill combined dem - save results
@@ -1568,8 +1568,6 @@ class RiverBathymetryGenerator(BaseProcessor):
                 "river_characteristics": "river_characteristics.geojson",
                 "river_polygon": "river_polygon.geojson",
                 "river_bathymetry": "river_bathymetry.geojson",
-                "fan_bathymetry": "fan_bathymetry.geojson",
-                "fan_polygon": "fan_polygon.geojson",
                 "gnd_dem": "raw_gnd_dem.nc",
                 "gnd_dem_extents": "raw_gnd_extents.geojson",
                 "veg_dem": "raw_veg_dem.nc",

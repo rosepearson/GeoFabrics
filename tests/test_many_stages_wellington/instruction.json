@@ -45,7 +45,7 @@
 			"bathymetry_contours_z_label": "valdco",
 			"drop_offshore_lidar": true,
 			"lidar_classifications_to_keep": [2, 9],
-			"interpolate_missing_values": false
+			"interpolation": {"no_data": "null"}
 		},
 		"rivers": {
 			"veg_lidar_classifications_to_keep": [2, 3, 4, 5, 9],
@@ -82,7 +82,7 @@
 		"data_paths": {
 			"local_cache": "tests/test_many_stages_wellington/data",
 			"subfolder": "results/waterways",
-			"catchment_boundary": "../catchment.geojson"
+			"extents": "../catchment.geojson"
 		},
 		"datasets": {
 			"lidar": {
@@ -129,7 +129,7 @@
 		"data_paths": {
 			"local_cache": "tests/test_many_stages_wellington/data",
 			"subfolder": "results",
-			"catchment_boundary": "catchment.geojson",
+			"extents": "catchment.geojson",
 			"raw_dem": "raw_dem.nc",
 			"river_polygons": ["rivers/river_polygon.geojson",
 							   "rivers/fan_polygon.geojson",
@@ -169,7 +169,7 @@
 			"bathymetry_points_type": ["rivers", "fans", "waterways", "waterways"],
 			"bathymetry_points_z_label": ["bed_elevation_Rupp_and_Smart", "bed_elevation_Rupp_and_Smart", "elevation", "elevation"],
 			"lidar_classifications_to_keep": [2, 9],
-			"interpolation_method": "linear"
+			"interpolation": {"no_data": "linear"}
 		}
 	},
 	"roughness":
@@ -191,7 +191,7 @@
 		"data_paths": {
 			"local_cache": "tests/test_many_stages_wellington/data",
 			"subfolder": "results",
-			"catchment_boundary": "catchment.geojson",
+			"extents": "catchment.geojson",
 			"result_dem": "test_dem.nc",
 			"result_geofabric": "test_geofabric.nc",
 			"benchmark_geofabric": "benchmark_geofabric.nc"
@@ -221,7 +221,7 @@
 		"general": {
 			"drop_offshore_lidar": true,
 			"lidar_classifications_to_keep": [1, 2, 4, 9],
-			"interpolation_method": "linear"
+			"interpolation": {"no_data": "linear"}
 		}
 	}
 }
