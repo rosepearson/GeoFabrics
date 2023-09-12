@@ -31,6 +31,6 @@
 	"general": {
 		"drop_offshore_lidar": false,
 		"lidar_classifications_to_keep": [2],
-		"interpolation": {"no_data": "linear", "lidar": "mean"}
+		"interpolation": {"no_data": null, "lidar": "mean"}
 	}
 }
