@@ -14,7 +14,7 @@
 		"extents": "catchment_boundary.geojson",
 		"land": "land.geojson",
 		"lidar_files": ["lidar.laz"],
-		"bathymetry_contours": ["bathymetry.geojson"],
+		"ocean_contours": ["bathymetry.geojson"],
 		"result_dem": "test_dem.nc",
 		"benchmark_dem": "benchmark_dem.nc"
 	},
