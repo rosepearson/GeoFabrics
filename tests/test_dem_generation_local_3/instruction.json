@@ -15,7 +15,7 @@
 		"land": "land.geojson",
 		"lidar_files": ["lidar.laz"],
 		"coarse_dems": ["coarse_dem.nc"],
-		"bathymetry_contours": ["bathymetry.geojson"],
+		"ocean_contours": ["bathymetry.geojson"],
 		"raw_dem_extents": "initial_extents.geojson",
 		"raw_dem": "initial_dem.nc",
 		"result_dem": "test_dem.nc",

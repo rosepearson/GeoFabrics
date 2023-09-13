@@ -32,14 +32,14 @@
 		},
 		"vector": {
 			"linz": {
-				"bathymetry_contours": {
+				"ocean_contours": {
 					"layers": [50554]
 				}
 			}
 		}
 	},
 	"general": {
-		"bathymetry_contours_z_label": "valdco",
+		"ocean_contours_z_label": "valdco",
 		"drop_offshore_lidar": true,
 		"lidar_classifications_to_keep": [2, 9],
 		"interpolation": {"no_data": "null"}

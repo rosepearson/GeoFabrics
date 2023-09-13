@@ -31,7 +31,7 @@
 				"land": {
 					"layers": [51153]
 				},
-				"bathymetry_contours": {
+				"ocean_contours": {
 					"layers": [50448]
 				}
 			}
@@ -39,7 +39,7 @@
 	},
 	"general": {
 		"drop_offshore_lidar": true,
-		"bathymetry_contours_z_label": "valdco",
+		"ocean_contours_z_label": "valdco",
 		"lidar_classifications_to_keep": [2],
 		"interpolation": {"no_data": "linear"}
 	}

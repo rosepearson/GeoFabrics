@@ -35,14 +35,14 @@
 					"land": {
 						"layers": [51559]
 					},
-					"bathymetry_contours": {
+					"ocean_contours": {
 						"layers": [50554]
 					}
 				}
 			}
 		},
 		"general": {
-			"bathymetry_contours_z_label": "valdco",
+			"ocean_contours_z_label": "valdco",
 			"drop_offshore_lidar": true,
 			"lidar_classifications_to_keep": [2, 9],
 			"interpolation": {"no_data": "null"}
@@ -155,7 +155,7 @@
 					"land": {
 						"layers": [51153]
 					},
-					"bathymetry_contours": {
+					"ocean_contours": {
 						"layers": [50554]
 					}
 				}
@@ -163,7 +163,7 @@
 		},
 		"general": {
 			"drop_offshore_lidar": true,
-			"bathymetry_contours_z_label": "valdco",
+			"ocean_contours_z_label": "valdco",
 			"bathymetry_points_type": ["rivers", "waterways", "waterways"],
 			"bathymetry_points_z_label": ["bed_elevation_Rupp_and_Smart", "elevation", "elevation"],
 			"lidar_classifications_to_keep": [2, 9],
@@ -209,9 +209,6 @@
 				"linz": {
 					"land": {
 						"layers": [51153]
-					},
-					"bathymetry_contours": {
-						"layers": [50554]
 					}
 				}
 			}
