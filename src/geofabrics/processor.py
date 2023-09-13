@@ -240,7 +240,7 @@ class BaseProcessor(abc.ABC):
             "z_labels": {
                 "waterways": "elevations",
                 "rivers": "bed_elevation_Rupp_and_Smart",
-                "ocean": "elevation",
+                "ocean": None,
             },
         }
 
