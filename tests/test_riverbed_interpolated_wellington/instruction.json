@@ -10,8 +10,7 @@
 		"subfolder": "results",
 		"measured_sections": "../measured_sections.geojson",
 		"riverbanks": "../delineated_riverbanks.geojson",
-		"river_polygon_benchmark": "river_polygon_benchmark.geojson",
-		"river_elevations_benchmark": "river_elevations_benchmark.geojson"
+		"benchmark": {"extents": "river_polygon_benchmark.geojson", "elevations": "river_elevations_benchmark.geojson"}
 	},
 	"measured": {
 			"cross_section_spacing": 10,

@@ -39,7 +39,7 @@
 	},
 	"general": {
 		"drop_offshore_lidar": true,
-		"ocean_contours_z_label": "valdco",
+		"z_labels": {"ocean": "valdco"},
 		"lidar_classifications_to_keep": [2],
 		"interpolation": {"no_data": "linear"}
 	}

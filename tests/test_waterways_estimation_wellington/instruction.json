@@ -17,10 +17,8 @@
 		"local_cache": "tests/test_waterways_estimation_wellington/data",
 		"subfolder": "results",
 		"extents": "catchment.geojson",
-		"open_waterways_polygon_benchmark": "open_waterways_polygon_benchmark.geojson",
-		"open_waterways_bathymetry_benchmark": "open_waterways_elevation_benchmark.geojson",
-		"closed_waterways_polygon_benchmark": "closed_waterways_polygon_benchmark.geojson",
-		"closed_waterways_bathymetry_benchmark": "closed_waterways_elevation_benchmark.geojson"
+		"open_benchmark": {"extents": "open_waterways_polygon_benchmark.geojson", "elevations": "open_waterways_elevation_benchmark.geojson"},
+		"closed_benchmark": {"extents": "closed_waterways_polygon_benchmark.geojson", "elevations": "closed_waterways_elevation_benchmark.geojson"}
 	},
 	"datasets": {
 		"lidar": {

@@ -42,7 +42,7 @@
 			}
 		},
 		"general": {
-			"ocean_contours_z_label": "valdco",
+			"z_labels": {"ocean": "valdco"},
 			"drop_offshore_lidar": true,
 			"lidar_classifications_to_keep": [2, 9],
 			"interpolation": {"no_data": "null"}
@@ -131,12 +131,9 @@
 			"subfolder": "results",
 			"extents": "catchment.geojson",
 			"raw_dem": "raw_dem.nc",
-			"river_polygons": ["rivers/river_polygon.geojson",
-							   "waterways/closed_waterways_polygon.geojson",
-							   "waterways/open_waterways_polygon.geojson"],
-			"river_bathymetry": ["rivers/river_bathymetry.geojson",
-								 "waterways/closed_waterways_elevation.geojson",
-								 "waterways/open_waterways_elevation.geojson"],
+			"rivers": [{"extents": "rivers/river_polygon.geojson", "elevations": "rivers/river_bathymetry.geojson"}],
+			"waterways": [{"extents": "waterways/closed_waterways_polygon.geojson", "elevations": "waterways/closed_waterways_elevation.geojson"},
+			              {"extents": "waterways/open_waterways_polygon.geojson", "elevations": "waterways/open_waterways_elevation.geojson"}],
 		  "result_dem": "test_dem.nc"
 		},
 		"datasets": {
@@ -163,9 +160,7 @@
 		},
 		"general": {
 			"drop_offshore_lidar": true,
-			"ocean_contours_z_label": "valdco",
-			"bathymetry_points_type": ["rivers", "waterways", "waterways"],
-			"bathymetry_points_z_label": ["bed_elevation_Rupp_and_Smart", "elevation", "elevation"],
+			"z_labels": {"ocean": "valdco"},
 			"lidar_classifications_to_keep": [2, 9],
 			"interpolation": {"no_data": "linear"}
 		}

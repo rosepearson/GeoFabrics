@@ -69,7 +69,9 @@ class CatchmentGeometry:
 
         # Clip and remove any sub pixel regions
         self._land = self._catchment.clip(self._full_land, keep_geom_type=True)
-        self._land = self._land[self._land.area > self.resolution * self.resolution]
+        self._land = self._land[
+            self._land.area > self.resolution * self.resolution
+        ]
 
         self._foreshore_and_offshore = self.catchment.overlay(
             self.land, how="difference"
@@ -77,7 +79,11 @@ class CatchmentGeometry:
 
         # Buffer and clip and remove any sub pixel regions
         self._land_and_foreshore = geopandas.GeoDataFrame(
-            {"geometry": self.land.buffer(self.resolution * self.foreshore_buffer)},
+            {
+                "geometry": self.land.buffer(
+                    self.resolution * self.foreshore_buffer
+                )
+            },
             crs=self.crs["horizontal"],
         )
         self._land_and_foreshore = self._catchment.clip(
@@ -87,7 +93,9 @@ class CatchmentGeometry:
             self._land_and_foreshore.area > self.resolution * self.resolution
         ]
 
-        self._foreshore = self._land_and_foreshore.overlay(self.land, how="difference")
+        self._foreshore = self._land_and_foreshore.overlay(
+            self.land, how="difference"
+        )
 
         self._offshore = self.catchment.overlay(
             self.land_and_foreshore, how="difference"
@@ -161,7 +169,9 @@ class CatchmentGeometry:
         self._assert_land_set()
         return self._offshore
 
-    def land_and_foreshore_without_lidar(self, dense_extents: geopandas.GeoDataFrame):
+    def land_and_foreshore_without_lidar(
+        self, dense_extents: geopandas.GeoDataFrame
+    ):
         """Return the land and foreshore region without LiDAR"""
 
         self._assert_land_set()
@@ -178,7 +188,8 @@ class CatchmentGeometry:
             self.land_and_foreshore, keep_geom_type=True
         )
         land_and_foreshore_with_lidar = land_and_foreshore_with_lidar[
-            land_and_foreshore_with_lidar.area > self.resolution * self.resolution
+            land_and_foreshore_with_lidar.area
+            > self.resolution * self.resolution
         ]
         land_and_foreshore_without_lidar = self.land_and_foreshore.overlay(
             land_and_foreshore_with_lidar, how="difference"
@@ -203,7 +214,9 @@ class CatchmentGeometry:
             return self.offshore
         # Clip to remove any offshore regions before doing a difference overlay. Drop
         # any sub-pixel polygons.
-        offshore_with_lidar = dense_extents.clip(self.offshore, keep_geom_type=True)
+        offshore_with_lidar = dense_extents.clip(
+            self.offshore, keep_geom_type=True
+        )
         offshore_with_lidar = offshore_with_lidar[
             offshore_with_lidar.area > self.resolution**2
         ]
@@ -230,7 +243,10 @@ class CatchmentGeometry:
             {
                 "geometry": [
                     shapely.ops.unary_union(
-                        [self.foreshore.loc[0].geometry, dense_extents.loc[0].geometry]
+                        [
+                            self.foreshore.loc[0].geometry,
+                            dense_extents.loc[0].geometry,
+                        ]
                     )
                 ]
             },
@@ -255,8 +271,10 @@ class CatchmentGeometry:
 
         # get the difference between them
         if deflated_dense_data_extents.area.sum() > 0:
-            offshore_dense_data_edge = offshore_foreshore_dense_data_extents.overlay(
-                deflated_dense_data_extents, how="difference"
+            offshore_dense_data_edge = (
+                offshore_foreshore_dense_data_extents.overlay(
+                    deflated_dense_data_extents, how="difference"
+                )
             )
         else:
             offshore_dense_data_edge = offshore_foreshore_dense_data_extents
@@ -268,7 +286,9 @@ class CatchmentGeometry:
     def offshore_no_dense_data(self, lidar_extents):
         """Return the offshore area where there is no 'dense data' i.e. LiDAR"""
 
-        assert len(lidar_extents) == 1, "LiDAR extents has a length greater than 1"
+        assert (
+            len(lidar_extents) == 1
+        ), "LiDAR extents has a length greater than 1"
 
         assert self._land is not None, (
             "Land has not been set yet. This must be set before anything other than the"
@@ -276,7 +296,9 @@ class CatchmentGeometry:
         )
 
         # lidar extents are offshore - drop any sub pixel areas
-        offshore_dense_data = lidar_extents.clip(self.offshore, keep_geom_type=True)
+        offshore_dense_data = lidar_extents.clip(
+            self.offshore, keep_geom_type=True
+        )
         offshore_dense_data = offshore_dense_data[
             offshore_dense_data.area > self.resolution * self.resolution
         ]
@@ -312,7 +334,9 @@ class BathymetryContours:
     def _set_up(self, exclusion_extent):
         """Set CRS and clip to catchment"""
 
-        self._contour = self._contour.to_crs(self.catchment_geometry.crs["horizontal"])
+        self._contour = self._contour.to_crs(
+            self.catchment_geometry.crs["horizontal"]
+        )
 
         # Define a large offshore area to keep ocean contours in - to ensure correct
         # interpolation behaviour near the edges
@@ -320,12 +344,16 @@ class BathymetryContours:
         offshore = geopandas.GeoDataFrame(
             geometry=offshore.buffer(numpy.sqrt(offshore.area.sum()))
         )
-        offshore = offshore.overlay(self.catchment_geometry.land, how="difference")
+        offshore = offshore.overlay(
+            self.catchment_geometry.land, how="difference"
+        )
 
         if exclusion_extent is not None:
             # Remove areas already covered by LiDAR - drop any polygons less than a
             # pixel in area
-            exclusion_extent = exclusion_extent.clip(offshore, keep_geom_type=True)
+            exclusion_extent = exclusion_extent.clip(
+                offshore, keep_geom_type=True
+            )
             exclusion_extent = exclusion_extent[
                 exclusion_extent.area > self.catchment_geometry.resolution**2
             ]
@@ -342,7 +370,10 @@ class BathymetryContours:
         if (self._contour.geometry.type == "GeometryCollection").any():
             geometry_list = []
             for geometry_row in self._contour.geometry:
-                if geometry_row.geometryType() in {"LineString", "MultiLineString"}:
+                if geometry_row.geometryType() in {
+                    "LineString",
+                    "MultiLineString",
+                }:
                     geometry_list.append(geometry_row)
                 elif geometry_row.geometryType() == "GeometryCollection":
                     geometry_list.append(
@@ -350,7 +381,8 @@ class BathymetryContours:
                             [
                                 geometry_element
                                 for geometry_element in geometry_row
-                                if geometry_element.geometryType() == "LineString"
+                                if geometry_element.geometryType()
+                                == "LineString"
                             ]
                         )
                     )
@@ -380,10 +412,14 @@ class BathymetryContours:
         # Extract the x, y and z values from the Shapely MultiPoints and possibly a
         # depth column
         points["X"] = numpy.concatenate(
-            points_df.apply(lambda row: [row_i.x for row_i in row.geoms]).to_list()
+            points_df.apply(
+                lambda row: [row_i.x for row_i in row.geoms]
+            ).to_list()
         )
         points["Y"] = numpy.concatenate(
-            points_df.apply(lambda row: [row_i.y for row_i in row.geoms]).to_list()
+            points_df.apply(
+                lambda row: [row_i.y for row_i in row.geoms]
+            ).to_list()
         )
         if self.z_label is None:
             points["Z"] = (
@@ -428,7 +464,9 @@ class MarineBathymetryPoints:
     def _set_up(self, exclusion_extent):
         """Set CRS and clip to catchment"""
 
-        self._points = self._points.to_crs(self.catchment_geometry.crs["horizontal"])
+        self._points = self._points.to_crs(
+            self.catchment_geometry.crs["horizontal"]
+        )
 
         if exclusion_extent is not None:
             exclusion_extent = exclusion_extent.clip(
@@ -499,7 +537,6 @@ class EstimatedBathymetryPoints:
         points_files: list,
         polygon_files: list,
         catchment_geometry: CatchmentGeometry,
-        type_labels: list,
         z_labels: list = None,
     ):
         self.catchment_geometry = catchment_geometry
@@ -508,25 +545,26 @@ class EstimatedBathymetryPoints:
         self._points = None
         self._polygon = None
 
-        self._set_up(points_files, polygon_files, z_labels, type_labels)
+        self._set_up(points_files, polygon_files, z_labels)
 
-    def _set_up(
-        self, points_files: list, polygon_files: list, z_labels: list, type_labels: list
-    ):
+    def _set_up(self, points_files: list, polygon_files: list, z_labels: list):
         """Load point and polygon files and concatentate and clip to the catchment."""
 
-        assert len(points_files) == len(polygon_files), (
-            "The polygon and point lists should all be the same length. Instead there "
-            f"are {len(points_files)} points files and {len(polygon_files)} polygon "
-            "files"
-        )
-        assert z_labels is None or len(points_files) == len(
-            z_labels
-        ), "Either all points should include z-values, or all have a label."
-        assert len(points_files) == len(
-            type_labels
-        ), "All bathy points should have a type label.Instead there are "
-        f"{len(points_files)} points files and {len(type_labels)} type labels"
+        if len(points_files) != len(polygon_files):
+            raise ValueError(
+                "The polygon and point lists should all be the same length. Instead there "
+                f"are {len(points_files)} points files and {len(polygon_files)} polygon "
+                "files"
+            )
+
+        if z_labels is not None and type(z_labels) == str:
+            z_labels = [z_labels for i in range(len(points_files))]
+
+        if z_labels is not None and len(z_labels) != len(points_files):
+            raise ValueError(
+                "There is a mismatch in length between the provided z_labels "
+                f"and the point files: {z_labels} {points_files}"
+            )
 
         # Points - rename depth labels to standard if a non standard one is specified
         points_list = []
@@ -534,9 +572,10 @@ class EstimatedBathymetryPoints:
         for i in range(0, len(points_files)):
             # Points - rename depth labels to standard if  specified
             points_i = geopandas.read_file(points_files[i])
-            points_i[self.TYPE_LABEL] = type_labels[i]
             if z_labels is not None and z_labels[i] != self.DEPTH_LABEL:
-                points_i = points_i.rename(columns={z_labels[i]: self.DEPTH_LABEL})
+                points_i = points_i.rename(
+                    columns={z_labels[i]: self.DEPTH_LABEL}
+                )
             columns_i = [self.DEPTH_LABEL, self.TYPE_LABEL, "geometry"]
             if self.BANK_HEIGHT_LABEL in points_i.columns:
                 columns_i.append(self.BANK_HEIGHT_LABEL)
@@ -548,42 +587,38 @@ class EstimatedBathymetryPoints:
                 points_list.append(points_i)
                 # Polygon where the points are relevent
                 polygon_i = geopandas.read_file(polygon_files[i])
-                polygon_i[self.TYPE_LABEL] = type_labels[i]
                 polygon_list.append(polygon_i)
         # Set CRS, clip to size and reset index
         points = geopandas.GeoDataFrame(
-            pandas.concat(points_list, ignore_index=True), crs=points_list[0].crs
+            pandas.concat(points_list, ignore_index=True),
+            crs=points_list[0].crs,
         )
         points = points.to_crs(self.catchment_geometry.crs["horizontal"])
         polygon = geopandas.GeoDataFrame(
-            pandas.concat(polygon_list, ignore_index=True), crs=polygon_list[0].crs
+            pandas.concat(polygon_list, ignore_index=True),
+            crs=polygon_list[0].crs,
         )
         polygon = polygon.to_crs(self.catchment_geometry.crs["horizontal"])
         points = points.clip(polygon.buffer(0), keep_geom_type=True)
-        points = points.clip(self.catchment_geometry.catchment, keep_geom_type=True)
+        points = points.clip(
+            self.catchment_geometry.catchment, keep_geom_type=True
+        )
         points = points.reset_index(drop=True)
 
         # Set to class members
         self._points = points
         self._polygon = polygon
 
-    def filtered_polygons(self, type_label: str = None) -> geopandas.GeoDataFrame:
-        """Return the polygon filtered by any type label."""
-        polygon = (
-            self._polygon
-            if type_label is None
-            else self._polygon[self._polygon["type"] == type_label]
-        )
-        return polygon
+    @property
+    def polygons(self) -> geopandas.GeoDataFrame:
+        """Return the polygons."""
+        return self._polygon
 
-    def filtered_points(self, type_label: str = None) -> numpy.ndarray:
+    @property
+    def points(self, type_label: str = None) -> numpy.ndarray:
         """Return the points as a single array."""
 
-        points = (
-            self._points
-            if type_label is None
-            else self._points[self._points["type"] == type_label]
-        )
+        points = self._points
 
         points_array = numpy.empty(
             [len(points)],
@@ -597,8 +632,12 @@ class EstimatedBathymetryPoints:
             return points_array
         # Extract the x, y and z values from the Shapely MultiPoints and possibly a
         # depth column
-        points_array["X"] = points.apply(lambda row: row.geometry.x, axis=1).to_list()
-        points_array["Y"] = points.apply(lambda row: row.geometry.y, axis=1).to_list()
+        points_array["X"] = points.apply(
+            lambda row: row.geometry.x, axis=1
+        ).to_list()
+        points_array["Y"] = points.apply(
+            lambda row: row.geometry.y, axis=1
+        ).to_list()
         if self.z_label:
             points_array["Z"] = points.apply(
                 lambda row: row[self.DEPTH_LABEL], axis=1
@@ -613,20 +652,14 @@ class EstimatedBathymetryPoints:
         """Return true if the bank heights are defined in array"""
         return (
             self.BANK_HEIGHT_LABEL in self._points.columns
-            and self._points[self._points["type"] == type_label][
-                self.BANK_HEIGHT_LABEL
-            ].any()
+            and self._points[self.BANK_HEIGHT_LABEL].any()
         )
 
-    def filtered_bank_height_points(self, type_label: str = None) -> numpy.ndarray:
+    def bank_height_points(self, type_label: str = None) -> numpy.ndarray:
         """Return the points with 'Z' being the estimated bank height as a single array."""
 
         # Filter the points by the type label
-        points = (
-            self._points
-            if type_label is None
-            else self._points[self._points["type"] == type_label]
-        )
+        points = self._points
 
         points_array = numpy.empty(
             [len(points)],
@@ -635,20 +668,18 @@ class EstimatedBathymetryPoints:
 
         # Extract the x, y and z values from the Shapely MultiPoints and possibly a
         # depth column
-        points_array["X"] = points.apply(lambda row: row.geometry.x, axis=1).to_list()
-        points_array["Y"] = points.apply(lambda row: row.geometry.y, axis=1).to_list()
+        points_array["X"] = points.apply(
+            lambda row: row.geometry.x, axis=1
+        ).to_list()
+        points_array["Y"] = points.apply(
+            lambda row: row.geometry.y, axis=1
+        ).to_list()
 
         # Pull out the bank heights
         points_array["Z"] = points.apply(
             lambda row: row[self.BANK_HEIGHT_LABEL], axis=1
         ).to_list()
         return points_array
-
-    @property
-    def points(self):
-        """Return the points"""
-
-        return self._points
 
     @property
     def x(self):
@@ -679,7 +710,9 @@ class EstimatedBathymetryPoints:
                 lambda row: row[self.DEPTH_LABEL], axis=1
             ).to_list()
         else:
-            self._z = self._points.apply(lambda row: row.geometry.z, axis=1).to_list()
+            self._z = self._points.apply(
+                lambda row: row.geometry.z, axis=1
+            ).to_list()
         return self._z
 
 
@@ -789,7 +822,9 @@ class RiverMouthFan:
         mouth_tangent = shapely.geometry.Point(
             [segment_dx / segment_length, segment_dy / segment_length]
         )
-        mouth_normal = shapely.geometry.Point([-mouth_tangent.y, mouth_tangent.x])
+        mouth_normal = shapely.geometry.Point(
+            [-mouth_tangent.y, mouth_tangent.x]
+        )
 
         # Get the midpoint of the river mouth from the river bathymetry
         river_bathymetry = geopandas.read_file(self.river_bathymetry_file)
@@ -818,7 +853,10 @@ class RiverMouthFan:
         return river_mouth_width, river_mouth_elevations
 
     def _get_ocean_contours(
-        self, river_mouth_depth, depth_sign: int = -1, depth_multiplier: int = 2
+        self,
+        river_mouth_depth,
+        depth_sign: int = -1,
+        depth_multiplier: int = 2,
     ) -> geopandas.GeoDataFrame:
         """Load in the ocean contours and remove those that are too close to the
         shoreline to consider as the slope change would be too great.
@@ -835,7 +873,9 @@ class RiverMouthFan:
         )
 
         # Load in the ocean contours and find the contours to terminate against
-        ocean_contours = geopandas.read_file(self.ocean_contour_file).to_crs(self.crs)
+        ocean_contours = geopandas.read_file(self.ocean_contour_file).to_crs(
+            self.crs
+        )
         depth_label = self.ocean_contour_depth_label
 
         # Determine the end depth and filter the contours to include only these contours
@@ -879,12 +919,17 @@ class RiverMouthFan:
                 ],
             ]
         )
-        distance = fan_centre.intersection(intersection_line).distance(mouth_point)
+        distance = fan_centre.intersection(intersection_line).distance(
+            mouth_point
+        )
 
         # Setup the fan data values
         fan_depths = {
             **{"geometry": []},
-            **dict((elevation_label, []) for elevation_label in self.elevation_labels),
+            **dict(
+                (elevation_label, [])
+                for elevation_label in self.elevation_labels
+            ),
         }
         number_of_samples = int(distance / self.cross_section_spacing)
         depth_increments = [
@@ -969,7 +1014,10 @@ class RiverMouthFan:
 
         # Load in river mouth alignment and bathymetry
         mouth_point, mouth_tangent, mouth_normal = self._get_mouth_alignment()
-        river_mouth_width, river_mouth_elevations = self._get_mouth_bathymetry()
+        (
+            river_mouth_width,
+            river_mouth_elevations,
+        ) = self._get_mouth_bathymetry()
 
         # Create maximum fan polygon
         fan_polygon = self._max_length_polygon(
@@ -1006,7 +1054,9 @@ class RiverMouthFan:
             lines = geopandas.GeoSeries(intersection_line, crs=2193).explode(
                 ignore_index=True
             )
-            intersection_line = lines[lines.distance(mouth_point) == distance].iloc[0]
+            intersection_line = lines[
+                lines.distance(mouth_point) == distance
+            ].iloc[0]
         # Construct a fan ending at the contour
         (x, y) = intersection_line.xy
         polygon_points = [[xi, yi] for (xi, yi) in zip(x, y)]
@@ -1052,7 +1102,9 @@ class RiverMouthFan:
                 ]
             )
         fan_polygon = shapely.geometry.Polygon(polygon_points)
-        fan_polygon = geopandas.GeoDataFrame(geometry=[fan_polygon], crs=self.crs)
+        fan_polygon = geopandas.GeoDataFrame(
+            geometry=[fan_polygon], crs=self.crs
+        )
 
         # Get bathymetry values
         bathymetry = self._bathymetry(

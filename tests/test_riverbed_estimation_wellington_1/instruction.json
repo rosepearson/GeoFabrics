@@ -16,8 +16,7 @@
 	"data_paths": {
 		"local_cache": "tests/test_riverbed_estimation_wellington_1/data",
 		"subfolder": "results",
-		"river_polygon_benchmark": "river_polygon_benchmark.geojson",
-		"river_bathymetry_benchmark": "river_bathymetry_benchmark.geojson"
+		"benchmark": {"extents": "river_polygon_benchmark.geojson", "elevations": "river_bathymetry_benchmark.geojson"}
 	},
 	"datasets": {
 		"lidar": {
@@ -39,7 +38,7 @@
 		}
 	},
 	"general": {
-		"ocean_contours_z_label": "valdco",
+		"z_labels": {"ocean": "valdco"},
 		"drop_offshore_lidar": true,
 		"lidar_classifications_to_keep": [2, 9],
 		"interpolation": {"no_data": "null"}
