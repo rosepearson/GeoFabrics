@@ -496,7 +496,6 @@ class EstimatedBathymetryPoints:
     """
 
     DEPTH_LABEL = "elevation"
-    TYPE_LABEL = "type"
     BANK_HEIGHT_LABEL = "bank_height"
     WIDTH_LABEL = "width"
 
@@ -542,7 +541,7 @@ class EstimatedBathymetryPoints:
             points_i = geopandas.read_file(points_files[i])
             if z_labels is not None and z_labels[i] != self.DEPTH_LABEL:
                 points_i = points_i.rename(columns={z_labels[i]: self.DEPTH_LABEL})
-            columns_i = [self.DEPTH_LABEL, self.TYPE_LABEL, "geometry"]
+            columns_i = [self.DEPTH_LABEL, "geometry"]
             if self.BANK_HEIGHT_LABEL in points_i.columns:
                 columns_i.append(self.BANK_HEIGHT_LABEL)
             if self.WIDTH_LABEL in points_i.columns:
@@ -605,14 +604,14 @@ class EstimatedBathymetryPoints:
             ).to_list()
         return points_array
 
-    def bank_heights_exist(self, type_label: str) -> bool:
+    def bank_heights_exist(self) -> bool:
         """Return true if the bank heights are defined in array"""
         return (
             self.BANK_HEIGHT_LABEL in self._points.columns
             and self._points[self.BANK_HEIGHT_LABEL].any()
         )
 
-    def bank_height_points(self, type_label: str = None) -> numpy.ndarray:
+    def bank_height_points(self) -> numpy.ndarray:
         """Return the points with 'Z' being the estimated bank height as a single array."""
 
         # Filter the points by the type label
