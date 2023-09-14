@@ -603,7 +603,7 @@ class EstimatedBathymetryPoints:
                 lambda row: row.geometry.z, axis=1
             ).to_list()
         return points_array
-    
+
     @property
     def points(self):
         """Return the points"""
