@@ -485,7 +485,7 @@ class HydrologicallyConditionedDem(DemBase):
         )
         # Rerun as otherwise the no data as NaN seems to be lost for the data_source layer
         self._write_netcdf_conventions_in_place(raw_dem, catchment_geometry.crs)
-        raw_dem = self._ensure_positive_indexing(raw_dem)
+
         # Setup the DenseDemBase class
         super(HydrologicallyConditionedDem, self).__init__(
             catchment_geometry=catchment_geometry,
@@ -555,6 +555,7 @@ class HydrologicallyConditionedDem(DemBase):
             self.catchment_geometry.catchment.geometry, drop=True
         )
         # Some programs require positively increasing indices
+        # Last as otherwise errors when merging (clipping resets defaults)
         self._dem = self._ensure_positive_indexing(self._dem)
         return self._dem
 
