@@ -741,17 +741,11 @@ class HydrologicallyConditionedDem(DemBase):
         estimated_bathymetry: geometry.EstimatedBathymetryPoints,
         method: str,
     ) -> xarray.Dataset:
-        """Performs interpolation of the estimated bed elevations with the waterways
-        type_label within a polygon using the specified interpolation approach. The
-        type_label also determines the source classification."""
-
-        type_label = "waterways"
+        """Performs interpolation of the estimated waterways."""
 
         # extract points and polygon
-        estimated_points = estimated_bathymetry.filtered_points(type_label=type_label)
-        estimated_polygons = estimated_bathymetry.filtered_polygons(
-            type_label=type_label
-        )
+        estimated_points = estimated_bathymetry.points()
+        estimated_polygons = estimated_bathymetry.polygons()
 
         # Get edge points - from DEM
         edge_dem = self._dem.rio.clip(
@@ -787,8 +781,10 @@ class HydrologicallyConditionedDem(DemBase):
         estimated_dem = self._dem.rio.clip(estimated_polygons.geometry)
         # Set value for all, then use clip to set regions outside polygon to NaN
         estimated_dem.z.data[:] = 0
-        estimated_dem.data_source.data[:] = self.SOURCE_CLASSIFICATION[type_label]
         estimated_dem.lidar_source.data[:] = self.SOURCE_CLASSIFICATION["no data"]
+        estimated_dem.data_source.data[:] = self.SOURCE_CLASSIFICATION[
+            "waterways"
+        ]
         estimated_dem = estimated_dem.rio.clip(estimated_polygons.geometry)
 
         grid_x, grid_y = numpy.meshgrid(estimated_dem.x, estimated_dem.y)
@@ -832,8 +828,8 @@ class HydrologicallyConditionedDem(DemBase):
         """
 
         # Extract river points and polygon
-        estimated_points = estimated_bathymetry.filtered_points(type_label="rivers")
-        estimated_polygons = estimated_bathymetry.filtered_polygons(type_label="rivers")
+        estimated_points = estimated_bathymetry.points()
+        estimated_polygons = estimated_bathymetry.polygons()
 
         # Get the river and fan edge points - from DEM
         edge_dem = self._dem.rio.clip(
@@ -853,10 +849,9 @@ class HydrologicallyConditionedDem(DemBase):
         mask_z = ~numpy.isnan(flat_z)
 
         # Interpolate the estimated river bank heights along only the river
-        if estimated_bathymetry.bank_heights_exist(type_label="rivers"):
+        if estimated_bathymetry.bank_heights_exist():
             # Get the estimated river bank heights and define a mask where nan
-            river_bank_points = estimated_bathymetry.filtered_bank_height_points(
-                type_label="rivers"
+            river_bank_points = estimated_bathymetry.bank_height_points()
             )
             river_bank_nan_mask = numpy.logical_not(numpy.isnan(river_bank_points["Z"]))
             # Interpolate from the estimated river bank heights

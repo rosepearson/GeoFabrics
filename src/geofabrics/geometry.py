@@ -579,7 +579,7 @@ class EstimatedBathymetryPoints:
         return self._polygon
 
     @property
-    def points(self, type_label: str = None) -> numpy.ndarray:
+    def points(self) -> numpy.ndarray:
         """Return the points as a single array."""
 
         points = self._points
@@ -590,9 +590,6 @@ class EstimatedBathymetryPoints:
         )
 
         if len(points_array) == 0:
-            logging.warning(
-                f"No estimated waterway points with type label {type_label}"
-            )
             return points_array
         # Extract the x, y and z values from the Shapely MultiPoints and possibly a
         # depth column
