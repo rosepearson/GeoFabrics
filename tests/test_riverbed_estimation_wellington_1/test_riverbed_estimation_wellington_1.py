@@ -67,7 +67,9 @@ class Test(unittest.TestCase):
         cls.results_dir.mkdir()
 
         # Run pipeline - download files and generated DEM
-        runner = processor.RiverBathymetryGenerator(cls.instructions, debug=False)
+        runner = processor.RiverBathymetryGenerator(
+            cls.instructions, debug=False
+        )
         runner.run()
 
     @classmethod
@@ -96,7 +98,9 @@ class Test(unittest.TestCase):
                         shutil.rmtree(file)
                 shutil.rmtree(path)
 
-    @pytest.mark.skipif(sys.platform != "win32", reason="Windows test - this is strict")
+    @pytest.mark.skipif(
+        sys.platform != "win32", reason="Windows test - this is strict"
+    )
     def test_river_polygon_windows(self):
         """A test to see if the correct river polygon is generated. This is
         tested individually as it is generated first."""
@@ -131,14 +135,16 @@ class Test(unittest.TestCase):
 
         test = geopandas.read_file(self.results_dir / "river_polygon.geojson")
         benchmark = geopandas.read_file(
-            self.cache_dir / data_path_instructions["river_polygon_benchmark"]
+            self.cache_dir / data_path_instructions["benchmark"]["extents"]
         )
 
         # check the polygons match closely
         column_name = "geometry"
         test_comparison = test[column_name].area.item()
         benchmark_comparison = benchmark[column_name].area.item()
-        print(f"test area {test_comparison}, and benchmark area {benchmark_comparison}")
+        print(
+            f"test area {test_comparison}, and benchmark area {benchmark_comparison}"
+        )
         self.assertAlmostEqual(
             test_comparison,
             benchmark_comparison,
@@ -148,7 +154,9 @@ class Test(unittest.TestCase):
             f"vs {benchmark_comparison}",
         )
 
-    @pytest.mark.skipif(sys.platform != "win32", reason="Windows test - this is strict")
+    @pytest.mark.skipif(
+        sys.platform != "win32", reason="Windows test - this is strict"
+    )
     def test_river_bathymetry_windows(self):
         """A test to see if the correct river polygon is generated. This is
         tested individually as it is generated on its own."""
@@ -157,9 +165,11 @@ class Test(unittest.TestCase):
 
         data_path_instructions = self.instructions["data_paths"]
 
-        test = geopandas.read_file(self.results_dir / "river_bathymetry.geojson")
+        test = geopandas.read_file(
+            self.results_dir / "river_bathymetry.geojson"
+        )
         benchmark = geopandas.read_file(
-            self.cache_dir / data_path_instructions["river_bathymetry_benchmark"]
+            self.cache_dir / data_path_instructions["benchmark"]["elevations"]
         )
 
         # check the bathymetries match
@@ -181,9 +191,11 @@ class Test(unittest.TestCase):
 
         data_path_instructions = self.instructions["data_paths"]
 
-        test = geopandas.read_file(self.results_dir / "river_bathymetry.geojson")
+        test = geopandas.read_file(
+            self.results_dir / "river_bathymetry.geojson"
+        )
         benchmark = geopandas.read_file(
-            self.cache_dir / data_path_instructions["river_bathymetry_benchmark"]
+            self.cache_dir / data_path_instructions["benchmark"]["elevations"]
         )
 
         # check some of the bathymetry columns match
