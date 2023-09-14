@@ -745,7 +745,7 @@ class HydrologicallyConditionedDem(DemBase):
         """Performs interpolation of the estimated waterways."""
 
         # extract points and polygon
-        estimated_points = estimated_bathymetry.points
+        estimated_points = estimated_bathymetry.points_array
         estimated_polygons = estimated_bathymetry.polygons
 
         # Get edge points - from DEM
@@ -827,7 +827,7 @@ class HydrologicallyConditionedDem(DemBase):
         """
 
         # Extract river points and polygon
-        estimated_points = estimated_bathymetry.points
+        estimated_points = estimated_bathymetry.points_array
         estimated_polygons = estimated_bathymetry.polygons
 
         # Get the river and fan edge points - from DEM

@@ -578,7 +578,7 @@ class EstimatedBathymetryPoints:
         return self._polygon
 
     @property
-    def points(self) -> numpy.ndarray:
+    def points_array(self) -> numpy.ndarray:
         """Return the points as a single array."""
 
         points = self._points
@@ -603,6 +603,12 @@ class EstimatedBathymetryPoints:
                 lambda row: row.geometry.z, axis=1
             ).to_list()
         return points_array
+    
+    @property
+    def points(self):
+        """Return the points"""
+
+        return self._points
 
     def bank_heights_exist(self) -> bool:
         """Return true if the bank heights are defined in array"""
