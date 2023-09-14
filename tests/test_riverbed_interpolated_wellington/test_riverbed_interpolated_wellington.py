@@ -99,7 +99,7 @@ class Test(unittest.TestCase):
 
         test = geopandas.read_file(self.results_dir / "river_polygon.geojson")
         benchmark = geopandas.read_file(
-            self.cache_dir / data_path_instructions["river_polygon_benchmark"]
+            self.cache_dir / data_path_instructions["benchmark"]["extents"]
         )
 
         # check the polygons match
@@ -123,7 +123,7 @@ class Test(unittest.TestCase):
 
         test = geopandas.read_file(self.results_dir / "river_polygon.geojson")
         benchmark = geopandas.read_file(
-            self.cache_dir / data_path_instructions["river_polygon_benchmark"]
+            self.cache_dir / data_path_instructions["benchmark"]["extents"]
         )
 
         # check the polygons match closely
@@ -151,7 +151,7 @@ class Test(unittest.TestCase):
 
         test = geopandas.read_file(self.results_dir / "river_elevations.geojson")
         benchmark = geopandas.read_file(
-            self.cache_dir / data_path_instructions["river_elevations_benchmark"]
+            self.cache_dir / data_path_instructions["benchmark"]["elevations"]
         )
 
         # check the bathymetries match
@@ -175,7 +175,7 @@ class Test(unittest.TestCase):
 
         test = geopandas.read_file(self.results_dir / "river_elevations.geojson")
         benchmark = geopandas.read_file(
-            self.cache_dir / data_path_instructions["river_elevations_benchmark"]
+            self.cache_dir / data_path_instructions["benchmark"]["elevations"]
         )
 
         # check some of the bathymetry columns match
