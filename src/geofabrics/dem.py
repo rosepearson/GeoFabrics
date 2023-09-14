@@ -47,7 +47,7 @@ class CoarseDem:
         self.catchment_geometry = catchment_geometry
         self.set_foreshore = set_foreshore
         # Drop the band coordinate added by rasterio.open()
-        self._dem = rioxarray.rioxarray.open_rasterio(dem_file, masked=True).squeeze(
+        self._dem = rioxarray.rioxarray.open_rasterio(dem_file, masked=True, chunks=True).squeeze(
             "band", drop=True
         )
 
@@ -151,7 +151,7 @@ class CoarseDem:
         # Try clip - catch if no DEM in clipping bounds
         try:
             self._dem = self._dem.rio.clip(
-                self._extents.geometry, drop=True, from_disk=True, chunks=True
+                self._extents.geometry, drop=True, from_disk=True
             )
             self._points = self._extract_points(self._dem)
 
