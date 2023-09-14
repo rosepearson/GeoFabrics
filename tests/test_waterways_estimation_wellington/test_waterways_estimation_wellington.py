@@ -72,16 +72,22 @@ class Test(unittest.TestCase):
         y0 = 5472879
         x1 = 1770969
         y1 = 5472707
-        catchment = shapely.geometry.Polygon([(x0, y0), (x1, y0), (x1, y1), (x0, y1)])
+        catchment = shapely.geometry.Polygon(
+            [(x0, y0), (x1, y0), (x1, y1), (x0, y1)]
+        )
         catchment = geopandas.GeoSeries([catchment])
-        catchment = catchment.set_crs(cls.instructions["output"]["crs"]["horizontal"])
+        catchment = catchment.set_crs(
+            cls.instructions["output"]["crs"]["horizontal"]
+        )
 
         # save faked catchment boundary - used as land boundary as well
         catchment_file = cls.results_dir / "catchment.geojson"
         catchment.to_file(catchment_file)
 
         # Run pipeline - download files and generated DEM
-        runner = processor.WaterwayBedElevationEstimator(cls.instructions, debug=False)
+        runner = processor.WaterwayBedElevationEstimator(
+            cls.instructions, debug=False
+        )
         runner.run()
 
     @classmethod
@@ -110,7 +116,9 @@ class Test(unittest.TestCase):
                         shutil.rmtree(file)
                 shutil.rmtree(path)
 
-    @pytest.mark.skipif(sys.platform != "win32", reason="Windows test - this is strict")
+    @pytest.mark.skipif(
+        sys.platform != "win32", reason="Windows test - this is strict"
+    )
     def test_open_waterways_windows(self):
         """A test to see if the correct open waterways polygon and bathymetry are
         generated."""
@@ -119,9 +127,12 @@ class Test(unittest.TestCase):
 
         print("Compare river polygon  - Windows")
 
-        test = geopandas.read_file(self.results_dir / "open_waterways_polygon.geojson")
+        test = geopandas.read_file(
+            self.results_dir / "open_waterways_polygon.geojson"
+        )
         benchmark = geopandas.read_file(
-            self.cache_dir / data_path_instructions["open_waterways_polygon_benchmark"]
+            self.cache_dir
+            / data_path_instructions["open_benchmark"]["extents"]
         )
 
         # check the polygons match
@@ -138,7 +149,7 @@ class Test(unittest.TestCase):
         )
         benchmark = geopandas.read_file(
             self.cache_dir
-            / data_path_instructions["open_waterways_bathymetry_benchmark"]
+            / data_path_instructions["open_benchmark"]["elevations"]
         )
 
         # check the bathymetries match
@@ -160,16 +171,21 @@ class Test(unittest.TestCase):
         print("Compare river polygon  - Linux")
 
         # Compare the polygons
-        test = geopandas.read_file(self.results_dir / "open_waterways_polygon.geojson")
+        test = geopandas.read_file(
+            self.results_dir / "open_waterways_polygon.geojson"
+        )
         benchmark = geopandas.read_file(
-            self.cache_dir / data_path_instructions["open_waterways_polygon_benchmark"]
+            self.cache_dir
+            / data_path_instructions["open_benchmark"]["extents"]
         )
 
         # check the polygons match
         column_name = "geometry"
         test_comparison = test[column_name].area.sum()
         benchmark_comparison = benchmark[column_name].area.sum()
-        print(f"test area {test_comparison}, and benchmark area {benchmark_comparison}")
+        print(
+            f"test area {test_comparison}, and benchmark area {benchmark_comparison}"
+        )
         self.assertAlmostEqual(
             test_comparison,
             benchmark_comparison,
@@ -185,7 +201,7 @@ class Test(unittest.TestCase):
         )
         benchmark = geopandas.read_file(
             self.cache_dir
-            / data_path_instructions["open_waterways_bathymetry_benchmark"]
+            / data_path_instructions["open_benchmark"]["elevations"]
         )
 
         # check some of the bathymetry columns match
@@ -237,7 +253,9 @@ class Test(unittest.TestCase):
             f"distances of {comparison}",
         )"""
 
-    @pytest.mark.skipif(sys.platform != "win32", reason="Windows test - this is strict")
+    @pytest.mark.skipif(
+        sys.platform != "win32", reason="Windows test - this is strict"
+    )
     def test_closed_waterways_windows(self):
         """A test to see if the correct close waterways polygon and bathymetry are
         generated."""
@@ -252,7 +270,7 @@ class Test(unittest.TestCase):
         )
         benchmark = geopandas.read_file(
             self.cache_dir
-            / data_path_instructions["closed_waterways_polygon_benchmark"]
+            / data_path_instructions["closed_benchmark"]["extents"]
         )
 
         self.assertTrue(
@@ -267,7 +285,7 @@ class Test(unittest.TestCase):
         )
         benchmark = geopandas.read_file(
             self.cache_dir
-            / data_path_instructions["closed_waterways_bathymetry_benchmark"]
+            / data_path_instructions["closed_benchmark"]["elevations"]
         )
 
         self.assertTrue(
@@ -293,7 +311,7 @@ class Test(unittest.TestCase):
         )
         benchmark = geopandas.read_file(
             self.cache_dir
-            / data_path_instructions["closed_waterways_polygon_benchmark"]
+            / data_path_instructions["closed_benchmark"]["extents"]
         )
 
         # check some of the bathymetry columns match
@@ -318,7 +336,7 @@ class Test(unittest.TestCase):
         )
         benchmark = geopandas.read_file(
             self.cache_dir
-            / data_path_instructions["closed_waterways_bathymetry_benchmark"]
+            / data_path_instructions["closed_benchmark"]["elevations"]
         )
 
         # check some of the bathymetrt columns match
