@@ -232,7 +232,7 @@ class BaseProcessor(abc.ABC):
             "lidar_buffer": 0,
             "interpolation": {
                 "rivers": "rbf",
-                "waterays": "cubic",
+                "waterways": "cubic",
                 "ocean": "linear",
                 "lidar": "idw",
                 "no_data": None,
