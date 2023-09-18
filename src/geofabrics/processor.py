@@ -2701,7 +2701,7 @@ class WaterwayBedElevationEstimator(BaseProcessor):
             # Create DEM generation instructions
             dem_instructions = self.instructions
             dem_instruction_paths = dem_instructions["data_paths"]
-            dem_instruction_paths["catchment_boundary"] = self.get_result_file_name(
+            dem_instruction_paths["extents"] = self.get_result_file_name(
                 key="waterways_polygon"
             )
             dem_instruction_paths["raw_dem"] = self.get_result_file_name(key="raw_dem")

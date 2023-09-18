@@ -361,7 +361,7 @@ class DemBase(abc.ABC):
             x = x[::-1]
         if y[0] > y[-1]:
             y = y[::-1]
-        dem = dem.reindex(x=x, y=y)
+        dem = dem.reindex({"x": x, "y": y})
         dem.rio.write_transform(inplace=True)
         return dem
 
@@ -1271,8 +1271,8 @@ class RawDem(LidarBase):
 
         # x coordinates rounded up to the nearest chunk - resolution aligned
         dim_x = []
+        aligned_min_x = numpy.ceil(minx / resolution) * resolution
         for i in range(n_chunks_x):
-            aligned_min_x = numpy.ceil(minx / resolution) * resolution
             chunk_min_x = aligned_min_x + i * chunk_size * resolution
             if i + 1 < n_chunks_x:
                 chunk_max_x = aligned_min_x + (i + 1) * chunk_size * resolution
@@ -1288,10 +1288,10 @@ class RawDem(LidarBase):
             )
         # y coordinates rounded up to the nearest chunk - resolution aligned
         dim_y = []
+        aligned_max_y = numpy.ceil(maxy / resolution) * resolution
         for i in range(n_chunks_y):
-            aligned_max_y = numpy.ceil(maxy / resolution) * resolution
             chunk_max_y = aligned_max_y - i * chunk_size * resolution
-            if i + 1 < n_chunks_x:
+            if i + 1 < n_chunks_y:
                 chunk_min_y = aligned_max_y - (i + 1) * chunk_size * resolution
             else:
                 chunk_min_y = numpy.ceil(miny / resolution) * resolution - resolution
@@ -1751,8 +1751,8 @@ class RawDem(LidarBase):
         # Determine the areas without LiDAR meeting the area threshold size
         # Generate a polygon of where there is LiDAR
         data_extents = self._extents_from_mask(
-            mask=self.dem.z.notnull().data,
-            transform=self.dem.z.rio.transform(),
+            mask=self._dem.z.notnull().data,
+            transform=self._dem.z.rio.transform(),
         )
         data_extents = data_extents.buffer(
             buffer_cells * self.catchment_geometry.resolution
