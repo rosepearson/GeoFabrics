@@ -39,8 +39,8 @@ class CoarseDem:
         self,
         dem_file,
         catchment_geometry: geometry.CatchmentGeometry,
+        extent: geopandas.GeoDataFrame,
         set_foreshore: bool = True,
-        extent: geopandas.GeoDataFrame = None,
     ):
         """Load in the coarse DEM, clip and extract points"""
 
@@ -130,51 +130,67 @@ class CoarseDem:
 
         return len(self._points) == 0 and self._dem is None
 
+    def calculate_dem_bounds(self, dem):
+        """ Return the bounds for a DEM. """
+        dem_bounds = dem.rio.bounds()
+        dem_bounds = geopandas.GeoDataFrame(
+            {
+                "geometry": [
+                    shapely.geometry.Polygon(
+                        [
+                            [dem_bounds[0], dem_bounds[1]],
+                            [dem_bounds[2], dem_bounds[1]],
+                            [dem_bounds[2], dem_bounds[3]],
+                            [dem_bounds[0], dem_bounds[3]],
+                        ]
+                    )
+                ]
+            },
+            crs=dem.rio.crs,
+        )
+        return dem_bounds
     def _set_up(self, extent):
         """Set DEM CRS and trim the DEM to size"""
 
-        self._dem.rio.set_crs(self.catchment_geometry.crs["horizontal"])
+        self._dem.rio.set_crs(extent.crs)
+        
+        # Calculate DEM bounds and check for overlap before clip
+        dem_bounds = self.calculate_dem_bounds(self._dem)
+        extent = dem_bounds.overlay(extent, how="intersection")
+        self._extents = extent
 
-        if extent is not None:
-            # Keep values where there's no LiDAR & trim outside buffered area
-            self._extents = extent
-        else:
-            # Define a buffered land & foreshore
-            buffered_land_and_foreshore = geopandas.GeoDataFrame(
-                geometry=self.catchment_geometry.land_and_foreshore.buffer(
-                    self.resolution * numpy.sqrt(2)
+        if extent.area.sum() > self.resolution * self.resolution:
+            # Try clip - catch if no DEM in clipping bounds
+            try:
+                self._dem = self._dem.rio.clip(
+                    self._extents.geometry.values, drop=True, from_disk=True
                 )
-            )
-            # If no LiDAR - only use the coarse DEM on land
-            self._extents = buffered_land_and_foreshore
+                self._points = self._extract_points(self._dem)
 
-        # Try clip - catch if no DEM in clipping bounds
-        try:
-            self._dem = self._dem.rio.clip(
-                self._extents.geometry, drop=True, from_disk=True
-            )
-            self._points = self._extract_points(self._dem)
-
-            dem_bounds = self._dem.rio.bounds()
-            self._dem_bounds = geopandas.GeoDataFrame(
-                {
-                    "geometry": [
-                        shapely.geometry.Polygon(
-                            [
-                                [dem_bounds[0], dem_bounds[1]],
-                                [dem_bounds[2], dem_bounds[1]],
-                                [dem_bounds[2], dem_bounds[3]],
-                                [dem_bounds[0], dem_bounds[3]],
-                            ]
-                        )
-                    ]
-                },
-                crs=self.catchment_geometry.crs["horizontal"],
-            )
-        except rioxarray.exceptions.NoDataInBounds:
-            logging.warning(
-                "No coarse DEM values in the region of interest. Will set to empty."
-            )
+                dem_bounds = self._dem.rio.bounds()
+                self._dem_bounds = geopandas.GeoDataFrame(
+                    {
+                        "geometry": [
+                            shapely.geometry.Polygon(
+                                [
+                                    [dem_bounds[0], dem_bounds[1]],
+                                    [dem_bounds[2], dem_bounds[1]],
+                                    [dem_bounds[2], dem_bounds[3]],
+                                    [dem_bounds[0], dem_bounds[3]],
+                                ]
+                            )
+                        ]
+                    },
+                    crs=self.catchment_geometry.crs["horizontal"],
+                )
+            except rioxarray.exceptions.NoDataInBounds or ValueError:
+                logging.warning(
+                    "No coarse DEM values in the region of interest. Will set to empty."
+                )
+                self._dem = None
+                self._points = []
+                self._dem_bounds = None
+        else:
             self._dem = None
             self._points = []
             self._dem_bounds = None
@@ -223,7 +239,7 @@ class CoarseDem:
                 how="intersection",
                 keep_geom_type=True,
             )
-            # Clip DEM to buffered lanzd
+            # Clip DEM to buffered land
             land_dem = dem.rio.clip(buffered_land.geometry, drop=True)
             # get coarse DEM points on land
             land_flat_z = land_dem.data.flatten()
@@ -233,6 +249,11 @@ class CoarseDem:
             land_x = land_grid_x.flatten()[land_mask_z]
             land_y = land_grid_y.flatten()[land_mask_z]
             land_z = land_flat_z[land_mask_z]
+            # Funny behaviour with single-length Dask mask returning a float. Set empty
+            if not isinstance(land_x, numpy.ndarray):
+                land_x = []
+                land_y = []
+                land_z = []
         else:  # If there is no DEM outside LiDAR/exclusion_extent and on land
             land_x = []
             land_y = []
@@ -274,6 +295,11 @@ class CoarseDem:
             foreshore_x = foreshore_grid_x.flatten()[foreshore_mask_z]
             foreshore_y = foreshore_grid_y.flatten()[foreshore_mask_z]
             foreshore_z = foreshore_flat_z[foreshore_mask_z]
+            # Funny behaviour with single-length Dask mask returning a float. Set empty
+            if not isinstance(foreshore_x, numpy.ndarray):
+                foreshore_x = []
+                foreshore_y = []
+                foreshore_z = []
         else:  # If there is no DEM outside LiDAR/exclusion_extent and on foreshore
             foreshore_x = []
             foreshore_y = []
