@@ -119,11 +119,11 @@ class CoarseDem:
 
         self._dem.rio.set_crs(self._extents["total"].crs)
 
-
         # Calculate DEM bounds and check for overlap before clip
         dem_bounds = self.calculate_dem_bounds(self._dem)
-        self._extents["total"] = dem_bounds.overlay(self._extents["total"],
-                                                    how="intersection")
+        self._extents["total"] = dem_bounds.overlay(
+            self._extents["total"], how="intersection"
+        )
 
         if self._extents["total"].area.sum() > self.resolution * self.resolution:
             # Try clip - catch if no DEM in clipping bounds
@@ -144,7 +144,9 @@ class CoarseDem:
                     geometry=foreshore.buffer(self.resolution * numpy.sqrt(2))
                 )
                 self._extents["foreshore"] = foreshore.overlay(
-                    self._extents["land"], how="difference", keep_geom_type=True,
+                    self._extents["land"],
+                    how="difference",
+                    keep_geom_type=True,
                 )
                 # Update the land extents - buffer by resolution and clip to extents
                 land = self._extents["land"].overlay(
@@ -161,7 +163,6 @@ class CoarseDem:
                     keep_geom_type=True,
                 )
 
-
             except rioxarray.exceptions.NoDataInBounds or ValueError:
                 logging.warning(
                     "No coarse DEM values in the region of interest. Will set to empty."
@@ -176,12 +177,10 @@ class CoarseDem:
 
     def _extract_points(self, dem):
         """Create a points list from the DEM. Treat the onland and foreshore
-           poins separately"""
+        poins separately"""
 
         # Take the values on land only - separately consider the buffered foreshore area
-        if (
-            self._extents["land"].area.sum() > self.resolution * self.resolution
-        ):
+        if self._extents["land"].area.sum() > self.resolution * self.resolution:
             # Clip DEM to buffered land
             land_dem = dem.rio.clip(self._extents["land"].geometry.values, drop=True)
             # get coarse DEM points on land
@@ -202,11 +201,11 @@ class CoarseDem:
             land_y = []
             land_z = []
         # Take the values on foreshore only - separately consider the buffered land area
-        if (
-            self._extents["foreshore"].area.sum() > self.resolution * self.resolution
-        ):
+        if self._extents["foreshore"].area.sum() > self.resolution * self.resolution:
             # Clip DEM to buffered foreshore
-            foreshore_dem = dem.rio.clip(self._extents["foreshore"].geometry.values, drop=True)
+            foreshore_dem = dem.rio.clip(
+                self._extents["foreshore"].geometry.values, drop=True
+            )
 
             # get coarse DEM points on the foreshore - with any positive set to zero
             if self.set_foreshore:
@@ -1727,7 +1726,7 @@ class RawDem(LidarBase):
             "total": no_data_extents,
             "land": self.catchment_geometry.full_land,
             "foreshore": self.catchment_geometry.foreshore,
-            }
+        }
 
         # Check if enough without LiDAR to use coarse DEMs
         if len(no_data_extents) == 0:
@@ -1744,7 +1743,7 @@ class RawDem(LidarBase):
             logging.info(f"\tLoad coarse DEM: {coarse_dem_path}")
             coarse_dem = CoarseDem(
                 dem_file=coarse_dem_path,
-                extents=extents, # by reference, so "total" trimmed to coarse DEM bounds
+                extents=extents,  # by reference, so "total" trimmed to coarse DEM bounds
                 set_foreshore=self.drop_offshore_lidar,
             )
             # Add the coarse DEM data where there's no LiDAR updating the extents
@@ -1754,8 +1753,11 @@ class RawDem(LidarBase):
                 # from the Coarse DEM
                 z = self._dem.z.copy(deep=True)
                 z.data[:] = 0
-                mask = z.rio.clip(coarse_dem.extents["total"].geometry.values,
-                                  drop=False).notnull().data
+                mask = (
+                    z.rio.clip(coarse_dem.extents["total"].geometry.values, drop=False)
+                    .notnull()
+                    .data
+                )
                 if chunk_size is None:
                     self.add_coarse_dem_no_chunking(
                         coarse_dem=coarse_dem,
@@ -1874,7 +1876,7 @@ class RawDem(LidarBase):
                     dim_y=dim_y,
                     radius=raster_options["radius"],
                 )
-                chunk_extents = { # reset to unbuffered land and foreshore
+                chunk_extents = {  # reset to unbuffered land and foreshore
                     "total": chunk_region_to_tile,
                     "land": self.catchment_geometry.full_land,
                     "foreshore": self.catchment_geometry.foreshore,
@@ -2683,7 +2685,7 @@ def chunk_coarse_dem(
     set_foreshore: bool,
 ):
     """Load in a coarse DEM and trim to points within bbox and return the
-       points."""
+    points."""
     coarse_dem = CoarseDem(
         dem_file=dem_file,
         extents=extents,
