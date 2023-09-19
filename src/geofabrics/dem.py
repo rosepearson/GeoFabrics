@@ -95,7 +95,7 @@ class CoarseDem:
         return len(self._points) == 0 or self._dem is None
 
     def calculate_dem_bounds(self, dem):
-        """ Return the bounds for a DEM. """
+        """Return the bounds for a DEM."""
         dem_bounds = dem.rio.bounds()
         dem_bounds = geopandas.GeoDataFrame(
             {
@@ -113,10 +113,12 @@ class CoarseDem:
             crs=dem.rio.crs,
         )
         return dem_bounds
+
     def _set_up(self):
         """Set DEM CRS and trim the DEM to size"""
 
         self._dem.rio.set_crs(self._extents["total"].crs)
+
 
         # Calculate DEM bounds and check for overlap before clip
         dem_bounds = self.calculate_dem_bounds(self._dem)
