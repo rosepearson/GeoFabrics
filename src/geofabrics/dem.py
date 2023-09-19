@@ -131,8 +131,6 @@ class CoarseDem:
                 self._dem = self._dem.rio.clip(
                     self._extents["total"].geometry.values, drop=True, from_disk=True
                 )
-                self._points = self._extract_points(self._dem)
-                self._dem_bounds = self.calculate_dem_bounds(self._dem)
 
                 # Update foreshore extents - buffer by resolution and clip to extents
                 foreshore = self._extents["foreshore"].overlay(
@@ -161,13 +159,15 @@ class CoarseDem:
                     geometry=land.buffer(self.resolution * numpy.sqrt(2))
                 )
                 if land.is_empty.all():
-                    self._extents["land"] = foreshore
+                    self._extents["land"] = land
                 else:
                     self._extents["land"] = land.overlay(
                         self._extents["land"],
                         how="intersection",
                         keep_geom_type=True,
                     )
+                # Calculate the points within the DEM
+                self._points = self._extract_points(self._dem)
 
             except rioxarray.exceptions.NoDataInBounds or ValueError:
                 logging.warning(
@@ -175,11 +175,9 @@ class CoarseDem:
                 )
                 self._dem = None
                 self._points = []
-                self._dem_bounds = None
         else:
             self._dem = None
             self._points = []
-            self._dem_bounds = None
 
     def _extract_points(self, dem):
         """Create a points list from the DEM. Treat the onland and foreshore
