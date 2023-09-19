@@ -38,23 +38,21 @@ class CoarseDem:
     def __init__(
         self,
         dem_file,
-        catchment_geometry: geometry.CatchmentGeometry,
-        extent: geopandas.GeoDataFrame,
+        extents: dict,
         set_foreshore: bool = True,
     ):
         """Load in the coarse DEM, clip and extract points"""
 
-        self.catchment_geometry = catchment_geometry
         self.set_foreshore = set_foreshore
         # Drop the band coordinate added by rasterio.open()
         self._dem = rioxarray.rioxarray.open_rasterio(
             dem_file, masked=True, chunks=True
         ).squeeze("band", drop=True)
 
-        self._extents = None
+        self._extents = extents
         self._points = []
 
-        self._set_up(extent)
+        self._set_up()
 
     def __del__(self):
         """Ensure the memory associated with netCDF files is properly freed."""
@@ -84,40 +82,6 @@ class CoarseDem:
 
         return self._points
 
-    def chunk_points(self, chunk: geopandas.GeoDataFrame) -> numpy.ndarray:
-        """The coarse DEM points after any extent or foreshore value
-        filtering."""
-
-        # Return no chunk points if the chunk area is zero
-        if chunk.area.sum() <= 0:
-            return []
-
-        # Check for overlap in the chunk and the DEM
-        chunk = chunk.overlay(self._dem_bounds, how="intersection")
-        # Try clip if there is some overlap
-        if chunk.area.sum() > 0:
-            # Try clip - catch if no DEM in clipping bounds
-            try:
-                bounds = chunk.bounds
-                dem_chunk = self._dem.rio.clip_box(
-                    minx=bounds["minx"].min(),
-                    miny=bounds["miny"].min(),
-                    maxx=bounds["maxx"].max(),
-                    maxy=bounds["maxy"].max(),
-                    crs=chunk.crs,
-                )
-                chunk_points = self._extract_points(dem_chunk)
-            except rioxarray.exceptions.NoDataInBounds or ValueError or Exception:
-                # Error - assume error related to no points in bound so set to no points
-                logging.warning(
-                    "No coarse DEM values in the region of interest. Will set to empty."
-                )
-                chunk_points = []
-        else:
-            # No overlap so no points
-            chunk_points = []
-        return chunk_points
-
     @property
     def extents(self) -> geopandas.GeoDataFrame:
         """The extents for the coarse DEM"""
@@ -128,7 +92,7 @@ class CoarseDem:
     def empty(self) -> bool:
         """True if the DEM is empty"""
 
-        return len(self._points) == 0 and self._dem is None
+        return len(self._points) == 0 or self._dem is None
 
     def calculate_dem_bounds(self, dem):
         """ Return the bounds for a DEM. """
@@ -149,40 +113,53 @@ class CoarseDem:
             crs=dem.rio.crs,
         )
         return dem_bounds
-    def _set_up(self, extent):
+    def _set_up(self):
         """Set DEM CRS and trim the DEM to size"""
 
-        self._dem.rio.set_crs(extent.crs)
-        
+        self._dem.rio.set_crs(self._extents["total"].crs)
+
         # Calculate DEM bounds and check for overlap before clip
         dem_bounds = self.calculate_dem_bounds(self._dem)
-        extent = dem_bounds.overlay(extent, how="intersection")
-        self._extents = extent
+        self._extents["total"] = dem_bounds.overlay(self._extents["total"],
+                                                    how="intersection")
 
-        if extent.area.sum() > self.resolution * self.resolution:
+        if self._extents["total"].area.sum() > self.resolution * self.resolution:
             # Try clip - catch if no DEM in clipping bounds
             try:
                 self._dem = self._dem.rio.clip(
-                    self._extents.geometry.values, drop=True, from_disk=True
+                    self._extents["total"].geometry.values, drop=True, from_disk=True
                 )
                 self._points = self._extract_points(self._dem)
+                self._dem_bounds = self.calculate_dem_bounds(self._dem)
 
-                dem_bounds = self._dem.rio.bounds()
-                self._dem_bounds = geopandas.GeoDataFrame(
-                    {
-                        "geometry": [
-                            shapely.geometry.Polygon(
-                                [
-                                    [dem_bounds[0], dem_bounds[1]],
-                                    [dem_bounds[2], dem_bounds[1]],
-                                    [dem_bounds[2], dem_bounds[3]],
-                                    [dem_bounds[0], dem_bounds[3]],
-                                ]
-                            )
-                        ]
-                    },
-                    crs=self.catchment_geometry.crs["horizontal"],
+                # Update foreshore extents - buffer by resolution and clip to extents
+                foreshore = self._extents["foreshore"].overlay(
+                    self._extents["total"],
+                    how="intersection",
+                    keep_geom_type=True,
                 )
+                foreshore = geopandas.GeoDataFrame(
+                    geometry=foreshore.buffer(self.resolution * numpy.sqrt(2))
+                )
+                self._extents["foreshore"] = foreshore.overlay(
+                    self._extents["land"], how="difference", keep_geom_type=True,
+                )
+                # Update the land extents - buffer by resolution and clip to extents
+                land = self._extents["land"].overlay(
+                    self._extents["total"],
+                    how="intersection",
+                    keep_geom_type=True,
+                )
+                land = geopandas.GeoDataFrame(
+                    geometry=land.buffer(self.resolution * numpy.sqrt(2))
+                )
+                self._extents["land"] = land.overlay(
+                    self._extents["land"],
+                    how="intersection",
+                    keep_geom_type=True,
+                )
+
+
             except rioxarray.exceptions.NoDataInBounds or ValueError:
                 logging.warning(
                     "No coarse DEM values in the region of interest. Will set to empty."
@@ -196,51 +173,15 @@ class CoarseDem:
             self._dem_bounds = None
 
     def _extract_points(self, dem):
-        """Create a points list from the DEM"""
-
-        # Get the DEM bounding box
-        dem_bounds = dem.rio.bounds()
-        dem_bounds = geopandas.GeoDataFrame(
-            {
-                "geometry": [
-                    shapely.geometry.Polygon(
-                        [
-                            [dem_bounds[0], dem_bounds[1]],
-                            [dem_bounds[2], dem_bounds[1]],
-                            [dem_bounds[2], dem_bounds[3]],
-                            [dem_bounds[0], dem_bounds[3]],
-                        ]
-                    )
-                ]
-            },
-            crs=self.catchment_geometry.crs["horizontal"],
-        )
+        """Create a points list from the DEM. Treat the onland and foreshore
+           poins separately"""
 
         # Take the values on land only - separately consider the buffered foreshore area
         if (
-            self.catchment_geometry.land.area.sum() > 0
-            and dem_bounds.overlay(
-                self.catchment_geometry.land, how="intersection"
-            ).area.sum()
-            > 0
+            self._extents["land"].area.sum() > self.resolution * self.resolution
         ):
-            # Define buffered land region - buffer to avoid edge effects
-            buffered_land = geopandas.GeoDataFrame(
-                geometry=self.catchment_geometry.land.buffer(
-                    self.resolution * numpy.sqrt(2)
-                )
-            )
-            buffered_land = buffered_land.overlay(
-                self.catchment_geometry.foreshore_and_offshore,
-                how="difference",
-            )
-            buffered_land = buffered_land.overlay(
-                self.catchment_geometry.full_land,
-                how="intersection",
-                keep_geom_type=True,
-            )
             # Clip DEM to buffered land
-            land_dem = dem.rio.clip(buffered_land.geometry, drop=True)
+            land_dem = dem.rio.clip(self._extents["land"].geometry.values, drop=True)
             # get coarse DEM points on land
             land_flat_z = land_dem.data.flatten()
             land_mask_z = ~numpy.isnan(land_flat_z)
@@ -260,28 +201,10 @@ class CoarseDem:
             land_z = []
         # Take the values on foreshore only - separately consider the buffered land area
         if (
-            self.catchment_geometry.foreshore.area.sum() > 0
-            and dem_bounds.overlay(
-                self.catchment_geometry.foreshore, how="intersection"
-            ).area.sum()
-            > 0
+            self._extents["foreshore"].area.sum() > self.resolution * self.resolution
         ):
-            # Define buffered foreshore region - buffer to avoid edge effects
-            buffered_foreshore = geopandas.GeoDataFrame(
-                geometry=self.catchment_geometry.foreshore.buffer(
-                    self.resolution * numpy.sqrt(2)
-                )
-            )
-            buffered_foreshore = buffered_foreshore.overlay(
-                self.catchment_geometry.land, how="difference"
-            )
-            buffered_foreshore = buffered_foreshore.overlay(
-                self.catchment_geometry.full_land,
-                how="difference",
-                keep_geom_type=True,
-            )
             # Clip DEM to buffered foreshore
-            foreshore_dem = dem.rio.clip(buffered_foreshore.geometry, drop=True)
+            foreshore_dem = dem.rio.clip(self._extents["foreshore"].geometry.values, drop=True)
 
             # get coarse DEM points on the foreshore - with any positive set to zero
             if self.set_foreshore:
@@ -1797,6 +1720,13 @@ class RawDem(LidarBase):
         no_data_extents = no_data_extents.explode(index_parts=False)
         no_data_extents = no_data_extents[no_data_extents.area > area_threshold]
 
+        # Define the coarse DEM extents - total, land and foreshore
+        extents = {
+            "total": no_data_extents,
+            "land": self.catchment_geometry.full_land,
+            "foreshore": self.catchment_geometry.foreshore,
+            }
+
         # Check if enough without LiDAR to use coarse DEMs
         if len(no_data_extents) == 0:
             logging.INFO(
@@ -1805,11 +1735,6 @@ class RawDem(LidarBase):
             )
             return False
 
-        # Define a mask of the area without LiDAR data where there is now data
-        z = self._dem.z.copy(deep=True)
-        z.data[:] = 0
-        mask = z.rio.clip(no_data_extents.geometry, drop=False).notnull().data
-
         # Iterate through DEMs
         coarse_dem_added = False
         logging.info(f"Incorporating coarse DEMs: {coarse_dem_paths}")
@@ -1817,23 +1742,27 @@ class RawDem(LidarBase):
             logging.info(f"\tLoad coarse DEM: {coarse_dem_path}")
             coarse_dem = CoarseDem(
                 dem_file=coarse_dem_path,
-                catchment_geometry=self.catchment_geometry,
+                extents=extents, # by reference, so "total" trimmed to coarse DEM bounds
                 set_foreshore=self.drop_offshore_lidar,
-                extent=no_data_extents,
             )
             # Add the coarse DEM data where there's no LiDAR updating the extents
             if not coarse_dem.empty:
                 logging.info(f"\t\tAdd data from coarse DEM: {coarse_dem_path.name}")
+                # Create a mask defining the region without values to populate
+                # from the Coarse DEM
+                z = self._dem.z.copy(deep=True)
+                z.data[:] = 0
+                mask = z.rio.clip(coarse_dem.extents["total"].geometry.values,
+                                  drop=False).notnull().data
                 if chunk_size is None:
                     self.add_coarse_dem_no_chunking(
                         coarse_dem=coarse_dem,
-                        region_to_rasterise=no_data_extents,
                         mask=mask,
                     )
                 else:
                     self.add_coarse_dem_chunked(
                         coarse_dem_path=coarse_dem_path,
-                        region_to_rasterise=no_data_extents,
+                        extents=extents,
                         chunk_size=chunk_size,
                         mask=mask,
                         radius=coarse_dem.resolution * numpy.sqrt(2),
@@ -1854,7 +1783,6 @@ class RawDem(LidarBase):
     def add_coarse_dem_no_chunking(
         self,
         coarse_dem: CoarseDem,
-        region_to_rasterise: geopandas.GeoDataFrame,
         mask: numpy.ndarray,
     ):
         """Fill gaps in dense DEM from areas with no LiDAR with the coarse DEM.
@@ -1864,7 +1792,7 @@ class RawDem(LidarBase):
         ----------
 
             coarse_dem - The coarse DEM to use for rasterising
-            region_to_rasterise - the area to rasterise using the coarse DEM
+            mask - the pixel mask of where to set these values
 
         """
 
@@ -1901,7 +1829,7 @@ class RawDem(LidarBase):
     def add_coarse_dem_chunked(
         self,
         coarse_dem_path: pathlib.Path,
-        region_to_rasterise: geopandas.GeoDataFrame,
+        extents: dict,
         chunk_size: int,
         mask: numpy.ndarray,
         radius: float,
@@ -1913,7 +1841,7 @@ class RawDem(LidarBase):
         ----------
 
             coarse_dem - The coarse DEM to use for rasterising
-            region_to_rasterise - the area to rasterise using the coarse DEM
+            extents - a dictionary of  area to rasterise using the coarse DEM
             chunk_size - the size of each chunk
 
         """
@@ -1939,18 +1867,22 @@ class RawDem(LidarBase):
 
                 # Define the region of the chunk to rasterise
                 chunk_region_to_tile = self._define_chunk_region(
-                    region_to_rasterise=region_to_rasterise,
+                    region_to_rasterise=extents["total"],
                     dim_x=dim_x,
                     dim_y=dim_y,
                     radius=raster_options["radius"],
                 )
+                chunk_extents = { # reset to unbuffered land and foreshore
+                    "total": chunk_region_to_tile,
+                    "land": self.catchment_geometry.full_land,
+                    "foreshore": self.catchment_geometry.foreshore,
+                }
 
                 # Send through the clipped Coarse DEM points
                 coarse_points = delayed_chunk_coarse_dem(
                     dem_file=coarse_dem_path,
-                    catchment_geometry=self.catchment_geometry,
+                    extents=chunk_extents,
                     set_foreshore=self.drop_offshore_lidar,
-                    chunk_region_to_tile=chunk_region_to_tile,
                 )
 
                 # Use the coase DEM to sample any missing values
@@ -2745,16 +2677,15 @@ def elevation_over_chunk(
 
 def chunk_coarse_dem(
     dem_file: pathlib.Path,
-    catchment_geometry,
+    extents: dict,
     set_foreshore: bool,
-    chunk_region_to_tile,
 ):
-    """Load in a coarse DEM and trim to points within bbox."""
+    """Load in a coarse DEM and trim to points within bbox and return the
+       points."""
     coarse_dem = CoarseDem(
         dem_file=dem_file,
-        catchment_geometry=catchment_geometry,
+        extents=extents,
         set_foreshore=set_foreshore,
-        extent=chunk_region_to_tile,
     )
     # Return in points after clipping
     return coarse_dem.points
