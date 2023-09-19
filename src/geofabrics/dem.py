@@ -143,11 +143,14 @@ class CoarseDem:
                 foreshore = geopandas.GeoDataFrame(
                     geometry=foreshore.buffer(self.resolution * numpy.sqrt(2))
                 )
-                self._extents["foreshore"] = foreshore.overlay(
-                    self._extents["land"],
-                    how="difference",
-                    keep_geom_type=True,
-                )
+                if foreshore.is_empty.all():
+                    self._extents["foreshore"] = foreshore
+                else:
+                    self._extents["foreshore"] = foreshore.overlay(
+                        self._extents["land"],
+                        how="difference",
+                        keep_geom_type=True,
+                    )
                 # Update the land extents - buffer by resolution and clip to extents
                 land = self._extents["land"].overlay(
                     self._extents["total"],
@@ -157,11 +160,14 @@ class CoarseDem:
                 land = geopandas.GeoDataFrame(
                     geometry=land.buffer(self.resolution * numpy.sqrt(2))
                 )
-                self._extents["land"] = land.overlay(
-                    self._extents["land"],
-                    how="intersection",
-                    keep_geom_type=True,
-                )
+                if land.is_empty.all():
+                    self._extents["land"] = foreshore
+                else:
+                    self._extents["land"] = land.overlay(
+                        self._extents["land"],
+                        how="intersection",
+                        keep_geom_type=True,
+                    )
 
             except rioxarray.exceptions.NoDataInBounds or ValueError:
                 logging.warning(
