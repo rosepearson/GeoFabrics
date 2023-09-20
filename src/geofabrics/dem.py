@@ -742,6 +742,7 @@ class HydrologicallyConditionedDem(DemBase):
         )
 
         # Set the interpolated value in the DEM
+        flat_z = estimated_dem.z.flatten()
         flat_z[mask_z] = flat_z_masked
         estimated_dem.z.data = flat_z.reshape(estimated_dem.z.data.shape)
 
