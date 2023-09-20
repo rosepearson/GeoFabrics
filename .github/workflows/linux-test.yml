@@ -18,10 +18,22 @@ jobs:
 
     steps:
 
-    - name: Checkout github repo including lfs files
-      uses: actions/checkout@v2
+    - name: Checkout
+      uses: actions/checkout@v3
+
+    - name: Create LFS file list
+      run: git lfs ls-files --long | cut -d ' ' -f1 | sort > .lfs-assets-id
+
+    - name: LFS Cache
+      uses: actions/cache@v3
       with:
-        lfs: true
+        path: .git/lfs/objects
+        key: ${{ runner.os }}-lfs-${{ hashFiles('.lfs-assets-id') }}
+        restore-keys: |
+          ${{ runner.os }}-lfs-
+
+    - name: Git LFS Pull
+      run: git lfs pull
 
     - name: Setup miniconda
       uses: conda-incubator/setup-miniconda@v2
