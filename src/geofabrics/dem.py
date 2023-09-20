@@ -45,9 +45,9 @@ class CoarseDem:
 
         self.set_foreshore = set_foreshore
         # Drop the band coordinate added by rasterio.open()
-        self._dem = rioxarray.rioxarray.open_rasterio(
-            dem_file, masked=True
-        ).squeeze("band", drop=True)
+        self._dem = rioxarray.rioxarray.open_rasterio(dem_file, masked=True).squeeze(
+            "band", drop=True
+        )
 
         self._extents = extents
         self._points = []
