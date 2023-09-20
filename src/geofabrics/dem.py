@@ -189,18 +189,12 @@ class CoarseDem:
             # Clip DEM to buffered land
             land_dem = dem.rio.clip(self._extents["land"].geometry.values, drop=True)
             # get coarse DEM points on land
-            land_flat_z = land_dem.data.flatten()
-            land_mask_z = ~numpy.isnan(land_flat_z)
-            land_grid_x, land_grid_y = numpy.meshgrid(land_dem.x, land_dem.y)
+            mask = ~land_dem.isnull()
+            grid_x, grid_y = numpy.meshgrid(land_dem.x, land_dem.y)
 
-            land_x = land_grid_x.flatten()[land_mask_z]
-            land_y = land_grid_y.flatten()[land_mask_z]
-            land_z = land_flat_z[land_mask_z]
-            # Funny behaviour with single-length Dask mask returning a float. Set empty
-            if not isinstance(land_x, numpy.ndarray):
-                land_x = []
-                land_y = []
-                land_z = []
+            land_x = grid_x[mask]
+            land_y = grid_y[mask]
+            land_z = land_dem.values[mask]
         else:  # If there is no DEM outside LiDAR/exclusion_extent and on land
             land_x = []
             land_y = []
@@ -214,21 +208,13 @@ class CoarseDem:
 
             # get coarse DEM points on the foreshore - with any positive set to zero
             if self.set_foreshore:
-                foreshore_dem.data[foreshore_dem.data > 0] = 0
-            foreshore_flat_z = foreshore_dem.data.flatten()
-            foreshore_mask_z = ~numpy.isnan(foreshore_flat_z)
-            foreshore_grid_x, foreshore_grid_y = numpy.meshgrid(
-                foreshore_dem.x, foreshore_dem.y
-            )
+                foreshore_dem = foreshore_dem.where(foreshore_dem <= 0, 0)
+            mask = ~foreshore_dem.isnull()
+            grid_x, grid_y = numpy.meshgrid(foreshore_dem.x, foreshore_dem.y)
 
-            foreshore_x = foreshore_grid_x.flatten()[foreshore_mask_z]
-            foreshore_y = foreshore_grid_y.flatten()[foreshore_mask_z]
-            foreshore_z = foreshore_flat_z[foreshore_mask_z]
-            # Funny behaviour with single-length Dask mask returning a float. Set empty
-            if not isinstance(foreshore_x, numpy.ndarray):
-                foreshore_x = []
-                foreshore_y = []
-                foreshore_z = []
+            foreshore_x = grid_x[mask]
+            foreshore_y = grid_y[mask]
+            foreshore_z = foreshore_dem[mask]
         else:  # If there is no DEM outside LiDAR/exclusion_extent and on foreshore
             foreshore_x = []
             foreshore_y = []
@@ -549,14 +535,11 @@ class HydrologicallyConditionedDem(DemBase):
             offshore_edge_dem = offshore_edge_dem.rio.clip(
                 offshore_dense_data_edge.geometry
             )  # Reclip to inbounds
-        offshore_grid_x, offshore_grid_y = numpy.meshgrid(
-            offshore_edge_dem.x, offshore_edge_dem.y
-        )
-        offshore_flat_z = offshore_edge_dem.z.data.flatten()
-        offshore_mask_z = ~numpy.isnan(offshore_flat_z)
+        grid_x, grid_y = numpy.meshgrid(offshore_edge_dem.x, offshore_edge_dem.y)
+        mask = ~offshore_edge_dem.z.isnull()
 
         offshore_edge = numpy.empty(
-            [offshore_mask_z.sum().sum()],
+            [mask.sum().sum()],
             dtype=[
                 ("X", geometry.RASTER_TYPE),
                 ("Y", geometry.RASTER_TYPE),
@@ -564,9 +547,9 @@ class HydrologicallyConditionedDem(DemBase):
             ],
         )
 
-        offshore_edge["X"] = offshore_grid_x.flatten()[offshore_mask_z]
-        offshore_edge["Y"] = offshore_grid_y.flatten()[offshore_mask_z]
-        offshore_edge["Z"] = offshore_flat_z[offshore_mask_z]
+        offshore_edge["X"] = grid_x[mask]
+        offshore_edge["Y"] = grid_y[mask]
+        offshore_edge["Z"] = offshore_edge_dem.z[mask]
 
         return offshore_edge
 
@@ -672,22 +655,19 @@ class HydrologicallyConditionedDem(DemBase):
         offshore_dem = offshore_dem.rio.clip(offshore_no_dense_data.geometry)
 
         grid_x, grid_y = numpy.meshgrid(offshore_dem.x, offshore_dem.y)
-        flat_z = offshore_dem.z.data.flatten()
-        mask_z = ~numpy.isnan(flat_z)
-
-        flat_x_masked = grid_x.flatten()[mask_z]
-        flat_y_masked = grid_y.flatten()[mask_z]
+        mask = ~offshore_dem.z.isnull()
 
         # Set up the interpolation function
         logging.info("Offshore interpolation")
         flat_z_masked = self._interpolate_bathymetry_points(
             bathymetry_points=offshore_points,
-            flat_x_array=flat_x_masked,
-            flat_y_array=flat_y_masked,
+            flat_x_array=grid_x[mask],
+            flat_y_array=grid_y[mask],
             method="linear",
         )
-        flat_z[mask_z] = flat_z_masked
-        offshore_dem.z.data = flat_z.reshape(offshore_dem.z.data.shape)
+        flat_z = offshore_dem.z.flatten()
+        flat_z[mask.flatten()] = flat_z_masked
+        offshore_dem.z.data = flat_z.reshape(offshore_dem.z.shape)
 
         self._dem = rioxarray.merge.merge_datasets(
             [self._raw_dem, offshore_dem],
@@ -717,8 +697,7 @@ class HydrologicallyConditionedDem(DemBase):
         )
         # Define the edge points
         grid_x, grid_y = numpy.meshgrid(edge_dem.x, edge_dem.y)
-        flat_z = edge_dem.z.data.flatten()
-        mask_z = ~numpy.isnan(flat_z)
+        mask_z = ~edge_dem.z.isnull()
         # Define edge points and heights
         edge_points = numpy.empty(
             [mask_z.sum().sum()],
@@ -728,9 +707,9 @@ class HydrologicallyConditionedDem(DemBase):
                 ("Z", geometry.RASTER_TYPE),
             ],
         )
-        edge_points["X"] = grid_x.flatten()[mask_z]
-        edge_points["Y"] = grid_y.flatten()[mask_z]
-        edge_points["Z"] = flat_z[mask_z]
+        edge_points["X"] = grid_x[mask_z]
+        edge_points["Y"] = grid_y[mask_z]
+        edge_points["Z"] = edge_dem.z[mask_z]
 
         # Combine the estimated and edge points
         bathy_points = numpy.concatenate([edge_points, estimated_points])
@@ -744,12 +723,11 @@ class HydrologicallyConditionedDem(DemBase):
         estimated_dem = estimated_dem.rio.clip(estimated_polygons.geometry)
 
         grid_x, grid_y = numpy.meshgrid(estimated_dem.x, estimated_dem.y)
-        flat_z = estimated_dem.z.data[:].flatten()
-        mask_z = ~numpy.isnan(flat_z)
+        mask_z = ~estimated_dem.z.isnull()
 
-        flat_x_masked = grid_x.flatten()[mask_z]
-        flat_y_masked = grid_y.flatten()[mask_z]
-        flat_z_masked = flat_z[mask_z]
+        flat_x_masked = grid_x[mask_z]
+        flat_y_masked = grid_y[mask_z]
+        flat_z_masked = estimated_dem.z[mask_z]
 
         # check there are actually pixels in the river
         logging.info(f"There are {len(flat_z_masked)} estimated points")
@@ -2516,7 +2494,7 @@ def calculate_linear(
                 xi=point,
                 method="linear",
             )[0]
-        except scipy.spatial.QhullError or Exception:
+        except (scipy.spatial.QhullError, Exception):
             logging.warning(
                 f"Exception {Exception} during linear interpolation. Set to NaN."
             )
