@@ -46,7 +46,7 @@ class CoarseDem:
         self.set_foreshore = set_foreshore
         # Drop the band coordinate added by rasterio.open()
         self._dem = rioxarray.rioxarray.open_rasterio(
-            dem_file, masked=True, chunks=True
+            dem_file, masked=True
         ).squeeze("band", drop=True)
 
         self._extents = extents
@@ -131,6 +131,7 @@ class CoarseDem:
                 self._dem = self._dem.rio.clip(
                     self._extents["total"].geometry.values, drop=True, from_disk=True
                 )
+                self._dem.load()
 
                 # Update foreshore extents - buffer by resolution and clip to extents
                 foreshore = self._extents["foreshore"].overlay(
@@ -169,7 +170,7 @@ class CoarseDem:
                 # Calculate the points within the DEM
                 self._points = self._extract_points(self._dem)
 
-            except rioxarray.exceptions.NoDataInBounds or ValueError:
+            except (rioxarray.exceptions.NoDataInBounds, ValueError, IndexError):
                 logging.warning(
                     "No coarse DEM values in the region of interest. Will set to empty."
                 )
