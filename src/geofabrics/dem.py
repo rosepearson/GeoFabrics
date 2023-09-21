@@ -169,10 +169,11 @@ class CoarseDem:
                 # Calculate the points within the DEM
                 self._points = self._extract_points(self._dem)
 
-            except (rioxarray.exceptions.NoDataInBounds, ValueError) as caught_exception:
-                logging.warning(
-                    f"{caught_exception} in CoarseDEM. Will set to empty."
-                )
+            except (
+                rioxarray.exceptions.NoDataInBounds,
+                ValueError,
+            ) as caught_exception:
+                logging.warning(f"{caught_exception} in CoarseDEM. Will set to empty.")
                 self._dem = None
                 self._points = []
         else:
