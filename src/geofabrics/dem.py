@@ -12,7 +12,6 @@ import math
 import typing
 import pathlib
 import geopandas
-import pandas
 import shapely
 import dask
 import dask.array
@@ -170,9 +169,9 @@ class CoarseDem:
                 # Calculate the points within the DEM
                 self._points = self._extract_points(self._dem)
 
-            except (rioxarray.exceptions.NoDataInBounds, ValueError, IndexError):
+            except (rioxarray.exceptions.NoDataInBounds, ValueError) as caught_exception:
                 logging.warning(
-                    "No coarse DEM values in the region of interest. Will set to empty."
+                    f"{caught_exception} in CoarseDEM. Will set to empty."
                 )
                 self._dem = None
                 self._points = []
@@ -2497,9 +2496,9 @@ def calculate_linear(
                 xi=point,
                 method="linear",
             )[0]
-        except (scipy.spatial.QhullError, Exception):
+        except (scipy.spatial.QhullError, Exception) as caught_exception:
             logging.warning(
-                f"Exception {Exception} during linear interpolation. Set to NaN."
+                f"Exception {caught_exception} during linear interpolation. Set to NaN."
             )
             linear = numpy.nan
 

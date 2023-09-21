@@ -910,11 +910,19 @@ class RawLidarDemGenerator(BaseProcessor):
             logging.info(
                 "In processor.DemGenerator - write out the raw DEM " "from LiDAR"
             )
-            self.raw_dem.dem.to_netcdf(
-                self.get_instruction_path("raw_dem"),
-                format="NETCDF4",
-                engine="netcdf4",
-            )
+            try:
+                self.raw_dem.dem.to_netcdf(
+                    self.get_instruction_path("raw_dem"),
+                    format="NETCDF4",
+                    engine="netcdf4",
+                )
+            except Exception as caught_exception:
+                pathlib.Path(self.get_instruction_path("raw_dem")).unlink()
+                logging.info(f"Caught error {caught_exception} and deleting"
+                             "partially created netCDF output "
+                             f"{self.get_instruction_path('raw_dem')}"
+                             " before re-raising error.")
+                raise caught_exception
 
         if self.debug:
             # Record the parameter used during execution - append to existing
@@ -1165,17 +1173,24 @@ class RoughnessLengthGenerator(BaseProcessor):
             "processes": True,
             "memory_limit": self.get_processing_instructions("memory_limit"),
         }
-        with distributed.LocalCluster(**cluster_kwargs) as cluster, distributed.Client(
-            cluster
-        ) as client:
+        cluster = distributed.LocalCluster(**cluster_kwargs)
+        with cluster, distributed.Client(cluster) as client:
             print("Dask client:", client)
             print("Dask dashboard:", client.dashboard_link)
             # save results
-            self.roughness_dem.dem.to_netcdf(
-                self.get_instruction_path("result_geofabric"),
-                format="NETCDF4",
-                engine="netcdf4",
-            )
+            try:
+                self.roughness_dem.dem.to_netcdf(
+                    self.get_instruction_path("result_geofabric"),
+                    format="NETCDF4",
+                    engine="netcdf4",
+                )
+            except Exception as caught_exception:
+                pathlib.Path(self.get_instruction_path("result_geofabric")).unlink()
+                logging.info(f"Caught error {caught_exception} and deleting"
+                             "partially created netCDF output "
+                             f"{self.get_instruction_path('result_geofabric')}"
+                             " before re-raising error.")
+                raise caught_exception
         if self.debug:
             # Record the parameter used during execution - append to existing
             with open(
