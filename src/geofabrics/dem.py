@@ -1693,7 +1693,6 @@ class RawDem(LidarBase):
         coarse_dem_added = False
         logging.info(f"Incorporating coarse DEMs: {coarse_dem_paths}")
         for coarse_dem_path in coarse_dem_paths:
-            
             # Determine the areas without LiDAR meeting the area threshold size
             # Generate a polygon of where there is LiDAR - recalculate after each
             data_extents = self._extents_from_mask(
@@ -1718,7 +1717,7 @@ class RawDem(LidarBase):
                     "without LiDAR values. Ignoring all remaining coarse DEMs."
                 )
                 return False
-        
+
             logging.info(f"\tLoad coarse DEM: {coarse_dem_path}")
             # Define the coarse DEM extents - total, land and foreshore
             extents = {
