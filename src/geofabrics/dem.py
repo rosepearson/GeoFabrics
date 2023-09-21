@@ -189,7 +189,7 @@ class CoarseDem:
             # Clip DEM to buffered land
             land_dem = dem.rio.clip(self._extents["land"].geometry.values, drop=True)
             # get coarse DEM points on land
-            mask = ~land_dem.isnull()
+            mask = land_dem.notnull().values
             grid_x, grid_y = numpy.meshgrid(land_dem.x, land_dem.y)
 
             land_x = grid_x[mask]
@@ -209,12 +209,12 @@ class CoarseDem:
             # get coarse DEM points on the foreshore - with any positive set to zero
             if self.set_foreshore:
                 foreshore_dem = foreshore_dem.where(foreshore_dem <= 0, 0)
-            mask = ~foreshore_dem.isnull()
+            mask = foreshore_dem.notnull().values
             grid_x, grid_y = numpy.meshgrid(foreshore_dem.x, foreshore_dem.y)
 
             foreshore_x = grid_x[mask]
             foreshore_y = grid_y[mask]
-            foreshore_z = foreshore_dem[mask]
+            foreshore_z = foreshore_dem.values[mask]
         else:  # If there is no DEM outside LiDAR/exclusion_extent and on foreshore
             foreshore_x = []
             foreshore_y = []
@@ -440,7 +440,7 @@ class HydrologicallyConditionedDem(DemBase):
 
         # Calculate extents of pre-hydrological conditioning DEM
         self._raw_extents = self._extents_from_mask(
-            mask=self._raw_dem.z.notnull().data,
+            mask=self._raw_dem.z.notnull().values,
             transform=self._raw_dem.z.rio.transform(),
         )
 
@@ -536,7 +536,7 @@ class HydrologicallyConditionedDem(DemBase):
                 offshore_dense_data_edge.geometry
             )  # Reclip to inbounds
         grid_x, grid_y = numpy.meshgrid(offshore_edge_dem.x, offshore_edge_dem.y)
-        mask = ~offshore_edge_dem.z.isnull()
+        mask = offshore_edge_dem.z.notnull().values
 
         offshore_edge = numpy.empty(
             [mask.sum().sum()],
@@ -549,7 +549,7 @@ class HydrologicallyConditionedDem(DemBase):
 
         offshore_edge["X"] = grid_x[mask]
         offshore_edge["Y"] = grid_y[mask]
-        offshore_edge["Z"] = offshore_edge_dem.z[mask]
+        offshore_edge["Z"] = offshore_edge_dem.z.values[mask]
 
         return offshore_edge
 
@@ -655,7 +655,7 @@ class HydrologicallyConditionedDem(DemBase):
         offshore_dem = offshore_dem.rio.clip(offshore_no_dense_data.geometry)
 
         grid_x, grid_y = numpy.meshgrid(offshore_dem.x, offshore_dem.y)
-        mask = ~offshore_dem.z.isnull()
+        mask = offshore_dem.z.notnull().values
 
         # Set up the interpolation function
         logging.info("Offshore interpolation")
@@ -665,7 +665,7 @@ class HydrologicallyConditionedDem(DemBase):
             flat_y_array=grid_y[mask],
             method="linear",
         )
-        flat_z = offshore_dem.z.flatten()
+        flat_z = offshore_dem.z.values.flatten()
         flat_z[mask.flatten()] = flat_z_masked
         offshore_dem.z.data = flat_z.reshape(offshore_dem.z.shape)
 
@@ -697,19 +697,19 @@ class HydrologicallyConditionedDem(DemBase):
         )
         # Define the edge points
         grid_x, grid_y = numpy.meshgrid(edge_dem.x, edge_dem.y)
-        mask_z = ~edge_dem.z.isnull()
+        mask = edge_dem.z.notnull().values
         # Define edge points and heights
         edge_points = numpy.empty(
-            [mask_z.sum().sum()],
+            [mask.sum().sum()],
             dtype=[
                 ("X", geometry.RASTER_TYPE),
                 ("Y", geometry.RASTER_TYPE),
                 ("Z", geometry.RASTER_TYPE),
             ],
         )
-        edge_points["X"] = grid_x[mask_z]
-        edge_points["Y"] = grid_y[mask_z]
-        edge_points["Z"] = edge_dem.z[mask_z]
+        edge_points["X"] = grid_x[mask]
+        edge_points["Y"] = grid_y[mask]
+        edge_points["Z"] = edge_dem.z.values[mask]
 
         # Combine the estimated and edge points
         bathy_points = numpy.concatenate([edge_points, estimated_points])
@@ -723,11 +723,11 @@ class HydrologicallyConditionedDem(DemBase):
         estimated_dem = estimated_dem.rio.clip(estimated_polygons.geometry)
 
         grid_x, grid_y = numpy.meshgrid(estimated_dem.x, estimated_dem.y)
-        mask_z = ~estimated_dem.z.isnull()
+        mask = estimated_dem.z.notnull().values
 
-        flat_x_masked = grid_x[mask_z]
-        flat_y_masked = grid_y[mask_z]
-        flat_z_masked = estimated_dem.z[mask_z]
+        flat_x_masked = grid_x[mask]
+        flat_y_masked = grid_y[mask]
+        flat_z_masked = estimated_dem.z.values[mask]
 
         # check there are actually pixels in the river
         logging.info(f"There are {len(flat_z_masked)} estimated points")
@@ -742,8 +742,8 @@ class HydrologicallyConditionedDem(DemBase):
         )
 
         # Set the interpolated value in the DEM
-        flat_z = estimated_dem.z.flatten()
-        flat_z[mask_z] = flat_z_masked
+        flat_z = estimated_dem.z.values.flatten()
+        flat_z[mask.flatten()] = flat_z_masked
         estimated_dem.z.data = flat_z.reshape(estimated_dem.z.data.shape)
 
         # Update the DEM
@@ -1333,21 +1333,21 @@ class RawDem(LidarBase):
                 keep_geom_type=True,
             )
             # Clip DEM to buffered foreshore
-            foreshore_mask = (
-                dem.z.rio.clip(buffered_foreshore.geometry, drop=False).notnull().data
+            mask = (
+                dem.z.rio.clip(buffered_foreshore.geometry, drop=False).notnull().values
             )
 
             # Set any positive LiDAR foreshore points to zero
             dem["data_source"] = dem.data_source.where(
-                numpy.logical_not(foreshore_mask & (dem.z.data > 0)),
+                ~(mask & (dem.z.data > 0)),
                 self.SOURCE_CLASSIFICATION["ocean bathymetry"],
             )
             dem["lidar_source"] = dem.lidar_source.where(
-                numpy.logical_not(foreshore_mask & (dem.z.data > 0)),
+                ~(mask & (dem.z.data > 0)),
                 self.SOURCE_CLASSIFICATION["no data"],
             )
             dem["z"] = dem.z.where(
-                numpy.logical_not(foreshore_mask & (dem.z.data > 0)),
+                ~(mask & (dem.z.data > 0)),
                 0,
             )
 
@@ -1682,54 +1682,56 @@ class RawDem(LidarBase):
             "Consider adding coarse DEMs to fill areas outside the " "LiDAR extents"
         )
 
-        # Determine the areas without LiDAR meeting the area threshold size
-        # Generate a polygon of where there is LiDAR
-        data_extents = self._extents_from_mask(
-            mask=self._dem.z.notnull().data,
-            transform=self._dem.z.rio.transform(),
-        )
-        data_extents = data_extents.buffer(
-            buffer_cells * self.catchment_geometry.resolution
-        )
         # Clip to within the full DEM extents
         full_extents = geopandas.GeoDataFrame(
             geometry=self.catchment_geometry.land_and_foreshore.buffer(
                 self.catchment_geometry.resolution / numpy.sqrt(2)
             )
         )
-        data_extents = geopandas.GeoDataFrame(
-            geometry=data_extents.clip(full_extents, keep_geom_type=True)
-        )
-        no_data_extents = full_extents.overlay(data_extents, how="difference")
-        # Keep areas without LiDAR data above the area threshold
-        no_data_extents = no_data_extents.explode(index_parts=False)
-        no_data_extents = no_data_extents[no_data_extents.area > area_threshold]
-
-        # Define the coarse DEM extents - total, land and foreshore
-        extents = {
-            "total": no_data_extents,
-            "land": self.catchment_geometry.full_land,
-            "foreshore": self.catchment_geometry.foreshore,
-        }
-
-        # Check if enough without LiDAR to use coarse DEMs
-        if len(no_data_extents) == 0:
-            logging.INFO(
-                f"Not on land areas greater than {area_threshold} "
-                "without LiDAR values. Ignoring all coarse DEMs."
-            )
-            return False
 
         # Iterate through DEMs
         coarse_dem_added = False
         logging.info(f"Incorporating coarse DEMs: {coarse_dem_paths}")
         for coarse_dem_path in coarse_dem_paths:
+            
+            # Determine the areas without LiDAR meeting the area threshold size
+            # Generate a polygon of where there is LiDAR - recalculate after each
+            data_extents = self._extents_from_mask(
+                mask=self._dem.z.notnull().values,
+                transform=self._dem.z.rio.transform(),
+            )
+            data_extents = data_extents.buffer(
+                buffer_cells * self.catchment_geometry.resolution
+            )
+            data_extents = geopandas.GeoDataFrame(
+                geometry=data_extents.clip(full_extents, keep_geom_type=True)
+            )
+            no_data_extents = full_extents.overlay(data_extents, how="difference")
+            # Keep areas without LiDAR data above the area threshold
+            no_data_extents = no_data_extents.explode(index_parts=False)
+            no_data_extents = no_data_extents[no_data_extents.area > area_threshold]
+
+            # Check if enough without LiDAR to use coarse DEMs
+            if len(no_data_extents) == 0:
+                logging.INFO(
+                    f"Not on land areas greater than {area_threshold} "
+                    "without LiDAR values. Ignoring all remaining coarse DEMs."
+                )
+                return False
+        
             logging.info(f"\tLoad coarse DEM: {coarse_dem_path}")
+            # Define the coarse DEM extents - total, land and foreshore
+            extents = {
+                "total": no_data_extents,
+                "land": self.catchment_geometry.full_land,
+                "foreshore": self.catchment_geometry.foreshore,
+            }
             coarse_dem = CoarseDem(
                 dem_file=coarse_dem_path,
                 extents=extents,  # by reference, so "total" trimmed to coarse DEM bounds
                 set_foreshore=self.drop_offshore_lidar,
             )
+
             # Add the coarse DEM data where there's no LiDAR updating the extents
             if not coarse_dem.empty:
                 logging.info(f"\t\tAdd data from coarse DEM: {coarse_dem_path.name}")
@@ -1740,8 +1742,9 @@ class RawDem(LidarBase):
                 mask = (
                     z.rio.clip(coarse_dem.extents["total"].geometry.values, drop=False)
                     .notnull()
-                    .data
+                    .values
                 )
+
                 if chunk_size is None:
                     self.add_coarse_dem_no_chunking(
                         coarse_dem=coarse_dem,
