@@ -1804,7 +1804,7 @@ class RawDem(LidarBase):
         self._dem.z.data[mask] = z_flat
         # Update the data source layer
         self._dem["data_source"] = self._dem.data_source.where(
-            mask & self._dem.z.notnull().values,
+            ~(mask & self._dem.z.notnull().values),
             self.SOURCE_CLASSIFICATION["coarse DEM"],
         )
 
@@ -1887,7 +1887,7 @@ class RawDem(LidarBase):
         self._dem["z"] = self._dem.z.where(mask, elevations)
         # Update the data source layer
         self._dem["data_source"] = self._dem.data_source.where(
-            mask & self._dem.z.notnull().values,
+            ~(mask & self._dem.z.notnull().values),
             self.SOURCE_CLASSIFICATION["coarse DEM"],
         )
 
