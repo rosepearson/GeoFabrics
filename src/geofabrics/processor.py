@@ -918,10 +918,12 @@ class RawLidarDemGenerator(BaseProcessor):
                 )
             except Exception as caught_exception:
                 pathlib.Path(self.get_instruction_path("raw_dem")).unlink()
-                logging.info(f"Caught error {caught_exception} and deleting"
-                             "partially created netCDF output "
-                             f"{self.get_instruction_path('raw_dem')}"
-                             " before re-raising error.")
+                logging.info(
+                    f"Caught error {caught_exception} and deleting"
+                    "partially created netCDF output "
+                    f"{self.get_instruction_path('raw_dem')}"
+                    " before re-raising error."
+                )
                 raise caught_exception
 
         if self.debug:
@@ -1186,10 +1188,12 @@ class RoughnessLengthGenerator(BaseProcessor):
                 )
             except Exception as caught_exception:
                 pathlib.Path(self.get_instruction_path("result_geofabric")).unlink()
-                logging.info(f"Caught error {caught_exception} and deleting"
-                             "partially created netCDF output "
-                             f"{self.get_instruction_path('result_geofabric')}"
-                             " before re-raising error.")
+                logging.info(
+                    f"Caught error {caught_exception} and deleting"
+                    "partially created netCDF output "
+                    f"{self.get_instruction_path('result_geofabric')}"
+                    " before re-raising error."
+                )
                 raise caught_exception
         if self.debug:
             # Record the parameter used during execution - append to existing
