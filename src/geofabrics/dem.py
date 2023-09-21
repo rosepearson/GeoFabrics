@@ -1712,7 +1712,7 @@ class RawDem(LidarBase):
             # Check if enough without LiDAR to use coarse DEMs
             if len(no_data_extents) == 0:
                 logging.INFO(
-                    f"Not on land areas greater than {area_threshold} "
+                    f"No land areas greater than {area_threshold} "
                     "without LiDAR values. Ignoring all remaining coarse DEMs."
                 )
                 return False
@@ -1884,7 +1884,7 @@ class RawDem(LidarBase):
 
         # Combine chunks into a array and replace missing values in dataset
         elevations = dask.array.block(delayed_chunked_matrix)
-        self._dem["z"] = self._dem.z.where(mask, elevations)
+        self._dem["z"] = self._dem.z.where(~mask, elevations)
         # Update the data source layer
         self._dem["data_source"] = self._dem.data_source.where(
             ~(mask & self._dem.z.notnull().values),
