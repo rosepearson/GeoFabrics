@@ -1689,7 +1689,6 @@ class RawDem(LidarBase):
         )
 
         # Iterate through DEMs
-        coarse_dem_added = False
         logging.info(f"Incorporating coarse DEMs: {coarse_dem_paths}")
         for coarse_dem_path in coarse_dem_paths:
             # Determine the areas without LiDAR meeting the area threshold size
@@ -1756,18 +1755,6 @@ class RawDem(LidarBase):
                         mask=mask,
                         radius=coarse_dem.resolution * numpy.sqrt(2),
                     )
-                coarse_dem_added = True
-        # If coarse DEM data added update the data_source layer
-        if coarse_dem_added:
-            # Use a mask of the area without LiDAR data where there is now data
-            z = self._dem.z.copy(deep=True)
-            z.data[:] = 0
-            mask = z.rio.clip(no_data_extents.geometry, drop=False).notnull().data
-            self._dem["data_source"] = self._dem.data_source.where(
-                numpy.logical_not(mask & self._dem.z.notnull().data),
-                self.SOURCE_CLASSIFICATION["coarse DEM"],
-            )
-        return coarse_dem_added
 
     def add_coarse_dem_no_chunking(
         self,
@@ -1814,6 +1801,11 @@ class RawDem(LidarBase):
         )
         # Update the DEM
         self._dem.z.data[mask] = z_flat
+        # Update the data source layer
+        self._dem["data_source"] = self._dem.data_source.where(
+            mask & self._dem.z.notnull().values,
+            self.SOURCE_CLASSIFICATION["coarse DEM"],
+        )
 
     def add_coarse_dem_chunked(
         self,
@@ -1891,11 +1883,11 @@ class RawDem(LidarBase):
 
         # Combine chunks into a array and replace missing values in dataset
         elevations = dask.array.block(delayed_chunked_matrix)
-        self._dem["z"] = xarray.where(
-            numpy.logical_not(mask),
-            self._dem.z,
-            elevations,
-            keep_attrs=True,
+        self._dem["z"] = self._dem.z.where(mask, elevations)
+        # Update the data source layer
+        self._dem["data_source"] = self._dem.data_source.where(
+            mask & self._dem.z.notnull().values,
+            self.SOURCE_CLASSIFICATION["coarse DEM"],
         )
 
 
