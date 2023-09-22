@@ -973,35 +973,35 @@ class RiverMouthFan:
             mouth_tangent=mouth_tangent,
             mouth_normal=mouth_normal,
         )
+        
+        # Define fan centre line
+        fan_centre = shapely.geometry.LineString( 
+            [ mouth_point,  
+              [ mouth_point.x + self.FAN_MAX_LENGTH * mouth_tangent.x, 
+                mouth_point.y + self.FAN_MAX_LENGTH * mouth_tangent.y,  ],
+            ] )
 
-        # Load in ocean depth contours
+        # Load in ocean depth contours and keep only those intersecting the fan centre
         ocean_contours = self._get_ocean_contours(max(river_mouth_elevations))
+        end_depth = ocean_contours[self.ocean_contour_depth_label].min()
+        ocean_contours = ocean_contours.explode(ignore_index=True)
+        ocean_contours = ocean_contours[~ocean_contours.intersection(fan_centre).is_empty]
 
-        # Clip to fan
-        ocean_contours = ocean_contours.clip(fan_polygon)
+        breakpoint()
+        # Keep the closest contour intersecting
+        if len(ocean_contours) > 0:
+            ocean_contours = ocean_contours.clip(fan_polygon).explode(ignore_index=True)
+            min_index = ocean_contours.distance(mouth_point).idxmin()
+            intersection_line = ocean_contours.loc[min_index].geometry
+            end_depth = ocean_contours.loc[min_index][self.ocean_contour_depth_label]
+            distance = ocean_contours.distance(mouth_point).min()
+        else:
+            logging.warning("No ocean contour intersected. Instaed assumed fan geoemtry")
+            intersection_line = shapely.geometry.linestring([[fan_polygon.exterior.xy[0][2], fan_polygon.exterior.xy[1][2]],
+                                                            [fan_polygon.exterior.xy[0][3], fan_polygon.exterior.xy[1][3]]])
+            distance = self.FAN_MAX_LENGTH
+        
 
-        # Cycle through contours finding the nearest contour to intersect with the fan
-        distance = numpy.inf
-        intersection_line = shapely.geometry.Point()
-        end_depth = numpy.nan
-        # Cycle through and get the section of line intersecting with the line
-        for i, row in ocean_contours.explode().iterrows():
-            if row.geometry.intersects(fan_polygon):
-                intersection_line_i = row.geometry.intersection(fan_polygon)
-                if intersection_line_i.distance(mouth_point) < distance:
-                    distance = intersection_line_i.distance(mouth_point)
-                    intersection_line = intersection_line_i
-                    end_depth = row[self.ocean_contour_depth_label]
-        assert distance < numpy.inf, (
-            "There must be at least one ocean "
-            "contour within the max length fan polygon."
-        )
-        # Check for MultiLineString and take only the closest - TODO see if can remove
-        if intersection_line.type == "MultiLineString":
-            lines = geopandas.GeoSeries(intersection_line, crs=2193).explode(
-                ignore_index=True
-            )
-            intersection_line = lines[lines.distance(mouth_point) == distance].iloc[0]
         # Construct a fan ending at the contour
         (x, y) = intersection_line.xy
         polygon_points = [[xi, yi] for (xi, yi) in zip(x, y)]
