@@ -1,70 +1,46 @@
-{"measured": 
-	{
-		"output": {
-			"crs": { "horizontal": 2193, "vertical": 7839 } },
+{	"default": {
+		"output": { "grid_params": { "resolution": 8 }, "crs": { "horizontal": 2193, "vertical": 7839 } },
+		"processing": { "chunk_size": 300, "number_of_cores": 20, "memory_limit": "20GiB" },
+		"datasets": { "lidar": { "open_topography": { "NZ20_Westport": true } },
+					  "vector": { "linz": { "key": "INSERT_LINZ_KEY" } } },
+		"data_paths": { "local_cache": "results" } },
+	"measured": {
 		"data_paths": {
-			"local_cache": "results",
 			"subfolder": "geofabrics/measured",
 			"measured_sections": "../../../surveyed_cross_sections.geojson",
 			"riverbanks": "../../../riverbanks.geojson"
 		},
 		"datasets": {
-			"vector": { "linz": {
-					"key": "INSERT_LINZ_KEY",
-					"bathymetry_contours": { "layers": [50849] } } } },
+			"vector": { "linz": { "bathymetry_contours": { "layers": [50849] } } } },
 		"measured": {
 			"cross_section_spacing": 10,
 			"samples_per_section": 10,
 			"estimate_fan": true
 		},
-		"general": {
-			"bathymetry_contours_z_label": "valdco"}
-	},
-	"dem": 
-	{
-		"output": {
-			"grid_params": { "resolution": 8 }, "crs": { "horizontal": 2193, "vertical": 7839 } },
-		"processing": {
-			"chunk_size": 300, "number_of_cores": 20, "memory_limit": "20GiB" },
+		"general": { "z_labels": {"ocean": "valdco"} } },
+	"dem": {
 		"data_paths": {
-			"local_cache": "results",
 			"subfolder": "geofabrics",
-			"catchment_boundary": "../../catchment.geojson",
-			"river_polygons": ["measured/river_polygon.geojson", "measured/fan_polygon.geojson"],
-			"river_bathymetry": ["measured/river_elevations.geojson", "measured/fan_bathymetry.geojson"],
+			"extents": "../../catchment.geojson",
+			"rivers": [{"extents": "measured/river_polygon.geojson", "elevations": "measured/river_elevations.geojson"}],
 			"raw_dem": "raw_dem_8m.nc", "result_dem": "dem_8m_interpolated_river.nc"
 		},
 		"datasets": {
-			"lidar": { "open_topography": { "NZ20_Westport": true } },
 			"vector": { "linz": {
-					"key": "INSERT_LINZ_KEY",
 					"land": { "layers": [51153] },
 					"bathymetry_contours": { "layers": [50849] } } },
 			"raster": { "linz": {
 					"key": "INSERT_LINZ_KEY",
 					"coarse_dems": { "layers": [51768] } } } },
 		"general": {
-			"interpolation_method": "linear", "drop_offshore_lidar": true,
-			"bathymetry_contours_z_label": "valdco", "lidar_classifications_to_keep": [2, 9],
-			"bathymetry_points_type": ["rivers", "fans"],
-			"bathymetry_points_z_label": ["z", "z"] } },
-	"roughness":
-	{
-		"output": {
-			"grid_params": { "resolution": 8 }, "crs": { "horizontal": 2193, "vertical": 7839 } },
-		"processing": {
-			"chunk_size": 300, "number_of_cores": 20, "memory_limit": "20GiB" },
+			"interpolation": {"no_data": "linear"}, "drop_offshore_lidar": true,
+			"z_labels": {"ocean": "valdco", "rivers": "z"}, "lidar_classifications_to_keep": [2, 9]} },
+	"roughness": {
 		"data_paths": {
-			"local_cache": "results",
 			"subfolder": "geofabrics",
-			"catchment_boundary": "../../catchment.geojson",
+			"extents": "../../catchment.geojson",
 			"result_dem": "dem_8m_interpolated_river.nc", "result_geofabric": "geofabric_8m_interpolated_river.nc"
 		},
 		"datasets": {
-			"lidar": { "open_topography": { "NZ20_Westport": true } },
-			"vector": { "linz": {
-					"key": "INSERT_LINZ_KEY",
-					"land": { "layers": [51153] } } } },
-		"general": { "interpolation_method": "linear", "lidar_classifications_to_keep": [1, 2, 3, 4, 5, 9] }
-	}
-}
+			"vector": { "linz": { "land": { "layers": [51153] } } } },
+		"general": { "interpolation": {"no_data": "linear"}, "lidar_classifications_to_keep": [1, 2, 3, 4, 5, 9] } } }

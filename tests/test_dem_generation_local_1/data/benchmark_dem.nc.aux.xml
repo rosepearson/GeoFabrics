@@ -1,0 +1,38 @@
+<PAMDataset>
+  <Subdataset name="data_source">
+    <PAMDataset>
+      <PAMRasterBand band="1">
+        <Metadata>
+          <MDI key="STATISTICS_MAXIMUM">5</MDI>
+          <MDI key="STATISTICS_MEAN">2.8845454545455</MDI>
+          <MDI key="STATISTICS_MINIMUM">0</MDI>
+          <MDI key="STATISTICS_STDDEV">1.9300660860237</MDI>
+        </Metadata>
+      </PAMRasterBand>
+    </PAMDataset>
+  </Subdataset>
+  <Subdataset name="lidar_source">
+    <PAMDataset>
+      <PAMRasterBand band="1">
+        <Metadata>
+          <MDI key="STATISTICS_MAXIMUM">1</MDI>
+          <MDI key="STATISTICS_MEAN">-0.47454545454546</MDI>
+          <MDI key="STATISTICS_MINIMUM">-1</MDI>
+          <MDI key="STATISTICS_STDDEV">0.8802309989828</MDI>
+        </Metadata>
+      </PAMRasterBand>
+    </PAMDataset>
+  </Subdataset>
+  <Subdataset name="z">
+    <PAMDataset>
+      <PAMRasterBand band="1">
+        <Metadata>
+          <MDI key="STATISTICS_MAXIMUM">73.636367797852</MDI>
+          <MDI key="STATISTICS_MEAN">12.417423004901</MDI>
+          <MDI key="STATISTICS_MINIMUM">-24</MDI>
+          <MDI key="STATISTICS_STDDEV">20.283105584923</MDI>
+        </Metadata>
+      </PAMRasterBand>
+    </PAMDataset>
+  </Subdataset>
+</PAMDataset>
