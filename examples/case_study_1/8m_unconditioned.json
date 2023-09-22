@@ -11,7 +11,7 @@
 			"extents": "../../catchment.geojson",
 			"raw_dem": "raw_dem_8m.nc", "result_dem": "dem_8m_unconditioned.nc" },
 		"datasets": {
-			"vector": { "linz": { "bathymetry_contours": { "layers": [50849] } } },
+			"vector": { "linz": { "ocean_contours": { "layers": [50849] } } },
 			"raster": { "linz": {
 					"key": "INSERT_LINZ_KEY",
 					"coarse_dems": { "layers": [51768] } } } },

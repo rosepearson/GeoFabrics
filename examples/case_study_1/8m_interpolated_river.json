@@ -11,7 +11,7 @@
 			"riverbanks": "../../../riverbanks.geojson"
 		},
 		"datasets": {
-			"vector": { "linz": { "bathymetry_contours": { "layers": [50849] } } } },
+			"vector": { "linz": { "ocean_contours": { "layers": [50849] } } } },
 		"measured": {
 			"cross_section_spacing": 10,
 			"samples_per_section": 10,
@@ -28,7 +28,7 @@
 		"datasets": {
 			"vector": { "linz": {
 					"land": { "layers": [51153] },
-					"bathymetry_contours": { "layers": [50849] } } },
+					"ocean_contours": { "layers": [50849] } } },
 			"raster": { "linz": {
 					"key": "INSERT_LINZ_KEY",
 					"coarse_dems": { "layers": [51768] } } } },

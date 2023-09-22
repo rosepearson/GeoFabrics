@@ -10,7 +10,7 @@
 		"data_paths": {
 			"subfolder": "geofabrics/river",
 			"land": "river_catchment_6308000000.geojson" },
-		"datasets": { "vector": { "linz": { "bathymetry_contours": { "layers": [50849] } } } },
+		"datasets": { "vector": { "linz": { "ocean_contours": { "layers": [50849] } } } },
 		"general": {
 			"interpolation": {"no_data": "null"}, "drop_offshore_lidar": true,
 			"z_labels": {"ocean": "valdco"}, "lidar_classifications_to_keep": [2, 9] },
@@ -41,7 +41,7 @@
 		"datasets": {
 			"vector": { "linz": {
 					"land": { "layers": [51153] },
-					"bathymetry_contours": { "layers": [50849] } } },
+					"ocean_contours": { "layers": [50849] } } },
 			"raster": { "linz": {
 					"key": "INSERT_LINZ_KEY",
 					"coarse_dems": { "layers": [51768] } } } },
