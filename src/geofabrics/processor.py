@@ -916,7 +916,7 @@ class RawLidarDemGenerator(BaseProcessor):
                     format="NETCDF4",
                     engine="netcdf4",
                 )
-            except Exception as caught_exception:
+            except (Exception, KeyboardInterrupt) as caught_exception:
                 pathlib.Path(self.get_instruction_path("raw_dem")).unlink()
                 logging.info(
                     f"Caught error {caught_exception} and deleting"
@@ -1186,7 +1186,7 @@ class RoughnessLengthGenerator(BaseProcessor):
                     format="NETCDF4",
                     engine="netcdf4",
                 )
-            except Exception as caught_exception:
+            except (Exception, KeyboardInterrupt) as caught_exception:
                 pathlib.Path(self.get_instruction_path("result_geofabric")).unlink()
                 logging.info(
                     f"Caught error {caught_exception} and deleting"
