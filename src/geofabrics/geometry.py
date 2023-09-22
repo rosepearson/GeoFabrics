@@ -987,7 +987,6 @@ class RiverMouthFan:
         ocean_contours = ocean_contours.explode(ignore_index=True)
         ocean_contours = ocean_contours[~ocean_contours.intersection(fan_centre).is_empty]
 
-        breakpoint()
         # Keep the closest contour intersecting
         if len(ocean_contours) > 0:
             ocean_contours = ocean_contours.clip(fan_polygon).explode(ignore_index=True)
