@@ -128,7 +128,10 @@ class CoarseDem:
             # Try clip - catch if no DEM in clipping bounds
             try:
                 self._dem = self._dem.rio.clip(
-                    self._extents["total"].geometry.values, drop=True, from_disk=True
+                    self._extents["total"].buffer(
+                        self.resolution * numpy.sqrt(2)).geometry.values,
+                        drop=True,
+                        from_disk=True
                 )
                 self._dem.load()
 
@@ -1683,11 +1686,7 @@ class RawDem(LidarBase):
         )
 
         # Clip to within the full DEM extents
-        full_extents = geopandas.GeoDataFrame(
-            geometry=self.catchment_geometry.land_and_foreshore.buffer(
-                self.catchment_geometry.resolution / numpy.sqrt(2)
-            )
-        )
+        full_extents = self.catchment_geometry.land_and_foreshore
 
         # Iterate through DEMs
         logging.info(f"Incorporating coarse DEMs: {coarse_dem_paths}")
