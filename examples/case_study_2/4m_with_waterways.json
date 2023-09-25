@@ -12,9 +12,7 @@
 		"data_paths": {
 			"subfolder": "geofabrics/river",
 			"land": "river_catchment_100000000.geojson" },
-		"datasets": {
-			"lidar": { "open_topography": { "Wellington_2013": { "crs": { "horizontal": 2193, "vertical": 7839 } } } },
-			"vector": { "linz": { "ocean_contours": { "layers": [50448] } } } },
+		"datasets": { "vector": { "linz": { "ocean_contours": { "layers": [50448] } } } },
 		"general": {
 			"interpolation": {"no_data": "null"}, "drop_offshore_lidar": true,
 			"z_labels": {"ocean": "valdco"}, "lidar_classifications_to_keep": [2, 9] },
@@ -67,7 +65,6 @@
 			"extents": "../../catchment.geojson",
 			"result_dem": "dem_4m_with_waterways.nc", "result_geofabric": "geofabric_4m_with_waterways.nc" },
 		"datasets": {
-			"lidar": { "open_topography": { "Wellington_2013": { "crs": { "horizontal": 2193, "vertical": 7839 } } } },
 			"vector": { "linz": {
 				"land": { "layers": [51559] },
 				"bathymetry_contours": { "layers": [50448] } } } },
