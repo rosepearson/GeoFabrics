@@ -40,6 +40,7 @@ Functions
    geofabrics.dem.load_tiles_in_chunk
    geofabrics.dem.roughness_over_chunk
    geofabrics.dem.elevation_over_chunk
+   geofabrics.dem.chunk_coarse_dem
 
 
 
@@ -48,11 +49,12 @@ Attributes
 
 .. autoapisummary::
 
+   geofabrics.dem.delayed_chunk_coarse_dem
    geofabrics.dem.delayed_roughness_over_chunk
    geofabrics.dem.delayed_elevation_over_chunk
 
 
-.. py:class:: CoarseDem(dem_file, catchment_geometry, set_foreshore = True, extent = None)
+.. py:class:: CoarseDem(dem_file, extents, set_foreshore = True)
 
 
    A class to manage coarse or background DEMs in the catchment context
@@ -94,10 +96,9 @@ Attributes
       Ensure the memory associated with netCDF files is properly freed.
 
 
-   .. py:method:: chunk_points(chunk)
+   .. py:method:: calculate_dem_bounds(dem)
 
-      The coarse DEM points after any extent or foreshore value
-      filtering.
+      Return the bounds for a DEM.
 
 
 
@@ -153,27 +154,22 @@ Attributes
       Ensure the memory associated with netCDF files is properly freed.
 
 
-   .. py:method:: combine_dem_parts()
-
-      Return the combined DEM from all layers that exist.
-
-
-   .. py:method:: interpolate_bathymetry_points(bathymetry_points, flat_x_array, flat_y_array, method)
-
-      Interpolate the bathymetry points at the specified locations using the
-      specified method.
-
-
    .. py:method:: interpolate_ocean_bathymetry(bathy_contours)
 
       Performs interpolation offshore outside LiDAR extents using the SciPy RBF
       function.
 
 
-   .. py:method:: interpolate_waterbed_elevations(estimated_bathymetry)
+   .. py:method:: interpolate_waterways(estimated_bathymetry, method)
 
-      Performs interpolation over drains, culverts, rivers and river fan
-      polygons using various interpolation techniques.
+      Performs interpolation of the estimated waterways.
+
+
+   .. py:method:: interpolate_rivers(estimated_bathymetry, method)
+
+      Performs interpolation from estimated bathymetry points within a polygon
+      using the specified interpolation approach after filtering the points based
+      on the type label. The type_label also determines the source classification.
 
 
 
@@ -255,22 +251,22 @@ Attributes
                                                                                   boundary.
 
 
-   .. py:method:: add_coarse_dem_no_chunking(coarse_dem, region_to_rasterise, mask)
+   .. py:method:: add_coarse_dem_no_chunking(coarse_dem, mask)
 
       Fill gaps in dense DEM from areas with no LiDAR with the coarse DEM.
       Perform linear interpolation.
 
       :param coarse_dem - The coarse DEM to use for rasterising:
-      :param region_to_rasterise - the area to rasterise using the coarse DEM:
+      :param mask - the pixel mask of where to set these values:
 
 
-   .. py:method:: add_coarse_dem_chunked(coarse_dem, region_to_rasterise, chunk_size, mask)
+   .. py:method:: add_coarse_dem_chunked(coarse_dem_path, extents, chunk_size, mask, radius)
 
       Fill gaps in dense DEM from areas with no LiDAR with the coarse DEM.
       Perform linear interpolation.
 
       :param coarse_dem - The coarse DEM to use for rasterising:
-      :param region_to_rasterise - the area to rasterise using the coarse DEM:
+      :param extents - a dictionary of  area to rasterise using the coarse DEM:
       :param chunk_size - the size of each chunk:
 
 
@@ -357,6 +353,16 @@ Attributes
 
    Rasterise all points within a chunk.
 
+
+.. py:function:: chunk_coarse_dem(dem_file, extents, set_foreshore)
+
+   Load in a coarse DEM and trim to points within bbox and return the
+   points.
+
+
+.. py:data:: delayed_chunk_coarse_dem
+
+   Wrap the `roughness_over_chunk` routine in dask.delayed
 
 .. py:data:: delayed_roughness_over_chunk
 

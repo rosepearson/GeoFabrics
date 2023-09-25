@@ -216,14 +216,17 @@ added to the instructions.</p>
 
 <dl class="py method">
 <dt class="sig sig-object py" id="geofabrics.processor.BaseProcessor.get_instruction_general">
-<span class="sig-name descname"><span class="pre">get_instruction_general</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">key</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#geofabrics.processor.BaseProcessor.get_instruction_general" title="Link to this definition"></a></dt>
+<span class="sig-name descname"><span class="pre">get_instruction_general</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">key</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">subkey</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#geofabrics.processor.BaseProcessor.get_instruction_general" title="Link to this definition"></a></dt>
 <dd><p>Return the general instruction from the instruction file or return
 the default value if not specified in the instruction file. Raise an
 error if the key is not in the instructions and there is no default
 value. If the default is used it is added to the instructions.</p>
 <dl class="field-list simple">
 <dt class="field-odd">Parameters<span class="colon">:</span></dt>
-<dd class="field-odd"><p><strong>key</strong> (<em>str</em>) – </p>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>key</strong> (<em>str</em>) – </p></li>
+<li><p><strong>subkey</strong> (<em>str</em>) – </p></li>
+</ul>
 </dd>
 </dl>
 </dd></dl>
@@ -263,7 +266,7 @@ key = dataservice (i.e. local, opentogaphy, linxz, lris)</p>
 <dl class="py method">
 <dt class="sig sig-object py" id="geofabrics.processor.BaseProcessor.check_vector_or_raster">
 <span class="sig-name descname"><span class="pre">check_vector_or_raster</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">key</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">api_type</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#geofabrics.processor.BaseProcessor.check_vector_or_raster" title="Link to this definition"></a></dt>
-<dd><p>Check to see if vector or raster key (i.e. land, bathymetry_contours, etc) is
+<dd><p>Check to see if vector or raster key (i.e. land, ocean_contours, etc) is
 included either as a file path, or within any of API’s (i.e. LINZ or LRIS).</p>
 <dl class="field-list simple">
 <dt class="field-odd">Parameters<span class="colon">:</span></dt>

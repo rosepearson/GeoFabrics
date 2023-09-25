@@ -148,6 +148,9 @@ DEMs.</p>
 <tr class="row-even"><td><p><a class="reference internal" href="#geofabrics.dem.elevation_over_chunk" title="geofabrics.dem.elevation_over_chunk"><code class="xref py py-obj docutils literal notranslate"><span class="pre">elevation_over_chunk</span></code></a>(dim_x, dim_y, tile_points, options)</p></td>
 <td><p>Rasterise all points within a chunk.</p></td>
 </tr>
+<tr class="row-odd"><td><p><a class="reference internal" href="#geofabrics.dem.chunk_coarse_dem" title="geofabrics.dem.chunk_coarse_dem"><code class="xref py py-obj docutils literal notranslate"><span class="pre">chunk_coarse_dem</span></code></a>(dem_file, extents, set_foreshore)</p></td>
+<td><p>Load in a coarse DEM and trim to points within bbox and return the</p></td>
+</tr>
 </tbody>
 </table>
 </section>
@@ -155,17 +158,20 @@ DEMs.</p>
 <h3>Attributes<a class="headerlink" href="#attributes" title="Link to this heading"></a></h3>
 <table class="autosummary longtable docutils align-default">
 <tbody>
-<tr class="row-odd"><td><p><a class="reference internal" href="#geofabrics.dem.delayed_roughness_over_chunk" title="geofabrics.dem.delayed_roughness_over_chunk"><code class="xref py py-obj docutils literal notranslate"><span class="pre">delayed_roughness_over_chunk</span></code></a></p></td>
+<tr class="row-odd"><td><p><a class="reference internal" href="#geofabrics.dem.delayed_chunk_coarse_dem" title="geofabrics.dem.delayed_chunk_coarse_dem"><code class="xref py py-obj docutils literal notranslate"><span class="pre">delayed_chunk_coarse_dem</span></code></a></p></td>
+<td><p>Wrap the <cite>roughness_over_chunk</cite> routine in dask.delayed</p></td>
+</tr>
+<tr class="row-even"><td><p><a class="reference internal" href="#geofabrics.dem.delayed_roughness_over_chunk" title="geofabrics.dem.delayed_roughness_over_chunk"><code class="xref py py-obj docutils literal notranslate"><span class="pre">delayed_roughness_over_chunk</span></code></a></p></td>
 <td><p>Wrap the <cite>rasterise_chunk</cite> routine in dask.delayed</p></td>
 </tr>
-<tr class="row-even"><td><p><a class="reference internal" href="#geofabrics.dem.delayed_elevation_over_chunk" title="geofabrics.dem.delayed_elevation_over_chunk"><code class="xref py py-obj docutils literal notranslate"><span class="pre">delayed_elevation_over_chunk</span></code></a></p></td>
+<tr class="row-odd"><td><p><a class="reference internal" href="#geofabrics.dem.delayed_elevation_over_chunk" title="geofabrics.dem.delayed_elevation_over_chunk"><code class="xref py py-obj docutils literal notranslate"><span class="pre">delayed_elevation_over_chunk</span></code></a></p></td>
 <td><p>Wrap the <cite>load_tiles_in_chunk</cite> routine in dask.delayed</p></td>
 </tr>
 </tbody>
 </table>
 <dl class="py class">
 <dt class="sig sig-object py" id="geofabrics.dem.CoarseDem">
-<em class="property"><span class="pre">class</span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">geofabrics.dem.</span></span><span class="sig-name descname"><span class="pre">CoarseDem</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">dem_file</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">catchment_geometry</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">set_foreshore</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">True</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">extent</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#geofabrics.dem.CoarseDem" title="Link to this definition"></a></dt>
+<em class="property"><span class="pre">class</span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">geofabrics.dem.</span></span><span class="sig-name descname"><span class="pre">CoarseDem</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">dem_file</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">extents</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">set_foreshore</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">True</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#geofabrics.dem.CoarseDem" title="Link to this definition"></a></dt>
 <dd><p>A class to manage coarse or background DEMs in the catchment context</p>
 <p>Specifically, clip within the catchment land and foreshore. There is the option to
 clip outside any LiDAR using the
@@ -174,9 +180,8 @@ optional ‘exclusion_extent’ input.</p>
 <dl class="field-list simple">
 <dt class="field-odd">Parameters<span class="colon">:</span></dt>
 <dd class="field-odd"><ul class="simple">
-<li><p><strong>catchment_geometry</strong> (<a class="reference internal" href="../geometry/index.html#geofabrics.geometry.CatchmentGeometry" title="geofabrics.geometry.CatchmentGeometry"><em>geofabrics.geometry.CatchmentGeometry</em></a>) – </p></li>
+<li><p><strong>extents</strong> (<em>dict</em>) – </p></li>
 <li><p><strong>set_foreshore</strong> (<em>bool</em>) – </p></li>
-<li><p><strong>extent</strong> (<em>geopandas.GeoDataFrame</em>) – </p></li>
 </ul>
 </dd>
 </dl>
@@ -243,18 +248,9 @@ filtering.</p>
 </dd></dl>
 
 <dl class="py method">
-<dt class="sig sig-object py" id="geofabrics.dem.CoarseDem.chunk_points">
-<span class="sig-name descname"><span class="pre">chunk_points</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">chunk</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#geofabrics.dem.CoarseDem.chunk_points" title="Link to this definition"></a></dt>
-<dd><p>The coarse DEM points after any extent or foreshore value
-filtering.</p>
-<dl class="field-list simple">
-<dt class="field-odd">Parameters<span class="colon">:</span></dt>
-<dd class="field-odd"><p><strong>chunk</strong> (<em>geopandas.GeoDataFrame</em>) – </p>
-</dd>
-<dt class="field-even">Return type<span class="colon">:</span></dt>
-<dd class="field-even"><p>numpy.ndarray</p>
-</dd>
-</dl>
+<dt class="sig sig-object py" id="geofabrics.dem.CoarseDem.calculate_dem_bounds">
+<span class="sig-name descname"><span class="pre">calculate_dem_bounds</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">dem</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#geofabrics.dem.CoarseDem.calculate_dem_bounds" title="Link to this definition"></a></dt>
+<dd><p>Return the bounds for a DEM.</p>
 </dd></dl>
 
 </dd></dl>
@@ -332,32 +328,6 @@ to have an offshore DEM associated with it.</p>
 </dd></dl>
 
 <dl class="py method">
-<dt class="sig sig-object py" id="geofabrics.dem.HydrologicallyConditionedDem.combine_dem_parts">
-<span class="sig-name descname"><span class="pre">combine_dem_parts</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="headerlink" href="#geofabrics.dem.HydrologicallyConditionedDem.combine_dem_parts" title="Link to this definition"></a></dt>
-<dd><p>Return the combined DEM from all layers that exist.</p>
-</dd></dl>
-
-<dl class="py method">
-<dt class="sig sig-object py" id="geofabrics.dem.HydrologicallyConditionedDem.interpolate_bathymetry_points">
-<span class="sig-name descname"><span class="pre">interpolate_bathymetry_points</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">bathymetry_points</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">flat_x_array</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">flat_y_array</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">method</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#geofabrics.dem.HydrologicallyConditionedDem.interpolate_bathymetry_points" title="Link to this definition"></a></dt>
-<dd><p>Interpolate the bathymetry points at the specified locations using the
-specified method.</p>
-<dl class="field-list simple">
-<dt class="field-odd">Parameters<span class="colon">:</span></dt>
-<dd class="field-odd"><ul class="simple">
-<li><p><strong>bathymetry_points</strong> (<em>numpy.ndarray</em>) – </p></li>
-<li><p><strong>flat_x_array</strong> (<em>numpy.ndarray</em>) – </p></li>
-<li><p><strong>flat_y_array</strong> (<em>numpy.ndarray</em>) – </p></li>
-<li><p><strong>method</strong> (<em>str</em>) – </p></li>
-</ul>
-</dd>
-<dt class="field-even">Return type<span class="colon">:</span></dt>
-<dd class="field-even"><p>numpy.ndarray</p>
-</dd>
-</dl>
-</dd></dl>
-
-<dl class="py method">
 <dt class="sig sig-object py" id="geofabrics.dem.HydrologicallyConditionedDem.interpolate_ocean_bathymetry">
 <span class="sig-name descname"><span class="pre">interpolate_ocean_bathymetry</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">bathy_contours</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#geofabrics.dem.HydrologicallyConditionedDem.interpolate_ocean_bathymetry" title="Link to this definition"></a></dt>
 <dd><p>Performs interpolation offshore outside LiDAR extents using the SciPy RBF
@@ -365,13 +335,37 @@ function.</p>
 </dd></dl>
 
 <dl class="py method">
-<dt class="sig sig-object py" id="geofabrics.dem.HydrologicallyConditionedDem.interpolate_waterbed_elevations">
-<span class="sig-name descname"><span class="pre">interpolate_waterbed_elevations</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">estimated_bathymetry</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#geofabrics.dem.HydrologicallyConditionedDem.interpolate_waterbed_elevations" title="Link to this definition"></a></dt>
-<dd><p>Performs interpolation over drains, culverts, rivers and river fan
-polygons using various interpolation techniques.</p>
+<dt class="sig sig-object py" id="geofabrics.dem.HydrologicallyConditionedDem.interpolate_waterways">
+<span class="sig-name descname"><span class="pre">interpolate_waterways</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">estimated_bathymetry</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">method</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#geofabrics.dem.HydrologicallyConditionedDem.interpolate_waterways" title="Link to this definition"></a></dt>
+<dd><p>Performs interpolation of the estimated waterways.</p>
 <dl class="field-list simple">
 <dt class="field-odd">Parameters<span class="colon">:</span></dt>
-<dd class="field-odd"><p><strong>estimated_bathymetry</strong> (<a class="reference internal" href="../geometry/index.html#geofabrics.geometry.EstimatedBathymetryPoints" title="geofabrics.geometry.EstimatedBathymetryPoints"><em>geofabrics.geometry.EstimatedBathymetryPoints</em></a>) – </p>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>estimated_bathymetry</strong> (<a class="reference internal" href="../geometry/index.html#geofabrics.geometry.EstimatedBathymetryPoints" title="geofabrics.geometry.EstimatedBathymetryPoints"><em>geofabrics.geometry.EstimatedBathymetryPoints</em></a>) – </p></li>
+<li><p><strong>method</strong> (<em>str</em>) – </p></li>
+</ul>
+</dd>
+<dt class="field-even">Return type<span class="colon">:</span></dt>
+<dd class="field-even"><p>xarray.Dataset</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="geofabrics.dem.HydrologicallyConditionedDem.interpolate_rivers">
+<span class="sig-name descname"><span class="pre">interpolate_rivers</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">estimated_bathymetry</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">method</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#geofabrics.dem.HydrologicallyConditionedDem.interpolate_rivers" title="Link to this definition"></a></dt>
+<dd><p>Performs interpolation from estimated bathymetry points within a polygon
+using the specified interpolation approach after filtering the points based
+on the type label. The type_label also determines the source classification.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>estimated_bathymetry</strong> (<a class="reference internal" href="../geometry/index.html#geofabrics.geometry.EstimatedBathymetryPoints" title="geofabrics.geometry.EstimatedBathymetryPoints"><em>geofabrics.geometry.EstimatedBathymetryPoints</em></a>) – </p></li>
+<li><p><strong>method</strong> (<em>str</em>) – </p></li>
+</ul>
+</dd>
+<dt class="field-even">Return type<span class="colon">:</span></dt>
+<dd class="field-even"><p>xarray.Dataset</p>
 </dd>
 </dl>
 </dd></dl>
@@ -491,16 +485,15 @@ boundary.</p></li>
 
 <dl class="py method">
 <dt class="sig sig-object py" id="geofabrics.dem.RawDem.add_coarse_dem_no_chunking">
-<span class="sig-name descname"><span class="pre">add_coarse_dem_no_chunking</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">coarse_dem</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">region_to_rasterise</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">mask</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#geofabrics.dem.RawDem.add_coarse_dem_no_chunking" title="Link to this definition"></a></dt>
+<span class="sig-name descname"><span class="pre">add_coarse_dem_no_chunking</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">coarse_dem</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">mask</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#geofabrics.dem.RawDem.add_coarse_dem_no_chunking" title="Link to this definition"></a></dt>
 <dd><p>Fill gaps in dense DEM from areas with no LiDAR with the coarse DEM.
 Perform linear interpolation.</p>
 <dl class="field-list simple">
 <dt class="field-odd">Parameters<span class="colon">:</span></dt>
 <dd class="field-odd"><ul class="simple">
 <li><p><strong>rasterising</strong> (<em>coarse_dem - The coarse DEM to use for</em>) – </p></li>
-<li><p><strong>DEM</strong> (<em>region_to_rasterise - the area to rasterise using the coarse</em>) – </p></li>
+<li><p><strong>values</strong> (<em>mask - the pixel mask</em><em> of </em><em>where to set these</em>) – </p></li>
 <li><p><strong>coarse_dem</strong> (<a class="reference internal" href="#geofabrics.dem.CoarseDem" title="geofabrics.dem.CoarseDem"><em>CoarseDem</em></a>) – </p></li>
-<li><p><strong>region_to_rasterise</strong> (<em>geopandas.GeoDataFrame</em>) – </p></li>
 <li><p><strong>mask</strong> (<em>numpy.ndarray</em>) – </p></li>
 </ul>
 </dd>
@@ -509,19 +502,20 @@ Perform linear interpolation.</p>
 
 <dl class="py method">
 <dt class="sig sig-object py" id="geofabrics.dem.RawDem.add_coarse_dem_chunked">
-<span class="sig-name descname"><span class="pre">add_coarse_dem_chunked</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">coarse_dem</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">region_to_rasterise</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">chunk_size</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">mask</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#geofabrics.dem.RawDem.add_coarse_dem_chunked" title="Link to this definition"></a></dt>
+<span class="sig-name descname"><span class="pre">add_coarse_dem_chunked</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">coarse_dem_path</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">extents</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">chunk_size</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">mask</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">radius</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#geofabrics.dem.RawDem.add_coarse_dem_chunked" title="Link to this definition"></a></dt>
 <dd><p>Fill gaps in dense DEM from areas with no LiDAR with the coarse DEM.
 Perform linear interpolation.</p>
 <dl class="field-list simple">
 <dt class="field-odd">Parameters<span class="colon">:</span></dt>
 <dd class="field-odd"><ul class="simple">
 <li><p><strong>rasterising</strong> (<em>coarse_dem - The coarse DEM to use for</em>) – </p></li>
-<li><p><strong>DEM</strong> (<em>region_to_rasterise - the area to rasterise using the coarse</em>) – </p></li>
+<li><p><strong>DEM</strong> (<em>extents - a dictionary</em><em> of  </em><em>area to rasterise using the coarse</em>) – </p></li>
 <li><p><strong>chunk</strong> (<em>chunk_size - the size</em><em> of </em><em>each</em>) – </p></li>
-<li><p><strong>coarse_dem</strong> (<a class="reference internal" href="#geofabrics.dem.CoarseDem" title="geofabrics.dem.CoarseDem"><em>CoarseDem</em></a>) – </p></li>
-<li><p><strong>region_to_rasterise</strong> (<em>geopandas.GeoDataFrame</em>) – </p></li>
+<li><p><strong>coarse_dem_path</strong> (<em>pathlib.Path</em>) – </p></li>
+<li><p><strong>extents</strong> (<em>dict</em>) – </p></li>
 <li><p><strong>chunk_size</strong> (<em>int</em>) – </p></li>
 <li><p><strong>mask</strong> (<em>numpy.ndarray</em>) – </p></li>
+<li><p><strong>radius</strong> (<em>float</em>) – </p></li>
 </ul>
 </dd>
 </dl>
@@ -725,6 +719,28 @@ the region within which to rasterise.</p>
 <dd class="field-even"><p>numpy.ndarray</p>
 </dd>
 </dl>
+</dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py" id="geofabrics.dem.chunk_coarse_dem">
+<span class="sig-prename descclassname"><span class="pre">geofabrics.dem.</span></span><span class="sig-name descname"><span class="pre">chunk_coarse_dem</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">dem_file</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">extents</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">set_foreshore</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#geofabrics.dem.chunk_coarse_dem" title="Link to this definition"></a></dt>
+<dd><p>Load in a coarse DEM and trim to points within bbox and return the
+points.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>dem_file</strong> (<em>pathlib.Path</em>) – </p></li>
+<li><p><strong>extents</strong> (<em>dict</em>) – </p></li>
+<li><p><strong>set_foreshore</strong> (<em>bool</em>) – </p></li>
+</ul>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py data">
+<dt class="sig sig-object py" id="geofabrics.dem.delayed_chunk_coarse_dem">
+<span class="sig-prename descclassname"><span class="pre">geofabrics.dem.</span></span><span class="sig-name descname"><span class="pre">delayed_chunk_coarse_dem</span></span><a class="headerlink" href="#geofabrics.dem.delayed_chunk_coarse_dem" title="Link to this definition"></a></dt>
+<dd><p>Wrap the <cite>roughness_over_chunk</cite> routine in dask.delayed</p>
 </dd></dl>
 
 <dl class="py data">

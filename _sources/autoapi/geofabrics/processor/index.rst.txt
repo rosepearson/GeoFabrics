@@ -79,7 +79,7 @@ Classes
       added to the instructions.
 
 
-   .. py:method:: get_instruction_general(key)
+   .. py:method:: get_instruction_general(key, subkey = None)
 
       Return the general instruction from the instruction file or return
       the default value if not specified in the instruction file. Raise an
@@ -108,7 +108,7 @@ Classes
 
    .. py:method:: check_vector_or_raster(key, api_type)
 
-      Check to see if vector or raster key (i.e. land, bathymetry_contours, etc) is
+      Check to see if vector or raster key (i.e. land, ocean_contours, etc) is
       included either as a file path, or within any of API's (i.e. LINZ or LRIS).
 
       :param key: The string identifying the vector/raster
