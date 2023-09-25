@@ -11,18 +11,18 @@
 	"data_paths": {
 		"local_cache": "tests/test_dem_generation_local_1/data",
 		"subfolder": "results",
-		"catchment_boundary": "catchment_boundary.geojson",
+		"extents": "catchment_boundary.geojson",
 		"land": "land.geojson",
 		"lidar_files": ["lidar.laz"],
 		"coarse_dems": ["coarse_dem.nc"],
-		"bathymetry_contours": ["bathymetry.geojson"],
+		"ocean_contours": ["bathymetry.geojson"],
 		"result_dem": "test_dem.nc",
 		"benchmark_dem": "benchmark_dem.nc"
 	},
 	"general": {
 		"drop_offshore_lidar": true,
 		"lidar_classifications_to_keep": [2],
-		"interpolation_method": "linear",
+		"interpolation": {"no_data": "linear"},
 		"lidar_buffer": 5
 	}
 }

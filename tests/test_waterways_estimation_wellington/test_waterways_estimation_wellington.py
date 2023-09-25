@@ -121,7 +121,7 @@ class Test(unittest.TestCase):
 
         test = geopandas.read_file(self.results_dir / "open_waterways_polygon.geojson")
         benchmark = geopandas.read_file(
-            self.cache_dir / data_path_instructions["open_waterways_polygon_benchmark"]
+            self.cache_dir / data_path_instructions["open_benchmark"]["extents"]
         )
 
         # check the polygons match
@@ -137,8 +137,7 @@ class Test(unittest.TestCase):
             self.results_dir / "open_waterways_elevation.geojson"
         )
         benchmark = geopandas.read_file(
-            self.cache_dir
-            / data_path_instructions["open_waterways_bathymetry_benchmark"]
+            self.cache_dir / data_path_instructions["open_benchmark"]["elevations"]
         )
 
         # check the bathymetries match
@@ -162,7 +161,7 @@ class Test(unittest.TestCase):
         # Compare the polygons
         test = geopandas.read_file(self.results_dir / "open_waterways_polygon.geojson")
         benchmark = geopandas.read_file(
-            self.cache_dir / data_path_instructions["open_waterways_polygon_benchmark"]
+            self.cache_dir / data_path_instructions["open_benchmark"]["extents"]
         )
 
         # check the polygons match
@@ -184,8 +183,7 @@ class Test(unittest.TestCase):
             self.results_dir / "open_waterways_elevation.geojson"
         )
         benchmark = geopandas.read_file(
-            self.cache_dir
-            / data_path_instructions["open_waterways_bathymetry_benchmark"]
+            self.cache_dir / data_path_instructions["open_benchmark"]["elevations"]
         )
 
         # check some of the bathymetry columns match
@@ -251,8 +249,7 @@ class Test(unittest.TestCase):
             self.results_dir / "closed_waterways_polygon.geojson"
         )
         benchmark = geopandas.read_file(
-            self.cache_dir
-            / data_path_instructions["closed_waterways_polygon_benchmark"]
+            self.cache_dir / data_path_instructions["closed_benchmark"]["extents"]
         )
 
         self.assertTrue(
@@ -266,8 +263,7 @@ class Test(unittest.TestCase):
             self.results_dir / "closed_waterways_elevation.geojson"
         )
         benchmark = geopandas.read_file(
-            self.cache_dir
-            / data_path_instructions["closed_waterways_bathymetry_benchmark"]
+            self.cache_dir / data_path_instructions["closed_benchmark"]["elevations"]
         )
 
         self.assertTrue(
@@ -292,8 +288,7 @@ class Test(unittest.TestCase):
             self.results_dir / "closed_waterways_polygon.geojson"
         )
         benchmark = geopandas.read_file(
-            self.cache_dir
-            / data_path_instructions["closed_waterways_polygon_benchmark"]
+            self.cache_dir / data_path_instructions["closed_benchmark"]["extents"]
         )
 
         # check some of the bathymetry columns match
@@ -317,8 +312,7 @@ class Test(unittest.TestCase):
             self.results_dir / "closed_waterways_elevation.geojson"
         )
         benchmark = geopandas.read_file(
-            self.cache_dir
-            / data_path_instructions["closed_waterways_bathymetry_benchmark"]
+            self.cache_dir / data_path_instructions["closed_benchmark"]["elevations"]
         )
 
         # check some of the bathymetrt columns match

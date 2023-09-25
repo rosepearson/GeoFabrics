@@ -18,7 +18,7 @@
 	"data_paths": {
 		"local_cache": "tests/test_many_stages_multiple_2/data",
 		"subfolder": "results",
-		"catchment_boundary": "catchment.geojson",
+		"extents": "catchment.geojson",
 		"land": "catchment.geojson",
 		"result_dem": "test_dem.nc"
 	},
@@ -50,7 +50,7 @@
 	"general": {
 		"drop_offshore_lidar": true,
 		"lidar_classifications_to_keep": [2],
-		"interpolation_method": null
+		"interpolation": {"no_data": null}
 	}
 },
 "roughness":
@@ -72,7 +72,7 @@
 	"data_paths": {
 		"local_cache": "tests/test_many_stages_multiple_2/data",
 		"subfolder": "results",
-		"catchment_boundary": "catchment.geojson",
+		"extents": "catchment.geojson",
 		"land": "catchment.geojson",
 		"result_dem": "test_dem.nc",
 		"result_geofabric": "test_geofabric.nc",
@@ -103,7 +103,7 @@
 	"general": {
 		"drop_offshore_lidar": true,
 		"lidar_classifications_to_keep": [1, 2, 4, 9],
-		"interpolation_method": null
+		"interpolation": {"no_data": null}
 	}
 }
 }

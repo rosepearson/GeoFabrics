@@ -16,7 +16,7 @@
 	"data_paths": {
 		"local_cache": "tests/test_dem_generation_westport_2/data",
 		"subfolder": "results",
-		"catchment_boundary": "catchment.geojson",
+		"extents": "catchment.geojson",
 		"land": "catchment.geojson",
 		"result_dem": "test_dem.nc",
 		"benchmark_dem": "benchmark_dem.nc"
@@ -31,6 +31,6 @@
 	"general": {
 		"drop_offshore_lidar": false,
 		"lidar_classifications_to_keep": [1, 2, 3, 4, 5, 6, 7, 9, 18],
-		"interpolation_method": "linear"
+		"interpolation": {"no_data": "linear"}
 	}
 }

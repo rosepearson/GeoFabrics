@@ -17,7 +17,7 @@
 	"data_paths": {
 		"local_cache": "tests/test_many_stages_multiple_1/data",
 		"subfolder": "results",
-		"catchment_boundary": "catchment.geojson",
+		"extents": "catchment.geojson",
 		"land": "catchment.geojson",
 		"result_dem": "test_dem.nc"
 	},
@@ -36,7 +36,7 @@
 	},
 	"general": {
 		"drop_offshore_lidar": true,
-		"interpolation_method": null
+		"interpolation": {"no_data": null}
 	}
 },
 "dem":

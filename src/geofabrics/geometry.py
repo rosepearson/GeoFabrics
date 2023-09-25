@@ -230,7 +230,10 @@ class CatchmentGeometry:
             {
                 "geometry": [
                     shapely.ops.unary_union(
-                        [self.foreshore.loc[0].geometry, dense_extents.loc[0].geometry]
+                        [
+                            self.foreshore.loc[0].geometry,
+                            dense_extents.loc[0].geometry,
+                        ]
                     )
                 ]
             },
@@ -342,7 +345,10 @@ class BathymetryContours:
         if (self._contour.geometry.type == "GeometryCollection").any():
             geometry_list = []
             for geometry_row in self._contour.geometry:
-                if geometry_row.geometryType() in {"LineString", "MultiLineString"}:
+                if geometry_row.geometryType() in {
+                    "LineString",
+                    "MultiLineString",
+                }:
                     geometry_list.append(geometry_row)
                 elif geometry_row.geometryType() == "GeometryCollection":
                     geometry_list.append(
@@ -490,7 +496,6 @@ class EstimatedBathymetryPoints:
     """
 
     DEPTH_LABEL = "elevation"
-    TYPE_LABEL = "type"
     BANK_HEIGHT_LABEL = "bank_height"
     WIDTH_LABEL = "width"
 
@@ -499,7 +504,6 @@ class EstimatedBathymetryPoints:
         points_files: list,
         polygon_files: list,
         catchment_geometry: CatchmentGeometry,
-        type_labels: list,
         z_labels: list = None,
     ):
         self.catchment_geometry = catchment_geometry
@@ -508,25 +512,26 @@ class EstimatedBathymetryPoints:
         self._points = None
         self._polygon = None
 
-        self._set_up(points_files, polygon_files, z_labels, type_labels)
+        self._set_up(points_files, polygon_files, z_labels)
 
-    def _set_up(
-        self, points_files: list, polygon_files: list, z_labels: list, type_labels: list
-    ):
+    def _set_up(self, points_files: list, polygon_files: list, z_labels: list):
         """Load point and polygon files and concatentate and clip to the catchment."""
 
-        assert len(points_files) == len(polygon_files), (
-            "The polygon and point lists should all be the same length. Instead there "
-            f"are {len(points_files)} points files and {len(polygon_files)} polygon "
-            "files"
-        )
-        assert z_labels is None or len(points_files) == len(
-            z_labels
-        ), "Either all points should include z-values, or all have a label."
-        assert len(points_files) == len(
-            type_labels
-        ), "All bathy points should have a type label.Instead there are "
-        f"{len(points_files)} points files and {len(type_labels)} type labels"
+        if len(points_files) != len(polygon_files):
+            raise ValueError(
+                "The polygon and point lists should all be the same length. Instead there "
+                f"are {len(points_files)} points files and {len(polygon_files)} polygon "
+                "files"
+            )
+
+        if z_labels is not None and type(z_labels) == str:
+            z_labels = [z_labels for i in range(len(points_files))]
+
+        if z_labels is not None and len(z_labels) != len(points_files):
+            raise ValueError(
+                "There is a mismatch in length between the provided z_labels "
+                f"and the point files: {z_labels} {points_files}"
+            )
 
         # Points - rename depth labels to standard if a non standard one is specified
         points_list = []
@@ -534,10 +539,9 @@ class EstimatedBathymetryPoints:
         for i in range(0, len(points_files)):
             # Points - rename depth labels to standard if  specified
             points_i = geopandas.read_file(points_files[i])
-            points_i[self.TYPE_LABEL] = type_labels[i]
             if z_labels is not None and z_labels[i] != self.DEPTH_LABEL:
                 points_i = points_i.rename(columns={z_labels[i]: self.DEPTH_LABEL})
-            columns_i = [self.DEPTH_LABEL, self.TYPE_LABEL, "geometry"]
+            columns_i = [self.DEPTH_LABEL, "geometry"]
             if self.BANK_HEIGHT_LABEL in points_i.columns:
                 columns_i.append(self.BANK_HEIGHT_LABEL)
             if self.WIDTH_LABEL in points_i.columns:
@@ -548,15 +552,16 @@ class EstimatedBathymetryPoints:
                 points_list.append(points_i)
                 # Polygon where the points are relevent
                 polygon_i = geopandas.read_file(polygon_files[i])
-                polygon_i[self.TYPE_LABEL] = type_labels[i]
                 polygon_list.append(polygon_i)
         # Set CRS, clip to size and reset index
         points = geopandas.GeoDataFrame(
-            pandas.concat(points_list, ignore_index=True), crs=points_list[0].crs
+            pandas.concat(points_list, ignore_index=True),
+            crs=points_list[0].crs,
         )
         points = points.to_crs(self.catchment_geometry.crs["horizontal"])
         polygon = geopandas.GeoDataFrame(
-            pandas.concat(polygon_list, ignore_index=True), crs=polygon_list[0].crs
+            pandas.concat(polygon_list, ignore_index=True),
+            crs=polygon_list[0].crs,
         )
         polygon = polygon.to_crs(self.catchment_geometry.crs["horizontal"])
         points = points.clip(polygon.buffer(0), keep_geom_type=True)
@@ -567,23 +572,16 @@ class EstimatedBathymetryPoints:
         self._points = points
         self._polygon = polygon
 
-    def filtered_polygons(self, type_label: str = None) -> geopandas.GeoDataFrame:
-        """Return the polygon filtered by any type label."""
-        polygon = (
-            self._polygon
-            if type_label is None
-            else self._polygon[self._polygon["type"] == type_label]
-        )
-        return polygon
+    @property
+    def polygons(self) -> geopandas.GeoDataFrame:
+        """Return the polygons."""
+        return self._polygon
 
-    def filtered_points(self, type_label: str = None) -> numpy.ndarray:
+    @property
+    def points_array(self) -> numpy.ndarray:
         """Return the points as a single array."""
 
-        points = (
-            self._points
-            if type_label is None
-            else self._points[self._points["type"] == type_label]
-        )
+        points = self._points
 
         points_array = numpy.empty(
             [len(points)],
@@ -591,9 +589,6 @@ class EstimatedBathymetryPoints:
         )
 
         if len(points_array) == 0:
-            logging.warning(
-                f"No estimated waterway points with type label {type_label}"
-            )
             return points_array
         # Extract the x, y and z values from the Shapely MultiPoints and possibly a
         # depth column
@@ -609,24 +604,24 @@ class EstimatedBathymetryPoints:
             ).to_list()
         return points_array
 
-    def bank_heights_exist(self, type_label: str) -> bool:
+    @property
+    def points(self):
+        """Return the points"""
+
+        return self._points
+
+    def bank_heights_exist(self) -> bool:
         """Return true if the bank heights are defined in array"""
         return (
             self.BANK_HEIGHT_LABEL in self._points.columns
-            and self._points[self._points["type"] == type_label][
-                self.BANK_HEIGHT_LABEL
-            ].any()
+            and self._points[self.BANK_HEIGHT_LABEL].any()
         )
 
-    def filtered_bank_height_points(self, type_label: str = None) -> numpy.ndarray:
+    def bank_height_points(self) -> numpy.ndarray:
         """Return the points with 'Z' being the estimated bank height as a single array."""
 
         # Filter the points by the type label
-        points = (
-            self._points
-            if type_label is None
-            else self._points[self._points["type"] == type_label]
-        )
+        points = self._points
 
         points_array = numpy.empty(
             [len(points)],
@@ -643,12 +638,6 @@ class EstimatedBathymetryPoints:
             lambda row: row[self.BANK_HEIGHT_LABEL], axis=1
         ).to_list()
         return points_array
-
-    @property
-    def points(self):
-        """Return the points"""
-
-        return self._points
 
     @property
     def x(self):
@@ -818,7 +807,10 @@ class RiverMouthFan:
         return river_mouth_width, river_mouth_elevations
 
     def _get_ocean_contours(
-        self, river_mouth_depth, depth_sign: int = -1, depth_multiplier: int = 2
+        self,
+        river_mouth_depth,
+        depth_sign: int = -1,
+        depth_multiplier: int = 2,
     ) -> geopandas.GeoDataFrame:
         """Load in the ocean contours and remove those that are too close to the
         shoreline to consider as the slope change would be too great.
@@ -969,7 +961,10 @@ class RiverMouthFan:
 
         # Load in river mouth alignment and bathymetry
         mouth_point, mouth_tangent, mouth_normal = self._get_mouth_alignment()
-        river_mouth_width, river_mouth_elevations = self._get_mouth_bathymetry()
+        (
+            river_mouth_width,
+            river_mouth_elevations,
+        ) = self._get_mouth_bathymetry()
 
         # Create maximum fan polygon
         fan_polygon = self._max_length_polygon(
@@ -979,34 +974,44 @@ class RiverMouthFan:
             mouth_normal=mouth_normal,
         )
 
-        # Load in ocean depth contours
-        ocean_contours = self._get_ocean_contours(max(river_mouth_elevations))
-
-        # Clip to fan
-        ocean_contours = ocean_contours.clip(fan_polygon)
-
-        # Cycle through contours finding the nearest contour to intersect with the fan
-        distance = numpy.inf
-        intersection_line = shapely.geometry.Point()
-        end_depth = numpy.nan
-        # Cycle through and get the section of line intersecting with the line
-        for i, row in ocean_contours.explode().iterrows():
-            if row.geometry.intersects(fan_polygon):
-                intersection_line_i = row.geometry.intersection(fan_polygon)
-                if intersection_line_i.distance(mouth_point) < distance:
-                    distance = intersection_line_i.distance(mouth_point)
-                    intersection_line = intersection_line_i
-                    end_depth = row[self.ocean_contour_depth_label]
-        assert distance < numpy.inf, (
-            "There must be at least one ocean "
-            "contour within the max length fan polygon."
+        # Define fan centre line
+        fan_centre = shapely.geometry.LineString(
+            [
+                mouth_point,
+                [
+                    mouth_point.x + self.FAN_MAX_LENGTH * mouth_tangent.x,
+                    mouth_point.y + self.FAN_MAX_LENGTH * mouth_tangent.y,
+                ],
+            ]
         )
-        # Check for MultiLineString and take only the closest - TODO see if can remove
-        if intersection_line.type == "MultiLineString":
-            lines = geopandas.GeoSeries(intersection_line, crs=2193).explode(
-                ignore_index=True
+
+        # Load in ocean depth contours and keep only those intersecting the fan centre
+        ocean_contours = self._get_ocean_contours(max(river_mouth_elevations))
+        end_depth = ocean_contours[self.ocean_contour_depth_label].min()
+        ocean_contours = ocean_contours.explode(ignore_index=True)
+        ocean_contours = ocean_contours[
+            ~ocean_contours.intersection(fan_centre).is_empty
+        ]
+
+        # Keep the closest contour intersecting
+        if len(ocean_contours) > 0:
+            ocean_contours = ocean_contours.clip(fan_polygon).explode(ignore_index=True)
+            min_index = ocean_contours.distance(mouth_point).idxmin()
+            intersection_line = ocean_contours.loc[min_index].geometry
+            end_depth = ocean_contours.loc[min_index][self.ocean_contour_depth_label]
+            distance = ocean_contours.distance(mouth_point).min()
+        else:
+            logging.warning(
+                "No ocean contour intersected. Instaed assumed fan geoemtry"
             )
-            intersection_line = lines[lines.distance(mouth_point) == distance].iloc[0]
+            intersection_line = shapely.geometry.linestring(
+                [
+                    [fan_polygon.exterior.xy[0][2], fan_polygon.exterior.xy[1][2]],
+                    [fan_polygon.exterior.xy[0][3], fan_polygon.exterior.xy[1][3]],
+                ]
+            )
+            distance = self.FAN_MAX_LENGTH
+
         # Construct a fan ending at the contour
         (x, y) = intersection_line.xy
         polygon_points = [[xi, yi] for (xi, yi) in zip(x, y)]

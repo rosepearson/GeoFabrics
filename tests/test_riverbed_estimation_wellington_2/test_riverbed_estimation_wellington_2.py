@@ -92,7 +92,8 @@ class Test(unittest.TestCase):
                         shutil.rmtree(file)
                 shutil.rmtree(path)
 
-    def test_river_polygon(self):
+    @pytest.mark.skipif(sys.platform != "win32", reason="Windows test - this is strict")
+    def test_river_polygon_windows(self):
         """A test to see if the correct river polygon is generated. This is
         tested individually as it is generated first."""
 
@@ -113,6 +114,36 @@ class Test(unittest.TestCase):
             f"river polygon {benchmark}",
         )
 
+    @pytest.mark.skipif(
+        sys.platform != "linux", reason="Linux test - this is less strict"
+    )
+    def test_river_polygons_linux(self):
+        """A test to see if the correct river polygon is generated. This is
+        tested individually as it is generated first."""
+
+        print("Compare river polygon  - All OS")
+
+        data_path_instructions = self.instructions["data_paths"]
+
+        test = geopandas.read_file(self.results_dir / "river_polygon.geojson")
+        benchmark = geopandas.read_file(
+            self.cache_dir / data_path_instructions["benchmark"]["extents"]
+        )
+
+        # check the polygons match
+        column_name = "geometry"
+        test_comparison = test[column_name].area.item()
+        benchmark_comparison = benchmark[column_name].area.item()
+        print(f"test area {test_comparison}, and benchmark area {benchmark_comparison}")
+        self.assertAlmostEqual(
+            test_comparison,
+            benchmark_comparison,
+            places=5,
+            msg=f"The geneated river {column_name} does"
+            f" not match the benchmark. {test_comparison} "
+            f"vs {benchmark_comparison}",
+        )
+
     @pytest.mark.skipif(sys.platform != "win32", reason="Windows test - this is strict")
     def test_river_bathymetry_windows(self):
         """A test to see if the correct river polygon is generated. This is
@@ -124,7 +155,7 @@ class Test(unittest.TestCase):
 
         test = geopandas.read_file(self.results_dir / "river_bathymetry.geojson")
         benchmark = geopandas.read_file(
-            self.cache_dir / data_path_instructions["river_bathymetry_benchmark"]
+            self.cache_dir / data_path_instructions["benchmark"]["elevations"]
         )
 
         # check the bathymetries match
@@ -148,7 +179,7 @@ class Test(unittest.TestCase):
 
         test = geopandas.read_file(self.results_dir / "river_bathymetry.geojson")
         benchmark = geopandas.read_file(
-            self.cache_dir / data_path_instructions["river_bathymetry_benchmark"]
+            self.cache_dir / data_path_instructions["benchmark"]["elevations"]
         )
 
         # check some of the bathymetry columns match
@@ -195,126 +226,6 @@ class Test(unittest.TestCase):
             msg=f"The geneated river {column_name} does not"
             f" match the benchmark. They are separated by "
             f"distances of {comparison}",
-        )
-
-    @pytest.mark.skipif(sys.platform != "win32", reason="Windows test - this is strict")
-    def test_fan_windows(self):
-        """A test to see if the correct fan polygon and bathymetry are
-        generated. These are generated and tested together."""
-
-        print("Compare fan bathymetry and polygon - Windows")
-
-        data_path_instructions = self.instructions["data_paths"]
-
-        # Compare the polygons
-        test = geopandas.read_file(self.results_dir / "fan_polygon.geojson")
-        benchmark = geopandas.read_file(
-            self.cache_dir / data_path_instructions["fan_polygon_benchmark"]
-        )
-
-        self.assertTrue(
-            (test == benchmark).all().all(),
-            "The geneated river"
-            f"fan {test} doesn't equal the river benchmark "
-            f"fan polygon {benchmark}",
-        )
-
-        # Compare the bathymetries
-        test = geopandas.read_file(self.results_dir / "fan_bathymetry.geojson")
-        benchmark = geopandas.read_file(
-            self.cache_dir / data_path_instructions["fan_bathymetry_benchmark"]
-        )
-
-        self.assertTrue(
-            (test == benchmark).all().all(),
-            "The geneated fan"
-            f"bathymetry {test} doesn't equal the fan benchmark "
-            f"fan bathymetry {benchmark}",
-        )
-
-    @pytest.mark.skipif(
-        sys.platform != "linux", reason="Linux test - this is less strict"
-    )
-    def test_fan_linux(self):
-        """A test to see if the correct fan polygon and bathymetry are
-        generated. These are generated and tested together."""
-
-        print("Compare fan bathymetry and polygon - Linux")
-
-        data_path_instructions = self.instructions["data_paths"]
-
-        # Compare the polygons
-        test = geopandas.read_file(self.results_dir / "fan_polygon.geojson")
-        benchmark = geopandas.read_file(
-            self.cache_dir / data_path_instructions["fan_polygon_benchmark"]
-        )
-
-        # check some of the bathymetry columns match
-        column_name = "geometry"
-        test_comparison = test[column_name].area.item()
-        benchmark_comparison = benchmark[column_name].area.item()
-        print(f"test area {test_comparison}, and benchmark area {benchmark_comparison}")
-        self.assertAlmostEqual(
-            test_comparison,
-            benchmark_comparison,
-            places=6,
-            msg=f"The geneated river {column_name} does"
-            f" not match the benchmark. {test_comparison} "
-            f"vs {benchmark_comparison}",
-        )
-
-        # Compare the bathymetries
-        test = geopandas.read_file(self.results_dir / "fan_bathymetry.geojson")
-        benchmark = geopandas.read_file(
-            self.cache_dir / data_path_instructions["fan_bathymetry_benchmark"]
-        )
-
-        # check some of the bathymetrt columns match
-        column_name = "bed_elevation_Neal_et_al"
-        test_comparison = test[column_name].array
-        benchmark_comparison = benchmark[column_name].array
-        print(
-            f"{column_name} difference "
-            "{numpy.array(test_comparison) - numpy.array(benchmark_comparison)}"
-        )
-        self.assertAlmostEqual(
-            test_comparison,
-            benchmark_comparison,
-            places=7,
-            msg="The geneated  river {column_name} does"
-            f" not match the benchmark. {test_comparison} "
-            f"vs {benchmark_comparison}",
-        )
-
-        # check some of the bathymetrt columns match
-        column_name = "bed_elevation_Rupp_and_Smart"
-        test_comparison = test[column_name].array
-        benchmark_comparison = benchmark[column_name].array
-        print(
-            f"{column_name} difference "
-            "{numpy.array(test_comparison) - numpy.array(benchmark_comparison)}"
-        )
-        self.assertAlmostEqual(
-            test_comparison,
-            benchmark_comparison,
-            places=7,
-            msg="The geneated  river {column_name} does"
-            f" not match the benchmark. {test_comparison} "
-            f"vs {benchmark_comparison}",
-        )
-
-        column_name = "geometry"
-        comparison = test[column_name].distance(benchmark[column_name]).array
-        print(
-            f"Distances between the test and benchmark points {numpy.array(comparison)}"
-        )
-        self.assertAlmostEqual(
-            comparison,
-            numpy.zeros(len(test[column_name])),
-            places=7,
-            msg=f"The geneate driver {column_name}"
-            f" does not match the benchmark. They are"
-            f" separated by distances of {comparison}",
         )
 
 

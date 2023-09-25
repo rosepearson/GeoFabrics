@@ -16,7 +16,7 @@
 	"data_paths": {
 		"local_cache": "tests/test_dem_generation_westport_4/data",
 		"subfolder": "results",
-		"catchment_boundary": "catchment.geojson",
+		"extents": "catchment.geojson",
 		"result_dem": "test_dem.nc",
 		"benchmark_dem": "benchmark_dem.nc"
 	},
@@ -31,7 +31,7 @@
 				"land": {
 					"layers": [51153]
 				},
-				"bathymetry_contours": {
+				"ocean_contours": {
 					"layers": [50448]
 				}
 			}
@@ -45,8 +45,7 @@
 		}
 	},
 	"general": {
-		"bathymetry_contours_z_label": "valdco",
-		"lidar_classifications_to_keep": [1, 2, 3, 4, 5, 6, 7, 9, 18],
-		"interpolation_method": "linear"
+		"z_labels": {"ocean": "valdco"},
+		"lidar_classifications_to_keep": [1, 2, 3, 4, 5, 6, 7, 9, 18]
 	}
 }

@@ -36,9 +36,8 @@
 		"memory_limit": "5GiB"
 		},
 		"data_paths": {
-			"catchment_boundary": "catchment.geojson",
-		    "river_polygons": ["river_polygon.geojson"],
-			"river_bathymetry": ["river_elevations.geojson"],
+			"extents": "catchment.geojson",
+		    "rivers": [{"extents": "river_polygon.geojson", "elevations": "river_elevations.geojson"}],
 			"result_dem": "test_dem.nc",
 			"benchmark_dem": "benchmark_dem.nc"
 		},
@@ -50,10 +49,9 @@
 				}
 		},
 		"general": {
-			"bathymetry_points_type": ["rivers"],
-			"bathymetry_points_z_label": ["z"],
+			"z_labels": {"rivers": "z"},
 			"lidar_classifications_to_keep": [2, 9],
-			"interpolation_method": "linear"
+			"interpolation": {"no_data": "linear"}
 		}
 	}
 }

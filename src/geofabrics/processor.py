@@ -14,6 +14,7 @@ import distributed
 import rioxarray
 import copy
 import geopandas
+import pandas
 import datetime
 import shapely
 import xarray
@@ -216,34 +217,53 @@ class BaseProcessor(abc.ABC):
             self.instructions["output"]["crs"] = crs_dict
             return crs_dict
 
-    def get_instruction_general(self, key: str):
+    def get_instruction_general(self, key: str, subkey: str = None):
         """Return the general instruction from the instruction file or return
         the default value if not specified in the instruction file. Raise an
         error if the key is not in the instructions and there is no default
         value. If the default is used it is added to the instructions."""
 
         defaults = {
-            "bathymetry_contours_z_label": None,
-            "bathymetry_points_z_label": None,
             "bathymetry_points_type": None,
             "drop_offshore_lidar": True,
             "lidar_classifications_to_keep": [2],
-            "interpolation_method": None,
             "elevation_range": None,
-            "lidar_interpolation_method": "idw",
             "download_limit_gbytes": 100,
             "lidar_buffer": 0,
+            "interpolation": {
+                "rivers": "rbf",
+                "waterways": "cubic",
+                "ocean": "linear",
+                "lidar": "idw",
+                "no_data": None,
+            },
+            "z_labels": {
+                "waterways": "elevations",
+                "rivers": "bed_elevation_Rupp_and_Smart",
+                "ocean": None,
+            },
         }
 
-        assert key in defaults or key in self.instructions["general"], (
-            f"The key: {key} is missing from the general instructions, and"
-            " does not have a default value"
-        )
-        if "general" in self.instructions and key in self.instructions["general"]:
+        if key not in defaults and key not in self.instructions["general"]:
+            raise ValueError(
+                f"The key: {key} is missing from the general instructions, and"
+                " does not have a default value"
+            )
+        if "general" not in self.instructions:
+            # Ensure general is a dictionary in the instructions
+            self.instructions["general"] = {}
+        if key not in self.instructions["general"]:
+            # Add the default to the instructions
+            self.instructions["general"][key] = defaults[key]
+        if subkey is None:
+            # Return the key value
             return self.instructions["general"][key]
         else:
-            self.instructions["general"][key] = defaults[key]
-            return defaults[key]
+            # Return the subkey value as specified
+            if subkey not in self.instructions["general"][key]:
+                # Add the default to the instructions
+                self.instructions["general"][key][subkey] = defaults[key][subkey]
+            return self.instructions["general"][key][subkey]
 
     def get_processing_instructions(self, key: str):
         """Return the processing instruction from the instruction file or
@@ -299,7 +319,7 @@ class BaseProcessor(abc.ABC):
             return False
 
     def check_vector_or_raster(self, key: str, api_type: str) -> bool:
-        """Check to see if vector or raster key (i.e. land, bathymetry_contours, etc) is
+        """Check to see if vector or raster key (i.e. land, ocean_contours, etc) is
         included either as a file path, or within any of API's (i.e. LINZ or LRIS).
 
         Parameters
@@ -759,9 +779,9 @@ class BaseProcessor(abc.ABC):
 
     def create_catchment(self) -> geometry.CatchmentGeometry:
         # create the catchment geometry object
-        catchment_dirs = self.get_instruction_path("catchment_boundary")
+        catchment_dirs = self.get_instruction_path("extents")
         assert type(catchment_dirs) is not list, (
-            f"A list of catchment_boundary's is provided: {catchment_dirs}, "
+            f"A list of `extents`s is provided: {catchment_dirs}, "
             + "where only one is supported."
         )
         catchment_geometry = geometry.CatchmentGeometry(
@@ -845,7 +865,7 @@ class RawLidarDemGenerator(BaseProcessor):
             catchment_geometry=self.catchment_geometry,
             drop_offshore_lidar=self.get_instruction_general("drop_offshore_lidar"),
             lidar_interpolation_method=self.get_instruction_general(
-                "lidar_interpolation_method"
+                key="interpolation", subkey="lidar"
             ),
             elevation_range=self.get_instruction_general("elevation_range"),
         )
@@ -890,11 +910,21 @@ class RawLidarDemGenerator(BaseProcessor):
             logging.info(
                 "In processor.DemGenerator - write out the raw DEM " "from LiDAR"
             )
-            self.raw_dem.dem.to_netcdf(
-                self.get_instruction_path("raw_dem"),
-                format="NETCDF4",
-                engine="netcdf4",
-            )
+            try:
+                self.raw_dem.dem.to_netcdf(
+                    self.get_instruction_path("raw_dem"),
+                    format="NETCDF4",
+                    engine="netcdf4",
+                )
+            except (Exception, KeyboardInterrupt) as caught_exception:
+                pathlib.Path(self.get_instruction_path("raw_dem")).unlink()
+                logging.info(
+                    f"Caught error {caught_exception} and deleting"
+                    "partially created netCDF output "
+                    f"{self.get_instruction_path('raw_dem')}"
+                    " before re-raising error."
+                )
+                raise caught_exception
 
         if self.debug:
             # Record the parameter used during execution - append to existing
@@ -935,22 +965,22 @@ class HydrologicDemGenerator(BaseProcessor):
     def add_bathymetry(self, area_threshold: float, catchment_dirs: pathlib.Path):
         """Add in any bathymetry data - ocean or river"""
 
-        # Load in bathymetry and interpolate offshore if significant offshore is not
-        # covered by LiDAR
+        # Check for ocean bathymetry. Interpolate offshore if significant
+        # offshore area is not covered by LiDAR
         area_without_lidar = self.catchment_geometry.offshore_without_lidar(
             self.hydrologic_dem.raw_extents
         ).geometry.area.sum()
         if (
-            self.check_vector_or_raster(key="bathymetry_contours", api_type="vector")
+            self.check_vector_or_raster(key="ocean_contours", api_type="vector")
             and area_without_lidar
             > self.catchment_geometry.offshore.area.sum() * area_threshold
         ):
             # Get the bathymetry data directory
             bathy_contour_dirs = self.get_vector_or_raster_paths(
-                key="bathymetry_contours", data_type="vector"
+                key="ocean_contours", data_type="vector"
             )
             assert len(bathy_contour_dirs) == 1, (
-                f"{len(bathy_contour_dirs)} bathymetry_contours's provided. "
+                f"{len(bathy_contour_dirs)} ocean_contours's provided. "
                 f"Specficially {catchment_dirs}. Support has not yet been added for "
                 "multiple datasets."
             )
@@ -961,40 +991,83 @@ class HydrologicDemGenerator(BaseProcessor):
             self.bathy_contours = geometry.BathymetryContours(
                 bathy_contour_dirs[0],
                 self.catchment_geometry,
-                z_label=self.get_instruction_general("bathymetry_contours_z_label"),
+                z_label=self.get_instruction_general(key="z_labels", subkey="ocean"),
                 exclusion_extent=self.hydrologic_dem.raw_extents,
             )
 
             # interpolate
             self.hydrologic_dem.interpolate_ocean_bathymetry(self.bathy_contours)
-        # Load in river bathymetry and incorporate where discernable at the resolution
-        if self.check_vector_or_raster(
-            "river_polygons", api_type="vector"
-        ) and self.check_vector_or_raster("river_bathymetry", api_type="vector"):
+        # Check for waterways and interpolate if they exist
+        if "waterways" in self.instructions["data_paths"]:
+            # Load in all open and closed waterway elevation and extents in one go
             # Get the polygons and bathymetry and can be multiple
-            bathy_dirs = self.get_vector_or_raster_paths(
-                key="river_bathymetry", data_type="vector"
-            )
-            poly_dirs = self.get_vector_or_raster_paths(
-                key="river_polygons", data_type="vector"
-            )
+            subfolder = self.get_instruction_path(key="subfolder")
+            bathy_dirs = [
+                pathlib.Path(waterway_dict["elevations"])
+                for waterway_dict in self.instructions["data_paths"]["waterways"]
+            ]
+            poly_dirs = [
+                pathlib.Path(waterway_dict["extents"])
+                for waterway_dict in self.instructions["data_paths"]["waterways"]
+            ]
+            for index, (bathy_dir, poly_dir) in enumerate(zip(bathy_dirs, poly_dirs)):
+                if not bathy_dir.is_absolute():
+                    bathy_dirs[index] = subfolder / bathy_dir
+                if not poly_dir.is_absolute():
+                    poly_dirs[index] = subfolder / poly_dir
 
-            logging.info(f"Incorporating river and waterbed: {bathy_dirs}")
+            logging.info(f"Incorporating waterways: {bathy_dirs}")
 
             # Load in bathymetry
             self.estimated_bathymetry_points = geometry.EstimatedBathymetryPoints(
                 points_files=bathy_dirs,
                 polygon_files=poly_dirs,
                 catchment_geometry=self.catchment_geometry,
-                z_labels=self.get_instruction_general("bathymetry_points_z_label"),
-                type_labels=self.get_instruction_general("bathymetry_points_type"),
+                z_labels=self.get_instruction_general(
+                    key="z_labels", subkey="waterways"
+                ),
             )
 
             # Call interpolate river on the DEM - the class checks to see if any pixels
             # actually fall inside the polygon
-            self.hydrologic_dem.interpolate_waterbed_elevations(
-                estimated_bathymetry=self.estimated_bathymetry_points
+            self.hydrologic_dem.interpolate_waterways(
+                estimated_bathymetry=self.estimated_bathymetry_points,
+                method=self.get_instruction_general(
+                    key="interpolation", subkey="waterways"
+                ),
             )
+        # Load in river bathymetry and incorporate where discernable at the resolution
+        if "rivers" in self.instructions["data_paths"]:
+            # Loop through each river in turn adding individually
+            subfolder = self.get_instruction_path(key="subfolder")
+            for river_dict in self.instructions["data_paths"]["rivers"]:
+                bathy_dir = pathlib.Path(river_dict["elevations"])
+                poly_dir = pathlib.Path(river_dict["extents"])
+                if not bathy_dir.is_absolute():
+                    bathy_dir = subfolder / bathy_dir
+                if not poly_dir.is_absolute():
+                    poly_dir = subfolder / poly_dir
+
+                logging.info(f"Incorporating river: {bathy_dir}")
+
+                # Load in bathymetry
+                self.estimated_bathymetry_points = geometry.EstimatedBathymetryPoints(
+                    points_files=[bathy_dir],
+                    polygon_files=[poly_dir],
+                    catchment_geometry=self.catchment_geometry,
+                    z_labels=self.get_instruction_general(
+                        key="z_labels", subkey="rivers"
+                    ),
+                )
+
+                # Call interpolate river on the DEM - the class checks to see if any pixels
+                # actually fall inside the polygon
+                self.hydrologic_dem.interpolate_rivers(
+                    estimated_bathymetry=self.estimated_bathymetry_points,
+                    method=self.get_instruction_general(
+                        key="interpolation", subkey="rivers"
+                    ),
+                )
 
     def run(self):
         """This method executes the geofabrics generation pipeline to produce geofabric
@@ -1013,13 +1086,15 @@ class HydrologicDemGenerator(BaseProcessor):
         self.hydrologic_dem = dem.HydrologicallyConditionedDem(
             catchment_geometry=self.catchment_geometry,
             raw_dem_path=self.get_instruction_path("raw_dem"),
-            interpolation_method=self.get_instruction_general("interpolation_method"),
+            interpolation_method=self.get_instruction_general(
+                key="interpolation", subkey="no_data"
+            ),
         )
 
         # Check for and add any bathymetry information
         self.add_bathymetry(
             area_threshold=area_threshold,
-            catchment_dirs=self.get_instruction_path("catchment_boundary"),
+            catchment_dirs=self.get_instruction_path("extents"),
         )
 
         # fill combined dem - save results
@@ -1078,7 +1153,9 @@ class RoughnessLengthGenerator(BaseProcessor):
             catchment_geometry=self.catchment_geometry,
             hydrological_dem_path=self.get_instruction_path("result_dem"),
             elevation_range=self.get_instruction_general("elevation_range"),
-            interpolation_method=self.get_instruction_general("interpolation_method"),
+            interpolation_method=self.get_instruction_general(
+                key="interpolation", subkey="no_data"
+            ),
         )
 
         # Load in LiDAR tiles
@@ -1098,17 +1175,26 @@ class RoughnessLengthGenerator(BaseProcessor):
             "processes": True,
             "memory_limit": self.get_processing_instructions("memory_limit"),
         }
-        with distributed.LocalCluster(**cluster_kwargs) as cluster, distributed.Client(
-            cluster
-        ) as client:
+        cluster = distributed.LocalCluster(**cluster_kwargs)
+        with cluster, distributed.Client(cluster) as client:
             print("Dask client:", client)
             print("Dask dashboard:", client.dashboard_link)
             # save results
-            self.roughness_dem.dem.to_netcdf(
-                self.get_instruction_path("result_geofabric"),
-                format="NETCDF4",
-                engine="netcdf4",
-            )
+            try:
+                self.roughness_dem.dem.to_netcdf(
+                    self.get_instruction_path("result_geofabric"),
+                    format="NETCDF4",
+                    engine="netcdf4",
+                )
+            except (Exception, KeyboardInterrupt) as caught_exception:
+                pathlib.Path(self.get_instruction_path("result_geofabric")).unlink()
+                logging.info(
+                    f"Caught error {caught_exception} and deleting"
+                    "partially created netCDF output "
+                    f"{self.get_instruction_path('result_geofabric')}"
+                    " before re-raising error."
+                )
+                raise caught_exception
         if self.debug:
             # Record the parameter used during execution - append to existing
             with open(
@@ -1167,10 +1253,10 @@ class MeasuredRiverGenerator(BaseProcessor):
             "result_polygon", defaults=defaults
         )
         ocean_contour_file = self.get_vector_or_raster_paths(
-            key="bathymetry_contours", data_type="vector"
+            key="ocean_contours", data_type="vector"
         )[0]
         ocean_contour_depth_label = self.get_instruction_general(
-            "bathymetry_contours_z_label"
+            key="z_labels", subkey="ocean"
         )
         # Create the required river centreline and bathymtries that don't exist
         # Only create for the two closest points to the river mouth
@@ -1234,6 +1320,8 @@ class MeasuredRiverGenerator(BaseProcessor):
             point_0.distance(point_1)
             for point_0, point_1 in zip(points_0[0:2], points_1[0:2])
         ]
+        # Add signifiers of being zero offset at bank edge and source of data
+        elevations_clean["source"] = "measured"
         elevations_clean.to_file(river_bathymetry_file)
 
         # Create fan object
@@ -1250,10 +1338,17 @@ class MeasuredRiverGenerator(BaseProcessor):
 
         # Estimate the fan extents and bathymetry
         fan_polygon, fan_bathymetry = fan.polygon_and_bathymetry()
-        fan_polygon.to_file(self.get_instruction_path("fan_polygon", defaults=defaults))
-        fan_bathymetry.to_file(
-            self.get_instruction_path("fan_bathymetry", defaults=defaults)
+        river_polygon = geopandas.read_file(river_polygon_file)
+
+        # Combine and save the river and fan geometries
+        fan_bathymetry["source"] = "fan"
+        combined_bathymetry = geopandas.GeoDataFrame(
+            pandas.concat([elevations_clean, fan_bathymetry], ignore_index=True),
+            crs=elevations_clean.crs,
         )
+        combined_bathymetry.to_file(river_bathymetry_file)
+        combined_polygon = river_polygon.overlay(fan_polygon, how="union")
+        combined_polygon.to_file(river_polygon_file)
 
     def run(self):
         """This method extracts a main channel then executes the DemGeneration
@@ -1304,15 +1399,8 @@ class MeasuredRiverGenerator(BaseProcessor):
         # Estimate a river fan if `estimate_fan` is True
         if self.get_measured_instruction("estimate_fan"):
             # Check if already done
-            defaults["fan_polygon"] = "fan_polygon.geojson"
-            defaults["fan_bathymetry"] = "fan_bathymetry.geojson"
-            fan_polygon_file = self.get_instruction_path(
-                "fan_polygon", defaults=defaults
-            )
-            fan_elevations_file = self.get_instruction_path(
-                "fan_bathymetry", defaults=defaults
-            )
-            if not (fan_polygon_file.exists() and fan_elevations_file.exists()):
+            result_elevations = geopandas.read_file(result_elevations_file)
+            if not ("fan" == result_elevations["source"]).any():
                 logging.info("Estimating the fan bathymetry.")
                 print("Estimating the fan bathymetry.")
                 self.estimate_river_mouth_fan(defaults)
@@ -1371,17 +1459,20 @@ class RiverBathymetryGenerator(BaseProcessor):
         river_bathymetry_file = self.get_result_file_path(key="river_bathymetry")
         river_polygon_file = self.get_result_file_path(key="river_polygon")
 
+        files_exist = river_bathymetry_file.is_file() and river_polygon_file.is_file()
+
         if not self.get_bathymetry_instruction("estimate_fan"):
-            return river_bathymetry_file.is_file() and river_polygon_file.is_file()
+            # If no fan just check if the files exist
+            return files_exist
         else:
-            fan_bathymetry_file = self.get_result_file_path(key="fan_bathymetry")
-            fan_polygon_file = self.get_result_file_path(key="fan_polygon")
-            return (
-                river_bathymetry_file.is_file()
-                and river_polygon_file.is_file()
-                and fan_bathymetry_file.is_file()
-                and fan_polygon_file.is_file()
-            )
+            # Otherwise check if the fan has been added to the outputs
+            if not files_exist:
+                # False as files don't exist
+                return files_exist
+            else:
+                # True if fan source in bathymetry
+                bathymetry = geopandas.read_file(river_bathymetry_file)
+                return (bathymetry["source"] == "fan").any()
 
     def alignment_exists(self) -> bool:
         """Return true if the DEMs are required for later processing
@@ -1417,8 +1508,6 @@ class RiverBathymetryGenerator(BaseProcessor):
                 "river_characteristics": "river_characteristics.geojson",
                 "river_polygon": "river_polygon.geojson",
                 "river_bathymetry": "river_bathymetry.geojson",
-                "fan_bathymetry": "fan_bathymetry.geojson",
-                "fan_polygon": "fan_polygon.geojson",
                 "gnd_dem": "raw_gnd_dem.nc",
                 "gnd_dem_extents": "raw_gnd_extents.geojson",
                 "veg_dem": "raw_veg_dem.nc",
@@ -1532,7 +1621,7 @@ class RiverBathymetryGenerator(BaseProcessor):
         # Ensure channel catchment exists and is up to date if needed
         if not gnd_file.is_file() or not veg_file.is_file():
             catchment_file = self.get_result_file_path(key="catchment")
-            instruction_paths["catchment_boundary"] = str(
+            instruction_paths["extents"] = str(
                 self.get_result_file_name(key="catchment")
             )
             channel_catchment = channel.get_channel_catchment(
@@ -1542,14 +1631,14 @@ class RiverBathymetryGenerator(BaseProcessor):
         # Remove bathymetry contour information if it exists while creating DEMs
         bathy_data_paths = None
         bathy_apis = None
-        if "bathymetry_contours" in instruction_paths:
-            bathy_data_paths = instruction_paths.pop("bathymetry_contours")
+        if "ocean_contours" in instruction_paths:
+            bathy_data_paths = instruction_paths.pop("ocean_contours")
         if (
             "vector" in self.instructions["datasets"]
-            and "bathymetry_contours" in self.instructions["datasets"]["vector"]["linz"]
+            and "ocean_contours" in self.instructions["datasets"]["vector"]["linz"]
         ):
             bathy_apis = self.instructions["datasets"]["vector"]["linz"].pop(
-                "bathymetry_contours"
+                "ocean_contours"
             )
         # Get the ground DEM
         if not gnd_file.is_file():
@@ -1582,10 +1671,10 @@ class RiverBathymetryGenerator(BaseProcessor):
         )
         # Replace bathymetry contour information if it exists
         if bathy_data_paths is not None:
-            instruction_paths["bathymetry_contours"] = bathy_data_paths
+            instruction_paths["ocean_contours"] = bathy_data_paths
         if bathy_apis is not None:
             self.instructions["datasets"]["vector"]["linz"][
-                "bathymetry_contours"
+                "ocean_contours"
             ] = bathy_apis
         return gnd_dem, veg_dem
 
@@ -1987,6 +2076,7 @@ class RiverBathymetryGenerator(BaseProcessor):
         width_values = geopandas.read_file(
             self.get_result_file_path(key="river_characteristics")
         )
+        width_values["source"] = "river"  # Specify as coming form river estimation
         channel = self.get_network_channel()
 
         # Match each channel midpoint to a reach ID - based on what reach is closest
@@ -2115,6 +2205,7 @@ class RiverBathymetryGenerator(BaseProcessor):
             min_z_name,
             width_name,
             flat_width_name,
+            "source",
         ]
         if self.debug:
             # Optionally write out additional depth information
@@ -2237,11 +2328,11 @@ class RiverBathymetryGenerator(BaseProcessor):
         river_bathymetry_file = self.get_result_file_path(key="river_bathymetry")
         river_polygon_file = self.get_result_file_path(key="river_polygon")
         ocean_contour_file = self.get_vector_or_raster_paths(
-            key="bathymetry_contours", data_type="vector"
+            key="ocean_contours", data_type="vector"
         )[0]
         aligned_channel_file = self.get_result_file_path(key="aligned")
         ocean_contour_depth_label = self.get_instruction_general(
-            "bathymetry_contours_z_label"
+            key="z_labels", subkey="ocean"
         )
 
         # Create fan object
@@ -2261,8 +2352,28 @@ class RiverBathymetryGenerator(BaseProcessor):
 
         # Estimate the fan extents and bathymetry
         fan_polygon, fan_bathymetry = fan.polygon_and_bathymetry()
-        fan_polygon.to_file(self.get_result_file_path(key="fan_polygon"))
-        fan_bathymetry.to_file(self.get_result_file_path(key="fan_bathymetry"))
+        river_bathymetry = geopandas.read_file(river_bathymetry_file)
+        river_polygon = geopandas.read_file(river_polygon_file)
+
+        # Combine and save the river and fan geometries
+        fan_bathymetry["source"] = "fan"
+        fan_bathymetry["bank_height"] = numpy.nan  # No bank height info in ocean
+        combined_bathymetry = geopandas.GeoDataFrame(
+            pandas.concat(
+                [fan_bathymetry.loc[::-1], river_bathymetry], ignore_index=True
+            ),
+            crs=river_bathymetry.crs,
+        )
+        combined_bathymetry.to_file(river_bathymetry_file)
+        combined_polygon = river_polygon.overlay(fan_polygon, how="union")
+        combined_polygon = (
+            geopandas.GeoDataFrame(
+                geometry=combined_polygon.buffer(self.get_resolution())
+            )
+            .dissolve()
+            .buffer(-self.get_resolution())
+        )
+        combined_polygon.to_file(river_polygon_file)
 
     def run(self):
         """This method extracts a main channel then executes the DemGeneration
@@ -2609,7 +2720,7 @@ class WaterwayBedElevationEstimator(BaseProcessor):
             # Create DEM generation instructions
             dem_instructions = self.instructions
             dem_instruction_paths = dem_instructions["data_paths"]
-            dem_instruction_paths["catchment_boundary"] = self.get_result_file_name(
+            dem_instruction_paths["extents"] = self.get_result_file_name(
                 key="waterways_polygon"
             )
             dem_instruction_paths["raw_dem"] = self.get_result_file_name(key="raw_dem")

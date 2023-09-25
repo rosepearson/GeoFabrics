@@ -6,6 +6,7 @@ channels:
   - defaults
 dependencies:
   - pip
+  - libprotobuf == 4.23.3
   - dask
   - distributed
   - gdal
