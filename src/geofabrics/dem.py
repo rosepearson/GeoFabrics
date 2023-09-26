@@ -2663,13 +2663,18 @@ def chunk_coarse_dem(
 ):
     """Load in a coarse DEM and trim to points within bbox and return the
     points."""
-    coarse_dem = CoarseDem(
-        dem_file=dem_file,
-        extents=extents,
-        set_foreshore=set_foreshore,
-    )
-    # Return in points after clipping
-    return coarse_dem.points
+    if extents["total"].area.sum() > 0:
+        coarse_dem = CoarseDem(
+            dem_file=dem_file,
+            extents=extents,
+            set_foreshore=set_foreshore,
+        )
+        # Get the points after clipping
+        points = coarse_dem.points
+    else:
+        # Return an empty list
+        points = []
+    return points
 
 
 """ Wrap the 'chunk_coarse_dem' routine in dask.delyed """
