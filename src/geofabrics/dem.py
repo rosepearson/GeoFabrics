@@ -128,10 +128,11 @@ class CoarseDem:
             # Try clip - catch if no DEM in clipping bounds
             try:
                 self._dem = self._dem.rio.clip(
-                    self._extents["total"].buffer(
-                        self.resolution * numpy.sqrt(2)).geometry.values,
-                        drop=True,
-                        from_disk=True
+                    self._extents["total"]
+                    .buffer(self.resolution * numpy.sqrt(2))
+                    .geometry.values,
+                    drop=True,
+                    from_disk=True,
                 )
                 self._dem.load()
 
