@@ -40,7 +40,7 @@
 			"extents": "../../../catchment.geojson" },
 		"datasets": { "vector": { "linz": { "land": { "layers": [51559] } } } },
 		"general": { "lidar_classifications_to_keep": [2, 9] },
-		"drains": { "widths": {"drain": 4, "stream": 6, "river": 8} } },
+		"waterways": { "widths": {"drain": 4, "stream": 6, "river": 8} } },
 	"dem": {
 		"output": { "grid_params": { "resolution": 4 } },
 		"processing": { "chunk_size": 300 },

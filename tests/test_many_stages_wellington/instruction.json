@@ -106,7 +106,7 @@
 		"general": {
 			"lidar_classifications_to_keep": [2, 9]
 		},
-		"drains": {
+		"waterways": {
 			"widths": {"drain": 5, "stream": 7.5, "river": 10}
 		}
 	},
