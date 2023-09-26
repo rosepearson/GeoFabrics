@@ -2762,10 +2762,10 @@ class WaterwayBedElevationEstimator(BaseProcessor):
 
             # Perform query
             overpass = OSMPythonTools.overpass.Overpass()
-            if "osm_date" in self.instructions["drains"]:
+            if "osm_date" in self.instructions["waterways"]:
                 waterways = overpass.query(
                     query,
-                    date=self.instructions["drains"]["osm_date"],
+                    date=self.instructions["waterways"]["osm_date"],
                     timeout=60,
                 )
             else:
@@ -2796,7 +2796,7 @@ class WaterwayBedElevationEstimator(BaseProcessor):
             )
 
             # Get specified widths
-            widths = self.instructions["drains"]["widths"]
+            widths = self.instructions["waterways"]["widths"]
             # Check if rivers are specified and remove if not
             if "ditch" not in widths.keys():
                 widths["ditch"] = widths["drain"]
