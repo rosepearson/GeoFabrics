@@ -1398,7 +1398,7 @@ class RawDem(LidarBase):
             for i, dim_y in enumerate(chunked_dim_y):
                 delayed_chunked_x = []
                 for j, dim_x in enumerate(chunked_dim_x):
-                    logging.info(f"\tChunk {[i, j]}")
+                    logging.info(f"\tLiDAR chunk {[i, j]}")
 
                     # Define the region to tile
                     chunk_region_to_tile = self._define_chunk_region(
@@ -1743,12 +1743,12 @@ class RawDem(LidarBase):
                 )
 
                 if chunk_size is None:
-                    self.add_coarse_dem_no_chunking(
+                    self._add_coarse_dem_no_chunking(
                         coarse_dem=coarse_dem,
                         mask=mask,
                     )
                 else:
-                    self.add_coarse_dem_chunked(
+                    self._add_coarse_dem_chunked(
                         coarse_dem_path=coarse_dem_path,
                         extents=extents,
                         chunk_size=chunk_size,
@@ -1756,7 +1756,7 @@ class RawDem(LidarBase):
                         radius=coarse_dem.resolution * numpy.sqrt(2),
                     )
 
-    def add_coarse_dem_no_chunking(
+    def _add_coarse_dem_no_chunking(
         self,
         coarse_dem: CoarseDem,
         mask: numpy.ndarray,
@@ -1807,7 +1807,7 @@ class RawDem(LidarBase):
             self.SOURCE_CLASSIFICATION["coarse DEM"],
         )
 
-    def add_coarse_dem_chunked(
+    def _add_coarse_dem_chunked(
         self,
         coarse_dem_path: pathlib.Path,
         extents: dict,
@@ -1844,7 +1844,7 @@ class RawDem(LidarBase):
         for i, dim_y in enumerate(chunked_dim_y):
             delayed_chunked_x = []
             for j, dim_x in enumerate(chunked_dim_x):
-                logging.info(f"\tChunk {[i, j]}")
+                logging.info(f"\tCoarse chunk {[i, j]}")
 
                 # Define the region of the chunk to rasterise
                 chunk_region_to_tile = self._define_chunk_region(
