@@ -3,7 +3,8 @@
 		"processing": { "chunk_size": 300, "number_of_cores": 20, "memory_limit": "20GiB" },
 		"datasets": { "lidar": { "open_topography": { "NZ20_Westport": true } },
 					  "vector": { "linz": { "key": "INSERT_LINZ_KEY" } } },
-		"data_paths": { "local_cache": "results" } },
+		"data_paths": { "local_cache": "results" },
+		"general": {"lidar_buffer": 5 } },
 	"measured": {
 		"data_paths": {
 			"subfolder": "geofabrics/measured",

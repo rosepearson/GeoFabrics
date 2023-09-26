@@ -5,7 +5,7 @@
 			"lidar": { "open_topography": { "NZ20_Westport": true } },
 			"vector": { "linz": { "key": "INSERT_LINZ_KEY", "land": { "layers": [51153] } } } },
 		"data_paths": { "local_cache": "results", "subfolder": "geofabrics"},
-		"general": { "interpolation": {"no_data": "linear"} } },
+		"general": { "lidar_buffer": 5, "interpolation": {"no_data": "linear"} } },
 	"dem": {
 		"data_paths": {
 			"extents": "../../catchment.geojson",
