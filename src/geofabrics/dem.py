@@ -128,7 +128,11 @@ class CoarseDem:
             # Try clip - catch if no DEM in clipping bounds
             try:
                 self._dem = self._dem.rio.clip(
-                    self._extents["total"].geometry.values, drop=True, from_disk=True
+                    self._extents["total"]
+                    .buffer(self.resolution * numpy.sqrt(2))
+                    .geometry.values,
+                    drop=True,
+                    from_disk=True,
                 )
                 self._dem.load()
 
@@ -1395,7 +1399,7 @@ class RawDem(LidarBase):
             for i, dim_y in enumerate(chunked_dim_y):
                 delayed_chunked_x = []
                 for j, dim_x in enumerate(chunked_dim_x):
-                    logging.info(f"\tChunk {[i, j]}")
+                    logging.info(f"\tLiDAR chunk {[i, j]}")
 
                     # Define the region to tile
                     chunk_region_to_tile = self._define_chunk_region(
@@ -1683,11 +1687,7 @@ class RawDem(LidarBase):
         )
 
         # Clip to within the full DEM extents
-        full_extents = geopandas.GeoDataFrame(
-            geometry=self.catchment_geometry.land_and_foreshore.buffer(
-                self.catchment_geometry.resolution / numpy.sqrt(2)
-            )
-        )
+        full_extents = self.catchment_geometry.land_and_foreshore
 
         # Iterate through DEMs
         logging.info(f"Incorporating coarse DEMs: {coarse_dem_paths}")
@@ -1744,12 +1744,12 @@ class RawDem(LidarBase):
                 )
 
                 if chunk_size is None:
-                    self.add_coarse_dem_no_chunking(
+                    self._add_coarse_dem_no_chunking(
                         coarse_dem=coarse_dem,
                         mask=mask,
                     )
                 else:
-                    self.add_coarse_dem_chunked(
+                    self._add_coarse_dem_chunked(
                         coarse_dem_path=coarse_dem_path,
                         extents=extents,
                         chunk_size=chunk_size,
@@ -1757,7 +1757,7 @@ class RawDem(LidarBase):
                         radius=coarse_dem.resolution * numpy.sqrt(2),
                     )
 
-    def add_coarse_dem_no_chunking(
+    def _add_coarse_dem_no_chunking(
         self,
         coarse_dem: CoarseDem,
         mask: numpy.ndarray,
@@ -1808,7 +1808,7 @@ class RawDem(LidarBase):
             self.SOURCE_CLASSIFICATION["coarse DEM"],
         )
 
-    def add_coarse_dem_chunked(
+    def _add_coarse_dem_chunked(
         self,
         coarse_dem_path: pathlib.Path,
         extents: dict,
@@ -1845,7 +1845,7 @@ class RawDem(LidarBase):
         for i, dim_y in enumerate(chunked_dim_y):
             delayed_chunked_x = []
             for j, dim_x in enumerate(chunked_dim_x):
-                logging.info(f"\tChunk {[i, j]}")
+                logging.info(f"\tCoarse chunk {[i, j]}")
 
                 # Define the region of the chunk to rasterise
                 chunk_region_to_tile = self._define_chunk_region(
@@ -2664,13 +2664,18 @@ def chunk_coarse_dem(
 ):
     """Load in a coarse DEM and trim to points within bbox and return the
     points."""
-    coarse_dem = CoarseDem(
-        dem_file=dem_file,
-        extents=extents,
-        set_foreshore=set_foreshore,
-    )
-    # Return in points after clipping
-    return coarse_dem.points
+    if extents["total"].area.sum() > 0:
+        coarse_dem = CoarseDem(
+            dem_file=dem_file,
+            extents=extents,
+            set_foreshore=set_foreshore,
+        )
+        # Get the points after clipping
+        points = coarse_dem.points
+    else:
+        # Return an empty list
+        points = []
+    return points
 
 
 """ Wrap the 'chunk_coarse_dem' routine in dask.delyed """
