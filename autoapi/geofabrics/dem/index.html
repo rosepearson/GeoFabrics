@@ -483,44 +483,6 @@ boundary.</p></li>
 </dl>
 </dd></dl>
 
-<dl class="py method">
-<dt class="sig sig-object py" id="geofabrics.dem.RawDem.add_coarse_dem_no_chunking">
-<span class="sig-name descname"><span class="pre">add_coarse_dem_no_chunking</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">coarse_dem</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">mask</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#geofabrics.dem.RawDem.add_coarse_dem_no_chunking" title="Link to this definition"></a></dt>
-<dd><p>Fill gaps in dense DEM from areas with no LiDAR with the coarse DEM.
-Perform linear interpolation.</p>
-<dl class="field-list simple">
-<dt class="field-odd">Parameters<span class="colon">:</span></dt>
-<dd class="field-odd"><ul class="simple">
-<li><p><strong>rasterising</strong> (<em>coarse_dem - The coarse DEM to use for</em>) – </p></li>
-<li><p><strong>values</strong> (<em>mask - the pixel mask</em><em> of </em><em>where to set these</em>) – </p></li>
-<li><p><strong>coarse_dem</strong> (<a class="reference internal" href="#geofabrics.dem.CoarseDem" title="geofabrics.dem.CoarseDem"><em>CoarseDem</em></a>) – </p></li>
-<li><p><strong>mask</strong> (<em>numpy.ndarray</em>) – </p></li>
-</ul>
-</dd>
-</dl>
-</dd></dl>
-
-<dl class="py method">
-<dt class="sig sig-object py" id="geofabrics.dem.RawDem.add_coarse_dem_chunked">
-<span class="sig-name descname"><span class="pre">add_coarse_dem_chunked</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">coarse_dem_path</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">extents</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">chunk_size</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">mask</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">radius</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#geofabrics.dem.RawDem.add_coarse_dem_chunked" title="Link to this definition"></a></dt>
-<dd><p>Fill gaps in dense DEM from areas with no LiDAR with the coarse DEM.
-Perform linear interpolation.</p>
-<dl class="field-list simple">
-<dt class="field-odd">Parameters<span class="colon">:</span></dt>
-<dd class="field-odd"><ul class="simple">
-<li><p><strong>rasterising</strong> (<em>coarse_dem - The coarse DEM to use for</em>) – </p></li>
-<li><p><strong>DEM</strong> (<em>extents - a dictionary</em><em> of  </em><em>area to rasterise using the coarse</em>) – </p></li>
-<li><p><strong>chunk</strong> (<em>chunk_size - the size</em><em> of </em><em>each</em>) – </p></li>
-<li><p><strong>coarse_dem_path</strong> (<em>pathlib.Path</em>) – </p></li>
-<li><p><strong>extents</strong> (<em>dict</em>) – </p></li>
-<li><p><strong>chunk_size</strong> (<em>int</em>) – </p></li>
-<li><p><strong>mask</strong> (<em>numpy.ndarray</em>) – </p></li>
-<li><p><strong>radius</strong> (<em>float</em>) – </p></li>
-</ul>
-</dd>
-</dl>
-</dd></dl>
-
 </dd></dl>
 
 <dl class="py class">

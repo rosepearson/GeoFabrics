@@ -251,25 +251,6 @@ Attributes
                                                                                   boundary.
 
 
-   .. py:method:: add_coarse_dem_no_chunking(coarse_dem, mask)
-
-      Fill gaps in dense DEM from areas with no LiDAR with the coarse DEM.
-      Perform linear interpolation.
-
-      :param coarse_dem - The coarse DEM to use for rasterising:
-      :param mask - the pixel mask of where to set these values:
-
-
-   .. py:method:: add_coarse_dem_chunked(coarse_dem_path, extents, chunk_size, mask, radius)
-
-      Fill gaps in dense DEM from areas with no LiDAR with the coarse DEM.
-      Perform linear interpolation.
-
-      :param coarse_dem - The coarse DEM to use for rasterising:
-      :param extents - a dictionary of  area to rasterise using the coarse DEM:
-      :param chunk_size - the size of each chunk:
-
-
 
 .. py:class:: RoughnessDem(catchment_geometry, hydrological_dem_path, interpolation_method, elevation_range = None)
 
