@@ -893,9 +893,7 @@ class RawLidarDemGenerator(BaseProcessor):
             print("Dask dashboard:", client.dashboard_link)
 
             # compute and save raw DEM
-            logging.info(
-                "In processor.DemGenerator - write out the raw DEM from LiDAR"
-            )
+            logging.info("In processor.DemGenerator - write out the raw DEM from LiDAR")
             try:
                 self.raw_dem.dem.to_netcdf(
                     self.get_instruction_path("raw_dem"),
