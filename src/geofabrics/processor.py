@@ -1400,7 +1400,7 @@ class MeasuredRiverGenerator(BaseProcessor):
         if self.get_measured_instruction("estimate_fan"):
             # Check if already done
             result_elevations = geopandas.read_file(result_elevations_file)
-            if not ("fan" == result_elevations["source"]).any():
+            if not ("source" in result_elevations.columns) or not ("fan" == result_elevations["source"]).any():
                 logging.info("Estimating the fan bathymetry.")
                 print("Estimating the fan bathymetry.")
                 self.estimate_river_mouth_fan(defaults)
