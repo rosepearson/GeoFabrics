@@ -880,20 +880,6 @@ class RawLidarDemGenerator(BaseProcessor):
             metadata=self.create_metadata(),
         )  # Note must be called after all others if it is to be complete
 
-        # Add a coarse DEM if significant area without LiDAR and a coarse DEM
-        if self.check_vector_or_raster(key="coarse_dems", api_type="raster"):
-            coarse_dem_paths = self.get_vector_or_raster_paths(
-                key="coarse_dems", data_type="raster"
-            )
-
-            # Add coarse DEMs if there are any and if area
-            self.raw_dem.add_coarse_dems(
-                coarse_dem_paths=coarse_dem_paths,
-                area_threshold=area_threshold,
-                buffer_cells=self.get_instruction_general("lidar_buffer"),
-                chunk_size=self.get_processing_instructions("chunk_size"),
-            )
-
         # Setup Dask cluster and client - LAZY SAVE LIDAR DEM
         cluster_kwargs = {
             "n_workers": self.get_processing_instructions("number_of_cores"),
@@ -907,9 +893,7 @@ class RawLidarDemGenerator(BaseProcessor):
             print("Dask dashboard:", client.dashboard_link)
 
             # compute and save raw DEM
-            logging.info(
-                "In processor.DemGenerator - write out the raw DEM " "from LiDAR"
-            )
+            logging.info("In processor.DemGenerator - write out the raw DEM from LiDAR")
             try:
                 self.raw_dem.dem.to_netcdf(
                     self.get_instruction_path("raw_dem"),
@@ -925,6 +909,46 @@ class RawLidarDemGenerator(BaseProcessor):
                     " before re-raising error."
                 )
                 raise caught_exception
+
+        # Add a coarse DEM if significant area without LiDAR and a coarse DEM
+        if self.check_vector_or_raster(key="coarse_dems", api_type="raster"):
+            coarse_dem_paths = self.get_vector_or_raster_paths(
+                key="coarse_dems", data_type="raster"
+            )
+
+            # Add coarse DEMs if there are any and if area
+            self.raw_dem.add_coarse_dems(
+                coarse_dem_paths=coarse_dem_paths,
+                area_threshold=area_threshold,
+                buffer_cells=self.get_instruction_general("lidar_buffer"),
+                chunk_size=self.get_processing_instructions("chunk_size"),
+            )
+
+            # Run dask a second time over the coarse DEM if added
+            cluster = distributed.LocalCluster(**cluster_kwargs)
+            with cluster, distributed.Client(cluster) as client:
+                print("Dask client:", client)
+                print("Dask dashboard:", client.dashboard_link)
+
+                # compute and save raw DEM
+                logging.info(
+                    "In processor.DemGenerator - write out the raw DEM from Coarse"
+                )
+                try:
+                    self.raw_dem.dem.to_netcdf(
+                        self.get_instruction_path("raw_dem"),
+                        format="NETCDF4",
+                        engine="netcdf4",
+                    )
+                except (Exception, KeyboardInterrupt) as caught_exception:
+                    pathlib.Path(self.get_instruction_path("raw_dem")).unlink()
+                    logging.info(
+                        f"Caught error {caught_exception} and deleting"
+                        "partially created netCDF output "
+                        f"{self.get_instruction_path('raw_dem')}"
+                        " before re-raising error."
+                    )
+                    raise caught_exception
 
         if self.debug:
             # Record the parameter used during execution - append to existing
@@ -1400,7 +1424,10 @@ class MeasuredRiverGenerator(BaseProcessor):
         if self.get_measured_instruction("estimate_fan"):
             # Check if already done
             result_elevations = geopandas.read_file(result_elevations_file)
-            if not ("fan" == result_elevations["source"]).any():
+            if (
+                not ("source" in result_elevations.columns)
+                or not ("fan" == result_elevations["source"]).any()
+            ):
                 logging.info("Estimating the fan bathymetry.")
                 print("Estimating the fan bathymetry.")
                 self.estimate_river_mouth_fan(defaults)
