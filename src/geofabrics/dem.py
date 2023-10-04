@@ -1711,7 +1711,7 @@ class RawDem(LidarBase):
 
             # Check if enough without LiDAR to use coarse DEMs
             if len(no_data_extents) == 0:
-                logging.INFO(
+                logging.info(
                     f"No land areas greater than {area_threshold} "
                     "without LiDAR values. Ignoring all remaining coarse DEMs."
                 )
