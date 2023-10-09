@@ -869,7 +869,7 @@ class RawLidarDemGenerator(BaseProcessor):
             ),
             elevation_range=self.get_instruction_general("elevation_range"),
         )
-            
+
         # Load in LiDAR tiles
         self.raw_dem.add_lidar(
             lidar_datasets_info=lidar_datasets_info,
@@ -893,7 +893,7 @@ class RawLidarDemGenerator(BaseProcessor):
                 buffer_cells=self.get_instruction_general("lidar_buffer"),
                 chunk_size=self.get_processing_instructions("chunk_size"),
             )
-            
+
         # Setup Dask cluster and client - LAZY SAVE LIDAR DEM
         cluster_kwargs = {
             "n_workers": self.get_processing_instructions("number_of_cores"),

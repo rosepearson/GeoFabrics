@@ -1737,10 +1737,9 @@ class RawDem(LidarBase):
                 # from the Coarse DEM
                 z = self._dem.z.copy(deep=True)
                 z.data[:] = 0
-                mask = (
-                    z.rio.clip(coarse_dem.extents["total"].geometry.values, drop=False)
-                    .notnull()
-                )
+                mask = z.rio.clip(
+                    coarse_dem.extents["total"].geometry.values, drop=False
+                ).notnull()
 
                 if chunk_size is None:
                     self._add_coarse_dem_no_chunking(
