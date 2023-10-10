@@ -1693,10 +1693,14 @@ class RawDem(LidarBase):
         logging.info(f"Incorporating coarse DEMs: {coarse_dem_paths}")
         for coarse_dem_path in coarse_dem_paths:
             # Check if any areas still without values - exit if none
-            no_value_mask = self._dem.z.rolling(
-                dim={"x": buffer_cells, "y": buffer_cells},
-                min_periods=1,
-                ).count().isnull()
+            no_value_mask = (
+                self._dem.z.rolling(
+                    dim={"x": buffer_cells, "y": buffer_cells},
+                    min_periods=1,
+                )
+                .count()
+                .isnull()
+            )
             if no_value_mask.any():
                 logging.info(
                     f"No land areas greater than the cell buffer {buffer_cells}"
@@ -1704,10 +1708,12 @@ class RawDem(LidarBase):
                 )
                 return False
             # Check for overlap with the Coarse DEM
-            coarse_dem_bounds = rioxarray.rioxarray.open_rasterio(
-                coarse_dem_path, masked=True).squeeze(
-                    "band", drop=True
-                ).set_crs(self.catchment_geometry.crs["horizontal"]).rio.bounds()
+            coarse_dem_bounds = (
+                rioxarray.rioxarray.open_rasterio(coarse_dem_path, masked=True)
+                .squeeze("band", drop=True)
+                .set_crs(self.catchment_geometry.crs["horizontal"])
+                .rio.bounds()
+            )
             coarse_dem_bounds = geopandas.GeoDataFrame(
                 {
                     "geometry": [
@@ -1725,7 +1731,9 @@ class RawDem(LidarBase):
             )
 
             # Add the coarse DEM data where there's no LiDAR updating the extents
-            no_value_mask = no_value_mask.rio.clip(coarse_dem_bounds.geometry.values, drop=False)
+            no_value_mask = no_value_mask.rio.clip(
+                coarse_dem_bounds.geometry.values, drop=False
+            )
             if no_value_mask.any():
                 logging.info(f"\t\tAdd data from coarse DEM: {coarse_dem_path.name}")
                 # Create a mask defining the region without values to populate
@@ -1771,7 +1779,7 @@ class RawDem(LidarBase):
             extents=extents,  # by reference, so "total" trimmed to coarse DEM bounds
             set_foreshore=self.drop_offshore_lidar,
         )
-            
+
         # create dictionary defining raster options
         # Set search radius to the diagonal cell length to ensure corners covered
         raster_options = {
