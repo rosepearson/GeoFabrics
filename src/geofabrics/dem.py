@@ -1686,9 +1686,6 @@ class RawDem(LidarBase):
             "Consider adding coarse DEMs to fill areas outside the " "LiDAR extents"
         )
 
-        # Clip to within the full DEM extents
-        full_extents = self.catchment_geometry.land_and_foreshore
-
         # Iterate through DEMs
         logging.info(f"Incorporating coarse DEMs: {coarse_dem_paths}")
         for coarse_dem_path in coarse_dem_paths:
@@ -1701,7 +1698,7 @@ class RawDem(LidarBase):
                 .count()
                 .isnull()
             )
-            if no_value_mask.any():
+            if not no_value_mask.any():
                 logging.info(
                     f"No land areas greater than the cell buffer {buffer_cells}"
                     " without LiDAR values. Ignoring all remaining coarse DEMs."
