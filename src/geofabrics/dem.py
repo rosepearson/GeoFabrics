@@ -2160,6 +2160,9 @@ class RoughnessDem(LidarBase):
             metadata=metadata,
             region_to_rasterise=region_to_rasterise,
         )
+        logging.info("Computing chunks")
+        chunked_dem = chunked_dem.compute()
+        logging.debug("Chunked DEM computed")
 
         return chunked_dem
 
