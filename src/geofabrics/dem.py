@@ -1714,7 +1714,7 @@ class RawDem(LidarBase):
                 .set_crs(self.catchment_geometry.crs["horizontal"])
             )
             coarse_dem_resolution = coarse_dem.rio.resolution()
-            resolution = max(abs(resolution[0]), abs(resolution[1]))
+            coarse_dem_resolution = max(abs(coarse_dem_resolution[0]), abs(coarse_dem_resolution[1]))
             coarse_dem_bounds = coarse_dem.rio.bounds()
             coarse_dem_bounds = geopandas.GeoDataFrame(
                 {
