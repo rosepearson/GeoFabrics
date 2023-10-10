@@ -1080,7 +1080,7 @@ class HydrologicDemGenerator(BaseProcessor):
 
         # create the catchment geometry object
         self.catchment_geometry = self.create_catchment()
-        
+
         # Setup Dask cluster and client - LAZY SAVE LIDAR DEM
         cluster_kwargs = {
             "n_workers": self.get_processing_instructions("number_of_cores"),

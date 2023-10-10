@@ -484,7 +484,9 @@ class HydrologicallyConditionedDem(DemBase):
             if self._dem.z.isnull().any():
                 self._dem["z"] = self._dem.z.rio.interpolate_na(method="nearest")
             # Only set areas with successful interpolation as interpolated
-            interpolation_mask &= self._dem.z.notnull()  # Mask of values set in line above
+            interpolation_mask &= (
+                self._dem.z.notnull()
+            )  # Mask of values set in line above
             self._dem["data_source"] = self._dem.data_source.where(
                 ~(interpolation_mask),
                 self.SOURCE_CLASSIFICATION["interpolated"],
@@ -496,13 +498,13 @@ class HydrologicallyConditionedDem(DemBase):
         # Ensure all area's with NaN values are marked as no-data
         no_data_mask = self._dem.z.notnull()
         self._dem["data_source"] = self._dem.data_source.where(
-                no_data_mask,
-                self.SOURCE_CLASSIFICATION["no data"],
-            )
+            no_data_mask,
+            self.SOURCE_CLASSIFICATION["no data"],
+        )
         self._dem["lidar_source"] = self._dem.lidar_source.where(
-                no_data_mask,
-                self.SOURCE_CLASSIFICATION["no data"],
-            )
+            no_data_mask,
+            self.SOURCE_CLASSIFICATION["no data"],
+        )
         self._dem = self._dem.rio.clip(
             self.catchment_geometry.catchment.geometry, drop=True
         )
