@@ -1735,10 +1735,9 @@ class RawDem(LidarBase):
                 logging.info(f"\t\tAdd data from coarse DEM: {coarse_dem_path.name}")
                 # Create a mask defining the region without values to populate
                 # from the Coarse DEM
-                mask = (
-                    self._dem.z.rio.clip(coarse_dem.extents["total"].geometry.values, drop=False)
-                    .notnull()
-                )
+                mask = self._dem.z.rio.clip(
+                    coarse_dem.extents["total"].geometry.values, drop=False
+                ).notnull()
 
                 if chunk_size is None:
                     self._add_coarse_dem_no_chunking(
