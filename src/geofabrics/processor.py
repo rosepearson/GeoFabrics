@@ -869,7 +869,7 @@ class RawLidarDemGenerator(BaseProcessor):
             ),
             elevation_range=self.get_instruction_general("elevation_range"),
         )
-            
+
         # Setup Dask cluster and client - LAZY SAVE LIDAR DEM
         cluster_kwargs = {
             "n_workers": self.get_processing_instructions("number_of_cores"),
