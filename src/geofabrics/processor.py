@@ -2661,9 +2661,9 @@ class WaterwayBedElevationEstimator(BaseProcessor):
 
             return sampled_multipoints
 
-        '''open_waterways = dask.dataframe.from_pandas( # To incorporate later
+        """open_waterways = dask.dataframe.from_pandas( # To incorporate later
             open_waterways,
-            npartitions=self.get_processing_instructions("number_of_cores"))'''
+            npartitions=self.get_processing_instructions("number_of_cores"))"""
         open_waterways["points"] = open_waterways.apply(
             lambda row: sample_location_down_slope(row=row),
             axis=1,
