@@ -1694,6 +1694,7 @@ class RawDem(LidarBase):
                 self._dem.z.rolling(
                     dim={"x": buffer_cells, "y": buffer_cells},
                     min_periods=1,
+                    center=True,
                 )
                 .count()
                 .isnull()
