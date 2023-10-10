@@ -1692,7 +1692,7 @@ class RawDem(LidarBase):
             # Check if any areas still without values - exit if none
             no_value_mask = (
                 self._dem.z.rolling(
-                    dim={"x": buffer_cells, "y": buffer_cells},
+                    dim={"x": buffer_cells * 2 + 1, "y": buffer_cells * 2 + 1},
                     min_periods=1,
                     center=True,
                 )
@@ -2037,23 +2037,25 @@ class RoughnessDem(LidarBase):
                 metadata=metadata,
             )
         # Set roughness where water
-        self._dem.zo.data[
-            (
-                self._dem.data_source.data
-                == self.SOURCE_CLASSIFICATION["ocean bathymetry"]
-            )
-            | (
-                self._dem.data_source.data
-                == self.SOURCE_CLASSIFICATION["rivers and fans"]
-            )
-            | (self._dem.data_source.data == self.SOURCE_CLASSIFICATION["waterways"])
-        ] = self.ROUGHNESS_DEFAULTS["water"]
+        self._dem["zo"] = self._dem.zo.where(
+            self._dem.data_source != self.SOURCE_CLASSIFICATION["ocean bathymetry"],
+            self.ROUGHNESS_DEFAULTS["water"],
+        )
+        self._dem["zo"] = self._dem.zo.where(
+            self._dem.data_source != self.SOURCE_CLASSIFICATION["rivers and fans"],
+            self.ROUGHNESS_DEFAULTS["water"],
+        )
+        self._dem["zo"] = self._dem.zo.where(
+            self._dem.data_source != self.SOURCE_CLASSIFICATION["waterways"],
+            self.ROUGHNESS_DEFAULTS["water"],
+        )
         # Set roughness where land and no LiDAR
-        self._dem.zo.data[
-            self._dem.data_source.data == self.SOURCE_CLASSIFICATION["coarse DEM"]
-        ] = self.ROUGHNESS_DEFAULTS[
-            "land"
-        ]  # or LiDAR with no roughness estimate
+        self._dem["zo"] = self._dem.zo.where(
+            self._dem.data_source != self.SOURCE_CLASSIFICATION["coarse DEM"],
+            self.ROUGHNESS_DEFAULTS["land"],
+        )  # or LiDAR with no roughness estimate
+        # Ensure the defaults are re-added
+        self._write_netcdf_conventions_in_place(self._dem, self.catchment_geometry.crs)
         # Interpolate any missing roughness values
         if self.interpolation_method is not None:
             self._dem["zo"] = self._dem.zo.rio.interpolate_na(
@@ -2160,9 +2162,6 @@ class RoughnessDem(LidarBase):
             metadata=metadata,
             region_to_rasterise=region_to_rasterise,
         )
-        logging.info("Computing chunks")
-        chunked_dem = chunked_dem.compute()
-        logging.debug("Chunked DEM computed")
 
         return chunked_dem
 

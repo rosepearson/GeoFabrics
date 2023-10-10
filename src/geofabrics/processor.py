@@ -230,7 +230,7 @@ class BaseProcessor(abc.ABC):
             "lidar_classifications_to_keep": [2],
             "elevation_range": None,
             "download_limit_gbytes": 100,
-            "lidar_buffer": 1,
+            "lidar_buffer": 0,
             "interpolation": {
                 "rivers": "rbf",
                 "waterways": "cubic",
