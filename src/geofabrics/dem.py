@@ -1708,8 +1708,8 @@ class RawDem(LidarBase):
             coarse_dem = (
                 rioxarray.rioxarray.open_rasterio(coarse_dem_path, masked=True)
                 .squeeze("band", drop=True)
-                .set_crs(self.catchment_geometry.crs["horizontal"])
             )
+            coarse_dem.rio.set_crs(self.catchment_geometry.crs["horizontal"])
             coarse_dem_resolution = coarse_dem.rio.resolution()
             coarse_dem_resolution = max(
                 abs(coarse_dem_resolution[0]), abs(coarse_dem_resolution[1])
@@ -1771,7 +1771,7 @@ class RawDem(LidarBase):
 
         # Load in the coarse DEM
         extents = {
-            "total": self.catchment_geometry.catchment_boundary,
+            "total": self.catchment_geometry.catchment,
             "land": self.catchment_geometry.full_land,
             "foreshore": self.catchment_geometry.foreshore,
         }
@@ -1837,7 +1837,7 @@ class RawDem(LidarBase):
             "method": "linear",
         }
         extents = {
-            "total": self.catchment_geometry.catchment_boundary,
+            "total": self.catchment_geometry.catchment,
             "land": self.catchment_geometry.full_land,
             "foreshore": self.catchment_geometry.foreshore,
         }
