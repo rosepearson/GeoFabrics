@@ -2027,7 +2027,6 @@ class RoughnessDem(LidarBase):
 
         # Calculate roughness from LiDAR
         if chunk_size is None:  # If one file it's ok if there is no tile_index
-
             self._dem = self._add_lidar_no_chunking(
                 lidar_datasets_info=lidar_datasets_info,
                 options=raster_options,
@@ -2302,8 +2301,10 @@ class RoughnessDem(LidarBase):
         # Resize zo to share the same dimensions at the DEM
         self._dem["zo"] = zo.sel(x=self._dem.x, y=self._dem.y, method="nearest")
         # Ensure no negative roughnesses
-        self._dem["zo"] = self._dem.zo.where(self._dem.zo > self.ROUGHNESS_DEFAULTS["minimum"],
-                                             self.ROUGHNESS_DEFAULTS["minimum"])
+        self._dem["zo"] = self._dem.zo.where(
+            self._dem.zo > self.ROUGHNESS_DEFAULTS["minimum"],
+            self.ROUGHNESS_DEFAULTS["minimum"],
+        )
 
         # ensure the expected CF conventions are followed
         self._write_netcdf_conventions_in_place(self._dem, self.catchment_geometry.crs)
