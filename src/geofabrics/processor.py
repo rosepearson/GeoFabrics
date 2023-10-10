@@ -1156,16 +1156,6 @@ class RoughnessLengthGenerator(BaseProcessor):
             ),
         )
 
-        # Load in LiDAR tiles
-        self.roughness_dem.add_lidar(
-            lidar_datasets_info=lidar_datasets_info,
-            lidar_classifications_to_keep=self.get_instruction_general(
-                "lidar_classifications_to_keep"
-            ),
-            chunk_size=self.get_processing_instructions("chunk_size"),
-            metadata=self.create_metadata(),
-        )  # Note must be called after all others if it is to be complete
-
         # Setup Dask cluster and client
         cluster_kwargs = {
             "n_workers": self.get_processing_instructions("number_of_cores"),
@@ -1177,6 +1167,17 @@ class RoughnessLengthGenerator(BaseProcessor):
         with cluster, distributed.Client(cluster) as client:
             print("Dask client:", client)
             print("Dask dashboard:", client.dashboard_link)
+
+            # Load in LiDAR tiles
+            self.roughness_dem.add_lidar(
+                lidar_datasets_info=lidar_datasets_info,
+                lidar_classifications_to_keep=self.get_instruction_general(
+                    "lidar_classifications_to_keep"
+                ),
+                chunk_size=self.get_processing_instructions("chunk_size"),
+                metadata=self.create_metadata(),
+            )  # Note must be called after all others if it is to be complete
+
             # save results
             try:
                 self.roughness_dem.dem.to_netcdf(
