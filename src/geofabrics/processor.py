@@ -1080,28 +1080,51 @@ class HydrologicDemGenerator(BaseProcessor):
 
         # create the catchment geometry object
         self.catchment_geometry = self.create_catchment()
+        
+        # Setup Dask cluster and client - LAZY SAVE LIDAR DEM
+        cluster_kwargs = {
+            "n_workers": self.get_processing_instructions("number_of_cores"),
+            "threads_per_worker": 1,
+            "processes": True,
+            "memory_limit": self.get_processing_instructions("memory_limit"),
+        }
+        cluster = distributed.LocalCluster(**cluster_kwargs)
+        with cluster, distributed.Client(cluster) as client:
+            print("Dask client:", client)
+            print("Dask dashboard:", client.dashboard_link)
 
-        # setup the hydrologically conditioned DEM generator
-        self.hydrologic_dem = dem.HydrologicallyConditionedDem(
-            catchment_geometry=self.catchment_geometry,
-            raw_dem_path=self.get_instruction_path("raw_dem"),
-            interpolation_method=self.get_instruction_general(
-                key="interpolation", subkey="no_data"
-            ),
-        )
+            # setup the hydrologically conditioned DEM generator
+            self.hydrologic_dem = dem.HydrologicallyConditionedDem(
+                catchment_geometry=self.catchment_geometry,
+                raw_dem_path=self.get_instruction_path("raw_dem"),
+                interpolation_method=self.get_instruction_general(
+                    key="interpolation", subkey="no_data"
+                ),
+            )
 
-        # Check for and add any bathymetry information
-        self.add_bathymetry(
-            area_threshold=area_threshold,
-            catchment_dirs=self.get_instruction_path("extents"),
-        )
+            # Check for and add any bathymetry information
+            self.add_bathymetry(
+                area_threshold=area_threshold,
+                catchment_dirs=self.get_instruction_path("extents"),
+            )
 
-        # fill combined dem - save results
-        self.hydrologic_dem.dem.to_netcdf(
-            self.get_instruction_path("result_dem"),
-            format="NETCDF4",
-            engine="netcdf4",
-        )
+            # fill combined dem - save results
+            logging.info("In processor.DemGenerator - write out the raw DEM to netCDF")
+            try:
+                self.hydrologic_dem.dem.to_netcdf(
+                    self.get_instruction_path("result_dem"),
+                    format="NETCDF4",
+                    engine="netcdf4",
+                )
+            except (Exception, KeyboardInterrupt) as caught_exception:
+                pathlib.Path(self.get_instruction_path("raw_dem")).unlink()
+                logging.info(
+                    f"Caught error {caught_exception} and deleting"
+                    "partially created netCDF output "
+                    f"{self.get_instruction_path('raw_dem')}"
+                    " before re-raising error."
+                )
+                raise caught_exception
         if self.debug:
             # Record the parameter used during execution - append to existing
             with open(
@@ -1147,16 +1170,6 @@ class RoughnessLengthGenerator(BaseProcessor):
         # Get LiDAR data file-list - this may involve downloading lidar files
         lidar_datasets_info = self.get_lidar_datasets_info()
 
-        # setup the roughness DEM generator
-        self.roughness_dem = dem.RoughnessDem(
-            catchment_geometry=self.catchment_geometry,
-            hydrological_dem_path=self.get_instruction_path("result_dem"),
-            elevation_range=self.get_instruction_general("elevation_range"),
-            interpolation_method=self.get_instruction_general(
-                key="interpolation", subkey="no_data"
-            ),
-        )
-
         # Setup Dask cluster and client
         cluster_kwargs = {
             "n_workers": self.get_processing_instructions("number_of_cores"),
@@ -1168,6 +1181,16 @@ class RoughnessLengthGenerator(BaseProcessor):
         with cluster, distributed.Client(cluster) as client:
             print("Dask client:", client)
             print("Dask dashboard:", client.dashboard_link)
+
+            # setup the roughness DEM generator
+            self.roughness_dem = dem.RoughnessDem(
+                catchment_geometry=self.catchment_geometry,
+                hydrological_dem_path=self.get_instruction_path("result_dem"),
+                elevation_range=self.get_instruction_general("elevation_range"),
+                interpolation_method=self.get_instruction_general(
+                    key="interpolation", subkey="no_data"
+                ),
+            )
 
             # Load in LiDAR tiles
             self.roughness_dem.add_lidar(

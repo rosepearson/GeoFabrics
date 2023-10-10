@@ -416,7 +416,7 @@ class HydrologicallyConditionedDem(DemBase):
 
         # Read in the dense DEM raster - and free up file by performing a deep copy.
         raw_dem = rioxarray.rioxarray.open_rasterio(
-            pathlib.Path(raw_dem_path), masked=True, parse_coordinates=True
+            pathlib.Path(raw_dem_path), masked=True, parse_coordinates=True, chunks=True
         )
 
         # Deep copy to ensure the opened file is properly unlocked; Squeeze as
@@ -476,28 +476,33 @@ class HydrologicallyConditionedDem(DemBase):
         if (
             self.interpolation_method is not None
         ):  # methods are 'nearest', 'linear' and 'cubic'
-            interpolation_mask = numpy.isnan(self._dem.z.data)
+            interpolation_mask = self._dem.z.isnull()
             self._dem["z"] = self._dem.z.rio.interpolate_na(
                 method=self.interpolation_method
             )
             # If any NaN remain apply nearest neighbour interpolation
-            if numpy.isnan(self._dem.z.data).any():
+            if self._dem.z.isnull().any():
                 self._dem["z"] = self._dem.z.rio.interpolate_na(method="nearest")
             # Only set areas with successful interpolation as interpolated
-            interpolation_mask &= numpy.logical_not(numpy.isnan(self._dem.z.data))
-            self._dem.data_source.data[interpolation_mask] = self.SOURCE_CLASSIFICATION[
-                "interpolated"
-            ]
-            self._dem.lidar_source.data[
-                interpolation_mask
-            ] = self.SOURCE_CLASSIFICATION["no data"]
+            interpolation_mask &= self._dem.z.notnull()  # Mask of values set in line above
+            self._dem["data_source"] = self._dem.data_source.where(
+                ~(interpolation_mask),
+                self.SOURCE_CLASSIFICATION["interpolated"],
+            )
+            self._dem["lidar_source"] = self._dem.lidar_source.where(
+                ~(interpolation_mask),
+                self.SOURCE_CLASSIFICATION["no data"],
+            )
         # Ensure all area's with NaN values are marked as no-data
-        self._dem.data_source.data[
-            numpy.isnan(self._dem.z.data)
-        ] = self.SOURCE_CLASSIFICATION["no data"]
-        self._dem.lidar_source.data[
-            numpy.isnan(self._dem.z.data)
-        ] = self.SOURCE_CLASSIFICATION["no data"]
+        no_data_mask = self._dem.z.notnull()
+        self._dem["data_source"] = self._dem.data_source.where(
+                no_data_mask,
+                self.SOURCE_CLASSIFICATION["no data"],
+            )
+        self._dem["lidar_source"] = self._dem.lidar_source.where(
+                no_data_mask,
+                self.SOURCE_CLASSIFICATION["no data"],
+            )
         self._dem = self._dem.rio.clip(
             self.catchment_geometry.catchment.geometry, drop=True
         )
@@ -1942,6 +1947,7 @@ class RoughnessDem(LidarBase):
             pathlib.Path(hydrological_dem_path),
             masked=True,
             parse_coordinates=True,
+            chunks=True,
         )
         hydrological_dem = hydrological_dem.squeeze("band", drop=True)
         self._write_netcdf_conventions_in_place(
