@@ -2016,9 +2016,6 @@ class RoughnessDem(LidarBase):
             lidar_datasets_info=lidar_datasets_info, chunk_size=chunk_size
         )
 
-        # Calculate roughness from LiDAR
-        region_to_rasterise = self._calculate_lidar_extents()
-
         # create dictionary defining raster options
         raster_options = {
             "lidar_classifications_to_keep": lidar_classifications_to_keep,
@@ -2028,11 +2025,11 @@ class RoughnessDem(LidarBase):
             "crs": self.catchment_geometry.crs,
         }
 
-        # Set roughness where LiDAR
+        # Calculate roughness from LiDAR
         if chunk_size is None:  # If one file it's ok if there is no tile_index
+
             self._dem = self._add_lidar_no_chunking(
                 lidar_datasets_info=lidar_datasets_info,
-                region_to_rasterise=region_to_rasterise,
                 options=raster_options,
                 metadata=metadata,
             )
@@ -2040,7 +2037,6 @@ class RoughnessDem(LidarBase):
             self._dem = self._add_tiled_lidar_chunked(
                 lidar_datasets_info=lidar_datasets_info,
                 raster_options=raster_options,
-                region_to_rasterise=region_to_rasterise,
                 chunk_size=chunk_size,
                 metadata=metadata,
             )
@@ -2079,7 +2075,6 @@ class RoughnessDem(LidarBase):
     def _add_tiled_lidar_chunked(
         self,
         lidar_datasets_info: dict,
-        region_to_rasterise: geopandas.GeoDataFrame,
         chunk_size: int,
         metadata: dict,
         raster_options: dict,
@@ -2124,7 +2119,7 @@ class RoughnessDem(LidarBase):
 
                     # Define the region to tile
                     chunk_region_to_tile = self._define_chunk_region(
-                        region_to_rasterise=region_to_rasterise,
+                        region_to_rasterise=self.catchment_geometry.catchment,
                         dim_x=dim_x,
                         dim_y=dim_y,
                         radius=raster_options["radius"],
@@ -2168,7 +2163,6 @@ class RoughnessDem(LidarBase):
             y=numpy.concatenate(chunked_dim_y),
             roughnesses=roughnesses,
             metadata=metadata,
-            region_to_rasterise=region_to_rasterise,
         )
 
         return chunked_dem
@@ -2176,7 +2170,6 @@ class RoughnessDem(LidarBase):
     def _add_lidar_no_chunking(
         self,
         lidar_datasets_info: dict,
-        region_to_rasterise: geopandas.GeoDataFrame,
         options: dict,
         metadata: dict,
     ) -> xarray.Dataset:
@@ -2193,7 +2186,7 @@ class RoughnessDem(LidarBase):
         pdal_pipeline = read_file_with_pdal(
             lidar_file,
             source_crs=source_crs,
-            region_to_tile=region_to_rasterise,
+            region_to_tile=self.catchment_geometry.catchment,
             crs=options["crs"],
         )
 
@@ -2220,7 +2213,6 @@ class RoughnessDem(LidarBase):
             y=dim_y,
             roughnesses=[roughness],
             metadata=metadata,
-            region_to_rasterise=region_to_rasterise,
         )
 
         return dem
@@ -2273,7 +2265,6 @@ class RoughnessDem(LidarBase):
         y: numpy.ndarray,
         roughnesses: list,
         metadata: dict,
-        region_to_rasterise: geopandas.GeoDataFrame,
     ) -> xarray.Dataset:
         """A function to add zo to the existing DEM as a new variable.
 
@@ -2311,13 +2302,12 @@ class RoughnessDem(LidarBase):
         # Resize zo to share the same dimensions at the DEM
         self._dem["zo"] = zo.sel(x=self._dem.x, y=self._dem.y, method="nearest")
         # Ensure no negative roughnesses
-        self._dem.zo.data[self._dem.zo.data < 0] = self.ROUGHNESS_DEFAULTS["minimum"]
+        self._dem["zo"] = self._dem.zo.where(self._dem.zo > self.ROUGHNESS_DEFAULTS["minimum"],
+                                             self.ROUGHNESS_DEFAULTS["minimum"])
 
         # ensure the expected CF conventions are followed
         self._write_netcdf_conventions_in_place(self._dem, self.catchment_geometry.crs)
 
-        """# Ensure roughness is NaN where there is no LiDAR information
-        dem.zo.data = dem.zo.rio.clip(region_to_rasterise.geometry, drop=False)"""
         return self._dem
 
 
