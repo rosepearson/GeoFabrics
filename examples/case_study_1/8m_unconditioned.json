@@ -3,7 +3,7 @@
 		"processing": { "chunk_size": 300, "number_of_cores": 20, "memory_limit": "20GiB" },
 		"datasets": { 
 			"lidar": { "open_topography": { "NZ20_Westport": true } },
-			"vector": { "linz": { "key": "INSERT_LINZ_KEY", "land": { "layers": [51153] } } } },
+			"vector": { "linz": { "key": "8105c7bfed8344abadf056e63e2da853", "land": { "layers": [51153] } } } },
 		"data_paths": { "local_cache": "results", "subfolder": "geofabrics"},
 		"general": { "lidar_buffer": 5, "interpolation": {"no_data": "linear"} } },
 	"dem": {
@@ -13,7 +13,7 @@
 		"datasets": {
 			"vector": { "linz": { "ocean_contours": { "layers": [50849] } } },
 			"raster": { "linz": {
-					"key": "INSERT_LINZ_KEY",
+					"key": "8105c7bfed8344abadf056e63e2da853",
 					"coarse_dems": { "layers": [51768] } } } },
 		"general": {
 			"drop_offshore_lidar": true,

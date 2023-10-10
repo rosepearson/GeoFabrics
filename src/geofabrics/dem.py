@@ -1692,70 +1692,61 @@ class RawDem(LidarBase):
         # Iterate through DEMs
         logging.info(f"Incorporating coarse DEMs: {coarse_dem_paths}")
         for coarse_dem_path in coarse_dem_paths:
-            # Determine the areas without LiDAR meeting the area threshold size
-            # Generate a polygon of where there is LiDAR - recalculate after each
-            data_extents = self._extents_from_mask(
-                mask=self._dem.z.notnull().values,
-                transform=self._dem.z.rio.transform(),
-            )
-            data_extents = data_extents.buffer(
-                buffer_cells * self.catchment_geometry.resolution
-            )
-            data_extents = geopandas.GeoDataFrame(
-                geometry=data_extents.clip(full_extents, keep_geom_type=True)
-            )
-            no_data_extents = full_extents.overlay(data_extents, how="difference")
-            # Keep areas without LiDAR data above the area threshold
-            no_data_extents = no_data_extents.explode(index_parts=False)
-            no_data_extents = no_data_extents[no_data_extents.area > area_threshold]
-
-            # Check if enough without LiDAR to use coarse DEMs
-            if len(no_data_extents) == 0:
+            # Check if any areas still without values - exit if none
+            no_value_mask = self._dem.z.rolling(
+                dim={"x": buffer_cells, "y": buffer_cells},
+                min_periods=1,
+                ).count().isnull()
+            if no_value_mask.any():
                 logging.info(
-                    f"No land areas greater than {area_threshold} "
-                    "without LiDAR values. Ignoring all remaining coarse DEMs."
+                    f"No land areas greater than the cell buffer {buffer_cells}"
+                    " without LiDAR values. Ignoring all remaining coarse DEMs."
                 )
                 return False
-
-            logging.info(f"\tLoad coarse DEM: {coarse_dem_path}")
-            # Define the coarse DEM extents - total, land and foreshore
-            extents = {
-                "total": no_data_extents,
-                "land": self.catchment_geometry.full_land,
-                "foreshore": self.catchment_geometry.foreshore,
-            }
-            coarse_dem = CoarseDem(
-                dem_file=coarse_dem_path,
-                extents=extents,  # by reference, so "total" trimmed to coarse DEM bounds
-                set_foreshore=self.drop_offshore_lidar,
+            # Check for overlap with the Coarse DEM
+            coarse_dem_bounds = rioxarray.rioxarray.open_rasterio(
+                coarse_dem_path, masked=True).squeeze(
+                    "band", drop=True
+                ).set_crs(self.catchment_geometry.crs["horizontal"]).rio.bounds()
+            coarse_dem_bounds = geopandas.GeoDataFrame(
+                {
+                    "geometry": [
+                        shapely.geometry.Polygon(
+                            [
+                                [coarse_dem_bounds[0], coarse_dem_bounds[1]],
+                                [coarse_dem_bounds[2], coarse_dem_bounds[1]],
+                                [coarse_dem_bounds[2], coarse_dem_bounds[3]],
+                                [coarse_dem_bounds[0], coarse_dem_bounds[3]],
+                            ]
+                        )
+                    ]
+                },
+                crs=self.catchment_geometry.crs["horizontal"],
             )
 
             # Add the coarse DEM data where there's no LiDAR updating the extents
-            if not coarse_dem.empty:
+            no_value_mask = no_value_mask.rio.clip(coarse_dem_bounds.geometry.values, drop=False)
+            if no_value_mask.any():
                 logging.info(f"\t\tAdd data from coarse DEM: {coarse_dem_path.name}")
                 # Create a mask defining the region without values to populate
                 # from the Coarse DEM
-                mask = self._dem.z.rio.clip(
-                    coarse_dem.extents["total"].geometry.values, drop=False
-                ).notnull()
 
                 if chunk_size is None:
                     self._add_coarse_dem_no_chunking(
                         coarse_dem=coarse_dem,
-                        mask=mask,
+                        mask=no_value_mask,
                     )
                 else:
                     self._add_coarse_dem_chunked(
                         coarse_dem_path=coarse_dem_path,
-                        extents=extents,
                         chunk_size=chunk_size,
-                        mask=mask,
+                        mask=no_value_mask,
                         radius=coarse_dem.resolution * numpy.sqrt(2),
                     )
 
     def _add_coarse_dem_no_chunking(
         self,
-        coarse_dem: CoarseDem,
+        coarse_dem_path: pathlib.Path,
         mask: numpy.ndarray,
     ):
         """Fill gaps in dense DEM from areas with no LiDAR with the coarse DEM.
@@ -1769,12 +1760,18 @@ class RawDem(LidarBase):
 
         """
 
-        if mask.sum() == 0:
-            logging.warning(
-                "RawDem.add_coarse_dem: LiDAR covers all raster values, so the "
-                "coarse DEM is being ignored."
-            )
-            return
+        # Load in the coarse DEM
+        extents = {
+            "total": self.catchment_geometry.catchment_boundary,
+            "land": self.catchment_geometry.full_land,
+            "foreshore": self.catchment_geometry.foreshore,
+        }
+        coarse_dem = CoarseDem(
+            dem_file=coarse_dem_path,
+            extents=extents,  # by reference, so "total" trimmed to coarse DEM bounds
+            set_foreshore=self.drop_offshore_lidar,
+        )
+            
         # create dictionary defining raster options
         # Set search radius to the diagonal cell length to ensure corners covered
         raster_options = {
@@ -1807,7 +1804,6 @@ class RawDem(LidarBase):
     def _add_coarse_dem_chunked(
         self,
         coarse_dem_path: pathlib.Path,
-        extents: dict,
         chunk_size: int,
         mask: numpy.ndarray,
         radius: float,
@@ -1830,6 +1826,11 @@ class RawDem(LidarBase):
             "elevation_range": self.elevation_range,
             "radius": radius,
             "method": "linear",
+        }
+        extents = {
+            "total": self.catchment_geometry.catchment_boundary,
+            "land": self.catchment_geometry.full_land,
+            "foreshore": self.catchment_geometry.foreshore,
         }
 
         # get chunking information

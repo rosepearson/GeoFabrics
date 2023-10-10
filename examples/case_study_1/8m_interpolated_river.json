@@ -2,8 +2,8 @@
 		"output": { "grid_params": { "resolution": 8 }, "crs": { "horizontal": 2193, "vertical": 7839 } },
 		"processing": { "chunk_size": 300, "number_of_cores": 20, "memory_limit": "20GiB" },
 		"datasets": { "lidar": { "open_topography": { "NZ20_Westport": true } },
-					  "vector": { "linz": { "key": "INSERT_LINZ_KEY" } } },
-		"data_paths": { "local_cache": "results" },
+					  "vector": { "linz": { "key": "8105c7bfed8344abadf056e63e2da853" } } },
+		"data_paths": { "local_cache": "../examples/case_study_1/results" },
 		"general": {"lidar_buffer": 5 } },
 	"measured": {
 		"data_paths": {
@@ -31,7 +31,7 @@
 					"land": { "layers": [51153] },
 					"ocean_contours": { "layers": [50849] } } },
 			"raster": { "linz": {
-					"key": "INSERT_LINZ_KEY",
+					"key": "8105c7bfed8344abadf056e63e2da853",
 					"coarse_dems": { "layers": [51768] } } } },
 		"general": {
 			"interpolation": {"no_data": "linear"}, "drop_offshore_lidar": true,
