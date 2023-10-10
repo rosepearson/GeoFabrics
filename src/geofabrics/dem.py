@@ -1708,12 +1708,14 @@ class RawDem(LidarBase):
                 )
                 return False
             # Check for overlap with the Coarse DEM
-            coarse_dem_bounds = (
+            coarse_dem = (
                 rioxarray.rioxarray.open_rasterio(coarse_dem_path, masked=True)
                 .squeeze("band", drop=True)
                 .set_crs(self.catchment_geometry.crs["horizontal"])
-                .rio.bounds()
             )
+            coarse_dem_resolution = coarse_dem.rio.resolution()
+            resolution = max(abs(resolution[0]), abs(resolution[1]))
+            coarse_dem_bounds = coarse_dem.rio.bounds()
             coarse_dem_bounds = geopandas.GeoDataFrame(
                 {
                     "geometry": [
@@ -1741,7 +1743,7 @@ class RawDem(LidarBase):
 
                 if chunk_size is None:
                     self._add_coarse_dem_no_chunking(
-                        coarse_dem=coarse_dem,
+                        coarse_dem_path=coarse_dem_path,
                         mask=no_value_mask,
                     )
                 else:
@@ -1749,7 +1751,7 @@ class RawDem(LidarBase):
                         coarse_dem_path=coarse_dem_path,
                         chunk_size=chunk_size,
                         mask=no_value_mask,
-                        radius=coarse_dem.resolution * numpy.sqrt(2),
+                        radius=coarse_dem_resolution * numpy.sqrt(2),
                     )
 
     def _add_coarse_dem_no_chunking(
