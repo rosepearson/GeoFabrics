@@ -870,30 +870,6 @@ class RawLidarDemGenerator(BaseProcessor):
             elevation_range=self.get_instruction_general("elevation_range"),
         )
             
-        # Load in LiDAR tiles
-        self.raw_dem.add_lidar(
-            lidar_datasets_info=lidar_datasets_info,
-            lidar_classifications_to_keep=self.get_instruction_general(
-                "lidar_classifications_to_keep"
-            ),
-            chunk_size=self.get_processing_instructions("chunk_size"),
-            metadata=self.create_metadata(),
-        )  # Note must be called after all others if it is to be complete
-
-        # Add a coarse DEM if significant area without LiDAR and a coarse DEM
-        if self.check_vector_or_raster(key="coarse_dems", api_type="raster"):
-            coarse_dem_paths = self.get_vector_or_raster_paths(
-                key="coarse_dems", data_type="raster"
-            )
-
-            # Add coarse DEMs if there are any and if area
-            self.raw_dem.add_coarse_dems(
-                coarse_dem_paths=coarse_dem_paths,
-                area_threshold=area_threshold,
-                buffer_cells=self.get_instruction_general("lidar_buffer"),
-                chunk_size=self.get_processing_instructions("chunk_size"),
-            )
-            
         # Setup Dask cluster and client - LAZY SAVE LIDAR DEM
         cluster_kwargs = {
             "n_workers": self.get_processing_instructions("number_of_cores"),
@@ -905,6 +881,30 @@ class RawLidarDemGenerator(BaseProcessor):
         with cluster, distributed.Client(cluster) as client:
             print("Dask client:", client)
             print("Dask dashboard:", client.dashboard_link)
+
+            # Load in LiDAR tiles
+            self.raw_dem.add_lidar(
+                lidar_datasets_info=lidar_datasets_info,
+                lidar_classifications_to_keep=self.get_instruction_general(
+                    "lidar_classifications_to_keep"
+                ),
+                chunk_size=self.get_processing_instructions("chunk_size"),
+                metadata=self.create_metadata(),
+            )  # Note must be called after all others if it is to be complete
+
+            # Add a coarse DEM if significant area without LiDAR and a coarse DEM
+            if self.check_vector_or_raster(key="coarse_dems", api_type="raster"):
+                coarse_dem_paths = self.get_vector_or_raster_paths(
+                    key="coarse_dems", data_type="raster"
+                )
+
+                # Add coarse DEMs if there are any and if area
+                self.raw_dem.add_coarse_dems(
+                    coarse_dem_paths=coarse_dem_paths,
+                    area_threshold=area_threshold,
+                    buffer_cells=self.get_instruction_general("lidar_buffer"),
+                    chunk_size=self.get_processing_instructions("chunk_size"),
+                )
 
             # compute and save raw DEM
             logging.info("In processor.DemGenerator - write out the raw DEM to netCDF")

@@ -1735,10 +1735,8 @@ class RawDem(LidarBase):
                 logging.info(f"\t\tAdd data from coarse DEM: {coarse_dem_path.name}")
                 # Create a mask defining the region without values to populate
                 # from the Coarse DEM
-                z = self._dem.z.copy(deep=True)
-                z.data[:] = 0
                 mask = (
-                    z.rio.clip(coarse_dem.extents["total"].geometry.values, drop=False)
+                    self._dem.z.rio.clip(coarse_dem.extents["total"].geometry.values, drop=False)
                     .notnull()
                 )
 
@@ -1789,7 +1787,7 @@ class RawDem(LidarBase):
         grid_x, grid_y = numpy.meshgrid(self._dem.x, self._dem.y)
 
         # Mask to only rasterise where there aren't already LiDAR derived values
-        xy_out = numpy.empty((mask.sum(), 2))
+        xy_out = numpy.empty((mask.values.sum(), 2))
         xy_out[:, 0] = grid_x[mask]
         xy_out[:, 1] = grid_y[mask]
 
