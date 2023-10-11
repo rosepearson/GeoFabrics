@@ -855,9 +855,6 @@ class HydrologicallyConditionedDem(DemBase):
         flat_y_masked = grid_y.flatten()[mask_z]
         flat_z_masked = flat_z[mask_z]
 
-        # check there are actually pixels in the river
-        logging.info(f"There are {len(flat_z_masked)} estimated points")
-
         # Interpolate river area - use specified interpolation
         logging.info("Offshore interpolation")
         flat_z_masked = self._interpolate_bathymetry_points(
@@ -867,7 +864,9 @@ class HydrologicallyConditionedDem(DemBase):
             method=method,
         )
 
-        # Set the interpolated value in the DEM
+        # Set the interpolated value in the DEM - In future reconfigure properly for dask
+        flat_z = flat_z.compute()
+        mask_z = mask_z.compute()
         flat_z[mask_z] = flat_z_masked
         estimated_dem.z.data = flat_z.reshape(estimated_dem.z.data.shape)
 
@@ -1345,20 +1344,20 @@ class RawDem(LidarBase):
             )
             # Clip DEM to buffered foreshore
             mask = (
-                dem.z.rio.clip(buffered_foreshore.geometry, drop=False).notnull().values
+                dem.z.rio.clip(buffered_foreshore.geometry, drop=False).notnull()
             )
 
             # Set any positive LiDAR foreshore points to zero
             dem["data_source"] = dem.data_source.where(
-                ~(mask & (dem.z.data > 0)),
+                ~(mask & (dem.z > 0)),
                 self.SOURCE_CLASSIFICATION["ocean bathymetry"],
             )
             dem["lidar_source"] = dem.lidar_source.where(
-                ~(mask & (dem.z.data > 0)),
+                ~(mask & (dem.z > 0)),
                 self.SOURCE_CLASSIFICATION["no data"],
             )
             dem["z"] = dem.z.where(
-                ~(mask & (dem.z.data > 0)),
+                ~(mask & (dem.z > 0)),
                 0,
             )
 
@@ -1696,7 +1695,7 @@ class RawDem(LidarBase):
         # Iterate through DEMs
         logging.info(f"Incorporating coarse DEMs: {coarse_dem_paths}")
         for coarse_dem_path in coarse_dem_paths:
-            # Check if any areas still without values - exit if none
+            # Check if any areas (on land and foreshore) still without values - exit if none
             no_value_mask = (
                 self._dem.z.rolling(
                     dim={"x": buffer_cells * 2 + 1, "y": buffer_cells * 2 + 1},
@@ -1706,6 +1705,10 @@ class RawDem(LidarBase):
                 .count()
                 .isnull()
             )
+            no_value_mask &= xarray.ones_like(self._dem.z).rio.clip(
+                self.catchment_geometry.land_and_foreshore.geometry,
+                drop=False
+                ).notnull() # Awkward as clip of a bool xarray doesn't work as expected
             if not no_value_mask.any():
                 logging.info(
                     f"No land areas greater than the cell buffer {buffer_cells}"
@@ -1739,9 +1742,10 @@ class RawDem(LidarBase):
             )
 
             # Add the coarse DEM data where there's no LiDAR updating the extents
-            no_value_mask = no_value_mask.rio.clip(
-                coarse_dem_bounds.geometry.values, drop=False
-            )
+            no_value_mask &= xarray.ones_like(self._dem.z).rio.clip(
+                coarse_dem_bounds.geometry,
+                drop=False
+                ).notnull() # Awkward as clip of a bool xarray doesn't work as expected
             if no_value_mask.any():
                 logging.info(f"\t\tAdd data from coarse DEM: {coarse_dem_path.name}")
                 # Create a mask defining the region without values to populate

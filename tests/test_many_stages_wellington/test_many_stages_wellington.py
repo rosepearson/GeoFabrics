@@ -116,7 +116,7 @@ class Test(unittest.TestCase):
         # Load in benchmark
         file_path = (
             self.cache_dir
-            / self.instructions["roughness"]["data_paths"]["benchmark_geofabric"]
+            / self.instructions["roughness"]["data_paths"]["benchmark"]
         )
         with rioxarray.rioxarray.open_rasterio(file_path, masked=True) as benchmark:
             benchmark.load()
@@ -166,7 +166,7 @@ class Test(unittest.TestCase):
         # load in benchmark
         file_path = (
             self.cache_dir
-            / self.instructions["roughness"]["data_paths"]["benchmark_geofabric"]
+            / self.instructions["roughness"]["data_paths"]["benchmark"]
         )
         with rioxarray.rioxarray.open_rasterio(file_path, masked=True) as benchmark:
             benchmark.load()
