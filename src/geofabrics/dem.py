@@ -1343,9 +1343,7 @@ class RawDem(LidarBase):
                 keep_geom_type=True,
             )
             # Clip DEM to buffered foreshore
-            mask = (
-                dem.z.rio.clip(buffered_foreshore.geometry, drop=False).notnull()
-            )
+            mask = dem.z.rio.clip(buffered_foreshore.geometry, drop=False).notnull()
 
             # Set any positive LiDAR foreshore points to zero
             dem["data_source"] = dem.data_source.where(
@@ -1705,10 +1703,13 @@ class RawDem(LidarBase):
                 .count()
                 .isnull()
             )
-            no_value_mask &= xarray.ones_like(self._dem.z).rio.clip(
-                self.catchment_geometry.land_and_foreshore.geometry,
-                drop=False
-                ).notnull() # Awkward as clip of a bool xarray doesn't work as expected
+            no_value_mask &= (
+                xarray.ones_like(self._dem.z)
+                .rio.clip(
+                    self.catchment_geometry.land_and_foreshore.geometry, drop=False
+                )
+                .notnull()
+            )  # Awkward as clip of a bool xarray doesn't work as expected
             if not no_value_mask.any():
                 logging.info(
                     f"No land areas greater than the cell buffer {buffer_cells}"
@@ -1742,10 +1743,11 @@ class RawDem(LidarBase):
             )
 
             # Add the coarse DEM data where there's no LiDAR updating the extents
-            no_value_mask &= xarray.ones_like(self._dem.z).rio.clip(
-                coarse_dem_bounds.geometry,
-                drop=False
-                ).notnull() # Awkward as clip of a bool xarray doesn't work as expected
+            no_value_mask &= (
+                xarray.ones_like(self._dem.z)
+                .rio.clip(coarse_dem_bounds.geometry, drop=False)
+                .notnull()
+            )  # Awkward as clip of a bool xarray doesn't work as expected
             if no_value_mask.any():
                 logging.info(f"\t\tAdd data from coarse DEM: {coarse_dem_path.name}")
                 # Create a mask defining the region without values to populate
