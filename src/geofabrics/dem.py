@@ -865,8 +865,6 @@ class HydrologicallyConditionedDem(DemBase):
         )
 
         # Set the interpolated value in the DEM - In future reconfigure properly for dask
-        flat_z = flat_z.compute()
-        mask_z = mask_z.compute()
         flat_z[mask_z] = flat_z_masked
         estimated_dem.z.data = flat_z.reshape(estimated_dem.z.data.shape)
 
