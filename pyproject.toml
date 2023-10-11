@@ -7,7 +7,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "geofabrics"
-version = "1.0.0"
+version = "1.0.1"
 description = "A package for creating geofabrics for flood modelling."
 readme = "README.md"
 authors = [{ name = "Rose pearson", email = "rose.pearson@niwa.co.nz" }]

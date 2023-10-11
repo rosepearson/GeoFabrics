@@ -187,7 +187,7 @@
 			"extents": "catchment.geojson",
 			"result_dem": "test_dem.nc",
 			"result_geofabric": "test_geofabric.nc",
-			"benchmark_geofabric": "benchmark_geofabric.nc"
+			"benchmark": "benchmark.nc"
 		},
 		"datasets": {
 			"lidar": {
