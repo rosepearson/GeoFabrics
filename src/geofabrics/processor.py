@@ -861,6 +861,16 @@ class RawLidarDemGenerator(BaseProcessor):
         # Get LiDAR data file-list - this may involve downloading lidar files
         lidar_datasets_info = self.get_lidar_datasets_info()
 
+        drop_offshore_lidar = self.get_instruction_general("drop_offshore_lidar")
+        if isinstance(drop_offshore_lidar, bool):
+            drop_offshore_lidar_bool = drop_offshore_lidar
+            drop_offshore_lidar = {}
+            for dataset_name in lidar_datasets_info.keys():
+                drop_offshore_lidar[dataset_name] = drop_offshore_lidar_bool
+        elif not isinstance(drop_offshore_lidar, dict):
+            raise TypeError("'drop_offshore_lidar' must be a bool or dict but "
+                            f"is type {type(drop_offshore_lidar)}")
+
         # setup the raw DEM generator
         self.raw_dem = dem.RawDem(
             catchment_geometry=self.catchment_geometry,

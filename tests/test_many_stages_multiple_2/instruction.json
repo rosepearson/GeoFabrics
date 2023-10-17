@@ -48,7 +48,8 @@
 		}
     },
 	"general": {
-		"drop_offshore_lidar": true,
+		"drop_offshore_lidar": {"Rangiora_2014": true, "NZ20_Cant2": true,
+								"NZ21_Kapiti": true, "Wellington_2013": true},
 		"lidar_classifications_to_keep": [2],
 		"interpolation": {"no_data": null}
 	}
@@ -101,7 +102,8 @@
 		}
     },
 	"general": {
-		"drop_offshore_lidar": true,
+		"drop_offshore_lidar": {"Rangiora_2014": true, "NZ20_Cant2": true,
+								"NZ21_Kapiti": true, "Wellington_2013": true},
 		"lidar_classifications_to_keep": [1, 2, 4, 9],
 		"interpolation": {"no_data": null}
 	}
