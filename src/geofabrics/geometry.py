@@ -554,6 +554,11 @@ class EstimatedBathymetryPoints:
                 polygon_i = geopandas.read_file(polygon_files[i])
                 polygon_list.append(polygon_i)
         # Set CRS, clip to size and reset index
+        if len(points_list) == 0:
+            logging.warning("No waterways elevations. Ignoring.")
+            self._points = []
+            self._polygon = []
+            return
         points = geopandas.GeoDataFrame(
             pandas.concat(points_list, ignore_index=True),
             crs=points_list[0].crs,
