@@ -874,7 +874,7 @@ class RawLidarDemGenerator(BaseProcessor):
         # setup the raw DEM generator
         self.raw_dem = dem.RawDem(
             catchment_geometry=self.catchment_geometry,
-            drop_offshore_lidar=self.get_instruction_general("drop_offshore_lidar"),
+            drop_offshore_lidar=drop_offshore_lidar,
             lidar_interpolation_method=self.get_instruction_general(
                 key="interpolation", subkey="lidar"
             ),
