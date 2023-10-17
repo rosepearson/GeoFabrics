@@ -1319,9 +1319,7 @@ class RawDem(LidarBase):
 
         # Check if the ocean is clipped or not (must be in all datasets)
 
-        if numpy.array(
-                [value for value in self.drop_offshore_lidar.values()]
-                ).all():
+        if numpy.array([value for value in self.drop_offshore_lidar.values()]).all():
             clip_region = self.catchment_geometry.land_and_foreshore
         else:
             clip_region = self.catchment_geometry.catchment

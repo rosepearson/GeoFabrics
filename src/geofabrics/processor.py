@@ -869,8 +869,10 @@ class RawLidarDemGenerator(BaseProcessor):
             for dataset_name in lidar_datasets_info.keys():
                 drop_offshore_lidar[dataset_name] = drop_offshore_lidar_bool
         elif not isinstance(drop_offshore_lidar, dict):
-            raise TypeError("'drop_offshore_lidar' must be a bool or dict but "
-                            f"is type {type(drop_offshore_lidar)}")
+            raise TypeError(
+                "'drop_offshore_lidar' must be a bool or dict but "
+                f"is type {type(drop_offshore_lidar)}"
+            )
 
         # setup the raw DEM generator
         self.raw_dem = dem.RawDem(
@@ -1040,7 +1042,7 @@ class HydrologicDemGenerator(BaseProcessor):
 
             # Call interpolate river on the DEM - the class checks to see if any pixels
             # actually fall inside the polygon
-            if len(estimated_bathymetry_points.polygons) > 0: # Skip if no waterways
+            if len(estimated_bathymetry_points.polygons) > 0:  # Skip if no waterways
                 self.hydrologic_dem.interpolate_waterways(
                     estimated_bathymetry=estimated_bathymetry_points,
                     method=self.get_instruction_general(
@@ -2888,20 +2890,23 @@ class WaterwayBedElevationEstimator(BaseProcessor):
 
         # Download waterways and tunnels from OSM
         waterways = self.download_osm_values()
-        
+
         # There are no waterways to write out empty files and exit
         if len(waterways) == 0:
-            logging.warning("There are no waterways in the catchment. Writing empty"
-                            "polygon and elevation files and returning.")
+            logging.warning(
+                "There are no waterways in the catchment. Writing empty"
+                "polygon and elevation files and returning."
+            )
             crs = self.catchment_geometry.crs["horizontal"]
             polygons = geopandas.GeoDataFrame({"geometry": []}, crs=crs)
-            elevations = geopandas.GeoDataFrame({"geometry": [], "width": [], "elevation": []}, crs=crs)
+            elevations = geopandas.GeoDataFrame(
+                {"geometry": [], "width": [], "elevation": []}, crs=crs
+            )
             polygons.to_file(self.get_result_file_path(key="open_polygon"))
             polygons.to_file(self.get_result_file_path(key="closed_polygon"))
             elevations.to_file(self.get_result_file_path(key="open_elevation"))
             elevations.to_file(self.get_result_file_path(key="closed_elevation"))
             return
-            
 
         # Create a DEM where the waterways and tunnels are
         dem = self.create_dem(waterways=waterways)
