@@ -861,6 +861,7 @@ class RawLidarDemGenerator(BaseProcessor):
         # Get LiDAR data file-list - this may involve downloading lidar files
         lidar_datasets_info = self.get_lidar_datasets_info()
 
+        # Get the drop_offshore_lidar selection for each dataset
         drop_offshore_lidar = self.get_instruction_general("drop_offshore_lidar")
         if isinstance(drop_offshore_lidar, bool):
             drop_offshore_lidar_bool = drop_offshore_lidar
