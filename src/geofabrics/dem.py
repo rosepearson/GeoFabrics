@@ -1174,7 +1174,7 @@ class RawDem(LidarBase):
         self,
         catchment_geometry: geometry.CatchmentGeometry,
         lidar_interpolation_method: str,
-        drop_offshore_lidar: bool = True,
+        drop_offshore_lidar: dict,
         elevation_range: list = None,
     ):
         """Setup base DEM to add future tiles too"""
@@ -1291,12 +1291,7 @@ class RawDem(LidarBase):
         self._check_valid_inputs(
             lidar_datasets_info=lidar_datasets_info, chunk_size=chunk_size
         )
-        # Define the region to rasterise over
-        region_to_rasterise = (
-            self.catchment_geometry.land_and_foreshore
-            if self.drop_offshore_lidar
-            else self.catchment_geometry.catchment
-        )
+
         # create dictionary defining raster options
         raster_options = {
             "lidar_classifications_to_keep": lidar_classifications_to_keep,
@@ -1311,7 +1306,6 @@ class RawDem(LidarBase):
         if chunk_size is None:
             dem = self._add_lidar_no_chunking(
                 lidar_datasets_info=lidar_datasets_info,
-                region_to_rasterise=region_to_rasterise,
                 options=raster_options,
                 metadata=metadata,
             )
@@ -1319,14 +1313,20 @@ class RawDem(LidarBase):
             dem = self._add_tiled_lidar_chunked(
                 lidar_datasets_info=lidar_datasets_info,
                 raster_options=raster_options,
-                region_to_rasterise=region_to_rasterise,
                 chunk_size=chunk_size,
                 metadata=metadata,
             )
 
+        # Check if the ocean is clipped or not (must be in all datasets)
+
+        if numpy.array([value for value in self.drop_offshore_lidar.values()]).all():
+            clip_region = self.catchment_geometry.land_and_foreshore
+        else:
+            clip_region = self.catchment_geometry.catchment
+
         # Clip DEM to Catchment and ensure NaN outside region to rasterise
         dem = dem.rio.clip(self.catchment_geometry.catchment.geometry, drop=True)
-        dem = dem.rio.clip(region_to_rasterise.geometry, drop=False)
+        dem = dem.rio.clip(clip_region.geometry, drop=False)
 
         # If drop offshrore LiDAR ensure the foreshore values are 0 or negative
         if (
@@ -1365,7 +1365,6 @@ class RawDem(LidarBase):
     def _add_tiled_lidar_chunked(
         self,
         lidar_datasets_info: dict,
-        region_to_rasterise: geopandas.GeoDataFrame,
         chunk_size: int,
         metadata: dict,
         raster_options: dict,
@@ -1383,6 +1382,13 @@ class RawDem(LidarBase):
             lidar_files = dataset_info["file_paths"]
             tile_index_file = dataset_info["tile_index_file"]
             source_crs = dataset_info["crs"]
+
+            # Define the region to rasterise
+            region_to_rasterise = (
+                self.catchment_geometry.land_and_foreshore
+                if self.drop_offshore_lidar[dataset_name]
+                else self.catchment_geometry.catchment
+            )
 
             # create a map from tile name to tile file name
             lidar_files_map = {
@@ -1456,7 +1462,6 @@ class RawDem(LidarBase):
     def _add_lidar_no_chunking(
         self,
         lidar_datasets_info: dict,
-        region_to_rasterise: geopandas.GeoDataFrame,
         options: dict,
         metadata: dict,
     ) -> xarray.Dataset:
@@ -1467,6 +1472,13 @@ class RawDem(LidarBase):
         lidar_file = lidar_datasets_info[lidar_name]["file_paths"][0]
         source_crs = lidar_datasets_info[lidar_name]["crs"]
         logging.info(f"On LiDAR tile 1 of 1: {lidar_file}")
+
+        # Define the region to rasterise
+        region_to_rasterise = (
+            self.catchment_geometry.land_and_foreshore
+            if self.drop_offshore_lidar[lidar_name]
+            else self.catchment_geometry.catchment
+        )
 
         # Use PDAL to load in file
         pdal_pipeline = read_file_with_pdal(

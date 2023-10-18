@@ -861,10 +861,23 @@ class RawLidarDemGenerator(BaseProcessor):
         # Get LiDAR data file-list - this may involve downloading lidar files
         lidar_datasets_info = self.get_lidar_datasets_info()
 
+        # Get the drop_offshore_lidar selection for each dataset
+        drop_offshore_lidar = self.get_instruction_general("drop_offshore_lidar")
+        if isinstance(drop_offshore_lidar, bool):
+            drop_offshore_lidar_bool = drop_offshore_lidar
+            drop_offshore_lidar = {}
+            for dataset_name in lidar_datasets_info.keys():
+                drop_offshore_lidar[dataset_name] = drop_offshore_lidar_bool
+        elif not isinstance(drop_offshore_lidar, dict):
+            raise TypeError(
+                "'drop_offshore_lidar' must be a bool or dict but "
+                f"is type {type(drop_offshore_lidar)}"
+            )
+
         # setup the raw DEM generator
         self.raw_dem = dem.RawDem(
             catchment_geometry=self.catchment_geometry,
-            drop_offshore_lidar=self.get_instruction_general("drop_offshore_lidar"),
+            drop_offshore_lidar=drop_offshore_lidar,
             lidar_interpolation_method=self.get_instruction_general(
                 key="interpolation", subkey="lidar"
             ),
@@ -1018,7 +1031,7 @@ class HydrologicDemGenerator(BaseProcessor):
             logging.info(f"Incorporating waterways: {bathy_dirs}")
 
             # Load in bathymetry
-            self.estimated_bathymetry_points = geometry.EstimatedBathymetryPoints(
+            estimated_bathymetry_points = geometry.EstimatedBathymetryPoints(
                 points_files=bathy_dirs,
                 polygon_files=poly_dirs,
                 catchment_geometry=self.catchment_geometry,
@@ -1029,12 +1042,13 @@ class HydrologicDemGenerator(BaseProcessor):
 
             # Call interpolate river on the DEM - the class checks to see if any pixels
             # actually fall inside the polygon
-            self.hydrologic_dem.interpolate_waterways(
-                estimated_bathymetry=self.estimated_bathymetry_points,
-                method=self.get_instruction_general(
-                    key="interpolation", subkey="waterways"
-                ),
-            )
+            if len(estimated_bathymetry_points.polygons) > 0:  # Skip if no waterways
+                self.hydrologic_dem.interpolate_waterways(
+                    estimated_bathymetry=estimated_bathymetry_points,
+                    method=self.get_instruction_general(
+                        key="interpolation", subkey="waterways"
+                    ),
+                )
         # Load in river bathymetry and incorporate where discernable at the resolution
         if "rivers" in self.instructions["data_paths"]:
             # Loop through each river in turn adding individually
@@ -1050,7 +1064,7 @@ class HydrologicDemGenerator(BaseProcessor):
                 logging.info(f"Incorporating river: {bathy_dir}")
 
                 # Load in bathymetry
-                self.estimated_bathymetry_points = geometry.EstimatedBathymetryPoints(
+                estimated_bathymetry_points = geometry.EstimatedBathymetryPoints(
                     points_files=[bathy_dir],
                     polygon_files=[poly_dir],
                     catchment_geometry=self.catchment_geometry,
@@ -1062,7 +1076,7 @@ class HydrologicDemGenerator(BaseProcessor):
                 # Call interpolate river on the DEM - the class checks to see if any pixels
                 # actually fall inside the polygon
                 self.hydrologic_dem.interpolate_rivers(
-                    estimated_bathymetry=self.estimated_bathymetry_points,
+                    estimated_bathymetry=estimated_bathymetry_points,
                     method=self.get_instruction_general(
                         key="interpolation", subkey="rivers"
                     ),
@@ -2876,6 +2890,23 @@ class WaterwayBedElevationEstimator(BaseProcessor):
 
         # Download waterways and tunnels from OSM
         waterways = self.download_osm_values()
+
+        # There are no waterways to write out empty files and exit
+        if len(waterways) == 0:
+            logging.warning(
+                "There are no waterways in the catchment. Writing empty"
+                "polygon and elevation files and returning."
+            )
+            crs = self.catchment_geometry.crs["horizontal"]
+            polygons = geopandas.GeoDataFrame({"geometry": []}, crs=crs)
+            elevations = geopandas.GeoDataFrame(
+                {"geometry": [], "width": [], "elevation": []}, crs=crs
+            )
+            polygons.to_file(self.get_result_file_path(key="open_polygon"))
+            polygons.to_file(self.get_result_file_path(key="closed_polygon"))
+            elevations.to_file(self.get_result_file_path(key="open_elevation"))
+            elevations.to_file(self.get_result_file_path(key="closed_elevation"))
+            return
 
         # Create a DEM where the waterways and tunnels are
         dem = self.create_dem(waterways=waterways)
