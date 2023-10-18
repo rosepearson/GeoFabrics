@@ -422,14 +422,14 @@ standard list</p></li>
 
 <dl class="py class">
 <dt class="sig sig-object py" id="geofabrics.dem.RawDem">
-<em class="property"><span class="pre">class</span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">geofabrics.dem.</span></span><span class="sig-name descname"><span class="pre">RawDem</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">catchment_geometry</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">lidar_interpolation_method</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">drop_offshore_lidar</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">True</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">elevation_range</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#geofabrics.dem.RawDem" title="Link to this definition"></a></dt>
+<em class="property"><span class="pre">class</span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">geofabrics.dem.</span></span><span class="sig-name descname"><span class="pre">RawDem</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">catchment_geometry</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">lidar_interpolation_method</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">drop_offshore_lidar</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">elevation_range</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#geofabrics.dem.RawDem" title="Link to this definition"></a></dt>
 <dd><p>Bases: <a class="reference internal" href="#geofabrics.dem.LidarBase" title="geofabrics.dem.LidarBase"><code class="xref py py-obj docutils literal notranslate"><span class="pre">LidarBase</span></code></a></p>
 <p>A class to manage the creation of a ‘raw’ DEM from LiDAR tiles, and/or a
 coarse DEM.</p>
 <dl class="field-list simple">
 <dt class="field-odd">Parameters<span class="colon">:</span></dt>
 <dd class="field-odd"><ul class="simple">
-<li><p><strong>drop_offshore_lidar</strong> (<em>bool</em>) – If True only keep LiDAR values within the foreshore and land regions defined by
+<li><p><strong>drop_offshore_lidar</strong> (<em>dict</em>) – If True only keep LiDAR values within the foreshore and land regions defined by
 the catchment_geometry. If False keep all LiDAR values.</p></li>
 <li><p><strong>elevation_range</strong> (<em>list</em>) – Optitionally specify a range of valid elevations. Any LiDAR points with
 elevations outside this range will be filtered out.</p></li>

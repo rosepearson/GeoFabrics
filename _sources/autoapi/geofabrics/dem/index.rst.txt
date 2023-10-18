@@ -208,7 +208,7 @@ Attributes
 
 
 
-.. py:class:: RawDem(catchment_geometry, lidar_interpolation_method, drop_offshore_lidar = True, elevation_range = None)
+.. py:class:: RawDem(catchment_geometry, lidar_interpolation_method, drop_offshore_lidar, elevation_range = None)
 
 
    Bases: :py:obj:`LidarBase`
