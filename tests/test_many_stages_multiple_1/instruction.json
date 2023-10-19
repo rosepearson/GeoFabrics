@@ -65,6 +65,11 @@
     },
 	"general": {
 		"lidar_classifications_to_keep": [1, 2, 4, 9]
+	},
+	"roughness": {
+		"parameters": {"mean": 0.01666666, "std": 0.03333333 },
+		"defaults": {"land": 0.014, "ocean": 0.004, "waterways": 0.004, "rivers": 0.004, "minimum": 0.00001, "roads": 0.001},
+		"ignore_powerlines": false
 	}
 }
 }
