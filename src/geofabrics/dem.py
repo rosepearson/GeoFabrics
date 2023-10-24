@@ -1318,7 +1318,6 @@ class RawDem(LidarBase):
             )
 
         # Check if the ocean is clipped or not (must be in all datasets)
-
         if numpy.array([value for value in self.drop_offshore_lidar.values()]).all():
             clip_region = self.catchment_geometry.land_and_foreshore
         else:
@@ -1953,6 +1952,7 @@ class RoughnessDem(LidarBase):
         hydrological_dem_path: typing.Union[str, pathlib.Path],
         interpolation_method: str,
         default_values: dict,
+        drop_offshore_lidar: dict,
         elevation_range: list = None,
     ):
         """Setup base DEM to add future tiles too"""
@@ -1990,6 +1990,7 @@ class RoughnessDem(LidarBase):
 
         self.interpolation_method = interpolation_method
         self.default_values = default_values
+        self.drop_offshore_lidar = drop_offshore_lidar
         self._dem = hydrological_dem
 
     def _calculate_lidar_extents(self):
@@ -2122,13 +2123,19 @@ class RoughnessDem(LidarBase):
                 lidar_file.name: lidar_file for lidar_file in lidar_files
             }
 
+            # Define the region to rasterise
+            region_to_rasterise = (
+                self.catchment_geometry.land_and_foreshore
+                if self.drop_offshore_lidar[dataset_name]
+                else self.catchment_geometry.catchment
+            )
             # Remove all tiles entirely outside the region to raserise
             (
                 tile_index_extents,
                 tile_index_name_column,
             ) = self._tile_index_column_name(
                 tile_index_file=tile_index_file,
-                region_to_rasterise=self.catchment_geometry.catchment,
+                region_to_rasterise=region_to_rasterise,
             )
 
             # cycle through chunks - and collect in a delayed array
@@ -2141,7 +2148,7 @@ class RoughnessDem(LidarBase):
 
                     # Define the region to tile
                     chunk_region_to_tile = self._define_chunk_region(
-                        region_to_rasterise=self.catchment_geometry.catchment,
+                        region_to_rasterise=region_to_rasterise,
                         dim_x=dim_x,
                         dim_y=dim_y,
                         radius=raster_options["radius"],
@@ -2204,11 +2211,18 @@ class RoughnessDem(LidarBase):
         source_crs = lidar_datasets_info[lidar_name]["crs"]
         logging.info(f"On LiDAR tile 1 of 1: {lidar_file}")
 
+        # Define the region to rasterise
+        region_to_rasterise = (
+            self.catchment_geometry.land_and_foreshore
+            if self.drop_offshore_lidar[lidar_name]
+            else self.catchment_geometry.catchment
+        )
+
         # Use PDAL to load in file
         pdal_pipeline = read_file_with_pdal(
             lidar_file,
             source_crs=source_crs,
-            region_to_tile=self.catchment_geometry.catchment,
+            region_to_tile=region_to_rasterise,
             crs=options["crs"],
         )
 

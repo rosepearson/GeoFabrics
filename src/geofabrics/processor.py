@@ -1220,6 +1220,19 @@ class RoughnessLengthGenerator(BaseProcessor):
         # Get LiDAR data file-list - this may involve downloading lidar files
         lidar_datasets_info = self.get_lidar_datasets_info()
 
+        # Get the drop_offshore_lidar selection for each dataset
+        drop_offshore_lidar = self.get_instruction_general("drop_offshore_lidar")
+        if isinstance(drop_offshore_lidar, bool):
+            drop_offshore_lidar_bool = drop_offshore_lidar
+            drop_offshore_lidar = {}
+            for dataset_name in lidar_datasets_info.keys():
+                drop_offshore_lidar[dataset_name] = drop_offshore_lidar_bool
+        elif not isinstance(drop_offshore_lidar, dict):
+            raise TypeError(
+                "'drop_offshore_lidar' must be a bool or dict but "
+                f"is type {type(drop_offshore_lidar)}"
+            )
+
         # Get the roughness information
         roughness_parameters = self.get_roughness_instruction["parameters"]
         default_values = self.get_roughness_instruction["default_values"]
@@ -1260,6 +1273,7 @@ class RoughnessLengthGenerator(BaseProcessor):
                     key="interpolation", subkey="no_data"
                 ),
                 default_values=default_values,
+                drop_offshore_lidar=drop_offshore_lidar,
             )
 
             # Load in LiDAR tiles
