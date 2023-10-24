@@ -1169,6 +1169,41 @@ class RoughnessLengthGenerator(BaseProcessor):
         self.roughness_dem = None
         self.debug = debug
 
+    def get_roughness_instruction(self, key: str):
+        """Return true if the DEMs are required for later processing
+
+
+        Parameters:
+            instructions  The json instructions defining the behaviour
+        """
+        defaults = {
+            "parameters": {"std": 1/30, "mean": 1/60},
+            "default_values": {
+                "land": 0.014,
+                "ocean": 0.004,
+                "waterways": 0.004,
+                "rivers": 0.004,
+                "minimum": 0.00001},
+            "ignore_powerlines": False
+        }
+
+        if "roughness" in self.instructions and key in self.instructions["roughness"]:
+            roughness_instruction = self.instructions["roughness"][key]
+            # ensure all default keys included if a dictionary
+            if key == "default_values" or key == "parameters":
+                for sub_key in defaults[key]:
+                    if sub_key not in roughness_instruction:
+                        roughness_instruction[sub_key] = defaults[key][sub_key]
+            return roughness_instruction
+        elif key in defaults:
+            self.instructions["roughness"][key] = defaults[key]
+            return defaults[key]
+        else:
+            raise KeyError(
+                f"The key: {key} is missing from the measured instructions, and"
+                " does not have a default value."
+            )
+
     def run(self):
         """This method executes the geofabrics generation pipeline to produce geofabric
         derivatives."""
@@ -1183,6 +1218,21 @@ class RoughnessLengthGenerator(BaseProcessor):
 
         # Get LiDAR data file-list - this may involve downloading lidar files
         lidar_datasets_info = self.get_lidar_datasets_info()
+
+        # Get the roughness information
+        roughness_parameters = self.get_roughness_instruction["parameters"]
+        default_values = self.get_roughness_instruction["default_values"]
+
+        # If roads defined download roads
+        if "roads" in default_values:
+            print("Roads not yet supported. In future download roads. Likely "
+                  "specify the width of different roads.")
+
+        # If powerlines defines download powerlines
+        if self.get_roughness_instruction["ignore_powerlines"]:
+            print("Ignoring powerlines not yet supported. In future download "
+                  "powerlines. Probably run as second followup step in future."
+                  " Either take mean or drop points with height above limit.")
 
         # Setup Dask cluster and client
         cluster_kwargs = {
@@ -1204,6 +1254,7 @@ class RoughnessLengthGenerator(BaseProcessor):
                 interpolation_method=self.get_instruction_general(
                     key="interpolation", subkey="no_data"
                 ),
+                default_values=default_values
             )
 
             # Load in LiDAR tiles
@@ -1214,6 +1265,7 @@ class RoughnessLengthGenerator(BaseProcessor):
                 ),
                 chunk_size=self.get_processing_instructions("chunk_size"),
                 metadata=self.create_metadata(),
+                parameters=roughness_parameters
             )  # Note must be called after all others if it is to be complete
 
             # save results

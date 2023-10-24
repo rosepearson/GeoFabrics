@@ -1947,13 +1947,12 @@ class RoughnessDem(LidarBase):
         The interpolation method to apply to LiDAR. Options are: mean, median, IDW.
     """
 
-    ROUGHNESS_DEFAULTS = {"land": 0.014, "water": 0.004, "minimum": 0.00001}
-
     def __init__(
         self,
         catchment_geometry: geometry.CatchmentGeometry,
         hydrological_dem_path: typing.Union[str, pathlib.Path],
         interpolation_method: str,
+        default_values: dict,
         elevation_range: list = None,
     ):
         """Setup base DEM to add future tiles too"""
@@ -1990,6 +1989,7 @@ class RoughnessDem(LidarBase):
         )
 
         self.interpolation_method = interpolation_method
+        self.default_values = default_values
         self._dem = hydrological_dem
 
     def _calculate_lidar_extents(self):
@@ -2008,6 +2008,7 @@ class RoughnessDem(LidarBase):
         chunk_size: int,
         lidar_classifications_to_keep: list,
         metadata: dict,
+        parameters: dict,
     ):
         """Read in all LiDAR files and use the point cloud distribution,
         data_source layer, and hydrologiaclly conditioned elevations to
@@ -2028,6 +2029,8 @@ class RoughnessDem(LidarBase):
         meta_data
             Information to include in the created DEM - must include
             `dataset_mapping` key if datasets (not a single LAZ file) included.
+        parameters
+            The roughness equation parameters.
         """
 
         # Check valid inputs
@@ -2042,6 +2045,7 @@ class RoughnessDem(LidarBase):
             "elevation_range": self.elevation_range,
             "radius": self.catchment_geometry.resolution / numpy.sqrt(2),
             "crs": self.catchment_geometry.crs,
+            "parameters": parameters
         }
 
         # Calculate roughness from LiDAR
@@ -2061,20 +2065,20 @@ class RoughnessDem(LidarBase):
         # Set roughness where water
         self._dem["zo"] = self._dem.zo.where(
             self._dem.data_source != self.SOURCE_CLASSIFICATION["ocean bathymetry"],
-            self.ROUGHNESS_DEFAULTS["water"],
+            self.default_values["ocean"],
         )
         self._dem["zo"] = self._dem.zo.where(
             self._dem.data_source != self.SOURCE_CLASSIFICATION["rivers and fans"],
-            self.ROUGHNESS_DEFAULTS["water"],
+            self.default_values["rivers"],
         )
         self._dem["zo"] = self._dem.zo.where(
             self._dem.data_source != self.SOURCE_CLASSIFICATION["waterways"],
-            self.ROUGHNESS_DEFAULTS["water"],
+            self.default_values["waterways"],
         )
         # Set roughness where land and no LiDAR
         self._dem["zo"] = self._dem.zo.where(
             self._dem.data_source != self.SOURCE_CLASSIFICATION["coarse DEM"],
-            self.ROUGHNESS_DEFAULTS["land"],
+            self.default_values["land"],
         )  # or LiDAR with no roughness estimate
         # Ensure the defaults are re-added
         self._write_netcdf_conventions_in_place(self._dem, self.catchment_geometry.crs)
@@ -2321,8 +2325,8 @@ class RoughnessDem(LidarBase):
         self._dem["zo"] = zo.sel(x=self._dem.x, y=self._dem.y, method="nearest")
         # Ensure no negative roughnesses
         self._dem["zo"] = self._dem.zo.where(
-            self._dem.zo > self.ROUGHNESS_DEFAULTS["minimum"],
-            self.ROUGHNESS_DEFAULTS["minimum"],
+            self._dem.zo > self.default_values["minimum"],
+            self.default_values["minimum"],
         )
 
         # ensure the expected CF conventions are followed
@@ -2405,10 +2409,11 @@ def roughness_from_points(
         else:
             height = numpy.mean(point_cloud["Z"][near_indicies]) - ground
             std = numpy.std(point_cloud["Z"][near_indicies])
+            parameters = options["parameters"]
 
             # if building/plantation - set value based on classification
             # Emperical relationship between mean and std above the ground
-            z_out[i] = max(std / 3, height / 6) / 10
+            z_out[i] = max(std * parameters["std"], height * parameters["mean"])
     return z_out
 
 
