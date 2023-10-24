@@ -1234,8 +1234,8 @@ class RoughnessLengthGenerator(BaseProcessor):
             )
 
         # Get the roughness information
-        roughness_parameters = self.get_roughness_instruction["parameters"]
-        default_values = self.get_roughness_instruction["default_values"]
+        roughness_parameters = self.get_roughness_instruction("parameters")
+        default_values = self.get_roughness_instruction("default_values")
 
         # If roads defined download roads
         if "roads" in default_values:
@@ -1245,7 +1245,7 @@ class RoughnessLengthGenerator(BaseProcessor):
             )
 
         # If powerlines defines download powerlines
-        if self.get_roughness_instruction["ignore_powerlines"]:
+        if self.get_roughness_instruction("ignore_powerlines"):
             print(
                 "Ignoring powerlines not yet supported. In future download "
                 "powerlines. Probably run as second followup step in future."
