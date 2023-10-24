@@ -2045,7 +2045,7 @@ class RoughnessDem(LidarBase):
             "elevation_range": self.elevation_range,
             "radius": self.catchment_geometry.resolution / numpy.sqrt(2),
             "crs": self.catchment_geometry.crs,
-            "parameters": parameters
+            "parameters": parameters,
         }
 
         # Calculate roughness from LiDAR

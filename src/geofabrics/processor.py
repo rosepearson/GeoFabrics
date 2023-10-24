@@ -1177,14 +1177,15 @@ class RoughnessLengthGenerator(BaseProcessor):
             instructions  The json instructions defining the behaviour
         """
         defaults = {
-            "parameters": {"std": 1/30, "mean": 1/60},
+            "parameters": {"std": 1 / 30, "mean": 1 / 60},
             "default_values": {
                 "land": 0.014,
                 "ocean": 0.004,
                 "waterways": 0.004,
                 "rivers": 0.004,
-                "minimum": 0.00001},
-            "ignore_powerlines": False
+                "minimum": 0.00001,
+            },
+            "ignore_powerlines": False,
         }
 
         if "roughness" in self.instructions and key in self.instructions["roughness"]:
@@ -1225,14 +1226,18 @@ class RoughnessLengthGenerator(BaseProcessor):
 
         # If roads defined download roads
         if "roads" in default_values:
-            print("Roads not yet supported. In future download roads. Likely "
-                  "specify the width of different roads.")
+            print(
+                "Roads not yet supported. In future download roads. Likely "
+                "specify the width of different roads."
+            )
 
         # If powerlines defines download powerlines
         if self.get_roughness_instruction["ignore_powerlines"]:
-            print("Ignoring powerlines not yet supported. In future download "
-                  "powerlines. Probably run as second followup step in future."
-                  " Either take mean or drop points with height above limit.")
+            print(
+                "Ignoring powerlines not yet supported. In future download "
+                "powerlines. Probably run as second followup step in future."
+                " Either take mean or drop points with height above limit."
+            )
 
         # Setup Dask cluster and client
         cluster_kwargs = {
@@ -1254,7 +1259,7 @@ class RoughnessLengthGenerator(BaseProcessor):
                 interpolation_method=self.get_instruction_general(
                     key="interpolation", subkey="no_data"
                 ),
-                default_values=default_values
+                default_values=default_values,
             )
 
             # Load in LiDAR tiles
@@ -1265,7 +1270,7 @@ class RoughnessLengthGenerator(BaseProcessor):
                 ),
                 chunk_size=self.get_processing_instructions("chunk_size"),
                 metadata=self.create_metadata(),
-                parameters=roughness_parameters
+                parameters=roughness_parameters,
             )  # Note must be called after all others if it is to be complete
 
             # save results
