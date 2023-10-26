@@ -33,4 +33,71 @@ Maintainer: Rose Pearson @rosepearson rose.pearson@niwa.co.nz
 
 ### Contributors
 <!-- readme: collaborators,contributors -start -->
+<table>
+<tr>
+    <td align="center">
+        <a href="https://github.com/jennan">
+            <img src="https://avatars.githubusercontent.com/u/2003548?v=4" width="100;" alt="jennan"/>
+            <br />
+            <sub><b>Maxime Rio</b></sub>
+        </a>
+    </td>
+    <td align="center">
+        <a href="https://github.com/CyprienBosserelle">
+            <img src="https://avatars.githubusercontent.com/u/3713631?v=4" width="100;" alt="CyprienBosserelle"/>
+            <br />
+            <sub><b>Cyprien Bosserelle</b></sub>
+        </a>
+    </td>
+    <td align="center">
+        <a href="https://github.com/rosepearson">
+            <img src="https://avatars.githubusercontent.com/u/22883860?v=4" width="100;" alt="rosepearson"/>
+            <br />
+            <sub><b>Rose Pearson</b></sub>
+        </a>
+    </td>
+    <td align="center">
+        <a href="https://github.com/LukeParky">
+            <img src="https://avatars.githubusercontent.com/u/41398636?v=4" width="100;" alt="LukeParky"/>
+            <br />
+            <sub><b>Luke Parkinson</b></sub>
+        </a>
+    </td>
+    <td align="center">
+        <a href="https://github.com/Martin20494">
+            <img src="https://avatars.githubusercontent.com/u/55137629?v=4" width="100;" alt="Martin20494"/>
+            <br />
+            <sub><b>Martin Nguyen</b></sub>
+        </a>
+    </td>
+    <td align="center">
+        <a href="https://github.com/AliceHarang">
+            <img src="https://avatars.githubusercontent.com/u/82012970?v=4" width="100;" alt="AliceHarang"/>
+            <br />
+            <sub><b>Null</b></sub>
+        </a>
+    </td></tr>
+<tr>
+    <td align="center">
+        <a href="https://github.com/Pooja3894">
+            <img src="https://avatars.githubusercontent.com/u/86580534?v=4" width="100;" alt="Pooja3894"/>
+            <br />
+            <sub><b>PoojaKhosla</b></sub>
+        </a>
+    </td>
+    <td align="center">
+        <a href="https://github.com/xandercai">
+            <img src="https://avatars.githubusercontent.com/u/16149053?v=4" width="100;" alt="xandercai"/>
+            <br />
+            <sub><b>Xander Cai</b></sub>
+        </a>
+    </td>
+    <td align="center">
+        <a href="https://github.com/kinow">
+            <img src="https://avatars.githubusercontent.com/u/304786?v=4" width="100;" alt="kinow"/>
+            <br />
+            <sub><b>Bruno P. Kinoshita</b></sub>
+        </a>
+    </td></tr>
+</table>
 <!-- readme: collaborators,contributors -end -->
