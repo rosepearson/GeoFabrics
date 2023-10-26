@@ -70,28 +70,35 @@ class CatchmentGeometry:
         # Clip and remove any sub pixel regions
         self._land = self._catchment.clip(self._full_land, keep_geom_type=True)
         self._land = self._land[self._land.area > self.resolution * self.resolution]
+        if self._land.area.sum() > 0:
+            self._foreshore_and_offshore = self.catchment.overlay(
+                self.land, how="difference"
+            )
+            # Buffer and clip and remove any sub pixel regions
+            self._land_and_foreshore = geopandas.GeoDataFrame(
+                {"geometry": self.land.buffer(self.resolution * self.foreshore_buffer)},
+                crs=self.crs["horizontal"],
+            )
+            self._land_and_foreshore = self._catchment.clip(
+                self._land_and_foreshore, keep_geom_type=True
+            )
+            self._land_and_foreshore = self._land_and_foreshore[
+                self._land_and_foreshore.area > self.resolution * self.resolution
+            ]
 
-        self._foreshore_and_offshore = self.catchment.overlay(
-            self.land, how="difference"
-        )
+            self._foreshore = self._land_and_foreshore.overlay(
+                self.land, how="difference"
+            )
 
-        # Buffer and clip and remove any sub pixel regions
-        self._land_and_foreshore = geopandas.GeoDataFrame(
-            {"geometry": self.land.buffer(self.resolution * self.foreshore_buffer)},
-            crs=self.crs["horizontal"],
-        )
-        self._land_and_foreshore = self._catchment.clip(
-            self._land_and_foreshore, keep_geom_type=True
-        )
-        self._land_and_foreshore = self._land_and_foreshore[
-            self._land_and_foreshore.area > self.resolution * self.resolution
-        ]
-
-        self._foreshore = self._land_and_foreshore.overlay(self.land, how="difference")
-
-        self._offshore = self.catchment.overlay(
-            self.land_and_foreshore, how="difference"
-        )
+            self._offshore = self.catchment.overlay(
+                self.land_and_foreshore, how="difference"
+            )
+        else:
+            # Assume no foreshore
+            self._foreshore_and_offshore = self.catchment
+            self._foreshore = self._land
+            self._land_and_foreshore = self._land
+            self._offshore = self.catchment
 
         assert len(self._catchment) == 1, (
             "The catchment is made of multiple separate polygons it must be a single "
@@ -166,11 +173,14 @@ class CatchmentGeometry:
 
         self._assert_land_set()
 
-        if dense_extents is None:
+        if dense_extents is None or dense_extents.is_empty.all():
             logging.warning(
                 "In CatchmentGeometry dense extents are `None` so "
                 " `land_and_foreshore_without_lidar` is returning `land_and_foreshore`"
             )
+            return self.land_and_foreshore
+        elif self.land_and_foreshore.area.sum() == 0:
+            # There is no land and foreshore region - return an empty dataframe
             return self.land_and_foreshore
         # Clip to remove any offshore regions before doing a difference overlay. Drop
         # any sub-pixel polygons.
@@ -191,7 +201,7 @@ class CatchmentGeometry:
 
         self._assert_land_set()
 
-        if dense_extents is None:
+        if dense_extents is None or dense_extents.is_empty.all():
             logging.warning(
                 "In CatchmentGeometry dense extents are `None` so "
                 "`offshore_without_lidar` is returning `offshore`"
@@ -219,12 +229,16 @@ class CatchmentGeometry:
 
         self._assert_land_set()
 
-        if dense_extents is None:
+        if dense_extents is None or dense_extents.is_empty.all():
             logging.warning(
                 "In CatchmentGeometry dense extents are `None` so "
                 "`offshore_dense_data_edge` is returning `None`"
             )
-            return None
+            return dense_extents
+        elif self.foreshore_and_offshore.area.sum() == 0:
+            # If no offshore and foreshore just return the emptry geometry
+            return self.foreshore
+
         # the foreshore and whatever lidar extents are offshore
         offshore_foreshore_dense_data_extents = geopandas.GeoDataFrame(
             {

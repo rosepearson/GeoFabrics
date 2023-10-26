@@ -527,6 +527,18 @@ class HydrologicallyConditionedDem(DemBase):
         offshore_dense_data_edge = self.catchment_geometry.offshore_dense_data_edge(
             self._raw_extents
         )
+        if offshore_dense_data_edge.area.sum() == 0:
+            # No offshore edge. Return an empty array.
+            offshore_edge = numpy.empty(
+                [0],
+                dtype=[
+                    ("X", geometry.RASTER_TYPE),
+                    ("Y", geometry.RASTER_TYPE),
+                    ("Z", geometry.RASTER_TYPE),
+                ],
+            )
+            return offshore_edge
+        # Otherwise proceed as normal
         offshore_edge_dem = self._raw_dem.rio.clip(offshore_dense_data_edge.geometry)
 
         # If the sampling resolution is coaser than the catchment_geometry resolution
@@ -990,11 +1002,14 @@ class LidarBase(DemBase):
         )
 
         # Define region to rasterise inside the chunk area
-        chunk_region_to_tile = geopandas.GeoDataFrame(
-            geometry=region_to_rasterise.buffer(radius).clip(
-                chunk_geometry.buffer(radius), keep_geom_type=True
+        if region_to_rasterise.area.sum() > 0:
+            chunk_region_to_tile = geopandas.GeoDataFrame(
+                geometry=region_to_rasterise.buffer(radius).clip(
+                    chunk_geometry.buffer(radius), keep_geom_type=True
+                )
             )
-        )
+        else:
+            chunk_region_to_tile = region_to_rasterise
         # remove any subpixel polygons
         chunk_region_to_tile = chunk_region_to_tile[
             chunk_region_to_tile.area
@@ -1318,7 +1333,6 @@ class RawDem(LidarBase):
             )
 
         # Check if the ocean is clipped or not (must be in all datasets)
-
         if numpy.array([value for value in self.drop_offshore_lidar.values()]).all():
             clip_region = self.catchment_geometry.land_and_foreshore
         else:
@@ -1326,7 +1340,8 @@ class RawDem(LidarBase):
 
         # Clip DEM to Catchment and ensure NaN outside region to rasterise
         dem = dem.rio.clip(self.catchment_geometry.catchment.geometry, drop=True)
-        dem = dem.rio.clip(clip_region.geometry, drop=False)
+        if clip_region.area.sum() > 0:  # If area of 0 all will be NaN anyway
+            dem = dem.rio.clip(clip_region.geometry, drop=False)
 
         # If drop offshrore LiDAR ensure the foreshore values are 0 or negative
         if (
@@ -1716,13 +1731,16 @@ class RawDem(LidarBase):
                 .count()
                 .isnull()
             )
-            no_value_mask &= (
-                xarray.ones_like(self._dem.z)
-                .rio.clip(
-                    self.catchment_geometry.land_and_foreshore.geometry, drop=False
-                )
-                .notnull()
-            )  # Awkward as clip of a bool xarray doesn't work as expected
+            if self.catchment_geometry.land_and_foreshore.area.sum() > 0:
+                no_value_mask &= (
+                    xarray.ones_like(self._dem.z)
+                    .rio.clip(
+                        self.catchment_geometry.land_and_foreshore.geometry, drop=False
+                    )
+                    .notnull()
+                )  # Awkward as clip of a bool xarray doesn't work as expected
+            else:
+                no_value_mask = xarray.zeros_like(self._dem.z)
             if not no_value_mask.any():
                 logging.info(
                     f"No land areas greater than the cell buffer {buffer_cells}"
@@ -1947,13 +1965,13 @@ class RoughnessDem(LidarBase):
         The interpolation method to apply to LiDAR. Options are: mean, median, IDW.
     """
 
-    ROUGHNESS_DEFAULTS = {"land": 0.014, "water": 0.004, "minimum": 0.00001}
-
     def __init__(
         self,
         catchment_geometry: geometry.CatchmentGeometry,
         hydrological_dem_path: typing.Union[str, pathlib.Path],
         interpolation_method: str,
+        default_values: dict,
+        drop_offshore_lidar: dict,
         elevation_range: list = None,
     ):
         """Setup base DEM to add future tiles too"""
@@ -1990,6 +2008,8 @@ class RoughnessDem(LidarBase):
         )
 
         self.interpolation_method = interpolation_method
+        self.default_values = default_values
+        self.drop_offshore_lidar = drop_offshore_lidar
         self._dem = hydrological_dem
 
     def _calculate_lidar_extents(self):
@@ -2008,6 +2028,7 @@ class RoughnessDem(LidarBase):
         chunk_size: int,
         lidar_classifications_to_keep: list,
         metadata: dict,
+        parameters: dict,
     ):
         """Read in all LiDAR files and use the point cloud distribution,
         data_source layer, and hydrologiaclly conditioned elevations to
@@ -2028,6 +2049,8 @@ class RoughnessDem(LidarBase):
         meta_data
             Information to include in the created DEM - must include
             `dataset_mapping` key if datasets (not a single LAZ file) included.
+        parameters
+            The roughness equation parameters.
         """
 
         # Check valid inputs
@@ -2042,6 +2065,7 @@ class RoughnessDem(LidarBase):
             "elevation_range": self.elevation_range,
             "radius": self.catchment_geometry.resolution / numpy.sqrt(2),
             "crs": self.catchment_geometry.crs,
+            "parameters": parameters,
         }
 
         # Calculate roughness from LiDAR
@@ -2061,20 +2085,20 @@ class RoughnessDem(LidarBase):
         # Set roughness where water
         self._dem["zo"] = self._dem.zo.where(
             self._dem.data_source != self.SOURCE_CLASSIFICATION["ocean bathymetry"],
-            self.ROUGHNESS_DEFAULTS["water"],
+            self.default_values["ocean"],
         )
         self._dem["zo"] = self._dem.zo.where(
             self._dem.data_source != self.SOURCE_CLASSIFICATION["rivers and fans"],
-            self.ROUGHNESS_DEFAULTS["water"],
+            self.default_values["rivers"],
         )
         self._dem["zo"] = self._dem.zo.where(
             self._dem.data_source != self.SOURCE_CLASSIFICATION["waterways"],
-            self.ROUGHNESS_DEFAULTS["water"],
+            self.default_values["waterways"],
         )
         # Set roughness where land and no LiDAR
         self._dem["zo"] = self._dem.zo.where(
             self._dem.data_source != self.SOURCE_CLASSIFICATION["coarse DEM"],
-            self.ROUGHNESS_DEFAULTS["land"],
+            self.default_values["land"],
         )  # or LiDAR with no roughness estimate
         # Ensure the defaults are re-added
         self._write_netcdf_conventions_in_place(self._dem, self.catchment_geometry.crs)
@@ -2118,13 +2142,19 @@ class RoughnessDem(LidarBase):
                 lidar_file.name: lidar_file for lidar_file in lidar_files
             }
 
+            # Define the region to rasterise
+            region_to_rasterise = (
+                self.catchment_geometry.land_and_foreshore
+                if self.drop_offshore_lidar[dataset_name]
+                else self.catchment_geometry.catchment
+            )
             # Remove all tiles entirely outside the region to raserise
             (
                 tile_index_extents,
                 tile_index_name_column,
             ) = self._tile_index_column_name(
                 tile_index_file=tile_index_file,
-                region_to_rasterise=self.catchment_geometry.catchment,
+                region_to_rasterise=region_to_rasterise,
             )
 
             # cycle through chunks - and collect in a delayed array
@@ -2137,7 +2167,7 @@ class RoughnessDem(LidarBase):
 
                     # Define the region to tile
                     chunk_region_to_tile = self._define_chunk_region(
-                        region_to_rasterise=self.catchment_geometry.catchment,
+                        region_to_rasterise=region_to_rasterise,
                         dim_x=dim_x,
                         dim_y=dim_y,
                         radius=raster_options["radius"],
@@ -2200,11 +2230,18 @@ class RoughnessDem(LidarBase):
         source_crs = lidar_datasets_info[lidar_name]["crs"]
         logging.info(f"On LiDAR tile 1 of 1: {lidar_file}")
 
+        # Define the region to rasterise
+        region_to_rasterise = (
+            self.catchment_geometry.land_and_foreshore
+            if self.drop_offshore_lidar[lidar_name]
+            else self.catchment_geometry.catchment
+        )
+
         # Use PDAL to load in file
         pdal_pipeline = read_file_with_pdal(
             lidar_file,
             source_crs=source_crs,
-            region_to_tile=self.catchment_geometry.catchment,
+            region_to_tile=region_to_rasterise,
             crs=options["crs"],
         )
 
@@ -2319,10 +2356,14 @@ class RoughnessDem(LidarBase):
             zo = rioxarray.merge.merge_arrays(zos, method="first")
         # Resize zo to share the same dimensions at the DEM
         self._dem["zo"] = zo.sel(x=self._dem.x, y=self._dem.y, method="nearest")
-        # Ensure no negative roughnesses
+        # Ensure roughness values are bounded by the defaults
         self._dem["zo"] = self._dem.zo.where(
-            self._dem.zo > self.ROUGHNESS_DEFAULTS["minimum"],
-            self.ROUGHNESS_DEFAULTS["minimum"],
+            self._dem.zo > self.default_values["minimum"],
+            self.default_values["minimum"],
+        )
+        self._dem["zo"] = self._dem.zo.where(
+            self._dem.zo < self.default_values["maximum"],
+            self.default_values["maximum"],
         )
 
         # ensure the expected CF conventions are followed
@@ -2405,10 +2446,11 @@ def roughness_from_points(
         else:
             height = numpy.mean(point_cloud["Z"][near_indicies]) - ground
             std = numpy.std(point_cloud["Z"][near_indicies])
+            parameters = options["parameters"]
 
             # if building/plantation - set value based on classification
             # Emperical relationship between mean and std above the ground
-            z_out[i] = max(std / 3, height / 6) / 10
+            z_out[i] = max(std * parameters["std"], height * parameters["mean"])
     return z_out
 
 

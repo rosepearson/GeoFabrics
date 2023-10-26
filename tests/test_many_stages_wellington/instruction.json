@@ -212,6 +212,9 @@
 			"drop_offshore_lidar": true,
 			"lidar_classifications_to_keep": [1, 2, 4, 9],
 			"interpolation": {"no_data": "linear"}
+		},
+		"roughness": {
+			"ignore_powerlines": false
 		}
 	}
 }

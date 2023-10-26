@@ -32,3 +32,5 @@ There is no current expectations of contributions to this project. We accept inp
 Maintainer: Rose Pearson @rosepearson rose.pearson@niwa.co.nz
 
 ### Contributors
+<!-- readme: collaborators,contributors -start -->
+<!-- readme: collaborators,contributors -end -->
