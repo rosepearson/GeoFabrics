@@ -108,8 +108,8 @@
 		"interpolation": {"no_data": null}
 	},
 	"roughness": {
-		"parameters": {"mean": 0.01666666, "std": 0.03333333 },
-		"default_values": {"land": 0.014, "ocean": 0.004, "waterways": 0.004, "rivers": 0.004, "minimum": 0.00001, "roads": 0.001},
+		"parameters": {"mean": 0.02, "std": 0.05 },
+		"default_values": {"land": 0.014, "ocean": 0.004, "waterways": 0.004, "rivers": 0.004, "minimum": 0.00001, "maximum": 0.5, "roads": 0.001},
 		"ignore_powerlines": false
 	}
 }

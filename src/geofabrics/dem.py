@@ -2337,10 +2337,14 @@ class RoughnessDem(LidarBase):
             zo = rioxarray.merge.merge_arrays(zos, method="first")
         # Resize zo to share the same dimensions at the DEM
         self._dem["zo"] = zo.sel(x=self._dem.x, y=self._dem.y, method="nearest")
-        # Ensure no negative roughnesses
+        # Ensure roughness values are bounded by the defaults
         self._dem["zo"] = self._dem.zo.where(
             self._dem.zo > self.default_values["minimum"],
             self.default_values["minimum"],
+        )
+        self._dem["zo"] = self._dem.zo.where(
+            self._dem.zo < self.default_values["maximum"],
+            self.default_values["maximum"],
         )
 
         # ensure the expected CF conventions are followed
