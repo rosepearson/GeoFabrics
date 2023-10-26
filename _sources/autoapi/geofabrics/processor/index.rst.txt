@@ -242,6 +242,14 @@ Classes
     * roughness_dem - Adds a roughness layer to the hydrologically conditioned DEM.
 
 
+   .. py:method:: get_roughness_instruction(key)
+
+      Return true if the DEMs are required for later processing
+
+
+      :param instructions  The json instructions defining the behaviour:
+
+
    .. py:method:: run()
 
       This method executes the geofabrics generation pipeline to produce geofabric

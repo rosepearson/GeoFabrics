@@ -252,7 +252,7 @@ Attributes
 
 
 
-.. py:class:: RoughnessDem(catchment_geometry, hydrological_dem_path, interpolation_method, elevation_range = None)
+.. py:class:: RoughnessDem(catchment_geometry, hydrological_dem_path, interpolation_method, default_values, drop_offshore_lidar, elevation_range = None)
 
 
    Bases: :py:obj:`LidarBase`
@@ -271,7 +271,7 @@ Attributes
                                 'nearest', and 'cubic'.
    :param lidar_interpolation_method: The interpolation method to apply to LiDAR. Options are: mean, median, IDW.
 
-   .. py:method:: add_lidar(lidar_datasets_info, chunk_size, lidar_classifications_to_keep, metadata)
+   .. py:method:: add_lidar(lidar_datasets_info, chunk_size, lidar_classifications_to_keep, metadata, parameters)
 
       Read in all LiDAR files and use the point cloud distribution,
       data_source layer, and hydrologiaclly conditioned elevations to
@@ -285,6 +285,7 @@ Attributes
                                             standard list
       :param meta_data: Information to include in the created DEM - must include
                         `dataset_mapping` key if datasets (not a single LAZ file) included.
+      :param parameters: The roughness equation parameters.
 
 
 

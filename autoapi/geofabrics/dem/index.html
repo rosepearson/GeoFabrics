@@ -487,7 +487,7 @@ boundary.</p></li>
 
 <dl class="py class">
 <dt class="sig sig-object py" id="geofabrics.dem.RoughnessDem">
-<em class="property"><span class="pre">class</span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">geofabrics.dem.</span></span><span class="sig-name descname"><span class="pre">RoughnessDem</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">catchment_geometry</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">hydrological_dem_path</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">interpolation_method</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">elevation_range</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#geofabrics.dem.RoughnessDem" title="Link to this definition"></a></dt>
+<em class="property"><span class="pre">class</span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">geofabrics.dem.</span></span><span class="sig-name descname"><span class="pre">RoughnessDem</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">catchment_geometry</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">hydrological_dem_path</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">interpolation_method</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">default_values</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">drop_offshore_lidar</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">elevation_range</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#geofabrics.dem.RoughnessDem" title="Link to this definition"></a></dt>
 <dd><p>Bases: <a class="reference internal" href="#geofabrics.dem.LidarBase" title="geofabrics.dem.LidarBase"><code class="xref py py-obj docutils literal notranslate"><span class="pre">LidarBase</span></code></a></p>
 <p>A class to add a roughness (zo) layer to a hydrologically conditioned DEM.</p>
 <p>They STD and mean height of ground cover classified points are calculated from the
@@ -502,13 +502,15 @@ to estimate roughness emperically.</p>
 <li><p><strong>interpolation_method</strong> (<em>str</em>) – If not None, interpolate using that method. Valid options are ‘linear’,
 ‘nearest’, and ‘cubic’.</p></li>
 <li><p><strong>lidar_interpolation_method</strong> – The interpolation method to apply to LiDAR. Options are: mean, median, IDW.</p></li>
+<li><p><strong>default_values</strong> (<em>dict</em>) – </p></li>
+<li><p><strong>drop_offshore_lidar</strong> (<em>dict</em>) – </p></li>
 <li><p><strong>elevation_range</strong> (<em>list</em>) – </p></li>
 </ul>
 </dd>
 </dl>
 <dl class="py method">
 <dt class="sig sig-object py" id="geofabrics.dem.RoughnessDem.add_lidar">
-<span class="sig-name descname"><span class="pre">add_lidar</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">lidar_datasets_info</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">chunk_size</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">lidar_classifications_to_keep</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">metadata</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#geofabrics.dem.RoughnessDem.add_lidar" title="Link to this definition"></a></dt>
+<span class="sig-name descname"><span class="pre">add_lidar</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">lidar_datasets_info</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">chunk_size</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">lidar_classifications_to_keep</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">metadata</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">parameters</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#geofabrics.dem.RoughnessDem.add_lidar" title="Link to this definition"></a></dt>
 <dd><p>Read in all LiDAR files and use the point cloud distribution,
 data_source layer, and hydrologiaclly conditioned elevations to
 estimate the roughness across the DEM.</p>
@@ -523,6 +525,7 @@ See <a class="reference external" href="https://www.asprs.org/wp-content/uploads
 standard list</p></li>
 <li><p><strong>meta_data</strong> – Information to include in the created DEM - must include
 <cite>dataset_mapping</cite> key if datasets (not a single LAZ file) included.</p></li>
+<li><p><strong>parameters</strong> (<em>dict</em>) – The roughness equation parameters.</p></li>
 <li><p><strong>metadata</strong> (<em>dict</em>) – </p></li>
 </ul>
 </dd>
