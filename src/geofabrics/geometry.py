@@ -86,7 +86,9 @@ class CatchmentGeometry:
                 self._land_and_foreshore.area > self.resolution * self.resolution
             ]
 
-            self._foreshore = self._land_and_foreshore.overlay(self.land, how="difference")
+            self._foreshore = self._land_and_foreshore.overlay(
+                self.land, how="difference"
+            )
 
             self._offshore = self.catchment.overlay(
                 self.land_and_foreshore, how="difference"
@@ -97,8 +99,6 @@ class CatchmentGeometry:
             self._foreshore = self._land
             self._land_and_foreshore = self._land
             self._offshore = self.catchment
-
-        
 
         assert len(self._catchment) == 1, (
             "The catchment is made of multiple separate polygons it must be a single "

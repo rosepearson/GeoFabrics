@@ -1008,7 +1008,7 @@ class LidarBase(DemBase):
                     chunk_geometry.buffer(radius), keep_geom_type=True
                 )
             )
-        else: 
+        else:
             chunk_region_to_tile = region_to_rasterise
         # remove any subpixel polygons
         chunk_region_to_tile = chunk_region_to_tile[
@@ -1340,7 +1340,7 @@ class RawDem(LidarBase):
 
         # Clip DEM to Catchment and ensure NaN outside region to rasterise
         dem = dem.rio.clip(self.catchment_geometry.catchment.geometry, drop=True)
-        if clip_region.area.sum() > 0: # If area of 0 all will be NaN anyway
+        if clip_region.area.sum() > 0:  # If area of 0 all will be NaN anyway
             dem = dem.rio.clip(clip_region.geometry, drop=False)
 
         # If drop offshrore LiDAR ensure the foreshore values are 0 or negative
