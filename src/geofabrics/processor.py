@@ -1197,6 +1197,8 @@ class RoughnessLengthGenerator(BaseProcessor):
                         roughness_instruction[sub_key] = defaults[key][sub_key]
             return roughness_instruction
         elif key in defaults:
+            if "roughness" not in self.instructions:
+                self.instructions["roughness"] = {}
             self.instructions["roughness"][key] = defaults[key]
             return defaults[key]
         else:
