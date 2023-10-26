@@ -235,8 +235,8 @@ class CatchmentGeometry:
                 "`offshore_dense_data_edge` is returning `None`"
             )
             return dense_extents
-        elif self.foreshore.area.sum():
-            # If no foreshore just return the foreshore
+        elif self.foreshore_and_offshore.area.sum() == 0:
+            # If no offshore and foreshore just return the emptry geometry
             return self.foreshore
 
         # the foreshore and whatever lidar extents are offshore
