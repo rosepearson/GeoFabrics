@@ -895,6 +895,8 @@ class RawLidarDemGenerator(BaseProcessor):
         with cluster, distributed.Client(cluster) as client:
             print("Dask client:", client)
             print("Dask dashboard:", client.dashboard_link)
+            logging.info("Dask client:", client)
+            logging.info("Dask dashboard:", client.dashboard_link)
 
             # Load in LiDAR tiles
             self.raw_dem.add_lidar(
@@ -1106,6 +1108,8 @@ class HydrologicDemGenerator(BaseProcessor):
         with cluster, distributed.Client(cluster) as client:
             print("Dask client:", client)
             print("Dask dashboard:", client.dashboard_link)
+            logging.info("Dask client:", client)
+            logging.info("Dask dashboard:", client.dashboard_link)
 
             # setup the hydrologically conditioned DEM generator
             self.hydrologic_dem = dem.HydrologicallyConditionedDem(

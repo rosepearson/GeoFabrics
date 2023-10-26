@@ -527,6 +527,18 @@ class HydrologicallyConditionedDem(DemBase):
         offshore_dense_data_edge = self.catchment_geometry.offshore_dense_data_edge(
             self._raw_extents
         )
+        if offshore_dense_data_edge.area.sum() == 0:
+            # No offshore edge. Return an empty array.
+            offshore_edge = numpy.empty(
+                [0],
+                dtype=[
+                    ("X", geometry.RASTER_TYPE),
+                    ("Y", geometry.RASTER_TYPE),
+                    ("Z", geometry.RASTER_TYPE),
+                ],
+            )
+            return offshore_edge
+        # Otherwise proceed as normal
         offshore_edge_dem = self._raw_dem.rio.clip(offshore_dense_data_edge.geometry)
 
         # If the sampling resolution is coaser than the catchment_geometry resolution
@@ -990,11 +1002,14 @@ class LidarBase(DemBase):
         )
 
         # Define region to rasterise inside the chunk area
-        chunk_region_to_tile = geopandas.GeoDataFrame(
-            geometry=region_to_rasterise.buffer(radius).clip(
-                chunk_geometry.buffer(radius), keep_geom_type=True
+        if region_to_rasterise.area.sum() > 0:
+            chunk_region_to_tile = geopandas.GeoDataFrame(
+                geometry=region_to_rasterise.buffer(radius).clip(
+                    chunk_geometry.buffer(radius), keep_geom_type=True
+                )
             )
-        )
+        else: 
+            chunk_region_to_tile = region_to_rasterise
         # remove any subpixel polygons
         chunk_region_to_tile = chunk_region_to_tile[
             chunk_region_to_tile.area
@@ -1325,7 +1340,8 @@ class RawDem(LidarBase):
 
         # Clip DEM to Catchment and ensure NaN outside region to rasterise
         dem = dem.rio.clip(self.catchment_geometry.catchment.geometry, drop=True)
-        dem = dem.rio.clip(clip_region.geometry, drop=False)
+        if clip_region.area.sum() > 0: # If area of 0 all will be NaN anyway
+            dem = dem.rio.clip(clip_region.geometry, drop=False)
 
         # If drop offshrore LiDAR ensure the foreshore values are 0 or negative
         if (
@@ -1715,13 +1731,16 @@ class RawDem(LidarBase):
                 .count()
                 .isnull()
             )
-            no_value_mask &= (
-                xarray.ones_like(self._dem.z)
-                .rio.clip(
-                    self.catchment_geometry.land_and_foreshore.geometry, drop=False
-                )
-                .notnull()
-            )  # Awkward as clip of a bool xarray doesn't work as expected
+            if self.catchment_geometry.land_and_foreshore.area.sum() > 0:
+                no_value_mask &= (
+                    xarray.ones_like(self._dem.z)
+                    .rio.clip(
+                        self.catchment_geometry.land_and_foreshore.geometry, drop=False
+                    )
+                    .notnull()
+                )  # Awkward as clip of a bool xarray doesn't work as expected
+            else:
+                no_value_mask = xarray.zeros_like(self._dem.z)
             if not no_value_mask.any():
                 logging.info(
                     f"No land areas greater than the cell buffer {buffer_cells}"
