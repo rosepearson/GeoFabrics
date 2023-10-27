@@ -2091,10 +2091,12 @@ class RoughnessDem(LidarBase):
             self._dem.data_source != self.SOURCE_CLASSIFICATION["rivers and fans"],
             self.default_values["rivers"],
         )
-        self._dem["zo"] = self._dem.zo.where(
-            self._dem.data_source != self.SOURCE_CLASSIFICATION["waterways"],
-            self.default_values["waterways"],
-        )
+
+        if self.default_values["waterways"] is not None:
+            self._dem["zo"] = self._dem.zo.where(
+                self._dem.data_source != self.SOURCE_CLASSIFICATION["waterways"],
+                self.default_values["waterways"],
+            )
         # Set roughness where land and no LiDAR
         self._dem["zo"] = self._dem.zo.where(
             self._dem.data_source != self.SOURCE_CLASSIFICATION["coarse DEM"],
@@ -2357,14 +2359,16 @@ class RoughnessDem(LidarBase):
         # Resize zo to share the same dimensions at the DEM
         self._dem["zo"] = zo.sel(x=self._dem.x, y=self._dem.y, method="nearest")
         # Ensure roughness values are bounded by the defaults
-        self._dem["zo"] = self._dem.zo.where(
-            self._dem.zo > self.default_values["minimum"],
-            self.default_values["minimum"],
-        )
-        self._dem["zo"] = self._dem.zo.where(
-            self._dem.zo < self.default_values["maximum"],
-            self.default_values["maximum"],
-        )
+        if self.default_values["minimum"] is not None:
+            self._dem["zo"] = self._dem.zo.where(
+                self._dem.zo > self.default_values["minimum"],
+                self.default_values["minimum"],
+            )
+        if self.default_values["maximum"] is not None:
+            self._dem["zo"] = self._dem.zo.where(
+                self._dem.zo < self.default_values["maximum"],
+                self.default_values["maximum"],
+            )
 
         # ensure the expected CF conventions are followed
         self._write_netcdf_conventions_in_place(self._dem, self.catchment_geometry.crs)
