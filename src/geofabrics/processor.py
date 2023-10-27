@@ -1188,7 +1188,7 @@ class RoughnessLengthGenerator(BaseProcessor):
                 "waterways": 0.004,
                 "rivers": 0.004,
                 "minimum": 0.00001,
-                "maximum": 0.5,
+                "maximum": 5,
             },
             "ignore_powerlines": False,
         }
