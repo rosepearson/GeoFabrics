@@ -2091,7 +2091,8 @@ class RoughnessDem(LidarBase):
             self._dem.data_source != self.SOURCE_CLASSIFICATION["rivers and fans"],
             self.default_values["rivers"],
         )
-        if not numpy.isnan(self.default_values["waterways"]):
+
+        if self.default_values["waterways"] is not None:
             self._dem["zo"] = self._dem.zo.where(
                 self._dem.data_source != self.SOURCE_CLASSIFICATION["waterways"],
                 self.default_values["waterways"],
@@ -2358,12 +2359,12 @@ class RoughnessDem(LidarBase):
         # Resize zo to share the same dimensions at the DEM
         self._dem["zo"] = zo.sel(x=self._dem.x, y=self._dem.y, method="nearest")
         # Ensure roughness values are bounded by the defaults
-        if not numpy.isnan(self.default_values["minimum"]):
+        if self.default_values["minimum"] is not None:
             self._dem["zo"] = self._dem.zo.where(
                 self._dem.zo > self.default_values["minimum"],
                 self.default_values["minimum"],
             )
-        if not numpy.isnan(self.default_values["maximum"]):
+        if self.default_values["maximum"] is not None:
             self._dem["zo"] = self._dem.zo.where(
                 self._dem.zo < self.default_values["maximum"],
                 self.default_values["maximum"],
