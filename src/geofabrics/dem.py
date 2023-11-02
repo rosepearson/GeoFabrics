@@ -1749,7 +1749,7 @@ class RawDem(LidarBase):
                 return False
             # Check for overlap with the Coarse DEM
             coarse_dem = rioxarray.rioxarray.open_rasterio(
-                coarse_dem_path, masked=True, chunked=True
+                coarse_dem_path, masked=True, chunks=True
             ).squeeze("band", drop=True)
             coarse_dem.rio.set_crs(self.catchment_geometry.crs["horizontal"])
             coarse_dem_resolution = coarse_dem.rio.resolution()
