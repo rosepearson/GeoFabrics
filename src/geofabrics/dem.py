@@ -1802,7 +1802,7 @@ class RawDem(LidarBase):
                     self.SOURCE_CLASSIFICATION["coarse DEM"],
                 )
                 # Ensure Coarse DEM values along the foreshore are less than zero
-                if  self.catchment_geometry.foreshore.area.sum() > 0:
+                if self.catchment_geometry.foreshore.area.sum() > 0:
                     buffered_foreshore = geopandas.GeoDataFrame(
                         geometry=self.catchment_geometry.foreshore.buffer(
                             self.catchment_geometry.resolution * numpy.sqrt(2)
