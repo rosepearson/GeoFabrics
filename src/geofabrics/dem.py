@@ -1807,6 +1807,11 @@ class RawDem(LidarBase):
                         self.catchment_geometry.resolution * numpy.sqrt(2)
                     )
                 )
+                buffered_foreshore = buffered_foreshore.overlay(
+                    self.catchment_geometry.full_land,
+                    how="difference",
+                    keep_geom_type=True,
+                )
                 # Clip DEM to buffered foreshore
                 mask = self._dem.z.rio.clip(
                     buffered_foreshore.geometry, drop=False
