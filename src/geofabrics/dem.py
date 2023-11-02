@@ -1802,38 +1802,39 @@ class RawDem(LidarBase):
                     self.SOURCE_CLASSIFICATION["coarse DEM"],
                 )
                 # Ensure Coarse DEM values along the foreshore are less than zero
-                buffered_foreshore = geopandas.GeoDataFrame(
-                    geometry=self.catchment_geometry.foreshore.buffer(
-                        self.catchment_geometry.resolution * numpy.sqrt(2)
+                if  self.catchment_geometry.foreshore.area.sum() > 0:
+                    buffered_foreshore = geopandas.GeoDataFrame(
+                        geometry=self.catchment_geometry.foreshore.buffer(
+                            self.catchment_geometry.resolution * numpy.sqrt(2)
+                        )
                     )
-                )
-                buffered_foreshore = buffered_foreshore.overlay(
-                    self.catchment_geometry.full_land,
-                    how="difference",
-                    keep_geom_type=True,
-                )
-                # Clip DEM to buffered foreshore
-                mask = self._dem.z.rio.clip(
-                    buffered_foreshore.geometry, drop=False
-                ).notnull()
-                mask = (
-                    mask
-                    & (self._dem.z > 0)
-                    & (
-                        self._dem.data_source
-                        == self.SOURCE_CLASSIFICATION["coarse DEM"]
+                    buffered_foreshore = buffered_foreshore.overlay(
+                        self.catchment_geometry.full_land,
+                        how="difference",
+                        keep_geom_type=True,
                     )
-                )
+                    # Clip DEM to buffered foreshore
+                    mask = self._dem.z.rio.clip(
+                        buffered_foreshore.geometry, drop=False
+                    ).notnull()
+                    mask = (
+                        mask
+                        & (self._dem.z > 0)
+                        & (
+                            self._dem.data_source
+                            == self.SOURCE_CLASSIFICATION["coarse DEM"]
+                        )
+                    )
 
-                # Set any positive LiDAR foreshore points to zero
-                self._dem["data_source"] = self._dem.data_source.where(
-                    ~mask,
-                    self.SOURCE_CLASSIFICATION["ocean bathymetry"],
-                )
-                self._dem["z"] = self._dem.z.where(
-                    ~mask,
-                    0,
-                )
+                    # Set any positive LiDAR foreshore points to zero
+                    self._dem["data_source"] = self._dem.data_source.where(
+                        ~mask,
+                        self.SOURCE_CLASSIFICATION["ocean bathymetry"],
+                    )
+                    self._dem["z"] = self._dem.z.where(
+                        ~mask,
+                        0,
+                    )
 
                 """if chunk_size is None:
                     self._add_coarse_dem_no_chunking(
