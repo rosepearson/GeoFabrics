@@ -1749,7 +1749,7 @@ class RawDem(LidarBase):
                 return False
             # Check for overlap with the Coarse DEM
             coarse_dem = rioxarray.rioxarray.open_rasterio(
-                coarse_dem_path, masked=True
+                coarse_dem_path, masked=True, chunked=True
             ).squeeze("band", drop=True)
             coarse_dem.rio.set_crs(self.catchment_geometry.crs["horizontal"])
             coarse_dem_resolution = coarse_dem.rio.resolution()
@@ -1783,8 +1783,48 @@ class RawDem(LidarBase):
                 logging.info(f"\t\tAdd data from coarse DEM: {coarse_dem_path.name}")
                 # Create a mask defining the region without values to populate
                 # from the Coarse DEM
+                coarse_dem = coarse_dem.rio.clip(
+                    self.catchment_geometry.land_and_foreshore.buffer(coarse_dem_resolution).geometry,
+                    drop=True)
+                coarse_dem=coarse_dem.interp(
+                    x=self._dem.x,
+                    y=self._dem.y,
+                    method="linear"
+                    )
+                coarse_dem.rio.clip(
+                    self.catchment_geometry.land_and_foreshore.geometry,
+                    drop=False
+                    )
+                self._dem["z"] = self._dem.z.where(~no_value_mask, coarse_dem)
+                # Update the data source layer
+                self._dem["data_source"] = self._dem.data_source.where(
+                    ~(no_value_mask & self._dem.z.notnull()),
+                    self.SOURCE_CLASSIFICATION["coarse DEM"],
+                )
+                # Ensure Coarse DEM values along the foreshore are less than zero
+                buffered_foreshore = geopandas.GeoDataFrame(
+                    geometry=self.catchment_geometry.foreshore.buffer(
+                        self.catchment_geometry.resolution * numpy.sqrt(2)
+                    )
+                )
+                # Clip DEM to buffered foreshore
+                mask = self._dem.z.rio.clip(buffered_foreshore.geometry, drop=False).notnull()
+                mask = (
+                    mask & (self._dem.z > 0)
+                    & (self._dem.data_source ==  self.SOURCE_CLASSIFICATION["coarse DEM"])
+                    )
 
-                if chunk_size is None:
+                # Set any positive LiDAR foreshore points to zero
+                self._dem["data_source"] = self._dem.data_source.where(
+                    ~mask,
+                    self.SOURCE_CLASSIFICATION["ocean bathymetry"],
+                )
+                self._dem["z"] = self._dem.z.where(
+                    ~mask,
+                    0,
+                )
+
+                '''if chunk_size is None:
                     self._add_coarse_dem_no_chunking(
                         coarse_dem_path=coarse_dem_path,
                         mask=no_value_mask,
@@ -1795,7 +1835,7 @@ class RawDem(LidarBase):
                         chunk_size=chunk_size,
                         mask=no_value_mask,
                         radius=coarse_dem_resolution * numpy.sqrt(2),
-                    )
+                    )'''
 
     def _add_coarse_dem_no_chunking(
         self,
