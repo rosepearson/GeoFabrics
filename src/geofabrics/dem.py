@@ -1748,8 +1748,9 @@ class RawDem(LidarBase):
                 )
                 return False
             # Check for overlap with the Coarse DEM
-            chunks = {"x": chunk_size,
-                      "y": chunk_size} if chunk_size is not None else False
+            chunks = (
+                {"x": chunk_size, "y": chunk_size} if chunk_size is not None else False
+            )
             coarse_dem = rioxarray.rioxarray.open_rasterio(
                 coarse_dem_path, masked=True, chunks=chunks
             ).squeeze("band", drop=True)
