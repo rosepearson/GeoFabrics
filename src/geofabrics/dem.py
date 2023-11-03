@@ -1748,8 +1748,10 @@ class RawDem(LidarBase):
                 )
                 return False
             # Check for overlap with the Coarse DEM
+            chunks = {"x": chunk_size,
+                      "y": chunk_size} if chunk_size is not None else False
             coarse_dem = rioxarray.rioxarray.open_rasterio(
-                coarse_dem_path, masked=True, chunks=True
+                coarse_dem_path, masked=True, chunks=chunks
             ).squeeze("band", drop=True)
             coarse_dem.rio.set_crs(self.catchment_geometry.crs["horizontal"])
             coarse_dem_resolution = coarse_dem.rio.resolution()
@@ -1792,6 +1794,9 @@ class RawDem(LidarBase):
                 coarse_dem = coarse_dem.interp(
                     x=self._dem.x, y=self._dem.y, method="linear"
                 )
+                # If chunks_size is set, specify chunking
+                if chunk_size is not None:
+                    coarse_dem = coarse_dem.chunk({"x": chunk_size, "y": chunk_size})
                 coarse_dem.rio.clip(
                     self.catchment_geometry.land_and_foreshore.geometry, drop=False
                 )
