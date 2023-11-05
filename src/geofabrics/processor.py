@@ -908,20 +908,6 @@ class RawLidarDemGenerator(BaseProcessor):
                 metadata=self.create_metadata(),
             )  # Note must be called after all others if it is to be complete
 
-            # Add a coarse DEM if significant area without LiDAR and a coarse DEM
-            if self.check_vector_or_raster(key="coarse_dems", api_type="raster"):
-                coarse_dem_paths = self.get_vector_or_raster_paths(
-                    key="coarse_dems", data_type="raster"
-                )
-
-                # Add coarse DEMs if there are any and if area
-                self.raw_dem.add_coarse_dems(
-                    coarse_dem_paths=coarse_dem_paths,
-                    area_threshold=area_threshold,
-                    buffer_cells=self.get_instruction_general("lidar_buffer"),
-                    chunk_size=self.get_processing_instructions("chunk_size"),
-                )
-
             # compute and save raw DEM
             logging.info("In processor.DemGenerator - write out the raw DEM to netCDF")
             try:
@@ -939,6 +925,46 @@ class RawLidarDemGenerator(BaseProcessor):
                     " before re-raising error."
                 )
                 raise caught_exception
+
+            # Add a coarse DEM if significant area without LiDAR and a coarse DEM
+            if self.check_vector_or_raster(key="coarse_dems", api_type="raster"):
+                coarse_dem_paths = self.get_vector_or_raster_paths(
+                    key="coarse_dems", data_type="raster"
+                )
+
+                chunk_size = self.get_processing_instructions("chunk_size")
+                self.raw_dem._dem = rioxarray.rioxarray.open_rasterio(
+                    self.get_instruction_path("raw_dem"),
+                    masked=True, parse_coordinates=True,
+                    chunks={"x": chunk_size,
+                            "y": chunk_size}
+                )
+
+                # Add coarse DEMs if there are any and if area
+                self.raw_dem.add_coarse_dems(
+                    coarse_dem_paths=coarse_dem_paths,
+                    area_threshold=area_threshold,
+                    buffer_cells=self.get_instruction_general("lidar_buffer"),
+                    chunk_size=self.get_processing_instructions("chunk_size"),
+                )
+
+                # compute and save raw DEM
+                logging.info("In processor.DemGenerator - write out the raw DEM to netCDF")
+                try:
+                    self.raw_dem.dem.to_netcdf(
+                        self.get_instruction_path("raw_dem"),
+                        format="NETCDF4",
+                        engine="netcdf4",
+                    )
+                except (Exception, KeyboardInterrupt) as caught_exception:
+                    pathlib.Path(self.get_instruction_path("raw_dem")).unlink()
+                    logging.info(
+                        f"Caught error {caught_exception} and deleting"
+                        "partially created netCDF output "
+                        f"{self.get_instruction_path('raw_dem')}"
+                        " before re-raising error."
+                    )
+                    raise caught_exception
 
         if self.debug:
             # Record the parameter used during execution - append to existing
