@@ -935,9 +935,9 @@ class RawLidarDemGenerator(BaseProcessor):
                 chunk_size = self.get_processing_instructions("chunk_size")
                 self.raw_dem._dem = rioxarray.rioxarray.open_rasterio(
                     self.get_instruction_path("raw_dem"),
-                    masked=True, parse_coordinates=True,
-                    chunks={"x": chunk_size,
-                            "y": chunk_size}
+                    masked=True,
+                    parse_coordinates=True,
+                    chunks={"x": chunk_size, "y": chunk_size},
                 )
 
                 # Add coarse DEMs if there are any and if area
@@ -949,7 +949,9 @@ class RawLidarDemGenerator(BaseProcessor):
                 )
 
                 # compute and save raw DEM
-                logging.info("In processor.DemGenerator - write out the raw DEM to netCDF")
+                logging.info(
+                    "In processor.DemGenerator - write out the raw DEM to netCDF"
+                )
                 try:
                     self.raw_dem.dem.to_netcdf(
                         self.get_instruction_path("raw_dem"),
