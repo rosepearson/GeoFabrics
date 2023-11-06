@@ -1740,6 +1740,13 @@ class RawDem(LidarBase):
             coarse_dem_resolution = max(
                 abs(coarse_dem_resolution[0]), abs(coarse_dem_resolution[1])
             )
+            # Clip to foreground and land
+            coarse_dem = coarse_dem.rio.clip(
+                self.catchment_geometry.land_and_foreshore.buffer(
+                    coarse_dem_resolution
+                ).geometry,
+                drop=True,
+            )
             coarse_dem_bounds = coarse_dem.rio.bounds()
             coarse_dem_bounds = geopandas.GeoDataFrame(
                 {
@@ -1765,17 +1772,13 @@ class RawDem(LidarBase):
             )  # Awkward as clip of a bool xarray doesn't work as expected
             if no_value_mask.any():
                 logging.info(f"\t\tAdd data from coarse DEM: {coarse_dem_path.name}")
-                # Create a mask defining the region without values to populate
-                # from the Coarse DEM
-                coarse_dem = coarse_dem.rio.clip(
-                    self.catchment_geometry.land_and_foreshore.buffer(
-                        coarse_dem_resolution
-                    ).geometry,
-                    drop=True,
-                )
                 coarse_dem = coarse_dem.interp(
                     x=self._dem.x, y=self._dem.y, method="linear"
                 )
+                # TODO - revisit
+                # coarse_dem = coarse_dem.chunk(chunk_size).interp(x=self._dem.x, y=self._dem.y, method="linear")
+                # coarse_dem = coarse_dem.chunk(int(chunk_size/coarse_dem_resolution)).interp(x=self._dem.x, y=self._dem.y, method="linear")
+                # coarse_dem = coarse_dem.chunk(chunk_size).interp(x=dask.array.from_array(self._dem.x, chunks=1000), y=dask.array.from_array(self._dem.y, chunks=1000), method="linear")
                 # If chunks_size is set, specify chunking
                 if chunk_size is not None:
                     coarse_dem = coarse_dem.chunk({"x": chunk_size, "y": chunk_size})
@@ -1855,6 +1858,8 @@ class RawDem(LidarBase):
             else:
                 no_value_mask = xarray.zeros_like(self._dem.z)
             dem["no_values_mask"] = no_value_mask
+            dem.no_values_mask.rio.write_crs(crs_dict["horizontal"], inplace=True)
+            dem.no_values_mask.rio.write_nodata(numpy.nan, encoded=True, inplace=True)
 
         # Save the file
         dem.to_netcdf(
