@@ -839,8 +839,8 @@ class RawLidarDemGenerator(BaseProcessor):
         self.debug = debug
 
     def try_save(self, filename: pathlib.Path, no_values_mask: bool = False):
-        """ Try to save the netCDF file to the given path. Delete the file if
-        error after partial write. """
+        """Try to save the netCDF file to the given path. Delete the file if
+        error after partial write."""
         try:
             self.raw_dem.save_dem(
                 filename,
@@ -936,12 +936,12 @@ class RawLidarDemGenerator(BaseProcessor):
                 # compute and save raw DEM
                 logging.info(
                     "In processor.DemGenerator - write out temp raw DEM to netCDF"
-                    )
+                )
                 temp_filename = self.get_instruction_path("subfolder") / "raw_temp.nc"
                 self.try_save(
                     filename=temp_filename,
                     no_values_mask=True,
-                    )
+                )
 
                 chunk_size = self.get_processing_instructions("chunk_size")
                 self.raw_dem._dem = rioxarray.rioxarray.open_rasterio(
@@ -960,13 +960,11 @@ class RawLidarDemGenerator(BaseProcessor):
                 )
 
             # compute and save raw DEM
-            logging.info(
-                "In processor.DemGenerator - write out the raw DEM to netCDF"
-            )
+            logging.info("In processor.DemGenerator - write out the raw DEM to netCDF")
             self.try_save(
                 filename=self.get_instruction_path("raw_dem"),
                 no_values_mask=False,
-                )
+            )
 
         if self.debug:
             # Record the parameter used during execution - append to existing

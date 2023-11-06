@@ -1749,7 +1749,8 @@ class RawDem(LidarBase):
                 return False
             # Check for overlap with the Coarse DEM
             coarse_dem = rioxarray.rioxarray.open_rasterio(
-                coarse_dem_path, masked=True,
+                coarse_dem_path,
+                masked=True,
             ).squeeze("band", drop=True)
             coarse_dem.rio.set_crs(self.catchment_geometry.crs["horizontal"])
             coarse_dem_resolution = coarse_dem.rio.resolution()
@@ -1839,9 +1840,14 @@ class RawDem(LidarBase):
                         0,
                     )
 
-    def save_dem(self, filename: pathlib.Path, no_values_mask: bool = False, buffer_cells: int = None):
-        """ Save the dam to a netCDF file. The no_data_layer of bol values may
-        optionally be included. """
+    def save_dem(
+        self,
+        filename: pathlib.Path,
+        no_values_mask: bool = False,
+        buffer_cells: int = None,
+    ):
+        """Save the dam to a netCDF file. The no_data_layer of bol values may
+        optionally be included."""
 
         # Getteh DEM from the property call
         dem = self.dem
