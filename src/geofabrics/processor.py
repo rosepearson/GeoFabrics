@@ -950,6 +950,8 @@ class RawLidarDemGenerator(BaseProcessor):
                     parse_coordinates=True,
                     chunks={"x": chunk_size, "y": chunk_size},
                 )
+                self.raw_dem._dem = self.raw_dem._dem.squeeze("band", drop=True)
+                self.raw_dem._dem["no_values_mask"] = self.raw_dem._dem.no_values_mask.astype(bool)
 
                 # Add coarse DEMs if there are any and if area
                 self.raw_dem.add_coarse_dems(

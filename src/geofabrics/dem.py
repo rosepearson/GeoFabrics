@@ -1722,25 +1722,8 @@ class RawDem(LidarBase):
         logging.info(f"Incorporating coarse DEMs: {coarse_dem_paths}")
         for coarse_dem_path in coarse_dem_paths:
             # Check if any areas (on land and foreshore) still without values - exit if none
-            no_value_mask = (
-                self._dem.z.rolling(
-                    dim={"x": buffer_cells * 2 + 1, "y": buffer_cells * 2 + 1},
-                    min_periods=1,
-                    center=True,
-                )
-                .count()
-                .isnull()
-            )
-            if self.catchment_geometry.land_and_foreshore.area.sum() > 0:
-                no_value_mask &= (
-                    xarray.ones_like(self._dem.z)
-                    .rio.clip(
-                        self.catchment_geometry.land_and_foreshore.geometry, drop=False
-                    )
-                    .notnull()
-                )  # Awkward as clip of a bool xarray doesn't work as expected
-            else:
-                no_value_mask = xarray.zeros_like(self._dem.z)
+            no_value_mask = self._dem.no_values_mask
+            self._dem = self._dem.drop("no_values_mask")
             if not no_value_mask.any():
                 logging.info(
                     f"No land areas greater than the cell buffer {buffer_cells}"
@@ -1776,7 +1759,7 @@ class RawDem(LidarBase):
 
             # Add the coarse DEM data where there's no LiDAR updating the extents
             no_value_mask &= (
-                xarray.ones_like(self._dem.z)
+                xarray.ones_like(no_value_mask)
                 .rio.clip(coarse_dem_bounds.geometry, drop=False)
                 .notnull()
             )  # Awkward as clip of a bool xarray doesn't work as expected
