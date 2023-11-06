@@ -838,6 +838,25 @@ class RawLidarDemGenerator(BaseProcessor):
         self.raw_dem = None
         self.debug = debug
 
+    def try_save(self, filename: pathlib.Path, no_values_mask: bool = False):
+        """ Try to save the netCDF file to the given path. Delete the file if
+        error after partial write. """
+        try:
+            self.raw_dem.save_dem(
+                filename,
+                no_values_mask=no_values_mask,
+                buffer_cells=self.get_instruction_general("lidar_buffer"),
+            )
+        except (Exception, KeyboardInterrupt) as caught_exception:
+            pathlib.Path(filename).unlink()
+            logging.info(
+                f"Caught error {caught_exception} and deleting"
+                "partially created netCDF output "
+                f"{self.get_instruction_path('raw_dem')}"
+                " before re-raising error."
+            )
+            raise caught_exception
+
     def run(self):
         """This method executes the geofabrics generation pipeline to produce geofabric
         derivatives.
@@ -908,33 +927,25 @@ class RawLidarDemGenerator(BaseProcessor):
                 metadata=self.create_metadata(),
             )  # Note must be called after all others if it is to be complete
 
-            # compute and save raw DEM
-            logging.info("In processor.DemGenerator - write out the raw DEM to netCDF")
-            try:
-                self.raw_dem.dem.to_netcdf(
-                    self.get_instruction_path("raw_dem"),
-                    format="NETCDF4",
-                    engine="netcdf4",
-                )
-            except (Exception, KeyboardInterrupt) as caught_exception:
-                pathlib.Path(self.get_instruction_path("raw_dem")).unlink()
-                logging.info(
-                    f"Caught error {caught_exception} and deleting"
-                    "partially created netCDF output "
-                    f"{self.get_instruction_path('raw_dem')}"
-                    " before re-raising error."
-                )
-                raise caught_exception
-
             # Add a coarse DEM if significant area without LiDAR and a coarse DEM
             if self.check_vector_or_raster(key="coarse_dems", api_type="raster"):
                 coarse_dem_paths = self.get_vector_or_raster_paths(
                     key="coarse_dems", data_type="raster"
                 )
 
+                # compute and save raw DEM
+                logging.info(
+                    "In processor.DemGenerator - write out temp raw DEM to netCDF"
+                    )
+                temp_filename = self.get_instruction_path("subfolder") / "raw_temp.nc"
+                self.try_save(
+                    filename=temp_filename,
+                    no_values_mask=True,
+                    )
+
                 chunk_size = self.get_processing_instructions("chunk_size")
                 self.raw_dem._dem = rioxarray.rioxarray.open_rasterio(
-                    self.get_instruction_path("raw_dem"),
+                    temp_filename,
                     masked=True,
                     parse_coordinates=True,
                     chunks={"x": chunk_size, "y": chunk_size},
@@ -948,25 +959,14 @@ class RawLidarDemGenerator(BaseProcessor):
                     chunk_size=self.get_processing_instructions("chunk_size"),
                 )
 
-                # compute and save raw DEM
-                logging.info(
-                    "In processor.DemGenerator - write out the raw DEM to netCDF"
+            # compute and save raw DEM
+            logging.info(
+                "In processor.DemGenerator - write out the raw DEM to netCDF"
+            )
+            self.try_save(
+                filename=self.get_instruction_path("raw_dem"),
+                no_values_mask=False,
                 )
-                try:
-                    self.raw_dem.dem.to_netcdf(
-                        self.get_instruction_path("raw_dem"),
-                        format="NETCDF4",
-                        engine="netcdf4",
-                    )
-                except (Exception, KeyboardInterrupt) as caught_exception:
-                    pathlib.Path(self.get_instruction_path("raw_dem")).unlink()
-                    logging.info(
-                        f"Caught error {caught_exception} and deleting"
-                        "partially created netCDF output "
-                        f"{self.get_instruction_path('raw_dem')}"
-                        " before re-raising error."
-                    )
-                    raise caught_exception
 
         if self.debug:
             # Record the parameter used during execution - append to existing

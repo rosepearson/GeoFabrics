@@ -1839,6 +1839,43 @@ class RawDem(LidarBase):
                         0,
                     )
 
+    def save_dem(self, filename: pathlib.Path, no_values_mask: bool = False, buffer_cells: int = None):
+        """ Save the dam to a netCDF file. The no_data_layer of bol values may
+        optionally be included. """
+
+        # Getteh DEM from the property call
+        dem = self.dem
+        if no_values_mask:
+            no_value_mask = (
+                dem.z.rolling(
+                    dim={"x": buffer_cells * 2 + 1, "y": buffer_cells * 2 + 1},
+                    min_periods=1,
+                    center=True,
+                )
+                .count()
+                .isnull()
+            )
+            if self.catchment_geometry.land_and_foreshore.area.sum() > 0:
+                no_value_mask &= (
+                    xarray.ones_like(self._dem.z)
+                    .rio.clip(
+                        self.catchment_geometry.land_and_foreshore.geometry, drop=False
+                    )
+                    .notnull()
+                )  # Awkward as clip of a bool xarray doesn't work as expected
+            else:
+                no_value_mask = xarray.zeros_like(self._dem.z)
+            dem["no_values_mask"] = no_value_mask
+
+        # Save the file
+        dem.to_netcdf(
+            filename,
+            format="NETCDF4",
+            engine="netcdf4",
+        )
+        # Close the DEM
+        dem.close()
+
 
 class RoughnessDem(LidarBase):
     """A class to add a roughness (zo) layer to a hydrologically conditioned DEM.
