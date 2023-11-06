@@ -1858,7 +1858,7 @@ class RawDem(LidarBase):
             else:
                 no_value_mask = xarray.zeros_like(self._dem.z)
             dem["no_values_mask"] = no_value_mask
-            dem.no_values_mask.rio.write_crs(crs_dict["horizontal"], inplace=True)
+            dem.no_values_mask.rio.write_crs(self.catchment_geometry.crs["horizontal"], inplace=True)
             dem.no_values_mask.rio.write_nodata(numpy.nan, encoded=True, inplace=True)
 
         # Save the file
