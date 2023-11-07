@@ -876,10 +876,15 @@ class RawLidarDemGenerator(BaseProcessor):
             )
 
         # Create folder for caching raw DEM files during DEM generation
-        temp_folder = self.get_instruction_path("subfolder") / "temp" / f"{self.get_resolution()}m_results"
+        temp_folder = (
+            self.get_instruction_path("subfolder")
+            / "temp"
+            / f"{self.get_resolution()}m_results"
+        )
         logging.info(
             "In processor.DemGenerator - create folder for writing temporarily"
-            f" cached netCDF files in {temp_folder}")
+            f" cached netCDF files in {temp_folder}"
+        )
         shutil.rmtree(temp_folder)
         temp_folder.mkdir(parents=True, exist_ok=True)
         # setup the raw DEM generator
@@ -890,7 +895,7 @@ class RawLidarDemGenerator(BaseProcessor):
                 key="interpolation", subkey="lidar"
             ),
             elevation_range=self.get_instruction_general("elevation_range"),
-            temp_folder=temp_folder
+            temp_folder=temp_folder,
         )
 
         # Setup Dask cluster and client - LAZY SAVE LIDAR DEM
@@ -939,7 +944,8 @@ class RawLidarDemGenerator(BaseProcessor):
             )
             logging.info(
                 "In processor.DemGenerator - clean folder for writing temporarily"
-                f" cached netCDF files in {temp_folder}")
+                f" cached netCDF files in {temp_folder}"
+            )
             shutil.rmtree(temp_folder)
 
         if self.debug:

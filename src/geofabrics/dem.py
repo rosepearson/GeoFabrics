@@ -1381,14 +1381,13 @@ class RawDem(LidarBase):
         self._dem = dem
 
         # Save a cached copy of DEM to temporary memory cache
-        logging.info(
-            "In dem.add_lidar - write out temp raw DEM to netCDF"
-        )
+        logging.info("In dem.add_lidar - write out temp raw DEM to netCDF")
         self._cache_dem(
             filename=self.temp_folder / "raw_lidar.nc",
             no_values_mask=True,
             buffer_cells=buffer_cells,
-            chunk_size=chunk_size,)
+            chunk_size=chunk_size,
+        )
 
     def _add_tiled_lidar_chunked(
         self,
@@ -1844,22 +1843,22 @@ class RawDem(LidarBase):
                         "In dem.add_coarse_dems - write out temp raw DEM to netCDF"
                     )
                     self._cache_dem(
-                        filename=self.temp_folder / f"raw_dem_{coarse_dem_path.stem}.nc",
+                        filename=self.temp_folder
+                        / f"raw_dem_{coarse_dem_path.stem}.nc",
                         no_values_mask=True,
                         buffer_cells=buffer_cells,
-                        chunk_size=chunk_size,)
+                        chunk_size=chunk_size,
+                    )
                     logging.info(
                         f"In dem.add_coarse_dems - remove previous cached file {previous_cached_file}"
                     )
                     previous_cached_file.unlink()
-                    previous_cached_file = self.temp_folder / f"raw_dem_{coarse_dem_path.stem}.nc"
+                    previous_cached_file = (
+                        self.temp_folder / f"raw_dem_{coarse_dem_path.stem}.nc"
+                    )
 
-    def _load_dem(
-            self,
-            filename: pathlib.Path,
-            chunk_size: int
-            ):
-        """ Load in and replace the DEM with a previously cached version. """
+    def _load_dem(self, filename: pathlib.Path, chunk_size: int):
+        """Load in and replace the DEM with a previously cached version."""
         self._dem = rioxarray.rioxarray.open_rasterio(
             filename,
             masked=True,
@@ -1868,21 +1867,17 @@ class RawDem(LidarBase):
         )
         self._dem = self._dem.squeeze("band", drop=True)
         if "no_values_mask" in self._dem.keys():
-            self._dem[
-                "no_values_mask"
-            ] = self.raw_dem._dem.no_values_mask.astype(bool)
+            self._dem["no_values_mask"] = self.raw_dem._dem.no_values_mask.astype(bool)
         if "data_source" in self._dem.keys():
-            self._dem[
-                "data_source"
-            ] = self.raw_dem._dem.data_source.astype(geometry.lidar_source)
+            self._dem["data_source"] = self.raw_dem._dem.data_source.astype(
+                geometry.lidar_source
+            )
         if "lidar_source" in self._dem.keys():
-            self._dem[
-                "lidar_source"
-            ] = self.raw_dem._dem.lidar_source.astype(geometry.lidar_source)
+            self._dem["lidar_source"] = self.raw_dem._dem.lidar_source.astype(
+                geometry.lidar_source
+            )
         if "z" in self._dem.keys():
-            self._dem[
-                "z"
-            ] = self.raw_dem._dem.z.astype(geometry.lidar_source)
+            self._dem["z"] = self.raw_dem._dem.z.astype(geometry.lidar_source)
 
     def save_dem(
         self,
@@ -1947,18 +1942,15 @@ class RawDem(LidarBase):
         buffer_cells: int,
         chunk_size: int,
     ):
-        """ Update the saved file cache for the DEM as a netCDF file. The no_data_layer of bol values may
+        """Update the saved file cache for the DEM as a netCDF file. The no_data_layer of bol values may
         optionally be included."""
 
         # Save the DEM with the no_values_layer
         self.save_dem(
-            filename=filename,
-            no_values_mask=no_values_mask,
-            buffer_cells=buffer_cells
-            )
+            filename=filename, no_values_mask=no_values_mask, buffer_cells=buffer_cells
+        )
         # Load in the temporarily saved DEM
         self._load_dem(filename=filename, chunk_size=chunk_size)
-
 
 
 class RoughnessDem(LidarBase):
