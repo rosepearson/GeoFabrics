@@ -1189,6 +1189,7 @@ class RawDem(LidarBase):
         self,
         catchment_geometry: geometry.CatchmentGeometry,
         lidar_interpolation_method: str,
+        temp_folder: pathlib.Path,
         drop_offshore_lidar: dict,
         elevation_range: list = None,
     ):
@@ -1201,6 +1202,7 @@ class RawDem(LidarBase):
 
         self.drop_offshore_lidar = drop_offshore_lidar
         self.lidar_interpolation_method = lidar_interpolation_method
+        self.temp_folder = temp_folder
         self._dem = None
 
     def _set_up_chunks(self, chunk_size: int) -> (list, list):
@@ -1282,6 +1284,7 @@ class RawDem(LidarBase):
         chunk_size: int,
         lidar_classifications_to_keep: list,
         metadata: dict,
+        buffer_cells: int,
     ):
         """Read in all LiDAR files and use to create a 'raw' DEM.
 
@@ -1376,6 +1379,16 @@ class RawDem(LidarBase):
             )
 
         self._dem = dem
+
+        # Save a cached copy of DEM to temporary memory cache
+        logging.info(
+            "In dem.add_lidar - write out temp raw DEM to netCDF"
+        )
+        self._cache_dem(
+            filename=self.temp_folder / "raw_lidar.nc",
+            no_values_mask=True,
+            buffer_cells=buffer_cells,
+            chunk_size=chunk_size,)
 
     def _add_tiled_lidar_chunked(
         self,
@@ -1717,6 +1730,7 @@ class RawDem(LidarBase):
         logging.info(
             "Consider adding coarse DEMs to fill areas outside the " "LiDAR extents"
         )
+        previous_cached_file = self.temp_folder / "raw_lidar.nc"
 
         # Iterate through DEMs
         logging.info(f"Incorporating coarse DEMs: {coarse_dem_paths}")
@@ -1825,6 +1839,50 @@ class RawDem(LidarBase):
                         ~mask,
                         0,
                     )
+                    # Save a cached copy of DEM to temporary memory cache
+                    logging.info(
+                        "In dem.add_coarse_dems - write out temp raw DEM to netCDF"
+                    )
+                    self._cache_dem(
+                        filename=self.temp_folder / f"raw_dem_{coarse_dem_path.stem}.nc",
+                        no_values_mask=True,
+                        buffer_cells=buffer_cells,
+                        chunk_size=chunk_size,)
+                    logging.info(
+                        f"In dem.add_coarse_dems - remove previous cached file {previous_cached_file}"
+                    )
+                    previous_cached_file.unlink()
+                    previous_cached_file = self.temp_folder / f"raw_dem_{coarse_dem_path.stem}.nc"
+
+    def _load_dem(
+            self,
+            filename: pathlib.Path,
+            chunk_size: int
+            ):
+        """ Load in and replace the DEM with a previously cached version. """
+        self._dem = rioxarray.rioxarray.open_rasterio(
+            filename,
+            masked=True,
+            parse_coordinates=True,
+            chunks={"x": chunk_size, "y": chunk_size},
+        )
+        self._dem = self._dem.squeeze("band", drop=True)
+        if "no_values_mask" in self._dem.keys():
+            self._dem[
+                "no_values_mask"
+            ] = self.raw_dem._dem.no_values_mask.astype(bool)
+        if "data_source" in self._dem.keys():
+            self._dem[
+                "data_source"
+            ] = self.raw_dem._dem.data_source.astype(geometry.lidar_source)
+        if "lidar_source" in self._dem.keys():
+            self._dem[
+                "lidar_source"
+            ] = self.raw_dem._dem.lidar_source.astype(geometry.lidar_source)
+        if "z" in self._dem.keys():
+            self._dem[
+                "z"
+            ] = self.raw_dem._dem.z.astype(geometry.lidar_source)
 
     def save_dem(
         self,
@@ -1832,7 +1890,7 @@ class RawDem(LidarBase):
         no_values_mask: bool = False,
         buffer_cells: int = None,
     ):
-        """Save the dam to a netCDF file. The no_data_layer of bol values may
+        """Save the DEM to a netCDF file. The no_data_layer of bool values may
         optionally be included."""
 
         # Getteh DEM from the property call
@@ -1864,13 +1922,43 @@ class RawDem(LidarBase):
             dem.no_values_mask.rio.write_nodata(numpy.nan, encoded=True, inplace=True)
 
         # Save the file
-        dem.to_netcdf(
-            filename,
-            format="NETCDF4",
-            engine="netcdf4",
-        )
-        # Close the DEM
-        dem.close()
+        try:
+            dem.to_netcdf(
+                filename,
+                format="NETCDF4",
+                engine="netcdf4",
+            )
+            # Close the DEM
+            dem.close()
+        except (Exception, KeyboardInterrupt) as caught_exception:
+            pathlib.Path(filename).unlink()
+            logging.info(
+                f"Caught error {caught_exception} and deleting"
+                "partially created netCDF output "
+                f"{self.get_instruction_path('raw_dem')}"
+                " before re-raising error."
+            )
+            raise caught_exception
+
+    def _cache_dem(
+        self,
+        filename: pathlib.Path,
+        no_values_mask: bool,
+        buffer_cells: int,
+        chunk_size: int,
+    ):
+        """ Update the saved file cache for the DEM as a netCDF file. The no_data_layer of bol values may
+        optionally be included."""
+
+        # Save the DEM with the no_values_layer
+        self.save_dem(
+            filename=filename,
+            no_values_mask=no_values_mask,
+            buffer_cells=buffer_cells
+            )
+        # Load in the temporarily saved DEM
+        self._load_dem(filename=filename, chunk_size=chunk_size)
+
 
 
 class RoughnessDem(LidarBase):

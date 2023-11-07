@@ -12,6 +12,7 @@ import abc
 import logging
 import distributed
 import dask.dataframe
+import shutil
 import rioxarray
 import copy
 import geopandas
@@ -838,25 +839,6 @@ class RawLidarDemGenerator(BaseProcessor):
         self.raw_dem = None
         self.debug = debug
 
-    def try_save(self, filename: pathlib.Path, no_values_mask: bool = False):
-        """Try to save the netCDF file to the given path. Delete the file if
-        error after partial write."""
-        try:
-            self.raw_dem.save_dem(
-                filename,
-                no_values_mask=no_values_mask,
-                buffer_cells=self.get_instruction_general("lidar_buffer"),
-            )
-        except (Exception, KeyboardInterrupt) as caught_exception:
-            pathlib.Path(filename).unlink()
-            logging.info(
-                f"Caught error {caught_exception} and deleting"
-                "partially created netCDF output "
-                f"{self.get_instruction_path('raw_dem')}"
-                " before re-raising error."
-            )
-            raise caught_exception
-
     def run(self):
         """This method executes the geofabrics generation pipeline to produce geofabric
         derivatives.
@@ -893,6 +875,13 @@ class RawLidarDemGenerator(BaseProcessor):
                 f"is type {type(drop_offshore_lidar)}"
             )
 
+        # Create folder for caching raw DEM files during DEM generation
+        temp_folder = self.get_instruction_path("subfolder") / "temp" / f"{self.get_resolution()}m_results"
+        logging.info(
+            "In processor.DemGenerator - create folder for writing temporarily"
+            f" cached netCDF files in {temp_folder}")
+        shutil.rmtree(temp_folder)
+        temp_folder.mkdir(parents=True, exist_ok=True)
         # setup the raw DEM generator
         self.raw_dem = dem.RawDem(
             catchment_geometry=self.catchment_geometry,
@@ -901,6 +890,7 @@ class RawLidarDemGenerator(BaseProcessor):
                 key="interpolation", subkey="lidar"
             ),
             elevation_range=self.get_instruction_general("elevation_range"),
+            temp_folder=temp_folder
         )
 
         # Setup Dask cluster and client - LAZY SAVE LIDAR DEM
@@ -925,6 +915,7 @@ class RawLidarDemGenerator(BaseProcessor):
                 ),
                 chunk_size=self.get_processing_instructions("chunk_size"),
                 metadata=self.create_metadata(),
+                buffer_cells=self.get_instruction_general("lidar_buffer"),
             )  # Note must be called after all others if it is to be complete
 
             # Add a coarse DEM if significant area without LiDAR and a coarse DEM
@@ -932,28 +923,6 @@ class RawLidarDemGenerator(BaseProcessor):
                 coarse_dem_paths = self.get_vector_or_raster_paths(
                     key="coarse_dems", data_type="raster"
                 )
-
-                # compute and save raw DEM
-                logging.info(
-                    "In processor.DemGenerator - write out temp raw DEM to netCDF"
-                )
-                temp_filename = self.get_instruction_path("subfolder") / "raw_temp.nc"
-                self.try_save(
-                    filename=temp_filename,
-                    no_values_mask=True,
-                )
-
-                chunk_size = self.get_processing_instructions("chunk_size")
-                self.raw_dem._dem = rioxarray.rioxarray.open_rasterio(
-                    temp_filename,
-                    masked=True,
-                    parse_coordinates=True,
-                    chunks={"x": chunk_size, "y": chunk_size},
-                )
-                self.raw_dem._dem = self.raw_dem._dem.squeeze("band", drop=True)
-                self.raw_dem._dem[
-                    "no_values_mask"
-                ] = self.raw_dem._dem.no_values_mask.astype(bool)
 
                 # Add coarse DEMs if there are any and if area
                 self.raw_dem.add_coarse_dems(
@@ -965,10 +934,13 @@ class RawLidarDemGenerator(BaseProcessor):
 
             # compute and save raw DEM
             logging.info("In processor.DemGenerator - write out the raw DEM to netCDF")
-            self.try_save(
+            self.raw_dem.save_dem(
                 filename=self.get_instruction_path("raw_dem"),
-                no_values_mask=False,
             )
+            logging.info(
+                "In processor.DemGenerator - clean folder for writing temporarily"
+                f" cached netCDF files in {temp_folder}")
+            shutil.rmtree(temp_folder)
 
         if self.debug:
             # Record the parameter used during execution - append to existing
