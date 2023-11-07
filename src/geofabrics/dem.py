@@ -1867,17 +1867,17 @@ class RawDem(LidarBase):
         )
         self._dem = self._dem.squeeze("band", drop=True)
         if "no_values_mask" in self._dem.keys():
-            self._dem["no_values_mask"] = self.raw_dem._dem.no_values_mask.astype(bool)
+            self._dem["no_values_mask"] = self._dem.no_values_mask.astype(bool)
         if "data_source" in self._dem.keys():
-            self._dem["data_source"] = self.raw_dem._dem.data_source.astype(
-                geometry.lidar_source
+            self._dem["data_source"] = self._dem.data_source.astype(
+                geometry.RASTER_TYPE
             )
         if "lidar_source" in self._dem.keys():
-            self._dem["lidar_source"] = self.raw_dem._dem.lidar_source.astype(
-                geometry.lidar_source
+            self._dem["lidar_source"] = self._dem.lidar_source.astype(
+                geometry.RASTER_TYPE
             )
         if "z" in self._dem.keys():
-            self._dem["z"] = self.raw_dem._dem.z.astype(geometry.lidar_source)
+            self._dem["z"] = self._dem.z.astype(geometry.RASTER_TYPE)
 
     def save_dem(
         self,
@@ -1915,6 +1915,9 @@ class RawDem(LidarBase):
                 self.catchment_geometry.crs["horizontal"], inplace=True
             )
             dem.no_values_mask.rio.write_nodata(numpy.nan, encoded=True, inplace=True)
+        else:
+            if "no_values_mask" in dem:
+                dem = dem.drop("no_values_mask")
 
         # Save the file
         try:
@@ -1930,8 +1933,7 @@ class RawDem(LidarBase):
             logging.info(
                 f"Caught error {caught_exception} and deleting"
                 "partially created netCDF output "
-                f"{self.get_instruction_path('raw_dem')}"
-                " before re-raising error."
+                f"{filename} before re-raising error."
             )
             raise caught_exception
 
