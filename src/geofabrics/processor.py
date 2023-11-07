@@ -885,7 +885,8 @@ class RawLidarDemGenerator(BaseProcessor):
             "In processor.DemGenerator - create folder for writing temporarily"
             f" cached netCDF files in {temp_folder}"
         )
-        shutil.rmtree(temp_folder)
+        if temp_folder.exists():
+            shutil.rmtree(temp_folder)
         temp_folder.mkdir(parents=True, exist_ok=True)
         # setup the raw DEM generator
         self.raw_dem = dem.RawDem(
