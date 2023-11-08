@@ -1785,16 +1785,25 @@ class RawDem(LidarBase):
             )  # Awkward as clip of a bool xarray doesn't work as expected
             if no_value_mask.any():
                 logging.info(f"\t\tAdd data from coarse DEM: {coarse_dem_path.name}")
-                coarse_dem = coarse_dem.interp(
-                    x=self._dem.x, y=self._dem.y, method="linear"
-                )
-                # TODO - revisit
-                # coarse_dem = coarse_dem.chunk(chunk_size).interp(x=self._dem.x, y=self._dem.y, method="linear")
-                # coarse_dem = coarse_dem.chunk(int(chunk_size/coarse_dem_resolution)).interp(x=self._dem.x, y=self._dem.y, method="linear")
-                # coarse_dem = coarse_dem.chunk(chunk_size).interp(x=dask.array.from_array(self._dem.x, chunks=1000), y=dask.array.from_array(self._dem.y, chunks=1000), method="linear")
-                # If chunks_size is set, specify chunking
+                # If chunking ensure efficient parallelisation
                 if chunk_size is not None:
-                    coarse_dem = coarse_dem.chunk({"x": chunk_size, "y": chunk_size})
+                    interpolator = scipy.interpolate.RegularGridInterpolator(
+                        (coarse_dem.x.values, coarse_dem.y.values),
+                        coarse_dem.values,
+                        bounds_error=False,
+                        fill_value=numpy.NaN,
+                        method="Linear",
+                    )
+                    def interp(x, y):
+                        xy = numpy.stack(numpy.meshgrid(x, y, indexing="ij"), axis=-1)
+                        return interpolator(xy)
+                    coarse_dem = dask.array.map_blocks(interp, self._dem.x.chunk(chunk_size)[:, None], self._dem.y.chunk(chunk_size))
+                    coarse_dem = xarray.DataArray(coarse_dem, dims=("x", "y"), coords={"x": self._dem.x, "y": self._dem.y})
+                else: # No chunking use built in method
+                    coarse_dem = coarse_dem.interp(
+                        x=self._dem.x, y=self._dem.y, method="linear"
+                    )
+
                 coarse_dem.rio.clip(
                     self.catchment_geometry.land_and_foreshore.geometry, drop=False
                 )
