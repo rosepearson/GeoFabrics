@@ -1797,15 +1797,18 @@ class RawDem(LidarBase):
                     )
 
                     def dask_interpolation(y, x):
-                        yx_array = numpy.stack(numpy.meshgrid(y, x, indexing="ij"), axis=-1)
+                        yx_array = numpy.stack(
+                            numpy.meshgrid(y, x, indexing="ij"), axis=-1
+                        )
                         return interpolator(yx_array)
+
                     # Need to explicitly redefine x & y as can't chunk directly on the dims of self._dem
                     x = xarray.DataArray(data=self._dem.x.data, dims=["x"])
                     y = xarray.DataArray(data=self._dem.y.data, dims=["y"])
                     coarse_dem_interp = dask.array.map_blocks(
                         dask_interpolation,
                         y.chunk(chunk_size).data[:, None],
-                        x.chunk(min(chunk_size, len(x)-1)).data,
+                        x.chunk(min(chunk_size, len(x) - 1)).data,
                     )
                     coarse_dem = xarray.DataArray(
                         coarse_dem_interp,
@@ -1813,7 +1816,9 @@ class RawDem(LidarBase):
                         coords={"x": self._dem.x, "y": self._dem.y},
                     )
                     coarse_dem.rio.write_transform(inplace=True)
-                    coarse_dem.rio.write_crs(self.catchment_geometry.crs["horizontal"], inplace=True)
+                    coarse_dem.rio.write_crs(
+                        self.catchment_geometry.crs["horizontal"], inplace=True
+                    )
                     coarse_dem.rio.write_nodata(numpy.nan, encoded=True, inplace=True)
                 else:  # No chunking use built in method
                     coarse_dem = coarse_dem.interp(
