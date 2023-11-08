@@ -1787,33 +1787,38 @@ class RawDem(LidarBase):
                 logging.info(f"\t\tAdd data from coarse DEM: {coarse_dem_path.name}")
                 # If chunking ensure efficient parallelisation
                 if chunk_size is not None:
+                    # Note expect Xarray with dims (y, x) not dims (x, y) as is default for rioxarray
                     interpolator = scipy.interpolate.RegularGridInterpolator(
-                        (coarse_dem.x.values, coarse_dem.y.values),
+                        (coarse_dem.y.values, coarse_dem.x.values),
                         coarse_dem.values,
                         bounds_error=False,
                         fill_value=numpy.NaN,
-                        method="Linear",
+                        method="linear",
                     )
 
-                    def interp(x, y):
-                        xy = numpy.stack(numpy.meshgrid(x, y, indexing="ij"), axis=-1)
-                        return interpolator(xy)
-
-                    coarse_dem = dask.array.map_blocks(
+                    def interp(y, x):
+                        yx_array = numpy.stack(numpy.meshgrid(y, x, indexing="ij"), axis=-1)
+                        return interpolator(yx_array)
+                    # Need to explicitly redefine x & y as can't chunk directly on the dims of self._dem
+                    x = xarray.DataArray(data=self._dem.x.data, dims=["x"])
+                    y = xarray.DataArray(data=self._dem.y.data, dims=["y"])
+                    coarse_dem_interp = dask.array.map_blocks(
                         interp,
-                        self._dem.x.chunk(chunk_size)[:, None],
-                        self._dem.y.chunk(chunk_size),
+                        y.chunk(chunk_size).data[:, None],
+                        x.chunk(min(chunk_size, len(x)-1)).data,
                     )
                     coarse_dem = xarray.DataArray(
-                        coarse_dem,
-                        dims=("x", "y"),
+                        coarse_dem_interp,
+                        dims=("y", "x"),
                         coords={"x": self._dem.x, "y": self._dem.y},
                     )
+                    coarse_dem.rio.write_transform(inplace=True)
+                    coarse_dem.rio.write_crs(self.catchment_geometry.crs["horizontal"], inplace=True)
+                    coarse_dem.rio.write_nodata(numpy.nan, encoded=True, inplace=True)
                 else:  # No chunking use built in method
                     coarse_dem = coarse_dem.interp(
                         x=self._dem.x, y=self._dem.y, method="linear"
                     )
-
                 coarse_dem.rio.clip(
                     self.catchment_geometry.land_and_foreshore.geometry, drop=False
                 )
