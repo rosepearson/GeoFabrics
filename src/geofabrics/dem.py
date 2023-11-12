@@ -1382,7 +1382,7 @@ class RawDem(LidarBase):
 
         # Save a cached copy of DEM to temporary memory cache
         logging.info("In dem.add_lidar - write out temp raw DEM to netCDF")
-        self._cache_dem(
+        self._load_and_save_dem(
             filename=self.temp_folder / "raw_lidar.nc",
             no_values_mask=True,
             buffer_cells=buffer_cells,
@@ -1871,7 +1871,7 @@ class RawDem(LidarBase):
                     logging.info(
                         "In dem.add_coarse_dems - write out temp raw DEM to netCDF"
                     )
-                    self._cache_dem(
+                    self._load_and_save_dem(
                         filename=self.temp_folder
                         / f"raw_dem_{coarse_dem_path.stem}.nc",
                         no_values_mask=True,
@@ -1911,13 +1911,39 @@ class RawDem(LidarBase):
     def save_dem(
         self,
         filename: pathlib.Path,
-        no_values_mask: bool = False,
-        buffer_cells: int = None,
+        dem: xarray.Dataset,
     ):
-        """Save the DEM to a netCDF file. The no_data_layer of bool values may
+        """Save the DEM to a netCDF file."""
+
+        # Save the file
+        try:
+            dem.to_netcdf(
+                filename,
+                format="NETCDF4",
+                engine="netcdf4",
+            )
+            # Close the DEM
+            dem.close()
+        except (Exception, KeyboardInterrupt) as caught_exception:
+            pathlib.Path(filename).unlink()
+            logging.info(
+                f"Caught error {caught_exception} and deleting"
+                "partially created netCDF output "
+                f"{filename} before re-raising error."
+            )
+            raise caught_exception
+
+    def _load_and_save_dem(
+        self,
+        filename: pathlib.Path,
+        no_values_mask: bool,
+        buffer_cells: int,
+        chunk_size: int,
+    ):
+        """Update the saved file cache for the DEM as a netCDF file. The no_data_layer of bol values may
         optionally be included."""
 
-        # Getteh DEM from the property call
+        # Get the DEM from the property call
         dem = self.dem
         if no_values_mask:
             no_value_mask = (
@@ -1948,38 +1974,8 @@ class RawDem(LidarBase):
             if "no_values_mask" in dem:
                 dem = dem.drop("no_values_mask")
 
-        # Save the file
-        try:
-            dem.to_netcdf(
-                filename,
-                format="NETCDF4",
-                engine="netcdf4",
-            )
-            # Close the DEM
-            dem.close()
-        except (Exception, KeyboardInterrupt) as caught_exception:
-            pathlib.Path(filename).unlink()
-            logging.info(
-                f"Caught error {caught_exception} and deleting"
-                "partially created netCDF output "
-                f"{filename} before re-raising error."
-            )
-            raise caught_exception
-
-    def _cache_dem(
-        self,
-        filename: pathlib.Path,
-        no_values_mask: bool,
-        buffer_cells: int,
-        chunk_size: int,
-    ):
-        """Update the saved file cache for the DEM as a netCDF file. The no_data_layer of bol values may
-        optionally be included."""
-
         # Save the DEM with the no_values_layer
-        self.save_dem(
-            filename=filename, no_values_mask=no_values_mask, buffer_cells=buffer_cells
-        )
+        self.save_dem(filename=filename, dem=dem)
         # Load in the temporarily saved DEM
         self._load_dem(filename=filename, chunk_size=chunk_size)
 
