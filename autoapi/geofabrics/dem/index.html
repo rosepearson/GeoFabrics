@@ -422,7 +422,7 @@ standard list</p></li>
 
 <dl class="py class">
 <dt class="sig sig-object py" id="geofabrics.dem.RawDem">
-<em class="property"><span class="pre">class</span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">geofabrics.dem.</span></span><span class="sig-name descname"><span class="pre">RawDem</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">catchment_geometry</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">lidar_interpolation_method</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">drop_offshore_lidar</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">elevation_range</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#geofabrics.dem.RawDem" title="Link to this definition"></a></dt>
+<em class="property"><span class="pre">class</span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">geofabrics.dem.</span></span><span class="sig-name descname"><span class="pre">RawDem</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">catchment_geometry</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">lidar_interpolation_method</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">temp_folder</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">drop_offshore_lidar</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">elevation_range</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#geofabrics.dem.RawDem" title="Link to this definition"></a></dt>
 <dd><p>Bases: <a class="reference internal" href="#geofabrics.dem.LidarBase" title="geofabrics.dem.LidarBase"><code class="xref py py-obj docutils literal notranslate"><span class="pre">LidarBase</span></code></a></p>
 <p>A class to manage the creation of a ‘raw’ DEM from LiDAR tiles, and/or a
 coarse DEM.</p>
@@ -436,12 +436,20 @@ elevations outside this range will be filtered out.</p></li>
 <li><p><strong>lidar_interpolation_method</strong> (<em>str</em>) – The interpolation method to apply to LiDAR during downsampling/averaging.
 Options are: mean, median, IDW, max, min, STD.</p></li>
 <li><p><strong>catchment_geometry</strong> (<a class="reference internal" href="../geometry/index.html#geofabrics.geometry.CatchmentGeometry" title="geofabrics.geometry.CatchmentGeometry"><em>geofabrics.geometry.CatchmentGeometry</em></a>) – </p></li>
+<li><p><strong>temp_folder</strong> (<em>pathlib.Path</em>) – </p></li>
 </ul>
 </dd>
 </dl>
+<dl class="py property">
+<dt class="sig sig-object py" id="geofabrics.dem.RawDem.dem">
+<em class="property"><span class="pre">property</span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">dem</span></span><a class="headerlink" href="#geofabrics.dem.RawDem.dem" title="Link to this definition"></a></dt>
+<dd><p>Return the combined DEM from tiles with the optional no_values_mask
+layer dropped</p>
+</dd></dl>
+
 <dl class="py method">
 <dt class="sig sig-object py" id="geofabrics.dem.RawDem.add_lidar">
-<span class="sig-name descname"><span class="pre">add_lidar</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">lidar_datasets_info</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">chunk_size</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">lidar_classifications_to_keep</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">metadata</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#geofabrics.dem.RawDem.add_lidar" title="Link to this definition"></a></dt>
+<span class="sig-name descname"><span class="pre">add_lidar</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">lidar_datasets_info</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">chunk_size</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">lidar_classifications_to_keep</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">metadata</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">buffer_cells</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#geofabrics.dem.RawDem.add_lidar" title="Link to this definition"></a></dt>
 <dd><p>Read in all LiDAR files and use to create a ‘raw’ DEM.</p>
 <dl class="field-list simple">
 <dt class="field-odd">Parameters<span class="colon">:</span></dt>
@@ -455,6 +463,7 @@ standard list</p></li>
 <li><p><strong>meta_data</strong> – Information to include in the created DEM - must include
 <cite>dataset_mapping</cite> key if datasets (not a single LAZ file) included.</p></li>
 <li><p><strong>metadata</strong> (<em>dict</em>) – </p></li>
+<li><p><strong>buffer_cells</strong> (<em>int</em>) – </p></li>
 </ul>
 </dd>
 </dl>
@@ -478,6 +487,20 @@ boundary.</p></li>
 <li><p><strong>area_threshold</strong> (<em>float</em>) – </p></li>
 <li><p><strong>buffer_cells</strong> (<em>int</em>) – </p></li>
 <li><p><strong>chunk_size</strong> (<em>int</em>) – </p></li>
+</ul>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="geofabrics.dem.RawDem.save_dem">
+<span class="sig-name descname"><span class="pre">save_dem</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">filename</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">dem</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#geofabrics.dem.RawDem.save_dem" title="Link to this definition"></a></dt>
+<dd><p>Save the DEM to a netCDF file.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>filename</strong> (<em>pathlib.Path</em>) – </p></li>
+<li><p><strong>dem</strong> (<em>xarray.Dataset</em>) – </p></li>
 </ul>
 </dd>
 </dl>

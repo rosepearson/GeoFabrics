@@ -208,7 +208,7 @@ Attributes
 
 
 
-.. py:class:: RawDem(catchment_geometry, lidar_interpolation_method, drop_offshore_lidar, elevation_range = None)
+.. py:class:: RawDem(catchment_geometry, lidar_interpolation_method, temp_folder, drop_offshore_lidar, elevation_range = None)
 
 
    Bases: :py:obj:`LidarBase`
@@ -223,7 +223,12 @@ Attributes
    :param lidar_interpolation_method: The interpolation method to apply to LiDAR during downsampling/averaging.
                                       Options are: mean, median, IDW, max, min, STD.
 
-   .. py:method:: add_lidar(lidar_datasets_info, chunk_size, lidar_classifications_to_keep, metadata)
+   .. py:property:: dem
+
+      Return the combined DEM from tiles with the optional no_values_mask
+      layer dropped
+
+   .. py:method:: add_lidar(lidar_datasets_info, chunk_size, lidar_classifications_to_keep, metadata, buffer_cells)
 
       Read in all LiDAR files and use to create a 'raw' DEM.
 
@@ -249,6 +254,11 @@ Attributes
       :param area_threshold - the ratio of area without LiDAR required to for: coarse DEMs to be used.
       :param buffer_cells - the number of empty cells to keep around LiDAR cells: for interpolation after the coarse DEM added to ensure a smooth
                                                                                   boundary.
+
+
+   .. py:method:: save_dem(filename, dem)
+
+      Save the DEM to a netCDF file.
 
 
 
