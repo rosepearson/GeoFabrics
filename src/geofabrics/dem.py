@@ -1803,8 +1803,8 @@ class RawDem(LidarBase):
                         return interpolator(yx_array)
 
                     # Need to explicitly redefine x & y as can't chunk directly on the dims of self._dem
-                    x = dask.array.from_array(self._dem.x.values, chunks=chunk_size)
-                    y = dask.array.from_array(self._dem.y.values, chunks=chunk_size)
+                    x = dask.array.from_array(self._dem.x.values, chunks=min(chunk_size, len(self._dem.x) - 1))
+                    y = dask.array.from_array(self._dem.y.values, chunks=min(chunk_size, len(self._dem.y) - 1))
                     coarse_dem_interp = dask.array.map_blocks(
                         dask_interpolation,
                         y[:, None],
