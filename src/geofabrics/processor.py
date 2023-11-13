@@ -12,6 +12,7 @@ import abc
 import logging
 import distributed
 import dask.dataframe
+import shutil
 import rioxarray
 import copy
 import geopandas
@@ -874,6 +875,19 @@ class RawLidarDemGenerator(BaseProcessor):
                 f"is type {type(drop_offshore_lidar)}"
             )
 
+        # Create folder for caching raw DEM files during DEM generation
+        temp_folder = (
+            self.get_instruction_path("subfolder")
+            / "temp"
+            / f"{self.get_resolution()}m_results"
+        )
+        logging.info(
+            "In processor.DemGenerator - create folder for writing temporarily"
+            f" cached netCDF files in {temp_folder}"
+        )
+        if temp_folder.exists():
+            shutil.rmtree(temp_folder)
+        temp_folder.mkdir(parents=True, exist_ok=True)
         # setup the raw DEM generator
         self.raw_dem = dem.RawDem(
             catchment_geometry=self.catchment_geometry,
@@ -882,6 +896,7 @@ class RawLidarDemGenerator(BaseProcessor):
                 key="interpolation", subkey="lidar"
             ),
             elevation_range=self.get_instruction_general("elevation_range"),
+            temp_folder=temp_folder,
         )
 
         # Setup Dask cluster and client - LAZY SAVE LIDAR DEM
@@ -906,6 +921,7 @@ class RawLidarDemGenerator(BaseProcessor):
                 ),
                 chunk_size=self.get_processing_instructions("chunk_size"),
                 metadata=self.create_metadata(),
+                buffer_cells=self.get_instruction_general("lidar_buffer"),
             )  # Note must be called after all others if it is to be complete
 
             # Add a coarse DEM if significant area without LiDAR and a coarse DEM
@@ -924,21 +940,15 @@ class RawLidarDemGenerator(BaseProcessor):
 
             # compute and save raw DEM
             logging.info("In processor.DemGenerator - write out the raw DEM to netCDF")
-            try:
-                self.raw_dem.dem.to_netcdf(
-                    self.get_instruction_path("raw_dem"),
-                    format="NETCDF4",
-                    engine="netcdf4",
-                )
-            except (Exception, KeyboardInterrupt) as caught_exception:
-                pathlib.Path(self.get_instruction_path("raw_dem")).unlink()
-                logging.info(
-                    f"Caught error {caught_exception} and deleting"
-                    "partially created netCDF output "
-                    f"{self.get_instruction_path('raw_dem')}"
-                    " before re-raising error."
-                )
-                raise caught_exception
+            self.raw_dem.save_dem(
+                filename=self.get_instruction_path("raw_dem"),
+                dem=self.raw_dem.dem,
+            )
+            logging.info(
+                "In processor.DemGenerator - clean folder for writing temporarily"
+                f" cached netCDF files in {temp_folder}"
+            )
+            shutil.rmtree(temp_folder)
 
         if self.debug:
             # Record the parameter used during execution - append to existing
