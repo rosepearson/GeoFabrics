@@ -1205,6 +1205,20 @@ class RawDem(LidarBase):
         self.temp_folder = temp_folder
         self._dem = None
 
+    @property
+    def dem(self):
+        """Return the combined DEM from tiles with the optional no_values_mask
+        layer dropped"""
+
+        # Ensure positively increasing indices as required by some programs
+        self._dem = self._ensure_positive_indexing(self._dem)
+
+        # Ensure the no_values_mask is not included in the external facing DEM
+        if "no_values_mask" in self._dem:
+            self._dem = self._dem.drop_vars("no_values_mask")
+
+        return self._dem
+
     def _set_up_chunks(self, chunk_size: int) -> (list, list):
         """Define the chunks to break the catchment into when reading in and
         downsampling LiDAR.
@@ -1736,7 +1750,7 @@ class RawDem(LidarBase):
         for coarse_dem_path in coarse_dem_paths:
             # Check if any areas (on land and foreshore) still without values - exit if none
             no_value_mask = self._dem.no_values_mask
-            self._dem = self._dem.drop("no_values_mask")
+            self._dem = self._dem.drop_vars("no_values_mask")
             if not no_value_mask.any():
                 logging.info(
                     f"No land areas greater than the cell buffer {buffer_cells}"
@@ -1888,13 +1902,16 @@ class RawDem(LidarBase):
 
     def _load_dem(self, filename: pathlib.Path, chunk_size: int):
         """Load in and replace the DEM with a previously cached version."""
-        self._dem = rioxarray.rioxarray.open_rasterio(
+        dem = rioxarray.rioxarray.open_rasterio(
             filename,
             masked=True,
             parse_coordinates=True,
             chunks={"x": chunk_size, "y": chunk_size},
         )
-        self._dem = self._dem.squeeze("band", drop=True)
+        dem = dem.squeeze("band", drop=True)
+        self._write_netcdf_conventions_in_place(dem, self.catchment_geometry.crs)
+        self._dem = dem
+
         if "no_values_mask" in self._dem.keys():
             self._dem["no_values_mask"] = self._dem.no_values_mask.astype(bool)
         if "data_source" in self._dem.keys():
@@ -1944,7 +1961,7 @@ class RawDem(LidarBase):
         optionally be included."""
 
         # Get the DEM from the property call
-        dem = self.dem
+        dem = self._dem
         if no_values_mask:
             no_value_mask = (
                 dem.z.rolling(
