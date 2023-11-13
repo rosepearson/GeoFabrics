@@ -1800,7 +1800,7 @@ class RawDem(LidarBase):
             if no_value_mask.any():
                 logging.info(f"\t\tAdd data from coarse DEM: {coarse_dem_path.name}")
                 # If chunking ensure efficient parallelisation
-                if chunk_size is not None:
+                if chunk_size is not None and max(len(self._dem.x), len(self._dem.y)) > chunk_size:
                     # Note expect Xarray with dims (y, x) not dims (x, y) as is default for rioxarray
                     interpolator = scipy.interpolate.RegularGridInterpolator(
                         (coarse_dem.y.values, coarse_dem.x.values),
