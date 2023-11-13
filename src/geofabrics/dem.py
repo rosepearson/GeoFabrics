@@ -1822,7 +1822,9 @@ class RawDem(LidarBase):
                     # Explicitly redefine x & y
                     x = dask.array.from_array(self._dem.x.values, chunks=chunk_size)
                     y = dask.array.from_array(self._dem.y.values, chunks=chunk_size)
-                    coarse_dem_interp = dask.array.blockwise(dask_interpolation, "ij", y, "i", x, "j")
+                    coarse_dem_interp = dask.array.blockwise(
+                        dask_interpolation, "ij", y, "i", x, "j"
+                    )
                     coarse_dem = xarray.DataArray(
                         coarse_dem_interp,
                         dims=("y", "x"),
