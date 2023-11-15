@@ -1352,8 +1352,14 @@ class RawDem(LidarBase):
                 -resolution,
                 dtype=raster_options["raster_type"],
             )
-            metadata["instructions"]["dataset_mapping"]["lidar"] = {"no LiDAR": self.SOURCE_CLASSIFICATION["no data"]}
-            elevations = {"no LiDAR": dask.array.empty(shape=(len(y), len(x)), dtype=raster_options["raster_type"])}
+            metadata["instructions"]["dataset_mapping"]["lidar"] = {
+                "no LiDAR": self.SOURCE_CLASSIFICATION["no data"]
+            }
+            elevations = {
+                "no LiDAR": dask.array.empty(
+                    shape=(len(y), len(x)), dtype=raster_options["raster_type"]
+                )
+            }
             dem = self._create_data_set(
                 x=x,
                 y=y,
