@@ -2013,7 +2013,6 @@ class RawDem(LidarBase):
         dem.no_values_mask.rio.write_crs(
             self.catchment_geometry.crs["horizontal"], inplace=True
         )
-        dem.no_values_mask.rio.write_nodata(numpy.nan, encoded=True, inplace=True)
 
         # Save the DEM with the no_values_layer
         self.save_dem(filename=filename, dem=dem)
