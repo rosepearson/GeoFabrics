@@ -1780,7 +1780,6 @@ class RawDem(LidarBase):
         for coarse_dem_path in coarse_dem_paths:
             # Check if any areas (on land and foreshore) still without values - exit if none
             no_value_mask = self._dem.no_values_mask
-            self._dem = self._dem.drop_vars("no_values_mask")
             if not no_value_mask.any():
                 logging.info(
                     f"No land areas greater than the cell buffer {buffer_cells}"
