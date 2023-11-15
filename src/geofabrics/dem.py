@@ -1421,9 +1421,8 @@ class RawDem(LidarBase):
 
         # Save a cached copy of DEM to temporary memory cache
         logging.info("In dem.add_lidar - write out temp raw DEM to netCDF")
-        self._load_and_save_dem(
+        self._save_and_load_dem_with_no_values_mask(
             filename=self.temp_folder / "raw_lidar.nc",
-            no_values_mask=True,
             buffer_cells=buffer_cells,
             chunk_size=chunk_size,
         )
@@ -1911,10 +1910,9 @@ class RawDem(LidarBase):
                     logging.info(
                         "In dem.add_coarse_dems - write out temp raw DEM to netCDF"
                     )
-                    self._load_and_save_dem(
+                    self._save_and_load_dem_with_no_values_mask(
                         filename=self.temp_folder
                         / f"raw_dem_{coarse_dem_path.stem}.nc",
-                        no_values_mask=True,
                         buffer_cells=buffer_cells,
                         chunk_size=chunk_size,
                     )
@@ -1976,10 +1974,9 @@ class RawDem(LidarBase):
             )
             raise caught_exception
 
-    def _load_and_save_dem(
+    def _save_and_load_dem_with_no_values_mask(
         self,
         filename: pathlib.Path,
-        no_values_mask: bool,
         buffer_cells: int,
         chunk_size: int,
     ):
@@ -1988,7 +1985,7 @@ class RawDem(LidarBase):
 
         # Get the DEM from the property call
         dem = self._dem
-        if no_values_mask:
+        if self.catchment_geometry.land_and_foreshore.area.sum() > 0:
             no_value_mask = (
                 dem.z.rolling(
                     dim={"x": buffer_cells * 2 + 1, "y": buffer_cells * 2 + 1},
@@ -1998,24 +1995,20 @@ class RawDem(LidarBase):
                 .count()
                 .isnull()
             )
-            if self.catchment_geometry.land_and_foreshore.area.sum() > 0:
-                no_value_mask &= (
-                    xarray.ones_like(self._dem.z)
-                    .rio.clip(
-                        self.catchment_geometry.land_and_foreshore.geometry, drop=False
-                    )
-                    .notnull()
-                )  # Awkward as clip of a bool xarray doesn't work as expected
-            else:
-                no_value_mask = xarray.zeros_like(self._dem.z)
-            dem["no_values_mask"] = no_value_mask
-            dem.no_values_mask.rio.write_crs(
-                self.catchment_geometry.crs["horizontal"], inplace=True
-            )
-            dem.no_values_mask.rio.write_nodata(numpy.nan, encoded=True, inplace=True)
+            no_value_mask &= (
+                xarray.ones_like(self._dem.z)
+                .rio.clip(
+                    self.catchment_geometry.land_and_foreshore.geometry, drop=False
+                )
+                .notnull()
+            )  # Awkward as clip of a bool xarray doesn't work as expected
         else:
-            if "no_values_mask" in dem:
-                dem = dem.drop("no_values_mask")
+            no_value_mask = xarray.zeros_like(self._dem.z)
+        dem["no_values_mask"] = no_value_mask
+        dem.no_values_mask.rio.write_crs(
+            self.catchment_geometry.crs["horizontal"], inplace=True
+        )
+        dem.no_values_mask.rio.write_nodata(numpy.nan, encoded=True, inplace=True)
 
         # Save the DEM with the no_values_layer
         self.save_dem(filename=filename, dem=dem)
