@@ -1335,7 +1335,32 @@ class RawDem(LidarBase):
         }
 
         # Don't use dask delayed if there is no chunking
-        if chunk_size is None:
+        if len(lidar_datasets_info) == 0:
+            # Create an empty dataset as no LiDAR
+            logging.warning("No LiDAR dataset. Creating an empty raw DEM dataset.")
+            bounds = self.catchment_geometry.catchment.geometry.bounds
+            resolution = self.catchment_geometry.resolution
+            x = numpy.arange(
+                numpy.ceil(bounds.minx.min() / resolution) * resolution,
+                numpy.ceil(bounds.maxx.max() / resolution) * resolution,
+                resolution,
+                dtype=raster_options["raster_type"],
+            )
+            y = numpy.arange(
+                numpy.ceil(bounds.maxy.max() / resolution) * resolution,
+                numpy.ceil(bounds.miny.min() / resolution) * resolution,
+                -resolution,
+                dtype=raster_options["raster_type"],
+            )
+            metadata["instructions"]["dataset_mapping"]["lidar"] = {"no LiDAR": self.SOURCE_CLASSIFICATION["no data"]}
+            elevations = {"no LiDAR": dask.array.empty(shape=(len(y), len(x)), dtype=raster_options["raster_type"])}
+            dem = self._create_data_set(
+                x=x,
+                y=y,
+                elevations=elevations,
+                metadata=metadata,
+            )
+        elif chunk_size is None:
             dem = self._add_lidar_no_chunking(
                 lidar_datasets_info=lidar_datasets_info,
                 options=raster_options,
