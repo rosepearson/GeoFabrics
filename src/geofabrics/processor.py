@@ -460,15 +460,15 @@ class BaseProcessor(abc.ABC):
                     for layer in api_instruction["layers"]:
                         # Use the run method to download each layer in turn
                         vector = fetcher.run(layer, geometry_type)
-
-                        # Write out file if not already recorded
-                        layer_file = (
-                            cache_dir / "vector" / subfolder / f"{layer}.geojson"
-                        )
-                        if not layer_file.exists():
-                            layer_file.parent.mkdir(parents=True, exist_ok=True)
-                            vector.to_file(layer_file)
-                        paths.append(layer_file)
+                        if vector is not None:
+                            # Write out file if not already recorded
+                            layer_file = (
+                                cache_dir / "vector" / subfolder / f"{layer}.geojson"
+                            )
+                            if not layer_file.exists():
+                                layer_file.parent.mkdir(parents=True, exist_ok=True)
+                                vector.to_file(layer_file)
+                            paths.append(layer_file)
                 elif data_type == "raster":
                     # simplify the bounding_polygon geometry
                     if bounding_polygon is not None:
@@ -1001,26 +1001,27 @@ class HydrologicDemGenerator(BaseProcessor):
         ):
             # Get the bathymetry data directory
             bathy_contour_dirs = self.get_vector_or_raster_paths(
-                key="ocean_contours", data_type="vector"
+                key="ocean_contours", data_type="vector", required=False,
             )
-            assert len(bathy_contour_dirs) == 1, (
-                f"{len(bathy_contour_dirs)} ocean_contours's provided. "
-                f"Specficially {catchment_dirs}. Support has not yet been added for "
-                "multiple datasets."
+            if len(bathy_contour_dirs) != 1:
+                logging.warning(
+                    f"{len(bathy_contour_dirs)} ocean_contours's provided. "
+                    f"Specficially {bathy_contour_dirs}. Only consider the "
+                    "first if multiple."
             )
 
             logging.info(f"Incorporating Bathymetry: {bathy_contour_dirs}")
 
             # Load in bathymetry
-            self.bathy_contours = geometry.BathymetryContours(
-                bathy_contour_dirs[0],
-                self.catchment_geometry,
-                z_label=self.get_instruction_general(key="z_labels", subkey="ocean"),
-                exclusion_extent=self.hydrologic_dem.raw_extents,
-            )
-
-            # interpolate
-            self.hydrologic_dem.interpolate_ocean_bathymetry(self.bathy_contours)
+            if len(bathy_contour_dirs) > 0:
+                bathy_contours = geometry.BathymetryContours(
+                    bathy_contour_dirs[0],
+                    self.catchment_geometry,
+                    z_label=self.get_instruction_general(key="z_labels", subkey="ocean"),
+                    exclusion_extent=self.hydrologic_dem.raw_extents,
+                )
+                # Interpolate
+                self.hydrologic_dem.interpolate_ocean_bathymetry(self.bathy_contours)
         # Check for waterways and interpolate if they exist
         if "waterways" in self.instructions["data_paths"]:
             # Load in all open and closed waterway elevation and extents in one go
