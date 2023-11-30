@@ -1025,7 +1025,7 @@ class HydrologicDemGenerator(BaseProcessor):
                     exclusion_extent=self.hydrologic_dem.raw_extents,
                 )
                 # Interpolate
-                self.hydrologic_dem.interpolate_ocean_bathymetry(self.bathy_contours)
+                self.hydrologic_dem.interpolate_ocean_bathymetry(bathy_contours)
         # Check for waterways and interpolate if they exist
         if "waterways" in self.instructions["data_paths"]:
             # Load in all open and closed waterway elevation and extents in one go
@@ -2761,6 +2761,12 @@ class WaterwayBedElevationEstimator(BaseProcessor):
 
         # save out the polygons
         open_waterways.buffer(open_waterways["width"]).to_file(polygon_file)
+        
+        # If no closed waterways write out empty files and return
+        if len(open_waterways) == 0:
+            open_waterways["elevation"] = []
+            open_waterways.to_file(elevation_file)
+            return
 
         # Sample down-slope location along each line
         def sample_location_down_slope(row):
