@@ -1274,6 +1274,20 @@ class RoughnessLengthGenerator(BaseProcessor):
                 " Either take mean or drop points with height above limit."
             )
 
+        # Create folder for caching raw DEM files during DEM generation
+        temp_folder = (
+            self.get_instruction_path("subfolder")
+            / "temp"
+            / f"{self.get_resolution()}m_results"
+        )
+        logging.info(
+            "In processor.DemGenerator - create folder for writing temporarily"
+            f" cached netCDF files in {temp_folder}"
+        )
+        if temp_folder.exists():
+            shutil.rmtree(temp_folder)
+        temp_folder.mkdir(parents=True, exist_ok=True)
+
         # Setup Dask cluster and client
         cluster_kwargs = {
             "n_workers": self.get_processing_instructions("number_of_cores"),
@@ -1290,6 +1304,7 @@ class RoughnessLengthGenerator(BaseProcessor):
             self.roughness_dem = dem.RoughnessDem(
                 catchment_geometry=self.catchment_geometry,
                 hydrological_dem_path=self.get_instruction_path("result_dem"),
+                temp_folder=temp_folder,
                 elevation_range=self.get_instruction_general("elevation_range"),
                 interpolation_method=self.get_instruction_general(
                     key="interpolation", subkey="no_data"
@@ -1310,21 +1325,18 @@ class RoughnessLengthGenerator(BaseProcessor):
             )  # Note must be called after all others if it is to be complete
 
             # save results
-            try:
-                self.roughness_dem.dem.to_netcdf(
-                    self.get_instruction_path("result_geofabric"),
-                    format="NETCDF4",
-                    engine="netcdf4",
-                )
-            except (Exception, KeyboardInterrupt) as caught_exception:
-                pathlib.Path(self.get_instruction_path("result_geofabric")).unlink()
-                logging.info(
-                    f"Caught error {caught_exception} and deleting"
-                    "partially created netCDF output "
-                    f"{self.get_instruction_path('result_geofabric')}"
-                    " before re-raising error."
-                )
-                raise caught_exception
+            logging.info("In processor.RoughnessLengthGenerator - write out "
+                         "the raw DEM to netCDF")
+            self.roughness_dem.save_dem(
+                filename=self.get_instruction_path("result_geofabric"),
+                dem=self.roughness_dem.dem,
+            )
+            logging.info(
+                "In processor.RoughnessLengthGenerator - clean folder for "
+                f"writing temporarily cached netCDF files in {temp_folder}"
+            )
+            shutil.rmtree(temp_folder)
+
         if self.debug:
             # Record the parameter used during execution - append to existing
             with open(
