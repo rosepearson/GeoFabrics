@@ -1001,14 +1001,16 @@ class HydrologicDemGenerator(BaseProcessor):
         ):
             # Get the bathymetry data directory
             bathy_contour_dirs = self.get_vector_or_raster_paths(
-                key="ocean_contours", data_type="vector", required=False,
+                key="ocean_contours",
+                data_type="vector",
+                required=False,
             )
             if len(bathy_contour_dirs) != 1:
                 logging.warning(
                     f"{len(bathy_contour_dirs)} ocean_contours's provided. "
                     f"Specficially {bathy_contour_dirs}. Only consider the "
                     "first if multiple."
-            )
+                )
 
             logging.info(f"Incorporating Bathymetry: {bathy_contour_dirs}")
 
@@ -1017,7 +1019,9 @@ class HydrologicDemGenerator(BaseProcessor):
                 bathy_contours = geometry.BathymetryContours(
                     bathy_contour_dirs[0],
                     self.catchment_geometry,
-                    z_label=self.get_instruction_general(key="z_labels", subkey="ocean"),
+                    z_label=self.get_instruction_general(
+                        key="z_labels", subkey="ocean"
+                    ),
                     exclusion_extent=self.hydrologic_dem.raw_extents,
                 )
                 # Interpolate
