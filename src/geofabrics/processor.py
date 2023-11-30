@@ -2761,7 +2761,7 @@ class WaterwayBedElevationEstimator(BaseProcessor):
 
         # save out the polygons
         open_waterways.buffer(open_waterways["width"]).to_file(polygon_file)
-        
+
         # If no closed waterways write out empty files and return
         if len(open_waterways) == 0:
             open_waterways["elevation"] = []
