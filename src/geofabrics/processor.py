@@ -1325,8 +1325,10 @@ class RoughnessLengthGenerator(BaseProcessor):
             )  # Note must be called after all others if it is to be complete
 
             # save results
-            logging.info("In processor.RoughnessLengthGenerator - write out "
-                         "the raw DEM to netCDF")
+            logging.info(
+                "In processor.RoughnessLengthGenerator - write out "
+                "the raw DEM to netCDF"
+            )
             self.roughness_dem.save_dem(
                 filename=self.get_instruction_path("result_geofabric"),
                 dem=self.roughness_dem.dem,
