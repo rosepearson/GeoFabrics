@@ -244,6 +244,7 @@ class BaseProcessor(abc.ABC):
                 "rivers": "bed_elevation_Rupp_and_Smart",
                 "ocean": None,
             },
+            "filter_waterways_by_osm_ids": [],
         }
 
         if key not in defaults and key not in self.instructions["general"]:
@@ -1051,6 +1052,9 @@ class HydrologicDemGenerator(BaseProcessor):
             estimated_bathymetry_points = geometry.EstimatedBathymetryPoints(
                 points_files=bathy_dirs,
                 polygon_files=poly_dirs,
+                filter_osm_ids=self.get_instruction_general(
+                    key="filter_waterways_by_osm_ids"
+                ),
                 catchment_geometry=self.catchment_geometry,
                 z_labels=self.get_instruction_general(
                     key="z_labels", subkey="waterways"

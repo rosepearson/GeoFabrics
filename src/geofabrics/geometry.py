@@ -518,6 +518,7 @@ class EstimatedBathymetryPoints:
         points_files: list,
         polygon_files: list,
         catchment_geometry: CatchmentGeometry,
+        filter_osm_ids: list,
         z_labels: list = None,
     ):
         self.catchment_geometry = catchment_geometry
@@ -526,9 +527,9 @@ class EstimatedBathymetryPoints:
         self._points = None
         self._polygon = None
 
-        self._set_up(points_files, polygon_files, z_labels)
+        self._set_up(points_files, polygon_files, z_labels, filter_osm_ids)
 
-    def _set_up(self, points_files: list, polygon_files: list, z_labels: list):
+    def _set_up(self, points_files: list, polygon_files: list, z_labels: list, filter_osm_ids: list):
         """Load point and polygon files and concatentate and clip to the catchment."""
 
         if len(points_files) != len(polygon_files):
@@ -586,6 +587,12 @@ class EstimatedBathymetryPoints:
         points = points.clip(polygon.buffer(0), keep_geom_type=True)
         points = points.clip(self.catchment_geometry.catchment, keep_geom_type=True)
         points = points.reset_index(drop=True)
+
+        # Filter if there are OSM IDs specified to filter
+        if len(filter_osm_ids) > 0:
+            for osm_id in filter_osm_ids:
+                points = points[points["OSM_id"] != osm_id]
+                polygon = polygon[polygon["OSM_id"] != osm_id]
 
         # Set to class members
         self._points = points
