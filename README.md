@@ -74,7 +74,7 @@ Maintainer: Rose Pearson @rosepearson rose.pearson@niwa.co.nz
         <a href="https://github.com/AliceHarang">
             <img src="https://avatars.githubusercontent.com/u/82012970?v=4" width="100;" alt="AliceHarang"/>
             <br />
-            <sub><b>Null</b></sub>
+            <sub><b>Alice Harang</b></sub>
         </a>
     </td></tr>
 <tr>
