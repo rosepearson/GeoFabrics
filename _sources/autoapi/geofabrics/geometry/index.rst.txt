@@ -140,7 +140,7 @@ Classes
       The z values
 
 
-.. py:class:: EstimatedBathymetryPoints(points_files, polygon_files, catchment_geometry, z_labels = None)
+.. py:class:: EstimatedBathymetryPoints(points_files, polygon_files, catchment_geometry, filter_osm_ids = [], z_labels = None)
 
 
    A class for accessing river and mouth bathymetry points. Paired river

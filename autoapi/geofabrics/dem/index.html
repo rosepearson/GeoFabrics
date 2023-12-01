@@ -1,13 +1,15 @@
 <!DOCTYPE html>
-<html class="writer-html5" lang="en" >
+<html class="writer-html5" lang="en" data-content_root="../../../">
 <head>
-  <meta charset="utf-8" /><meta name="generator" content="Docutils 0.18.1: http://docutils.sourceforge.net/" />
+  <meta charset="utf-8" /><meta name="viewport" content="width=device-width, initial-scale=1" />
 
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>geofabrics.dem &mdash; Geofabrics 0.7.6 documentation</title>
-      <link rel="stylesheet" href="../../../_static/pygments.css" type="text/css" />
-      <link rel="stylesheet" href="../../../_static/css/theme.css" type="text/css" />
-      <link rel="stylesheet" href="../../../_static/graphviz.css" type="text/css" />
+      <link rel="stylesheet" type="text/css" href="../../../_static/pygments.css?v=80d5e7a1" />
+      <link rel="stylesheet" type="text/css" href="../../../_static/css/theme.css?v=19f00094" />
+      <link rel="stylesheet" type="text/css" href="../../../_static/graphviz.css?v=eafc0fe6" />
+
+  
   <!--[if lt IE 9]>
     <script src="../../../_static/js/html5shiv.min.js"></script>
   <![endif]-->
@@ -418,6 +420,20 @@ standard list</p></li>
 </dl>
 </dd></dl>
 
+<dl class="py method">
+<dt class="sig sig-object py" id="geofabrics.dem.LidarBase.save_dem">
+<span class="sig-name descname"><span class="pre">save_dem</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">filename</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">dem</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#geofabrics.dem.LidarBase.save_dem" title="Link to this definition"></a></dt>
+<dd><p>Save the DEM to a netCDF file.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>filename</strong> (<em>pathlib.Path</em>) – </p></li>
+<li><p><strong>dem</strong> (<em>xarray.Dataset</em>) – </p></li>
+</ul>
+</dd>
+</dl>
+</dd></dl>
+
 </dd></dl>
 
 <dl class="py class">
@@ -492,25 +508,11 @@ boundary.</p></li>
 </dl>
 </dd></dl>
 
-<dl class="py method">
-<dt class="sig sig-object py" id="geofabrics.dem.RawDem.save_dem">
-<span class="sig-name descname"><span class="pre">save_dem</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">filename</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">dem</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#geofabrics.dem.RawDem.save_dem" title="Link to this definition"></a></dt>
-<dd><p>Save the DEM to a netCDF file.</p>
-<dl class="field-list simple">
-<dt class="field-odd">Parameters<span class="colon">:</span></dt>
-<dd class="field-odd"><ul class="simple">
-<li><p><strong>filename</strong> (<em>pathlib.Path</em>) – </p></li>
-<li><p><strong>dem</strong> (<em>xarray.Dataset</em>) – </p></li>
-</ul>
-</dd>
-</dl>
-</dd></dl>
-
 </dd></dl>
 
 <dl class="py class">
 <dt class="sig sig-object py" id="geofabrics.dem.RoughnessDem">
-<em class="property"><span class="pre">class</span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">geofabrics.dem.</span></span><span class="sig-name descname"><span class="pre">RoughnessDem</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">catchment_geometry</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">hydrological_dem_path</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">interpolation_method</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">default_values</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">drop_offshore_lidar</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">elevation_range</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#geofabrics.dem.RoughnessDem" title="Link to this definition"></a></dt>
+<em class="property"><span class="pre">class</span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">geofabrics.dem.</span></span><span class="sig-name descname"><span class="pre">RoughnessDem</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">catchment_geometry</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">hydrological_dem_path</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">temp_folder</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">interpolation_method</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">default_values</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">drop_offshore_lidar</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">elevation_range</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#geofabrics.dem.RoughnessDem" title="Link to this definition"></a></dt>
 <dd><p>Bases: <a class="reference internal" href="#geofabrics.dem.LidarBase" title="geofabrics.dem.LidarBase"><code class="xref py py-obj docutils literal notranslate"><span class="pre">LidarBase</span></code></a></p>
 <p>A class to add a roughness (zo) layer to a hydrologically conditioned DEM.</p>
 <p>They STD and mean height of ground cover classified points are calculated from the
@@ -525,6 +527,7 @@ to estimate roughness emperically.</p>
 <li><p><strong>interpolation_method</strong> (<em>str</em>) – If not None, interpolate using that method. Valid options are ‘linear’,
 ‘nearest’, and ‘cubic’.</p></li>
 <li><p><strong>lidar_interpolation_method</strong> – The interpolation method to apply to LiDAR. Options are: mean, median, IDW.</p></li>
+<li><p><strong>temp_folder</strong> (<em>pathlib.Path</em>) – </p></li>
 <li><p><strong>default_values</strong> (<em>dict</em>) – </p></li>
 <li><p><strong>drop_offshore_lidar</strong> (<em>dict</em>) – </p></li>
 <li><p><strong>elevation_range</strong> (<em>list</em>) – </p></li>

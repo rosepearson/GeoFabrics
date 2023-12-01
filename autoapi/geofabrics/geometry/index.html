@@ -1,13 +1,15 @@
 <!DOCTYPE html>
-<html class="writer-html5" lang="en" >
+<html class="writer-html5" lang="en" data-content_root="../../../">
 <head>
-  <meta charset="utf-8" /><meta name="generator" content="Docutils 0.18.1: http://docutils.sourceforge.net/" />
+  <meta charset="utf-8" /><meta name="viewport" content="width=device-width, initial-scale=1" />
 
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>geofabrics.geometry &mdash; Geofabrics 0.7.6 documentation</title>
-      <link rel="stylesheet" href="../../../_static/pygments.css" type="text/css" />
-      <link rel="stylesheet" href="../../../_static/css/theme.css" type="text/css" />
-      <link rel="stylesheet" href="../../../_static/graphviz.css" type="text/css" />
+      <link rel="stylesheet" type="text/css" href="../../../_static/pygments.css?v=80d5e7a1" />
+      <link rel="stylesheet" type="text/css" href="../../../_static/css/theme.css?v=19f00094" />
+      <link rel="stylesheet" type="text/css" href="../../../_static/graphviz.css?v=eafc0fe6" />
+
+  
   <!--[if lt IE 9]>
     <script src="../../../_static/js/html5shiv.min.js"></script>
   <![endif]-->
@@ -303,7 +305,7 @@ depths to interpolate elevations offshore.</p>
 
 <dl class="py class">
 <dt class="sig sig-object py" id="geofabrics.geometry.EstimatedBathymetryPoints">
-<em class="property"><span class="pre">class</span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">geofabrics.geometry.</span></span><span class="sig-name descname"><span class="pre">EstimatedBathymetryPoints</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">points_files</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">polygon_files</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">catchment_geometry</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">z_labels</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#geofabrics.geometry.EstimatedBathymetryPoints" title="Link to this definition"></a></dt>
+<em class="property"><span class="pre">class</span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">geofabrics.geometry.</span></span><span class="sig-name descname"><span class="pre">EstimatedBathymetryPoints</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">points_files</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">polygon_files</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">catchment_geometry</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">filter_osm_ids</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">[]</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">z_labels</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#geofabrics.geometry.EstimatedBathymetryPoints" title="Link to this definition"></a></dt>
 <dd><p>A class for accessing river and mouth bathymetry points. Paired river
 and mouth elevation and polygon files are expected. These depths can be
 used to interpolate elevations within the river and mouth polygon.</p>
@@ -313,6 +315,7 @@ used to interpolate elevations within the river and mouth polygon.</p>
 <li><p><strong>points_files</strong> (<em>list</em>) – </p></li>
 <li><p><strong>polygon_files</strong> (<em>list</em>) – </p></li>
 <li><p><strong>catchment_geometry</strong> (<a class="reference internal" href="#geofabrics.geometry.CatchmentGeometry" title="geofabrics.geometry.CatchmentGeometry"><em>CatchmentGeometry</em></a>) – </p></li>
+<li><p><strong>filter_osm_ids</strong> (<em>list</em>) – </p></li>
 <li><p><strong>z_labels</strong> (<em>list</em>) – </p></li>
 </ul>
 </dd>

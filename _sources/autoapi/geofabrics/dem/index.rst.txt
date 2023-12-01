@@ -207,6 +207,11 @@ Attributes
                         `dataset_mapping` key if datasets (not a single LAZ file) included.
 
 
+   .. py:method:: save_dem(filename, dem)
+
+      Save the DEM to a netCDF file.
+
+
 
 .. py:class:: RawDem(catchment_geometry, lidar_interpolation_method, temp_folder, drop_offshore_lidar, elevation_range = None)
 
@@ -256,13 +261,8 @@ Attributes
                                                                                   boundary.
 
 
-   .. py:method:: save_dem(filename, dem)
 
-      Save the DEM to a netCDF file.
-
-
-
-.. py:class:: RoughnessDem(catchment_geometry, hydrological_dem_path, interpolation_method, default_values, drop_offshore_lidar, elevation_range = None)
+.. py:class:: RoughnessDem(catchment_geometry, hydrological_dem_path, temp_folder, interpolation_method, default_values, drop_offshore_lidar, elevation_range = None)
 
 
    Bases: :py:obj:`LidarBase`
