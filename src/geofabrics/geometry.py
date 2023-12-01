@@ -512,6 +512,7 @@ class EstimatedBathymetryPoints:
     DEPTH_LABEL = "elevation"
     BANK_HEIGHT_LABEL = "bank_height"
     WIDTH_LABEL = "width"
+    OSM_ID = "OSM_id"
 
     def __init__(
         self,
@@ -567,6 +568,8 @@ class EstimatedBathymetryPoints:
                 columns_i.append(self.BANK_HEIGHT_LABEL)
             if self.WIDTH_LABEL in points_i.columns:
                 columns_i.append(self.WIDTH_LABEL)
+            if self.OSM_ID in points_i.columns:
+                columns_i.append(self.OSM_ID)
             # Only add the points and polygons if their are points
             if len(points_i) > 0:
                 points_i = points_i[columns_i]
@@ -597,8 +600,8 @@ class EstimatedBathymetryPoints:
         # Filter if there are OSM IDs specified to filter
         if len(filter_osm_ids) > 0:
             for osm_id in filter_osm_ids:
-                points = points[points["OSM_id"] != osm_id]
-                polygon = polygon[polygon["OSM_id"] != osm_id]
+                points = points[points[self.OSM_ID] != osm_id]
+                polygon = polygon[polygon[self.OSM_ID] != osm_id]
 
         # Set to class members
         self._points = points
