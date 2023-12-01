@@ -244,6 +244,7 @@ class BaseProcessor(abc.ABC):
                 "rivers": "bed_elevation_Rupp_and_Smart",
                 "ocean": None,
             },
+            "filter_waterways_by_osm_ids": [],
         }
 
         if key not in defaults and key not in self.instructions["general"]:
@@ -460,15 +461,15 @@ class BaseProcessor(abc.ABC):
                     for layer in api_instruction["layers"]:
                         # Use the run method to download each layer in turn
                         vector = fetcher.run(layer, geometry_type)
-
-                        # Write out file if not already recorded
-                        layer_file = (
-                            cache_dir / "vector" / subfolder / f"{layer}.geojson"
-                        )
-                        if not layer_file.exists():
-                            layer_file.parent.mkdir(parents=True, exist_ok=True)
-                            vector.to_file(layer_file)
-                        paths.append(layer_file)
+                        if vector is not None:
+                            # Write out file if not already recorded
+                            layer_file = (
+                                cache_dir / "vector" / subfolder / f"{layer}.geojson"
+                            )
+                            if not layer_file.exists():
+                                layer_file.parent.mkdir(parents=True, exist_ok=True)
+                                vector.to_file(layer_file)
+                            paths.append(layer_file)
                 elif data_type == "raster":
                     # simplify the bounding_polygon geometry
                     if bounding_polygon is not None:
@@ -1001,26 +1002,31 @@ class HydrologicDemGenerator(BaseProcessor):
         ):
             # Get the bathymetry data directory
             bathy_contour_dirs = self.get_vector_or_raster_paths(
-                key="ocean_contours", data_type="vector"
+                key="ocean_contours",
+                data_type="vector",
+                required=False,
             )
-            assert len(bathy_contour_dirs) == 1, (
-                f"{len(bathy_contour_dirs)} ocean_contours's provided. "
-                f"Specficially {catchment_dirs}. Support has not yet been added for "
-                "multiple datasets."
-            )
+            if len(bathy_contour_dirs) != 1:
+                logging.warning(
+                    f"{len(bathy_contour_dirs)} ocean_contours's provided. "
+                    f"Specficially {bathy_contour_dirs}. Only consider the "
+                    "first if multiple."
+                )
 
             logging.info(f"Incorporating Bathymetry: {bathy_contour_dirs}")
 
             # Load in bathymetry
-            self.bathy_contours = geometry.BathymetryContours(
-                bathy_contour_dirs[0],
-                self.catchment_geometry,
-                z_label=self.get_instruction_general(key="z_labels", subkey="ocean"),
-                exclusion_extent=self.hydrologic_dem.raw_extents,
-            )
-
-            # interpolate
-            self.hydrologic_dem.interpolate_ocean_bathymetry(self.bathy_contours)
+            if len(bathy_contour_dirs) > 0:
+                bathy_contours = geometry.BathymetryContours(
+                    bathy_contour_dirs[0],
+                    self.catchment_geometry,
+                    z_label=self.get_instruction_general(
+                        key="z_labels", subkey="ocean"
+                    ),
+                    exclusion_extent=self.hydrologic_dem.raw_extents,
+                )
+                # Interpolate
+                self.hydrologic_dem.interpolate_ocean_bathymetry(bathy_contours)
         # Check for waterways and interpolate if they exist
         if "waterways" in self.instructions["data_paths"]:
             # Load in all open and closed waterway elevation and extents in one go
@@ -1046,6 +1052,9 @@ class HydrologicDemGenerator(BaseProcessor):
             estimated_bathymetry_points = geometry.EstimatedBathymetryPoints(
                 points_files=bathy_dirs,
                 polygon_files=poly_dirs,
+                filter_osm_ids=self.get_instruction_general(
+                    key="filter_waterways_by_osm_ids"
+                ),
                 catchment_geometry=self.catchment_geometry,
                 z_labels=self.get_instruction_general(
                     key="z_labels", subkey="waterways"
@@ -1269,6 +1278,20 @@ class RoughnessLengthGenerator(BaseProcessor):
                 " Either take mean or drop points with height above limit."
             )
 
+        # Create folder for caching raw DEM files during DEM generation
+        temp_folder = (
+            self.get_instruction_path("subfolder")
+            / "temp"
+            / f"{self.get_resolution()}m_results"
+        )
+        logging.info(
+            "In processor.DemGenerator - create folder for writing temporarily"
+            f" cached netCDF files in {temp_folder}"
+        )
+        if temp_folder.exists():
+            shutil.rmtree(temp_folder)
+        temp_folder.mkdir(parents=True, exist_ok=True)
+
         # Setup Dask cluster and client
         cluster_kwargs = {
             "n_workers": self.get_processing_instructions("number_of_cores"),
@@ -1285,6 +1308,7 @@ class RoughnessLengthGenerator(BaseProcessor):
             self.roughness_dem = dem.RoughnessDem(
                 catchment_geometry=self.catchment_geometry,
                 hydrological_dem_path=self.get_instruction_path("result_dem"),
+                temp_folder=temp_folder,
                 elevation_range=self.get_instruction_general("elevation_range"),
                 interpolation_method=self.get_instruction_general(
                     key="interpolation", subkey="no_data"
@@ -1305,21 +1329,20 @@ class RoughnessLengthGenerator(BaseProcessor):
             )  # Note must be called after all others if it is to be complete
 
             # save results
-            try:
-                self.roughness_dem.dem.to_netcdf(
-                    self.get_instruction_path("result_geofabric"),
-                    format="NETCDF4",
-                    engine="netcdf4",
-                )
-            except (Exception, KeyboardInterrupt) as caught_exception:
-                pathlib.Path(self.get_instruction_path("result_geofabric")).unlink()
-                logging.info(
-                    f"Caught error {caught_exception} and deleting"
-                    "partially created netCDF output "
-                    f"{self.get_instruction_path('result_geofabric')}"
-                    " before re-raising error."
-                )
-                raise caught_exception
+            logging.info(
+                "In processor.RoughnessLengthGenerator - write out "
+                "the raw DEM to netCDF"
+            )
+            self.roughness_dem.save_dem(
+                filename=self.get_instruction_path("result_geofabric"),
+                dem=self.roughness_dem.dem,
+            )
+            logging.info(
+                "In processor.RoughnessLengthGenerator - clean folder for "
+                f"writing temporarily cached netCDF files in {temp_folder}"
+            )
+            shutil.rmtree(temp_folder)
+
         if self.debug:
             # Record the parameter used during execution - append to existing
             with open(
@@ -2756,6 +2779,12 @@ class WaterwayBedElevationEstimator(BaseProcessor):
 
         # save out the polygons
         open_waterways.buffer(open_waterways["width"]).to_file(polygon_file)
+
+        # If no closed waterways write out empty files and return
+        if len(open_waterways) == 0:
+            open_waterways["elevation"] = []
+            open_waterways.to_file(elevation_file)
+            return
 
         # Sample down-slope location along each line
         def sample_location_down_slope(row):

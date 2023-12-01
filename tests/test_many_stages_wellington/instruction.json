@@ -162,7 +162,8 @@
 			"drop_offshore_lidar": true,
 			"z_labels": {"ocean": "valdco"},
 			"lidar_classifications_to_keep": [2, 9],
-			"interpolation": {"no_data": "linear"}
+			"interpolation": {"no_data": "linear"},
+            "filter_waterways_by_osm_ids": [200394974]
 		}
 	},
 	"roughness":
