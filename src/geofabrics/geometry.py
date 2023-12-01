@@ -518,7 +518,7 @@ class EstimatedBathymetryPoints:
         points_files: list,
         polygon_files: list,
         catchment_geometry: CatchmentGeometry,
-        filter_osm_ids: list,
+        filter_osm_ids: list = [],
         z_labels: list = None,
     ):
         self.catchment_geometry = catchment_geometry
