@@ -529,7 +529,13 @@ class EstimatedBathymetryPoints:
 
         self._set_up(points_files, polygon_files, z_labels, filter_osm_ids)
 
-    def _set_up(self, points_files: list, polygon_files: list, z_labels: list, filter_osm_ids: list):
+    def _set_up(
+        self,
+        points_files: list,
+        polygon_files: list,
+        z_labels: list,
+        filter_osm_ids: list,
+    ):
         """Load point and polygon files and concatentate and clip to the catchment."""
 
         if len(points_files) != len(polygon_files):
