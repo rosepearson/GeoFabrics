@@ -1226,6 +1226,9 @@ class LidarBase(DemBase):
         """Update the saved file cache for the DEM as a netCDF file. The bool
         no_data_layer may optionally be included."""
 
+        # Logging update
+        logging.info("In LidarBase._save_and_load_dem saving NetCDF file to "
+                     f"{filename} with no_values_mask={no_values_mask}")
         # Get the DEM from the property call
         dem = self._dem
         # Create mask if specified
@@ -2425,6 +2428,9 @@ class RoughnessDem(LidarBase):
             roughnesses
                 A list of roughnesses over the x, and y coordiantes for each dataset.
         """
+
+        logging.info("In RoughnessDem._add_roughness_to_data_set creating and "
+                     "adding the Zo layer to the dataset.")
 
         # Create a DataArray of zo
         zos = []
