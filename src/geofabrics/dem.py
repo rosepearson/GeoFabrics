@@ -1384,14 +1384,14 @@ class RawDem(LidarBase):
         if numpy.array([value for value in self.drop_offshore_lidar.values()]).all():
             clip_region = self.catchment_geometry.land_and_foreshore
         else:
-            clip_region = self.catchment_geometry.catchment
+            clip_region = self.catchment_geometry.catchment  # TODO redundant with next .clip?
 
         # Clip DEM to Catchment and ensure NaN outside region to rasterise
         dem = dem.rio.clip(self.catchment_geometry.catchment.geometry, drop=True)
         if clip_region.area.sum() > 0:  # If area of 0 all will be NaN anyway
             dem = dem.rio.clip(clip_region.geometry, drop=False)
 
-        # If drop offshrore LiDAR ensure the foreshore values are 0 or negative
+        # If drop offshore LiDAR ensure the foreshore values are 0 or negative
         if (
             self.drop_offshore_lidar
             and self.catchment_geometry.foreshore.area.sum() > 0
@@ -1756,8 +1756,8 @@ class RawDem(LidarBase):
         """Check if area requring infill, if so iterate through coarse DEMs
         adding missing detail.
 
-        Currently doesn't use chunking - this may be required if a large area is covered
-        by the coarse DEM.
+        Currently doesn't use chunking - this may be required if a large area is
+        covered by the coarse DEM.
 
         Parameters
         ----------
@@ -1911,6 +1911,7 @@ class RawDem(LidarBase):
                         ~mask,
                         0,
                     )
+                    # TODO missing indentation -1? should this be skipped if no foreshore?
                     # Save a cached copy of DEM to temporary memory cache
                     logging.info(
                         "In dem.add_coarse_dems - write out temp raw DEM to netCDF"
@@ -1985,8 +1986,10 @@ class RawDem(LidarBase):
         buffer_cells: int,
         chunk_size: int,
     ):
-        """Update the saved file cache for the DEM as a netCDF file. The no_data_layer of bol values may
-        optionally be included."""
+        """Update the saved file cache for the DEM as a netCDF file.
+
+        The no_data_layer of bool values may optionally be included.
+        """
 
         # Get the DEM from the property call
         dem = self._dem
