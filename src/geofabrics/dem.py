@@ -1189,7 +1189,6 @@ class RawDem(LidarBase):
         self,
         catchment_geometry: geometry.CatchmentGeometry,
         lidar_interpolation_method: str,
-        temp_folder: pathlib.Path,
         drop_offshore_lidar: dict,
         elevation_range: list = None,
     ):
@@ -1202,7 +1201,6 @@ class RawDem(LidarBase):
 
         self.drop_offshore_lidar = drop_offshore_lidar
         self.lidar_interpolation_method = lidar_interpolation_method
-        self.temp_folder = temp_folder
         self._dem = None
 
     @property

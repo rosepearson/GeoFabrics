@@ -897,7 +897,6 @@ class RawLidarDemGenerator(BaseProcessor):
                 key="interpolation", subkey="lidar"
             ),
             elevation_range=self.get_instruction_general("elevation_range"),
-            temp_folder=temp_folder,
         )
 
         # Setup Dask cluster and client - LAZY SAVE LIDAR DEM
