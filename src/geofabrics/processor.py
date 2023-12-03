@@ -926,8 +926,9 @@ class RawLidarDemGenerator(BaseProcessor):
 
             # Save a cached copy of DEM to temporary memory cache
             logging.info("In processor.DemGenerator - save temp raw DEM to netCDF")
+            cached_file = temp_folder / "raw_lidar.nc"
             self.raw_dem.save_dem(
-                filename=temp_folder / "raw_lidar.nc",
+                filename=cached_file,
                 buffer_cells=self.get_instruction_general("lidar_buffer"),
                 chunk_size=self.get_processing_instructions("chunk_size"),
                 add_novalues=True,
@@ -939,14 +940,37 @@ class RawLidarDemGenerator(BaseProcessor):
                 coarse_dem_paths = self.get_vector_or_raster_paths(
                     key="coarse_dems", data_type="raster"
                 )
+                logging.info(f"Incorporating coarse DEMs: {coarse_dem_paths}")
 
                 # Add coarse DEMs if there are any and if area
-                self.raw_dem.add_coarse_dems(
-                    coarse_dem_paths=coarse_dem_paths,
-                    area_threshold=area_threshold,
-                    buffer_cells=self.get_instruction_general("lidar_buffer"),
-                    chunk_size=self.get_processing_instructions("chunk_size"),
-                )
+                for coarse_dem_path in coarse_dem_paths:
+                    dem_completed = self.raw_dem.add_coarse_dem(
+                        coarse_dem_path,
+                        area_threshold=area_threshold,
+                        buffer_cells=self.get_instruction_general("lidar_buffer"),
+                        chunk_size=self.get_processing_instructions("chunk_size"),
+                    )
+                    if dem_completed:
+                        break
+
+                    # Save a cached copy of DEM to temporary memory cache
+                    logging.info(
+                        "In dem.add_coarse_dems - write out temp raw DEM to netCDF"
+                    )
+                    temp_file = temp_folder / f"raw_dem_{coarse_dem_path.stem}.nc"
+                    self.save_dem(
+                        filename=temp_file,
+                        buffer_cells=self.get_instruction_general("lidar_buffer"),
+                        reload=True,
+                        add_novalues=True,
+                        chunk_size=self.get_processing_instructions("chunk_size"),
+                    )
+                    logging.info(
+                        "In dem.add_coarse_dems - remove previous cached file "
+                        f"{cached_file}"
+                    )
+                    cached_file.unlink()
+                    cached_file = temp_file
 
             # compute and save raw DEM
             logging.info("In processor.DemGenerator - write out the raw DEM to netCDF")

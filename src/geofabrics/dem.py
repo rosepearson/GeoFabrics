@@ -1737,9 +1737,9 @@ class RawDem(LidarBase):
 
         return dem
 
-    def add_coarse_dems(
+    def add_coarse_dem(
         self,
-        coarse_dem_paths: list,
+        coarse_dem_path: pathlib.Path,
         area_threshold: float,
         buffer_cells: int,
         chunk_size: int,
@@ -1753,7 +1753,7 @@ class RawDem(LidarBase):
         Parameters
         ----------
 
-            coarse_dem_paths - list of coarse DEM file paths to try add in turn
+            coarse_dem_path - coarse DEM file paths to try add
             area_threshold - the ratio of area without LiDAR required to for
                 coarse DEMs to be used.
             buffer_cells - the number of empty cells to keep around LiDAR cells
@@ -1761,163 +1761,148 @@ class RawDem(LidarBase):
                 boundary.
 
         """
-        logging.info(
-            "Consider adding coarse DEMs to fill areas outside the " "LiDAR extents"
+        # Check if any areas (on land and foreshore) still without values - exit if none
+        no_value_mask = self._dem.no_values_mask
+        if not no_value_mask.any():
+            logging.info(
+                f"No land areas greater than the cell buffer {buffer_cells}"
+                " without LiDAR values. Ignoring all remaining coarse DEMs."
+            )
+            return True
+
+        # Check for overlap with the Coarse DEM
+        coarse_dem = rioxarray.rioxarray.open_rasterio(
+            coarse_dem_path,
+            masked=True,
+        ).squeeze("band", drop=True)
+        coarse_dem.rio.set_crs(self.catchment_geometry.crs["horizontal"])
+        coarse_dem_resolution = coarse_dem.rio.resolution()
+        coarse_dem_resolution = max(
+            abs(coarse_dem_resolution[0]), abs(coarse_dem_resolution[1])
         )
-        previous_cached_file = self.temp_folder / "raw_lidar.nc"
 
-        # Iterate through DEMs
-        logging.info(f"Incorporating coarse DEMs: {coarse_dem_paths}")
-        for coarse_dem_path in coarse_dem_paths:
-            # Check if any areas (on land and foreshore) still without values - exit if none
-            no_value_mask = self._dem.no_values_mask
-            if not no_value_mask.any():
-                logging.info(
-                    f"No land areas greater than the cell buffer {buffer_cells}"
-                    " without LiDAR values. Ignoring all remaining coarse DEMs."
-                )
-                return False
-            # Check for overlap with the Coarse DEM
-            coarse_dem = rioxarray.rioxarray.open_rasterio(
-                coarse_dem_path,
-                masked=True,
-            ).squeeze("band", drop=True)
-            coarse_dem.rio.set_crs(self.catchment_geometry.crs["horizontal"])
-            coarse_dem_resolution = coarse_dem.rio.resolution()
-            coarse_dem_resolution = max(
-                abs(coarse_dem_resolution[0]), abs(coarse_dem_resolution[1])
+        # Clip to foreground and land
+        coarse_dem = coarse_dem.rio.clip(
+            self.catchment_geometry.land_and_foreshore.buffer(
+                coarse_dem_resolution
+            ).geometry,
+            drop=True,
+        )
+        coarse_dem_bounds = coarse_dem.rio.bounds()
+        coarse_dem_bounds = geopandas.GeoDataFrame(
+            {
+                "geometry": [
+                    shapely.geometry.Polygon(
+                        [
+                            [coarse_dem_bounds[0], coarse_dem_bounds[1]],
+                            [coarse_dem_bounds[2], coarse_dem_bounds[1]],
+                            [coarse_dem_bounds[2], coarse_dem_bounds[3]],
+                            [coarse_dem_bounds[0], coarse_dem_bounds[3]],
+                        ]
+                    )
+                ]
+            },
+            crs=self.catchment_geometry.crs["horizontal"],
+        )
+
+        # Add the coarse DEM data where there's no LiDAR updating the extents
+        no_value_mask &= (
+            xarray.ones_like(no_value_mask)
+            .rio.clip(coarse_dem_bounds.geometry, drop=False)
+            .notnull()
+        )  # Awkward as clip of a bool xarray doesn't work as expected
+
+        # Early return if there is nowhere to add coarse DEM data
+        if not no_value_mask.any():
+            return False
+
+        logging.info(f"\t\tAdd data from coarse DEM: {coarse_dem_path.name}")
+
+        # If chunking ensure efficient parallelisation
+        if (
+            chunk_size is not None
+            and max(len(self._dem.x), len(self._dem.y)) > chunk_size
+        ):
+            # Note expect Xarray with dims (y, x) not dims (x, y) as is default
+            # for rioxarray
+            interpolator = scipy.interpolate.RegularGridInterpolator(
+                (coarse_dem.y.values, coarse_dem.x.values),
+                coarse_dem.values,
+                bounds_error=False,
+                fill_value=numpy.NaN,
+                method="linear",
             )
-            # Clip to foreground and land
-            coarse_dem = coarse_dem.rio.clip(
-                self.catchment_geometry.land_and_foreshore.buffer(
-                    coarse_dem_resolution
-                ).geometry,
-                drop=True,
+
+            def dask_interpolation(y, x):
+                yx_array = numpy.stack(
+                    numpy.meshgrid(y, x, indexing="ij"), axis=-1
+                )
+                return interpolator(yx_array)
+
+            # Explicitly redefine x & y
+            x = dask.array.from_array(self._dem.x.values, chunks=chunk_size)
+            y = dask.array.from_array(self._dem.y.values, chunks=chunk_size)
+            coarse_dem_interp = dask.array.blockwise(
+                dask_interpolation, "ij", y, "i", x, "j"
             )
-            coarse_dem_bounds = coarse_dem.rio.bounds()
-            coarse_dem_bounds = geopandas.GeoDataFrame(
-                {
-                    "geometry": [
-                        shapely.geometry.Polygon(
-                            [
-                                [coarse_dem_bounds[0], coarse_dem_bounds[1]],
-                                [coarse_dem_bounds[2], coarse_dem_bounds[1]],
-                                [coarse_dem_bounds[2], coarse_dem_bounds[3]],
-                                [coarse_dem_bounds[0], coarse_dem_bounds[3]],
-                            ]
-                        )
-                    ]
-                },
-                crs=self.catchment_geometry.crs["horizontal"],
+            coarse_dem = xarray.DataArray(
+                coarse_dem_interp,
+                dims=("y", "x"),
+                coords={"x": self._dem.x, "y": self._dem.y},
+            )
+            coarse_dem.rio.write_transform(inplace=True)
+            coarse_dem.rio.write_crs(
+                self.catchment_geometry.crs["horizontal"], inplace=True
+            )
+            coarse_dem.rio.write_nodata(numpy.nan, encoded=True, inplace=True)
+        else:  # No chunking use built in method
+            coarse_dem = coarse_dem.interp(
+                x=self._dem.x, y=self._dem.y, method="linear"
             )
 
-            # Add the coarse DEM data where there's no LiDAR updating the extents
-            no_value_mask &= (
-                xarray.ones_like(no_value_mask)
-                .rio.clip(coarse_dem_bounds.geometry, drop=False)
-                .notnull()
-            )  # Awkward as clip of a bool xarray doesn't work as expected
-            if no_value_mask.any():
-                logging.info(f"\t\tAdd data from coarse DEM: {coarse_dem_path.name}")
-                # If chunking ensure efficient parallelisation
-                if (
-                    chunk_size is not None
-                    and max(len(self._dem.x), len(self._dem.y)) > chunk_size
-                ):
-                    # Note expect Xarray with dims (y, x) not dims (x, y) as is default for rioxarray
-                    interpolator = scipy.interpolate.RegularGridInterpolator(
-                        (coarse_dem.y.values, coarse_dem.x.values),
-                        coarse_dem.values,
-                        bounds_error=False,
-                        fill_value=numpy.NaN,
-                        method="linear",
-                    )
+        coarse_dem.rio.clip(
+            self.catchment_geometry.land_and_foreshore.geometry, drop=False
+        )
+        self._dem["z"] = self._dem.z.where(~no_value_mask, coarse_dem)
 
-                    def dask_interpolation(y, x):
-                        yx_array = numpy.stack(
-                            numpy.meshgrid(y, x, indexing="ij"), axis=-1
-                        )
-                        return interpolator(yx_array)
+        # Update the data source layer
+        self._dem["data_source"] = self._dem.data_source.where(
+            ~(no_value_mask & self._dem.z.notnull()),
+            self.SOURCE_CLASSIFICATION["coarse DEM"],
+        )
 
-                    # Explicitly redefine x & y
-                    x = dask.array.from_array(self._dem.x.values, chunks=chunk_size)
-                    y = dask.array.from_array(self._dem.y.values, chunks=chunk_size)
-                    coarse_dem_interp = dask.array.blockwise(
-                        dask_interpolation, "ij", y, "i", x, "j"
-                    )
-                    coarse_dem = xarray.DataArray(
-                        coarse_dem_interp,
-                        dims=("y", "x"),
-                        coords={"x": self._dem.x, "y": self._dem.y},
-                    )
-                    coarse_dem.rio.write_transform(inplace=True)
-                    coarse_dem.rio.write_crs(
-                        self.catchment_geometry.crs["horizontal"], inplace=True
-                    )
-                    coarse_dem.rio.write_nodata(numpy.nan, encoded=True, inplace=True)
-                else:  # No chunking use built in method
-                    coarse_dem = coarse_dem.interp(
-                        x=self._dem.x, y=self._dem.y, method="linear"
-                    )
-                coarse_dem.rio.clip(
-                    self.catchment_geometry.land_and_foreshore.geometry, drop=False
+        # Ensure Coarse DEM values along the foreshore are less than zero
+        if self.catchment_geometry.foreshore.area.sum() > 0:
+            buffered_foreshore = geopandas.GeoDataFrame(
+                geometry=self.catchment_geometry.foreshore.buffer(
+                    self.catchment_geometry.resolution * numpy.sqrt(2)
                 )
-                self._dem["z"] = self._dem.z.where(~no_value_mask, coarse_dem)
-                # Update the data source layer
-                self._dem["data_source"] = self._dem.data_source.where(
-                    ~(no_value_mask & self._dem.z.notnull()),
-                    self.SOURCE_CLASSIFICATION["coarse DEM"],
+            )
+            buffered_foreshore = buffered_foreshore.overlay(
+                self.catchment_geometry.full_land,
+                how="difference",
+                keep_geom_type=True,
+            )
+            # Clip DEM to buffered foreshore
+            mask = self._dem.z.rio.clip(
+                buffered_foreshore.geometry, drop=False
+            ).notnull()
+            mask = (
+                mask
+                & (self._dem.z > 0)
+                & (
+                    self._dem.data_source
+                    == self.SOURCE_CLASSIFICATION["coarse DEM"]
                 )
-                # Ensure Coarse DEM values along the foreshore are less than zero
-                if self.catchment_geometry.foreshore.area.sum() > 0:
-                    buffered_foreshore = geopandas.GeoDataFrame(
-                        geometry=self.catchment_geometry.foreshore.buffer(
-                            self.catchment_geometry.resolution * numpy.sqrt(2)
-                        )
-                    )
-                    buffered_foreshore = buffered_foreshore.overlay(
-                        self.catchment_geometry.full_land,
-                        how="difference",
-                        keep_geom_type=True,
-                    )
-                    # Clip DEM to buffered foreshore
-                    mask = self._dem.z.rio.clip(
-                        buffered_foreshore.geometry, drop=False
-                    ).notnull()
-                    mask = (
-                        mask
-                        & (self._dem.z > 0)
-                        & (
-                            self._dem.data_source
-                            == self.SOURCE_CLASSIFICATION["coarse DEM"]
-                        )
-                    )
+            )
 
-                    # Set any positive LiDAR foreshore points to zero
-                    self._dem["data_source"] = self._dem.data_source.where(
-                        ~mask,
-                        self.SOURCE_CLASSIFICATION["ocean bathymetry"],
-                    )
-                    self._dem["z"] = self._dem.z.where(~mask, 0)
+            # Set any positive LiDAR foreshore points to zero
+            self._dem["data_source"] = self._dem.data_source.where(
+                ~mask, self.SOURCE_CLASSIFICATION["ocean bathymetry"]
+            )
+            self._dem["z"] = self._dem.z.where(~mask, 0)
 
-                # Save a cached copy of DEM to temporary memory cache
-                logging.info(
-                    "In dem.add_coarse_dems - write out temp raw DEM to netCDF"
-                )
-                temp_file = self.temp_folder / f"raw_dem_{coarse_dem_path.stem}.nc"
-                self.save_dem(
-                    filename=temp_file,
-                    buffer_cells=buffer_cells,
-                    reload=True,
-                    add_novalues=True,
-                    chunk_size=chunk_size,
-                )
-                logging.info(
-                    "In dem.add_coarse_dems - remove previous cached file "
-                    f"{previous_cached_file}"
-                )
-                previous_cached_file.unlink()
-                previous_cached_file = temp_file
+        return False
 
     def _load_dem(self, filename: pathlib.Path, chunk_size: int):
         """Load in and replace the DEM with a previously cached version."""
