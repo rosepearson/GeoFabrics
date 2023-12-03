@@ -881,10 +881,7 @@ class RawLidarDemGenerator(BaseProcessor):
             / "temp"
             / f"{self.get_resolution()}m_results"
         )
-        logging.info(
-            "In processor.DemGenerator - create folder for writing temporarily"
-            f" cached netCDF files in {temp_folder}"
-        )
+        logging.info(f"Create folder {temp_folder} for temporary files")
         if temp_folder.exists():
             shutil.rmtree(temp_folder)
         temp_folder.mkdir(parents=True, exist_ok=True)
@@ -924,7 +921,7 @@ class RawLidarDemGenerator(BaseProcessor):
             )  # Note must be called after all others if it is to be complete
 
             # Save a cached copy of DEM to temporary memory cache
-            logging.info("In processor.DemGenerator - save temp raw DEM to netCDF")
+            logging.info("Save temp raw DEM to netCDF")
             cached_file = temp_folder / "raw_lidar.nc"
             self.raw_dem.save_dem(
                 filename=cached_file,
@@ -966,10 +963,7 @@ class RawLidarDemGenerator(BaseProcessor):
             # compute and save raw DEM
             logging.info("In processor.DemGenerator - write out the raw DEM to netCDF")
             self.raw_dem.save_dem(self.get_instruction_path("raw_dem"))
-            logging.info(
-                "In processor.DemGenerator - clean folder for writing temporarily"
-                f" cached netCDF files in {temp_folder}"
-            )
+            logging.info(f"Remove folder {temp_folder} for temporary files")
             shutil.rmtree(temp_folder)
 
         if self.debug:
