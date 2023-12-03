@@ -1427,10 +1427,12 @@ class RawDem(LidarBase):
 
         # Save a cached copy of DEM to temporary memory cache
         logging.info("In dem.add_lidar - write out temp raw DEM to netCDF")
-        self._save_and_load_dem_with_no_values_mask(
+        self.save_dem(
             filename=self.temp_folder / "raw_lidar.nc",
             buffer_cells=buffer_cells,
             chunk_size=chunk_size,
+            add_novalues=True,
+            reload=True,
         )
 
     def _add_tiled_lidar_chunked(
@@ -1916,19 +1918,19 @@ class RawDem(LidarBase):
                     logging.info(
                         "In dem.add_coarse_dems - write out temp raw DEM to netCDF"
                     )
-                    self._save_and_load_dem_with_no_values_mask(
-                        filename=self.temp_folder
-                        / f"raw_dem_{coarse_dem_path.stem}.nc",
+                    temp_file = self.temp_folder / f"raw_dem_{coarse_dem_path.stem}.nc"
+                    self.save_dem(
+                        filename=temp_file,
                         buffer_cells=buffer_cells,
+                        reload=True,
+                        add_novalues=True,
                         chunk_size=chunk_size,
                     )
                     logging.info(
                         f"In dem.add_coarse_dems - remove previous cached file {previous_cached_file}"
                     )
                     previous_cached_file.unlink()
-                    previous_cached_file = (
-                        self.temp_folder / f"raw_dem_{coarse_dem_path.stem}.nc"
-                    )
+                    previous_cached_file = temp_file
 
     def _load_dem(self, filename: pathlib.Path, chunk_size: int):
         """Load in and replace the DEM with a previously cached version."""
@@ -1955,22 +1957,62 @@ class RawDem(LidarBase):
         if "z" in self._dem.keys():
             self._dem["z"] = self._dem.z.astype(geometry.RASTER_TYPE)
 
+    def _extract_no_values(self, buffer_cells):
+        """Generate a no values mask from DEM"""
+
+        if self.catchment_geometry.land_and_foreshore.area.sum() > 0:
+            no_values_mask = (
+                self._dem.z.rolling(
+                    dim={"x": buffer_cells * 2 + 1, "y": buffer_cells * 2 + 1},
+                    min_periods=1,
+                    center=True,
+                )
+                .count()
+                .isnull()
+            )
+            no_values_mask &= (
+                xarray.ones_like(self._dem.z)
+                .rio.clip(
+                    self.catchment_geometry.land_and_foreshore.geometry, drop=False
+                )
+                .notnull()
+            )  # Awkward as clip of a bool xarray doesn't work as expected
+
+        else:
+            no_values_mask = xarray.zeros_like(dem.z)
+
+        return no_values_mask
+
     def save_dem(
         self,
         filename: pathlib.Path,
-        dem: xarray.Dataset,
+        add_novalues: bool = False,
+        buffer_cells: int | None = None,
+        reload: bool = False,
+        chunk_size: int | None = None
     ):
-        """Save the DEM to a netCDF file."""
+        """Save the DEM to a netCDF file and optionnally reload it
 
-        # Save the file
-        try:
-            dem.to_netcdf(
-                filename,
-                format="NETCDF4",
-                engine="netcdf4",
+        :param filename: .nc file where to save the DEM
+        :param add_novalues: include no_values_mask of bool values
+        :param buffer_cells: TODO document, used when adding no values mask
+        :param reload: reload DEM from the saved file
+        :param chunk_size: chunk size used when reloading
+        """
+
+        # Ensure DEM is not modified if adding a mask
+        dem = self._dem.copy(deep=False)
+
+        if add_novalues:
+            dem["no_values_mask"] = self._extract_no_values(buffer_cells)
+            dem.no_values_mask.rio.write_crs(
+                self.catchment_geometry.crs["horizontal"], inplace=True
             )
-            # Close the DEM
+
+        try:
+            dem.to_netcdf(filename, format="NETCDF4", engine="netcdf4")
             dem.close()
+
         except (Exception, KeyboardInterrupt) as caught_exception:
             pathlib.Path(filename).unlink()
             logging.info(
@@ -1980,47 +2022,10 @@ class RawDem(LidarBase):
             )
             raise caught_exception
 
-    def _save_and_load_dem_with_no_values_mask(
-        self,
-        filename: pathlib.Path,
-        buffer_cells: int,
-        chunk_size: int,
-    ):
-        """Update the saved file cache for the DEM as a netCDF file.
-
-        The no_data_layer of bool values may optionally be included.
-        """
-
-        # Get the DEM from the property call
-        dem = self._dem
-        if self.catchment_geometry.land_and_foreshore.area.sum() > 0:
-            no_value_mask = (
-                dem.z.rolling(
-                    dim={"x": buffer_cells * 2 + 1, "y": buffer_cells * 2 + 1},
-                    min_periods=1,
-                    center=True,
-                )
-                .count()
-                .isnull()
-            )
-            no_value_mask &= (
-                xarray.ones_like(self._dem.z)
-                .rio.clip(
-                    self.catchment_geometry.land_and_foreshore.geometry, drop=False
-                )
-                .notnull()
-            )  # Awkward as clip of a bool xarray doesn't work as expected
-        else:
-            no_value_mask = xarray.zeros_like(self._dem.z)
-        dem["no_values_mask"] = no_value_mask
-        dem.no_values_mask.rio.write_crs(
-            self.catchment_geometry.crs["horizontal"], inplace=True
-        )
-
-        # Save the DEM with the no_values_layer
-        self.save_dem(filename=filename, dem=dem)
-        # Load in the temporarily saved DEM
-        self._load_dem(filename=filename, chunk_size=chunk_size)
+        if reload:
+            # TODO deduce chunksize from self._dem?
+            # TODO add error if chunk_size is None?
+            self._load_dem(filename=filename, chunk_size=chunk_size)
 
 
 class RoughnessDem(LidarBase):
