@@ -1786,14 +1786,15 @@ class RawDem(LidarBase):
         )
 
         # Add the coarse DEM data where there's no LiDAR updating the extents
-        no_value_mask &= (
-            xarray.ones_like(no_value_mask)
+        no_values_mask = self.no_values_mask
+        no_values_mask &= (
+            xarray.ones_like(no_values_mask)
             .rio.clip(coarse_dem_bounds.geometry, drop=False)
             .notnull()
         )  # Awkward as clip of a bool xarray doesn't work as expected
 
         # Early return if there is nowhere to add coarse DEM data
-        if not no_value_mask.any():
+        if not no_values_mask.any():
             return
 
         logging.info(f"\t\tAdd data from coarse DEM: {coarse_dem_path.name}")
@@ -1843,11 +1844,11 @@ class RawDem(LidarBase):
         coarse_dem.rio.clip(
             self.catchment_geometry.land_and_foreshore.geometry, drop=False
         )
-        self._dem["z"] = self._dem.z.where(~no_value_mask, coarse_dem)
+        self._dem["z"] = self._dem.z.where(~no_values_mask, coarse_dem)
 
         # Update the data source layer
         self._dem["data_source"] = self._dem.data_source.where(
-            ~(no_value_mask & self._dem.z.notnull()),
+            ~(no_values_mask & self._dem.z.notnull()),
             self.SOURCE_CLASSIFICATION["coarse DEM"],
         )
 
@@ -1950,11 +1951,10 @@ class RawDem(LidarBase):
         :param reload: reload DEM from the saved file
         """
 
-        # Ensure DEM is not modified if adding a mask
-        dem = self._dem.copy(deep=False)
+        dem = self._dem
 
         if add_novalues:
-            dem["no_values_mask"] = self.no_values_mask
+            dem = dem.assign(no_values_mask=self.no_values_mask)
             dem.no_values_mask.rio.write_crs(
                 self.catchment_geometry.crs["horizontal"], inplace=True
             )
