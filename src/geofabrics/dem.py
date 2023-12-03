@@ -1298,7 +1298,6 @@ class RawDem(LidarBase):
         chunk_size: int,
         lidar_classifications_to_keep: list,
         metadata: dict,
-        buffer_cells: int,
     ):
         """Read in all LiDAR files and use to create a 'raw' DEM.
 
@@ -1424,16 +1423,6 @@ class RawDem(LidarBase):
             )
 
         self._dem = dem
-
-        # Save a cached copy of DEM to temporary memory cache
-        logging.info("In dem.add_lidar - write out temp raw DEM to netCDF")
-        self.save_dem(
-            filename=self.temp_folder / "raw_lidar.nc",
-            buffer_cells=buffer_cells,
-            chunk_size=chunk_size,
-            add_novalues=True,
-            reload=True,
-        )
 
     def _add_tiled_lidar_chunked(
         self,

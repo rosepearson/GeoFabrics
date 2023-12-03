@@ -888,6 +888,7 @@ class RawLidarDemGenerator(BaseProcessor):
         if temp_folder.exists():
             shutil.rmtree(temp_folder)
         temp_folder.mkdir(parents=True, exist_ok=True)
+
         # setup the raw DEM generator
         self.raw_dem = dem.RawDem(
             catchment_geometry=self.catchment_geometry,
@@ -921,8 +922,17 @@ class RawLidarDemGenerator(BaseProcessor):
                 ),
                 chunk_size=self.get_processing_instructions("chunk_size"),
                 metadata=self.create_metadata(),
-                buffer_cells=self.get_instruction_general("lidar_buffer"),
             )  # Note must be called after all others if it is to be complete
+
+            # Save a cached copy of DEM to temporary memory cache
+            logging.info("In processor.DemGenerator - save temp raw DEM to netCDF")
+            self.raw_dem.save_dem(
+                filename=temp_folder / "raw_lidar.nc",
+                buffer_cells=self.get_instruction_general("lidar_buffer"),
+                chunk_size=self.get_processing_instructions("chunk_size"),
+                add_novalues=True,
+                reload=True,
+            )
 
             # Add a coarse DEM if significant area without LiDAR and a coarse DEM
             if self.check_vector_or_raster(key="coarse_dems", api_type="raster"):
