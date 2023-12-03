@@ -1167,6 +1167,19 @@ class LidarBase(DemBase):
         )
 
 
+def clip_mask(arr, geometry, chunk_size):
+    mask = (
+        xarray.ones_like(arr, dtype=numpy.float16)
+        .compute()
+        .rio
+        .clip(geometry, drop=False)
+        .notnull()
+    )
+    if chunk_size is not None:
+        mask = mask.chunk(chunk_size)
+    return mask
+
+
 class RawDem(LidarBase):
     """A class to manage the creation of a 'raw' DEM from LiDAR tiles, and/or a
     coarse DEM.
@@ -1402,7 +1415,7 @@ class RawDem(LidarBase):
 
             # Mask to delineate DEM outside of buffered foreshore or below 0
             mask = (
-                dem.z.rio.clip(buffered_foreshore.geometry, drop=False).isnull()
+                ~clip_mask(dem.z, buffered_foreshore.geometry, self.chunk_size)
                 | (dem.z <= 0)
             )
 
@@ -1922,16 +1935,13 @@ class RawDem(LidarBase):
                 .count()
                 .isnull()
             )
-            no_values_mask &= (
-                xarray.ones_like(self._dem.z)
-                .rio.clip(
-                    self.catchment_geometry.land_and_foreshore.geometry, drop=False
-                )
-                .notnull()
-            )  # Awkward as clip of a bool xarray doesn't work as expected
-
+            no_values_mask &= clip_mask(
+                self._dem.z,
+                self.catchment_geometry.land_and_foreshore.geometry,
+                self.chunk_size
+            )
         else:
-            no_values_mask = xarray.zeros_like(dem.z)
+            no_values_mask = xarray.zeros_like(dem.z, dtype=bool)
 
         return no_values_mask
 
