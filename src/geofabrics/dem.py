@@ -1750,15 +1750,6 @@ class RawDem(LidarBase):
             area_threshold - the ratio of area without LiDAR required to for
                 coarse DEMs to be used.
         """
-        # Check if any areas (on land and foreshore) still without values - exit if none
-        no_value_mask = self._dem.no_values_mask
-        if not no_value_mask.any():
-            logging.info(
-                f"No land areas greater than the cell buffer {self.buffer_cells}"
-                " without LiDAR values. Ignoring all remaining coarse DEMs."
-            )
-            return True
-
         # Check for overlap with the Coarse DEM
         coarse_dem = rioxarray.rioxarray.open_rasterio(
             coarse_dem_path,
@@ -1803,7 +1794,7 @@ class RawDem(LidarBase):
 
         # Early return if there is nowhere to add coarse DEM data
         if not no_value_mask.any():
-            return False
+            return
 
         logging.info(f"\t\tAdd data from coarse DEM: {coarse_dem_path.name}")
 
@@ -1891,8 +1882,6 @@ class RawDem(LidarBase):
             )
             self._dem["z"] = self._dem.z.where(~mask, 0)
 
-        return False
-
     def _load_dem(self, filename: pathlib.Path):
         """Load in and replace the DEM with a previously cached version."""
         dem = rioxarray.rioxarray.open_rasterio(
@@ -1918,8 +1907,12 @@ class RawDem(LidarBase):
         if "z" in self._dem.keys():
             self._dem["z"] = self._dem.z.astype(geometry.RASTER_TYPE)
 
-    def _extract_no_values(self):
-        """Generate a no values mask from DEM"""
+    @property
+    def no_values_mask(self):
+        """No values mask from DEM"""
+
+        if "no_values_mask" in self._dem:
+            return self._dem.no_values_mask
 
         if self.catchment_geometry.land_and_foreshore.area.sum() > 0:
             no_values_mask = (
@@ -1961,7 +1954,7 @@ class RawDem(LidarBase):
         dem = self._dem.copy(deep=False)
 
         if add_novalues:
-            dem["no_values_mask"] = self._extract_no_values()
+            dem["no_values_mask"] = self.no_values_mask
             dem.no_values_mask.rio.write_crs(
                 self.catchment_geometry.crs["horizontal"], inplace=True
             )

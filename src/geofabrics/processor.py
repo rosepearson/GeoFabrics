@@ -924,9 +924,7 @@ class RawLidarDemGenerator(BaseProcessor):
             # Save a cached copy of DEM to temporary memory cache
             logging.info("Save temp raw DEM to netCDF")
             cached_file = temp_folder / "raw_lidar.nc"
-            self.raw_dem.save_dem(
-                filename=cached_file, add_novalues=True, reload=True
-            )
+            self.raw_dem.save_dem(cached_file, add_novalues=True, reload=True)
 
             # Add a coarse DEM if significant area without LiDAR and a coarse DEM
             if self.check_vector_or_raster(key="coarse_dems", api_type="raster"):
@@ -937,18 +935,21 @@ class RawLidarDemGenerator(BaseProcessor):
 
                 # Add coarse DEMs if there are any and if area
                 for coarse_dem_path in coarse_dem_paths:
-                    dem_completed = self.raw_dem.add_coarse_dem(
-                        coarse_dem_path, area_threshold=area_threshold,
-                    )
-                    if dem_completed:
+
+                    # Stop if no areas (on land and foreshore) still without values
+                    if not self.raw_dem.no_values_mask.any():
+                        logging.info(
+                            "No land and foreshore areas without LiDAR values. "
+                            "Ignoring all remaining coarse DEMs."
+                        )
                         break
+
+                    self.raw_dem.add_coarse_dem(coarse_dem_path, area_threshold)
 
                     logging.info("Save temp raw DEM to netCDF")
                     temp_file = temp_folder / f"raw_dem_temp.nc"
-                    self.save_dem(
-                        filename=temp_file, reload=True, add_novalues=True
-                    )
-                    temp_file.rename(cached_file)  # replace temporay file
+                    self.save_dem(temp_file, reload=True, add_novalues=True)
+                    temp_file.rename(cached_file)  # replace temporary file
 
             # compute and save raw DEM
             logging.info("In processor.DemGenerator - write out the raw DEM to netCDF")
