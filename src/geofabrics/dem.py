@@ -1414,19 +1414,19 @@ class RawDem(LidarBase):
             )
 
             # Mask to delineate DEM outside of buffered foreshore or below 0
-            mask = (
-                ~clip_mask(dem.z, buffered_foreshore.geometry, self.chunk_size)
-                | (dem.z <= 0)
-            )
+            mask = ~clip_mask(dem.z, buffered_foreshore.geometry, self.chunk_size)
 
             # Set any positive LiDAR foreshore points to zero
+            dem["z"] = dem.z.where(mask | (dem.z <= 0), 0)
+
+            mask = mask | (dem.z <= 0)  # if using Dask, ensure z is processed first
+
             dem["data_source"] = dem.data_source.where(
                 mask, self.SOURCE_CLASSIFICATION["ocean bathymetry"]
             )
             dem["lidar_source"] = dem.lidar_source.where(
                 mask, self.SOURCE_CLASSIFICATION["no data"]
             )
-            dem["z"] = dem.z.where(mask, 0)
 
         self._dem = dem
 
