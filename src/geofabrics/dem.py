@@ -1909,28 +1909,26 @@ class RawDem(LidarBase):
                         ~mask,
                         self.SOURCE_CLASSIFICATION["ocean bathymetry"],
                     )
-                    self._dem["z"] = self._dem.z.where(
-                        ~mask,
-                        0,
-                    )
-                    # TODO missing indentation -1? should this be skipped if no foreshore?
-                    # Save a cached copy of DEM to temporary memory cache
-                    logging.info(
-                        "In dem.add_coarse_dems - write out temp raw DEM to netCDF"
-                    )
-                    temp_file = self.temp_folder / f"raw_dem_{coarse_dem_path.stem}.nc"
-                    self.save_dem(
-                        filename=temp_file,
-                        buffer_cells=buffer_cells,
-                        reload=True,
-                        add_novalues=True,
-                        chunk_size=chunk_size,
-                    )
-                    logging.info(
-                        f"In dem.add_coarse_dems - remove previous cached file {previous_cached_file}"
-                    )
-                    previous_cached_file.unlink()
-                    previous_cached_file = temp_file
+                    self._dem["z"] = self._dem.z.where(~mask, 0)
+
+                # Save a cached copy of DEM to temporary memory cache
+                logging.info(
+                    "In dem.add_coarse_dems - write out temp raw DEM to netCDF"
+                )
+                temp_file = self.temp_folder / f"raw_dem_{coarse_dem_path.stem}.nc"
+                self.save_dem(
+                    filename=temp_file,
+                    buffer_cells=buffer_cells,
+                    reload=True,
+                    add_novalues=True,
+                    chunk_size=chunk_size,
+                )
+                logging.info(
+                    "In dem.add_coarse_dems - remove previous cached file "
+                    f"{previous_cached_file}"
+                )
+                previous_cached_file.unlink()
+                previous_cached_file = temp_file
 
     def _load_dem(self, filename: pathlib.Path, chunk_size: int):
         """Load in and replace the DEM with a previously cached version."""
