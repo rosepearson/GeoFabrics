@@ -894,6 +894,8 @@ class RawLidarDemGenerator(BaseProcessor):
                 key="interpolation", subkey="lidar"
             ),
             elevation_range=self.get_instruction_general("elevation_range"),
+            chunk_size=self.get_processing_instructions("chunk_size"),
+            buffer_cells=self.get_instruction_general("lidar_buffer"),
         )
 
         # Setup Dask cluster and client - LAZY SAVE LIDAR DEM
@@ -916,7 +918,6 @@ class RawLidarDemGenerator(BaseProcessor):
                 lidar_classifications_to_keep=self.get_instruction_general(
                     "lidar_classifications_to_keep"
                 ),
-                chunk_size=self.get_processing_instructions("chunk_size"),
                 metadata=self.create_metadata(),
             )  # Note must be called after all others if it is to be complete
 
@@ -924,11 +925,7 @@ class RawLidarDemGenerator(BaseProcessor):
             logging.info("Save temp raw DEM to netCDF")
             cached_file = temp_folder / "raw_lidar.nc"
             self.raw_dem.save_dem(
-                filename=cached_file,
-                buffer_cells=self.get_instruction_general("lidar_buffer"),
-                chunk_size=self.get_processing_instructions("chunk_size"),
-                add_novalues=True,
-                reload=True,
+                filename=cached_file, add_novalues=True, reload=True
             )
 
             # Add a coarse DEM if significant area without LiDAR and a coarse DEM
@@ -941,10 +938,7 @@ class RawLidarDemGenerator(BaseProcessor):
                 # Add coarse DEMs if there are any and if area
                 for coarse_dem_path in coarse_dem_paths:
                     dem_completed = self.raw_dem.add_coarse_dem(
-                        coarse_dem_path,
-                        area_threshold=area_threshold,
-                        buffer_cells=self.get_instruction_general("lidar_buffer"),
-                        chunk_size=self.get_processing_instructions("chunk_size"),
+                        coarse_dem_path, area_threshold=area_threshold,
                     )
                     if dem_completed:
                         break
@@ -952,11 +946,7 @@ class RawLidarDemGenerator(BaseProcessor):
                     logging.info("Save temp raw DEM to netCDF")
                     temp_file = temp_folder / f"raw_dem_temp.nc"
                     self.save_dem(
-                        filename=temp_file,
-                        buffer_cells=self.get_instruction_general("lidar_buffer"),
-                        reload=True,
-                        add_novalues=True,
-                        chunk_size=self.get_processing_instructions("chunk_size"),
+                        filename=temp_file, reload=True, add_novalues=True
                     )
                     temp_file.rename(cached_file)  # replace temporay file
 

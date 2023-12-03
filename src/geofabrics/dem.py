@@ -1183,6 +1183,10 @@ class RawDem(LidarBase):
     lidar_interpolation_method
         The interpolation method to apply to LiDAR during downsampling/averaging.
         Options are: mean, median, IDW, max, min, STD.
+    buffer_cells - the number of empty cells to keep around LiDAR cells for
+        interpolation after the coarse DEM added to ensure a smooth boundary.
+    chunk_size
+        The chunk size in pixels for parallel/staged processing
     """
 
     def __init__(
@@ -1190,7 +1194,9 @@ class RawDem(LidarBase):
         catchment_geometry: geometry.CatchmentGeometry,
         lidar_interpolation_method: str,
         drop_offshore_lidar: dict,
-        elevation_range: list = None,
+        buffer_cells: int,
+        elevation_range: list | None = None,
+        chunk_size: int | None = None,
     ):
         """Setup base DEM to add future tiles too"""
 
@@ -1201,6 +1207,8 @@ class RawDem(LidarBase):
 
         self.drop_offshore_lidar = drop_offshore_lidar
         self.lidar_interpolation_method = lidar_interpolation_method
+        self.chunk_size = chunk_size
+        self.buffer_cells = buffer_cells
         self._dem = None
 
     @property
@@ -1217,15 +1225,9 @@ class RawDem(LidarBase):
 
         return self._dem
 
-    def _set_up_chunks(self, chunk_size: int) -> (list, list):
+    def _set_up_chunks(self) -> (list, list):
         """Define the chunks to break the catchment into when reading in and
         downsampling LiDAR.
-
-        Parameters
-        ----------
-
-        chunk_size
-            The size in pixels of each chunk.
         """
 
         bounds = self.catchment_geometry.catchment.geometry.bounds
@@ -1237,19 +1239,19 @@ class RawDem(LidarBase):
         miny = bounds.miny.min()
         maxy = bounds.maxy.max()
         n_chunks_x = int(
-            numpy.ceil((bounds.maxx.max() - minx) / (chunk_size * resolution))
+            numpy.ceil((bounds.maxx.max() - minx) / (self.chunk_size * resolution))
         )
         n_chunks_y = int(
-            numpy.ceil((maxy - bounds.miny.min()) / (chunk_size * resolution))
+            numpy.ceil((maxy - bounds.miny.min()) / (self.chunk_size * resolution))
         )
 
         # x coordinates rounded up to the nearest chunk - resolution aligned
         dim_x = []
         aligned_min_x = numpy.ceil(minx / resolution) * resolution
         for i in range(n_chunks_x):
-            chunk_min_x = aligned_min_x + i * chunk_size * resolution
+            chunk_min_x = aligned_min_x + i * self.chunk_size * resolution
             if i + 1 < n_chunks_x:
-                chunk_max_x = aligned_min_x + (i + 1) * chunk_size * resolution
+                chunk_max_x = aligned_min_x + (i + 1) * self.chunk_size * resolution
             else:
                 chunk_max_x = numpy.ceil(maxx / resolution) * resolution + resolution
             dim_x.append(
@@ -1264,9 +1266,9 @@ class RawDem(LidarBase):
         dim_y = []
         aligned_max_y = numpy.ceil(maxy / resolution) * resolution
         for i in range(n_chunks_y):
-            chunk_max_y = aligned_max_y - i * chunk_size * resolution
+            chunk_max_y = aligned_max_y - i * self.chunk_size * resolution
             if i + 1 < n_chunks_y:
-                chunk_min_y = aligned_max_y - (i + 1) * chunk_size * resolution
+                chunk_min_y = aligned_max_y - (i + 1) * self.chunk_size * resolution
             else:
                 chunk_min_y = numpy.ceil(miny / resolution) * resolution - resolution
             dim_y.append(
@@ -1293,7 +1295,6 @@ class RawDem(LidarBase):
     def add_lidar(
         self,
         lidar_datasets_info: dict,
-        chunk_size: int,
         lidar_classifications_to_keep: list,
         metadata: dict,
     ):
@@ -1305,8 +1306,6 @@ class RawDem(LidarBase):
         lidar_datasets_info
             A dictionary of information for each specified LIDAR dataset - For
             each this includes: a list of LAS files, CRS, and tile index file.
-        chunk_size
-            The chunk size in pixels for parallel/staged processing
         lidar_classifications_to_keep
             A list of LiDAR classifications to keep - '2' for ground, '9' for water.
             See https://www.asprs.org/wp-content/uploads/2010/12/LAS_1_4_r13.pdf for
@@ -1318,7 +1317,7 @@ class RawDem(LidarBase):
 
         # Check valid inputs
         self._check_valid_inputs(
-            lidar_datasets_info=lidar_datasets_info, chunk_size=chunk_size
+            lidar_datasets_info=lidar_datasets_info, chunk_size=self.chunk_size
         )
 
         # create dictionary defining raster options
@@ -1363,7 +1362,7 @@ class RawDem(LidarBase):
                 elevations=elevations,
                 metadata=metadata,
             )
-        elif chunk_size is None:
+        elif self.chunk_size is None:
             dem = self._add_lidar_no_chunking(
                 lidar_datasets_info=lidar_datasets_info,
                 options=raster_options,
@@ -1373,7 +1372,6 @@ class RawDem(LidarBase):
             dem = self._add_tiled_lidar_chunked(
                 lidar_datasets_info=lidar_datasets_info,
                 raster_options=raster_options,
-                chunk_size=chunk_size,
                 metadata=metadata,
             )
 
@@ -1425,15 +1423,16 @@ class RawDem(LidarBase):
     def _add_tiled_lidar_chunked(
         self,
         lidar_datasets_info: dict,
-        chunk_size: int,
         metadata: dict,
         raster_options: dict,
     ) -> xarray.Dataset:
         """Create a 'raw'' DEM from a set of tiled LiDAR files. Read these in over
         non-overlapping chunks and then combine"""
 
+        assert self.chunk_size is not None, "chunk_size must be defined"
+
         # get chunking information
-        chunked_dim_x, chunked_dim_y = self._set_up_chunks(chunk_size)
+        chunked_dim_x, chunked_dim_y = self._set_up_chunks()
         elevations = {}
 
         logging.info(f"Preparing {[len(chunked_dim_x), len(chunked_dim_y)]} chunks")
@@ -1526,6 +1525,8 @@ class RawDem(LidarBase):
         metadata: dict,
     ) -> xarray.Dataset:
         """Create a 'raw' DEM from a single LiDAR file with no chunking."""
+
+        assert self.chunk_size is None, "chunk_size should not be defined"
 
         # Note only support for a single LiDAR file without tile information
         lidar_name = list(lidar_datasets_info.keys())[0]
@@ -1735,13 +1736,7 @@ class RawDem(LidarBase):
 
         return dem
 
-    def add_coarse_dem(
-        self,
-        coarse_dem_path: pathlib.Path,
-        area_threshold: float,
-        buffer_cells: int,
-        chunk_size: int,
-    ):
+    def add_coarse_dem(self, coarse_dem_path: pathlib.Path, area_threshold: float):
         """Check if area requring infill, if so iterate through coarse DEMs
         adding missing detail.
 
@@ -1754,16 +1749,12 @@ class RawDem(LidarBase):
             coarse_dem_path - coarse DEM file paths to try add
             area_threshold - the ratio of area without LiDAR required to for
                 coarse DEMs to be used.
-            buffer_cells - the number of empty cells to keep around LiDAR cells
-                for interpolation after the coarse DEM added to ensure a smooth
-                boundary.
-
         """
         # Check if any areas (on land and foreshore) still without values - exit if none
         no_value_mask = self._dem.no_values_mask
         if not no_value_mask.any():
             logging.info(
-                f"No land areas greater than the cell buffer {buffer_cells}"
+                f"No land areas greater than the cell buffer {self.buffer_cells}"
                 " without LiDAR values. Ignoring all remaining coarse DEMs."
             )
             return True
@@ -1818,8 +1809,8 @@ class RawDem(LidarBase):
 
         # If chunking ensure efficient parallelisation
         if (
-            chunk_size is not None
-            and max(len(self._dem.x), len(self._dem.y)) > chunk_size
+            self.chunk_size is not None
+            and max(len(self._dem.x), len(self._dem.y)) > self.chunk_size
         ):
             # Note expect Xarray with dims (y, x) not dims (x, y) as is default
             # for rioxarray
@@ -1838,8 +1829,8 @@ class RawDem(LidarBase):
                 return interpolator(yx_array)
 
             # Explicitly redefine x & y
-            x = dask.array.from_array(self._dem.x.values, chunks=chunk_size)
-            y = dask.array.from_array(self._dem.y.values, chunks=chunk_size)
+            x = dask.array.from_array(self._dem.x.values, chunks=self.chunk_size)
+            y = dask.array.from_array(self._dem.y.values, chunks=self.chunk_size)
             coarse_dem_interp = dask.array.blockwise(
                 dask_interpolation, "ij", y, "i", x, "j"
             )
@@ -1902,13 +1893,13 @@ class RawDem(LidarBase):
 
         return False
 
-    def _load_dem(self, filename: pathlib.Path, chunk_size: int):
+    def _load_dem(self, filename: pathlib.Path):
         """Load in and replace the DEM with a previously cached version."""
         dem = rioxarray.rioxarray.open_rasterio(
             filename,
             masked=True,
             parse_coordinates=True,
-            chunks={"x": chunk_size, "y": chunk_size},
+            chunks={"x": self.chunk_size, "y": self.chunk_size},
         )
         dem = dem.squeeze("band", drop=True)
         self._write_netcdf_conventions_in_place(dem, self.catchment_geometry.crs)
@@ -1927,13 +1918,13 @@ class RawDem(LidarBase):
         if "z" in self._dem.keys():
             self._dem["z"] = self._dem.z.astype(geometry.RASTER_TYPE)
 
-    def _extract_no_values(self, buffer_cells):
+    def _extract_no_values(self):
         """Generate a no values mask from DEM"""
 
         if self.catchment_geometry.land_and_foreshore.area.sum() > 0:
             no_values_mask = (
                 self._dem.z.rolling(
-                    dim={"x": buffer_cells * 2 + 1, "y": buffer_cells * 2 + 1},
+                    dim={"x": self.buffer_cells * 2 + 1, "y": self.buffer_cells * 2 + 1},
                     min_periods=1,
                     center=True,
                 )
@@ -1957,24 +1948,20 @@ class RawDem(LidarBase):
         self,
         filename: pathlib.Path,
         add_novalues: bool = False,
-        buffer_cells: int | None = None,
         reload: bool = False,
-        chunk_size: int | None = None
     ):
         """Save the DEM to a netCDF file and optionnally reload it
 
         :param filename: .nc file where to save the DEM
         :param add_novalues: include no_values_mask of bool values
-        :param buffer_cells: TODO document, used when adding no values mask
         :param reload: reload DEM from the saved file
-        :param chunk_size: chunk size used when reloading
         """
 
         # Ensure DEM is not modified if adding a mask
         dem = self._dem.copy(deep=False)
 
         if add_novalues:
-            dem["no_values_mask"] = self._extract_no_values(buffer_cells)
+            dem["no_values_mask"] = self._extract_no_values()
             dem.no_values_mask.rio.write_crs(
                 self.catchment_geometry.crs["horizontal"], inplace=True
             )
@@ -1993,9 +1980,7 @@ class RawDem(LidarBase):
             raise caught_exception
 
         if reload:
-            # TODO deduce chunksize from self._dem?
-            # TODO add error if chunk_size is None?
-            self._load_dem(filename=filename, chunk_size=chunk_size)
+            self._load_dem(filename=filename)
 
 
 class RoughnessDem(LidarBase):
