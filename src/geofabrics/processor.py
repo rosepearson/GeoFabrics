@@ -952,11 +952,8 @@ class RawLidarDemGenerator(BaseProcessor):
                     if dem_completed:
                         break
 
-                    # Save a cached copy of DEM to temporary memory cache
-                    logging.info(
-                        "In dem.add_coarse_dems - write out temp raw DEM to netCDF"
-                    )
-                    temp_file = temp_folder / f"raw_dem_{coarse_dem_path.stem}.nc"
+                    logging.info("Save temp raw DEM to netCDF")
+                    temp_file = temp_folder / f"raw_dem_temp.nc"
                     self.save_dem(
                         filename=temp_file,
                         buffer_cells=self.get_instruction_general("lidar_buffer"),
@@ -964,12 +961,7 @@ class RawLidarDemGenerator(BaseProcessor):
                         add_novalues=True,
                         chunk_size=self.get_processing_instructions("chunk_size"),
                     )
-                    logging.info(
-                        "In dem.add_coarse_dems - remove previous cached file "
-                        f"{cached_file}"
-                    )
-                    cached_file.unlink()
-                    cached_file = temp_file
+                    temp_file.rename(cached_file)  # replace temporay file
 
             # compute and save raw DEM
             logging.info("In processor.DemGenerator - write out the raw DEM to netCDF")
