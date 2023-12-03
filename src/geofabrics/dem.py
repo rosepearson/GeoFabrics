@@ -1375,48 +1375,45 @@ class RawDem(LidarBase):
                 metadata=metadata,
             )
 
-        # Check if the ocean is clipped or not (must be in all datasets)
-        if numpy.array([value for value in self.drop_offshore_lidar.values()]).all():
-            clip_region = self.catchment_geometry.land_and_foreshore
-        else:
-            clip_region = self.catchment_geometry.catchment  # TODO redundant with next .clip?
-
         # Clip DEM to Catchment and ensure NaN outside region to rasterise
         dem = dem.rio.clip(self.catchment_geometry.catchment.geometry, drop=True)
-        if clip_region.area.sum() > 0:  # If area of 0 all will be NaN anyway
-            dem = dem.rio.clip(clip_region.geometry, drop=False)
+
+        # Check if the ocean is clipped or not (must be in all datasets)
+        drop_offshore_lidar = all(self.drop_offshore_lidar.values())
+        land_and_foreshore = self.catchment_geometry.land_and_foreshore
+        if drop_offshore_lidar and land_and_foreshore.area.sum() > 0:
+            # If area of 0 all will be NaN anyway (TODO check what it means)
+            dem = dem.rio.clip(land_and_foreshore.geometry, drop=False)
 
         # If drop offshore LiDAR ensure the foreshore values are 0 or negative
-        if (
-            self.drop_offshore_lidar
-            and self.catchment_geometry.foreshore.area.sum() > 0
-        ):
-            buffered_foreshore = geopandas.GeoDataFrame(
-                geometry=self.catchment_geometry.foreshore.buffer(
-                    self.catchment_geometry.resolution * numpy.sqrt(2)
+        foreshore = self.catchment_geometry.foreshore
+        if self.drop_offshore_lidar and foreshore.area.sum() > 0:
+
+            buffer_radius = self.catchment_geometry.resolution * numpy.sqrt(2)
+            buffered_foreshore = (
+                foreshore.buffer(buffer_radius)
+                .to_frame("geometry")
+                .overlay(
+                    self.catchment_geometry.full_land,
+                    how="difference",
+                    keep_geom_type=True,
                 )
             )
-            buffered_foreshore = buffered_foreshore.overlay(
-                self.catchment_geometry.full_land,
-                how="difference",
-                keep_geom_type=True,
+
+            # Mask to delineate DEM outside of buffered foreshore or below 0
+            mask = (
+                dem.z.rio.clip(buffered_foreshore.geometry, drop=False).isnull()
+                | (dem.z <= 0)
             )
-            # Clip DEM to buffered foreshore
-            mask = dem.z.rio.clip(buffered_foreshore.geometry, drop=False).notnull()
 
             # Set any positive LiDAR foreshore points to zero
             dem["data_source"] = dem.data_source.where(
-                ~(mask & (dem.z > 0)),
-                self.SOURCE_CLASSIFICATION["ocean bathymetry"],
+                mask, self.SOURCE_CLASSIFICATION["ocean bathymetry"]
             )
             dem["lidar_source"] = dem.lidar_source.where(
-                ~(mask & (dem.z > 0)),
-                self.SOURCE_CLASSIFICATION["no data"],
+                mask, self.SOURCE_CLASSIFICATION["no data"]
             )
-            dem["z"] = dem.z.where(
-                ~(mask & (dem.z > 0)),
-                0,
-            )
+            dem["z"] = dem.z.where(mask, 0)
 
         self._dem = dem
 
