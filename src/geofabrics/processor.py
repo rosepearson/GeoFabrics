@@ -947,9 +947,12 @@ class RawLidarDemGenerator(BaseProcessor):
                     self.raw_dem.add_coarse_dem(coarse_dem_path, area_threshold)
 
                     logging.info("Save temp raw DEM to netCDF")
-                    temp_file = temp_folder / f"raw_dem_temp.nc"
+                    temp_file = temp_folder / f"raw_dem_{coarse_dem_path.stem}.nc"
                     self.save_dem(temp_file, reload=True, add_novalues=True)
-                    temp_file.rename(cached_file)  # replace temporary file
+
+                    # Remove previous cached file and replace with new one
+                    cached_file.unlink()
+                    cached_file = temp_file
 
             # compute and save raw DEM
             logging.info("In processor.DemGenerator - write out the raw DEM to netCDF")
