@@ -1465,8 +1465,12 @@ class RawDem(LidarBase):
                 metadata=metadata,
             )
             # Ensure values set to no data
-            dem["data_source"] = dem.data_source.where(False, self.SOURCE_CLASSIFICATION["no data"])
-            dem["lidar_source"] = dem.lidar_source.where(False, self.SOURCE_CLASSIFICATION["no data"])
+            dem["data_source"] = dem.data_source.where(
+                False, self.SOURCE_CLASSIFICATION["no data"]
+            )
+            dem["lidar_source"] = dem.lidar_source.where(
+                False, self.SOURCE_CLASSIFICATION["no data"]
+            )
             dem["z"] = dem.z.where(False, numpy.nan)
             self._write_netcdf_conventions_in_place(dem, self.catchment_geometry.crs)
         elif chunk_size is None:
@@ -2174,8 +2178,10 @@ class RoughnessDem(LidarBase):
             zo.rio.write_nodata(numpy.nan, encoded=True, inplace=True)
             self._dem["zo"] = zo
             # ensure the expected CF conventions are followed
-            self._write_netcdf_conventions_in_place(self._dem, self.catchment_geometry.crs)
-            
+            self._write_netcdf_conventions_in_place(
+                self._dem, self.catchment_geometry.crs
+            )
+
         elif chunk_size is None:  # If one file it's ok if there is no tile_index
             self._dem = self._add_lidar_no_chunking(
                 lidar_datasets_info=lidar_datasets_info,
