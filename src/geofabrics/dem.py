@@ -1918,7 +1918,8 @@ class RawDem(LidarBase):
             ) as caught_exception:
                 logging.warning(
                     "NoDataInDounds in RawDem.add_coarse_dems. Will skip."
-                    f"{caught_exception}.")
+                    f"{caught_exception}."
+                )
                 break
             coarse_dem_bounds = coarse_dem.rio.bounds()
             coarse_dem_bounds = geopandas.GeoDataFrame(
