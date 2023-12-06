@@ -1905,12 +1905,21 @@ class RawDem(LidarBase):
                 abs(coarse_dem_resolution[0]), abs(coarse_dem_resolution[1])
             )
             # Clip to foreground and land
-            coarse_dem = coarse_dem.rio.clip(
-                self.catchment_geometry.land_and_foreshore.buffer(
-                    coarse_dem_resolution
-                ).geometry,
-                drop=True,
-            )
+            try:
+                coarse_dem = coarse_dem.rio.clip(
+                    self.catchment_geometry.land_and_foreshore.buffer(
+                        coarse_dem_resolution
+                    ).geometry,
+                    drop=True,
+                )
+            except (
+                rioxarray.exceptions.NoDataInBounds,
+                ValueError,
+            ) as caught_exception:
+                logging.warning(
+                    "NoDataInDounds in RawDem.add_coarse_dems. Will skip."
+                    f"{caught_exception}.")
+                break
             coarse_dem_bounds = coarse_dem.rio.bounds()
             coarse_dem_bounds = geopandas.GeoDataFrame(
                 {
