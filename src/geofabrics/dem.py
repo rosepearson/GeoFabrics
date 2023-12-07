@@ -1170,10 +1170,13 @@ class LidarBase(DemBase):
 def clip_mask(arr, geometry):
     mask = (
         xarray.ones_like(arr, dtype=numpy.float16)
+        .compute()
         .rio
         .clip(geometry, drop=False)
         .notnull()
     )
+    if arr.chunks is not None:
+        mask = mask.chunk(arr.chunks)
     return mask
 
 
