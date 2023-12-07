@@ -1167,16 +1167,13 @@ class LidarBase(DemBase):
         )
 
 
-def clip_mask(arr, geometry, chunk_size):
+def clip_mask(arr, geometry):
     mask = (
         xarray.ones_like(arr, dtype=numpy.float16)
-        .compute()
         .rio
         .clip(geometry, drop=False)
         .notnull()
     )
-    if chunk_size is not None:
-        mask = mask.chunk(chunk_size)
     return mask
 
 
@@ -1389,14 +1386,16 @@ class RawDem(LidarBase):
             )
 
         # Clip DEM to Catchment and ensure NaN outside region to rasterise
-        dem = dem.rio.clip(self.catchment_geometry.catchment.geometry, drop=True)
+#        catchment_bbox = self.catchment_geometry.catchment.bounds
+#        dem = dem.rio.clip(self.catchment_geometry.catchment.geometry, drop=True)
 
         # Check if the ocean is clipped or not (must be in all datasets)
         drop_offshore_lidar = all(self.drop_offshore_lidar.values())
         land_and_foreshore = self.catchment_geometry.land_and_foreshore
         if drop_offshore_lidar and land_and_foreshore.area.sum() > 0:
-            # If area of 0 all will be NaN anyway (TODO check what it means)
-            dem = dem.rio.clip(land_and_foreshore.geometry, drop=False)
+            # If area of 0 size, all will be NaN anyway
+            mask = clip_mask(dem.z, land_and_foreshore.geometry)
+            dem = dem.where(mask)
 
         # If drop offshore LiDAR ensure the foreshore values are 0 or negative
         foreshore = self.catchment_geometry.foreshore
@@ -1414,12 +1413,10 @@ class RawDem(LidarBase):
             )
 
             # Mask to delineate DEM outside of buffered foreshore or below 0
-            mask = ~clip_mask(dem.z, buffered_foreshore.geometry, self.chunk_size)
+            mask =  (dem.z <= 0) | ~clip_mask(dem.z, buffered_foreshore.geometry)
 
             # Set any positive LiDAR foreshore points to zero
-            dem["z"] = dem.z.where(mask | (dem.z <= 0), 0)
-
-            mask = mask | (dem.z <= 0)  # if using Dask, ensure z is processed first
+            dem["z"] = dem.z.where(mask , 0)
 
             dem["data_source"] = dem.data_source.where(
                 mask, self.SOURCE_CLASSIFICATION["ocean bathymetry"]
@@ -1936,9 +1933,7 @@ class RawDem(LidarBase):
                 .isnull()
             )
             no_values_mask &= clip_mask(
-                self._dem.z,
-                self.catchment_geometry.land_and_foreshore.geometry,
-                self.chunk_size
+                self._dem.z, self.catchment_geometry.land_and_foreshore.geometry
             )
         else:
             no_values_mask = xarray.zeros_like(dem.z, dtype=bool)
