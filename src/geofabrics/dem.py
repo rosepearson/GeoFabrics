@@ -1167,7 +1167,21 @@ class LidarBase(DemBase):
         )
 
 
-def clip_mask(arr, geometry):
+def chunk_mask(mask, chunk_size):
+    arrs = []
+    for i in range(0, mask.shape[0], chunk_size):
+        sub_arrs = []
+        for j in range(0, mask.shape[1], chunk_size):
+            chunk = dask.array.from_array(
+                mask[i : i + chunk_size, j : j + chunk_size].copy()
+            )
+            sub_arrs.append(chunk)
+        arrs.append(sub_arrs)
+    mask = dask.array.block(arrs)
+    return mask
+
+
+def clip_mask(arr, geometry, chunk_size):
     mask = (
         xarray.ones_like(arr, dtype=numpy.float16)
         .compute()
@@ -1175,8 +1189,8 @@ def clip_mask(arr, geometry):
         .clip(geometry, drop=False)
         .notnull()
     )
-    if arr.chunks is not None:
-        mask = mask.chunk(arr.chunks)
+    if chunk_size is not None:
+        mask = chunk_mask(mask, chunk_size)
     return mask
 
 
@@ -1397,7 +1411,7 @@ class RawDem(LidarBase):
         land_and_foreshore = self.catchment_geometry.land_and_foreshore
         if drop_offshore_lidar and land_and_foreshore.area.sum() > 0:
             # If area of 0 size, all will be NaN anyway
-            mask = clip_mask(dem.z, land_and_foreshore.geometry)
+            mask = clip_mask(dem.z, land_and_foreshore.geometry, self.chunk_size)
             dem = dem.where(mask)
 
         # If drop offshore LiDAR ensure the foreshore values are 0 or negative
@@ -1416,7 +1430,10 @@ class RawDem(LidarBase):
             )
 
             # Mask to delineate DEM outside of buffered foreshore or below 0
-            mask =  (dem.z <= 0) | ~clip_mask(dem.z, buffered_foreshore.geometry)
+            mask =  (
+                (dem.z <= 0)
+                | ~clip_mask(dem.z, buffered_foreshore.geometry, self.chunk_size)
+            )
 
             # Set any positive LiDAR foreshore points to zero
             dem["z"] = dem.z.where(mask , 0)
@@ -1936,7 +1953,9 @@ class RawDem(LidarBase):
                 .isnull()
             )
             no_values_mask &= clip_mask(
-                self._dem.z, self.catchment_geometry.land_and_foreshore.geometry
+                self._dem.z,
+                self.catchment_geometry.land_and_foreshore.geometry,
+                self.chunk_size
             )
         else:
             no_values_mask = xarray.zeros_like(dem.z, dtype=bool)
