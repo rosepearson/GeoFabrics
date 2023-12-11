@@ -1808,12 +1808,11 @@ class RawDem(LidarBase):
         )
 
         # Add the coarse DEM data where there's no LiDAR updating the extents
-        no_values_mask = self.no_values_mask
-        no_values_mask &= (
-            xarray.ones_like(no_values_mask)
-            .rio.clip(coarse_dem_bounds.geometry, drop=False)
-            .notnull()
-        )  # Awkward as clip of a bool xarray doesn't work as expected
+        no_values_mask = (
+            self.no_values_mask
+            & clip_mask(self._dem.z, coarse_dem_bounds.geometry, self.chunk_size)
+        )
+        no_values_mask.load()
 
         # Early return if there is nowhere to add coarse DEM data
         if not no_values_mask.any():
@@ -1875,35 +1874,34 @@ class RawDem(LidarBase):
         )
 
         # Ensure Coarse DEM values along the foreshore are less than zero
-        if self.catchment_geometry.foreshore.area.sum() > 0:
-            buffered_foreshore = geopandas.GeoDataFrame(
-                geometry=self.catchment_geometry.foreshore.buffer(
-                    self.catchment_geometry.resolution * numpy.sqrt(2)
-                )
-            )
-            buffered_foreshore = buffered_foreshore.overlay(
-                self.catchment_geometry.full_land,
-                how="difference",
-                keep_geom_type=True,
-            )
-            # Clip DEM to buffered foreshore
-            mask = self._dem.z.rio.clip(
-                buffered_foreshore.geometry, drop=False
-            ).notnull()
-            mask = (
-                mask
-                & (self._dem.z > 0)
-                & (
-                    self._dem.data_source
-                    == self.SOURCE_CLASSIFICATION["coarse DEM"]
+        foreshore = self.catchment_geometry.foreshore
+        if foreshore.area.sum() > 0:  # TODO why not self.drop_offshore_lidar?
+
+            buffer_radius = self.catchment_geometry.resolution * numpy.sqrt(2)
+            buffered_foreshore = (
+                foreshore.buffer(buffer_radius)
+                .to_frame("geometry")
+                .overlay(
+                    self.catchment_geometry.full_land,
+                    how="difference",
+                    keep_geom_type=True,
                 )
             )
 
+            # Clip DEM to buffered foreshore
+            notcoarse_dem_mask = (
+                self._dem.data_source != self.SOURCE_CLASSIFICATION["coarse DEM"]
+            )
+            foreshore_mask = clip_mask(
+                self._dem.z, buffered_foreshore.geometry, self.chunk_size
+            )
+            mask =  (dem.z <= 0) | ~foreshore_mask | notcoarse_dem_mask
+
             # Set any positive LiDAR foreshore points to zero
             self._dem["data_source"] = self._dem.data_source.where(
-                ~mask, self.SOURCE_CLASSIFICATION["ocean bathymetry"]
+                mask, self.SOURCE_CLASSIFICATION["ocean bathymetry"]
             )
-            self._dem["z"] = self._dem.z.where(~mask, 0)
+            self._dem["z"] = self._dem.z.where(mask, 0)
 
     def _load_dem(self, filename: pathlib.Path):
         """Load in and replace the DEM with a previously cached version."""
