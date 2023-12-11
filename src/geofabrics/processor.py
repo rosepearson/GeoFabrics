@@ -924,7 +924,7 @@ class RawLidarDemGenerator(BaseProcessor):
             # Save a cached copy of DEM to temporary memory cache
             logging.info("Save temp raw DEM to netCDF")
             cached_file = temp_folder / "raw_lidar.nc"
-            self.raw_dem.save_dem(cached_file, add_novalues=True, reload=True)
+            self.raw_dem.save_dem(cached_file, reload=True)
 
             # Add a coarse DEM if significant area without LiDAR and a coarse DEM
             if self.check_vector_or_raster(key="coarse_dems", api_type="raster"):
@@ -948,7 +948,7 @@ class RawLidarDemGenerator(BaseProcessor):
 
                     logging.info("Save temp raw DEM to netCDF")
                     temp_file = temp_folder / f"raw_dem_{coarse_dem_path.stem}.nc"
-                    self.save_dem(temp_file, reload=True, add_novalues=True)
+                    self.save_dem(temp_file, reload=True)
 
                     # Remove previous cached file and replace with new one
                     cached_file.unlink()

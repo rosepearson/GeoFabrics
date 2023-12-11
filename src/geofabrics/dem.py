@@ -1240,15 +1240,10 @@ class RawDem(LidarBase):
 
     @property
     def dem(self):
-        """Return the combined DEM from tiles with the optional no_values_mask
-        layer dropped"""
+        """Return the combined DEM from tiles"""
 
         # Ensure positively increasing indices as required by some programs
         self._dem = self._ensure_positive_indexing(self._dem)
-
-        # Ensure the no_values_mask is not included in the external facing DEM
-        if "no_values_mask" in self._dem:
-            self._dem = self._dem.drop_vars("no_values_mask")
 
         return self._dem
 
@@ -1922,8 +1917,6 @@ class RawDem(LidarBase):
         self._write_netcdf_conventions_in_place(dem, self.catchment_geometry.crs)
         self._dem = dem
 
-        if "no_values_mask" in self._dem.keys():
-            self._dem["no_values_mask"] = self._dem.no_values_mask.astype(bool)
         if "data_source" in self._dem.keys():
             self._dem["data_source"] = self._dem.data_source.astype(
                 geometry.RASTER_TYPE
@@ -1938,9 +1931,6 @@ class RawDem(LidarBase):
     @property
     def no_values_mask(self):
         """No values mask from DEM"""
-
-        if "no_values_mask" in self._dem:
-            return self._dem.no_values_mask
 
         if self.catchment_geometry.land_and_foreshore.area.sum() > 0:
             no_values_mask = (
@@ -1962,30 +1952,16 @@ class RawDem(LidarBase):
 
         return no_values_mask
 
-    def save_dem(
-        self,
-        filename: pathlib.Path,
-        add_novalues: bool = False,
-        reload: bool = False,
-    ):
+    def save_dem(self, filename: pathlib.Path, reload: bool = False):
         """Save the DEM to a netCDF file and optionnally reload it
 
         :param filename: .nc file where to save the DEM
-        :param add_novalues: include no_values_mask of bool values
         :param reload: reload DEM from the saved file
         """
 
-        dem = self._dem
-
-        if add_novalues:
-            dem = dem.assign(no_values_mask=self.no_values_mask)
-            dem.no_values_mask.rio.write_crs(
-                self.catchment_geometry.crs["horizontal"], inplace=True
-            )
-
         try:
-            dem.to_netcdf(filename, format="NETCDF4", engine="netcdf4")
-            dem.close()
+            self._dem.to_netcdf(filename, format="NETCDF4", engine="netcdf4")
+            self._dem.close()
 
         except (Exception, KeyboardInterrupt) as caught_exception:
             pathlib.Path(filename).unlink()
