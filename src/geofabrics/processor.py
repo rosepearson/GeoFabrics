@@ -876,11 +876,8 @@ class RawLidarDemGenerator(BaseProcessor):
             )
 
         # Create folder for caching raw DEM files during DEM generation
-        temp_folder = (
-            self.get_instruction_path("subfolder")
-            / "temp"
-            / f"{self.get_resolution()}m_results"
-        )
+        subfolder = self.get_instruction_path("subfolder")
+        temp_folder = subfolder / "temp" / f"{self.get_resolution()}m_results"
         logging.info(f"Create folder {temp_folder} for temporary files")
         if temp_folder.exists():
             shutil.rmtree(temp_folder)
@@ -962,10 +959,7 @@ class RawLidarDemGenerator(BaseProcessor):
 
         if self.debug:
             # Record the parameter used during execution - append to existing
-            with open(
-                self.get_instruction_path("subfolder") / "dem_instructions.json",
-                "a",
-            ) as file_pointer:
+            with open(subfolder / "dem_instructions.json", "a") as file_pointer:
                 json.dump(self.instructions, file_pointer)
 
 
