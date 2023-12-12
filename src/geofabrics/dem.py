@@ -1398,8 +1398,9 @@ class RawDem(LidarBase):
             )
 
         # Clip DEM to Catchment and ensure NaN outside region to rasterise
-#        catchment_bbox = self.catchment_geometry.catchment.bounds
-#        dem = dem.rio.clip(self.catchment_geometry.catchment.geometry, drop=True)
+        catchment = self.catchment_geometry.catchment
+        dem = dem.rio.clip_box(**catchment.bounds.iloc[0])
+        dem = dem.where(clip_mask(dem.z, catchment.geometry, self.chunk_size))
 
         # Check if the ocean is clipped or not (must be in all datasets)
         drop_offshore_lidar = all(self.drop_offshore_lidar.values())
