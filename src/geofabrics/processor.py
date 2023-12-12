@@ -896,6 +896,7 @@ class RawLidarDemGenerator(BaseProcessor):
         )
 
         # Setup Dask cluster and client - LAZY SAVE LIDAR DEM
+        dask.config.set({"distributed.comm.timeouts.connect": "120s"})
         cluster_kwargs = {
             "n_workers": self.get_processing_instructions("number_of_cores"),
             "threads_per_worker": 1,
