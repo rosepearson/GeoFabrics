@@ -1426,13 +1426,13 @@ class RawDem(LidarBase):
             )
 
             # Mask to delineate DEM outside of buffered foreshore or below 0
-            mask =  (
+            mask = (
                 (dem.z <= 0)
                 | ~clip_mask(dem.z, buffered_foreshore.geometry, self.chunk_size)
             )
 
             # Set any positive LiDAR foreshore points to zero
-            dem["z"] = dem.z.where(mask , 0)
+            dem["z"] = dem.z.where(mask, 0)
 
             dem["data_source"] = dem.data_source.where(
                 mask, self.SOURCE_CLASSIFICATION["ocean bathymetry"]
@@ -1896,7 +1896,7 @@ class RawDem(LidarBase):
             foreshore_mask = clip_mask(
                 self._dem.z, buffered_foreshore.geometry, self.chunk_size
             )
-            mask =  (dem.z <= 0) | ~foreshore_mask | notcoarse_dem_mask
+            mask = (self._dem.z <= 0) | ~foreshore_mask | notcoarse_dem_mask
 
             # Set any positive LiDAR foreshore points to zero
             self._dem["data_source"] = self._dem.data_source.where(
@@ -1934,7 +1934,10 @@ class RawDem(LidarBase):
         if self.catchment_geometry.land_and_foreshore.area.sum() > 0:
             no_values_mask = (
                 self._dem.z.rolling(
-                    dim={"x": self.buffer_cells * 2 + 1, "y": self.buffer_cells * 2 + 1},
+                    dim={
+                        "x": self.buffer_cells * 2 + 1,
+                        "y": self.buffer_cells * 2 + 1
+                    },
                     min_periods=1,
                     center=True,
                 )
@@ -1947,7 +1950,7 @@ class RawDem(LidarBase):
                 self.chunk_size
             )
         else:
-            no_values_mask = xarray.zeros_like(dem.z, dtype=bool)
+            no_values_mask = xarray.zeros_like(self._dem.z, dtype=bool)
 
         return no_values_mask
 
