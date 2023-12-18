@@ -1190,7 +1190,7 @@ def clip_mask(arr, geometry, chunk_size):
         .notnull()
     )
     if chunk_size is not None:
-        mask = chunk_mask(mask, chunk_size)
+        mask.data = chunk_mask(mask.data, chunk_size)
     return mask
 
 
