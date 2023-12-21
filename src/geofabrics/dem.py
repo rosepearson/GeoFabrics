@@ -1960,6 +1960,10 @@ class RawDem(LidarBase):
         :param filename: .nc file where to save the DEM
         :param reload: reload DEM from the saved file
         """
+        assert (
+            not any(arr.rio.crs is None for arr in self.dem.data_vars.values()),
+            "all DataArray variables of a xarray.Dataset must have a CRS"
+        )
 
         try:
             self._dem.to_netcdf(filename, format="NETCDF4", engine="netcdf4")
