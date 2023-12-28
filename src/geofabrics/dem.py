@@ -1426,9 +1426,9 @@ class RawDem(LidarBase):
             )
 
             # Mask to delineate DEM outside of buffered foreshore or below 0
-            mask = (
-                (dem.z <= 0)
-                | ~clip_mask(dem.z, buffered_foreshore.geometry, self.chunk_size)
+            mask = ~(
+                (dem.z > 0)
+                & clip_mask(dem.z, buffered_foreshore.geometry, self.chunk_size)
             )
 
             # Set any positive LiDAR foreshore points to zero
