@@ -1760,11 +1760,11 @@ class RawDem(LidarBase):
         return dem
 
     def add_coarse_dem(self, coarse_dem_path: pathlib.Path, area_threshold: float):
-        """Check if area requring infill, if so iterate through coarse DEMs
+        """Check if gaps in DEM on land, if so iterate through coarse DEMs
         adding missing detail.
 
-        Currently doesn't use chunking - this may be required if a large area is
-        covered by the coarse DEM.
+        Note the Coarse DEM values are only applied on land and not
+        in the ocean.
 
         Parameters
         ----------
@@ -1785,12 +1785,22 @@ class RawDem(LidarBase):
         )
 
         # Clip to foreground and land
-        coarse_dem = coarse_dem.rio.clip(
-            self.catchment_geometry.land_and_foreshore.buffer(
-                coarse_dem_resolution
-            ).geometry,
-            drop=True,
-        )
+        try:  # Use try catch as otherwise crash if coarse DEM does not overlap
+            coarse_dem = coarse_dem.rio.clip(
+                self.catchment_geometry.land_and_foreshore.buffer(
+                    coarse_dem_resolution
+                ).geometry,
+                drop=True,
+            )
+        except (  # If exception skip and proceed to the next coarse DEM
+                rioxarray.exceptions.NoDataInBounds,
+                ValueError,
+            ) as caught_exception:
+                logging.warning(
+                    "NoDataInDounds in RawDem.add_coarse_dems. Will skip."
+                    f"{caught_exception}."
+                )
+                return
         coarse_dem_bounds = coarse_dem.rio.bounds()
         coarse_dem_bounds = geopandas.GeoDataFrame(
             {
@@ -1876,7 +1886,7 @@ class RawDem(LidarBase):
 
         # Ensure Coarse DEM values along the foreshore are less than zero
         foreshore = self.catchment_geometry.foreshore
-        if foreshore.area.sum() > 0:  # TODO why not self.drop_offshore_lidar?
+        if foreshore.area.sum() > 0:
 
             buffer_radius = self.catchment_geometry.resolution * numpy.sqrt(2)
             buffered_foreshore = (
@@ -1898,7 +1908,7 @@ class RawDem(LidarBase):
             )
             mask = (self._dem.z <= 0) | ~foreshore_mask | notcoarse_dem_mask
 
-            # Set any positive LiDAR foreshore points to zero
+            # Set any positive Coarse DEM foreshore points to zero
             self._dem["data_source"] = self._dem.data_source.where(
                 mask, self.SOURCE_CLASSIFICATION["ocean bathymetry"]
             )
@@ -1929,7 +1939,7 @@ class RawDem(LidarBase):
 
     @property
     def no_values_mask(self):
-        """No values mask from DEM"""
+        """No values mask from DEM within land and foreshore region"""
 
         if self.catchment_geometry.land_and_foreshore.area.sum() > 0:
             no_values_mask = (
