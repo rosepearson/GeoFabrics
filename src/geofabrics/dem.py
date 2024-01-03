@@ -1900,13 +1900,13 @@ class RawDem(LidarBase):
             )
 
             # Clip DEM to buffered foreshore
-            notcoarse_dem_mask = (
-                self._dem.data_source != self.SOURCE_CLASSIFICATION["coarse DEM"]
+            coarse_dem_mask = (
+                self._dem.data_source == self.SOURCE_CLASSIFICATION["coarse DEM"]
             )
             foreshore_mask = clip_mask(
                 self._dem.z, buffered_foreshore.geometry, self.chunk_size
             )
-            mask = (self._dem.z <= 0) | ~foreshore_mask | notcoarse_dem_mask
+            mask = ~((self._dem.z > 0) & foreshore_mask & coarse_dem_mask)
 
             # Set any positive Coarse DEM foreshore points to zero
             self._dem["data_source"] = self._dem.data_source.where(
