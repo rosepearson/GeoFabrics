@@ -1166,6 +1166,104 @@ class LidarBase(DemBase):
             "_add_lidar_no_chunking must be instantiated in the " "child class"
         )
 
+    def _load_dem(self, filename: pathlib.Path, chunk_size: int):
+        """Load in and replace the DEM with a previously cached version."""
+        dem = rioxarray.rioxarray.open_rasterio(
+            filename,
+            masked=True,
+            parse_coordinates=True,
+            chunks={"x": chunk_size, "y": chunk_size},
+        )
+        dem = dem.squeeze("band", drop=True)
+        self._write_netcdf_conventions_in_place(dem, self.catchment_geometry.crs)
+        self._dem = dem
+
+        if "no_values_mask" in self._dem.keys():
+            self._dem["no_values_mask"] = self._dem.no_values_mask.astype(bool)
+        if "data_source" in self._dem.keys():
+            self._dem["data_source"] = self._dem.data_source.astype(
+                geometry.RASTER_TYPE
+            )
+        if "lidar_source" in self._dem.keys():
+            self._dem["lidar_source"] = self._dem.lidar_source.astype(
+                geometry.RASTER_TYPE
+            )
+        if "z" in self._dem.keys():
+            self._dem["z"] = self._dem.z.astype(geometry.RASTER_TYPE)
+
+    def save_dem(
+        self,
+        filename: pathlib.Path,
+        dem: xarray.Dataset,
+    ):
+        """Save the DEM to a netCDF file."""
+
+        # Save the file
+        try:
+            dem.to_netcdf(
+                filename,
+                format="NETCDF4",
+                engine="netcdf4",
+            )
+            # Close the DEM
+            dem.close()
+        except (Exception, KeyboardInterrupt) as caught_exception:
+            pathlib.Path(filename).unlink()
+            logging.info(
+                f"Caught error {caught_exception} and deleting"
+                "partially created netCDF output "
+                f"{filename} before re-raising error."
+            )
+            raise caught_exception
+
+    def _save_and_load_dem(
+        self,
+        filename: pathlib.Path,
+        chunk_size: int,
+        no_values_mask: bool,
+        buffer_cells: int = None,
+    ):
+        """Update the saved file cache for the DEM as a netCDF file. The bool
+        no_data_layer may optionally be included."""
+
+        # Logging update
+        logging.info(
+            "In LidarBase._save_and_load_dem saving NetCDF file to "
+            f"{filename} with no_values_mask={no_values_mask}"
+        )
+        # Get the DEM from the property call
+        dem = self._dem
+        # Create mask if specified
+        if no_values_mask:
+            if self.catchment_geometry.land_and_foreshore.area.sum() > 0:
+                no_value_mask = (
+                    dem.z.rolling(
+                        dim={"x": buffer_cells * 2 + 1, "y": buffer_cells * 2 + 1},
+                        min_periods=1,
+                        center=True,
+                    )
+                    .count()
+                    .isnull()
+                )
+                no_value_mask &= (
+                    xarray.ones_like(self._dem.z)
+                    .rio.clip(
+                        self.catchment_geometry.land_and_foreshore.geometry, drop=False
+                    )
+                    .notnull()
+                )  # Awkward as clip of a bool xarray doesn't work as expected
+            else:
+                no_value_mask = xarray.zeros_like(self._dem.z)
+            dem["no_values_mask"] = no_value_mask
+            dem.no_values_mask.rio.write_crs(
+                self.catchment_geometry.crs["horizontal"], inplace=True
+            )
+
+        # Save the DEM with the no_values_layer
+        self.save_dem(filename=filename, dem=dem)
+        # Load in the temporarily saved DEM
+        self._load_dem(filename=filename, chunk_size=chunk_size)
+
 
 def chunk_mask(mask, chunk_size):
     arrs = []
@@ -2018,6 +2116,7 @@ class RoughnessDem(LidarBase):
         self,
         catchment_geometry: geometry.CatchmentGeometry,
         hydrological_dem_path: typing.Union[str, pathlib.Path],
+        temp_folder: pathlib.Path,
         interpolation_method: str,
         default_values: dict,
         drop_offshore_lidar: dict,
@@ -2056,6 +2155,7 @@ class RoughnessDem(LidarBase):
             self.catchment_geometry.catchment.geometry, drop=True
         )
 
+        self.temp_folder = temp_folder
         self.interpolation_method = interpolation_method
         self.default_values = default_values
         self.drop_offshore_lidar = drop_offshore_lidar
@@ -2118,7 +2218,21 @@ class RoughnessDem(LidarBase):
         }
 
         # Calculate roughness from LiDAR
-        if chunk_size is None:  # If one file it's ok if there is no tile_index
+        if len(lidar_datasets_info) == 0:
+            # Create an empty dataset as no LiDAR
+            logging.warning("No LiDAR dataset. Creating an empty roughness layer.")
+            zo = xarray.ones_like(self._dem.z)
+            zo = zo.where(False, numpy.nan)
+            zo = zo.assign_attrs(long_name="Roughness length")
+            zo.rio.write_transform(inplace=True)
+            zo.rio.write_nodata(numpy.nan, encoded=True, inplace=True)
+            self._dem["zo"] = zo
+            # ensure the expected CF conventions are followed
+            self._write_netcdf_conventions_in_place(
+                self._dem, self.catchment_geometry.crs
+            )
+
+        elif chunk_size is None:  # If one file it's ok if there is no tile_index
             self._dem = self._add_lidar_no_chunking(
                 lidar_datasets_info=lidar_datasets_info,
                 options=raster_options,
@@ -2131,6 +2245,11 @@ class RoughnessDem(LidarBase):
                 chunk_size=chunk_size,
                 metadata=metadata,
             )
+        self._save_and_load_dem(
+            filename=self.temp_folder / "raw_lidar_zo.nc",
+            chunk_size=chunk_size,
+            no_values_mask=False,
+        )
         # Set roughness where water
         self._dem["zo"] = self._dem.zo.where(
             self._dem.data_source != self.SOURCE_CLASSIFICATION["ocean bathymetry"],
@@ -2384,6 +2503,11 @@ class RoughnessDem(LidarBase):
             roughnesses
                 A list of roughnesses over the x, and y coordiantes for each dataset.
         """
+
+        logging.info(
+            "In RoughnessDem._add_roughness_to_data_set creating and "
+            "adding the Zo layer to the dataset."
+        )
 
         # Create a DataArray of zo
         zos = []
