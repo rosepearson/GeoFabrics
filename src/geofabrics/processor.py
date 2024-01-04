@@ -877,18 +877,13 @@ class RawLidarDemGenerator(BaseProcessor):
             )
 
         # Create folder for caching raw DEM files during DEM generation
-        temp_folder = (
-            self.get_instruction_path("subfolder")
-            / "temp"
-            / f"{self.get_resolution()}m_results"
-        )
-        logging.info(
-            "In processor.DemGenerator - create folder for writing temporarily"
-            f" cached netCDF files in {temp_folder}"
-        )
+        subfolder = self.get_instruction_path("subfolder")
+        temp_folder = subfolder / "temp" / f"{self.get_resolution()}m_results"
+        logging.info(f"Create folder {temp_folder} for temporary files")
         if temp_folder.exists():
             shutil.rmtree(temp_folder)
         temp_folder.mkdir(parents=True, exist_ok=True)
+
         # setup the raw DEM generator
         self.raw_dem = dem.RawDem(
             catchment_geometry=self.catchment_geometry,
@@ -897,10 +892,12 @@ class RawLidarDemGenerator(BaseProcessor):
                 key="interpolation", subkey="lidar"
             ),
             elevation_range=self.get_instruction_general("elevation_range"),
-            temp_folder=temp_folder,
+            chunk_size=self.get_processing_instructions("chunk_size"),
+            buffer_cells=self.get_instruction_general("lidar_buffer"),
         )
 
         # Setup Dask cluster and client - LAZY SAVE LIDAR DEM
+        dask.config.set({"distributed.comm.timeouts.connect": "120s"})
         cluster_kwargs = {
             "n_workers": self.get_processing_instructions("number_of_cores"),
             "threads_per_worker": 1,
@@ -911,8 +908,8 @@ class RawLidarDemGenerator(BaseProcessor):
         with cluster, distributed.Client(cluster) as client:
             print("Dask client:", client)
             print("Dask dashboard:", client.dashboard_link)
-            logging.info("Dask client:", client)
-            logging.info("Dask dashboard:", client.dashboard_link)
+            logging.info("Dask client: %s", client)
+            logging.info("Dask dashboard: %s", client.dashboard_link)
 
             # Load in LiDAR tiles
             self.raw_dem.add_lidar(
@@ -920,43 +917,50 @@ class RawLidarDemGenerator(BaseProcessor):
                 lidar_classifications_to_keep=self.get_instruction_general(
                     "lidar_classifications_to_keep"
                 ),
-                chunk_size=self.get_processing_instructions("chunk_size"),
                 metadata=self.create_metadata(),
-                buffer_cells=self.get_instruction_general("lidar_buffer"),
             )  # Note must be called after all others if it is to be complete
+
+            # Save a cached copy of DEM to temporary memory cache
+            logging.info("Save temp raw DEM to netCDF")
+            cached_file = temp_folder / "raw_lidar.nc"
+            self.raw_dem.save_dem(cached_file, reload=True)
 
             # Add a coarse DEM if significant area without LiDAR and a coarse DEM
             if self.check_vector_or_raster(key="coarse_dems", api_type="raster"):
                 coarse_dem_paths = self.get_vector_or_raster_paths(
                     key="coarse_dems", data_type="raster"
                 )
+                logging.info(f"Incorporating coarse DEMs: {coarse_dem_paths}")
 
                 # Add coarse DEMs if there are any and if area
-                self.raw_dem.add_coarse_dems(
-                    coarse_dem_paths=coarse_dem_paths,
-                    area_threshold=area_threshold,
-                    buffer_cells=self.get_instruction_general("lidar_buffer"),
-                    chunk_size=self.get_processing_instructions("chunk_size"),
-                )
+                for coarse_dem_path in coarse_dem_paths:
+                    # Stop if no areas (on land and foreshore) still without values
+                    if not self.raw_dem.no_values_mask.any():
+                        logging.info(
+                            "No land and foreshore areas without LiDAR values. "
+                            "Ignoring all remaining coarse DEMs."
+                        )
+                        break
+
+                    self.raw_dem.add_coarse_dem(coarse_dem_path, area_threshold)
+
+                    logging.info("Save temp raw DEM to netCDF")
+                    temp_file = temp_folder / f"raw_dem_{coarse_dem_path.stem}.nc"
+                    self.raw_dem.save_dem(temp_file, reload=True)
+
+                    # Remove previous cached file and replace with new one
+                    cached_file.unlink()
+                    cached_file = temp_file
 
             # compute and save raw DEM
             logging.info("In processor.DemGenerator - write out the raw DEM to netCDF")
-            self.raw_dem.save_dem(
-                filename=self.get_instruction_path("raw_dem"),
-                dem=self.raw_dem.dem,
-            )
-            logging.info(
-                "In processor.DemGenerator - clean folder for writing temporarily"
-                f" cached netCDF files in {temp_folder}"
-            )
+            self.raw_dem.save_dem(self.get_instruction_path("raw_dem"))
+            logging.info(f"Remove folder {temp_folder} for temporary files")
             shutil.rmtree(temp_folder)
 
         if self.debug:
             # Record the parameter used during execution - append to existing
-            with open(
-                self.get_instruction_path("subfolder") / "dem_instructions.json",
-                "a",
-            ) as file_pointer:
+            with open(subfolder / "dem_instructions.json", "a") as file_pointer:
                 json.dump(self.instructions, file_pointer)
 
 
@@ -1127,8 +1131,8 @@ class HydrologicDemGenerator(BaseProcessor):
         with cluster, distributed.Client(cluster) as client:
             print("Dask client:", client)
             print("Dask dashboard:", client.dashboard_link)
-            logging.info("Dask client:", client)
-            logging.info("Dask dashboard:", client.dashboard_link)
+            logging.info("Dask client: %s", client)
+            logging.info("Dask dashboard: %s", client.dashboard_link)
 
             # setup the hydrologically conditioned DEM generator
             self.hydrologic_dem = dem.HydrologicallyConditionedDem(

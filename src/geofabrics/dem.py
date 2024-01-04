@@ -1265,6 +1265,32 @@ class LidarBase(DemBase):
         self._load_dem(filename=filename, chunk_size=chunk_size)
 
 
+def chunk_mask(mask, chunk_size):
+    arrs = []
+    for i in range(0, mask.shape[0], chunk_size):
+        sub_arrs = []
+        for j in range(0, mask.shape[1], chunk_size):
+            chunk = dask.array.from_array(
+                mask[i : i + chunk_size, j : j + chunk_size].copy()
+            )
+            sub_arrs.append(chunk)
+        arrs.append(sub_arrs)
+    mask = dask.array.block(arrs)
+    return mask
+
+
+def clip_mask(arr, geometry, chunk_size):
+    mask = (
+        xarray.ones_like(arr, dtype=numpy.float16)
+        .compute()
+        .rio.clip(geometry, drop=False)
+        .notnull()
+    )
+    if chunk_size is not None:
+        mask.data = chunk_mask(mask.data, chunk_size)
+    return mask
+
+
 class RawDem(LidarBase):
     """A class to manage the creation of a 'raw' DEM from LiDAR tiles, and/or a
     coarse DEM.
@@ -1281,15 +1307,20 @@ class RawDem(LidarBase):
     lidar_interpolation_method
         The interpolation method to apply to LiDAR during downsampling/averaging.
         Options are: mean, median, IDW, max, min, STD.
+    buffer_cells - the number of empty cells to keep around LiDAR cells for
+        interpolation after the coarse DEM added to ensure a smooth boundary.
+    chunk_size
+        The chunk size in pixels for parallel/staged processing
     """
 
     def __init__(
         self,
         catchment_geometry: geometry.CatchmentGeometry,
         lidar_interpolation_method: str,
-        temp_folder: pathlib.Path,
         drop_offshore_lidar: dict,
-        elevation_range: list = None,
+        buffer_cells: int,
+        elevation_range: list | None = None,
+        chunk_size: int | None = None,
     ):
         """Setup base DEM to add future tiles too"""
 
@@ -1300,32 +1331,22 @@ class RawDem(LidarBase):
 
         self.drop_offshore_lidar = drop_offshore_lidar
         self.lidar_interpolation_method = lidar_interpolation_method
-        self.temp_folder = temp_folder
+        self.chunk_size = chunk_size
+        self.buffer_cells = buffer_cells
         self._dem = None
 
     @property
     def dem(self):
-        """Return the combined DEM from tiles with the optional no_values_mask
-        layer dropped"""
+        """Return the combined DEM from tiles"""
 
         # Ensure positively increasing indices as required by some programs
         self._dem = self._ensure_positive_indexing(self._dem)
 
-        # Ensure the no_values_mask is not included in the external facing DEM
-        if "no_values_mask" in self._dem:
-            self._dem = self._dem.drop_vars("no_values_mask")
-
         return self._dem
 
-    def _set_up_chunks(self, chunk_size: int) -> (list, list):
+    def _set_up_chunks(self) -> (list, list):
         """Define the chunks to break the catchment into when reading in and
         downsampling LiDAR.
-
-        Parameters
-        ----------
-
-        chunk_size
-            The size in pixels of each chunk.
         """
 
         bounds = self.catchment_geometry.catchment.geometry.bounds
@@ -1337,19 +1358,19 @@ class RawDem(LidarBase):
         miny = bounds.miny.min()
         maxy = bounds.maxy.max()
         n_chunks_x = int(
-            numpy.ceil((bounds.maxx.max() - minx) / (chunk_size * resolution))
+            numpy.ceil((bounds.maxx.max() - minx) / (self.chunk_size * resolution))
         )
         n_chunks_y = int(
-            numpy.ceil((maxy - bounds.miny.min()) / (chunk_size * resolution))
+            numpy.ceil((maxy - bounds.miny.min()) / (self.chunk_size * resolution))
         )
 
         # x coordinates rounded up to the nearest chunk - resolution aligned
         dim_x = []
         aligned_min_x = numpy.ceil(minx / resolution) * resolution
         for i in range(n_chunks_x):
-            chunk_min_x = aligned_min_x + i * chunk_size * resolution
+            chunk_min_x = aligned_min_x + i * self.chunk_size * resolution
             if i + 1 < n_chunks_x:
-                chunk_max_x = aligned_min_x + (i + 1) * chunk_size * resolution
+                chunk_max_x = aligned_min_x + (i + 1) * self.chunk_size * resolution
             else:
                 chunk_max_x = numpy.ceil(maxx / resolution) * resolution + resolution
             dim_x.append(
@@ -1364,9 +1385,9 @@ class RawDem(LidarBase):
         dim_y = []
         aligned_max_y = numpy.ceil(maxy / resolution) * resolution
         for i in range(n_chunks_y):
-            chunk_max_y = aligned_max_y - i * chunk_size * resolution
+            chunk_max_y = aligned_max_y - i * self.chunk_size * resolution
             if i + 1 < n_chunks_y:
-                chunk_min_y = aligned_max_y - (i + 1) * chunk_size * resolution
+                chunk_min_y = aligned_max_y - (i + 1) * self.chunk_size * resolution
             else:
                 chunk_min_y = numpy.ceil(miny / resolution) * resolution - resolution
             dim_y.append(
@@ -1393,10 +1414,8 @@ class RawDem(LidarBase):
     def add_lidar(
         self,
         lidar_datasets_info: dict,
-        chunk_size: int,
         lidar_classifications_to_keep: list,
         metadata: dict,
-        buffer_cells: int,
     ):
         """Read in all LiDAR files and use to create a 'raw' DEM.
 
@@ -1406,8 +1425,6 @@ class RawDem(LidarBase):
         lidar_datasets_info
             A dictionary of information for each specified LIDAR dataset - For
             each this includes: a list of LAS files, CRS, and tile index file.
-        chunk_size
-            The chunk size in pixels for parallel/staged processing
         lidar_classifications_to_keep
             A list of LiDAR classifications to keep - '2' for ground, '9' for water.
             See https://www.asprs.org/wp-content/uploads/2010/12/LAS_1_4_r13.pdf for
@@ -1419,7 +1436,7 @@ class RawDem(LidarBase):
 
         # Check valid inputs
         self._check_valid_inputs(
-            lidar_datasets_info=lidar_datasets_info, chunk_size=chunk_size
+            lidar_datasets_info=lidar_datasets_info, chunk_size=self.chunk_size
         )
 
         # create dictionary defining raster options
@@ -1464,16 +1481,7 @@ class RawDem(LidarBase):
                 elevations=elevations,
                 metadata=metadata,
             )
-            # Ensure values set to no data
-            dem["data_source"] = dem.data_source.where(
-                False, self.SOURCE_CLASSIFICATION["no data"]
-            )
-            dem["lidar_source"] = dem.lidar_source.where(
-                False, self.SOURCE_CLASSIFICATION["no data"]
-            )
-            dem["z"] = dem.z.where(False, numpy.nan)
-            self._write_netcdf_conventions_in_place(dem, self.catchment_geometry.crs)
-        elif chunk_size is None:
+        elif self.chunk_size is None:
             dem = self._add_lidar_no_chunking(
                 lidar_datasets_info=lidar_datasets_info,
                 options=raster_options,
@@ -1483,76 +1491,67 @@ class RawDem(LidarBase):
             dem = self._add_tiled_lidar_chunked(
                 lidar_datasets_info=lidar_datasets_info,
                 raster_options=raster_options,
-                chunk_size=chunk_size,
                 metadata=metadata,
             )
 
-        # Check if the ocean is clipped or not (must be in all datasets)
-        if numpy.array([value for value in self.drop_offshore_lidar.values()]).all():
-            clip_region = self.catchment_geometry.land_and_foreshore
-        else:
-            clip_region = self.catchment_geometry.catchment
-
         # Clip DEM to Catchment and ensure NaN outside region to rasterise
-        dem = dem.rio.clip(self.catchment_geometry.catchment.geometry, drop=True)
-        if clip_region.area.sum() > 0:  # If area of 0 all will be NaN anyway
-            dem = dem.rio.clip(clip_region.geometry, drop=False)
+        catchment = self.catchment_geometry.catchment
+        dem = dem.rio.clip_box(**catchment.bounds.iloc[0])
+        dem = dem.where(clip_mask(dem.z, catchment.geometry, self.chunk_size))
 
-        # If drop offshrore LiDAR ensure the foreshore values are 0 or negative
-        if (
-            self.drop_offshore_lidar
-            and self.catchment_geometry.foreshore.area.sum() > 0
-        ):
-            buffered_foreshore = geopandas.GeoDataFrame(
-                geometry=self.catchment_geometry.foreshore.buffer(
-                    self.catchment_geometry.resolution * numpy.sqrt(2)
+        # Check if the ocean is clipped or not (must be in all datasets)
+        drop_offshore_lidar = all(self.drop_offshore_lidar.values())
+        land_and_foreshore = self.catchment_geometry.land_and_foreshore
+        if drop_offshore_lidar and land_and_foreshore.area.sum() > 0:
+            # If area of 0 size, all will be NaN anyway
+            mask = clip_mask(dem.z, land_and_foreshore.geometry, self.chunk_size)
+            dem = dem.where(mask)
+
+        # If drop offshore LiDAR ensure the foreshore values are 0 or negative
+        foreshore = self.catchment_geometry.foreshore
+        if self.drop_offshore_lidar and foreshore.area.sum() > 0:
+            buffer_radius = self.catchment_geometry.resolution * numpy.sqrt(2)
+            buffered_foreshore = (
+                foreshore.buffer(buffer_radius)
+                .to_frame("geometry")
+                .overlay(
+                    self.catchment_geometry.full_land,
+                    how="difference",
+                    keep_geom_type=True,
                 )
             )
-            buffered_foreshore = buffered_foreshore.overlay(
-                self.catchment_geometry.full_land,
-                how="difference",
-                keep_geom_type=True,
+
+            # Mask to delineate DEM outside of buffered foreshore or below 0
+            mask = ~(
+                (dem.z > 0)
+                & clip_mask(dem.z, buffered_foreshore.geometry, self.chunk_size)
             )
-            # Clip DEM to buffered foreshore
-            mask = dem.z.rio.clip(buffered_foreshore.geometry, drop=False).notnull()
 
             # Set any positive LiDAR foreshore points to zero
+            dem["z"] = dem.z.where(mask, 0)
+
             dem["data_source"] = dem.data_source.where(
-                ~(mask & (dem.z > 0)),
-                self.SOURCE_CLASSIFICATION["ocean bathymetry"],
+                mask, self.SOURCE_CLASSIFICATION["ocean bathymetry"]
             )
             dem["lidar_source"] = dem.lidar_source.where(
-                ~(mask & (dem.z > 0)),
-                self.SOURCE_CLASSIFICATION["no data"],
-            )
-            dem["z"] = dem.z.where(
-                ~(mask & (dem.z > 0)),
-                0,
+                mask, self.SOURCE_CLASSIFICATION["no data"]
             )
 
         self._dem = dem
 
-        # Save a cached copy of DEM to temporary memory cache
-        logging.info("In dem.add_lidar - write out temp raw DEM to netCDF")
-        self._save_and_load_dem(
-            filename=self.temp_folder / "raw_lidar.nc",
-            buffer_cells=buffer_cells,
-            chunk_size=chunk_size,
-            no_values_mask=True,
-        )
-
     def _add_tiled_lidar_chunked(
         self,
         lidar_datasets_info: dict,
-        chunk_size: int,
         metadata: dict,
         raster_options: dict,
     ) -> xarray.Dataset:
         """Create a 'raw'' DEM from a set of tiled LiDAR files. Read these in over
         non-overlapping chunks and then combine"""
 
+        assert self.chunk_size is not None, "chunk_size must be defined"
+
         # get chunking information
-        chunked_dim_x, chunked_dim_y = self._set_up_chunks(chunk_size)
+        chunked_dim_x, chunked_dim_y = self._set_up_chunks()
         elevations = {}
 
         logging.info(f"Preparing {[len(chunked_dim_x), len(chunked_dim_y)]} chunks")
@@ -1645,6 +1644,8 @@ class RawDem(LidarBase):
         metadata: dict,
     ) -> xarray.Dataset:
         """Create a 'raw' DEM from a single LiDAR file with no chunking."""
+
+        assert self.chunk_size is None, "chunk_size should not be defined"
 
         # Note only support for a single LiDAR file without tile information
         lidar_name = list(lidar_datasets_info.keys())[0]
@@ -1854,199 +1855,232 @@ class RawDem(LidarBase):
 
         return dem
 
-    def add_coarse_dems(
-        self,
-        coarse_dem_paths: list,
-        area_threshold: float,
-        buffer_cells: int,
-        chunk_size: int,
-    ):
-        """Check if area requring infill, if so iterate through coarse DEMs
+    def add_coarse_dem(self, coarse_dem_path: pathlib.Path, area_threshold: float):
+        """Check if gaps in DEM on land, if so iterate through coarse DEMs
         adding missing detail.
 
-        Currently doesn't use chunking - this may be required if a large area is covered
-        by the coarse DEM.
+        Note the Coarse DEM values are only applied on land and not
+        in the ocean.
 
         Parameters
         ----------
 
-            coarse_dem_paths - list of coarse DEM file paths to try add in turn
+            coarse_dem_path - coarse DEM file paths to try add
             area_threshold - the ratio of area without LiDAR required to for
                 coarse DEMs to be used.
-            buffer_cells - the number of empty cells to keep around LiDAR cells
-                for interpolation after the coarse DEM added to ensure a smooth
-                boundary.
-
         """
-        logging.info(
-            "Consider adding coarse DEMs to fill areas outside the " "LiDAR extents"
+        # Check for overlap with the Coarse DEM
+        coarse_dem = rioxarray.rioxarray.open_rasterio(
+            coarse_dem_path,
+            masked=True,
+        ).squeeze("band", drop=True)
+        coarse_dem.rio.set_crs(self.catchment_geometry.crs["horizontal"])
+        coarse_dem_resolution = coarse_dem.rio.resolution()
+        coarse_dem_resolution = max(
+            abs(coarse_dem_resolution[0]), abs(coarse_dem_resolution[1])
         )
-        previous_cached_file = self.temp_folder / "raw_lidar.nc"
 
-        # Iterate through DEMs
-        logging.info(f"Incorporating coarse DEMs: {coarse_dem_paths}")
-        for coarse_dem_path in coarse_dem_paths:
-            # Check if any areas (on land and foreshore) still without values - exit if none
-            no_value_mask = self._dem.no_values_mask
-            if not no_value_mask.any():
-                logging.info(
-                    f"No land areas greater than the cell buffer {buffer_cells}"
-                    " without LiDAR values. Ignoring all remaining coarse DEMs."
-                )
-                return False
-            # Check for overlap with the Coarse DEM
-            coarse_dem = rioxarray.rioxarray.open_rasterio(
-                coarse_dem_path,
-                masked=True,
-            ).squeeze("band", drop=True)
-            coarse_dem.rio.set_crs(self.catchment_geometry.crs["horizontal"])
-            coarse_dem_resolution = coarse_dem.rio.resolution()
-            coarse_dem_resolution = max(
-                abs(coarse_dem_resolution[0]), abs(coarse_dem_resolution[1])
+        # Clip to foreground and land
+        try:  # Use try catch as otherwise crash if coarse DEM does not overlap
+            coarse_dem = coarse_dem.rio.clip(
+                self.catchment_geometry.land_and_foreshore.buffer(
+                    coarse_dem_resolution
+                ).geometry,
+                drop=True,
             )
-            # Clip to foreground and land
-            try:
-                coarse_dem = coarse_dem.rio.clip(
-                    self.catchment_geometry.land_and_foreshore.buffer(
-                        coarse_dem_resolution
-                    ).geometry,
-                    drop=True,
-                )
-            except (
-                rioxarray.exceptions.NoDataInBounds,
-                ValueError,
-            ) as caught_exception:
-                logging.warning(
-                    "NoDataInDounds in RawDem.add_coarse_dems. Will skip."
-                    f"{caught_exception}."
-                )
-                break
-            coarse_dem_bounds = coarse_dem.rio.bounds()
-            coarse_dem_bounds = geopandas.GeoDataFrame(
-                {
-                    "geometry": [
-                        shapely.geometry.Polygon(
-                            [
-                                [coarse_dem_bounds[0], coarse_dem_bounds[1]],
-                                [coarse_dem_bounds[2], coarse_dem_bounds[1]],
-                                [coarse_dem_bounds[2], coarse_dem_bounds[3]],
-                                [coarse_dem_bounds[0], coarse_dem_bounds[3]],
-                            ]
-                        )
-                    ]
-                },
-                crs=self.catchment_geometry.crs["horizontal"],
+        except (  # If exception skip and proceed to the next coarse DEM
+            rioxarray.exceptions.NoDataInBounds,
+            ValueError,
+        ) as caught_exception:
+            logging.warning(
+                "NoDataInDounds in RawDem.add_coarse_dems. Will skip."
+                f"{caught_exception}."
+            )
+            return
+        coarse_dem_bounds = coarse_dem.rio.bounds()
+        coarse_dem_bounds = geopandas.GeoDataFrame(
+            {
+                "geometry": [
+                    shapely.geometry.Polygon(
+                        [
+                            [coarse_dem_bounds[0], coarse_dem_bounds[1]],
+                            [coarse_dem_bounds[2], coarse_dem_bounds[1]],
+                            [coarse_dem_bounds[2], coarse_dem_bounds[3]],
+                            [coarse_dem_bounds[0], coarse_dem_bounds[3]],
+                        ]
+                    )
+                ]
+            },
+            crs=self.catchment_geometry.crs["horizontal"],
+        )
+
+        # Add the coarse DEM data where there's no LiDAR updating the extents
+        no_values_mask = self.no_values_mask & clip_mask(
+            self._dem.z, coarse_dem_bounds.geometry, self.chunk_size
+        )
+        no_values_mask.load()
+
+        # Early return if there is nowhere to add coarse DEM data
+        if not no_values_mask.any():
+            return
+
+        logging.info(f"\t\tAdd data from coarse DEM: {coarse_dem_path.name}")
+
+        # If chunking ensure efficient parallelisation
+        if (
+            self.chunk_size is not None
+            and max(len(self._dem.x), len(self._dem.y)) > self.chunk_size
+        ):
+            # Note expect Xarray with dims (y, x) not dims (x, y) as is default
+            # for rioxarray
+            interpolator = scipy.interpolate.RegularGridInterpolator(
+                (coarse_dem.y.values, coarse_dem.x.values),
+                coarse_dem.values,
+                bounds_error=False,
+                fill_value=numpy.NaN,
+                method="linear",
             )
 
-            # Add the coarse DEM data where there's no LiDAR updating the extents
-            no_value_mask &= (
-                xarray.ones_like(no_value_mask)
-                .rio.clip(coarse_dem_bounds.geometry, drop=False)
-                .notnull()
-            )  # Awkward as clip of a bool xarray doesn't work as expected
-            if no_value_mask.any():
-                logging.info(f"\t\tAdd data from coarse DEM: {coarse_dem_path.name}")
-                # If chunking ensure efficient parallelisation
-                if (
-                    chunk_size is not None
-                    and max(len(self._dem.x), len(self._dem.y)) > chunk_size
-                ):
-                    # Note expect Xarray with dims (y, x) not dims (x, y) as is default for rioxarray
-                    interpolator = scipy.interpolate.RegularGridInterpolator(
-                        (coarse_dem.y.values, coarse_dem.x.values),
-                        coarse_dem.values,
-                        bounds_error=False,
-                        fill_value=numpy.NaN,
-                        method="linear",
-                    )
+            def dask_interpolation(y, x):
+                yx_array = numpy.stack(numpy.meshgrid(y, x, indexing="ij"), axis=-1)
+                return interpolator(yx_array)
 
-                    def dask_interpolation(y, x):
-                        yx_array = numpy.stack(
-                            numpy.meshgrid(y, x, indexing="ij"), axis=-1
-                        )
-                        return interpolator(yx_array)
+            # Explicitly redefine x & y
+            x = dask.array.from_array(self._dem.x.values, chunks=self.chunk_size)
+            y = dask.array.from_array(self._dem.y.values, chunks=self.chunk_size)
+            coarse_dem_interp = dask.array.blockwise(
+                dask_interpolation, "ij", y, "i", x, "j"
+            )
+            coarse_dem = xarray.DataArray(
+                coarse_dem_interp,
+                dims=("y", "x"),
+                coords={"x": self._dem.x, "y": self._dem.y},
+            )
+            coarse_dem.rio.write_transform(inplace=True)
+            coarse_dem.rio.write_crs(
+                self.catchment_geometry.crs["horizontal"], inplace=True
+            )
+            coarse_dem.rio.write_nodata(numpy.nan, encoded=True, inplace=True)
+        else:  # No chunking use built in method
+            coarse_dem = coarse_dem.interp(
+                x=self._dem.x, y=self._dem.y, method="linear"
+            )
 
-                    # Explicitly redefine x & y
-                    x = dask.array.from_array(self._dem.x.values, chunks=chunk_size)
-                    y = dask.array.from_array(self._dem.y.values, chunks=chunk_size)
-                    coarse_dem_interp = dask.array.blockwise(
-                        dask_interpolation, "ij", y, "i", x, "j"
-                    )
-                    coarse_dem = xarray.DataArray(
-                        coarse_dem_interp,
-                        dims=("y", "x"),
-                        coords={"x": self._dem.x, "y": self._dem.y},
-                    )
-                    coarse_dem.rio.write_transform(inplace=True)
-                    coarse_dem.rio.write_crs(
-                        self.catchment_geometry.crs["horizontal"], inplace=True
-                    )
-                    coarse_dem.rio.write_nodata(numpy.nan, encoded=True, inplace=True)
-                else:  # No chunking use built in method
-                    coarse_dem = coarse_dem.interp(
-                        x=self._dem.x, y=self._dem.y, method="linear"
-                    )
-                coarse_dem.rio.clip(
-                    self.catchment_geometry.land_and_foreshore.geometry, drop=False
+        coarse_dem.rio.clip(
+            self.catchment_geometry.land_and_foreshore.geometry, drop=False
+        )
+        self._dem["z"] = self._dem.z.where(~no_values_mask, coarse_dem)
+
+        # Update the data source layer
+        self._dem["data_source"] = self._dem.data_source.where(
+            ~(no_values_mask & self._dem.z.notnull()),
+            self.SOURCE_CLASSIFICATION["coarse DEM"],
+        )
+
+        # Ensure Coarse DEM values along the foreshore are less than zero
+        foreshore = self.catchment_geometry.foreshore
+        if foreshore.area.sum() > 0:
+            buffer_radius = self.catchment_geometry.resolution * numpy.sqrt(2)
+            buffered_foreshore = (
+                foreshore.buffer(buffer_radius)
+                .to_frame("geometry")
+                .overlay(
+                    self.catchment_geometry.full_land,
+                    how="difference",
+                    keep_geom_type=True,
                 )
-                self._dem["z"] = self._dem.z.where(~no_value_mask, coarse_dem)
-                # Update the data source layer
-                self._dem["data_source"] = self._dem.data_source.where(
-                    ~(no_value_mask & self._dem.z.notnull()),
-                    self.SOURCE_CLASSIFICATION["coarse DEM"],
-                )
-                # Ensure Coarse DEM values along the foreshore are less than zero
-                if self.catchment_geometry.foreshore.area.sum() > 0:
-                    buffered_foreshore = geopandas.GeoDataFrame(
-                        geometry=self.catchment_geometry.foreshore.buffer(
-                            self.catchment_geometry.resolution * numpy.sqrt(2)
-                        )
-                    )
-                    buffered_foreshore = buffered_foreshore.overlay(
-                        self.catchment_geometry.full_land,
-                        how="difference",
-                        keep_geom_type=True,
-                    )
-                    # Clip DEM to buffered foreshore
-                    mask = self._dem.z.rio.clip(
-                        buffered_foreshore.geometry, drop=False
-                    ).notnull()
-                    mask = (
-                        mask
-                        & (self._dem.z > 0)
-                        & (
-                            self._dem.data_source
-                            == self.SOURCE_CLASSIFICATION["coarse DEM"]
-                        )
-                    )
+            )
 
-                    # Set any positive LiDAR foreshore points to zero
-                    self._dem["data_source"] = self._dem.data_source.where(
-                        ~mask,
-                        self.SOURCE_CLASSIFICATION["ocean bathymetry"],
-                    )
-                    self._dem["z"] = self._dem.z.where(
-                        ~mask,
-                        0,
-                    )
-                    # Save a cached copy of DEM to temporary memory cache
-                    logging.info(
-                        "In dem.add_coarse_dems - write out temp raw DEM to netCDF"
-                    )
-                    self._save_and_load_dem(
-                        filename=self.temp_folder
-                        / f"raw_dem_{coarse_dem_path.stem}.nc",
-                        buffer_cells=buffer_cells,
-                        chunk_size=chunk_size,
-                        no_values_mask=True,
-                    )
-                    logging.info(
-                        f"In dem.add_coarse_dems - remove previous cached file {previous_cached_file}"
-                    )
-                    previous_cached_file.unlink()
-                    previous_cached_file = (
-                        self.temp_folder / f"raw_dem_{coarse_dem_path.stem}.nc"
-                    )
+            # Clip DEM to buffered foreshore
+            coarse_dem_mask = (
+                self._dem.data_source == self.SOURCE_CLASSIFICATION["coarse DEM"]
+            )
+            foreshore_mask = clip_mask(
+                self._dem.z, buffered_foreshore.geometry, self.chunk_size
+            )
+            mask = ~((self._dem.z > 0) & foreshore_mask & coarse_dem_mask)
+
+            # Set any positive Coarse DEM foreshore points to zero
+            self._dem["data_source"] = self._dem.data_source.where(
+                mask, self.SOURCE_CLASSIFICATION["ocean bathymetry"]
+            )
+            self._dem["z"] = self._dem.z.where(mask, 0)
+
+    def _load_dem(self, filename: pathlib.Path):
+        """Load in and replace the DEM with a previously cached version."""
+        dem = rioxarray.rioxarray.open_rasterio(
+            filename,
+            masked=True,
+            parse_coordinates=True,
+            chunks={"x": self.chunk_size, "y": self.chunk_size},
+        )
+        dem = dem.squeeze("band", drop=True)
+        self._write_netcdf_conventions_in_place(dem, self.catchment_geometry.crs)
+        self._dem = dem
+
+        if "data_source" in self._dem.keys():
+            self._dem["data_source"] = self._dem.data_source.astype(
+                geometry.RASTER_TYPE
+            )
+        if "lidar_source" in self._dem.keys():
+            self._dem["lidar_source"] = self._dem.lidar_source.astype(
+                geometry.RASTER_TYPE
+            )
+        if "z" in self._dem.keys():
+            self._dem["z"] = self._dem.z.astype(geometry.RASTER_TYPE)
+
+    @property
+    def no_values_mask(self):
+        """No values mask from DEM within land and foreshore region"""
+
+        if self.catchment_geometry.land_and_foreshore.area.sum() > 0:
+            no_values_mask = (
+                self._dem.z.rolling(
+                    dim={
+                        "x": self.buffer_cells * 2 + 1,
+                        "y": self.buffer_cells * 2 + 1,
+                    },
+                    min_periods=1,
+                    center=True,
+                )
+                .count()
+                .isnull()
+            )
+            no_values_mask &= clip_mask(
+                self._dem.z,
+                self.catchment_geometry.land_and_foreshore.geometry,
+                self.chunk_size,
+            )
+        else:
+            no_values_mask = xarray.zeros_like(self._dem.z, dtype=bool)
+
+        return no_values_mask
+
+    def save_dem(self, filename: pathlib.Path, reload: bool = False):
+        """Save the DEM to a netCDF file and optionnally reload it
+
+        :param filename: .nc file where to save the DEM
+        :param reload: reload DEM from the saved file
+        """
+        assert not any(
+            arr.rio.crs is None for arr in self.dem.data_vars.values()
+        ), "all DataArray variables of a xarray.Dataset must have a CRS"
+
+        try:
+            self._dem.to_netcdf(filename, format="NETCDF4", engine="netcdf4")
+            self._dem.close()
+
+        except (Exception, KeyboardInterrupt) as caught_exception:
+            pathlib.Path(filename).unlink()
+            logging.info(
+                f"Caught error {caught_exception} and deleting"
+                "partially created netCDF output "
+                f"{filename} before re-raising error."
+            )
+            raise caught_exception
+
+        if reload:
+            self._load_dem(filename=filename)
 
 
 class RoughnessDem(LidarBase):
