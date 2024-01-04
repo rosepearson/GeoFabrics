@@ -1283,8 +1283,7 @@ def clip_mask(arr, geometry, chunk_size):
     mask = (
         xarray.ones_like(arr, dtype=numpy.float16)
         .compute()
-        .rio
-        .clip(geometry, drop=False)
+        .rio.clip(geometry, drop=False)
         .notnull()
     )
     if chunk_size is not None:
@@ -1511,7 +1510,6 @@ class RawDem(LidarBase):
         # If drop offshore LiDAR ensure the foreshore values are 0 or negative
         foreshore = self.catchment_geometry.foreshore
         if self.drop_offshore_lidar and foreshore.area.sum() > 0:
-
             buffer_radius = self.catchment_geometry.resolution * numpy.sqrt(2)
             buffered_foreshore = (
                 foreshore.buffer(buffer_radius)
@@ -1891,14 +1889,14 @@ class RawDem(LidarBase):
                 drop=True,
             )
         except (  # If exception skip and proceed to the next coarse DEM
-                rioxarray.exceptions.NoDataInBounds,
-                ValueError,
-            ) as caught_exception:
-                logging.warning(
-                    "NoDataInDounds in RawDem.add_coarse_dems. Will skip."
-                    f"{caught_exception}."
-                )
-                return
+            rioxarray.exceptions.NoDataInBounds,
+            ValueError,
+        ) as caught_exception:
+            logging.warning(
+                "NoDataInDounds in RawDem.add_coarse_dems. Will skip."
+                f"{caught_exception}."
+            )
+            return
         coarse_dem_bounds = coarse_dem.rio.bounds()
         coarse_dem_bounds = geopandas.GeoDataFrame(
             {
@@ -1917,9 +1915,8 @@ class RawDem(LidarBase):
         )
 
         # Add the coarse DEM data where there's no LiDAR updating the extents
-        no_values_mask = (
-            self.no_values_mask
-            & clip_mask(self._dem.z, coarse_dem_bounds.geometry, self.chunk_size)
+        no_values_mask = self.no_values_mask & clip_mask(
+            self._dem.z, coarse_dem_bounds.geometry, self.chunk_size
         )
         no_values_mask.load()
 
@@ -1945,9 +1942,7 @@ class RawDem(LidarBase):
             )
 
             def dask_interpolation(y, x):
-                yx_array = numpy.stack(
-                    numpy.meshgrid(y, x, indexing="ij"), axis=-1
-                )
+                yx_array = numpy.stack(numpy.meshgrid(y, x, indexing="ij"), axis=-1)
                 return interpolator(yx_array)
 
             # Explicitly redefine x & y
@@ -1985,7 +1980,6 @@ class RawDem(LidarBase):
         # Ensure Coarse DEM values along the foreshore are less than zero
         foreshore = self.catchment_geometry.foreshore
         if foreshore.area.sum() > 0:
-
             buffer_radius = self.catchment_geometry.resolution * numpy.sqrt(2)
             buffered_foreshore = (
                 foreshore.buffer(buffer_radius)
@@ -2044,7 +2038,7 @@ class RawDem(LidarBase):
                 self._dem.z.rolling(
                     dim={
                         "x": self.buffer_cells * 2 + 1,
-                        "y": self.buffer_cells * 2 + 1
+                        "y": self.buffer_cells * 2 + 1,
                     },
                     min_periods=1,
                     center=True,
@@ -2055,7 +2049,7 @@ class RawDem(LidarBase):
             no_values_mask &= clip_mask(
                 self._dem.z,
                 self.catchment_geometry.land_and_foreshore.geometry,
-                self.chunk_size
+                self.chunk_size,
             )
         else:
             no_values_mask = xarray.zeros_like(self._dem.z, dtype=bool)
@@ -2068,9 +2062,9 @@ class RawDem(LidarBase):
         :param filename: .nc file where to save the DEM
         :param reload: reload DEM from the saved file
         """
-        assert not any(arr.rio.crs is None for arr in self.dem.data_vars.values()), (
-            "all DataArray variables of a xarray.Dataset must have a CRS"
-        )
+        assert not any(
+            arr.rio.crs is None for arr in self.dem.data_vars.values()
+        ), "all DataArray variables of a xarray.Dataset must have a CRS"
 
         try:
             self._dem.to_netcdf(filename, format="NETCDF4", engine="netcdf4")

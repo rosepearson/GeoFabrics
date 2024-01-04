@@ -934,7 +934,6 @@ class RawLidarDemGenerator(BaseProcessor):
 
                 # Add coarse DEMs if there are any and if area
                 for coarse_dem_path in coarse_dem_paths:
-
                     # Stop if no areas (on land and foreshore) still without values
                     if not self.raw_dem.no_values_mask.any():
                         logging.info(
