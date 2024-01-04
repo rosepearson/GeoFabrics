@@ -213,7 +213,7 @@ Attributes
 
 
 
-.. py:class:: RawDem(catchment_geometry, lidar_interpolation_method, temp_folder, drop_offshore_lidar, elevation_range = None)
+.. py:class:: RawDem(catchment_geometry, lidar_interpolation_method, drop_offshore_lidar, buffer_cells, elevation_range = None, chunk_size = None)
 
 
    Bases: :py:obj:`LidarBase`
@@ -227,19 +227,23 @@ Attributes
                            elevations outside this range will be filtered out.
    :param lidar_interpolation_method: The interpolation method to apply to LiDAR during downsampling/averaging.
                                       Options are: mean, median, IDW, max, min, STD.
+   :param buffer_cells - the number of empty cells to keep around LiDAR cells for: interpolation after the coarse DEM added to ensure a smooth boundary.
+   :param chunk_size: The chunk size in pixels for parallel/staged processing
 
    .. py:property:: dem
 
-      Return the combined DEM from tiles with the optional no_values_mask
-      layer dropped
+      Return the combined DEM from tiles
 
-   .. py:method:: add_lidar(lidar_datasets_info, chunk_size, lidar_classifications_to_keep, metadata, buffer_cells)
+   .. py:property:: no_values_mask
+
+      No values mask from DEM within land and foreshore region
+
+   .. py:method:: add_lidar(lidar_datasets_info, lidar_classifications_to_keep, metadata)
 
       Read in all LiDAR files and use to create a 'raw' DEM.
 
       :param lidar_datasets_info: A dictionary of information for each specified LIDAR dataset - For
                                   each this includes: a list of LAS files, CRS, and tile index file.
-      :param chunk_size: The chunk size in pixels for parallel/staged processing
       :param lidar_classifications_to_keep: A list of LiDAR classifications to keep - '2' for ground, '9' for water.
                                             See https://www.asprs.org/wp-content/uploads/2010/12/LAS_1_4_r13.pdf for
                                             standard list
@@ -247,18 +251,24 @@ Attributes
                         `dataset_mapping` key if datasets (not a single LAZ file) included.
 
 
-   .. py:method:: add_coarse_dems(coarse_dem_paths, area_threshold, buffer_cells, chunk_size)
+   .. py:method:: add_coarse_dem(coarse_dem_path, area_threshold)
 
-      Check if area requring infill, if so iterate through coarse DEMs
+      Check if gaps in DEM on land, if so iterate through coarse DEMs
       adding missing detail.
 
-      Currently doesn't use chunking - this may be required if a large area is covered
-      by the coarse DEM.
+      Note the Coarse DEM values are only applied on land and not
+      in the ocean.
 
-      :param coarse_dem_paths - list of coarse DEM file paths to try add in turn:
+      :param coarse_dem_path - coarse DEM file paths to try add:
       :param area_threshold - the ratio of area without LiDAR required to for: coarse DEMs to be used.
-      :param buffer_cells - the number of empty cells to keep around LiDAR cells: for interpolation after the coarse DEM added to ensure a smooth
-                                                                                  boundary.
+
+
+   .. py:method:: save_dem(filename, reload = False)
+
+      Save the DEM to a netCDF file and optionnally reload it
+
+      :param filename: .nc file where to save the DEM
+      :param reload: reload DEM from the saved file
 
 
 

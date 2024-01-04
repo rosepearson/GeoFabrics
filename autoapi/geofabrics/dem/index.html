@@ -438,7 +438,7 @@ standard list</p></li>
 
 <dl class="py class">
 <dt class="sig sig-object py" id="geofabrics.dem.RawDem">
-<em class="property"><span class="pre">class</span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">geofabrics.dem.</span></span><span class="sig-name descname"><span class="pre">RawDem</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">catchment_geometry</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">lidar_interpolation_method</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">temp_folder</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">drop_offshore_lidar</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">elevation_range</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#geofabrics.dem.RawDem" title="Link to this definition"></a></dt>
+<em class="property"><span class="pre">class</span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">geofabrics.dem.</span></span><span class="sig-name descname"><span class="pre">RawDem</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">catchment_geometry</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">lidar_interpolation_method</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">drop_offshore_lidar</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">buffer_cells</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">elevation_range</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">chunk_size</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#geofabrics.dem.RawDem" title="Link to this definition"></a></dt>
 <dd><p>Bases: <a class="reference internal" href="#geofabrics.dem.LidarBase" title="geofabrics.dem.LidarBase"><code class="xref py py-obj docutils literal notranslate"><span class="pre">LidarBase</span></code></a></p>
 <p>A class to manage the creation of a ‘raw’ DEM from LiDAR tiles, and/or a
 coarse DEM.</p>
@@ -447,62 +447,77 @@ coarse DEM.</p>
 <dd class="field-odd"><ul class="simple">
 <li><p><strong>drop_offshore_lidar</strong> (<em>dict</em>) – If True only keep LiDAR values within the foreshore and land regions defined by
 the catchment_geometry. If False keep all LiDAR values.</p></li>
-<li><p><strong>elevation_range</strong> (<em>list</em>) – Optitionally specify a range of valid elevations. Any LiDAR points with
+<li><p><strong>elevation_range</strong> (<em>list</em><em> | </em><em>None</em>) – Optitionally specify a range of valid elevations. Any LiDAR points with
 elevations outside this range will be filtered out.</p></li>
 <li><p><strong>lidar_interpolation_method</strong> (<em>str</em>) – The interpolation method to apply to LiDAR during downsampling/averaging.
 Options are: mean, median, IDW, max, min, STD.</p></li>
+<li><p><strong>for</strong> (<em>buffer_cells - the number</em><em> of </em><em>empty cells to keep around LiDAR cells</em>) – interpolation after the coarse DEM added to ensure a smooth boundary.</p></li>
+<li><p><strong>chunk_size</strong> (<em>int</em><em> | </em><em>None</em>) – The chunk size in pixels for parallel/staged processing</p></li>
 <li><p><strong>catchment_geometry</strong> (<a class="reference internal" href="../geometry/index.html#geofabrics.geometry.CatchmentGeometry" title="geofabrics.geometry.CatchmentGeometry"><em>geofabrics.geometry.CatchmentGeometry</em></a>) – </p></li>
-<li><p><strong>temp_folder</strong> (<em>pathlib.Path</em>) – </p></li>
+<li><p><strong>buffer_cells</strong> (<em>int</em>) – </p></li>
 </ul>
 </dd>
 </dl>
 <dl class="py property">
 <dt class="sig sig-object py" id="geofabrics.dem.RawDem.dem">
 <em class="property"><span class="pre">property</span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">dem</span></span><a class="headerlink" href="#geofabrics.dem.RawDem.dem" title="Link to this definition"></a></dt>
-<dd><p>Return the combined DEM from tiles with the optional no_values_mask
-layer dropped</p>
+<dd><p>Return the combined DEM from tiles</p>
+</dd></dl>
+
+<dl class="py property">
+<dt class="sig sig-object py" id="geofabrics.dem.RawDem.no_values_mask">
+<em class="property"><span class="pre">property</span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">no_values_mask</span></span><a class="headerlink" href="#geofabrics.dem.RawDem.no_values_mask" title="Link to this definition"></a></dt>
+<dd><p>No values mask from DEM within land and foreshore region</p>
 </dd></dl>
 
 <dl class="py method">
 <dt class="sig sig-object py" id="geofabrics.dem.RawDem.add_lidar">
-<span class="sig-name descname"><span class="pre">add_lidar</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">lidar_datasets_info</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">chunk_size</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">lidar_classifications_to_keep</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">metadata</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">buffer_cells</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#geofabrics.dem.RawDem.add_lidar" title="Link to this definition"></a></dt>
+<span class="sig-name descname"><span class="pre">add_lidar</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">lidar_datasets_info</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">lidar_classifications_to_keep</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">metadata</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#geofabrics.dem.RawDem.add_lidar" title="Link to this definition"></a></dt>
 <dd><p>Read in all LiDAR files and use to create a ‘raw’ DEM.</p>
 <dl class="field-list simple">
 <dt class="field-odd">Parameters<span class="colon">:</span></dt>
 <dd class="field-odd"><ul class="simple">
 <li><p><strong>lidar_datasets_info</strong> (<em>dict</em>) – A dictionary of information for each specified LIDAR dataset - For
 each this includes: a list of LAS files, CRS, and tile index file.</p></li>
-<li><p><strong>chunk_size</strong> (<em>int</em>) – The chunk size in pixels for parallel/staged processing</p></li>
 <li><p><strong>lidar_classifications_to_keep</strong> (<em>list</em>) – A list of LiDAR classifications to keep - ‘2’ for ground, ‘9’ for water.
 See <a class="reference external" href="https://www.asprs.org/wp-content/uploads/2010/12/LAS_1_4_r13.pdf">https://www.asprs.org/wp-content/uploads/2010/12/LAS_1_4_r13.pdf</a> for
 standard list</p></li>
 <li><p><strong>meta_data</strong> – Information to include in the created DEM - must include
 <cite>dataset_mapping</cite> key if datasets (not a single LAZ file) included.</p></li>
 <li><p><strong>metadata</strong> (<em>dict</em>) – </p></li>
-<li><p><strong>buffer_cells</strong> (<em>int</em>) – </p></li>
 </ul>
 </dd>
 </dl>
 </dd></dl>
 
 <dl class="py method">
-<dt class="sig sig-object py" id="geofabrics.dem.RawDem.add_coarse_dems">
-<span class="sig-name descname"><span class="pre">add_coarse_dems</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">coarse_dem_paths</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">area_threshold</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">buffer_cells</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">chunk_size</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#geofabrics.dem.RawDem.add_coarse_dems" title="Link to this definition"></a></dt>
-<dd><p>Check if area requring infill, if so iterate through coarse DEMs
+<dt class="sig sig-object py" id="geofabrics.dem.RawDem.add_coarse_dem">
+<span class="sig-name descname"><span class="pre">add_coarse_dem</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">coarse_dem_path</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">area_threshold</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#geofabrics.dem.RawDem.add_coarse_dem" title="Link to this definition"></a></dt>
+<dd><p>Check if gaps in DEM on land, if so iterate through coarse DEMs
 adding missing detail.</p>
-<p>Currently doesn’t use chunking - this may be required if a large area is covered
-by the coarse DEM.</p>
+<p>Note the Coarse DEM values are only applied on land and not
+in the ocean.</p>
 <dl class="field-list simple">
 <dt class="field-odd">Parameters<span class="colon">:</span></dt>
 <dd class="field-odd"><ul class="simple">
-<li><p><strong>turn</strong> (<em>coarse_dem_paths - list</em><em> of </em><em>coarse DEM file paths to try add in</em>) – </p></li>
+<li><p><strong>add</strong> (<em>coarse_dem_path - coarse DEM file paths to try</em>) – </p></li>
 <li><p><strong>for</strong> (<em>area_threshold - the ratio</em><em> of </em><em>area without LiDAR required to</em>) – coarse DEMs to be used.</p></li>
-<li><p><strong>cells</strong> (<em>buffer_cells - the number</em><em> of </em><em>empty cells to keep around LiDAR</em>) – for interpolation after the coarse DEM added to ensure a smooth
-boundary.</p></li>
-<li><p><strong>coarse_dem_paths</strong> (<em>list</em>) – </p></li>
+<li><p><strong>coarse_dem_path</strong> (<em>pathlib.Path</em>) – </p></li>
 <li><p><strong>area_threshold</strong> (<em>float</em>) – </p></li>
-<li><p><strong>buffer_cells</strong> (<em>int</em>) – </p></li>
-<li><p><strong>chunk_size</strong> (<em>int</em>) – </p></li>
+</ul>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="geofabrics.dem.RawDem.save_dem">
+<span class="sig-name descname"><span class="pre">save_dem</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">filename</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">reload</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">False</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#geofabrics.dem.RawDem.save_dem" title="Link to this definition"></a></dt>
+<dd><p>Save the DEM to a netCDF file and optionnally reload it</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>filename</strong> (<em>pathlib.Path</em>) – .nc file where to save the DEM</p></li>
+<li><p><strong>reload</strong> (<em>bool</em>) – reload DEM from the saved file</p></li>
 </ul>
 </dd>
 </dl>
