@@ -1376,9 +1376,7 @@ class RawDem(LidarBase):
         """
 
         # Check valid inputs
-        self._check_valid_inputs(
-            lidar_datasets_info=lidar_datasets_info
-        )
+        self._check_valid_inputs(lidar_datasets_info=lidar_datasets_info)
 
         # create dictionary defining raster options
         raster_options = {
@@ -2089,9 +2087,7 @@ class RoughnessDem(LidarBase):
         """
 
         # Check valid inputs
-        self._check_valid_inputs(
-            lidar_datasets_info=lidar_datasets_info
-        )
+        self._check_valid_inputs(lidar_datasets_info=lidar_datasets_info)
 
         # create dictionary defining raster options
         raster_options = {
@@ -2164,7 +2160,9 @@ class RoughnessDem(LidarBase):
             # If any NaN remain apply nearest neighbour interpolation
             if numpy.isnan(self._dem.zo.data).any():
                 self._dem["zo"] = self._dem.zo.rio.interpolate_na(method="nearest")
-        mask = clip_mask(self._dem.z, self.catchment_geometry.catchment.geometry, self.chunk_size)
+        mask = clip_mask(
+            self._dem.z, self.catchment_geometry.catchment.geometry, self.chunk_size
+        )
         self._dem = self._dem.where(mask)
 
     def _add_tiled_lidar_chunked(
