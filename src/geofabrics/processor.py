@@ -1335,7 +1335,6 @@ class RoughnessLengthGenerator(BaseProcessor):
             )
             self.roughness_dem.save_dem(
                 filename=self.get_instruction_path("result_geofabric"),
-                dem=self.roughness_dem.dem,
             )
             logging.info(
                 "In processor.RoughnessLengthGenerator - clean folder for "

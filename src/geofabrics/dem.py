@@ -932,7 +932,7 @@ class LidarBase(DemBase):
 
     @property
     def dem(self):
-        """Return the combined DEM from tiles and any interpolated offshore values"""
+        """Return the positivelly indexed DEM from tiles"""
 
         # Ensure positively increasing indices as required by some programs
         self._dem = self._ensure_positive_indexing(self._dem)
@@ -1285,15 +1285,6 @@ class RawDem(LidarBase):
         self.buffer_cells = buffer_cells
         self._dem = None
 
-    @property
-    def dem(self):
-        """Return the combined DEM from tiles"""
-
-        # Ensure positively increasing indices as required by some programs
-        self._dem = self._ensure_positive_indexing(self._dem)
-
-        return self._dem
-
     def _set_up_chunks(self) -> (list, list):
         """Define the chunks to break the catchment into when reading in and
         downsampling LiDAR.
@@ -1385,7 +1376,9 @@ class RawDem(LidarBase):
         """
 
         # Check valid inputs
-        self._check_valid_inputs(lidar_datasets_info=lidar_datasets_info)
+        self._check_valid_inputs(
+            lidar_datasets_info=lidar_datasets_info
+        )
 
         # create dictionary defining raster options
         raster_options = {
@@ -2046,9 +2039,10 @@ class RoughnessDem(LidarBase):
         )
 
         # Clip to the catchment extents to ensure performance
-        hydrological_dem = hydrological_dem.rio.clip(
-            self.catchment_geometry.catchment.geometry, drop=True
-        )
+        catchment = self.catchment_geometry.catchment
+        hydrological_dem = hydrological_dem.rio.clip_box(**catchment.bounds.iloc[0])
+        mask = clip_mask(hydrological_dem.z, catchment.geometry, self.chunk_size)
+        hydrological_dem = hydrological_dem.where(mask)
 
         self.temp_folder = temp_folder
         self.interpolation_method = interpolation_method
@@ -2095,7 +2089,9 @@ class RoughnessDem(LidarBase):
         """
 
         # Check valid inputs
-        self._check_valid_inputs(lidar_datasets_info=lidar_datasets_info)
+        self._check_valid_inputs(
+            lidar_datasets_info=lidar_datasets_info
+        )
 
         # create dictionary defining raster options
         raster_options = {
@@ -2168,9 +2164,8 @@ class RoughnessDem(LidarBase):
             # If any NaN remain apply nearest neighbour interpolation
             if numpy.isnan(self._dem.zo.data).any():
                 self._dem["zo"] = self._dem.zo.rio.interpolate_na(method="nearest")
-        self._dem = self._dem.rio.clip(
-            self.catchment_geometry.catchment.geometry, drop=True
-        )
+        mask = clip_mask(self._dem.z, self.catchment_geometry.catchment.geometry, self.chunk_size)
+        self._dem = self._dem.where(mask)
 
     def _add_tiled_lidar_chunked(
         self,
