@@ -1309,6 +1309,7 @@ class RoughnessLengthGenerator(BaseProcessor):
                 catchment_geometry=self.catchment_geometry,
                 hydrological_dem_path=self.get_instruction_path("result_dem"),
                 temp_folder=temp_folder,
+                chunk_size=self.get_processing_instructions("chunk_size"),
                 elevation_range=self.get_instruction_general("elevation_range"),
                 interpolation_method=self.get_instruction_general(
                     key="interpolation", subkey="no_data"
@@ -1323,7 +1324,6 @@ class RoughnessLengthGenerator(BaseProcessor):
                 lidar_classifications_to_keep=self.get_instruction_general(
                     "lidar_classifications_to_keep"
                 ),
-                chunk_size=self.get_processing_instructions("chunk_size"),
                 metadata=self.create_metadata(),
                 parameters=roughness_parameters,
             )  # Note must be called after all others if it is to be complete
