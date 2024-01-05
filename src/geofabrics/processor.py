@@ -906,10 +906,8 @@ class RawLidarDemGenerator(BaseProcessor):
         }
         cluster = distributed.LocalCluster(**cluster_kwargs)
         with cluster, distributed.Client(cluster) as client:
-            print("Dask client:", client)
-            print("Dask dashboard:", client.dashboard_link)
-            logging.info("Dask client: %s", client)
-            logging.info("Dask dashboard: %s", client.dashboard_link)
+            logging.info(f"Dask client: {client}")
+            logging.info(f"Dask dashboard: {client.dashboard_link}")
 
             # Load in LiDAR tiles
             self.raw_dem.add_lidar(
@@ -1129,10 +1127,8 @@ class HydrologicDemGenerator(BaseProcessor):
         }
         cluster = distributed.LocalCluster(**cluster_kwargs)
         with cluster, distributed.Client(cluster) as client:
-            print("Dask client:", client)
-            print("Dask dashboard:", client.dashboard_link)
-            logging.info("Dask client: %s", client)
-            logging.info("Dask dashboard: %s", client.dashboard_link)
+            logging.info(f"Dask client: {client}")
+            logging.info(f"Dask dashboard: {client.dashboard_link}")
 
             # setup the hydrologically conditioned DEM generator
             self.hydrologic_dem = dem.HydrologicallyConditionedDem(
@@ -1269,14 +1265,14 @@ class RoughnessLengthGenerator(BaseProcessor):
 
         # If roads defined download roads
         if "roads" in default_values:
-            print(
+            logging.info(
                 "Roads not yet supported. In future download roads. Likely "
                 "specify the width of different roads."
             )
 
         # If powerlines defines download powerlines
         if self.get_roughness_instruction("ignore_powerlines"):
-            print(
+            logging.info(
                 "Ignoring powerlines not yet supported. In future download "
                 "powerlines. Probably run as second followup step in future."
                 " Either take mean or drop points with height above limit."
@@ -1305,8 +1301,8 @@ class RoughnessLengthGenerator(BaseProcessor):
         }
         cluster = distributed.LocalCluster(**cluster_kwargs)
         with cluster, distributed.Client(cluster) as client:
-            print("Dask client:", client)
-            print("Dask dashboard:", client.dashboard_link)
+            logging.info(f"Dask client: {client}")
+            logging.info(f"Dask dashboard: {client.dashboard_link}")
 
             # setup the roughness DEM generator
             self.roughness_dem = dem.RoughnessDem(
@@ -1528,7 +1524,6 @@ class MeasuredRiverGenerator(BaseProcessor):
         # Only rerun if files don't exist
         if not (result_polygon_file.exists() and result_elevations_file.exists()):
             logging.info("Interpolating measured sections.")
-            print("Interpolating measured sections.")
             measured_rivers = bathymetry_estimation.InterpolateMeasuredElevations(
                 riverbank_file=self.get_instruction_path("riverbanks"),
                 measured_sections_file=self.get_instruction_path("measured_sections"),
@@ -1557,7 +1552,6 @@ class MeasuredRiverGenerator(BaseProcessor):
                 or not ("fan" == result_elevations["source"]).any()
             ):
                 logging.info("Estimating the fan bathymetry.")
-                print("Estimating the fan bathymetry.")
                 self.estimate_river_mouth_fan(defaults)
 
         if self.debug:
@@ -1798,20 +1792,20 @@ class RiverBathymetryGenerator(BaseProcessor):
         # Get the ground DEM
         if not gnd_file.is_file():
             # Create the ground DEM file if this has not be created yet!
-            print("Generating ground DEM.")
+            logging.info("Generating ground DEM.")
             instruction_paths["raw_dem"] = str(self.get_result_file_name(key="gnd_dem"))
             runner = RawLidarDemGenerator(self.instructions)
             runner.run()
             instruction_paths.pop("raw_dem")
         # Load the Ground DEM
-        print("Loading ground DEM.")  # drop band added by rasterio.open()
+        logging.info("Loading ground DEM.")  # drop band added by rasterio.open()
         gnd_dem = rioxarray.rioxarray.open_rasterio(gnd_file, masked=True).squeeze(
             "band", drop=True
         )
         # Get the vegetation DEM
         if not veg_file.is_file():
             # Create the catchment file if this has not be created yet!
-            print("Generating vegetation DEM.")
+            logging.info("Generating vegetation DEM.")
             self.instructions["general"][
                 "lidar_classifications_to_keep"
             ] = self.get_bathymetry_instruction("veg_lidar_classifications_to_keep")
@@ -1820,7 +1814,7 @@ class RiverBathymetryGenerator(BaseProcessor):
             runner.run()
             instruction_paths.pop("raw_dem")
         # Load the Veg DEM - drop band added by rasterio.open()
-        print("Loading the vegetation DEM.")
+        logging.info("Loading the vegetation DEM.")
         veg_dem = dem.rioxarray.rioxarray.open_rasterio(veg_file, masked=True).squeeze(
             "band", drop=True
         )
@@ -1966,7 +1960,7 @@ class RiverBathymetryGenerator(BaseProcessor):
         else:
             channel_width, aligned_channel = self.align_channel_from_rec()
         # calculate the channel width and save results
-        print("Characterising the aligned channel.")
+        logging.info("Characterising the aligned channel.")
         self.calculate_channel_characteristics(
             channel_width=channel_width, aligned_channel=aligned_channel
         )
@@ -2001,7 +1995,7 @@ class RiverBathymetryGenerator(BaseProcessor):
 
         # Align channel if required
         if not self.alignment_exists():
-            print("No aligned channel provided. Aligning the channel.")
+            logging.info("No aligned channel provided. Aligning the channel.")
 
             # Align and save the river network defined channel
             aligned_channel = self.align_channel(
@@ -2546,14 +2540,12 @@ class RiverBathymetryGenerator(BaseProcessor):
         # Estimate channel and fan depths if not already done
         if not self.channel_bathymetry_exist():
             logging.info("Estimating the channel bathymetry.")
-            print("Estimating the channel bathymetry.")
 
             # Calculate and save river bathymetry depths
             self.calculate_river_bed_elevations()
             # check if the river mouth is to be estimated
             if self.get_bathymetry_instruction("estimate_fan"):
                 logging.info("Estimating the fan bathymetry.")
-                print("Estimating the fan bathymetry.")
                 self.estimate_river_mouth_fan()
         if self.debug:
             # Record the parameter used during execution - append to existing
@@ -2660,10 +2652,7 @@ class WaterwayBedElevationEstimator(BaseProcessor):
         polygon_file = self.get_result_file_path(key="closed_polygon")
         elevation_file = self.get_result_file_path(key="closed_elevation")
         if polygon_file.is_file() and elevation_file.is_file():
-            print("Closed waterways already recorded. ")
-            logging.info(
-                "Estimating closed waterway and tunnel bed elevation from OpenStreetMap."
-            )
+            logging.info("Closed waterways already recorded. ")
             return
         # If not - estimate elevations along close waterways
         closed_waterways = waterways[waterways["tunnel"]]
@@ -2743,10 +2732,7 @@ class WaterwayBedElevationEstimator(BaseProcessor):
         polygon_file = self.get_result_file_path(key="open_polygon")
         elevation_file = self.get_result_file_path(key="open_elevation")
         if polygon_file.is_file() and elevation_file.is_file():
-            print("Open waterways already recorded. ")
-            logging.info(
-                "Estimating open waterway and tunnel bed elevation from OpenStreetMap."
-            )
+            logging.info("Open waterways already recorded. ")
             return
         # If not - estimate the elevations along the open waterways
         open_waterways = waterways[numpy.logical_not(waterways["tunnel"])]
@@ -2890,7 +2876,7 @@ class WaterwayBedElevationEstimator(BaseProcessor):
             dem_instruction_paths["raw_dem"] = self.get_result_file_name(key="raw_dem")
 
             # Create the ground DEM file if this has not be created yet!
-            print("Generating waterway DEM.")
+            logging.info("Generating waterway DEM.")
             runner = RawLidarDemGenerator(self.instructions)
             runner.run()
         # Load in the DEM
@@ -2968,10 +2954,6 @@ class WaterwayBedElevationEstimator(BaseProcessor):
             for waterway_label in waterways["waterway"].unique():
                 if waterway_label not in widths.keys():
                     waterways = waterways[waterways["waterway"] != waterway_label]
-                    print(
-                        f"{waterway_label} is not in the specified widths and"
-                        " is being removed"
-                    )
                     logging.info(
                         f"{waterway_label} is not in the specified widths and"
                         " is being removed"
