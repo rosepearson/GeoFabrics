@@ -1385,9 +1385,7 @@ class RawDem(LidarBase):
         """
 
         # Check valid inputs
-        self._check_valid_inputs(
-            lidar_datasets_info=lidar_datasets_info
-        )
+        self._check_valid_inputs(lidar_datasets_info=lidar_datasets_info)
 
         # create dictionary defining raster options
         raster_options = {
@@ -2097,9 +2095,7 @@ class RoughnessDem(LidarBase):
         """
 
         # Check valid inputs
-        self._check_valid_inputs(
-            lidar_datasets_info=lidar_datasets_info
-        )
+        self._check_valid_inputs(lidar_datasets_info=lidar_datasets_info)
 
         # create dictionary defining raster options
         raster_options = {

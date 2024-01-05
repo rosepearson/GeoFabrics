@@ -30,9 +30,9 @@ def setup_logging_for_run(instructions: dict, label: str):
     stream_handler = logging.StreamHandler()
     stream_handler.setLevel(logging.INFO)
 
-    file_handler = logging.FileHandler(log_path / f"geofabrics_{label}.log",
-                                       mode='a',
-                                       encoding="utf-8")
+    file_handler = logging.FileHandler(
+        log_path / f"geofabrics_{label}.log", mode="a", encoding="utf-8"
+    )
     file_handler.setLevel(logging.INFO)
 
     logging.basicConfig(
@@ -202,7 +202,9 @@ def from_instructions_dict(instructions: dict):
             processor_label="roughness",
             instructions=instructions,
         )
-    logging.info(f"Total execution time is {datetime.datetime.now() - initial_start_time}")
+    logging.info(
+        f"Total execution time is {datetime.datetime.now() - initial_start_time}"
+    )
 
 
 def from_instructions_file(
