@@ -1191,7 +1191,7 @@ class LidarBase(DemBase):
             "_add_lidar_no_chunking must be instantiated in the " "child class"
         )
 
-    def _load_dem(self, filename: pathlib.Path):
+    def _load_dem(self, filename: pathlib.Path) -> xarray.Dataset:
         """Load in and replace the DEM with a previously cached version."""
         dem = rioxarray.rioxarray.open_rasterio(
             filename,
@@ -1201,32 +1201,34 @@ class LidarBase(DemBase):
         )
         dem = dem.squeeze("band", drop=True)
         self._write_netcdf_conventions_in_place(dem, self.catchment_geometry.crs)
-        self._dem = dem
 
-        if "data_source" in self._dem.keys():
-            self._dem["data_source"] = self._dem.data_source.astype(
+        if "data_source" in dem.keys():
+            dem["data_source"] = dem.data_source.astype(
                 geometry.RASTER_TYPE
             )
-        if "lidar_source" in self._dem.keys():
-            self._dem["lidar_source"] = self._dem.lidar_source.astype(
+        if "lidar_source" in dem.keys():
+            dem["lidar_source"] = dem.lidar_source.astype(
                 geometry.RASTER_TYPE
             )
-        if "z" in self._dem.keys():
-            self._dem["z"] = self._dem.z.astype(geometry.RASTER_TYPE)
+        if "z" in dem.keys():
+            dem["z"] = dem.z.astype(geometry.RASTER_TYPE)
+        
+        return dem
 
-    def save_dem(self, filename: pathlib.Path, reload: bool = False):
+    def save_dem(self, filename: pathlib.Path, dem: xarray.Dataset):
         """Save the DEM to a netCDF file and optionally reload it
 
         :param filename: .nc file where to save the DEM
         :param reload: reload DEM from the saved file
         """
+
         assert not any(
-            arr.rio.crs is None for arr in self.dem.data_vars.values()
+            arr.rio.crs is None for arr in dem.data_vars.values()
         ), "all DataArray variables of a xarray.Dataset must have a CRS"
 
         try:
-            self._dem.to_netcdf(filename, format="NETCDF4", engine="netcdf4")
-            self._dem.close()
+            dem.to_netcdf(filename, format="NETCDF4", engine="netcdf4")
+            dem.close()
 
         except (Exception, KeyboardInterrupt) as caught_exception:
             pathlib.Path(filename).unlink()
@@ -1236,9 +1238,23 @@ class LidarBase(DemBase):
                 f"{filename} before re-raising error."
             )
             raise caught_exception
+    
+    def save_and_load_dem(
+        self,
+        filename: pathlib.Path,
+    ):
+        """Update the saved file cache for the DEM (self._dem) as a netCDF file.
+        """
 
-        if reload:
-            self._load_dem(filename=filename)
+        logging.info(
+            "In LidarBase.save_and_load_dem saving _dem as NetCDF file to "
+            f"{filename}"
+        )
+
+        dem = self._dem
+        self.save_dem(filename=filename, dem=dem)
+        dem = self._load_dem(filename=filename)
+        self._dem = dem
 
 
 class RawDem(LidarBase):
@@ -1995,7 +2011,7 @@ class RoughnessDem(LidarBase):
     lidar_interpolation_method
         The interpolation method to apply to LiDAR. Options are: mean, median, IDW.
     """
-
+    
     def __init__(
         self,
         catchment_geometry: geometry.CatchmentGeometry,
@@ -2038,9 +2054,12 @@ class RoughnessDem(LidarBase):
 
         # Clip to the catchment extents to ensure performance
         catchment = self.catchment_geometry.catchment
-        hydrological_dem = hydrological_dem.rio.clip_box(**catchment.bounds.iloc[0])
+        '''hydrological_dem = hydrological_dem.rio.clip_box(**catchment.bounds.iloc[0])
         mask = clip_mask(hydrological_dem.z, catchment.geometry, self.chunk_size)
-        hydrological_dem = hydrological_dem.where(mask)
+        hydrological_dem = hydrological_dem.where(mask)'''
+        hydrological_dem = hydrological_dem.rio.clip(
+            self.catchment_geometry.catchment.geometry, drop=True
+        )
 
         self.temp_folder = temp_folder
         self.interpolation_method = interpolation_method
@@ -2126,9 +2145,12 @@ class RoughnessDem(LidarBase):
                 raster_options=raster_options,
                 metadata=metadata,
             )
-        self.save_dem(
+        '''self.save_dem(
             filename=self.temp_folder / "raw_lidar_zo.nc",
             reload=True,
+        )'''
+        self.save_and_load_dem(
+            filename=self.temp_folder / "raw_lidar_zo.nc",
         )
         # Set roughness where water
         self._dem["zo"] = self._dem.zo.where(
@@ -2160,10 +2182,12 @@ class RoughnessDem(LidarBase):
             # If any NaN remain apply nearest neighbour interpolation
             if numpy.isnan(self._dem.zo.data).any():
                 self._dem["zo"] = self._dem.zo.rio.interpolate_na(method="nearest")
-        mask = clip_mask(
+        '''mask = clip_mask(
             self._dem.z, self.catchment_geometry.catchment.geometry, self.chunk_size
         )
-        self._dem = self._dem.where(mask)
+        self._dem = self._dem.where(mask)'''
+        self._dem = self._dem.rio.clip(
+            self.catchment_geometry.catchment.geometry, drop=True)
 
     def _add_tiled_lidar_chunked(
         self,

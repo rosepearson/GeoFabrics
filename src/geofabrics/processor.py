@@ -921,7 +921,7 @@ class RawLidarDemGenerator(BaseProcessor):
             # Save a cached copy of DEM to temporary memory cache
             logging.info("Save temp raw DEM to netCDF")
             cached_file = temp_folder / "raw_lidar.nc"
-            self.raw_dem.save_dem(cached_file, reload=True)
+            self.raw_dem.save_and_load_dem(cached_file)
 
             # Add a coarse DEM if significant area without LiDAR and a coarse DEM
             if self.check_vector_or_raster(key="coarse_dems", api_type="raster"):
@@ -944,7 +944,7 @@ class RawLidarDemGenerator(BaseProcessor):
 
                     logging.info("Save temp raw DEM to netCDF")
                     temp_file = temp_folder / f"raw_dem_{coarse_dem_path.stem}.nc"
-                    self.raw_dem.save_dem(temp_file, reload=True)
+                    self.raw_dem.save_and_load_dem(temp_file)
 
                     # Remove previous cached file and replace with new one
                     cached_file.unlink()
@@ -952,7 +952,7 @@ class RawLidarDemGenerator(BaseProcessor):
 
             # compute and save raw DEM
             logging.info("In processor.DemGenerator - write out the raw DEM to netCDF")
-            self.raw_dem.save_dem(self.get_instruction_path("raw_dem"))
+            self.raw_dem.save_dem(self.get_instruction_path("raw_dem"), dem=self.raw_dem._dem)
             logging.info(f"Remove folder {temp_folder} for temporary files")
             shutil.rmtree(temp_folder)
 
@@ -1335,6 +1335,7 @@ class RoughnessLengthGenerator(BaseProcessor):
             )
             self.roughness_dem.save_dem(
                 filename=self.get_instruction_path("result_geofabric"),
+                dem=self.roughness_dem.dem,
             )
             logging.info(
                 "In processor.RoughnessLengthGenerator - clean folder for "
