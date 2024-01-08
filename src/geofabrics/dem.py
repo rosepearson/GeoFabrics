@@ -24,6 +24,32 @@ import scipy.spatial
 from . import geometry
 
 
+def chunk_mask(mask, chunk_size):
+    arrs = []
+    for i in range(0, mask.shape[0], chunk_size):
+        sub_arrs = []
+        for j in range(0, mask.shape[1], chunk_size):
+            chunk = dask.array.from_array(
+                mask[i : i + chunk_size, j : j + chunk_size].copy()
+            )
+            sub_arrs.append(chunk)
+        arrs.append(sub_arrs)
+    mask = dask.array.block(arrs)
+    return mask
+
+
+def clip_mask(arr, geometry, chunk_size):
+    mask = (
+        xarray.ones_like(arr, dtype=numpy.float16)
+        .compute()
+        .rio.clip(geometry, drop=False)
+        .notnull()
+    )
+    if chunk_size is not None:
+        mask.data = chunk_mask(mask.data, chunk_size)
+    return mask
+
+
 class CoarseDem:
     """A class to manage coarse or background DEMs in the catchment context
 
@@ -1215,32 +1241,6 @@ class LidarBase(DemBase):
             self._load_dem(filename=filename)
 
 
-def chunk_mask(mask, chunk_size):
-    arrs = []
-    for i in range(0, mask.shape[0], chunk_size):
-        sub_arrs = []
-        for j in range(0, mask.shape[1], chunk_size):
-            chunk = dask.array.from_array(
-                mask[i : i + chunk_size, j : j + chunk_size].copy()
-            )
-            sub_arrs.append(chunk)
-        arrs.append(sub_arrs)
-    mask = dask.array.block(arrs)
-    return mask
-
-
-def clip_mask(arr, geometry, chunk_size):
-    mask = (
-        xarray.ones_like(arr, dtype=numpy.float16)
-        .compute()
-        .rio.clip(geometry, drop=False)
-        .notnull()
-    )
-    if chunk_size is not None:
-        mask.data = chunk_mask(mask.data, chunk_size)
-    return mask
-
-
 class RawDem(LidarBase):
     """A class to manage the creation of a 'raw' DEM from LiDAR tiles, and/or a
     coarse DEM.
@@ -1905,9 +1905,9 @@ class RawDem(LidarBase):
                 x=self._dem.x, y=self._dem.y, method="linear"
             )
 
-        coarse_dem.rio.clip(
-            self.catchment_geometry.land_and_foreshore.geometry, drop=False
-        )
+        land_and_foreshore = self.catchment_geometry.land_and_foreshore
+        mask = clip_mask(coarse_dem, land_and_foreshore.geometry, self.chunk_size)
+        coarse_dem = coarse_dem.where(mask)
         self._dem["z"] = self._dem.z.where(~no_values_mask, coarse_dem)
 
         # Update the data source layer
