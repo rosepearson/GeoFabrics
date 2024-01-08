@@ -2145,10 +2145,6 @@ class RoughnessDem(LidarBase):
                 raster_options=raster_options,
                 metadata=metadata,
             )
-        '''self.save_dem(
-            filename=self.temp_folder / "raw_lidar_zo.nc",
-            reload=True,
-        )'''
         self.save_and_load_dem(
             filename=self.temp_folder / "raw_lidar_zo.nc",
         )
