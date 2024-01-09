@@ -24,6 +24,32 @@ import scipy.spatial
 from . import geometry
 
 
+def chunk_mask(mask, chunk_size):
+    arrs = []
+    for i in range(0, mask.shape[0], chunk_size):
+        sub_arrs = []
+        for j in range(0, mask.shape[1], chunk_size):
+            chunk = dask.array.from_array(
+                mask[i : i + chunk_size, j : j + chunk_size].copy()
+            )
+            sub_arrs.append(chunk)
+        arrs.append(sub_arrs)
+    mask = dask.array.block(arrs)
+    return mask
+
+
+def clip_mask(arr, geometry, chunk_size):
+    mask = (
+        xarray.ones_like(arr, dtype=numpy.float16)
+        .compute()
+        .rio.clip(geometry, drop=False)
+        .notnull()
+    )
+    if chunk_size is not None:
+        mask.data = chunk_mask(mask.data, chunk_size)
+    return mask
+
+
 class CoarseDem:
     """A class to manage coarse or background DEMs in the catchment context
 
@@ -408,7 +434,7 @@ class HydrologicallyConditionedDem(DemBase):
     def __init__(
         self,
         catchment_geometry: geometry.CatchmentGeometry,
-        raw_dem_path: typing.Union[str, pathlib.Path],
+        raw_dem_path: str | pathlib.Path,
         interpolation_method: str,
     ):
         """Load in the extents and dense DEM. Ensure the dense DEM is clipped within the
@@ -905,10 +931,12 @@ class LidarBase(DemBase):
     def __init__(
         self,
         catchment_geometry: geometry.CatchmentGeometry,
+        chunk_size: int,
         elevation_range: list = None,
     ):
         """Setup base DEM to add future tiles too"""
 
+        self.chunk_size = chunk_size
         self.elevation_range = elevation_range
         assert elevation_range is None or (
             type(elevation_range) == list and len(elevation_range) == 2
@@ -930,7 +958,7 @@ class LidarBase(DemBase):
 
     @property
     def dem(self):
-        """Return the combined DEM from tiles and any interpolated offshore values"""
+        """Return the positivelly indexed DEM from tiles"""
 
         # Ensure positively increasing indices as required by some programs
         self._dem = self._ensure_positive_indexing(self._dem)
@@ -1020,7 +1048,7 @@ class LidarBase(DemBase):
 
     def _tile_index_column_name(
         self,
-        tile_index_file: typing.Union[str, pathlib.Path],
+        tile_index_file: str | pathlib.Path,
         region_to_rasterise: geopandas.GeoDataFrame,
     ):
         """Read in tile index file and determine the column name of the tile
@@ -1054,7 +1082,7 @@ class LidarBase(DemBase):
         ][0]
         return tile_index_extents, tile_index_name_column
 
-    def _check_valid_inputs(self, lidar_datasets_info, chunk_size):
+    def _check_valid_inputs(self, lidar_datasets_info):
         """Check the combination of inputs for adding LiDAR is valid.
 
         Parameters
@@ -1063,8 +1091,6 @@ class LidarBase(DemBase):
         lidar_datasets_info
             A dictionary of dictionaties of LiDAR dataset information. The CRS, list of
             LAS files, and tile index file are included for each dataset.
-        chunk_size
-            The chunk size in pixels for parallel/staged processing
         """
 
         for dataset_name in lidar_datasets_info:
@@ -1087,14 +1113,14 @@ class LidarBase(DemBase):
                 "There are no LiDAR files specified in dataset: " f"{dataset_name}"
             )
             # Check for valid combination of chunk_size, lidar_files and tile_index_file
-            if chunk_size is None:
+            if self.chunk_size is None:
                 assert len(lidar_files) == 1, (
                     "If there is no chunking there must be only one LiDAR file. This "
                     f"isn't the case in dataset {dataset_name}"
                 )
             else:
                 assert (
-                    chunk_size > 0 and type(chunk_size) is int
+                    self.chunk_size > 0 and type(self.chunk_size) is int
                 ), "chunk_size must be a positive integer"
                 tile_index_file = lidar_datasets_info[dataset_name]["tile_index_file"]
                 assert tile_index_file is not None, (
@@ -1102,7 +1128,7 @@ class LidarBase(DemBase):
                     f"defined for {dataset_name}"
                 )
         # There should only be one dataset if there is no chunking information
-        if chunk_size is None:
+        if self.chunk_size is None:
             assert len(lidar_datasets_info) == 1, (
                 "If there is no chunking there must only be one LiDAR file."
                 f" Instead there is {len(lidar_datasets_info)} "
@@ -1139,10 +1165,9 @@ class LidarBase(DemBase):
     def _add_tiled_lidar_chunked(
         self,
         lidar_files: typing.List[typing.Union[str, pathlib.Path]],
-        tile_index_file: typing.Union[str, pathlib.Path],
+        tile_index_file: str | pathlib.Path,
         source_crs: dict,
         region_to_rasterise: geopandas.GeoDataFrame,
-        chunk_size: int,
         metadata: dict,
         raster_options: dict,
     ) -> xarray.Dataset:
@@ -1166,47 +1191,41 @@ class LidarBase(DemBase):
             "_add_lidar_no_chunking must be instantiated in the " "child class"
         )
 
-    def _load_dem(self, filename: pathlib.Path, chunk_size: int):
+    def _load_dem(self, filename: pathlib.Path) -> xarray.Dataset:
         """Load in and replace the DEM with a previously cached version."""
         dem = rioxarray.rioxarray.open_rasterio(
             filename,
             masked=True,
             parse_coordinates=True,
-            chunks={"x": chunk_size, "y": chunk_size},
+            chunks={"x": self.chunk_size, "y": self.chunk_size},
         )
         dem = dem.squeeze("band", drop=True)
         self._write_netcdf_conventions_in_place(dem, self.catchment_geometry.crs)
-        self._dem = dem
 
-        if "no_values_mask" in self._dem.keys():
-            self._dem["no_values_mask"] = self._dem.no_values_mask.astype(bool)
-        if "data_source" in self._dem.keys():
-            self._dem["data_source"] = self._dem.data_source.astype(
-                geometry.RASTER_TYPE
-            )
-        if "lidar_source" in self._dem.keys():
-            self._dem["lidar_source"] = self._dem.lidar_source.astype(
-                geometry.RASTER_TYPE
-            )
-        if "z" in self._dem.keys():
-            self._dem["z"] = self._dem.z.astype(geometry.RASTER_TYPE)
+        if "data_source" in dem.keys():
+            dem["data_source"] = dem.data_source.astype(geometry.RASTER_TYPE)
+        if "lidar_source" in dem.keys():
+            dem["lidar_source"] = dem.lidar_source.astype(geometry.RASTER_TYPE)
+        if "z" in dem.keys():
+            dem["z"] = dem.z.astype(geometry.RASTER_TYPE)
 
-    def save_dem(
-        self,
-        filename: pathlib.Path,
-        dem: xarray.Dataset,
-    ):
-        """Save the DEM to a netCDF file."""
+        return dem
 
-        # Save the file
+    def save_dem(self, filename: pathlib.Path, dem: xarray.Dataset):
+        """Save the DEM to a netCDF file and optionally reload it
+
+        :param filename: .nc file where to save the DEM
+        :param reload: reload DEM from the saved file
+        """
+
+        assert not any(
+            arr.rio.crs is None for arr in dem.data_vars.values()
+        ), "all DataArray variables of a xarray.Dataset must have a CRS"
+
         try:
-            dem.to_netcdf(
-                filename,
-                format="NETCDF4",
-                engine="netcdf4",
-            )
-            # Close the DEM
+            dem.to_netcdf(filename, format="NETCDF4", engine="netcdf4")
             dem.close()
+
         except (Exception, KeyboardInterrupt) as caught_exception:
             pathlib.Path(filename).unlink()
             logging.info(
@@ -1216,79 +1235,21 @@ class LidarBase(DemBase):
             )
             raise caught_exception
 
-    def _save_and_load_dem(
+    def save_and_load_dem(
         self,
         filename: pathlib.Path,
-        chunk_size: int,
-        no_values_mask: bool,
-        buffer_cells: int = None,
     ):
-        """Update the saved file cache for the DEM as a netCDF file. The bool
-        no_data_layer may optionally be included."""
+        """Update the saved file cache for the DEM (self._dem) as a netCDF file."""
 
-        # Logging update
         logging.info(
-            "In LidarBase._save_and_load_dem saving NetCDF file to "
-            f"{filename} with no_values_mask={no_values_mask}"
+            "In LidarBase.save_and_load_dem saving _dem as NetCDF file to "
+            f"{filename}"
         )
-        # Get the DEM from the property call
+
         dem = self._dem
-        # Create mask if specified
-        if no_values_mask:
-            if self.catchment_geometry.land_and_foreshore.area.sum() > 0:
-                no_value_mask = (
-                    dem.z.rolling(
-                        dim={"x": buffer_cells * 2 + 1, "y": buffer_cells * 2 + 1},
-                        min_periods=1,
-                        center=True,
-                    )
-                    .count()
-                    .isnull()
-                )
-                no_value_mask &= (
-                    xarray.ones_like(self._dem.z)
-                    .rio.clip(
-                        self.catchment_geometry.land_and_foreshore.geometry, drop=False
-                    )
-                    .notnull()
-                )  # Awkward as clip of a bool xarray doesn't work as expected
-            else:
-                no_value_mask = xarray.zeros_like(self._dem.z)
-            dem["no_values_mask"] = no_value_mask
-            dem.no_values_mask.rio.write_crs(
-                self.catchment_geometry.crs["horizontal"], inplace=True
-            )
-
-        # Save the DEM with the no_values_layer
         self.save_dem(filename=filename, dem=dem)
-        # Load in the temporarily saved DEM
-        self._load_dem(filename=filename, chunk_size=chunk_size)
-
-
-def chunk_mask(mask, chunk_size):
-    arrs = []
-    for i in range(0, mask.shape[0], chunk_size):
-        sub_arrs = []
-        for j in range(0, mask.shape[1], chunk_size):
-            chunk = dask.array.from_array(
-                mask[i : i + chunk_size, j : j + chunk_size].copy()
-            )
-            sub_arrs.append(chunk)
-        arrs.append(sub_arrs)
-    mask = dask.array.block(arrs)
-    return mask
-
-
-def clip_mask(arr, geometry, chunk_size):
-    mask = (
-        xarray.ones_like(arr, dtype=numpy.float16)
-        .compute()
-        .rio.clip(geometry, drop=False)
-        .notnull()
-    )
-    if chunk_size is not None:
-        mask.data = chunk_mask(mask.data, chunk_size)
-    return mask
+        dem = self._load_dem(filename=filename)
+        self._dem = dem
 
 
 class RawDem(LidarBase):
@@ -1326,23 +1287,14 @@ class RawDem(LidarBase):
 
         super(RawDem, self).__init__(
             catchment_geometry=catchment_geometry,
+            chunk_size=chunk_size,
             elevation_range=elevation_range,
         )
 
         self.drop_offshore_lidar = drop_offshore_lidar
         self.lidar_interpolation_method = lidar_interpolation_method
-        self.chunk_size = chunk_size
         self.buffer_cells = buffer_cells
         self._dem = None
-
-    @property
-    def dem(self):
-        """Return the combined DEM from tiles"""
-
-        # Ensure positively increasing indices as required by some programs
-        self._dem = self._ensure_positive_indexing(self._dem)
-
-        return self._dem
 
     def _set_up_chunks(self) -> (list, list):
         """Define the chunks to break the catchment into when reading in and
@@ -1435,9 +1387,7 @@ class RawDem(LidarBase):
         """
 
         # Check valid inputs
-        self._check_valid_inputs(
-            lidar_datasets_info=lidar_datasets_info, chunk_size=self.chunk_size
-        )
+        self._check_valid_inputs(lidar_datasets_info=lidar_datasets_info)
 
         # create dictionary defining raster options
         raster_options = {
@@ -1966,9 +1916,9 @@ class RawDem(LidarBase):
                 x=self._dem.x, y=self._dem.y, method="linear"
             )
 
-        coarse_dem.rio.clip(
-            self.catchment_geometry.land_and_foreshore.geometry, drop=False
-        )
+        land_and_foreshore = self.catchment_geometry.land_and_foreshore
+        mask = clip_mask(coarse_dem, land_and_foreshore.geometry, self.chunk_size)
+        coarse_dem = coarse_dem.where(mask)
         self._dem["z"] = self._dem.z.where(~no_values_mask, coarse_dem)
 
         # Update the data source layer
@@ -2006,29 +1956,6 @@ class RawDem(LidarBase):
             )
             self._dem["z"] = self._dem.z.where(mask, 0)
 
-    def _load_dem(self, filename: pathlib.Path):
-        """Load in and replace the DEM with a previously cached version."""
-        dem = rioxarray.rioxarray.open_rasterio(
-            filename,
-            masked=True,
-            parse_coordinates=True,
-            chunks={"x": self.chunk_size, "y": self.chunk_size},
-        )
-        dem = dem.squeeze("band", drop=True)
-        self._write_netcdf_conventions_in_place(dem, self.catchment_geometry.crs)
-        self._dem = dem
-
-        if "data_source" in self._dem.keys():
-            self._dem["data_source"] = self._dem.data_source.astype(
-                geometry.RASTER_TYPE
-            )
-        if "lidar_source" in self._dem.keys():
-            self._dem["lidar_source"] = self._dem.lidar_source.astype(
-                geometry.RASTER_TYPE
-            )
-        if "z" in self._dem.keys():
-            self._dem["z"] = self._dem.z.astype(geometry.RASTER_TYPE)
-
     @property
     def no_values_mask(self):
         """No values mask from DEM within land and foreshore region"""
@@ -2055,32 +1982,6 @@ class RawDem(LidarBase):
             no_values_mask = xarray.zeros_like(self._dem.z, dtype=bool)
 
         return no_values_mask
-
-    def save_dem(self, filename: pathlib.Path, reload: bool = False):
-        """Save the DEM to a netCDF file and optionnally reload it
-
-        :param filename: .nc file where to save the DEM
-        :param reload: reload DEM from the saved file
-        """
-        assert not any(
-            arr.rio.crs is None for arr in self.dem.data_vars.values()
-        ), "all DataArray variables of a xarray.Dataset must have a CRS"
-
-        try:
-            self._dem.to_netcdf(filename, format="NETCDF4", engine="netcdf4")
-            self._dem.close()
-
-        except (Exception, KeyboardInterrupt) as caught_exception:
-            pathlib.Path(filename).unlink()
-            logging.info(
-                f"Caught error {caught_exception} and deleting"
-                "partially created netCDF output "
-                f"{filename} before re-raising error."
-            )
-            raise caught_exception
-
-        if reload:
-            self._load_dem(filename=filename)
 
 
 class RoughnessDem(LidarBase):
@@ -2109,11 +2010,12 @@ class RoughnessDem(LidarBase):
     def __init__(
         self,
         catchment_geometry: geometry.CatchmentGeometry,
-        hydrological_dem_path: typing.Union[str, pathlib.Path],
+        hydrological_dem_path: str | pathlib.Path,
         temp_folder: pathlib.Path,
         interpolation_method: str,
         default_values: dict,
         drop_offshore_lidar: dict,
+        chunk_size: int | None = None,
         elevation_range: list = None,
     ):
         """Setup base DEM to add future tiles too"""
@@ -2121,6 +2023,7 @@ class RoughnessDem(LidarBase):
         super(RoughnessDem, self).__init__(
             catchment_geometry=catchment_geometry,
             elevation_range=elevation_range,
+            chunk_size=chunk_size,
         )
 
         # Load hyrdological DEM. Squeeze as rasterio.open() adds band coordinate.
@@ -2145,9 +2048,10 @@ class RoughnessDem(LidarBase):
         )
 
         # Clip to the catchment extents to ensure performance
-        hydrological_dem = hydrological_dem.rio.clip(
-            self.catchment_geometry.catchment.geometry, drop=True
-        )
+        catchment = self.catchment_geometry.catchment
+        hydrological_dem = hydrological_dem.rio.clip_box(**catchment.bounds.iloc[0])
+        mask = clip_mask(hydrological_dem.z, catchment.geometry, self.chunk_size)
+        hydrological_dem = hydrological_dem.where(mask)
 
         self.temp_folder = temp_folder
         self.interpolation_method = interpolation_method
@@ -2168,7 +2072,6 @@ class RoughnessDem(LidarBase):
     def add_lidar(
         self,
         lidar_datasets_info: dict,
-        chunk_size: int,
         lidar_classifications_to_keep: list,
         metadata: dict,
         parameters: dict,
@@ -2183,8 +2086,6 @@ class RoughnessDem(LidarBase):
         lidar_datasets_info
             A dictionary of information for each specified LIDAR dataset - For
             each this includes: a list of LAS files, CRS, and tile index file.
-        chunk_size
-            The chunk size in pixels for parallel/staged processing
         lidar_classifications_to_keep
             A list of LiDAR classifications to keep - '2' for ground, '9' for water.
             See https://www.asprs.org/wp-content/uploads/2010/12/LAS_1_4_r13.pdf for
@@ -2197,9 +2098,7 @@ class RoughnessDem(LidarBase):
         """
 
         # Check valid inputs
-        self._check_valid_inputs(
-            lidar_datasets_info=lidar_datasets_info, chunk_size=chunk_size
-        )
+        self._check_valid_inputs(lidar_datasets_info=lidar_datasets_info)
 
         # create dictionary defining raster options
         raster_options = {
@@ -2226,7 +2125,7 @@ class RoughnessDem(LidarBase):
                 self._dem, self.catchment_geometry.crs
             )
 
-        elif chunk_size is None:  # If one file it's ok if there is no tile_index
+        elif self.chunk_size is None:  # If one file it's ok if there is no tile_index
             self._dem = self._add_lidar_no_chunking(
                 lidar_datasets_info=lidar_datasets_info,
                 options=raster_options,
@@ -2236,13 +2135,11 @@ class RoughnessDem(LidarBase):
             self._dem = self._add_tiled_lidar_chunked(
                 lidar_datasets_info=lidar_datasets_info,
                 raster_options=raster_options,
-                chunk_size=chunk_size,
                 metadata=metadata,
             )
-        self._save_and_load_dem(
+
+        self.save_and_load_dem(
             filename=self.temp_folder / "raw_lidar_zo.nc",
-            chunk_size=chunk_size,
-            no_values_mask=False,
         )
         # Set roughness where water
         self._dem["zo"] = self._dem.zo.where(
@@ -2274,14 +2171,15 @@ class RoughnessDem(LidarBase):
             # If any NaN remain apply nearest neighbour interpolation
             if numpy.isnan(self._dem.zo.data).any():
                 self._dem["zo"] = self._dem.zo.rio.interpolate_na(method="nearest")
-        self._dem = self._dem.rio.clip(
-            self.catchment_geometry.catchment.geometry, drop=True
+
+        mask = clip_mask(
+            self._dem.z, self.catchment_geometry.catchment.geometry, self.chunk_size
         )
+        self._dem = self._dem.where(mask)
 
     def _add_tiled_lidar_chunked(
         self,
         lidar_datasets_info: dict,
-        chunk_size: int,
         metadata: dict,
         raster_options: dict,
     ) -> xarray.Dataset:
@@ -2290,7 +2188,7 @@ class RoughnessDem(LidarBase):
         """
 
         # get chunks to tile over
-        chunked_dim_x, chunked_dim_y = self._chunks_from_dem(chunk_size, self._dem)
+        chunked_dim_x, chunked_dim_y = self._chunks_from_dem(self.chunk_size, self._dem)
 
         roughnesses = []
 
@@ -2544,7 +2442,7 @@ class RoughnessDem(LidarBase):
 
 
 def read_file_with_pdal(
-    lidar_file: typing.Union[str, pathlib.Path],
+    lidar_file: str | pathlib.Path,
     region_to_tile: geopandas.GeoDataFrame,
     crs: dict,
     source_crs: dict = None,

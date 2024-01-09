@@ -26,13 +26,21 @@ def setup_logging_for_run(instructions: dict, label: str):
     else:
         log_path = log_path / "results"
     log_path.mkdir(parents=True, exist_ok=True)
+
+    stream_handler = logging.StreamHandler()
+    stream_handler.setLevel(logging.INFO)
+
+    file_handler = logging.FileHandler(
+        log_path / f"geofabrics_{label}.log", mode="a", encoding="utf-8"
+    )
+    file_handler.setLevel(logging.INFO)
+
     logging.basicConfig(
-        filename=log_path / f"geofabrics_{label}.log",
-        encoding="utf-8",
-        level=logging.INFO,
+        format="%(asctime)s %(levelname)s %(module)s %(funcName)s %(message)s",
+        handlers=[stream_handler, file_handler],
         force=True,
     )
-    print(f"Log file is located at: geofabrics_{label}.log")
+    logging.info(f"Log file is located at: geofabrics_{label}.log")
     logging.info(instructions)
 
 
@@ -41,7 +49,7 @@ def run_processor_class(processor_class, processor_label: str, instructions: dic
     execution."""
 
     start_time = datetime.datetime.now()
-    print(f"Run {processor_class.__name__} at {start_time}")
+    logging.info(f"Run {processor_class.__name__} at {start_time}")
     run_instructions = instructions[processor_label]
     setup_logging_for_run(instructions=run_instructions, label=processor_label)
     runner = processor_class(run_instructions)
@@ -50,7 +58,6 @@ def run_processor_class(processor_class, processor_label: str, instructions: dic
         f"Execution time is {datetime.datetime.now() - start_time} for the "
         f"{processor_class.__name__}"
     )
-    print(message)
     logging.info(message)
     return runner
 
@@ -85,13 +92,13 @@ def merge_dicts(dict_a: dict, dict_b: dict, replace_a: bool):
                     pass  # same leaf value
                 else:
                     if replace_base:
-                        print(
+                        logging.info(
                             f"Conflict with both dictionaries containing different values at {path + [str(key)]}."
                             " Value replaced."
                         )
                         base_dict[key] = new_dict[key]
                     else:
-                        print(
+                        logging.info(
                             f"Conflict with both dictionaries containing different values at {path + [str(key)]}"
                             ". Value ignored."
                         )
@@ -195,7 +202,9 @@ def from_instructions_dict(instructions: dict):
             processor_label="roughness",
             instructions=instructions,
         )
-    print(f"Total execution time is {datetime.datetime.now() - initial_start_time}")
+    logging.info(
+        f"Total execution time is {datetime.datetime.now() - initial_start_time}"
+    )
 
 
 def from_instructions_file(
