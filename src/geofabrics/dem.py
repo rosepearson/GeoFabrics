@@ -1203,16 +1203,12 @@ class LidarBase(DemBase):
         self._write_netcdf_conventions_in_place(dem, self.catchment_geometry.crs)
 
         if "data_source" in dem.keys():
-            dem["data_source"] = dem.data_source.astype(
-                geometry.RASTER_TYPE
-            )
+            dem["data_source"] = dem.data_source.astype(geometry.RASTER_TYPE)
         if "lidar_source" in dem.keys():
-            dem["lidar_source"] = dem.lidar_source.astype(
-                geometry.RASTER_TYPE
-            )
+            dem["lidar_source"] = dem.lidar_source.astype(geometry.RASTER_TYPE)
         if "z" in dem.keys():
             dem["z"] = dem.z.astype(geometry.RASTER_TYPE)
-        
+
         return dem
 
     def save_dem(self, filename: pathlib.Path, dem: xarray.Dataset):
@@ -1238,13 +1234,12 @@ class LidarBase(DemBase):
                 f"{filename} before re-raising error."
             )
             raise caught_exception
-    
+
     def save_and_load_dem(
         self,
         filename: pathlib.Path,
     ):
-        """Update the saved file cache for the DEM (self._dem) as a netCDF file.
-        """
+        """Update the saved file cache for the DEM (self._dem) as a netCDF file."""
 
         logging.info(
             "In LidarBase.save_and_load_dem saving _dem as NetCDF file to "
@@ -2011,7 +2006,7 @@ class RoughnessDem(LidarBase):
     lidar_interpolation_method
         The interpolation method to apply to LiDAR. Options are: mean, median, IDW.
     """
-    
+
     def __init__(
         self,
         catchment_geometry: geometry.CatchmentGeometry,
@@ -2142,6 +2137,7 @@ class RoughnessDem(LidarBase):
                 raster_options=raster_options,
                 metadata=metadata,
             )
+
         self.save_and_load_dem(
             filename=self.temp_folder / "raw_lidar_zo.nc",
         )
@@ -2175,6 +2171,7 @@ class RoughnessDem(LidarBase):
             # If any NaN remain apply nearest neighbour interpolation
             if numpy.isnan(self._dem.zo.data).any():
                 self._dem["zo"] = self._dem.zo.rio.interpolate_na(method="nearest")
+
         mask = clip_mask(
             self._dem.z, self.catchment_geometry.catchment.geometry, self.chunk_size
         )
