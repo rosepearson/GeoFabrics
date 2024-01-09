@@ -2054,12 +2054,9 @@ class RoughnessDem(LidarBase):
 
         # Clip to the catchment extents to ensure performance
         catchment = self.catchment_geometry.catchment
-        '''hydrological_dem = hydrological_dem.rio.clip_box(**catchment.bounds.iloc[0])
+        hydrological_dem = hydrological_dem.rio.clip_box(**catchment.bounds.iloc[0])
         mask = clip_mask(hydrological_dem.z, catchment.geometry, self.chunk_size)
-        hydrological_dem = hydrological_dem.where(mask)'''
-        hydrological_dem = hydrological_dem.rio.clip(
-            self.catchment_geometry.catchment.geometry, drop=True
-        )
+        hydrological_dem = hydrological_dem.where(mask)
 
         self.temp_folder = temp_folder
         self.interpolation_method = interpolation_method
@@ -2178,12 +2175,10 @@ class RoughnessDem(LidarBase):
             # If any NaN remain apply nearest neighbour interpolation
             if numpy.isnan(self._dem.zo.data).any():
                 self._dem["zo"] = self._dem.zo.rio.interpolate_na(method="nearest")
-        '''mask = clip_mask(
+        mask = clip_mask(
             self._dem.z, self.catchment_geometry.catchment.geometry, self.chunk_size
         )
-        self._dem = self._dem.where(mask)'''
-        self._dem = self._dem.rio.clip(
-            self.catchment_geometry.catchment.geometry, drop=True)
+        self._dem = self._dem.where(mask)
 
     def _add_tiled_lidar_chunked(
         self,
