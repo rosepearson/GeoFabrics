@@ -952,7 +952,9 @@ class RawLidarDemGenerator(BaseProcessor):
 
             # compute and save raw DEM
             logging.info("In processor.DemGenerator - write out the raw DEM to netCDF")
-            self.raw_dem.save_dem(self.get_instruction_path("raw_dem"), dem=self.raw_dem.dem)
+            self.raw_dem.save_dem(
+                self.get_instruction_path("raw_dem"), dem=self.raw_dem.dem
+            )
             logging.info(f"Remove folder {temp_folder} for temporary files")
             shutil.rmtree(temp_folder)
 
