@@ -173,7 +173,7 @@ Attributes
 
 
 
-.. py:class:: LidarBase(catchment_geometry, elevation_range = None)
+.. py:class:: LidarBase(catchment_geometry, chunk_size, elevation_range = None)
 
 
    Bases: :py:obj:`DemBase`
@@ -185,7 +185,7 @@ Attributes
 
    .. py:property:: dem
 
-      Return the combined DEM from tiles and any interpolated offshore values
+      Return the positivelly indexed DEM from tiles
 
    .. py:method:: __del__()
 
@@ -209,7 +209,15 @@ Attributes
 
    .. py:method:: save_dem(filename, dem)
 
-      Save the DEM to a netCDF file.
+      Save the DEM to a netCDF file and optionally reload it
+
+      :param filename: .nc file where to save the DEM
+      :param reload: reload DEM from the saved file
+
+
+   .. py:method:: save_and_load_dem(filename)
+
+      Update the saved file cache for the DEM (self._dem) as a netCDF file.
 
 
 
@@ -229,10 +237,6 @@ Attributes
                                       Options are: mean, median, IDW, max, min, STD.
    :param buffer_cells - the number of empty cells to keep around LiDAR cells for: interpolation after the coarse DEM added to ensure a smooth boundary.
    :param chunk_size: The chunk size in pixels for parallel/staged processing
-
-   .. py:property:: dem
-
-      Return the combined DEM from tiles
 
    .. py:property:: no_values_mask
 
@@ -263,16 +267,8 @@ Attributes
       :param area_threshold - the ratio of area without LiDAR required to for: coarse DEMs to be used.
 
 
-   .. py:method:: save_dem(filename, reload = False)
 
-      Save the DEM to a netCDF file and optionnally reload it
-
-      :param filename: .nc file where to save the DEM
-      :param reload: reload DEM from the saved file
-
-
-
-.. py:class:: RoughnessDem(catchment_geometry, hydrological_dem_path, temp_folder, interpolation_method, default_values, drop_offshore_lidar, elevation_range = None)
+.. py:class:: RoughnessDem(catchment_geometry, hydrological_dem_path, temp_folder, interpolation_method, default_values, drop_offshore_lidar, chunk_size = None, elevation_range = None)
 
 
    Bases: :py:obj:`LidarBase`
@@ -291,7 +287,7 @@ Attributes
                                 'nearest', and 'cubic'.
    :param lidar_interpolation_method: The interpolation method to apply to LiDAR. Options are: mean, median, IDW.
 
-   .. py:method:: add_lidar(lidar_datasets_info, chunk_size, lidar_classifications_to_keep, metadata, parameters)
+   .. py:method:: add_lidar(lidar_datasets_info, lidar_classifications_to_keep, metadata, parameters)
 
       Read in all LiDAR files and use the point cloud distribution,
       data_source layer, and hydrologiaclly conditioned elevations to
@@ -299,7 +295,6 @@ Attributes
 
       :param lidar_datasets_info: A dictionary of information for each specified LIDAR dataset - For
                                   each this includes: a list of LAS files, CRS, and tile index file.
-      :param chunk_size: The chunk size in pixels for parallel/staged processing
       :param lidar_classifications_to_keep: A list of LiDAR classifications to keep - '2' for ground, '9' for water.
                                             See https://www.asprs.org/wp-content/uploads/2010/12/LAS_1_4_r13.pdf for
                                             standard list
