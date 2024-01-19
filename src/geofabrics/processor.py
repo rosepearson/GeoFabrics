@@ -624,7 +624,7 @@ class BaseProcessor(abc.ABC):
                 lidar_datasets_info[dataset_name] = {}
                 lidar_datasets_info[dataset_name]["file_paths"] = sorted(
                     pathlib.Path(self.lidar_fetcher.cache_path / dataset_name).rglob(
-                        "*.laz"
+                        "*.la[zs]"
                     )
                 )
                 lidar_datasets_info[dataset_name]["crs"] = self.get_lidar_dataset_crs(
@@ -645,13 +645,9 @@ class BaseProcessor(abc.ABC):
             for dataset_name, dataset in local_datasets.items():
                 # Ensure the file_paths (LAZ, and LAS files) are specified
                 if "file_paths" not in dataset and "folder_path" in dataset:
-                    # Compressed file type
+                    # Compressed or uncomplressed file type
                     dataset["file_paths"] = sorted(
-                        pathlib.Path(dataset["folder_path"]).rglob("*.laz")
-                    )
-                    # uncompressed file type
-                    dataset["file_paths"].extend(
-                        sorted(pathlib.Path(dataset["folder_path"]).rglob("*.las"))
+                        pathlib.Path(dataset["folder_path"]).rglob("*.la[zs]")
                     )
                 elif "file_paths" not in dataset and "folder_path" not in dataset:
                     raise Exception(

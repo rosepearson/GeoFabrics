@@ -391,6 +391,9 @@ class BathymetryContours:
                 ]
             )
         )
+        if len(points_df) == 0:
+            # No data, return an empty array
+            return []
 
         points = numpy.empty(
             [points_df.apply(lambda row: len(row.geoms)).sum()],
