@@ -671,7 +671,10 @@ class HydrologicallyConditionedDem(DemBase):
         bathy_points = bathy_contours.sample_contours(
             self.catchment_geometry.resolution
         )
-        offshore_points = numpy.concatenate([offshore_edge_points, bathy_points])
+        if len(bathy_points) == 0:
+            offshore_points = offshore_edge_points
+        else: 
+            offshore_points = numpy.concatenate([offshore_edge_points, bathy_points])
 
         # Resample at a lower resolution if too many offshore points
         if len(offshore_points) > self.CACHE_SIZE:
@@ -687,7 +690,10 @@ class HydrologicallyConditionedDem(DemBase):
             )
             offshore_edge_points = self._sample_offshore_edge(reduced_resolution)
             bathy_points = bathy_contours.sample_contours(reduced_resolution)
-            offshore_points = numpy.concatenate([offshore_edge_points, bathy_points])
+            if len(bathy_points) == 0:
+                offshore_points = offshore_edge_points
+            else: 
+                offshore_points = numpy.concatenate([offshore_edge_points, bathy_points])
         # Setup the empty offshore area ready for interpolation
         offshore_no_dense_data = self.catchment_geometry.offshore_no_dense_data(
             self._raw_extents
