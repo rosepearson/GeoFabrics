@@ -40,6 +40,8 @@ class Channel:
             The ordering of the points in the polylines.
         """
 
+        self.logger = logging.getLogger("geofabrics.processor.Channel")
+
         self.channel = channel
         self.resolution = resolution
         self.sampling_direction = sampling_direction
@@ -507,6 +509,8 @@ class InterpolateMeasuredElevations:
     ):
         """Setup for interpolating the measured riverbed elevations along
         equally spaced cross sections."""
+        self.logger = logging.getLogger("geofabrics.processor.InterpolateMeasuredElevations")
+
         self.riverbanks = geopandas.read_file(riverbank_file)
         self.measured_sections = geopandas.read_file(measured_sections_file)
         self.cross_section_spacing = cross_section_spacing
@@ -554,7 +558,7 @@ class InterpolateMeasuredElevations:
             .geometry.interpolate(1, normalized=True)
             .distance(self.riverbanks.loc[1].geometry.interpolate(0, normalized=True))
         ):
-            logging.Warning(
+            self.logger.Warning(
                 "It appears that the `right` and `left` banks are"
                 "defined in different directions based on the "
                 "relative distance between the endpoints. Please "
@@ -821,6 +825,9 @@ class ChannelCharacteristics:
         resolution
             The resolution to sample at.
         """
+
+
+        self.logger = logging.getLogger("geofabrics.processor.ChannelCharacteristics")
 
         self.gnd_dem = gnd_dem
         self.veg_dem = veg_dem
@@ -1224,7 +1231,7 @@ class ChannelCharacteristics:
         }
 
         for j in range(len(cross_section_elevations["gnd_elevations"])):
-            logging.info(
+            self.logger.info(
                 f"Variable thresholding cross section {j} out of "
                 f"{len(cross_section_elevations['gnd_elevations'])}"
             )
