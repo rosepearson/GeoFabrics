@@ -10,7 +10,7 @@ import logging
 import pathlib
 import typing
 import copy
-
+import sys
 
 def setup_logging_for_run(instructions: dict, label: str):
     """Setup logging for the current processor run"""
@@ -27,21 +27,26 @@ def setup_logging_for_run(instructions: dict, label: str):
         log_path = log_path / "results"
     log_path.mkdir(parents=True, exist_ok=True)
 
-    stream_handler = logging.StreamHandler()
+    logger = logging.getLogger("geofabrics")
+    logger.setLevel(logging.DEBUG)
+    formatter = logging.Formatter("%(asctime)s %(levelname)s %(module)s %(funcName)s %(message)s")
+
+    stream_handler = logging.StreamHandler(sys.stdout)
     stream_handler.setLevel(logging.INFO)
+    stream_handler.setFormatter(formatter)
 
     file_handler = logging.FileHandler(
         log_path / f"geofabrics_{label}.log", mode="a", encoding="utf-8"
     )
     file_handler.setLevel(logging.INFO)
+    file_handler.setFormatter(formatter)
+    
+    logger.addHandler(stream_handler)
+    logger.addHandler(file_handler)
 
-    logging.basicConfig(
-        format="%(asctime)s %(levelname)s %(module)s %(funcName)s %(message)s",
-        handlers=[stream_handler, file_handler],
-        force=True,
-    )
-    logging.info(f"Log file is located at: geofabrics_{label}.log")
-    logging.info(instructions)
+    logger.info(f"Log file is located at: geofabrics_{label}.log")
+    logger.debug(instructions)
+    return logger
 
 
 def run_processor_class(processor_class, processor_label: str, instructions: dict):
@@ -49,20 +54,20 @@ def run_processor_class(processor_class, processor_label: str, instructions: dic
     execution."""
 
     start_time = datetime.datetime.now()
-    logging.info(f"Run {processor_class.__name__} at {start_time}")
     run_instructions = instructions[processor_label]
-    setup_logging_for_run(instructions=run_instructions, label=processor_label)
+    logger = setup_logging_for_run(instructions=run_instructions, label=processor_label)
+    logger.info(f"Run {processor_class.__name__} at {start_time}")
     runner = processor_class(run_instructions)
     runner.run()
     message = (
         f"Execution time is {datetime.datetime.now() - start_time} for the "
         f"{processor_class.__name__}"
     )
-    logging.info(message)
+    logger.info(message)
     return runner
 
 
-def merge_dicts(dict_a: dict, dict_b: dict, replace_a: bool):
+def merge_dicts(dict_a: dict, dict_b: dict, logger: logging.Logger replace_a: bool):
     """Merge the contents of the dict_a and dict_b. Use recursion to merge
     any nested dictionaries. replace_a determines if the dict_a values are
     replaced or not if different values are in the dict_b.
@@ -76,7 +81,7 @@ def merge_dicts(dict_a: dict, dict_b: dict, replace_a: bool):
     """
 
     def recursive_merge_dicts(
-        base_dict: dict, new_dict: dict, replace_base: bool, path: list = []
+        base_dict: dict, new_dict: dict, replace_base: bool, logger: logging.Logger, path: list = []
     ):
         """Recurively add the new_dict into the base_dict. dict_a is mutable."""
         for key in new_dict:
@@ -92,13 +97,13 @@ def merge_dicts(dict_a: dict, dict_b: dict, replace_a: bool):
                     pass  # same leaf value
                 else:
                     if replace_base:
-                        logging.info(
+                        logger.info(
                             f"Conflict with both dictionaries containing different values at {path + [str(key)]}."
                             " Value replaced."
                         )
                         base_dict[key] = new_dict[key]
                     else:
-                        logging.info(
+                        logger.info(
                             f"Conflict with both dictionaries containing different values at {path + [str(key)]}"
                             ". Value ignored."
                         )
@@ -114,6 +119,7 @@ def from_instructions_dict(instructions: dict):
     If a benchmark is specified compare the result to the benchmark"""
 
     # Construct the full instructions by adding the default entries to each stage
+    logger = setup_logging_for_run(instructions=instructions, label="runner")
     instructions = copy.deepcopy(instructions)
     if "default" in instructions:
         default = instructions.pop("default")
@@ -136,7 +142,7 @@ def from_instructions_dict(instructions: dict):
         # Construct the full instructions
         for key in instructions:
             instructions[key] = merge_dicts(
-                dict_a=instructions[key], dict_b=default, replace_a=False
+                dict_a=instructions[key], dict_b=default, logger=logger, replace_a=False
             )
 
     # Run the pipeline
@@ -202,7 +208,8 @@ def from_instructions_dict(instructions: dict):
             processor_label="roughness",
             instructions=instructions,
         )
-    logging.info(
+    logger = setup_logging_for_run(instructions=instructions, label="runner")
+    logger.info(
         f"Total execution time is {datetime.datetime.now() - initial_start_time}"
     )
 
