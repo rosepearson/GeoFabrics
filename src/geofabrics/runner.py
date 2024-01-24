@@ -135,6 +135,7 @@ def merge_dicts(dict_a: dict, dict_b: dict, logger: logging.Logger, replace_a: b
                     recursive_merge_dicts(
                         base_dict=base_dict[key],
                         new_dict=new_dict[key],
+                        logger=logger,
                         replace_base=replace_base,
                         path=path + [str(key)],
                     )
