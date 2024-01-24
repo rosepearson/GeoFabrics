@@ -15,16 +15,19 @@ import sys
 def setup_logging_for_run(instructions: dict, label: str):
     """Setup logging for the current processor run"""
 
-    assert "local_cache" in instructions["data_paths"], (
-        "A local_cache must be spcified in the instruction file"
-        "this is where the log file will be written."
-    )
-
-    log_path = pathlib.Path(pathlib.Path(instructions["data_paths"]["local_cache"]))
-    if "subfolder" in instructions["data_paths"].keys():
-        log_path = log_path / instructions["data_paths"]["subfolder"]
+    if label == "runner":
+        # In this case expecting the top level instruction dictionary instead of a subsection
+        log_path = pathlib.Path(pathlib.Path(instructions[next(iter(instructions))]["data_paths"]["local_cache"]))
+        if "subfolder" in instructions[next(iter(instructions))]["data_paths"].keys():
+            log_path = log_path / instructions[next(iter(instructions))]["data_paths"]["subfolder"]
+        else:
+            log_path = log_path / "results"
     else:
-        log_path = log_path / "results"
+        log_path = pathlib.Path(pathlib.Path(instructions["data_paths"]["local_cache"]))
+        if "subfolder" in instructions["data_paths"].keys():
+            log_path = log_path / instructions["data_paths"]["subfolder"]
+        else:
+            log_path = log_path / "results"
     log_path.mkdir(parents=True, exist_ok=True)
 
     logger = logging.getLogger("geofabrics")
@@ -41,6 +44,7 @@ def setup_logging_for_run(instructions: dict, label: str):
     file_handler.setLevel(logging.INFO)
     file_handler.setFormatter(formatter)
     
+    logger.handlers.clear()
     logger.addHandler(stream_handler)
     logger.addHandler(file_handler)
 
@@ -67,7 +71,7 @@ def run_processor_class(processor_class, processor_label: str, instructions: dic
     return runner
 
 
-def merge_dicts(dict_a: dict, dict_b: dict, logger: logging.Logger replace_a: bool):
+def merge_dicts(dict_a: dict, dict_b: dict, logger: logging.Logger, replace_a: bool):
     """Merge the contents of the dict_a and dict_b. Use recursion to merge
     any nested dictionaries. replace_a determines if the dict_a values are
     replaced or not if different values are in the dict_b.
@@ -97,13 +101,13 @@ def merge_dicts(dict_a: dict, dict_b: dict, logger: logging.Logger replace_a: bo
                     pass  # same leaf value
                 else:
                     if replace_base:
-                        logger.info(
+                        logger.warning(
                             f"Conflict with both dictionaries containing different values at {path + [str(key)]}."
                             " Value replaced."
                         )
                         base_dict[key] = new_dict[key]
                     else:
-                        logger.info(
+                        logger.warning(
                             f"Conflict with both dictionaries containing different values at {path + [str(key)]}"
                             ". Value ignored."
                         )
