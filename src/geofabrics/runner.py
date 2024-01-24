@@ -12,6 +12,50 @@ import typing
 import copy
 import sys
 
+def config_logging(logging_filepath: pathlib):
+    """ Configure the root logger inhereited by all othr loggers. """
+    log_dict = {
+        'version': 1,
+        'disable_existing_loggers': True,
+        'formatters': {
+            'standard': {
+                'format': '%(asctime)s - [%(levelname)s] [%(name)s.%(funcName)s:%(lineno)d]: %(message)s',
+                'datefmt': '%Y-%m-%d %H:%M:%S',
+            },
+        },
+        'handlers': {
+            'default': {
+                'level': 'INFO',
+                'formatter': 'standard',
+                'class': 'logging.StreamHandler',
+                'stream': 'ext://sys.stdout',  # Default is stderr
+            },
+            'stream_handler': {
+                'level': 'INFO',
+                'formatter': 'standard',
+                'class': 'logging.StreamHandler',
+                'stream': 'ext://sys.stdout',  # Default is stderr
+            },
+            'file_handler': {
+                'level': 'INFO',
+                'filename': logging_filepath,
+                'class': 'logging.FileHandler',
+                'formatter': 'standard',
+                "encoding": "utf-8",
+                "mode": "a"
+            }
+        },
+        'loggers': {
+            '': {
+                'handlers': ['file_handler', 'stream_handler'],
+                'level': 'INFO',
+                'propagate': True
+            },
+        }
+    }
+    logging.config.dictConfig(log_dict)
+    
+
 def setup_logging_for_run(instructions: dict, label: str):
     """Setup logging for the current processor run"""
 
@@ -29,25 +73,9 @@ def setup_logging_for_run(instructions: dict, label: str):
         else:
             log_path = log_path / "results"
     log_path.mkdir(parents=True, exist_ok=True)
-
-    logger = logging.getLogger("geofabrics")
-    logger.setLevel(logging.DEBUG)
-    formatter = logging.Formatter("%(asctime)s %(levelname)s %(module)s %(funcName)s %(message)s")
-
-    stream_handler = logging.StreamHandler(sys.stdout)
-    stream_handler.setLevel(logging.INFO)
-    stream_handler.setFormatter(formatter)
-
-    file_handler = logging.FileHandler(
-        log_path / f"geofabrics_{label}.log", mode="a", encoding="utf-8"
-    )
-    file_handler.setLevel(logging.INFO)
-    file_handler.setFormatter(formatter)
     
-    logger.handlers.clear()
-    logger.addHandler(stream_handler)
-    logger.addHandler(file_handler)
-
+    config_logging(log_path / f"geofabrics_{label}.log")
+    logger = logging.getLogger(__name__)
     logger.info(f"Log file is located at: geofabrics_{label}.log")
     logger.debug(instructions)
     return logger

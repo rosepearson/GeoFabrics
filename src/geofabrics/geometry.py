@@ -45,7 +45,7 @@ class CatchmentGeometry:
         resolution: float,
         foreshore_buffer: int = 2,
     ):
-        self.logger = logging.getLogger("geofabrics.geometry.CatchmentGeometry")
+        self.logger = logging.getLogger(f"{__name__}.{self.__class__.__name__}")
         self._catchment = geopandas.read_file(catchment_file)
         self.crs = crs
         self.resolution = resolution
@@ -319,7 +319,7 @@ class BathymetryContours:
         z_label=None,
         exclusion_extent=None,
     ):
-        self.logger = logging.getLogger("geofabrics.geometry.BathymetryContours")
+        self.logger = logging.getLogger(f"{__name__}.{self.__class__.__name__}")
         self._contour = geopandas.read_file(contour_file)
         self.catchment_geometry = catchment_geometry
         self.z_label = z_label
@@ -443,7 +443,7 @@ class MarineBathymetryPoints:
         catchment_geometry: CatchmentGeometry,
         exclusion_extent=None,
     ):
-        self.logger = logging.getLogger("geofabrics.geometry.MarineBathymetryPoints")
+        self.logger = logging.getLogger(f"{__name__}.{self.__class__.__name__}")
         self._points = geopandas.read_file(points_file)
         self.catchment_geometry = catchment_geometry
 
@@ -528,7 +528,7 @@ class EstimatedBathymetryPoints:
         filter_osm_ids: list = [],
         z_labels: list = None,
     ):
-        self.logger = logging.getLogger("geofabrics.geometry.EstimatedBathymetryPoints")
+        self.logger = logging.getLogger(f"{__name__}.{self.__class__.__name__}")
         self.catchment_geometry = catchment_geometry
 
         self.z_label = z_labels is not None
@@ -718,7 +718,7 @@ class TileInfo:
     """A class for working with tiling information."""
 
     def __init__(self, tile_file: str, catchment_geometry: CatchmentGeometry):
-        self.logger = logging.getLogger("geofabrics.geometry.TileInfo")
+        self.logger = logging.getLogger(f"{__name__}.{self.__class__.__name__}")
         self._tile_info = geopandas.read_file(tile_file)
         self.catchment_geometry = catchment_geometry
 
@@ -795,7 +795,7 @@ class RiverMouthFan:
         elevation_labels: list,
         ocean_contour_depth_label: str = None,
     ):
-        self.logger = logging.getLogger("geofabrics.geometry.RiverMouthFan")
+        self.logger = logging.getLogger(f"{__name__}.{self.__class__.__name__}")
         self.crs = crs
         self.cross_section_spacing = cross_section_spacing
         self.aligned_channel_file = aligned_channel_file

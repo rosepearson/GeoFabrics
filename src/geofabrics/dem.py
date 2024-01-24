@@ -23,8 +23,6 @@ import scipy.interpolate
 import scipy.spatial
 from . import geometry
 
-module_logger = logging.getLogger("geofabrics.dem")
-
 def chunk_mask(mask, chunk_size):
     arrs = []
     for i in range(0, mask.shape[0], chunk_size):
@@ -69,7 +67,7 @@ class CoarseDem:
     ):
         """Load in the coarse DEM, clip and extract points"""
 
-        self.logger = logging.getLogger("geofabrics.dem.CoarseDem")
+        self.logger = logging.getLogger(f"{__name__}.{self.__class__.__name__}")
         self.set_foreshore = set_foreshore
         # Drop the band coordinate added by rasterio.open()
         self._dem = rioxarray.rioxarray.open_rasterio(dem_file, masked=True).squeeze(
@@ -444,7 +442,7 @@ class HydrologicallyConditionedDem(DemBase):
         super(HydrologicallyConditionedDem, self).__init__(
                 catchment_geometry=catchment_geometry,
             )
-        self.logger = logging.getLogger("geofabrics.dem.HydrologicallyConditionedDem")
+        self.logger = logging.getLogger(f"{__name__}.{self.__class__.__name__}")
 
         # Read in the dense DEM raster - and free up file by performing a deep copy.
         raw_dem = rioxarray.rioxarray.open_rasterio(
@@ -948,7 +946,7 @@ class LidarBase(DemBase):
         super(LidarBase, self).__init__(
             catchment_geometry=catchment_geometry,
         )
-        self.logger = logging.getLogger("geofabrics.dem.LidarBase")
+        self.logger = logging.getLogger(f"{__name__}.{self.__class__.__name__}")
 
         self.chunk_size = chunk_size
         self.elevation_range = elevation_range
@@ -1301,7 +1299,7 @@ class RawDem(LidarBase):
             chunk_size=chunk_size,
             elevation_range=elevation_range,
         )
-        self.logger = logging.getLogger("geofabrics.dem.RawDem")
+        self.logger = logging.getLogger(f"{__name__}.{self.__class__.__name__}")
 
         self.drop_offshore_lidar = drop_offshore_lidar
         self.lidar_interpolation_method = lidar_interpolation_method
@@ -2037,7 +2035,7 @@ class RoughnessDem(LidarBase):
             elevation_range=elevation_range,
             chunk_size=chunk_size,
         )
-        self.logger = logging.getLogger("geofabrics.dem.RoughnessDem")
+        self.logger = logging.getLogger(f"{__name__}.{self.__class__.__name__}")
 
         # Load hyrdological DEM. Squeeze as rasterio.open() adds band coordinate.
         hydrological_dem = rioxarray.rioxarray.open_rasterio(
@@ -2637,8 +2635,9 @@ def calculate_linear(
                 method="linear",
             )[0]
         except (scipy.spatial.QhullError, Exception) as caught_exception:
-            module_logger.warning(
-                f"Exception {caught_exception} during linear interpolation. Set to NaN."
+            logging.warning(
+                f" [dem.calculate_linear]:\tException {caught_exception} during "
+                "linear interpolation. Set to NaN."
             )
             linear = numpy.nan
 
@@ -2683,14 +2682,14 @@ def load_tiles_in_chunk(
     """Read in all LiDAR files within the chunked region - clipped to within
     the region within which to rasterise."""
 
-    module_logger.info(f"Reading all {len(lidar_files)} files in chunk.")
+    logging.info(f" [dem.load_tiles_in_chunk]:\tReading all {len(lidar_files)} files in chunk.")
 
     # Initialise LiDAR points
     lidar_points = []
 
     # Cycle through each file loading it in an adding it to a numpy array
     for lidar_file in lidar_files:
-        module_logger.info(f"\t Loading in file {lidar_file}")
+        logging.info(f"dem.load_tiles_in_chunk]:\tLoading in file {lidar_file}")
 
         # read in the LiDAR file
         pdal_pipeline = read_file_with_pdal(
@@ -2723,8 +2722,8 @@ def roughness_over_chunk(
 
     # If no points return an array of NaN
     if len(tile_points) == 0:
-        module_logger.warning(
-            "In dem.roughness_over_chunk the latest chunk has no data and is being "
+        logging.warning(
+            " [dem.roughness_over_chunk]:\tThe latest chunk has no data and is being "
             "ignored."
         )
         return grid_z
@@ -2771,8 +2770,8 @@ def elevation_over_chunk(
 
     # If no points return an array of NaN
     if len(tile_points) == 0:
-        module_logger.warning(
-            "In dem.elevation_over_chunk the latest chunk has no data and is being "
+        logging.warning(
+            " [dem.elevation_over_chunk]:\tThe latest chunk has no data and is being "
             "ignored."
         )
         return grid_z

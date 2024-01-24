@@ -40,7 +40,7 @@ class BaseProcessor(abc.ABC):
     OSM_CRS = "EPSG:4326"
 
     def __init__(self, json_instructions: json):
-        self.logger = logging.getLogger("geofabrics.processor.BaseProcessor")
+        self.logger = logging.getLogger(f"{__name__}.{self.__class__.__name__}")
         self.instructions = copy.deepcopy(json_instructions)
 
         self.catchment_geometry = None
@@ -833,7 +833,7 @@ class RawLidarDemGenerator(BaseProcessor):
 
     def __init__(self, json_instructions: json, debug: bool = True):
         super(RawLidarDemGenerator, self).__init__(json_instructions=json_instructions)
-        self.logger = logging.getLogger("geofabrics.processor.RawLidarDemGenerator")
+        self.logger = logging.getLogger(f"{__name__}.{self.__class__.__name__}")
 
         self.raw_dem = None
         self.debug = debug
@@ -984,7 +984,7 @@ class HydrologicDemGenerator(BaseProcessor):
         super(HydrologicDemGenerator, self).__init__(
             json_instructions=json_instructions
         )
-        self.logger = logging.getLogger("geofabrics.processor.HydrologicDemGenerator")
+        self.logger = logging.getLogger(f"{__name__}.{self.__class__.__name__}")
 
         self.hydrologic_dem = None
         self.bathy_contours = None
@@ -1189,7 +1189,7 @@ class RoughnessLengthGenerator(BaseProcessor):
         super(RoughnessLengthGenerator, self).__init__(
             json_instructions=json_instructions
         )
-        self.logger = logging.getLogger("geofabrics.processor.RoughnessLengthGenerator")
+        self.logger = logging.getLogger(f"{__name__}.{self.__class__.__name__}")
 
         self.roughness_dem = None
         self.debug = debug
@@ -1365,7 +1365,7 @@ class MeasuredRiverGenerator(BaseProcessor):
         super(MeasuredRiverGenerator, self).__init__(
             json_instructions=json_instructions
         )
-        self.logger = logging.getLogger("geofabrics.processor.MeasuredRiverGenerator")
+        self.logger = logging.getLogger(f"{__name__}.{self.__class__.__name__}")
 
         self.debug = debug
 
@@ -1590,7 +1590,7 @@ class RiverBathymetryGenerator(BaseProcessor):
         super(RiverBathymetryGenerator, self).__init__(
             json_instructions=json_instructions
         )
-        self.logger = logging.getLogger("geofabrics.processor.RiverBathymetryGenerator")
+        self.logger = logging.getLogger(f"{__name__}.{self.__class__.__name__}")
 
         self.debug = debug
 
@@ -2572,7 +2572,7 @@ class WaterwayBedElevationEstimator(BaseProcessor):
         super(WaterwayBedElevationEstimator, self).__init__(
             json_instructions=json_instructions
         )
-        self.logger = logging.getLogger("geofabrics.processor.WaterwayBedElevationEstimator")
+        self.logger = logging.getLogger(f"{__name__}.{self.__class__.__name__}")
 
         self.debug = debug
 

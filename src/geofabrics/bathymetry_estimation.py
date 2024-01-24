@@ -40,7 +40,7 @@ class Channel:
             The ordering of the points in the polylines.
         """
 
-        self.logger = logging.getLogger("geofabrics.processor.Channel")
+        self.logger = logging.getLogger(f"{__name__}.{self.__class__.__name__}")
 
         self.channel = channel
         self.resolution = resolution
@@ -509,7 +509,7 @@ class InterpolateMeasuredElevations:
     ):
         """Setup for interpolating the measured riverbed elevations along
         equally spaced cross sections."""
-        self.logger = logging.getLogger("geofabrics.processor.InterpolateMeasuredElevations")
+        self.logger = logging.getLogger(f"{__name__}.{self.__class__.__name__}")
 
         self.riverbanks = geopandas.read_file(riverbank_file)
         self.measured_sections = geopandas.read_file(measured_sections_file)
@@ -827,7 +827,7 @@ class ChannelCharacteristics:
         """
 
 
-        self.logger = logging.getLogger("geofabrics.processor.ChannelCharacteristics")
+        self.logger = logging.getLogger(f"{__name__}.{self.__class__.__name__}")
 
         self.gnd_dem = gnd_dem
         self.veg_dem = veg_dem
