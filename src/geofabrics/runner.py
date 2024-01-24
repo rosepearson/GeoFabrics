@@ -157,7 +157,9 @@ def merge_dicts(dict_a: dict, dict_b: dict, logger: logging.Logger, replace_a: b
                 base_dict[key] = new_dict[key]
         return base_dict
 
-    return recursive_merge_dicts(copy.deepcopy(dict_a), dict_b, replace_base=replace_a, logger=logger)
+    return recursive_merge_dicts(
+        copy.deepcopy(dict_a), dict_b, replace_base=replace_a, logger=logger
+    )
 
 
 def from_instructions_dict(instructions: dict):
