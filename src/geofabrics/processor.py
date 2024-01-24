@@ -401,7 +401,9 @@ class BaseProcessor(abc.ABC):
                 "statsnz": geoapis.raster.StatsNz,
             }
         else:
-            self.logger.warning(f"Unsupported API type specified: {data_type}. Ignored.")
+            self.logger.warning(
+                f"Unsupported API type specified: {data_type}. Ignored."
+            )
             return
         # Check the instructions for vector data hosted in the supported vector data
         # services: LINZ and LRIS
@@ -949,7 +951,9 @@ class RawLidarDemGenerator(BaseProcessor):
                     cached_file = temp_file
 
             # compute and save raw DEM
-            self.logger.info("In processor.DemGenerator - write out the raw DEM to netCDF")
+            self.logger.info(
+                "In processor.DemGenerator - write out the raw DEM to netCDF"
+            )
             self.raw_dem.save_dem(
                 self.get_instruction_path("raw_dem"), dem=self.raw_dem.dem
             )
@@ -1147,7 +1151,9 @@ class HydrologicDemGenerator(BaseProcessor):
             )
 
             # fill combined dem - save results
-            self.logger.info("In processor.DemGenerator - write out the raw DEM to netCDF")
+            self.logger.info(
+                "In processor.DemGenerator - write out the raw DEM to netCDF"
+            )
             try:
                 self.hydrologic_dem.dem.to_netcdf(
                     self.get_instruction_path("result_dem"),
@@ -2572,7 +2578,9 @@ class WaterwayBedElevationEstimator(BaseProcessor):
         super(WaterwayBedElevationEstimator, self).__init__(
             json_instructions=json_instructions
         )
-        self.logger = logging.getLogger("geofabrics.processor.WaterwayBedElevationEstimator")
+        self.logger = logging.getLogger(
+            "geofabrics.processor.WaterwayBedElevationEstimator"
+        )
 
         self.debug = debug
 
@@ -2988,7 +2996,9 @@ class WaterwayBedElevationEstimator(BaseProcessor):
         if self.waterway_elevations_exists():
             self.logger.info("Waterway and tunnel bed elevations already estimated.")
             return
-        self.logger.info("Estimating waterway and tunnel bed elevation from OpenStreetMap.")
+        self.logger.info(
+            "Estimating waterway and tunnel bed elevation from OpenStreetMap."
+        )
 
         # Ensure the results folder has been created
         self.create_results_folder()

@@ -509,7 +509,9 @@ class InterpolateMeasuredElevations:
     ):
         """Setup for interpolating the measured riverbed elevations along
         equally spaced cross sections."""
-        self.logger = logging.getLogger("geofabrics.processor.InterpolateMeasuredElevations")
+        self.logger = logging.getLogger(
+            "geofabrics.processor.InterpolateMeasuredElevations"
+        )
 
         self.riverbanks = geopandas.read_file(riverbank_file)
         self.measured_sections = geopandas.read_file(measured_sections_file)
@@ -825,7 +827,6 @@ class ChannelCharacteristics:
         resolution
             The resolution to sample at.
         """
-
 
         self.logger = logging.getLogger("geofabrics.processor.ChannelCharacteristics")
 

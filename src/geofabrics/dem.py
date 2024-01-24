@@ -25,6 +25,7 @@ from . import geometry
 
 module_logger = logging.getLogger("geofabrics.dem")
 
+
 def chunk_mask(mask, chunk_size):
     arrs = []
     for i in range(0, mask.shape[0], chunk_size):
@@ -205,7 +206,9 @@ class CoarseDem:
                 rioxarray.exceptions.NoDataInBounds,
                 ValueError,
             ) as caught_exception:
-                self.logger.warning(f"{caught_exception} in CoarseDEM. Will set to empty.")
+                self.logger.warning(
+                    f"{caught_exception} in CoarseDEM. Will set to empty."
+                )
                 self._dem = None
                 self._points = []
         else:
@@ -442,8 +445,8 @@ class HydrologicallyConditionedDem(DemBase):
         """Load in the extents and dense DEM. Ensure the dense DEM is clipped within the
         extents"""
         super(HydrologicallyConditionedDem, self).__init__(
-                catchment_geometry=catchment_geometry,
-            )
+            catchment_geometry=catchment_geometry,
+        )
         self.logger = logging.getLogger("geofabrics.dem.HydrologicallyConditionedDem")
 
         # Read in the dense DEM raster - and free up file by performing a deep copy.
@@ -957,7 +960,6 @@ class LidarBase(DemBase):
         ), "Error the 'elevation_range' must either be none, or a two entry list"
 
         self._dem = None
-
 
     def __del__(self):
         """Ensure the memory associated with netCDF files is properly freed."""

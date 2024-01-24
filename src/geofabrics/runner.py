@@ -12,14 +12,22 @@ import typing
 import copy
 import sys
 
+
 def setup_logging_for_run(instructions: dict, label: str):
     """Setup logging for the current processor run"""
 
     if label == "runner":
         # In this case expecting the top level instruction dictionary instead of a subsection
-        log_path = pathlib.Path(pathlib.Path(instructions[next(iter(instructions))]["data_paths"]["local_cache"]))
+        log_path = pathlib.Path(
+            pathlib.Path(
+                instructions[next(iter(instructions))]["data_paths"]["local_cache"]
+            )
+        )
         if "subfolder" in instructions[next(iter(instructions))]["data_paths"].keys():
-            log_path = log_path / instructions[next(iter(instructions))]["data_paths"]["subfolder"]
+            log_path = (
+                log_path
+                / instructions[next(iter(instructions))]["data_paths"]["subfolder"]
+            )
         else:
             log_path = log_path / "results"
     else:
@@ -32,7 +40,9 @@ def setup_logging_for_run(instructions: dict, label: str):
 
     logger = logging.getLogger("geofabrics")
     logger.setLevel(logging.DEBUG)
-    formatter = logging.Formatter("%(asctime)s %(levelname)s %(module)s %(funcName)s %(message)s")
+    formatter = logging.Formatter(
+        "%(asctime)s %(levelname)s %(module)s %(funcName)s %(message)s"
+    )
 
     stream_handler = logging.StreamHandler(sys.stdout)
     stream_handler.setLevel(logging.INFO)
@@ -43,7 +53,7 @@ def setup_logging_for_run(instructions: dict, label: str):
     )
     file_handler.setLevel(logging.INFO)
     file_handler.setFormatter(formatter)
-    
+
     logger.handlers.clear()
     logger.addHandler(stream_handler)
     logger.addHandler(file_handler)
@@ -85,7 +95,11 @@ def merge_dicts(dict_a: dict, dict_b: dict, logger: logging.Logger, replace_a: b
     """
 
     def recursive_merge_dicts(
-        base_dict: dict, new_dict: dict, replace_base: bool, logger: logging.Logger, path: list = []
+        base_dict: dict,
+        new_dict: dict,
+        replace_base: bool,
+        logger: logging.Logger,
+        path: list = [],
     ):
         """Recurively add the new_dict into the base_dict. dict_a is mutable."""
         for key in new_dict:
