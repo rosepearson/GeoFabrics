@@ -12,46 +12,47 @@ import typing
 import copy
 import sys
 
+
 def config_logging(logging_filepath: pathlib):
-    """ Configure the root logger inhereited by all othr loggers. """
+    """Configure the root logger inhereited by all othr loggers."""
     log_dict = {
-        'version': 1,
-        'disable_existing_loggers': True,
-        'formatters': {
-            'standard': {
-                'format': '%(asctime)s - %(levelname)s - %(name)s.%(funcName)s:%(lineno)d: %(message)s',
-                'datefmt': '%Y-%m-%d %H:%M:%S',
+        "version": 1,
+        "disable_existing_loggers": True,
+        "formatters": {
+            "standard": {
+                "format": "%(asctime)s - %(levelname)s - %(name)s.%(funcName)s:%(lineno)d: %(message)s",
+                "datefmt": "%Y-%m-%d %H:%M:%S",
             },
         },
-        'handlers': {
-            'default': {
-                'level': 'INFO',
-                'formatter': 'standard',
-                'class': 'logging.StreamHandler',
-                'stream': 'ext://sys.stdout',  # Default is stderr
+        "handlers": {
+            "default": {
+                "level": "INFO",
+                "formatter": "standard",
+                "class": "logging.StreamHandler",
+                "stream": "ext://sys.stdout",  # Default is stderr
             },
-            'stream_handler': {
-                'level': 'INFO',
-                'formatter': 'standard',
-                'class': 'logging.StreamHandler',
-                'stream': 'ext://sys.stdout',  # Default is stderr
+            "stream_handler": {
+                "level": "INFO",
+                "formatter": "standard",
+                "class": "logging.StreamHandler",
+                "stream": "ext://sys.stdout",  # Default is stderr
             },
-            'file_handler': {
-                'level': 'INFO',
-                'filename': logging_filepath,
-                'class': 'logging.FileHandler',
-                'formatter': 'standard',
+            "file_handler": {
+                "level": "INFO",
+                "filename": logging_filepath,
+                "class": "logging.FileHandler",
+                "formatter": "standard",
                 "encoding": "utf-8",
-                "mode": "a"
-            }
-        },
-        'loggers': {
-            '': {
-                'handlers': ['file_handler', 'stream_handler'],
-                'level': 'INFO',
-                'propagate': True
+                "mode": "a",
             },
-        }
+        },
+        "loggers": {
+            "": {
+                "handlers": ["file_handler", "stream_handler"],
+                "level": "INFO",
+                "propagate": True,
+            },
+        },
     }
     logging.config.dictConfig(log_dict)
 
@@ -80,7 +81,7 @@ def setup_logging_for_run(instructions: dict, label: str):
         else:
             log_path = log_path / "results"
     log_path.mkdir(parents=True, exist_ok=True)
-    
+
     config_logging(log_path / f"geofabrics_{label}.log")
     logger = logging.getLogger(__name__)
 

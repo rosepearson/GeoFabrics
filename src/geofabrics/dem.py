@@ -443,8 +443,8 @@ class HydrologicallyConditionedDem(DemBase):
         """Load in the extents and dense DEM. Ensure the dense DEM is clipped within the
         extents"""
         super(HydrologicallyConditionedDem, self).__init__(
-                catchment_geometry=catchment_geometry,
-            )
+            catchment_geometry=catchment_geometry,
+        )
         self.logger = logging.getLogger(f"{__name__}.{self.__class__.__name__}")
 
         # Read in the dense DEM raster - and free up file by performing a deep copy.
@@ -2684,7 +2684,9 @@ def load_tiles_in_chunk(
     """Read in all LiDAR files within the chunked region - clipped to within
     the region within which to rasterise."""
 
-    logging.info(f" [dem.load_tiles_in_chunk]:\tReading all {len(lidar_files)} files in chunk.")
+    logging.info(
+        f" [dem.load_tiles_in_chunk]:\tReading all {len(lidar_files)} files in chunk."
+    )
 
     # Initialise LiDAR points
     lidar_points = []
