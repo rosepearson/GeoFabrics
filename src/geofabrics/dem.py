@@ -23,6 +23,7 @@ import scipy.interpolate
 import scipy.spatial
 from . import geometry
 
+
 def chunk_mask(mask, chunk_size):
     arrs = []
     for i in range(0, mask.shape[0], chunk_size):
@@ -203,7 +204,9 @@ class CoarseDem:
                 rioxarray.exceptions.NoDataInBounds,
                 ValueError,
             ) as caught_exception:
-                self.logger.warning(f"{caught_exception} in CoarseDEM. Will set to empty.")
+                self.logger.warning(
+                    f"{caught_exception} in CoarseDEM. Will set to empty."
+                )
                 self._dem = None
                 self._points = []
         else:
@@ -955,7 +958,6 @@ class LidarBase(DemBase):
         ), "Error the 'elevation_range' must either be none, or a two entry list"
 
         self._dem = None
-
 
     def __del__(self):
         """Ensure the memory associated with netCDF files is properly freed."""

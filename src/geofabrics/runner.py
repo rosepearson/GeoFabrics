@@ -54,16 +54,23 @@ def config_logging(logging_filepath: pathlib):
         }
     }
     logging.config.dictConfig(log_dict)
-    
+
 
 def setup_logging_for_run(instructions: dict, label: str):
     """Setup logging for the current processor run"""
 
     if label == "runner":
         # In this case expecting the top level instruction dictionary instead of a subsection
-        log_path = pathlib.Path(pathlib.Path(instructions[next(iter(instructions))]["data_paths"]["local_cache"]))
+        log_path = pathlib.Path(
+            pathlib.Path(
+                instructions[next(iter(instructions))]["data_paths"]["local_cache"]
+            )
+        )
         if "subfolder" in instructions[next(iter(instructions))]["data_paths"].keys():
-            log_path = log_path / instructions[next(iter(instructions))]["data_paths"]["subfolder"]
+            log_path = (
+                log_path
+                / instructions[next(iter(instructions))]["data_paths"]["subfolder"]
+            )
         else:
             log_path = log_path / "results"
     else:
@@ -76,6 +83,7 @@ def setup_logging_for_run(instructions: dict, label: str):
     
     config_logging(log_path / f"geofabrics_{label}.log")
     logger = logging.getLogger(__name__)
+
     logger.info(f"Log file is located at: geofabrics_{label}.log")
     logger.debug(instructions)
     return logger
@@ -113,7 +121,11 @@ def merge_dicts(dict_a: dict, dict_b: dict, logger: logging.Logger, replace_a: b
     """
 
     def recursive_merge_dicts(
-        base_dict: dict, new_dict: dict, replace_base: bool, logger: logging.Logger, path: list = []
+        base_dict: dict,
+        new_dict: dict,
+        replace_base: bool,
+        logger: logging.Logger,
+        path: list = [],
     ):
         """Recurively add the new_dict into the base_dict. dict_a is mutable."""
         for key in new_dict:

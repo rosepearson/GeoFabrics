@@ -826,7 +826,6 @@ class ChannelCharacteristics:
             The resolution to sample at.
         """
 
-
         self.logger = logging.getLogger(f"{__name__}.{self.__class__.__name__}")
 
         self.gnd_dem = gnd_dem
