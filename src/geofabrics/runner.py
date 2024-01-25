@@ -17,7 +17,7 @@ def config_logging(logging_filepath: pathlib):
     """Configure the root logger inhereited by all othr loggers."""
     log_dict = {
         "version": 1,
-        "disable_existing_loggers": True,
+        "disable_existing_loggers": False,
         "formatters": {
             "standard": {
                 "format": "%(asctime)s - %(levelname)s - %(name)s.%(funcName)s:%(lineno)d: %(message)s",
@@ -25,12 +25,6 @@ def config_logging(logging_filepath: pathlib):
             },
         },
         "handlers": {
-            "default": {
-                "level": "INFO",
-                "formatter": "standard",
-                "class": "logging.StreamHandler",
-                "stream": "ext://sys.stdout",  # Default is stderr
-            },
             "stream_handler": {
                 "level": "INFO",
                 "formatter": "standard",
@@ -38,7 +32,7 @@ def config_logging(logging_filepath: pathlib):
                 "stream": "ext://sys.stdout",  # Default is stderr
             },
             "file_handler": {
-                "level": "INFO",
+                "level": "DEBUG",
                 "filename": logging_filepath,
                 "class": "logging.FileHandler",
                 "formatter": "standard",
@@ -46,12 +40,10 @@ def config_logging(logging_filepath: pathlib):
                 "mode": "a",
             },
         },
-        "loggers": {
-            "": {
-                "handlers": ["file_handler", "stream_handler"],
-                "level": "INFO",
-                "propagate": True,
-            },
+        "root":{
+            "handlers" : ["file_handler", "stream_handler"],
+            "level": "DEBUG",
+            "propagate": False
         },
     }
     logging.config.dictConfig(log_dict)
@@ -83,10 +75,10 @@ def setup_logging_for_run(instructions: dict, label: str):
     log_path.mkdir(parents=True, exist_ok=True)
 
     config_logging(log_path / f"geofabrics_{label}.log")
-    logger = logging.getLogger(__name__)
-
+    logger = logging.getLogger(f"{__name__}.{label}")
+    breakpoint()
     logger.info(f"Log file is located at: geofabrics_{label}.log")
-    logger.debug(instructions)
+    logger.info(instructions)
     return logger
 
 
