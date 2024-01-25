@@ -45,6 +45,7 @@ class CatchmentGeometry:
         resolution: float,
         foreshore_buffer: int = 2,
     ):
+        self.logger = logging.getLogger(f"{__name__}.{self.__class__.__name__}")
         self._catchment = geopandas.read_file(catchment_file)
         self.crs = crs
         self.resolution = resolution
@@ -174,7 +175,7 @@ class CatchmentGeometry:
         self._assert_land_set()
 
         if dense_extents is None or dense_extents.is_empty.all():
-            logging.warning(
+            self.logger.warning(
                 "In CatchmentGeometry dense extents are `None` so "
                 " `land_and_foreshore_without_lidar` is returning `land_and_foreshore`"
             )
@@ -202,7 +203,7 @@ class CatchmentGeometry:
         self._assert_land_set()
 
         if dense_extents is None or dense_extents.is_empty.all():
-            logging.warning(
+            self.logger.warning(
                 "In CatchmentGeometry dense extents are `None` so "
                 "`offshore_without_lidar` is returning `offshore`"
             )
@@ -230,7 +231,7 @@ class CatchmentGeometry:
         self._assert_land_set()
 
         if dense_extents is None or dense_extents.is_empty.all():
-            logging.warning(
+            self.logger.warning(
                 "In CatchmentGeometry dense extents are `None` so "
                 "`offshore_dense_data_edge` is returning `None`"
             )
@@ -318,6 +319,7 @@ class BathymetryContours:
         z_label=None,
         exclusion_extent=None,
     ):
+        self.logger = logging.getLogger(f"{__name__}.{self.__class__.__name__}")
         self._contour = geopandas.read_file(contour_file)
         self.catchment_geometry = catchment_geometry
         self.z_label = z_label
@@ -441,6 +443,7 @@ class MarineBathymetryPoints:
         catchment_geometry: CatchmentGeometry,
         exclusion_extent=None,
     ):
+        self.logger = logging.getLogger(f"{__name__}.{self.__class__.__name__}")
         self._points = geopandas.read_file(points_file)
         self.catchment_geometry = catchment_geometry
 
@@ -525,6 +528,7 @@ class EstimatedBathymetryPoints:
         filter_osm_ids: list = [],
         z_labels: list = None,
     ):
+        self.logger = logging.getLogger(f"{__name__}.{self.__class__.__name__}")
         self.catchment_geometry = catchment_geometry
 
         self.z_label = z_labels is not None
@@ -582,7 +586,7 @@ class EstimatedBathymetryPoints:
                 polygon_list.append(polygon_i)
         # Set CRS, clip to size and reset index
         if len(points_list) == 0:
-            logging.warning("No waterways elevations. Ignoring.")
+            self.logger.warning("No waterways elevations. Ignoring.")
             self._points = []
             self._polygon = []
             return
@@ -714,6 +718,7 @@ class TileInfo:
     """A class for working with tiling information."""
 
     def __init__(self, tile_file: str, catchment_geometry: CatchmentGeometry):
+        self.logger = logging.getLogger(f"{__name__}.{self.__class__.__name__}")
         self._tile_info = geopandas.read_file(tile_file)
         self.catchment_geometry = catchment_geometry
 
@@ -790,6 +795,7 @@ class RiverMouthFan:
         elevation_labels: list,
         ocean_contour_depth_label: str = None,
     ):
+        self.logger = logging.getLogger(f"{__name__}.{self.__class__.__name__}")
         self.crs = crs
         self.cross_section_spacing = cross_section_spacing
         self.aligned_channel_file = aligned_channel_file
@@ -1039,7 +1045,7 @@ class RiverMouthFan:
             end_depth = ocean_contours.loc[min_index][self.ocean_contour_depth_label]
             distance = ocean_contours.distance(mouth_point).min()
         else:
-            logging.warning(
+            self.logger.warning(
                 "No ocean contour intersected. Instaed assumed fan geoemtry"
             )
             intersection_line = shapely.geometry.linestring(

@@ -40,6 +40,7 @@ class BaseProcessor(abc.ABC):
     OSM_CRS = "EPSG:4326"
 
     def __init__(self, json_instructions: json):
+        self.logger = logging.getLogger(f"{__name__}.{self.__class__.__name__}")
         self.instructions = copy.deepcopy(json_instructions)
 
         self.catchment_geometry = None
@@ -191,7 +192,7 @@ class BaseProcessor(abc.ABC):
         )
 
         if "crs" not in self.instructions["output"]:
-            logging.warning(
+            self.logger.warning(
                 "No output the coordinate system EPSG values specified. We "
                 f"will instead be using the defaults: {defaults}."
             )
@@ -210,7 +211,7 @@ class BaseProcessor(abc.ABC):
                 if "vertical" in crs_instruction
                 else defaults["vertical"]
             )
-            logging.info(
+            self.logger.info(
                 f"The output the coordinate system EPSG values of {crs_dict} "
                 "will be used. If these are not as expected. Check both the "
                 "'horizontal' and 'vertical' values are specified."
@@ -400,7 +401,9 @@ class BaseProcessor(abc.ABC):
                 "statsnz": geoapis.raster.StatsNz,
             }
         else:
-            logging.warning(f"Unsupported API type specified: {data_type}. Ignored.")
+            self.logger.warning(
+                f"Unsupported API type specified: {data_type}. Ignored."
+            )
             return
         # Check the instructions for vector data hosted in the supported vector data
         # services: LINZ and LRIS
@@ -451,7 +454,7 @@ class BaseProcessor(abc.ABC):
                         else None
                     )
 
-                    logging.info(
+                    self.logger.info(
                         f"Downloading vector layers {api_instruction['layers']} from"
                         f" the {data_service} data service"
                     )
@@ -497,7 +500,7 @@ class BaseProcessor(abc.ABC):
                         data_service
                     ][key]
 
-                    logging.info(
+                    self.logger.info(
                         f"Downloading rater layers {api_instruction['layers']} from"
                         f" the {data_service} data service"
                     )
@@ -546,20 +549,20 @@ class BaseProcessor(abc.ABC):
                 and "vertical" in dataset_instruction["crs"]
             ):
                 dataset_crs = dataset_instruction["crs"]
-                logging.info(
+                self.logger.info(
                     f"The LiDAR dataset {dataset_name} is assumed to have the source "
                     f"coordinate system EPSG: {dataset_crs} as defined in the "
                     "instruction file"
                 )
                 return dataset_crs
             else:
-                logging.info(
+                self.logger.info(
                     f"The LiDAR dataset {dataset_name} will use the source the "
                     "coordinate system EPSG defined in its LAZ files"
                 )
                 return None
         else:
-            logging.info(
+            self.logger.info(
                 f"The LiDAR dataset {dataset_name} will use the source coordinate "
                 "system EPSG from its LAZ files"
             )
@@ -619,7 +622,7 @@ class BaseProcessor(abc.ABC):
             for dataset_name in self.instructions["datasets"][data_type][
                 data_service
             ].keys():
-                logging.info(f"Fetching dataset: {dataset_name}")
+                self.logger.info(f"Fetching dataset: {dataset_name}")
                 self.lidar_fetcher.run(dataset_name)
                 lidar_datasets_info[dataset_name] = {}
                 lidar_datasets_info[dataset_name]["file_paths"] = sorted(
@@ -705,13 +708,13 @@ class BaseProcessor(abc.ABC):
         elif len(lidar_datasets_info) == 0 and not self.check_instruction_path(
             "lidar_files"
         ):
-            logging.warning(
+            self.logger.warning(
                 "No LiDAR datasets or `lidar_files` have been "
                 "specified. Please check your instruction file/"
                 "dict if this is unexpected."
             )
         elif self.check_instruction_path("lidar_files"):
-            logging.warning(
+            self.logger.warning(
                 "Full LiDAR datasets have been specified (either "
                 "through the APIs or locally) as well as "
                 "`lidar_files`. These will be ignored."
@@ -832,6 +835,7 @@ class RawLidarDemGenerator(BaseProcessor):
 
     def __init__(self, json_instructions: json, debug: bool = True):
         super(RawLidarDemGenerator, self).__init__(json_instructions=json_instructions)
+        self.logger = logging.getLogger(f"{__name__}.{self.__class__.__name__}")
 
         self.raw_dem = None
         self.debug = debug
@@ -843,7 +847,7 @@ class RawLidarDemGenerator(BaseProcessor):
         Note it currently only considers one LiDAR dataset that can have many tiles.
         See 'get_lidar_datasets_info' for where to change this."""
 
-        logging.info("Create a raw DEM layer from LiDAR.")
+        self.logger.info("Create a raw DEM layer from LiDAR.")
 
         # Ensure the results folder has been created
         self.create_results_folder()
@@ -875,7 +879,7 @@ class RawLidarDemGenerator(BaseProcessor):
         # Create folder for caching raw DEM files during DEM generation
         subfolder = self.get_instruction_path("subfolder")
         temp_folder = subfolder / "temp" / f"{self.get_resolution()}m_results"
-        logging.info(f"Create folder {temp_folder} for temporary files")
+        self.logger.info(f"Create folder {temp_folder} for temporary files")
         if temp_folder.exists():
             shutil.rmtree(temp_folder)
         temp_folder.mkdir(parents=True, exist_ok=True)
@@ -902,8 +906,8 @@ class RawLidarDemGenerator(BaseProcessor):
         }
         cluster = distributed.LocalCluster(**cluster_kwargs)
         with cluster, distributed.Client(cluster) as client:
-            logging.info(f"Dask client: {client}")
-            logging.info(f"Dask dashboard: {client.dashboard_link}")
+            self.logger.info(f"Dask client: {client}")
+            self.logger.info(f"Dask dashboard: {client.dashboard_link}")
 
             # Load in LiDAR tiles
             self.raw_dem.add_lidar(
@@ -915,7 +919,7 @@ class RawLidarDemGenerator(BaseProcessor):
             )  # Note must be called after all others if it is to be complete
 
             # Save a cached copy of DEM to temporary memory cache
-            logging.info("Save temp raw DEM to netCDF")
+            self.logger.info("Save temp raw DEM to netCDF")
             cached_file = temp_folder / "raw_lidar.nc"
             self.raw_dem.save_and_load_dem(cached_file)
 
@@ -924,13 +928,13 @@ class RawLidarDemGenerator(BaseProcessor):
                 coarse_dem_paths = self.get_vector_or_raster_paths(
                     key="coarse_dems", data_type="raster"
                 )
-                logging.info(f"Incorporating coarse DEMs: {coarse_dem_paths}")
+                self.logger.info(f"Incorporating coarse DEMs: {coarse_dem_paths}")
 
                 # Add coarse DEMs if there are any and if area
                 for coarse_dem_path in coarse_dem_paths:
                     # Stop if no areas (on land and foreshore) still without values
                     if not self.raw_dem.no_values_mask.any():
-                        logging.info(
+                        self.logger.info(
                             "No land and foreshore areas without LiDAR values. "
                             "Ignoring all remaining coarse DEMs."
                         )
@@ -938,7 +942,7 @@ class RawLidarDemGenerator(BaseProcessor):
 
                     self.raw_dem.add_coarse_dem(coarse_dem_path, area_threshold)
 
-                    logging.info("Save temp raw DEM to netCDF")
+                    self.logger.info("Save temp raw DEM to netCDF")
                     temp_file = temp_folder / f"raw_dem_{coarse_dem_path.stem}.nc"
                     self.raw_dem.save_and_load_dem(temp_file)
 
@@ -947,11 +951,13 @@ class RawLidarDemGenerator(BaseProcessor):
                     cached_file = temp_file
 
             # compute and save raw DEM
-            logging.info("In processor.DemGenerator - write out the raw DEM to netCDF")
+            self.logger.info(
+                "In processor.DemGenerator - write out the raw DEM to netCDF"
+            )
             self.raw_dem.save_dem(
                 self.get_instruction_path("raw_dem"), dem=self.raw_dem.dem
             )
-            logging.info(f"Remove folder {temp_folder} for temporary files")
+            self.logger.info(f"Remove folder {temp_folder} for temporary files")
             shutil.rmtree(temp_folder)
 
         if self.debug:
@@ -982,6 +988,7 @@ class HydrologicDemGenerator(BaseProcessor):
         super(HydrologicDemGenerator, self).__init__(
             json_instructions=json_instructions
         )
+        self.logger = logging.getLogger(f"{__name__}.{self.__class__.__name__}")
 
         self.hydrologic_dem = None
         self.bathy_contours = None
@@ -1007,13 +1014,13 @@ class HydrologicDemGenerator(BaseProcessor):
                 required=False,
             )
             if len(bathy_contour_dirs) != 1:
-                logging.warning(
+                self.logger.warning(
                     f"{len(bathy_contour_dirs)} ocean_contours's provided. "
                     f"Specficially {bathy_contour_dirs}. Only consider the "
                     "first if multiple."
                 )
 
-            logging.info(f"Incorporating Bathymetry: {bathy_contour_dirs}")
+            self.logger.info(f"Incorporating Bathymetry: {bathy_contour_dirs}")
 
             # Load in bathymetry
             if len(bathy_contour_dirs) > 0:
@@ -1046,7 +1053,7 @@ class HydrologicDemGenerator(BaseProcessor):
                 if not poly_dir.is_absolute():
                     poly_dirs[index] = subfolder / poly_dir
 
-            logging.info(f"Incorporating waterways: {bathy_dirs}")
+            self.logger.info(f"Incorporating waterways: {bathy_dirs}")
 
             # Load in bathymetry
             estimated_bathymetry_points = geometry.EstimatedBathymetryPoints(
@@ -1082,7 +1089,7 @@ class HydrologicDemGenerator(BaseProcessor):
                 if not poly_dir.is_absolute():
                     poly_dir = subfolder / poly_dir
 
-                logging.info(f"Incorporating river: {bathy_dir}")
+                self.logger.info(f"Incorporating river: {bathy_dir}")
 
                 # Load in bathymetry
                 estimated_bathymetry_points = geometry.EstimatedBathymetryPoints(
@@ -1125,8 +1132,8 @@ class HydrologicDemGenerator(BaseProcessor):
         }
         cluster = distributed.LocalCluster(**cluster_kwargs)
         with cluster, distributed.Client(cluster) as client:
-            logging.info(f"Dask client: {client}")
-            logging.info(f"Dask dashboard: {client.dashboard_link}")
+            self.logger.info(f"Dask client: {client}")
+            self.logger.info(f"Dask dashboard: {client.dashboard_link}")
 
             # setup the hydrologically conditioned DEM generator
             self.hydrologic_dem = dem.HydrologicallyConditionedDem(
@@ -1144,7 +1151,9 @@ class HydrologicDemGenerator(BaseProcessor):
             )
 
             # fill combined dem - save results
-            logging.info("In processor.DemGenerator - write out the raw DEM to netCDF")
+            self.logger.info(
+                "In processor.DemGenerator - write out the raw DEM to netCDF"
+            )
             try:
                 self.hydrologic_dem.dem.to_netcdf(
                     self.get_instruction_path("result_dem"),
@@ -1153,7 +1162,7 @@ class HydrologicDemGenerator(BaseProcessor):
                 )
             except (Exception, KeyboardInterrupt) as caught_exception:
                 pathlib.Path(self.get_instruction_path("raw_dem")).unlink()
-                logging.info(
+                self.logger.info(
                     f"Caught error {caught_exception} and deleting"
                     "partially created netCDF output "
                     f"{self.get_instruction_path('raw_dem')}"
@@ -1186,6 +1195,7 @@ class RoughnessLengthGenerator(BaseProcessor):
         super(RoughnessLengthGenerator, self).__init__(
             json_instructions=json_instructions
         )
+        self.logger = logging.getLogger(f"{__name__}.{self.__class__.__name__}")
 
         self.roughness_dem = None
         self.debug = debug
@@ -1233,7 +1243,7 @@ class RoughnessLengthGenerator(BaseProcessor):
         """This method executes the geofabrics generation pipeline to produce geofabric
         derivatives."""
 
-        logging.info("Adding a roughness layer to the geofabric.")
+        self.logger.info("Adding a roughness layer to the geofabric.")
 
         # Ensure the results folder has been created
         self.create_results_folder()
@@ -1263,14 +1273,14 @@ class RoughnessLengthGenerator(BaseProcessor):
 
         # If roads defined download roads
         if "roads" in default_values:
-            logging.info(
+            self.logger.info(
                 "Roads not yet supported. In future download roads. Likely "
                 "specify the width of different roads."
             )
 
         # If powerlines defines download powerlines
         if self.get_roughness_instruction("ignore_powerlines"):
-            logging.info(
+            self.logger.info(
                 "Ignoring powerlines not yet supported. In future download "
                 "powerlines. Probably run as second followup step in future."
                 " Either take mean or drop points with height above limit."
@@ -1282,7 +1292,7 @@ class RoughnessLengthGenerator(BaseProcessor):
             / "temp"
             / f"{self.get_resolution()}m_results"
         )
-        logging.info(
+        self.logger.info(
             "In processor.DemGenerator - create folder for writing temporarily"
             f" cached netCDF files in {temp_folder}"
         )
@@ -1299,8 +1309,8 @@ class RoughnessLengthGenerator(BaseProcessor):
         }
         cluster = distributed.LocalCluster(**cluster_kwargs)
         with cluster, distributed.Client(cluster) as client:
-            logging.info(f"Dask client: {client}")
-            logging.info(f"Dask dashboard: {client.dashboard_link}")
+            self.logger.info(f"Dask client: {client}")
+            self.logger.info(f"Dask dashboard: {client.dashboard_link}")
 
             # setup the roughness DEM generator
             self.roughness_dem = dem.RoughnessDem(
@@ -1327,7 +1337,7 @@ class RoughnessLengthGenerator(BaseProcessor):
             )  # Note must be called after all others if it is to be complete
 
             # save results
-            logging.info(
+            self.logger.info(
                 "In processor.RoughnessLengthGenerator - write out "
                 "the raw DEM to netCDF"
             )
@@ -1335,7 +1345,7 @@ class RoughnessLengthGenerator(BaseProcessor):
                 filename=self.get_instruction_path("result_geofabric"),
                 dem=self.roughness_dem.dem,
             )
-            logging.info(
+            self.logger.info(
                 "In processor.RoughnessLengthGenerator - clean folder for "
                 f"writing temporarily cached netCDF files in {temp_folder}"
             )
@@ -1361,6 +1371,7 @@ class MeasuredRiverGenerator(BaseProcessor):
         super(MeasuredRiverGenerator, self).__init__(
             json_instructions=json_instructions
         )
+        self.logger = logging.getLogger(f"{__name__}.{self.__class__.__name__}")
 
         self.debug = debug
 
@@ -1501,7 +1512,7 @@ class MeasuredRiverGenerator(BaseProcessor):
         pipeline to produce a DEM before sampling this to extimate width, slope
         and eventually depth."""
 
-        logging.info(
+        self.logger.info(
             "Interpolating the measured river elevations if not" "already done."
         )
 
@@ -1521,7 +1532,7 @@ class MeasuredRiverGenerator(BaseProcessor):
         )
         # Only rerun if files don't exist
         if not (result_polygon_file.exists() and result_elevations_file.exists()):
-            logging.info("Interpolating measured sections.")
+            self.logger.info("Interpolating measured sections.")
             measured_rivers = bathymetry_estimation.InterpolateMeasuredElevations(
                 riverbank_file=self.get_instruction_path("riverbanks"),
                 measured_sections_file=self.get_instruction_path("measured_sections"),
@@ -1549,7 +1560,7 @@ class MeasuredRiverGenerator(BaseProcessor):
                 not ("source" in result_elevations.columns)
                 or not ("fan" == result_elevations["source"]).any()
             ):
-                logging.info("Estimating the fan bathymetry.")
+                self.logger.info("Estimating the fan bathymetry.")
                 self.estimate_river_mouth_fan(defaults)
 
         if self.debug:
@@ -1585,6 +1596,7 @@ class RiverBathymetryGenerator(BaseProcessor):
         super(RiverBathymetryGenerator, self).__init__(
             json_instructions=json_instructions
         )
+        self.logger = logging.getLogger(f"{__name__}.{self.__class__.__name__}")
 
         self.debug = debug
 
@@ -1790,20 +1802,20 @@ class RiverBathymetryGenerator(BaseProcessor):
         # Get the ground DEM
         if not gnd_file.is_file():
             # Create the ground DEM file if this has not be created yet!
-            logging.info("Generating ground DEM.")
+            self.logger.info("Generating ground DEM.")
             instruction_paths["raw_dem"] = str(self.get_result_file_name(key="gnd_dem"))
             runner = RawLidarDemGenerator(self.instructions)
             runner.run()
             instruction_paths.pop("raw_dem")
         # Load the Ground DEM
-        logging.info("Loading ground DEM.")  # drop band added by rasterio.open()
+        self.logger.info("Loading ground DEM.")  # drop band added by rasterio.open()
         gnd_dem = rioxarray.rioxarray.open_rasterio(gnd_file, masked=True).squeeze(
             "band", drop=True
         )
         # Get the vegetation DEM
         if not veg_file.is_file():
             # Create the catchment file if this has not be created yet!
-            logging.info("Generating vegetation DEM.")
+            self.logger.info("Generating vegetation DEM.")
             self.instructions["general"][
                 "lidar_classifications_to_keep"
             ] = self.get_bathymetry_instruction("veg_lidar_classifications_to_keep")
@@ -1812,7 +1824,7 @@ class RiverBathymetryGenerator(BaseProcessor):
             runner.run()
             instruction_paths.pop("raw_dem")
         # Load the Veg DEM - drop band added by rasterio.open()
-        logging.info("Loading the vegetation DEM.")
+        self.logger.info("Loading the vegetation DEM.")
         veg_dem = dem.rioxarray.rioxarray.open_rasterio(veg_file, masked=True).squeeze(
             "band", drop=True
         )
@@ -1950,7 +1962,7 @@ class RiverBathymetryGenerator(BaseProcessor):
 
         """
 
-        logging.info("The channel hasn't been characerised. Charactreising now.")
+        self.logger.info("The channel hasn't been characerised. Charactreising now.")
 
         # Decide if aligning from river network alone, or OSM and river network
         if "osm_id" in self.instructions["rivers"]:
@@ -1958,7 +1970,7 @@ class RiverBathymetryGenerator(BaseProcessor):
         else:
             channel_width, aligned_channel = self.align_channel_from_rec()
         # calculate the channel width and save results
-        logging.info("Characterising the aligned channel.")
+        self.logger.info("Characterising the aligned channel.")
         self.calculate_channel_characteristics(
             channel_width=channel_width, aligned_channel=aligned_channel
         )
@@ -1970,7 +1982,7 @@ class RiverBathymetryGenerator(BaseProcessor):
 
         """
 
-        logging.info("Align from river network.")
+        self.logger.info("Align from river network.")
 
         # Extract instructions
         cross_section_spacing = self.get_bathymetry_instruction("cross_section_spacing")
@@ -1993,7 +2005,7 @@ class RiverBathymetryGenerator(BaseProcessor):
 
         # Align channel if required
         if not self.alignment_exists():
-            logging.info("No aligned channel provided. Aligning the channel.")
+            self.logger.info("No aligned channel provided. Aligning the channel.")
 
             # Align and save the river network defined channel
             aligned_channel = self.align_channel(
@@ -2013,7 +2025,7 @@ class RiverBathymetryGenerator(BaseProcessor):
 
         """
 
-        logging.info("Align from OSM.")
+        self.logger.info("Align from OSM.")
 
         # Extract instructions
         cross_section_spacing = self.get_bathymetry_instruction("cross_section_spacing")
@@ -2087,7 +2099,7 @@ class RiverBathymetryGenerator(BaseProcessor):
                 crs=crs,
             )
         else:
-            logging.warning(
+            self.logger.warning(
                 "The OSM reference line starts upstream of the"
                 "network line. The bottom of the network will be"
                 "ignored over a stright line distance of "
@@ -2111,7 +2123,7 @@ class RiverBathymetryGenerator(BaseProcessor):
                 crs=crs,
             )
         else:
-            logging.warning(
+            self.logger.warning(
                 "The OSM reference line ends downstream of the"
                 "network line. The top of the network will be"
                 "ignored over a stright line distance of "
@@ -2263,7 +2275,7 @@ class RiverBathymetryGenerator(BaseProcessor):
 
         # Enfore a minimum slope - as specified in the instructions
         minimum_slope = self.get_bathymetry_instruction("minimum_slope")
-        logging.info(f"Enforcing a minimum slope of {minimum_slope}")
+        self.logger.info(f"Enforcing a minimum slope of {minimum_slope}")
         width_values.loc[
             width_values[slope_name] < minimum_slope, slope_name
         ] = minimum_slope
@@ -2277,7 +2289,7 @@ class RiverBathymetryGenerator(BaseProcessor):
             threshold_name=threshold_name,
         )
         if not (full_bank_depth >= 0).all():
-            logging.warning(
+            self.logger.warning(
                 "Unexpected negative depths. Setting to zero. "
                 "Check `river_characteristics.geojson` file."
             )
@@ -2292,7 +2304,7 @@ class RiverBathymetryGenerator(BaseProcessor):
         # Ensure valid depths before converting to bed elevations
         if not ((full_bank_depth - width_values[threshold_name]) >= 0).all():
             mask = (full_bank_depth - width_values[threshold_name]) < 0
-            logging.warning(
+            self.logger.warning(
                 "Depths less than the thresholds. Try reduce the "
                 "`max_bank_height`. Setting to thresholds. "
                 f"{mask.sum()} affected."
@@ -2314,7 +2326,7 @@ class RiverBathymetryGenerator(BaseProcessor):
             threshold_name=threshold_name,
         )
         if not (full_bank_depth >= 0).all():
-            logging.warning(
+            self.logger.warning(
                 "Unexpected negative depths. Setting to zero. "
                 "Check `river_characteristics.geojson` file."
             )
@@ -2329,7 +2341,7 @@ class RiverBathymetryGenerator(BaseProcessor):
         # Ensure valid depths before converting to bed elevations
         if not ((full_bank_depth - width_values[threshold_name]) >= 0).all():
             mask = (full_bank_depth - width_values[threshold_name]) < 0
-            logging.warning(
+            self.logger.warning(
                 "Depths less than the thresholds. Try reduce the "
                 "`max_bank_height`. Setting to thresholds. "
                 f"{mask.sum()} affected."
@@ -2443,7 +2455,7 @@ class RiverBathymetryGenerator(BaseProcessor):
             / 2
         )
         if not (exposed_bank_area >= 0).all():
-            logging.warning(
+            self.logger.warning(
                 "The exposed bank area is not always postive. " "Setting to zero."
             )
             exposed_bank_area[exposed_bank_area < 0] = 0
@@ -2457,7 +2469,7 @@ class RiverBathymetryGenerator(BaseProcessor):
 
         # Ensure not negative
         if not (flat_flow_depth >= 0).all():
-            logging.warning(
+            self.logger.warning(
                 "Negative area-adjusted depths. Try reduce the "
                 "`max_bank_height`. Setting to zero. # affected: "
                 f"{len(flat_flow_depth[flat_flow_depth < 0])}."
@@ -2527,7 +2539,7 @@ class RiverBathymetryGenerator(BaseProcessor):
         pipeline to produce a DEM before sampling this to extimate width, slope
         and eventually depth."""
 
-        logging.info("Adding river and fan bathymetry if it doesn't already exist.")
+        self.logger.info("Adding river and fan bathymetry if it doesn't already exist.")
 
         # Ensure the results folder has been created
         self.create_results_folder()
@@ -2537,13 +2549,13 @@ class RiverBathymetryGenerator(BaseProcessor):
             self.characterise_channel()
         # Estimate channel and fan depths if not already done
         if not self.channel_bathymetry_exist():
-            logging.info("Estimating the channel bathymetry.")
+            self.logger.info("Estimating the channel bathymetry.")
 
             # Calculate and save river bathymetry depths
             self.calculate_river_bed_elevations()
             # check if the river mouth is to be estimated
             if self.get_bathymetry_instruction("estimate_fan"):
-                logging.info("Estimating the fan bathymetry.")
+                self.logger.info("Estimating the fan bathymetry.")
                 self.estimate_river_mouth_fan()
         if self.debug:
             # Record the parameter used during execution - append to existing
@@ -2566,6 +2578,7 @@ class WaterwayBedElevationEstimator(BaseProcessor):
         super(WaterwayBedElevationEstimator, self).__init__(
             json_instructions=json_instructions
         )
+        self.logger = logging.getLogger(f"{__name__}.{self.__class__.__name__}")
 
         self.debug = debug
 
@@ -2650,7 +2663,7 @@ class WaterwayBedElevationEstimator(BaseProcessor):
         polygon_file = self.get_result_file_path(key="closed_polygon")
         elevation_file = self.get_result_file_path(key="closed_elevation")
         if polygon_file.is_file() and elevation_file.is_file():
-            logging.info("Closed waterways already recorded. ")
+            self.logger.info("Closed waterways already recorded. ")
             return
         # If not - estimate elevations along close waterways
         closed_waterways = waterways[waterways["tunnel"]]
@@ -2706,7 +2719,7 @@ class WaterwayBedElevationEstimator(BaseProcessor):
             .values
         )
         if not nan_filter.all():
-            logging.warning(
+            self.logger.warning(
                 "Some open waterways are being ignored as there is not enough data to "
                 "estimate their elevations."
             )
@@ -2730,7 +2743,7 @@ class WaterwayBedElevationEstimator(BaseProcessor):
         polygon_file = self.get_result_file_path(key="open_polygon")
         elevation_file = self.get_result_file_path(key="open_elevation")
         if polygon_file.is_file() and elevation_file.is_file():
-            logging.info("Open waterways already recorded. ")
+            self.logger.info("Open waterways already recorded. ")
             return
         # If not - estimate the elevations along the open waterways
         open_waterways = waterways[numpy.logical_not(waterways["tunnel"])]
@@ -2759,7 +2772,7 @@ class WaterwayBedElevationEstimator(BaseProcessor):
             .values
         )
         if not nan_filter.all():
-            logging.warning(
+            self.logger.warning(
                 "Some open waterways are being ignored as there is not enough data to "
                 "estimate their elevations."
             )
@@ -2874,7 +2887,7 @@ class WaterwayBedElevationEstimator(BaseProcessor):
             dem_instruction_paths["raw_dem"] = self.get_result_file_name(key="raw_dem")
 
             # Create the ground DEM file if this has not be created yet!
-            logging.info("Generating waterway DEM.")
+            self.logger.info("Generating waterway DEM.")
             runner = RawLidarDemGenerator(self.instructions)
             runner.run()
         # Load in the DEM
@@ -2952,7 +2965,7 @@ class WaterwayBedElevationEstimator(BaseProcessor):
             for waterway_label in waterways["waterway"].unique():
                 if waterway_label not in widths.keys():
                     waterways = waterways[waterways["waterway"] != waterway_label]
-                    logging.info(
+                    self.logger.info(
                         f"{waterway_label} is not in the specified widths and"
                         " is being removed"
                     )
@@ -2979,9 +2992,11 @@ class WaterwayBedElevationEstimator(BaseProcessor):
 
         # Don't reprocess if already estimated
         if self.waterway_elevations_exists():
-            logging.info("Waterway and tunnel bed elevations already estimated.")
+            self.logger.info("Waterway and tunnel bed elevations already estimated.")
             return
-        logging.info("Estimating waterway and tunnel bed elevation from OpenStreetMap.")
+        self.logger.info(
+            "Estimating waterway and tunnel bed elevation from OpenStreetMap."
+        )
 
         # Ensure the results folder has been created
         self.create_results_folder()
@@ -2994,7 +3009,7 @@ class WaterwayBedElevationEstimator(BaseProcessor):
 
         # There are no waterways to write out empty files and exit
         if len(waterways) == 0:
-            logging.warning(
+            self.logger.warning(
                 "There are no waterways in the catchment. Writing empty"
                 "polygon and elevation files and returning."
             )

@@ -10,38 +10,84 @@ import logging
 import pathlib
 import typing
 import copy
+import sys
+
+
+def config_logging(logging_filepath: pathlib):
+    """Configure the root logger inhereited by all othr loggers."""
+    log_dict = {
+        "version": 1,
+        "disable_existing_loggers": True,
+        "formatters": {
+            "standard": {
+                "format": "%(asctime)s - %(levelname)s - %(name)s.%(funcName)s:%(lineno)d: %(message)s",
+                "datefmt": "%Y-%m-%d %H:%M:%S",
+            },
+        },
+        "handlers": {
+            "default": {
+                "level": "INFO",
+                "formatter": "standard",
+                "class": "logging.StreamHandler",
+                "stream": "ext://sys.stdout",  # Default is stderr
+            },
+            "stream_handler": {
+                "level": "INFO",
+                "formatter": "standard",
+                "class": "logging.StreamHandler",
+                "stream": "ext://sys.stdout",  # Default is stderr
+            },
+            "file_handler": {
+                "level": "INFO",
+                "filename": logging_filepath,
+                "class": "logging.FileHandler",
+                "formatter": "standard",
+                "encoding": "utf-8",
+                "mode": "a",
+            },
+        },
+        "loggers": {
+            "": {
+                "handlers": ["file_handler", "stream_handler"],
+                "level": "INFO",
+                "propagate": True,
+            },
+        },
+    }
+    logging.config.dictConfig(log_dict)
 
 
 def setup_logging_for_run(instructions: dict, label: str):
     """Setup logging for the current processor run"""
 
-    assert "local_cache" in instructions["data_paths"], (
-        "A local_cache must be spcified in the instruction file"
-        "this is where the log file will be written."
-    )
-
-    log_path = pathlib.Path(pathlib.Path(instructions["data_paths"]["local_cache"]))
-    if "subfolder" in instructions["data_paths"].keys():
-        log_path = log_path / instructions["data_paths"]["subfolder"]
+    if label == "runner":
+        # In this case expecting the top level instruction dictionary instead of a subsection
+        log_path = pathlib.Path(
+            pathlib.Path(
+                instructions[next(iter(instructions))]["data_paths"]["local_cache"]
+            )
+        )
+        if "subfolder" in instructions[next(iter(instructions))]["data_paths"].keys():
+            log_path = (
+                log_path
+                / instructions[next(iter(instructions))]["data_paths"]["subfolder"]
+            )
+        else:
+            log_path = log_path / "results"
     else:
-        log_path = log_path / "results"
+        log_path = pathlib.Path(pathlib.Path(instructions["data_paths"]["local_cache"]))
+        if "subfolder" in instructions["data_paths"].keys():
+            log_path = log_path / instructions["data_paths"]["subfolder"]
+        else:
+            log_path = log_path / "results"
     log_path.mkdir(parents=True, exist_ok=True)
 
-    stream_handler = logging.StreamHandler()
-    stream_handler.setLevel(logging.INFO)
+    config_logging(log_path / f"geofabrics_{label}.log")
+    logger = logging.getLogger(__name__)
 
-    file_handler = logging.FileHandler(
-        log_path / f"geofabrics_{label}.log", mode="a", encoding="utf-8"
-    )
-    file_handler.setLevel(logging.INFO)
-
-    logging.basicConfig(
-        format="%(asctime)s %(levelname)s %(module)s %(funcName)s %(message)s",
-        handlers=[stream_handler, file_handler],
-        force=True,
-    )
-    logging.info(f"Log file is located at: geofabrics_{label}.log")
-    logging.info(instructions)
+    logger.info(f"Log file is located at: geofabrics_{label}.log")
+    logger.debug(instructions)
+    return logger
 
 
 def run_processor_class(processor_class, processor_label: str, instructions: dict):
@@ -49,20 +95,20 @@ def run_processor_class(processor_class, processor_label: str, instructions: dic
     execution."""
 
     start_time = datetime.datetime.now()
-    logging.info(f"Run {processor_class.__name__} at {start_time}")
     run_instructions = instructions[processor_label]
-    setup_logging_for_run(instructions=run_instructions, label=processor_label)
+    logger = setup_logging_for_run(instructions=run_instructions, label=processor_label)
+    logger.info(f"Run {processor_class.__name__} at {start_time}")
     runner = processor_class(run_instructions)
     runner.run()
     message = (
         f"Execution time is {datetime.datetime.now() - start_time} for the "
         f"{processor_class.__name__}"
     )
-    logging.info(message)
+    logger.info(message)
     return runner
 
 
-def merge_dicts(dict_a: dict, dict_b: dict, replace_a: bool):
+def merge_dicts(dict_a: dict, dict_b: dict, logger: logging.Logger, replace_a: bool):
     """Merge the contents of the dict_a and dict_b. Use recursion to merge
     any nested dictionaries. replace_a determines if the dict_a values are
     replaced or not if different values are in the dict_b.
@@ -76,7 +122,11 @@ def merge_dicts(dict_a: dict, dict_b: dict, replace_a: bool):
     """
 
     def recursive_merge_dicts(
-        base_dict: dict, new_dict: dict, replace_base: bool, path: list = []
+        base_dict: dict,
+        new_dict: dict,
+        replace_base: bool,
+        logger: logging.Logger,
+        path: list = [],
     ):
         """Recurively add the new_dict into the base_dict. dict_a is mutable."""
         for key in new_dict:
@@ -85,6 +135,7 @@ def merge_dicts(dict_a: dict, dict_b: dict, replace_a: bool):
                     recursive_merge_dicts(
                         base_dict=base_dict[key],
                         new_dict=new_dict[key],
+                        logger=logger,
                         replace_base=replace_base,
                         path=path + [str(key)],
                     )
@@ -92,13 +143,13 @@ def merge_dicts(dict_a: dict, dict_b: dict, replace_a: bool):
                     pass  # same leaf value
                 else:
                     if replace_base:
-                        logging.info(
+                        logger.warning(
                             f"Conflict with both dictionaries containing different values at {path + [str(key)]}."
                             " Value replaced."
                         )
                         base_dict[key] = new_dict[key]
                     else:
-                        logging.info(
+                        logger.warning(
                             f"Conflict with both dictionaries containing different values at {path + [str(key)]}"
                             ". Value ignored."
                         )
@@ -106,7 +157,9 @@ def merge_dicts(dict_a: dict, dict_b: dict, replace_a: bool):
                 base_dict[key] = new_dict[key]
         return base_dict
 
-    return recursive_merge_dicts(copy.deepcopy(dict_a), dict_b, replace_base=replace_a)
+    return recursive_merge_dicts(
+        copy.deepcopy(dict_a), dict_b, replace_base=replace_a, logger=logger
+    )
 
 
 def from_instructions_dict(instructions: dict):
@@ -114,6 +167,7 @@ def from_instructions_dict(instructions: dict):
     If a benchmark is specified compare the result to the benchmark"""
 
     # Construct the full instructions by adding the default entries to each stage
+    logger = setup_logging_for_run(instructions=instructions, label="runner")
     instructions = copy.deepcopy(instructions)
     if "default" in instructions:
         default = instructions.pop("default")
@@ -136,7 +190,7 @@ def from_instructions_dict(instructions: dict):
         # Construct the full instructions
         for key in instructions:
             instructions[key] = merge_dicts(
-                dict_a=instructions[key], dict_b=default, replace_a=False
+                dict_a=instructions[key], dict_b=default, logger=logger, replace_a=False
             )
 
     # Run the pipeline
@@ -202,7 +256,8 @@ def from_instructions_dict(instructions: dict):
             processor_label="roughness",
             instructions=instructions,
         )
-    logging.info(
+    logger = setup_logging_for_run(instructions=instructions, label="runner")
+    logger.info(
         f"Total execution time is {datetime.datetime.now() - initial_start_time}"
     )
 

@@ -68,6 +68,7 @@ class CoarseDem:
     ):
         """Load in the coarse DEM, clip and extract points"""
 
+        self.logger = logging.getLogger(f"{__name__}.{self.__class__.__name__}")
         self.set_foreshore = set_foreshore
         # Drop the band coordinate added by rasterio.open()
         self._dem = rioxarray.rioxarray.open_rasterio(dem_file, masked=True).squeeze(
@@ -203,7 +204,9 @@ class CoarseDem:
                 rioxarray.exceptions.NoDataInBounds,
                 ValueError,
             ) as caught_exception:
-                logging.warning(f"{caught_exception} in CoarseDEM. Will set to empty.")
+                self.logger.warning(
+                    f"{caught_exception} in CoarseDEM. Will set to empty."
+                )
                 self._dem = None
                 self._points = []
         else:
@@ -251,7 +254,7 @@ class CoarseDem:
             foreshore_z = []
         if len(land_x) + len(foreshore_x) == 0:
             # If no points - give a warning and then return an empty array
-            logging.warning("The coarse DEM has no values on the land or foreshore")
+            self.logger.warning("The coarse DEM has no values on the land or foreshore")
             return []
 
         # combine in an single array
@@ -439,6 +442,10 @@ class HydrologicallyConditionedDem(DemBase):
     ):
         """Load in the extents and dense DEM. Ensure the dense DEM is clipped within the
         extents"""
+        super(HydrologicallyConditionedDem, self).__init__(
+            catchment_geometry=catchment_geometry,
+        )
+        self.logger = logging.getLogger(f"{__name__}.{self.__class__.__name__}")
 
         # Read in the dense DEM raster - and free up file by performing a deep copy.
         raw_dem = rioxarray.rioxarray.open_rasterio(
@@ -458,11 +465,6 @@ class HydrologicallyConditionedDem(DemBase):
         )
         # Rerun as otherwise the no data as NaN seems to be lost for the data_source layer
         self._write_netcdf_conventions_in_place(raw_dem, catchment_geometry.crs)
-
-        # Setup the DenseDemBase class
-        super(HydrologicallyConditionedDem, self).__init__(
-            catchment_geometry=catchment_geometry,
-        )
 
         # Set attributes
         self._raw_dem = raw_dem
@@ -615,14 +617,14 @@ class HydrologicallyConditionedDem(DemBase):
         if method == "rbf":
             # Ensure the number of points is not too great for RBF interpolation
             if len(bathymetry_points) < self.CACHE_SIZE:
-                logging.warning(
+                self.logger.warning(
                     "The number of points to fit and RBF interpolant to is"
                     f" {len(bathymetry_points)}. We recommend using fewer "
                     f" than {self.CACHE_SIZE} for best performance and to. "
                     "avoid errors in the `scipy.interpolate.Rbf` function"
                 )
             # Create RBF function
-            logging.info("Creating RBF interpolant")
+            self.logger.info("Creating RBF interpolant")
             rbf_function = scipy.interpolate.Rbf(
                 bathymetry_points["X"],
                 bathymetry_points["Y"],
@@ -633,7 +635,7 @@ class HydrologicallyConditionedDem(DemBase):
             flat_z_array = numpy.ones_like(flat_x_array) * numpy.nan
             number_offshore_tiles = math.ceil(len(flat_x_array) / self.CACHE_SIZE)
             for i in range(number_offshore_tiles):
-                logging.info(
+                self.logger.info(
                     f"Offshore intepolant tile {i+1} of {number_offshore_tiles}"
                 )
                 start_index = int(i * self.CACHE_SIZE)
@@ -683,7 +685,7 @@ class HydrologicallyConditionedDem(DemBase):
                 * len(offshore_points)
                 / self.CACHE_SIZE
             )
-            logging.info(
+            self.logger.info(
                 "Reducing the number of 'offshore_points' used to create the RBF "
                 "function by increasing the resolution from "
                 f" {self.catchment_geometry.resolution} to {reduced_resolution}"
@@ -715,7 +717,7 @@ class HydrologicallyConditionedDem(DemBase):
         mask = offshore_dem.z.notnull().values
 
         # Set up the interpolation function
-        logging.info("Offshore interpolation")
+        self.logger.info("Offshore interpolation")
         flat_z_masked = self._interpolate_bathymetry_points(
             bathymetry_points=offshore_points,
             flat_x_array=grid_x[mask],
@@ -787,10 +789,10 @@ class HydrologicallyConditionedDem(DemBase):
         flat_z_masked = estimated_dem.z.values[mask]
 
         # check there are actually pixels in the river
-        logging.info(f"There are {len(flat_z_masked)} estimated points")
+        self.logger.info(f"There are {len(flat_z_masked)} estimated points")
 
         # Interpolate river area - use cubic or linear interpolation
-        logging.info("Offshore interpolation")
+        self.logger.info("Offshore interpolation")
         flat_z_masked = self._interpolate_bathymetry_points(
             bathymetry_points=bathy_points,
             flat_x_array=flat_x_masked,
@@ -902,7 +904,7 @@ class HydrologicallyConditionedDem(DemBase):
         flat_z_masked = flat_z[mask_z]
 
         # Interpolate river area - use specified interpolation
-        logging.info("Offshore interpolation")
+        self.logger.info("Offshore interpolation")
         flat_z_masked = self._interpolate_bathymetry_points(
             bathymetry_points=bathy_points,
             flat_x_array=flat_x_masked,
@@ -944,6 +946,11 @@ class LidarBase(DemBase):
     ):
         """Setup base DEM to add future tiles too"""
 
+        super(LidarBase, self).__init__(
+            catchment_geometry=catchment_geometry,
+        )
+        self.logger = logging.getLogger(f"{__name__}.{self.__class__.__name__}")
+
         self.chunk_size = chunk_size
         self.elevation_range = elevation_range
         assert elevation_range is None or (
@@ -951,10 +958,6 @@ class LidarBase(DemBase):
         ), "Error the 'elevation_range' must either be none, or a two entry list"
 
         self._dem = None
-
-        super(LidarBase, self).__init__(
-            catchment_geometry=catchment_geometry,
-        )
 
     def __del__(self):
         """Ensure the memory associated with netCDF files is properly freed."""
@@ -1236,7 +1239,7 @@ class LidarBase(DemBase):
 
         except (Exception, KeyboardInterrupt) as caught_exception:
             pathlib.Path(filename).unlink()
-            logging.info(
+            self.logger.info(
                 f"Caught error {caught_exception} and deleting"
                 "partially created netCDF output "
                 f"{filename} before re-raising error."
@@ -1249,7 +1252,7 @@ class LidarBase(DemBase):
     ):
         """Update the saved file cache for the DEM (self._dem) as a netCDF file."""
 
-        logging.info(
+        self.logger.info(
             "In LidarBase.save_and_load_dem saving _dem as NetCDF file to "
             f"{filename}"
         )
@@ -1298,6 +1301,7 @@ class RawDem(LidarBase):
             chunk_size=chunk_size,
             elevation_range=elevation_range,
         )
+        self.logger = logging.getLogger(f"{__name__}.{self.__class__.__name__}")
 
         self.drop_offshore_lidar = drop_offshore_lidar
         self.lidar_interpolation_method = lidar_interpolation_method
@@ -1410,7 +1414,7 @@ class RawDem(LidarBase):
         # Don't use dask delayed if there is no chunking
         if len(lidar_datasets_info) == 0:
             # Create an empty dataset as no LiDAR
-            logging.warning("No LiDAR dataset. Creating an empty raw DEM dataset.")
+            self.logger.warning("No LiDAR dataset. Creating an empty raw DEM dataset.")
             bounds = self.catchment_geometry.catchment.geometry.bounds
             resolution = self.catchment_geometry.resolution
             x = numpy.arange(
@@ -1512,7 +1516,7 @@ class RawDem(LidarBase):
         chunked_dim_x, chunked_dim_y = self._set_up_chunks()
         elevations = {}
 
-        logging.info(f"Preparing {[len(chunked_dim_x), len(chunked_dim_y)]} chunks")
+        self.logger.info(f"Preparing {[len(chunked_dim_x), len(chunked_dim_y)]} chunks")
         for dataset_name, dataset_info in lidar_datasets_info.items():
             # Pull out the dataset information
             lidar_files = dataset_info["file_paths"]
@@ -1541,12 +1545,12 @@ class RawDem(LidarBase):
             )
 
             # cycle through index chunks - and collect in a delayed array
-            logging.info(f"Running over dataset {dataset_name}")
+            self.logger.info(f"Running over dataset {dataset_name}")
             delayed_chunked_matrix = []
             for i, dim_y in enumerate(chunked_dim_y):
                 delayed_chunked_x = []
                 for j, dim_x in enumerate(chunked_dim_x):
-                    logging.info(f"\tLiDAR chunk {[i, j]}")
+                    self.logger.info(f"\tLiDAR chunk {[i, j]}")
 
                     # Define the region to tile
                     chunk_region_to_tile = self._define_chunk_region(
@@ -1609,7 +1613,7 @@ class RawDem(LidarBase):
         lidar_name = list(lidar_datasets_info.keys())[0]
         lidar_file = lidar_datasets_info[lidar_name]["file_paths"][0]
         source_crs = lidar_datasets_info[lidar_name]["crs"]
-        logging.info(f"On LiDAR tile 1 of 1: {lidar_file}")
+        self.logger.info(f"On LiDAR tile 1 of 1: {lidar_file}")
 
         # Define the region to rasterise
         region_to_rasterise = (
@@ -1680,7 +1684,7 @@ class RawDem(LidarBase):
         tile_points = tile_points[classification_mask]
 
         if len(tile_points) == 0:
-            logging.warning(
+            self.logger.warning(
                 "In RawDem._elevation_over_tile the tile has no data and is being "
                 "ignored."
             )
@@ -1850,7 +1854,7 @@ class RawDem(LidarBase):
             rioxarray.exceptions.NoDataInBounds,
             ValueError,
         ) as caught_exception:
-            logging.warning(
+            self.logger.warning(
                 "NoDataInDounds in RawDem.add_coarse_dems. Will skip."
                 f"{caught_exception}."
             )
@@ -1882,7 +1886,7 @@ class RawDem(LidarBase):
         if not no_values_mask.any():
             return
 
-        logging.info(f"\t\tAdd data from coarse DEM: {coarse_dem_path.name}")
+        self.logger.info(f"\t\tAdd data from coarse DEM: {coarse_dem_path.name}")
 
         # If chunking ensure efficient parallelisation
         if (
@@ -2033,6 +2037,7 @@ class RoughnessDem(LidarBase):
             elevation_range=elevation_range,
             chunk_size=chunk_size,
         )
+        self.logger = logging.getLogger(f"{__name__}.{self.__class__.__name__}")
 
         # Load hyrdological DEM. Squeeze as rasterio.open() adds band coordinate.
         hydrological_dem = rioxarray.rioxarray.open_rasterio(
@@ -2121,7 +2126,7 @@ class RoughnessDem(LidarBase):
         # Calculate roughness from LiDAR
         if len(lidar_datasets_info) == 0:
             # Create an empty dataset as no LiDAR
-            logging.warning("No LiDAR dataset. Creating an empty roughness layer.")
+            self.logger.warning("No LiDAR dataset. Creating an empty roughness layer.")
             zo = xarray.ones_like(self._dem.z)
             zo = zo.where(False, numpy.nan)
             zo = zo.assign_attrs(long_name="Roughness length")
@@ -2200,7 +2205,7 @@ class RoughnessDem(LidarBase):
 
         roughnesses = []
 
-        logging.info(f"Preparing {[len(chunked_dim_x), len(chunked_dim_y)]} chunks")
+        self.logger.info(f"Preparing {[len(chunked_dim_x), len(chunked_dim_y)]} chunks")
         for dataset_name in lidar_datasets_info.keys():
             # Pull out the dataset information
             lidar_files = lidar_datasets_info[dataset_name]["file_paths"]
@@ -2228,12 +2233,12 @@ class RoughnessDem(LidarBase):
             )
 
             # cycle through chunks - and collect in a delayed array
-            logging.info(f"Running over dataset {dataset_name}")
+            self.logger.info(f"Running over dataset {dataset_name}")
             delayed_chunked_matrix = []
             for i, dim_y in enumerate(chunked_dim_y):
                 delayed_chunked_x = []
                 for j, dim_x in enumerate(chunked_dim_x):
-                    logging.info(f"\tChunk {[i, j]}")
+                    self.logger.info(f"\tChunk {[i, j]}")
 
                     # Define the region to tile
                     chunk_region_to_tile = self._define_chunk_region(
@@ -2298,7 +2303,7 @@ class RoughnessDem(LidarBase):
         lidar_name = list(lidar_datasets_info.keys())[0]
         lidar_file = lidar_datasets_info[lidar_name]["file_paths"][0]
         source_crs = lidar_datasets_info[lidar_name]["crs"]
-        logging.info(f"On LiDAR tile 1 of 1: {lidar_file}")
+        self.logger.info(f"On LiDAR tile 1 of 1: {lidar_file}")
 
         # Define the region to rasterise
         region_to_rasterise = (
@@ -2362,7 +2367,7 @@ class RoughnessDem(LidarBase):
         tile_points = tile_points[classification_mask]
 
         if len(tile_points) == 0:
-            logging.warning(
+            self.logger.warning(
                 "In RoughnessDem._roughness_over_tile the tile has no data and is being"
                 " ignored."
             )
@@ -2404,7 +2409,7 @@ class RoughnessDem(LidarBase):
                 A list of roughnesses over the x, and y coordiantes for each dataset.
         """
 
-        logging.info(
+        self.logger.info(
             "In RoughnessDem._add_roughness_to_data_set creating and "
             "adding the Zo layer to the dataset."
         )
@@ -2633,7 +2638,8 @@ def calculate_linear(
             )[0]
         except (scipy.spatial.QhullError, Exception) as caught_exception:
             logging.warning(
-                f"Exception {caught_exception} during linear interpolation. Set to NaN."
+                f" [dem.calculate_linear]:\tException {caught_exception} during "
+                "linear interpolation. Set to NaN."
             )
             linear = numpy.nan
 
@@ -2678,14 +2684,16 @@ def load_tiles_in_chunk(
     """Read in all LiDAR files within the chunked region - clipped to within
     the region within which to rasterise."""
 
-    logging.info(f"Reading all {len(lidar_files)} files in chunk.")
+    logging.info(
+        f" [dem.load_tiles_in_chunk]:\tReading all {len(lidar_files)} files in chunk."
+    )
 
     # Initialise LiDAR points
     lidar_points = []
 
     # Cycle through each file loading it in an adding it to a numpy array
     for lidar_file in lidar_files:
-        logging.info(f"\t Loading in file {lidar_file}")
+        logging.info(f"dem.load_tiles_in_chunk]:\tLoading in file {lidar_file}")
 
         # read in the LiDAR file
         pdal_pipeline = read_file_with_pdal(
@@ -2719,7 +2727,7 @@ def roughness_over_chunk(
     # If no points return an array of NaN
     if len(tile_points) == 0:
         logging.warning(
-            "In dem.roughness_over_chunk the latest chunk has no data and is being "
+            " [dem.roughness_over_chunk]:\tThe latest chunk has no data and is being "
             "ignored."
         )
         return grid_z
@@ -2767,7 +2775,7 @@ def elevation_over_chunk(
     # If no points return an array of NaN
     if len(tile_points) == 0:
         logging.warning(
-            "In dem.elevation_over_chunk the latest chunk has no data and is being "
+            " [dem.elevation_over_chunk]:\tThe latest chunk has no data and is being "
             "ignored."
         )
         return grid_z
