@@ -19,12 +19,18 @@ Functions
 
 .. autoapisummary::
 
+   geofabrics.runner.config_logging
    geofabrics.runner.setup_logging_for_run
    geofabrics.runner.run_processor_class
    geofabrics.runner.merge_dicts
    geofabrics.runner.from_instructions_dict
    geofabrics.runner.from_instructions_file
 
+
+
+.. py:function:: config_logging(logging_filepath)
+
+   Configure the root logger inhereited by all othr loggers.
 
 
 .. py:function:: setup_logging_for_run(instructions, label)
@@ -38,7 +44,7 @@ Functions
    execution.
 
 
-.. py:function:: merge_dicts(dict_a, dict_b, replace_a)
+.. py:function:: merge_dicts(dict_a, dict_b, logger, replace_a)
 
    Merge the contents of the dict_a and dict_b. Use recursion to merge
    any nested dictionaries. replace_a determines if the dict_a values are
