@@ -40,10 +40,10 @@ def config_logging(logging_filepath: pathlib):
                 "mode": "a",
             },
         },
-        "root":{
-            "handlers" : ["file_handler", "stream_handler"],
+        "root": {
+            "handlers": ["file_handler", "stream_handler"],
             "level": "DEBUG",
-            "propagate": False
+            "propagate": False,
         },
     }
     logging.config.dictConfig(log_dict)
