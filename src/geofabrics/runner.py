@@ -76,9 +76,9 @@ def setup_logging_for_run(instructions: dict, label: str):
 
     config_logging(log_path / f"geofabrics_{label}.log")
     logger = logging.getLogger(f"{__name__}.{label}")
-    breakpoint()
+
     logger.info(f"Log file is located at: geofabrics_{label}.log")
-    logger.info(instructions)
+    logger.debug(instructions)
     return logger
 
 
