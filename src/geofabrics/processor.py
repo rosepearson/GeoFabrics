@@ -897,7 +897,10 @@ class RawLidarDemGenerator(BaseProcessor):
         )
 
         # Setup Dask cluster and client - LAZY SAVE LIDAR DEM
-        dask.config.set({"distributed.comm.timeouts.connect": "120s"})
+        dask.config.set({
+            "distributed.comm.timeouts.connect": "120s",
+            "logging.distributed": "info",
+                        })
         cluster_kwargs = {
             "n_workers": self.get_processing_instructions("number_of_cores"),
             "threads_per_worker": 1,
@@ -1135,6 +1138,7 @@ class HydrologicDemGenerator(BaseProcessor):
         with cluster, distributed.Client(cluster) as client:
             self.logger.info(f"Dask client: {client}")
             self.logger.info(f"Dask dashboard: {client.dashboard_link}")
+            client.forward_logging()  # Ensure root logging configuration is used
 
             # setup the hydrologically conditioned DEM generator
             self.hydrologic_dem = dem.HydrologicallyConditionedDem(
@@ -1311,7 +1315,8 @@ class RoughnessLengthGenerator(BaseProcessor):
         cluster = distributed.LocalCluster(**cluster_kwargs)
         with cluster, distributed.Client(cluster) as client:
             self.logger.info(f"Dask client: {client}")
-            self.logger.info(f"Dask dashboard: {client.dashboard_link}")
+            self.logger.info(f"Dask dashboard: {client.dashboard_link}") 
+            client.forward_logging()  # Ensure root logging configuration is used
 
             # setup the roughness DEM generator
             self.roughness_dem = dem.RoughnessDem(

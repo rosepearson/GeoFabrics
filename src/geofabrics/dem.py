@@ -860,8 +860,7 @@ class HydrologicallyConditionedDem(DemBase):
             estimated_river_edge_z = elevation_from_points(
                 point_cloud=river_bank_points[river_bank_nan_mask],
                 xy_out=xy_out,
-                options=options,
-                logger=self.module_logger,
+                options=options, logger=self.module_logger
             )
 
             # Use the estimated bank heights where lower than the DEM edge values
@@ -1701,10 +1700,7 @@ class RawDem(LidarBase):
 
         # Perform the specified rasterisation over the grid locations
         z_flat = elevation_from_points(
-            point_cloud=tile_points,
-            xy_out=xy_out,
-            options=options,
-            logger=self.module_logger,
+            point_cloud=tile_points, xy_out=xy_out, options=options, logger=self.module_logger
         )
         grid_z = z_flat.reshape(grid_x.shape)
 
@@ -2588,6 +2584,7 @@ def elevation_from_points(
                     point=point,
                     tree=tree,
                     point_cloud=point_cloud,
+                    logger=logger
                 )
             elif options["method"] == "min":
                 z_out[i] = numpy.min(point_cloud["Z"][near_indices])
@@ -2691,7 +2688,7 @@ def load_tiles_in_chunk(
     source_crs: dict,
     chunk_region_to_tile: geopandas.GeoDataFrame,
     crs: dict,
-    logger: logging.Logger,
+    logger: logging.Logger
 ):
     """Read in all LiDAR files within the chunked region - clipped to within
     the region within which to rasterise."""
@@ -2778,7 +2775,7 @@ def elevation_over_chunk(
     logger: logging.Logger,
 ) -> numpy.ndarray:
     """Rasterise all points within a chunk."""
-
+    
     # Get the indicies overwhich to perform IDW
     grid_x, grid_y = numpy.meshgrid(dim_x, dim_y)
     xy_out = numpy.concatenate(
