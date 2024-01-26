@@ -1697,7 +1697,9 @@ class RawDem(LidarBase):
 
         # Perform the specified rasterisation over the grid locations
         z_flat = elevation_from_points(
-            point_cloud=tile_points, xy_out=xy_out, options=options,
+            point_cloud=tile_points,
+            xy_out=xy_out,
+            options=options,
         )
         grid_z = z_flat.reshape(grid_x.shape)
 
@@ -2688,9 +2690,7 @@ def load_tiles_in_chunk(
 
     logger = logging.getLogger(__name__)
     logger.setLevel(logging.DEBUG)
-    logger.debug(
-        f"Reading all {len(lidar_files)} files in chunk."
-    )
+    logger.debug(f"Reading all {len(lidar_files)} files in chunk.")
 
     # Initialise LiDAR points
     lidar_points = []
@@ -2732,9 +2732,7 @@ def roughness_over_chunk(
     if len(tile_points) == 0:
         logger = logging.getLogger(__name__)
         logger.setLevel(logging.DEBUG)
-        logger.debug(
-            "The latest chunk has no data and is being ignored."
-        )
+        logger.debug("The latest chunk has no data and is being ignored.")
         return grid_z
     # keep only the specified classifications (should be ground cover)
     classification_mask = numpy.zeros_like(tile_points["Classification"], dtype=bool)
@@ -2781,9 +2779,7 @@ def elevation_over_chunk(
     if len(tile_points) == 0:
         logger = logging.getLogger(__name__)
         logger.setLevel(logging.DEBUG)
-        logger.debug(
-            " The latest chunk has no data and is being ignored."
-        )
+        logger.debug(" The latest chunk has no data and is being ignored.")
         return grid_z
     # keep only the specified classifications (should be ground / water)
     # Not used for coarse DEM
