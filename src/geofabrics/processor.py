@@ -908,8 +908,8 @@ class RawLidarDemGenerator(BaseProcessor):
         with cluster, distributed.Client(cluster) as client:
             self.logger.info(f"Dask client: {client}")
             self.logger.info(f"Dask dashboard: {client.dashboard_link}")
-            client.forward_logging() # Ensure root logging configuration is used
-            
+            client.forward_logging()  # Ensure root logging configuration is used
+
             # Load in LiDAR tiles
             self.raw_dem.add_lidar(
                 lidar_datasets_info=lidar_datasets_info,
