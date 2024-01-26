@@ -1312,7 +1312,7 @@ class RoughnessLengthGenerator(BaseProcessor):
         cluster = distributed.LocalCluster(**cluster_kwargs)
         with cluster, distributed.Client(cluster) as client:
             self.logger.info(f"Dask client: {client}")
-            self.logger.info(f"Dask dashboard: {client.dashboard_link}") 
+            self.logger.info(f"Dask dashboard: {client.dashboard_link}")
             client.forward_logging()  # Ensure root logging configuration is used
 
             # setup the roughness DEM generator

@@ -2769,7 +2769,7 @@ def elevation_over_chunk(
     options: dict,
 ) -> numpy.ndarray:
     """Rasterise all points within a chunk."""
-    
+
     # Get the indicies overwhich to perform IDW
     grid_x, grid_y = numpy.meshgrid(dim_x, dim_y)
     xy_out = numpy.concatenate(
