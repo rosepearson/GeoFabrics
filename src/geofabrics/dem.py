@@ -316,6 +316,7 @@ class DemBase(abc.ABC):
         """Setup base DEM to add future tiles too"""
 
         self.catchment_geometry = catchment_geometry
+        self.module_logger = logging.getLogger(f"{__name__}.module")
 
     @property
     def dem(self) -> xarray.Dataset:
@@ -859,7 +860,7 @@ class HydrologicallyConditionedDem(DemBase):
             estimated_river_edge_z = elevation_from_points(
                 point_cloud=river_bank_points[river_bank_nan_mask],
                 xy_out=xy_out,
-                options=options,
+                options=options, logger=self.module_logger
             )
 
             # Use the estimated bank heights where lower than the DEM edge values
@@ -1550,7 +1551,7 @@ class RawDem(LidarBase):
             for i, dim_y in enumerate(chunked_dim_y):
                 delayed_chunked_x = []
                 for j, dim_x in enumerate(chunked_dim_x):
-                    self.logger.info(f"\tLiDAR chunk {[i, j]}")
+                    self.logger.debug(f"\tLiDAR chunk {[i, j]}")
 
                     # Define the region to tile
                     chunk_region_to_tile = self._define_chunk_region(
@@ -1572,6 +1573,7 @@ class RawDem(LidarBase):
                         source_crs=source_crs,
                         chunk_region_to_tile=chunk_region_to_tile,
                         crs=raster_options["crs"],
+                        logger=self.module_logger,
                     )
                     # Rasterise tiles
                     delayed_chunked_x.append(
@@ -1581,6 +1583,7 @@ class RawDem(LidarBase):
                                 dim_y=dim_y,
                                 tile_points=chunk_points,
                                 options=raster_options,
+                                logger=self.module_logger,
                             ),
                             shape=(len(dim_y), len(dim_x)),
                             dtype=raster_options["raster_type"],
@@ -1697,7 +1700,7 @@ class RawDem(LidarBase):
 
         # Perform the specified rasterisation over the grid locations
         z_flat = elevation_from_points(
-            point_cloud=tile_points, xy_out=xy_out, options=options
+            point_cloud=tile_points, xy_out=xy_out, options=options, logger=self.module_logger
         )
         grid_z = z_flat.reshape(grid_x.shape)
 
@@ -2238,7 +2241,7 @@ class RoughnessDem(LidarBase):
             for i, dim_y in enumerate(chunked_dim_y):
                 delayed_chunked_x = []
                 for j, dim_x in enumerate(chunked_dim_x):
-                    self.logger.info(f"\tChunk {[i, j]}")
+                    self.logger.debug(f"\tChunk {[i, j]}")
 
                     # Define the region to tile
                     chunk_region_to_tile = self._define_chunk_region(
@@ -2260,6 +2263,7 @@ class RoughnessDem(LidarBase):
                         source_crs=source_crs,
                         chunk_region_to_tile=chunk_region_to_tile,
                         crs=raster_options["crs"],
+                        logger=self.module_logger,
                     )
                     # Rasterise tiles
                     xy_ground = self._dem.z.sel(
@@ -2273,6 +2277,7 @@ class RoughnessDem(LidarBase):
                                 tile_points=chunk_points,
                                 xy_ground=xy_ground,
                                 options=raster_options,
+                                logger=self.module_logger,
                             ),
                             shape=(len(dim_y), len(dim_x)),
                             dtype=geometry.RASTER_TYPE,
@@ -2540,6 +2545,7 @@ def elevation_from_points(
     point_cloud: numpy.ndarray,
     xy_out,
     options: dict,
+    logger: logging.Logger,
     eps: float = 0,
     leaf_size: int = 10,
 ) -> numpy.ndarray:
@@ -2624,6 +2630,7 @@ def calculate_linear(
     point: numpy.ndarray,
     tree: scipy.spatial.KDTree,
     point_cloud: numpy.ndarray,
+    logger: logging.Logger
 ):
     """Calculate linear interpolation of the 'near_indices' points. Take the straight
     mean if the points are co-linear or too few for linear interpolation."""
@@ -2637,7 +2644,7 @@ def calculate_linear(
                 method="linear",
             )[0]
         except (scipy.spatial.QhullError, Exception) as caught_exception:
-            logging.warning(
+            logger.warning(
                 f" [dem.calculate_linear]:\tException {caught_exception} during "
                 "linear interpolation. Set to NaN."
             )
@@ -2680,11 +2687,12 @@ def load_tiles_in_chunk(
     source_crs: dict,
     chunk_region_to_tile: geopandas.GeoDataFrame,
     crs: dict,
+    logger: logging.Logger
 ):
     """Read in all LiDAR files within the chunked region - clipped to within
     the region within which to rasterise."""
 
-    logging.info(
+    logger.debug(
         f" [dem.load_tiles_in_chunk]:\tReading all {len(lidar_files)} files in chunk."
     )
 
@@ -2693,7 +2701,7 @@ def load_tiles_in_chunk(
 
     # Cycle through each file loading it in an adding it to a numpy array
     for lidar_file in lidar_files:
-        logging.info(f"dem.load_tiles_in_chunk]:\tLoading in file {lidar_file}")
+        logger.debug(f"dem.load_tiles_in_chunk]:\tLoading in file {lidar_file}")
 
         # read in the LiDAR file
         pdal_pipeline = read_file_with_pdal(
@@ -2714,6 +2722,7 @@ def roughness_over_chunk(
     tile_points: numpy.ndarray,
     xy_ground: numpy.ndarray,
     options: dict,
+    logger: logging.Logger,
 ) -> numpy.ndarray:
     """Rasterise all points within a chunk."""
 
@@ -2726,7 +2735,7 @@ def roughness_over_chunk(
 
     # If no points return an array of NaN
     if len(tile_points) == 0:
-        logging.warning(
+        logger.debug(
             " [dem.roughness_over_chunk]:\tThe latest chunk has no data and is being "
             "ignored."
         )
@@ -2762,9 +2771,10 @@ def elevation_over_chunk(
     dim_y: numpy.ndarray,
     tile_points: numpy.ndarray,
     options: dict,
+    logger: logging.Logger,
 ) -> numpy.ndarray:
     """Rasterise all points within a chunk."""
-
+    
     # Get the indicies overwhich to perform IDW
     grid_x, grid_y = numpy.meshgrid(dim_x, dim_y)
     xy_out = numpy.concatenate(
@@ -2774,7 +2784,7 @@ def elevation_over_chunk(
 
     # If no points return an array of NaN
     if len(tile_points) == 0:
-        logging.warning(
+        logger.debug(
             " [dem.elevation_over_chunk]:\tThe latest chunk has no data and is being "
             "ignored."
         )
@@ -2800,7 +2810,7 @@ def elevation_over_chunk(
     # Perform the specified averaging method over the dense DEM within the extents of
     # this point cloud tile
     z_flat = elevation_from_points(
-        point_cloud=tile_points, xy_out=xy_out, options=options
+        point_cloud=tile_points, xy_out=xy_out, options=options, logger=logger
     )
     grid_z = z_flat.reshape(grid_x.shape)
 
