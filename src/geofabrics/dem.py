@@ -1550,7 +1550,7 @@ class RawDem(LidarBase):
             for i, dim_y in enumerate(chunked_dim_y):
                 delayed_chunked_x = []
                 for j, dim_x in enumerate(chunked_dim_x):
-                    self.logger.info(f"\tLiDAR chunk {[i, j]}")
+                    self.logger.debug(f"\tLiDAR chunk {[i, j]}")
 
                     # Define the region to tile
                     chunk_region_to_tile = self._define_chunk_region(
@@ -1697,7 +1697,9 @@ class RawDem(LidarBase):
 
         # Perform the specified rasterisation over the grid locations
         z_flat = elevation_from_points(
-            point_cloud=tile_points, xy_out=xy_out, options=options
+            point_cloud=tile_points,
+            xy_out=xy_out,
+            options=options,
         )
         grid_z = z_flat.reshape(grid_x.shape)
 
@@ -2238,7 +2240,7 @@ class RoughnessDem(LidarBase):
             for i, dim_y in enumerate(chunked_dim_y):
                 delayed_chunked_x = []
                 for j, dim_x in enumerate(chunked_dim_x):
-                    self.logger.info(f"\tChunk {[i, j]}")
+                    self.logger.debug(f"\tChunk {[i, j]}")
 
                     # Define the region to tile
                     chunk_region_to_tile = self._define_chunk_region(
@@ -2637,8 +2639,10 @@ def calculate_linear(
                 method="linear",
             )[0]
         except (scipy.spatial.QhullError, Exception) as caught_exception:
-            logging.warning(
-                f" [dem.calculate_linear]:\tException {caught_exception} during "
+            logger = logging.getLogger(__name__)
+            logger.setLevel(logging.DEBUG)
+            logger.warning(
+                f"Exception {caught_exception} during "
                 "linear interpolation. Set to NaN."
             )
             linear = numpy.nan
@@ -2684,16 +2688,16 @@ def load_tiles_in_chunk(
     """Read in all LiDAR files within the chunked region - clipped to within
     the region within which to rasterise."""
 
-    logging.info(
-        f" [dem.load_tiles_in_chunk]:\tReading all {len(lidar_files)} files in chunk."
-    )
+    logger = logging.getLogger(__name__)
+    logger.setLevel(logging.DEBUG)
+    logger.debug(f"Reading all {len(lidar_files)} files in chunk.")
 
     # Initialise LiDAR points
     lidar_points = []
 
     # Cycle through each file loading it in an adding it to a numpy array
     for lidar_file in lidar_files:
-        logging.info(f"dem.load_tiles_in_chunk]:\tLoading in file {lidar_file}")
+        logger.debug(f"Loading in file {lidar_file}")
 
         # read in the LiDAR file
         pdal_pipeline = read_file_with_pdal(
@@ -2726,10 +2730,9 @@ def roughness_over_chunk(
 
     # If no points return an array of NaN
     if len(tile_points) == 0:
-        logging.warning(
-            " [dem.roughness_over_chunk]:\tThe latest chunk has no data and is being "
-            "ignored."
-        )
+        logger = logging.getLogger(__name__)
+        logger.setLevel(logging.DEBUG)
+        logger.debug("The latest chunk has no data and is being ignored.")
         return grid_z
     # keep only the specified classifications (should be ground cover)
     classification_mask = numpy.zeros_like(tile_points["Classification"], dtype=bool)
@@ -2774,10 +2777,9 @@ def elevation_over_chunk(
 
     # If no points return an array of NaN
     if len(tile_points) == 0:
-        logging.warning(
-            " [dem.elevation_over_chunk]:\tThe latest chunk has no data and is being "
-            "ignored."
-        )
+        logger = logging.getLogger(__name__)
+        logger.setLevel(logging.DEBUG)
+        logger.debug(" The latest chunk has no data and is being ignored.")
         return grid_z
     # keep only the specified classifications (should be ground / water)
     # Not used for coarse DEM

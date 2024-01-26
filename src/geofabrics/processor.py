@@ -906,6 +906,7 @@ class RawLidarDemGenerator(BaseProcessor):
         }
         cluster = distributed.LocalCluster(**cluster_kwargs)
         with cluster, distributed.Client(cluster) as client:
+            client.forward_logging()  # Ensure root logging configuration is used
             self.logger.info(f"Dask client: {client}")
             self.logger.info(f"Dask dashboard: {client.dashboard_link}")
 
@@ -1134,6 +1135,7 @@ class HydrologicDemGenerator(BaseProcessor):
         with cluster, distributed.Client(cluster) as client:
             self.logger.info(f"Dask client: {client}")
             self.logger.info(f"Dask dashboard: {client.dashboard_link}")
+            client.forward_logging()  # Ensure root logging configuration is used
 
             # setup the hydrologically conditioned DEM generator
             self.hydrologic_dem = dem.HydrologicallyConditionedDem(
@@ -1311,6 +1313,7 @@ class RoughnessLengthGenerator(BaseProcessor):
         with cluster, distributed.Client(cluster) as client:
             self.logger.info(f"Dask client: {client}")
             self.logger.info(f"Dask dashboard: {client.dashboard_link}")
+            client.forward_logging()  # Ensure root logging configuration is used
 
             # setup the roughness DEM generator
             self.roughness_dem = dem.RoughnessDem(

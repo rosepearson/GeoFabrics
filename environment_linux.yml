@@ -16,7 +16,6 @@ dependencies:
   - pytest
   - python-dotenv
   - python-pdal
-  - pip:
-    - netcdf4
-    - geoapis >=0.3.2
-    - osmpythontools >=0.3.5
+  - netcdf4
+  - geoapis >=0.3.2
+  - osmpythontools >=0.3.5
