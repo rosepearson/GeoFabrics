@@ -917,11 +917,19 @@ class RawLidarDemGenerator(BaseProcessor):
                     "lidar_classifications_to_keep"
                 ),
                 metadata=self.create_metadata(),
-            )  # Note must be called after all others if it is to be complete
+            )
 
             # Save a cached copy of DEM to temporary memory cache
-            self.logger.info("Save temp raw DEM to netCDF")
             cached_file = temp_folder / "raw_lidar.nc"
+            self.logger.info(f"Save temp raw DEM to netCDF: {cached_file}")
+            self.raw_dem.save_and_load_dem(cached_file)
+
+            # Clip LiDAR - ensure within bounds/foreshore
+            self.raw_dem.clip_lidar()
+
+            # Save a cached copy of DEM to temporary memory cache
+            cached_file = temp_folder / "raw_lidar_clipped.nc"
+            self.logger.info(f"Save temp raw DEM to netCDF: {cached_file}")
             self.raw_dem.save_and_load_dem(cached_file)
 
             # Add a coarse DEM if significant area without LiDAR and a coarse DEM
@@ -943,8 +951,8 @@ class RawLidarDemGenerator(BaseProcessor):
 
                     self.raw_dem.add_coarse_dem(coarse_dem_path, area_threshold)
 
-                    self.logger.info("Save temp raw DEM to netCDF")
                     temp_file = temp_folder / f"raw_dem_{coarse_dem_path.stem}.nc"
+                    self.logger.info(f"Save temp raw DEM to netCDF: {cached_file}")
                     self.raw_dem.save_and_load_dem(temp_file)
 
                     # Remove previous cached file and replace with new one
@@ -953,10 +961,28 @@ class RawLidarDemGenerator(BaseProcessor):
 
             # compute and save raw DEM
             self.logger.info(
-                "In processor.DemGenerator - write out the raw DEM to netCDF"
+                "In processor.DemGenerator - write out the raw DEM to netCDF: "
+                f"{self.get_instruction_path('raw_dem')}"
             )
+            encoding = {
+                "data_source": {
+                    "zlib": True,
+                    "complevel": 1,
+                },
+                "lidar_source": {
+                    "zlib": True,
+                    "complevel": 1,
+                },
+                "z": {
+                    "zlib": True,
+                    "complevel": 1,
+                },
+            }
+            encoding = None  # Separately test compressing final netCDF outputs
             self.raw_dem.save_dem(
-                self.get_instruction_path("raw_dem"), dem=self.raw_dem.dem
+                self.get_instruction_path("raw_dem"),
+                dem=self.raw_dem.dem,
+                encoding=encoding,
             )
             self.logger.info(f"Remove folder {temp_folder} for temporary files")
             shutil.rmtree(temp_folder)
@@ -1342,11 +1368,32 @@ class RoughnessLengthGenerator(BaseProcessor):
             # save results
             self.logger.info(
                 "In processor.RoughnessLengthGenerator - write out "
-                "the raw DEM to netCDF"
+                "the raw DEM to netCDF: "
+                f"{self.get_instruction_path('result_geofabric')}"
             )
+            encoding = {
+                "data_source": {
+                    "zlib": True,
+                    "complevel": 1,
+                },
+                "lidar_source": {
+                    "zlib": True,
+                    "complevel": 1,
+                },
+                "z": {
+                    "zlib": True,
+                    "complevel": 1,
+                },
+                "zo": {
+                    "zlib": True,
+                    "complevel": 1,
+                },
+            }
+            encoding = None  # Separately test compressing final netCDF outputs
             self.roughness_dem.save_dem(
                 filename=self.get_instruction_path("result_geofabric"),
                 dem=self.roughness_dem.dem,
+                encoding=encoding,
             )
             self.logger.info(
                 "In processor.RoughnessLengthGenerator - clean folder for "

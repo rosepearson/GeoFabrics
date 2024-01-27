@@ -1222,7 +1222,9 @@ class LidarBase(DemBase):
 
         return dem
 
-    def save_dem(self, filename: pathlib.Path, dem: xarray.Dataset):
+    def save_dem(
+        self, filename: pathlib.Path, dem: xarray.Dataset, encoding: dict = None
+    ):
         """Save the DEM to a netCDF file and optionally reload it
 
         :param filename: .nc file where to save the DEM
@@ -1234,7 +1236,13 @@ class LidarBase(DemBase):
         ), "all DataArray variables of a xarray.Dataset must have a CRS"
 
         try:
-            dem.to_netcdf(filename, format="NETCDF4", engine="netcdf4")
+            self._write_netcdf_conventions_in_place(dem, self.catchment_geometry.crs)
+            if encoding is not None:
+                dem.to_netcdf(
+                    filename, format="NETCDF4", engine="netcdf4", encoding=encoding
+                )
+            else:
+                dem.to_netcdf(filename, format="NETCDF4", engine="netcdf4")
             dem.close()
 
         except (Exception, KeyboardInterrupt) as caught_exception:
@@ -1456,18 +1464,27 @@ class RawDem(LidarBase):
                 metadata=metadata,
             )
 
+        self._dem = dem
+
+    def clip_lidar(
+        self,
+    ):
+        """Clip the  a 'raw' DEM. Should be called immediately after the add_lidar function."""
+
         # Clip DEM to Catchment and ensure NaN outside region to rasterise
         catchment = self.catchment_geometry.catchment
-        dem = dem.rio.clip_box(**catchment.bounds.iloc[0])
-        dem = dem.where(clip_mask(dem.z, catchment.geometry, self.chunk_size))
+        self._dem = self._dem.rio.clip_box(**catchment.bounds.iloc[0])
+        self._dem = self._dem.where(
+            clip_mask(self._dem.z, catchment.geometry, self.chunk_size)
+        )
 
         # Check if the ocean is clipped or not (must be in all datasets)
         drop_offshore_lidar = all(self.drop_offshore_lidar.values())
         land_and_foreshore = self.catchment_geometry.land_and_foreshore
         if drop_offshore_lidar and land_and_foreshore.area.sum() > 0:
             # If area of 0 size, all will be NaN anyway
-            mask = clip_mask(dem.z, land_and_foreshore.geometry, self.chunk_size)
-            dem = dem.where(mask)
+            mask = clip_mask(self._dem.z, land_and_foreshore.geometry, self.chunk_size)
+            self._dem = self._dem.where(mask)
 
         # If drop offshore LiDAR ensure the foreshore values are 0 or negative
         foreshore = self.catchment_geometry.foreshore
@@ -1485,21 +1502,19 @@ class RawDem(LidarBase):
 
             # Mask to delineate DEM outside of buffered foreshore or below 0
             mask = ~(
-                (dem.z > 0)
-                & clip_mask(dem.z, buffered_foreshore.geometry, self.chunk_size)
+                (self._dem.z > 0)
+                & clip_mask(self._dem.z, buffered_foreshore.geometry, self.chunk_size)
             )
 
             # Set any positive LiDAR foreshore points to zero
-            dem["z"] = dem.z.where(mask, 0)
+            self._dem["z"] = self._dem.z.where(mask, 0)
 
-            dem["data_source"] = dem.data_source.where(
+            self._dem["data_source"] = self._dem.data_source.where(
                 mask, self.SOURCE_CLASSIFICATION["ocean bathymetry"]
             )
-            dem["lidar_source"] = dem.lidar_source.where(
+            self._dem["lidar_source"] = self._dem.lidar_source.where(
                 mask, self.SOURCE_CLASSIFICATION["no data"]
             )
-
-        self._dem = dem
 
     def _add_tiled_lidar_chunked(
         self,
