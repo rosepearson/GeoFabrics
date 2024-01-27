@@ -1222,7 +1222,9 @@ class LidarBase(DemBase):
 
         return dem
 
-    def save_dem(self, filename: pathlib.Path, dem: xarray.Dataset, encoding: dict = None):
+    def save_dem(
+        self, filename: pathlib.Path, dem: xarray.Dataset, encoding: dict = None
+    ):
         """Save the DEM to a netCDF file and optionally reload it
 
         :param filename: .nc file where to save the DEM
@@ -1236,7 +1238,9 @@ class LidarBase(DemBase):
         try:
             self._write_netcdf_conventions_in_place(dem, self.catchment_geometry.crs)
             if encoding is not None:
-                dem.to_netcdf(filename, format="NETCDF4", engine="netcdf4", encoding=encoding)
+                dem.to_netcdf(
+                    filename, format="NETCDF4", engine="netcdf4", encoding=encoding
+                )
             else:
                 dem.to_netcdf(filename, format="NETCDF4", engine="netcdf4")
             dem.close()
