@@ -1465,14 +1465,14 @@ class RawDem(LidarBase):
     def clip_lidar(
         self,
     ):
-        """Clip the  a 'raw' DEM. Should be called immediately after the add_lidar function.
-
-        """
+        """Clip the  a 'raw' DEM. Should be called immediately after the add_lidar function."""
 
         # Clip DEM to Catchment and ensure NaN outside region to rasterise
         catchment = self.catchment_geometry.catchment
         self._dem = self._dem.rio.clip_box(**catchment.bounds.iloc[0])
-        self._dem = self._dem.where(clip_mask(self._dem.z, catchment.geometry, self.chunk_size))
+        self._dem = self._dem.where(
+            clip_mask(self._dem.z, catchment.geometry, self.chunk_size)
+        )
 
         # Check if the ocean is clipped or not (must be in all datasets)
         drop_offshore_lidar = all(self.drop_offshore_lidar.values())
@@ -1511,7 +1511,7 @@ class RawDem(LidarBase):
             self._dem["lidar_source"] = self._dem.lidar_source.where(
                 mask, self.SOURCE_CLASSIFICATION["no data"]
             )
-        
+
     def _add_tiled_lidar_chunked(
         self,
         lidar_datasets_info: dict,
