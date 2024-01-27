@@ -423,7 +423,7 @@ standard list</p></li>
 
 <dl class="py method">
 <dt class="sig sig-object py" id="geofabrics.dem.LidarBase.save_dem">
-<span class="sig-name descname"><span class="pre">save_dem</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">filename</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">dem</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#geofabrics.dem.LidarBase.save_dem" title="Link to this definition"></a></dt>
+<span class="sig-name descname"><span class="pre">save_dem</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">filename</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">dem</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">encoding</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#geofabrics.dem.LidarBase.save_dem" title="Link to this definition"></a></dt>
 <dd><p>Save the DEM to a netCDF file and optionally reload it</p>
 <dl class="field-list simple">
 <dt class="field-odd">Parameters<span class="colon">:</span></dt>
@@ -431,6 +431,7 @@ standard list</p></li>
 <li><p><strong>filename</strong> (<em>pathlib.Path</em>) – .nc file where to save the DEM</p></li>
 <li><p><strong>reload</strong> – reload DEM from the saved file</p></li>
 <li><p><strong>dem</strong> (<em>xarray.Dataset</em>) – </p></li>
+<li><p><strong>encoding</strong> (<em>dict</em>) – </p></li>
 </ul>
 </dd>
 </dl>
@@ -495,6 +496,12 @@ standard list</p></li>
 </ul>
 </dd>
 </dl>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="geofabrics.dem.RawDem.clip_lidar">
+<span class="sig-name descname"><span class="pre">clip_lidar</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="headerlink" href="#geofabrics.dem.RawDem.clip_lidar" title="Link to this definition"></a></dt>
+<dd><p>Clip the  a ‘raw’ DEM. Should be called immediately after the add_lidar function.</p>
 </dd></dl>
 
 <dl class="py method">

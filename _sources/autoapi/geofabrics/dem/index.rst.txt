@@ -207,7 +207,7 @@ Attributes
                         `dataset_mapping` key if datasets (not a single LAZ file) included.
 
 
-   .. py:method:: save_dem(filename, dem)
+   .. py:method:: save_dem(filename, dem, encoding = None)
 
       Save the DEM to a netCDF file and optionally reload it
 
@@ -253,6 +253,11 @@ Attributes
                                             standard list
       :param meta_data: Information to include in the created DEM - must include
                         `dataset_mapping` key if datasets (not a single LAZ file) included.
+
+
+   .. py:method:: clip_lidar()
+
+      Clip the  a 'raw' DEM. Should be called immediately after the add_lidar function.
 
 
    .. py:method:: add_coarse_dem(coarse_dem_path, area_threshold)
