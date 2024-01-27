@@ -961,10 +961,17 @@ class RawLidarDemGenerator(BaseProcessor):
 
             # compute and save raw DEM
             self.logger.info(
-                "In processor.DemGenerator - write out the raw DEM to netCDF"
+                "In processor.DemGenerator - write out the raw DEM to netCDF: "
+                f"{self.get_instruction_path('raw_dem')}"
             )
+            '''encoding = {
+                "data_source":  {'zlib': True, 'complevel': 1, },
+                "lidar_source":  {'zlib': True, 'complevel': 1, },
+                "z":  {'zlib': True, 'complevel': 1, },
+            }'''
+            encoding = None
             self.raw_dem.save_dem(
-                self.get_instruction_path("raw_dem"), dem=self.raw_dem.dem
+                    self.get_instruction_path("raw_dem"), dem=self.raw_dem.dem, encoding=encoding
             )
             self.logger.info(f"Remove folder {temp_folder} for temporary files")
             shutil.rmtree(temp_folder)
@@ -1350,11 +1357,19 @@ class RoughnessLengthGenerator(BaseProcessor):
             # save results
             self.logger.info(
                 "In processor.RoughnessLengthGenerator - write out "
-                "the raw DEM to netCDF"
+                "the raw DEM to netCDF: "
+                f"{self.get_instruction_path('result_geofabric')}"
             )
+            '''encoding = {
+                "data_source":  {'zlib': True, 'complevel': 1, },
+                "lidar_source":  {'zlib': True, 'complevel': 1, },
+                "z":  {'zlib': True, 'complevel': 1, }, 
+                "zo":  {'zlib': True, 'complevel': 1, }
+            }'''
+            encoding = None
             self.roughness_dem.save_dem(
                 filename=self.get_instruction_path("result_geofabric"),
-                dem=self.roughness_dem.dem,
+                dem=self.roughness_dem.dem, encoding=encoding
             )
             self.logger.info(
                 "In processor.RoughnessLengthGenerator - clean folder for "
