@@ -964,12 +964,11 @@ class RawLidarDemGenerator(BaseProcessor):
                 "In processor.DemGenerator - write out the raw DEM to netCDF: "
                 f"{self.get_instruction_path('raw_dem')}"
             )
-            '''encoding = {
+            encoding = {
                 "data_source":  {'zlib': True, 'complevel': 1, },
                 "lidar_source":  {'zlib': True, 'complevel': 1, },
                 "z":  {'zlib': True, 'complevel': 1, },
-            }'''
-            encoding = None
+            }
             self.raw_dem.save_dem(
                     self.get_instruction_path("raw_dem"), dem=self.raw_dem.dem, encoding=encoding
             )
@@ -1360,13 +1359,12 @@ class RoughnessLengthGenerator(BaseProcessor):
                 "the raw DEM to netCDF: "
                 f"{self.get_instruction_path('result_geofabric')}"
             )
-            '''encoding = {
+            encoding = {
                 "data_source":  {'zlib': True, 'complevel': 1, },
                 "lidar_source":  {'zlib': True, 'complevel': 1, },
                 "z":  {'zlib': True, 'complevel': 1, }, 
                 "zo":  {'zlib': True, 'complevel': 1, }
-            }'''
-            encoding = None
+            }
             self.roughness_dem.save_dem(
                 filename=self.get_instruction_path("result_geofabric"),
                 dem=self.roughness_dem.dem, encoding=encoding
