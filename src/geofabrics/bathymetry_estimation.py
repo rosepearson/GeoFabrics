@@ -512,7 +512,9 @@ class InterpolateMeasuredElevations:
         self.logger = logging.getLogger(f"{__name__}.{self.__class__.__name__}")
 
         self.riverbanks = geopandas.read_file(riverbank_file).explode(ignore_index=True)
-        self.measured_sections = geopandas.read_file(measured_sections_file).explode(ignore_index=True)
+        self.measured_sections = geopandas.read_file(measured_sections_file).explode(
+            ignore_index=True
+        )
         self.cross_section_spacing = cross_section_spacing
         self.crs = crs
         self.check_valid_inputs()
