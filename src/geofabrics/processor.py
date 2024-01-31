@@ -1437,7 +1437,7 @@ class MeasuredRiverGenerator(BaseProcessor):
             instructions  The json instructions defining the behaviour
         """
         defaults = {
-            "thalweg_centre": True,
+            "thalweg_centre": False,
             "estimate_fan": False,
         }
 
@@ -1577,6 +1577,7 @@ class MeasuredRiverGenerator(BaseProcessor):
         defaults = {
             "result_polygon": "river_polygon.geojson",
             "result_elevation": "river_elevations.geojson",
+            "thalweg": None,
         }
         result_polygon_file = self.get_instruction_path(
             "result_polygon", defaults=defaults
@@ -1584,12 +1585,16 @@ class MeasuredRiverGenerator(BaseProcessor):
         result_elevations_file = self.get_instruction_path(
             "result_elevation", defaults=defaults
         )
+        thalweg_file = self.get_instruction_path(
+            "thalweg", defaults=defaults
+        )
         # Only rerun if files don't exist
         if not (result_polygon_file.exists() and result_elevations_file.exists()):
             self.logger.info("Interpolating measured sections.")
             measured_rivers = bathymetry_estimation.InterpolateMeasuredElevations(
                 riverbank_file=self.get_instruction_path("riverbanks"),
                 measured_sections_file=self.get_instruction_path("measured_sections"),
+                thalweg_file=thalweg_file,
                 cross_section_spacing=self.get_measured_instruction(
                     "cross_section_spacing"
                 ),
