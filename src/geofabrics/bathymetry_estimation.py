@@ -719,7 +719,7 @@ class InterpolateMeasuredElevations:
         number_samples
             The number of samples along each cross section."""
 
-        # Crete the river polygon
+        # Create the river polygon
         polygon = geopandas.GeoDataFrame(
             geometry=[
                 shapely.geometry.Polygon(
@@ -756,7 +756,7 @@ class InterpolateMeasuredElevations:
             )
         else:
             cross_sections = self.create_cross_sections_from_thalweg(
-                max_bank_width=200, river_polygon=polygon
+                river_polygon=polygon
             )
             self.thalweg_centred_spacing(
                 samples_per_section=samples_per_section, cross_sections=cross_sections
@@ -1000,7 +1000,7 @@ class InterpolateMeasuredElevations:
         return cross_sections
 
     def create_cross_sections_from_thalweg(
-        self, max_bank_width: float, river_polygon: geopandas.GeoDataFrame
+        self, river_polygon: geopandas.GeoDataFrame, max_bank_width_multiplier: float = 3
     ):
         # work out number of cross sections
         n_cross_sections = round(self.thalweg.length.max() / self.cross_section_spacing)
@@ -1014,24 +1014,24 @@ class InterpolateMeasuredElevations:
                 row.interpolate(normalised_sample_locations, normalized=True)
             )
         )
+        
+        # Calculate the maximum required cross section with
+        max_bank_width = max_bank_width_multiplier * numpy.max([self.riverbanks.distance(shapely.geometry.Point(point)).max() for point in self.thalweg.iloc[0].geometry.coords])
 
         # Reshape to separate right and left column - split lines to points
         cross_sections = node_centred_reach_cross_section(
             sampled_channel=self.thalweg, transect_radius=max_bank_width
         )
-        cross_sections.to_file(r"/nesi/project/niwa03440/geofabrics/caches/waitara/thalweg/cross_sections_made.geojson")
-        # Clip to river polygon
+        # Clip to river polygon - take the zero index which should be the one most in the centre
         cross_sections = cross_sections.clip(river_polygon).sort_index()
-        cross_sections.to_file(r"/nesi/project/niwa03440/geofabrics/caches/waitara/thalweg/cross_sections_clipped.geojson")
-        
-        # Todo - check for intersection with thalweg
-        if not (cross_sections.geometry.type == "LineString").all():
-            raise Exception(
-                "The individual cross sections must all be of geometry type "
-                "`LineString` after creation and clipping withint eh riverbanks."
-                f"clipping. Instead {cross_sections.geometry.type}. Likely this "
-                "is caused by riverbanks that are not convex."
-            )
+        cross_sections = cross_sections.explode()[cross_sections.explode().index.get_level_values(1)==0].reset_index(drop=True)
+        # Check all intersect with the thalweg
+        if not cross_sections.explode().intersects(self.thalweg.iloc[0].geometry).all():
+            self.logger.warning("Not all cross section segments intersect the Thalweg. Dropping "
+                                "those not intersecting the thalweg. Could be due to concavities "
+                                "in the riverbank delinations. Consider revising if results aren't "
+                                "satisfactory.")
+            cross_sections = cross_sections.explode(index_parts=False)[cross_sections.explode(index_parts=False).intersects(self.thalweg.iloc[0].geometry)]
         return cross_sections
 
 
