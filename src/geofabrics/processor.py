@@ -1577,7 +1577,6 @@ class MeasuredRiverGenerator(BaseProcessor):
         defaults = {
             "result_polygon": "river_polygon.geojson",
             "result_elevation": "river_elevations.geojson",
-            "thalweg": None,
         }
         result_polygon_file = self.get_instruction_path(
             "result_polygon", defaults=defaults
@@ -1585,7 +1584,10 @@ class MeasuredRiverGenerator(BaseProcessor):
         result_elevations_file = self.get_instruction_path(
             "result_elevation", defaults=defaults
         )
-        thalweg_file = self.get_instruction_path("thalweg", defaults=defaults)
+        if self.check_instruction_path("thalweg"):
+            thalweg_file = self.get_instruction_path("thalweg", defaults=defaults)
+        else:
+            thalweg_file = False
         # Only rerun if files don't exist
         if not (result_polygon_file.exists() and result_elevations_file.exists()):
             self.logger.info("Interpolating measured sections.")
