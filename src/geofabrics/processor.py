@@ -1587,7 +1587,7 @@ class MeasuredRiverGenerator(BaseProcessor):
         if self.check_instruction_path("thalweg"):
             thalweg_file = self.get_instruction_path("thalweg", defaults=defaults)
         else:
-            thalweg_file = False
+            thalweg_file = None
         # Only rerun if files don't exist
         if not (result_polygon_file.exists() and result_elevations_file.exists()):
             self.logger.info("Interpolating measured sections.")
