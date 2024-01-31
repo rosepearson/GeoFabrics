@@ -756,7 +756,7 @@ class InterpolateMeasuredElevations:
             )
         else:
             cross_sections = self.create_cross_sections_from_thalweg(
-                max_bank_width=1000, river_polygon=polygon
+                max_bank_width=200, river_polygon=polygon
             )
             self.thalweg_centred_spacing(
                 samples_per_section=samples_per_section, cross_sections=cross_sections
@@ -826,22 +826,21 @@ class InterpolateMeasuredElevations:
         number_samples
             The number of samples along each cross section."""
 
-        intersection_points = cross_sections.intersection(self.thalweg)
+        intersection_points = cross_sections.intersection(self.thalweg.iloc[0].geometry)
 
         # Calculate the normalised thalweg location at each measured section
         def calculate_normalised_thalweg_location(thalweg_point, geometry):
             """Tuple of the section index, and the point index along the section"""
-            left_bank_distance = thalweg_point.distance(geometry.coords[0])
-            right_bank_distance = thalweg_point.distance(geometry.coords[-1])
+            left_bank_distance = thalweg_point.distance(shapely.geometry.Point(geometry.coords[0]))
+            right_bank_distance = thalweg_point.distance(shapely.geometry.Point(geometry.coords[-1]))
             normalised_thalweg_location = left_bank_distance / (
                 left_bank_distance + right_bank_distance
             )
 
             return normalised_thalweg_location
-
         cross_sections["Thalweg ratio"] = cross_sections.apply(
             lambda row: calculate_normalised_thalweg_location(
-                intersection_points.iloc[row.name], row.geometry
+                intersection_points.iloc[row.name], row.geometry,
             ),
             axis=1,
         )
@@ -1006,12 +1005,12 @@ class InterpolateMeasuredElevations:
         # work out number of cross sections
         n_cross_sections = round(self.thalweg.length.max() / self.cross_section_spacing)
 
-        # Split thalweg polylines
+        # Resample thalweg at speified long section interval
         normalised_sample_locations = (
             numpy.arange(n_cross_sections + 1) * 1 / n_cross_sections
         )
         self.thalweg["geometry"] = self.thalweg["geometry"].apply(
-            lambda row: shapely.geometry.MultiPoint(
+            lambda row: shapely.geometry.LineString(
                 row.interpolate(normalised_sample_locations, normalized=True)
             )
         )
@@ -1020,9 +1019,12 @@ class InterpolateMeasuredElevations:
         cross_sections = node_centred_reach_cross_section(
             sampled_channel=self.thalweg, transect_radius=max_bank_width
         )
-
+        cross_sections.to_file(r"/nesi/project/niwa03440/geofabrics/caches/waitara/thalweg/cross_sections_made.geojson")
         # Clip to river polygon
         cross_sections = cross_sections.clip(river_polygon).sort_index()
+        cross_sections.to_file(r"/nesi/project/niwa03440/geofabrics/caches/waitara/thalweg/cross_sections_clipped.geojson")
+        
+        # Todo - check for intersection with thalweg
         if not (cross_sections.geometry.type == "LineString").all():
             raise Exception(
                 "The individual cross sections must all be of geometry type "
