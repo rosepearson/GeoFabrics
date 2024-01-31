@@ -831,16 +831,22 @@ class InterpolateMeasuredElevations:
         # Calculate the normalised thalweg location at each measured section
         def calculate_normalised_thalweg_location(thalweg_point, geometry):
             """Tuple of the section index, and the point index along the section"""
-            left_bank_distance = thalweg_point.distance(shapely.geometry.Point(geometry.coords[0]))
-            right_bank_distance = thalweg_point.distance(shapely.geometry.Point(geometry.coords[-1]))
+            left_bank_distance = thalweg_point.distance(
+                shapely.geometry.Point(geometry.coords[0])
+            )
+            right_bank_distance = thalweg_point.distance(
+                shapely.geometry.Point(geometry.coords[-1])
+            )
             normalised_thalweg_location = left_bank_distance / (
                 left_bank_distance + right_bank_distance
             )
 
             return normalised_thalweg_location
+
         cross_sections["Thalweg ratio"] = cross_sections.apply(
             lambda row: calculate_normalised_thalweg_location(
-                intersection_points.iloc[row.name], row.geometry,
+                intersection_points.iloc[row.name],
+                row.geometry,
             ),
             axis=1,
         )
@@ -1000,7 +1006,9 @@ class InterpolateMeasuredElevations:
         return cross_sections
 
     def create_cross_sections_from_thalweg(
-        self, river_polygon: geopandas.GeoDataFrame, max_bank_width_multiplier: float = 3
+        self,
+        river_polygon: geopandas.GeoDataFrame,
+        max_bank_width_multiplier: float = 3,
     ):
         # work out number of cross sections
         n_cross_sections = round(self.thalweg.length.max() / self.cross_section_spacing)
@@ -1014,9 +1022,14 @@ class InterpolateMeasuredElevations:
                 row.interpolate(normalised_sample_locations, normalized=True)
             )
         )
-        
+
         # Calculate the maximum required cross section with
-        max_bank_width = max_bank_width_multiplier * numpy.max([self.riverbanks.distance(shapely.geometry.Point(point)).max() for point in self.thalweg.iloc[0].geometry.coords])
+        max_bank_width = max_bank_width_multiplier * numpy.max(
+            [
+                self.riverbanks.distance(shapely.geometry.Point(point)).max()
+                for point in self.thalweg.iloc[0].geometry.coords
+            ]
+        )
 
         # Reshape to separate right and left column - split lines to points
         cross_sections = node_centred_reach_cross_section(
@@ -1024,14 +1037,22 @@ class InterpolateMeasuredElevations:
         )
         # Clip to river polygon - take the zero index which should be the one most in the centre
         cross_sections = cross_sections.clip(river_polygon).sort_index()
-        cross_sections = cross_sections.explode()[cross_sections.explode().index.get_level_values(1)==0].reset_index(drop=True)
+        cross_sections = cross_sections.explode()[
+            cross_sections.explode().index.get_level_values(1) == 0
+        ].reset_index(drop=True)
         # Check all intersect with the thalweg
         if not cross_sections.explode().intersects(self.thalweg.iloc[0].geometry).all():
-            self.logger.warning("Not all cross section segments intersect the Thalweg. Dropping "
-                                "those not intersecting the thalweg. Could be due to concavities "
-                                "in the riverbank delinations. Consider revising if results aren't "
-                                "satisfactory.")
-            cross_sections = cross_sections.explode(index_parts=False)[cross_sections.explode(index_parts=False).intersects(self.thalweg.iloc[0].geometry)]
+            self.logger.warning(
+                "Not all cross section segments intersect the Thalweg. Dropping "
+                "those not intersecting the thalweg. Could be due to concavities "
+                "in the riverbank delinations. Consider revising if results aren't "
+                "satisfactory."
+            )
+            cross_sections = cross_sections.explode(index_parts=False)[
+                cross_sections.explode(index_parts=False).intersects(
+                    self.thalweg.iloc[0].geometry
+                )
+            ]
         return cross_sections
 
 
