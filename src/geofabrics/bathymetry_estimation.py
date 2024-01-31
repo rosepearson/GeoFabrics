@@ -38,7 +38,10 @@ def _segment_slope(x_array, y_array, index):
     dy = (y_array[index + 1] - y_array[index]) / length
     return dx, dy, length
 
-def node_centred_reach_cross_section(sampled_channel: geopandas.GeoDataFrame, transect_radius: float):
+
+def node_centred_reach_cross_section(
+    sampled_channel: geopandas.GeoDataFrame, transect_radius: float
+):
     """Calculate cross_sections along a channel at the midpoint of each
     segment.
 
@@ -112,6 +115,7 @@ def node_centred_reach_cross_section(sampled_channel: geopandas.GeoDataFrame, tr
         cross_sections_dict, crs=sampled_channel.crs
     )
     return cross_sections
+
 
 class Channel:
     """A class to define a channel centre line from a digital network."""
@@ -692,7 +696,6 @@ class InterpolateMeasuredElevations:
 
         # Check thalweg is valid if specified
         if self.thalweg is not None:
-
             if self.thalweg.crs is None:
                 raise Exception("CRS required for self.measured_sections. Is None.")
             if not (self.thalweg.geometry.type == "LineString").all():
@@ -700,9 +703,7 @@ class InterpolateMeasuredElevations:
                     "The self.thalweg must be of geometry type `LineString`."
                     f" It is of type{self.thalweg.geometry.type}"
                 )
-            if (
-                len(self.thalweg) != 1
-            ):
+            if len(self.thalweg) != 1:
                 raise Exception(
                     "Unexpected number of rows for self.thalweg. Expecting one"
                     f" row got {self.thalweg}"
@@ -755,13 +756,11 @@ class InterpolateMeasuredElevations:
             )
         else:
             cross_sections = self.create_cross_sections_from_thalweg(
-                max_bank_width=1000,
-                river_polygon=polygon)
-            self.thalweg_centred_spacing(
-                samples_per_section=samples_per_section,
-                cross_sections=cross_sections
+                max_bank_width=1000, river_polygon=polygon
             )
-
+            self.thalweg_centred_spacing(
+                samples_per_section=samples_per_section, cross_sections=cross_sections
+            )
 
         # Map values to cross sections
         cross_sections_exploded = (
@@ -832,22 +831,20 @@ class InterpolateMeasuredElevations:
         # Calculate the normalised thalweg location at each measured section
         def calculate_normalised_thalweg_location(thalweg_point, geometry):
             """Tuple of the section index, and the point index along the section"""
-            left_bank_distance = thalweg_point.distance(
-                geometry.coords[0]
-            )
-            right_bank_distance = thalweg_point.distance(
-                geometry.coords[-1]
-            )
+            left_bank_distance = thalweg_point.distance(geometry.coords[0])
+            right_bank_distance = thalweg_point.distance(geometry.coords[-1])
             normalised_thalweg_location = left_bank_distance / (
                 left_bank_distance + right_bank_distance
             )
 
             return normalised_thalweg_location
-        cross_sections["Thalweg ratio"] = cross_sections.apply(
-            lambda row:
-                calculate_normalised_thalweg_location(
-                    intersection_points.iloc[row.name], row.geometry), axis=1)
 
+        cross_sections["Thalweg ratio"] = cross_sections.apply(
+            lambda row: calculate_normalised_thalweg_location(
+                intersection_points.iloc[row.name], row.geometry
+            ),
+            axis=1,
+        )
 
         # Define equal sample locations on each side of the Thalweg
         def split_line_to_nodes(line, thalweg_ratio, samples_per_section):
@@ -968,7 +965,6 @@ class InterpolateMeasuredElevations:
         )
 
     def create_cross_sections_from_banks(self):
-
         # work out number of cross sections
         n_cross_sections = round(
             self.riverbanks.length.max() / self.cross_section_spacing
@@ -1004,13 +1000,11 @@ class InterpolateMeasuredElevations:
         )
         return cross_sections
 
-    def create_cross_sections_from_thalweg(self,
-                                           max_bank_width: float,
-                                           river_polygon: geopandas.GeoDataFrame):
+    def create_cross_sections_from_thalweg(
+        self, max_bank_width: float, river_polygon: geopandas.GeoDataFrame
+    ):
         # work out number of cross sections
-        n_cross_sections = round(
-            self.thalweg.length.max() / self.cross_section_spacing
-        )
+        n_cross_sections = round(self.thalweg.length.max() / self.cross_section_spacing)
 
         # Split thalweg polylines
         normalised_sample_locations = (
@@ -1023,8 +1017,9 @@ class InterpolateMeasuredElevations:
         )
 
         # Reshape to separate right and left column - split lines to points
-        cross_sections = self.node_centred_reach_cross_section(sampled_channel=self.thalweg,
-                                                               transect_radius=max_bank_width)
+        cross_sections = self.node_centred_reach_cross_section(
+            sampled_channel=self.thalweg, transect_radius=max_bank_width
+        )
 
         # Clip to river polygon
         cross_sections = cross_sections.clip(river_polygon).sort_index()
