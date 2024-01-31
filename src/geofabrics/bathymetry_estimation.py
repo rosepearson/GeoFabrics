@@ -1017,7 +1017,7 @@ class InterpolateMeasuredElevations:
         )
 
         # Reshape to separate right and left column - split lines to points
-        cross_sections = self.node_centred_reach_cross_section(
+        cross_sections = node_centred_reach_cross_section(
             sampled_channel=self.thalweg, transect_radius=max_bank_width
         )
 
@@ -2152,7 +2152,7 @@ class ChannelCharacteristics:
         sampled_channel = initial_channel.get_parametric_spline_fit()
 
         # Create cross_sections
-        cross_sections = self.node_centred_reach_cross_section(
+        cross_sections = node_centred_reach_cross_section(
             sampled_channel=sampled_channel, transect_radius=self.transect_radius
         )
 
@@ -2251,7 +2251,7 @@ class ChannelCharacteristics:
         self.transect_radius = cross_section_radius
 
         # Create cross_sections
-        cross_sections = self.node_centred_reach_cross_section(
+        cross_sections = node_centred_reach_cross_section(
             sampled_channel=aligned_channel, transect_radius=self.transect_radius
         )
 
