@@ -59,7 +59,9 @@ class Test(unittest.TestCase):
         cls.results_dir.mkdir()
 
         # Run pipeline - download files and generated DEM
-        runner = processor.MeasuredRiverGenerator(cls.instructions["measured"], debug=False)
+        runner = processor.MeasuredRiverGenerator(
+            cls.instructions["measured"], debug=False
+        )
         runner.run()
 
     @classmethod
