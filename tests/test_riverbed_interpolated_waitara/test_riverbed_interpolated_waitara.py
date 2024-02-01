@@ -89,8 +89,8 @@ class Test(unittest.TestCase):
                     elif file.is_dir():
                         shutil.rmtree(file)
                 shutil.rmtree(path)
-        if cls.cache_dir.exists():
-            cls.cache_dir.rmdir()
+        if cls.results_dir.exists():
+            cls.results_dir.rmdir()
 
     @pytest.mark.skipif(sys.platform != "win32", reason="Windows test - this is strict")
     def test_river_polygon_windows(self):
