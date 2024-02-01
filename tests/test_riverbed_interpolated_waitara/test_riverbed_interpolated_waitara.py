@@ -35,7 +35,7 @@ class Test(unittest.TestCase):
         chain to download remote files and produce a DEM prior to testing."""
 
         test_path = pathlib.Path().cwd() / pathlib.Path(
-            "tests/test_riverbed_interpolated_wellington"
+            "tests/test_riverbed_interpolated_waitara"
         )
 
         # Setup logging
@@ -45,7 +45,7 @@ class Test(unittest.TestCase):
             level=logging.INFO,
             force=True,
         )
-        logging.info("In test_riverbed_interpolated_wellington")
+        logging.info("In test_riverbed_interpolated_waitara")
 
         # load in the test instructions
         instruction_file_path = test_path / "instruction.json"
@@ -87,6 +87,7 @@ class Test(unittest.TestCase):
                     elif file.is_dir():
                         shutil.rmtree(file)
                 shutil.rmtree(path)
+        cls.cache_dir.unlink(missing_ok=False)
 
     @pytest.mark.skipif(sys.platform != "win32", reason="Windows test - this is strict")
     def test_river_polygon_windows(self):

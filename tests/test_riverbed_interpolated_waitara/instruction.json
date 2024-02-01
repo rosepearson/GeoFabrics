@@ -3,7 +3,7 @@
 		"output": {
 			"crs": { "horizontal": 2193, "vertical": 7839 } },
 		"data_paths": {
-			"local_cache": "/tests/test_riverbed_interpolated_waitara/data",
+			"local_cache": "tests/test_riverbed_interpolated_waitara/data",
 			"subfolder": "results",
 			"measured_sections": "../measured_sections.geojson",
 			"riverbanks": "../delineated_riverbanks.geojson",
