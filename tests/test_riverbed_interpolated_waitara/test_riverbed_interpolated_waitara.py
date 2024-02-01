@@ -99,7 +99,7 @@ class Test(unittest.TestCase):
 
         print("Compare river polygon  - All OS")
 
-        data_path_instructions = self.instructions["data_paths"]
+        data_path_instructions = self.instructions["measured"]["data_paths"]
 
         test = geopandas.read_file(self.results_dir / "river_polygon.geojson")
         benchmark = geopandas.read_file(
@@ -123,7 +123,7 @@ class Test(unittest.TestCase):
 
         print("Compare river polygon  - All OS")
 
-        data_path_instructions = self.instructions["data_paths"]
+        data_path_instructions = self.instructions["measured"]["data_paths"]
 
         test = geopandas.read_file(self.results_dir / "river_polygon.geojson")
         benchmark = geopandas.read_file(
@@ -151,7 +151,7 @@ class Test(unittest.TestCase):
 
         print("Compare river bathymetry - Windows")
 
-        data_path_instructions = self.instructions["data_paths"]
+        data_path_instructions = self.instructions["measured"]["data_paths"]
 
         test = geopandas.read_file(self.results_dir / "river_elevations.geojson")
         benchmark = geopandas.read_file(
@@ -175,7 +175,7 @@ class Test(unittest.TestCase):
 
         print("Compare river bathymetry - Linux")
 
-        data_path_instructions = self.instructions["data_paths"]
+        data_path_instructions = self.instructions["measured"]["data_paths"]
 
         test = geopandas.read_file(self.results_dir / "river_elevations.geojson")
         benchmark = geopandas.read_file(
