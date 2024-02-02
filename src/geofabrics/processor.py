@@ -1552,9 +1552,11 @@ class MeasuredRiverGenerator(BaseProcessor):
         river_polygon = geopandas.read_file(river_polygon_file)
 
         # Combine and save the river and fan geometries
+        elevations["source"] = "measured"
+        elevations.to_file(river_bathymetry_file)
         fan_bathymetry["source"] = "fan"
         combined_bathymetry = geopandas.GeoDataFrame(
-            pandas.concat([elevations_clean, fan_bathymetry], ignore_index=True),
+            pandas.concat([elevations, fan_bathymetry], ignore_index=True),
             crs=elevations_clean.crs,
         )
         combined_bathymetry.to_file(river_bathymetry_file)

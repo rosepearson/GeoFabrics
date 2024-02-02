@@ -10,11 +10,17 @@
             "thalweg": "../delineated_thalweg.geojson",
 			"benchmark": {"extents": "river_polygon_benchmark.geojson", "elevations": "river_elevations_benchmark.geojson"}
 		},
+		"datasets": {
+			"vector": { "linz": {
+					"key": "8105c7bfed8344abadf056e63e2da853",
+					"ocean_contours": { "layers": [50448] } } } },
 		"measured": {
 			"cross_section_spacing": 10,
 			"samples_per_section": 10,
-			"estimate_fan": false
-		}
+			"estimate_fan": true
+		},
+		"general": {
+			"z_labels": {"ocean": "valdco"} }
 	}
 }
 
