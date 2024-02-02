@@ -17,6 +17,106 @@ import matplotlib.pyplot
 import logging
 
 
+def _segment_slope(x_array, y_array, index):
+    """Return the slope and length characteristics of a line segment.
+
+    Parameters
+    ----------
+
+    x_array
+        The x values of all polyline nodes.
+    y_array
+        The y values of all polyline nodes.
+    index
+        The segment index (the index of the starting node in the segment)
+    """
+    length = numpy.sqrt(
+        (x_array[index + 1] - x_array[index]) ** 2
+        + (y_array[index + 1] - y_array[index]) ** 2
+    )
+    dx = (x_array[index + 1] - x_array[index]) / length
+    dy = (y_array[index + 1] - y_array[index]) / length
+    return dx, dy, length
+
+
+def node_centred_reach_cross_section(
+    sampled_channel: geopandas.GeoDataFrame, transect_radius: float
+):
+    """Calculate cross_sections along a channel at the midpoint of each
+    segment.
+
+    Parameters
+    ----------
+
+    sampled_channel
+        The sampled channel defined as a single polyline. Any branches described
+        separately.
+    """
+
+    cross_sections_dict = {
+        "geometry": [],
+        "nx": [],
+        "ny": [],
+        "length": [],
+        "mid_x": [],
+        "mid_y": [],
+    }
+
+    assert len(sampled_channel) == 1, (
+        "Expect only one polyline "
+        f"geometry per channel. Instead got {len(sampled_channel)}"
+    )
+
+    (x_array, y_array) = sampled_channel.iloc[0].geometry.xy
+    for i in range(len(x_array)):
+        # calculate slope along segment
+        if i == 0:
+            # first segment - slope of next segment
+            dx, dy, length = _segment_slope(x_array, y_array, i)
+        elif i == len(x_array) - 1:
+            # last segment - slope of previous segment
+            dx, dy, length = _segment_slope(x_array, y_array, i - 1)
+        else:
+            # slope of the length weighted mean of both segments
+            dx_prev, dy_prev, l_prev = _segment_slope(x_array, y_array, i)
+            dx_next, dy_next, l_next = _segment_slope(x_array, y_array, i - 1)
+            dx = (dx_prev * l_prev + dx_next * l_next) / (l_prev + l_next)
+            dy = (dy_prev * l_prev + dy_next * l_next) / (l_prev + l_next)
+            length = (l_prev + l_next) / 2
+        normal_x = -dy
+        normal_y = dx
+
+        # record normal to a segment nx and ny
+        cross_sections_dict["nx"].append(normal_x)
+        cross_sections_dict["ny"].append(normal_y)
+
+        # calculate transect - using effectively nx and ny
+        cross_sections_dict["geometry"].append(
+            shapely.geometry.LineString(
+                [
+                    [
+                        x_array[i] - transect_radius * normal_x,
+                        y_array[i] - transect_radius * normal_y,
+                    ],
+                    [x_array[i], y_array[i]],
+                    [
+                        x_array[i] + transect_radius * normal_x,
+                        y_array[i] + transect_radius * normal_y,
+                    ],
+                ]
+            )
+        )
+        cross_sections_dict["mid_x"].append(x_array[i])
+        cross_sections_dict["mid_y"].append(y_array[i])
+
+        # record the length of the line segment
+        cross_sections_dict["length"].append(length)
+    cross_sections = geopandas.GeoDataFrame(
+        cross_sections_dict, crs=sampled_channel.crs
+    )
+    return cross_sections
+
+
 class Channel:
     """A class to define a channel centre line from a digital network."""
 
@@ -504,6 +604,7 @@ class InterpolateMeasuredElevations:
         self,
         riverbank_file: pathlib.Path,
         measured_sections_file: pathlib.Path,
+        thalweg_file: pathlib.Path,
         cross_section_spacing: int,
         crs: int,
     ):
@@ -511,10 +612,18 @@ class InterpolateMeasuredElevations:
         equally spaced cross sections."""
         self.logger = logging.getLogger(f"{__name__}.{self.__class__.__name__}")
 
-        self.riverbanks = geopandas.read_file(riverbank_file)
-        self.measured_sections = geopandas.read_file(measured_sections_file)
+        self.riverbanks = geopandas.read_file(riverbank_file).explode(ignore_index=True)
+        self.measured_sections = geopandas.read_file(measured_sections_file).explode(
+            ignore_index=True
+        )
         self.cross_section_spacing = cross_section_spacing
         self.crs = crs
+
+        if thalweg_file is None:
+            self.thalweg = None
+        else:
+            self.thalweg = geopandas.read_file(thalweg_file).explode(ignore_index=True)
+
         self.check_valid_inputs()
 
     def check_valid_inputs(self):
@@ -580,9 +689,26 @@ class InterpolateMeasuredElevations:
                 "all be of geometry type `LineString`. These are of type"
                 f"{self.measured_sections.geometry.type}"
             )
+
         # Set the CRS to be that defined for the output
         self.riverbanks.to_crs(self.crs, inplace=True)
         self.measured_sections.to_crs(self.crs, inplace=True)
+
+        # Check thalweg is valid if specified
+        if self.thalweg is not None:
+            if self.thalweg.crs is None:
+                raise Exception("CRS required for self.measured_sections. Is None.")
+            if not (self.thalweg.geometry.type == "LineString").all():
+                raise Exception(
+                    "The self.thalweg must be of geometry type `LineString`."
+                    f" It is of type{self.thalweg.geometry.type}"
+                )
+            if len(self.thalweg) != 1:
+                raise Exception(
+                    "Unexpected number of rows for self.thalweg. Expecting one"
+                    f" row got {self.thalweg}"
+                )
+            self.thalweg.to_crs(self.crs, inplace=True)
 
     def interpolate(self, samples_per_section: int, thalweg_centre: bool = True):
         """Interpolate with equally spaced points along each cross section
@@ -593,7 +719,7 @@ class InterpolateMeasuredElevations:
         number_samples
             The number of samples along each cross section."""
 
-        # Define river polygon and clip the measured sections
+        # Create the river polygon
         polygon = geopandas.GeoDataFrame(
             geometry=[
                 shapely.geometry.Polygon(
@@ -622,48 +748,21 @@ class InterpolateMeasuredElevations:
             lambda row: shapely.geometry.MultiPoint(row["geometry"].coords), axis=1
         ).explode(index_parts=True)
 
-        # work out number of cross sections
-        n_cross_sections = round(
-            self.riverbanks.length.max() / self.cross_section_spacing
-        )
-
-        # Split riverbank polylines
-        normalised_sample_locations = (
-            numpy.arange(n_cross_sections + 1) * 1 / n_cross_sections
-        )
-        self.riverbanks["geometry"] = self.riverbanks["geometry"].apply(
-            lambda row: shapely.geometry.MultiPoint(
-                row.interpolate(normalised_sample_locations, normalized=True)
+        # create cross sections
+        if self.thalweg is None:
+            cross_sections = self.create_cross_sections_from_banks()
+            self.uniform_spacing(
+                samples_per_section=samples_per_section, cross_sections=cross_sections
             )
-        )
+        else:
+            cross_sections = self.create_cross_sections_from_thalweg(
+                river_polygon=polygon
+            )
+            self.thalweg_centred_spacing(
+                samples_per_section=samples_per_section, cross_sections=cross_sections
+            )
 
-        # Reshape to separate right and left column - split lines to points
-        cross_sections = self.riverbanks.explode(index_parts=True)
-        cross_sections = pandas.concat(
-            [
-                cross_sections[cross_sections["Name"] == "Right"]
-                .droplevel(0)
-                .geometry.rename("Right"),
-                cross_sections[cross_sections["Name"] == "Left"]
-                .droplevel(0)
-                .geometry.rename("Left"),
-            ],
-            axis=1,
-        )
-
-        # Create cross sections
-        cross_sections["Sections"] = cross_sections.apply(
-            lambda row: shapely.geometry.LineString([row["Right"], row["Left"]]), axis=1
-        )
-
-        # Define the node spacings along the cross sections
-        self.uniform_spacing(
-            samples_per_section=samples_per_section, cross_sections=cross_sections
-        )
-        # Note that in future could look at support for Thalweg centred spacing
-        # using the thalweg_centred_spacing function
-
-        # Explode the cross section points
+        # Map values to cross sections
         cross_sections_exploded = (
             cross_sections[["Sections"]]
             .set_geometry("Sections", crs=self.riverbanks.crs)
@@ -714,6 +813,75 @@ class InterpolateMeasuredElevations:
         )
 
     def thalweg_centred_spacing(
+        self,
+        samples_per_section: int,
+        cross_sections: geopandas.GeoDataFrame,
+    ):
+        """Interpolate with equal number of equally spaced points on each side
+        of the Thalweg.
+
+        Parameters
+        ----------
+
+        number_samples
+            The number of samples along each cross section."""
+
+        intersection_points = cross_sections.intersection(self.thalweg.iloc[0].geometry)
+
+        # Calculate the normalised thalweg location at each measured section
+        def calculate_normalised_thalweg_location(thalweg_point, geometry):
+            """Tuple of the section index, and the point index along the section"""
+            left_bank_distance = thalweg_point.distance(
+                shapely.geometry.Point(geometry.coords[0])
+            )
+            right_bank_distance = thalweg_point.distance(
+                shapely.geometry.Point(geometry.coords[-1])
+            )
+            normalised_thalweg_location = left_bank_distance / (
+                left_bank_distance + right_bank_distance
+            )
+
+            return normalised_thalweg_location
+
+        cross_sections["Thalweg ratio"] = cross_sections.apply(
+            lambda row: calculate_normalised_thalweg_location(
+                intersection_points.loc[row.name],
+                row.geometry,
+            ),
+            axis=1,
+        )
+
+        # Define equal sample locations on each side of the Thalweg
+        def split_line_to_nodes(line, thalweg_ratio, samples_per_section):
+            """Split line into n_nodes points half equally spaced on each side of the Thalweg"""
+            normalised_node_locations = numpy.concatenate(
+                [
+                    numpy.arange(samples_per_section)
+                    * thalweg_ratio
+                    / samples_per_section,
+                    numpy.arange(samples_per_section + 1)
+                    * (1 - thalweg_ratio)
+                    / samples_per_section
+                    + thalweg_ratio,
+                ]
+            )
+            return shapely.geometry.MultiPoint(
+                line.interpolate(normalised_node_locations, normalized=True)
+            )
+
+        # Apply the function for sampling along each cross section
+        cross_sections["Sections"] = cross_sections[
+            ["geometry", "Thalweg ratio"]
+        ].apply(
+            lambda row: split_line_to_nodes(
+                row["geometry"],
+                row["Thalweg ratio"],
+                samples_per_section=samples_per_section,
+            ),
+            axis=1,
+        )
+
+    def thalweg_from_measured_centred_spacing(
         self,
         samples_per_section: int,
         cross_sections: geopandas.GeoDataFrame,
@@ -800,6 +968,92 @@ class InterpolateMeasuredElevations:
             ),
             axis=1,
         )
+
+    def create_cross_sections_from_banks(self):
+        # work out number of cross sections
+        n_cross_sections = round(
+            self.riverbanks.length.max() / self.cross_section_spacing
+        )
+
+        # Split riverbank polylines
+        normalised_sample_locations = (
+            numpy.arange(n_cross_sections + 1) * 1 / n_cross_sections
+        )
+        self.riverbanks["geometry"] = self.riverbanks["geometry"].apply(
+            lambda row: shapely.geometry.MultiPoint(
+                row.interpolate(normalised_sample_locations, normalized=True)
+            )
+        )
+
+        # Reshape to separate right and left column - split lines to points
+        cross_sections = self.riverbanks.explode(index_parts=True)
+        cross_sections = pandas.concat(
+            [
+                cross_sections[cross_sections["Name"] == "Right"]
+                .droplevel(0)
+                .geometry.rename("Right"),
+                cross_sections[cross_sections["Name"] == "Left"]
+                .droplevel(0)
+                .geometry.rename("Left"),
+            ],
+            axis=1,
+        )
+
+        # Create cross sections
+        cross_sections["Sections"] = cross_sections.apply(
+            lambda row: shapely.geometry.LineString([row["Right"], row["Left"]]), axis=1
+        )
+        return cross_sections
+
+    def create_cross_sections_from_thalweg(
+        self,
+        river_polygon: geopandas.GeoDataFrame,
+        max_bank_width_multiplier: float = 3,
+    ):
+        # work out number of cross sections
+        n_cross_sections = round(self.thalweg.length.max() / self.cross_section_spacing)
+
+        # Resample thalweg at speified long section interval
+        normalised_sample_locations = (
+            numpy.arange(n_cross_sections + 1) * 1 / n_cross_sections
+        )
+        self.thalweg["geometry"] = self.thalweg["geometry"].apply(
+            lambda row: shapely.geometry.LineString(
+                row.interpolate(normalised_sample_locations, normalized=True)
+            )
+        )
+
+        # Calculate the maximum required cross section with
+        max_bank_width = max_bank_width_multiplier * numpy.max(
+            [
+                self.riverbanks.distance(shapely.geometry.Point(point)).max()
+                for point in self.thalweg.iloc[0].geometry.coords
+            ]
+        )
+
+        # Reshape to separate right and left column - split lines to points
+        cross_sections = node_centred_reach_cross_section(
+            sampled_channel=self.thalweg, transect_radius=max_bank_width
+        )
+        # Clip to river polygon - take the zero index which should be the one most in the centre
+        cross_sections = cross_sections.clip(river_polygon).sort_index()
+        cross_sections = cross_sections.explode()[
+            cross_sections.explode().index.get_level_values(1) == 0
+        ].reset_index(drop=True)
+        # Check all intersect with the thalweg
+        if not cross_sections.explode().intersects(self.thalweg.iloc[0].geometry).all():
+            self.logger.warning(
+                "Not all cross section segments intersect the Thalweg. Dropping "
+                "those not intersecting the thalweg. Could be due to concavities "
+                "in the riverbank delinations. Consider revising if results aren't "
+                "satisfactory."
+            )
+            cross_sections = cross_sections.explode(index_parts=False)[
+                cross_sections.explode(index_parts=False).intersects(
+                    self.thalweg.iloc[0].geometry
+                )
+            ].reset_index(drop=True)
+        return cross_sections
 
 
 class ChannelCharacteristics:
@@ -901,81 +1155,6 @@ class ChannelCharacteristics:
         dx = (x_array[index + 1] - x_array[index]) / length
         dy = (y_array[index + 1] - y_array[index]) / length
         return dx, dy, length
-
-    def node_centred_reach_cross_section(self, sampled_channel: geopandas.GeoDataFrame):
-        """Calculate cross_sections along a channel at the midpoint of each
-        segment.
-
-        Parameters
-        ----------
-
-        sampled_channel
-            The sampled channel defined as a single polyline. Any branches described
-            separately.
-        """
-
-        cross_sections_dict = {
-            "geometry": [],
-            "nx": [],
-            "ny": [],
-            "length": [],
-            "mid_x": [],
-            "mid_y": [],
-        }
-
-        assert len(sampled_channel) == 1, (
-            "Expect only one polyline "
-            f"geometry per channel. Instead got {len(sampled_channel)}"
-        )
-
-        (x_array, y_array) = sampled_channel.iloc[0].geometry.xy
-        for i in range(len(x_array)):
-            # calculate slope along segment
-            if i == 0:
-                # first segment - slope of next segment
-                dx, dy, length = self._segment_slope(x_array, y_array, i)
-            elif i == len(x_array) - 1:
-                # last segment - slope of previous segment
-                dx, dy, length = self._segment_slope(x_array, y_array, i - 1)
-            else:
-                # slope of the length weighted mean of both segments
-                dx_prev, dy_prev, l_prev = self._segment_slope(x_array, y_array, i)
-                dx_next, dy_next, l_next = self._segment_slope(x_array, y_array, i - 1)
-                dx = (dx_prev * l_prev + dx_next * l_next) / (l_prev + l_next)
-                dy = (dy_prev * l_prev + dy_next * l_next) / (l_prev + l_next)
-                length = (l_prev + l_next) / 2
-            normal_x = -dy
-            normal_y = dx
-
-            # record normal to a segment nx and ny
-            cross_sections_dict["nx"].append(normal_x)
-            cross_sections_dict["ny"].append(normal_y)
-
-            # calculate transect - using effectively nx and ny
-            cross_sections_dict["geometry"].append(
-                shapely.geometry.LineString(
-                    [
-                        [
-                            x_array[i] - self.transect_radius * normal_x,
-                            y_array[i] - self.transect_radius * normal_y,
-                        ],
-                        [x_array[i], y_array[i]],
-                        [
-                            x_array[i] + self.transect_radius * normal_x,
-                            y_array[i] + self.transect_radius * normal_y,
-                        ],
-                    ]
-                )
-            )
-            cross_sections_dict["mid_x"].append(x_array[i])
-            cross_sections_dict["mid_y"].append(y_array[i])
-
-            # record the length of the line segment
-            cross_sections_dict["length"].append(length)
-        cross_sections = geopandas.GeoDataFrame(
-            cross_sections_dict, crs=sampled_channel.crs
-        )
-        return cross_sections
 
     def _estimate_water_level_and_slope(self, cross_sections: geopandas.GeoDataFrame):
         """Estimate the water level and slope from the minimum z heights along
@@ -1996,8 +2175,8 @@ class ChannelCharacteristics:
         sampled_channel = initial_channel.get_parametric_spline_fit()
 
         # Create cross_sections
-        cross_sections = self.node_centred_reach_cross_section(
-            sampled_channel=sampled_channel
+        cross_sections = node_centred_reach_cross_section(
+            sampled_channel=sampled_channel, transect_radius=self.transect_radius
         )
 
         # Sample along cross_sections
@@ -2095,8 +2274,8 @@ class ChannelCharacteristics:
         self.transect_radius = cross_section_radius
 
         # Create cross_sections
-        cross_sections = self.node_centred_reach_cross_section(
-            sampled_channel=aligned_channel
+        cross_sections = node_centred_reach_cross_section(
+            sampled_channel=aligned_channel, transect_radius=self.transect_radius
         )
 
         # Sample along cross_sections

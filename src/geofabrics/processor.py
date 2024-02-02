@@ -928,7 +928,7 @@ class RawLidarDemGenerator(BaseProcessor):
             self.raw_dem.clip_lidar()
 
             # Save a cached copy of DEM to temporary memory cache
-            temp_file = temp_folder / f"raw_lidar_clipped.nc"
+            temp_file = temp_folder / "raw_lidar_clipped.nc"
             self.logger.info(f"Save temp raw DEM to netCDF: {temp_file}")
             self.raw_dem.save_and_load_dem(temp_file)
 
@@ -1437,7 +1437,7 @@ class MeasuredRiverGenerator(BaseProcessor):
             instructions  The json instructions defining the behaviour
         """
         defaults = {
-            "thalweg_centre": True,
+            "thalweg_centre": False,
             "estimate_fan": False,
         }
 
@@ -1552,9 +1552,11 @@ class MeasuredRiverGenerator(BaseProcessor):
         river_polygon = geopandas.read_file(river_polygon_file)
 
         # Combine and save the river and fan geometries
+        elevations["source"] = "measured"
+        elevations.to_file(river_bathymetry_file)
         fan_bathymetry["source"] = "fan"
         combined_bathymetry = geopandas.GeoDataFrame(
-            pandas.concat([elevations_clean, fan_bathymetry], ignore_index=True),
+            pandas.concat([elevations, fan_bathymetry], ignore_index=True),
             crs=elevations_clean.crs,
         )
         combined_bathymetry.to_file(river_bathymetry_file)
@@ -1584,12 +1586,17 @@ class MeasuredRiverGenerator(BaseProcessor):
         result_elevations_file = self.get_instruction_path(
             "result_elevation", defaults=defaults
         )
+        if self.check_instruction_path("thalweg"):
+            thalweg_file = self.get_instruction_path("thalweg", defaults=defaults)
+        else:
+            thalweg_file = None
         # Only rerun if files don't exist
         if not (result_polygon_file.exists() and result_elevations_file.exists()):
             self.logger.info("Interpolating measured sections.")
             measured_rivers = bathymetry_estimation.InterpolateMeasuredElevations(
                 riverbank_file=self.get_instruction_path("riverbanks"),
                 measured_sections_file=self.get_instruction_path("measured_sections"),
+                thalweg_file=thalweg_file,
                 cross_section_spacing=self.get_measured_instruction(
                     "cross_section_spacing"
                 ),
