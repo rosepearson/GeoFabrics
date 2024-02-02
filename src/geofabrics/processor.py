@@ -928,7 +928,7 @@ class RawLidarDemGenerator(BaseProcessor):
             self.raw_dem.clip_lidar()
 
             # Save a cached copy of DEM to temporary memory cache
-            temp_file = temp_folder / f"raw_lidar_clipped.nc"
+            temp_file = temp_folder / "raw_lidar_clipped.nc"
             self.logger.info(f"Save temp raw DEM to netCDF: {temp_file}")
             self.raw_dem.save_and_load_dem(temp_file)
 
