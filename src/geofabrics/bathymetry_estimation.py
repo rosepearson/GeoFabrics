@@ -845,7 +845,7 @@ class InterpolateMeasuredElevations:
 
         cross_sections["Thalweg ratio"] = cross_sections.apply(
             lambda row: calculate_normalised_thalweg_location(
-                intersection_points.iloc[row.name],
+                intersection_points.loc[row.name],
                 row.geometry,
             ),
             axis=1,
@@ -1052,7 +1052,7 @@ class InterpolateMeasuredElevations:
                 cross_sections.explode(index_parts=False).intersects(
                     self.thalweg.iloc[0].geometry
                 )
-            ]
+            ].reset_index(drop=True)
         return cross_sections
 
 

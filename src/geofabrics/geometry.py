@@ -867,7 +867,7 @@ class RiverMouthFan:
         """
 
         assert self.ocean_contour_depth_label is not None, (
-            "Support not yet " "added for z values within the geometry values"
+            "Ocean z-values must currently be stored a separate column currently."
         )
 
         # Load in the ocean contours and find the contours to terminate against
