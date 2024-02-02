@@ -866,9 +866,9 @@ class RiverMouthFan:
                 than the river mouth
         """
 
-        assert self.ocean_contour_depth_label is not None, (
-            "Ocean z-values must currently be stored a separate column currently."
-        )
+        assert (
+            self.ocean_contour_depth_label is not None
+        ), "Ocean z-values must currently be stored a separate column currently."
 
         # Load in the ocean contours and find the contours to terminate against
         ocean_contours = geopandas.read_file(self.ocean_contour_file).to_crs(self.crs)
