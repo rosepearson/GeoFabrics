@@ -112,6 +112,32 @@ information.</p>
 </tr>
 </tbody>
 </table>
+</section>
+<section id="functions">
+<h3>Functions<a class="headerlink" href="#functions" title="Link to this heading"></a></h3>
+<table class="autosummary longtable docutils align-default">
+<tbody>
+<tr class="row-odd"><td><p><a class="reference internal" href="#geofabrics.bathymetry_estimation.node_centred_reach_cross_section" title="geofabrics.bathymetry_estimation.node_centred_reach_cross_section"><code class="xref py py-obj docutils literal notranslate"><span class="pre">node_centred_reach_cross_section</span></code></a>(sampled_channel, ...)</p></td>
+<td><p>Calculate cross_sections along a channel at the midpoint of each</p></td>
+</tr>
+</tbody>
+</table>
+<dl class="py function">
+<dt class="sig sig-object py" id="geofabrics.bathymetry_estimation.node_centred_reach_cross_section">
+<span class="sig-prename descclassname"><span class="pre">geofabrics.bathymetry_estimation.</span></span><span class="sig-name descname"><span class="pre">node_centred_reach_cross_section</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">sampled_channel</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">transect_radius</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#geofabrics.bathymetry_estimation.node_centred_reach_cross_section" title="Link to this definition"></a></dt>
+<dd><p>Calculate cross_sections along a channel at the midpoint of each
+segment.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>sampled_channel</strong> (<em>geopandas.GeoDataFrame</em>) – The sampled channel defined as a single polyline. Any branches described
+separately.</p></li>
+<li><p><strong>transect_radius</strong> (<em>float</em>) – </p></li>
+</ul>
+</dd>
+</dl>
+</dd></dl>
+
 <dl class="py class">
 <dt class="sig sig-object py" id="geofabrics.bathymetry_estimation.Channel">
 <em class="property"><span class="pre">class</span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">geofabrics.bathymetry_estimation.</span></span><span class="sig-name descname"><span class="pre">Channel</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">channel</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">resolution</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">sampling_direction</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">1</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#geofabrics.bathymetry_estimation.Channel" title="Link to this definition"></a></dt>
@@ -283,7 +309,7 @@ the channel catchment.</p>
 
 <dl class="py class">
 <dt class="sig sig-object py" id="geofabrics.bathymetry_estimation.InterpolateMeasuredElevations">
-<em class="property"><span class="pre">class</span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">geofabrics.bathymetry_estimation.</span></span><span class="sig-name descname"><span class="pre">InterpolateMeasuredElevations</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">riverbank_file</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">measured_sections_file</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">cross_section_spacing</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">crs</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#geofabrics.bathymetry_estimation.InterpolateMeasuredElevations" title="Link to this definition"></a></dt>
+<em class="property"><span class="pre">class</span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">geofabrics.bathymetry_estimation.</span></span><span class="sig-name descname"><span class="pre">InterpolateMeasuredElevations</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">riverbank_file</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">measured_sections_file</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">thalweg_file</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">cross_section_spacing</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">crs</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#geofabrics.bathymetry_estimation.InterpolateMeasuredElevations" title="Link to this definition"></a></dt>
 <dd><p>Interpolate measured river bed elevations. Requires LineStrings of
 riverbed elevations, and the LineStrings defining the left and right
 riverbank.</p>
@@ -292,6 +318,7 @@ riverbank.</p>
 <dd class="field-odd"><ul class="simple">
 <li><p><strong>riverbank_file</strong> (<em>pathlib.Path</em>) – </p></li>
 <li><p><strong>measured_sections_file</strong> (<em>pathlib.Path</em>) – </p></li>
+<li><p><strong>thalweg_file</strong> (<em>pathlib.Path</em>) – </p></li>
 <li><p><strong>cross_section_spacing</strong> (<em>int</em>) – </p></li>
 <li><p><strong>crs</strong> (<em>int</em>) – </p></li>
 </ul>
@@ -334,7 +361,23 @@ riverbank.</p>
 
 <dl class="py method">
 <dt class="sig sig-object py" id="geofabrics.bathymetry_estimation.InterpolateMeasuredElevations.thalweg_centred_spacing">
-<span class="sig-name descname"><span class="pre">thalweg_centred_spacing</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">samples_per_section</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">cross_sections</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">measured_sections_exploded</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#geofabrics.bathymetry_estimation.InterpolateMeasuredElevations.thalweg_centred_spacing" title="Link to this definition"></a></dt>
+<span class="sig-name descname"><span class="pre">thalweg_centred_spacing</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">samples_per_section</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">cross_sections</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#geofabrics.bathymetry_estimation.InterpolateMeasuredElevations.thalweg_centred_spacing" title="Link to this definition"></a></dt>
+<dd><p>Interpolate with equal number of equally spaced points on each side
+of the Thalweg.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>number_samples</strong> – The number of samples along each cross section.</p></li>
+<li><p><strong>samples_per_section</strong> (<em>int</em>) – </p></li>
+<li><p><strong>cross_sections</strong> (<em>geopandas.GeoDataFrame</em>) – </p></li>
+</ul>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="geofabrics.bathymetry_estimation.InterpolateMeasuredElevations.thalweg_from_measured_centred_spacing">
+<span class="sig-name descname"><span class="pre">thalweg_from_measured_centred_spacing</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">samples_per_section</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">cross_sections</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">measured_sections_exploded</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#geofabrics.bathymetry_estimation.InterpolateMeasuredElevations.thalweg_from_measured_centred_spacing" title="Link to this definition"></a></dt>
 <dd><p>Interpolate with equal number of equally spaced points on each side
 of the Thalweg.</p>
 <dl class="field-list simple">
@@ -417,19 +460,6 @@ looking for the minimum z.</p>
 </dd>
 <dt class="field-even">Return type<span class="colon">:</span></dt>
 <dd class="field-even"><p>int</p>
-</dd>
-</dl>
-</dd></dl>
-
-<dl class="py method">
-<dt class="sig sig-object py" id="geofabrics.bathymetry_estimation.ChannelCharacteristics.node_centred_reach_cross_section">
-<span class="sig-name descname"><span class="pre">node_centred_reach_cross_section</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">sampled_channel</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#geofabrics.bathymetry_estimation.ChannelCharacteristics.node_centred_reach_cross_section" title="Link to this definition"></a></dt>
-<dd><p>Calculate cross_sections along a channel at the midpoint of each
-segment.</p>
-<dl class="field-list simple">
-<dt class="field-odd">Parameters<span class="colon">:</span></dt>
-<dd class="field-odd"><p><strong>sampled_channel</strong> (<em>geopandas.GeoDataFrame</em>) – The sampled channel defined as a single polyline. Any branches described
-separately.</p>
 </dd>
 </dl>
 </dd></dl>

@@ -24,6 +24,23 @@ Classes
 
 
 
+Functions
+~~~~~~~~~
+
+.. autoapisummary::
+
+   geofabrics.bathymetry_estimation.node_centred_reach_cross_section
+
+
+
+.. py:function:: node_centred_reach_cross_section(sampled_channel, transect_radius)
+
+   Calculate cross_sections along a channel at the midpoint of each
+   segment.
+
+   :param sampled_channel: The sampled channel defined as a single polyline. Any branches described
+                           separately.
+
 
 .. py:class:: Channel(channel, resolution, sampling_direction = 1)
 
@@ -121,7 +138,7 @@ Classes
 
 
 
-.. py:class:: InterpolateMeasuredElevations(riverbank_file, measured_sections_file, cross_section_spacing, crs)
+.. py:class:: InterpolateMeasuredElevations(riverbank_file, measured_sections_file, thalweg_file, cross_section_spacing, crs)
 
 
    Interpolate measured river bed elevations. Requires LineStrings of
@@ -147,7 +164,15 @@ Classes
       :param number_samples: The number of samples along each cross section.
 
 
-   .. py:method:: thalweg_centred_spacing(samples_per_section, cross_sections, measured_sections_exploded)
+   .. py:method:: thalweg_centred_spacing(samples_per_section, cross_sections)
+
+      Interpolate with equal number of equally spaced points on each side
+      of the Thalweg.
+
+      :param number_samples: The number of samples along each cross section.
+
+
+   .. py:method:: thalweg_from_measured_centred_spacing(samples_per_section, cross_sections, measured_sections_exploded)
 
       Interpolate with equal number of equally spaced points on each side
       of the Thalweg.
@@ -188,15 +213,6 @@ Classes
       looking for the minimum z.
 
       :param min_z_search_radius: The distance to search from the centre.
-
-
-   .. py:method:: node_centred_reach_cross_section(sampled_channel)
-
-      Calculate cross_sections along a channel at the midpoint of each
-      segment.
-
-      :param sampled_channel: The sampled channel defined as a single polyline. Any branches described
-                              separately.
 
 
    .. py:method:: sample_cross_sections(cross_sections, min_z_search_radius)
