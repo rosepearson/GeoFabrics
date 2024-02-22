@@ -933,7 +933,7 @@ class RawLidarDemGenerator(BaseProcessor):
                 temp_file = temp_folder / "raw_lidar_clipped.nc"
                 self.logger.info(f"Save temp raw DEM to netCDF: {temp_file}")
                 self.raw_dem.save_and_load_dem(temp_file)
-    
+
                 # Remove previous cached file and replace with new one
                 cached_file.unlink()
                 cached_file = temp_file
