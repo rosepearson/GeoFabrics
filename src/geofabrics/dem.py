@@ -1267,6 +1267,7 @@ class LidarBase(DemBase):
 
         dem = self._dem
         self.save_dem(filename=filename, dem=dem)
+        del dem, self._dem
         dem = self._load_dem(filename=filename)
         self._dem = dem
 
