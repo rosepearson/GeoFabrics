@@ -984,7 +984,6 @@ class RawLidarDemGenerator(BaseProcessor):
                     "complevel": 1,
                 },
             }
-            encoding = None  # Separately test compressing final netCDF outputs
             self.raw_dem.save_dem(
                 self.get_instruction_path("raw_dem"),
                 dem=self.raw_dem.dem,
@@ -1395,7 +1394,6 @@ class RoughnessLengthGenerator(BaseProcessor):
                     "complevel": 1,
                 },
             }
-            encoding = None  # Separately test compressing final netCDF outputs
             self.roughness_dem.save_dem(
                 filename=self.get_instruction_path("result_geofabric"),
                 dem=self.roughness_dem.dem,
