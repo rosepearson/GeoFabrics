@@ -2806,9 +2806,9 @@ class WaterwayBedElevationEstimator(BaseProcessor):
         if polygon_file.is_file() and elevation_file.is_file():
             self.logger.info("Open waterways already recorded. ")
             return
-        # If not - estimate the elevations along the open waterways
+        # If not - estimate the elevations along the open waterways - drop any invalid geometries
         open_waterways = waterways[numpy.logical_not(waterways["tunnel"])]
-
+        open_waterways = open_waterways[~open_waterways.geometry.isna()]
         # sample the ends of the waterway - sample over a polygon at each end
         polygons = open_waterways.interpolate(0).buffer(open_waterways["width"])
         open_waterways["start_elevation"] = polygons.apply(
