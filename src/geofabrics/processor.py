@@ -245,6 +245,7 @@ class BaseProcessor(abc.ABC):
                 "rivers": "bed_elevation_Rupp_and_Smart",
                 "ocean": None,
             },
+            "ignore_clipping": False,
             "filter_waterways_by_osm_ids": [],
         }
 
@@ -925,16 +926,17 @@ class RawLidarDemGenerator(BaseProcessor):
             self.raw_dem.save_and_load_dem(cached_file)
 
             # Clip LiDAR - ensure within bounds/foreshore
-            self.raw_dem.clip_lidar()
+            if not self.get_instruction_general("ignore_clipping"):
+                self.raw_dem.clip_lidar()
 
-            # Save a cached copy of DEM to temporary memory cache
-            temp_file = temp_folder / "raw_lidar_clipped.nc"
-            self.logger.info(f"Save temp raw DEM to netCDF: {temp_file}")
-            self.raw_dem.save_and_load_dem(temp_file)
-
-            # Remove previous cached file and replace with new one
-            cached_file.unlink()
-            cached_file = temp_file
+                # Save a cached copy of DEM to temporary memory cache
+                temp_file = temp_folder / "raw_lidar_clipped.nc"
+                self.logger.info(f"Save temp raw DEM to netCDF: {temp_file}")
+                self.raw_dem.save_and_load_dem(temp_file)
+    
+                # Remove previous cached file and replace with new one
+                cached_file.unlink()
+                cached_file = temp_file
 
             # Add a coarse DEM if significant area without LiDAR and a coarse DEM
             if self.check_vector_or_raster(key="coarse_dems", api_type="raster"):
@@ -2946,6 +2948,9 @@ class WaterwayBedElevationEstimator(BaseProcessor):
                 key="waterways_polygon"
             )
             dem_instruction_paths["raw_dem"] = self.get_result_file_name(key="raw_dem")
+            if "general" not in dem_instructions:
+                dem_instructions["general"] = {}
+            dem_instructions["general"]["ignore_clipping"] = True
 
             # Create the ground DEM file if this has not be created yet!
             self.logger.info("Generating waterway DEM.")
