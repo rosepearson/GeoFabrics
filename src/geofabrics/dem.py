@@ -338,8 +338,8 @@ class DemBase(abc.ABC):
         try:
             self._write_netcdf_conventions_in_place(dem, self.catchment_geometry.crs)
             if encoding is not None:
-                '''for key in encoding:
-                    encoding[key] = {**encoding[key], **dem[key].encoding}'''
+                """for key in encoding:
+                encoding[key] = {**encoding[key], **dem[key].encoding}"""
                 dem.to_netcdf(
                     filename, format="NETCDF4", engine="netcdf4", encoding=encoding
                 )
@@ -355,7 +355,6 @@ class DemBase(abc.ABC):
                 f"{filename} before re-raising error."
             )
             raise caught_exception
-
 
     @staticmethod
     def _ensure_positive_indexing(
@@ -2086,7 +2085,9 @@ class RoughnessDem(LidarBase):
         mask = clip_mask(hydrological_dem.z, catchment.geometry, self.chunk_size)
         hydrological_dem = hydrological_dem.where(mask)
         # Rerun as otherwise the no data as NaN seems to be lost for the data_source layer
-        self._write_netcdf_conventions_in_place(hydrological_dem, catchment_geometry.crs)
+        self._write_netcdf_conventions_in_place(
+            hydrological_dem, catchment_geometry.crs
+        )
 
         self.temp_folder = temp_folder
         self.interpolation_method = interpolation_method

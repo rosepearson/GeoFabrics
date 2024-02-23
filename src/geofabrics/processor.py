@@ -1383,7 +1383,7 @@ class RoughnessLengthGenerator(BaseProcessor):
                 metadata=self.create_metadata(),
                 parameters=roughness_parameters,
             )  # Note must be called after all others if it is to be complete
-            
+
             # save results
             self.logger.info(
                 "In processor.RoughnessLengthGenerator - write out "
