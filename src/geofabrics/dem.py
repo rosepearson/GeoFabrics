@@ -346,7 +346,7 @@ class DemBase(abc.ABC):
         return dem
 
     def save_dem(
-        self, filename: pathlib.Path, dem: xarray.Dataset, encoding: dict = None
+        self, filename: pathlib.Path, dem: xarray.Dataset, compression: dict = None
     ):
         """Save the DEM to a netCDF file and optionally reload it
 
@@ -355,14 +355,17 @@ class DemBase(abc.ABC):
         """
 
         assert not any(
-            arr.rio.crs is None for arr in dem.data_vars.values()
+            array.rio.crs is None for array in dem.data_vars.values()
         ), "all DataArray variables of a xarray.Dataset must have a CRS"
 
         try:
             self._write_netcdf_conventions_in_place(dem, self.catchment_geometry.crs)
-            if encoding is not None:
-                """for key in encoding:
-                encoding[key] = {**encoding[key], **dem[key].encoding}"""
+            if compression is not None:
+                compression["grid_mapping"] = dem.encoding["grid_mapping"]
+                encoding = {}
+                for key in dem.data_vars:
+                    compression["dtype"] = dem[key].dtype
+                    encoding["key"] = compression
                 dem.to_netcdf(
                     filename, format="NETCDF4", engine="netcdf4", encoding=encoding
                 )
