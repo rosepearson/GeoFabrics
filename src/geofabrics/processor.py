@@ -1172,6 +1172,7 @@ class HydrologicDemGenerator(BaseProcessor):
             self.hydrologic_dem = dem.HydrologicallyConditionedDem(
                 catchment_geometry=self.catchment_geometry,
                 raw_dem_path=self.get_instruction_path("raw_dem"),
+                chunk_size=self.get_processing_instructions("chunk_size"),
                 interpolation_method=self.get_instruction_general(
                     key="interpolation", subkey="no_data"
                 ),
