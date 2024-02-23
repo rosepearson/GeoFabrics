@@ -970,24 +970,11 @@ class RawLidarDemGenerator(BaseProcessor):
                 "In processor.DemGenerator - write out the raw DEM to netCDF: "
                 f"{self.get_instruction_path('raw_dem')}"
             )
-            encoding = {
-                "data_source": {
-                    "zlib": True,
-                    "complevel": 1,
-                },
-                "lidar_source": {
-                    "zlib": True,
-                    "complevel": 1,
-                },
-                "z": {
-                    "zlib": True,
-                    "complevel": 1,
-                },
-            }
+            compression = {"zlib": True, "complevel": 1}
             self.raw_dem.save_dem(
                 self.get_instruction_path("raw_dem"),
                 dem=self.raw_dem.dem,
-                encoding=encoding,
+                compression=compression,
             )
             self.logger.info(f"Remove folder {temp_folder} for temporary files")
             shutil.rmtree(temp_folder)
@@ -1172,6 +1159,7 @@ class HydrologicDemGenerator(BaseProcessor):
             self.hydrologic_dem = dem.HydrologicallyConditionedDem(
                 catchment_geometry=self.catchment_geometry,
                 raw_dem_path=self.get_instruction_path("raw_dem"),
+                chunk_size=self.get_processing_instructions("chunk_size"),
                 interpolation_method=self.get_instruction_general(
                     key="interpolation", subkey="no_data"
                 ),
@@ -1188,10 +1176,11 @@ class HydrologicDemGenerator(BaseProcessor):
                 "In processor.DemGenerator - write out the raw DEM to netCDF"
             )
             try:
-                self.hydrologic_dem.dem.to_netcdf(
+                compression = {"zlib": True, "complevel": 1}
+                self.hydrologic_dem.save_dem(
                     self.get_instruction_path("result_dem"),
-                    format="NETCDF4",
-                    engine="netcdf4",
+                    dem=self.hydrologic_dem.dem,
+                    compression=compression,
                 )
             except (Exception, KeyboardInterrupt) as caught_exception:
                 pathlib.Path(self.get_instruction_path("raw_dem")).unlink()
@@ -1376,28 +1365,11 @@ class RoughnessLengthGenerator(BaseProcessor):
                 "the raw DEM to netCDF: "
                 f"{self.get_instruction_path('result_geofabric')}"
             )
-            encoding = {
-                "data_source": {
-                    "zlib": True,
-                    "complevel": 1,
-                },
-                "lidar_source": {
-                    "zlib": True,
-                    "complevel": 1,
-                },
-                "z": {
-                    "zlib": True,
-                    "complevel": 1,
-                },
-                "zo": {
-                    "zlib": True,
-                    "complevel": 1,
-                },
-            }
+            compression = {"zlib": True, "complevel": 1}
             self.roughness_dem.save_dem(
                 filename=self.get_instruction_path("result_geofabric"),
                 dem=self.roughness_dem.dem,
-                encoding=encoding,
+                compression=compression,
             )
             self.logger.info(
                 "In processor.RoughnessLengthGenerator - clean folder for "
@@ -2955,9 +2927,13 @@ class WaterwayBedElevationEstimator(BaseProcessor):
             runner = RawLidarDemGenerator(self.instructions)
             runner.run()
         # Load in the DEM
-        dem = rioxarray.rioxarray.open_rasterio(dem_file, masked=True).squeeze(
-            "band", drop=True
-        )
+        chunk_size = self.get_processing_instructions("chunk_size")
+        dem = rioxarray.rioxarray.open_rasterio(
+            dem_file,
+            masked=True,
+            parse_coordinates=True,
+            chunks={"x": chunk_size, "y": chunk_size},
+        ).squeeze("band", drop=True)
         return dem
 
     def download_osm_values(self) -> bool:

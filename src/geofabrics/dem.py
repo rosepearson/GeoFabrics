@@ -309,18 +309,76 @@ class DemBase(abc.ABC):
         "no data": -1,
     }
 
-    def __init__(
-        self,
-        catchment_geometry: geometry.CatchmentGeometry,
-    ):
+    def __init__(self, catchment_geometry: geometry.CatchmentGeometry, chunk_size: int):
         """Setup base DEM to add future tiles too"""
 
         self.catchment_geometry = catchment_geometry
+        self.chunk_size = chunk_size
 
     @property
     def dem(self) -> xarray.Dataset:
         """Return the DEM over the catchment region"""
         raise NotImplementedError("dem must be instantiated in the child class")
+
+    def _load_dem(self, filename: pathlib.Path) -> xarray.Dataset:
+        """Load in and replace the DEM with a previously cached version."""
+        dem = rioxarray.rioxarray.open_rasterio(
+            filename,
+            masked=True,
+            parse_coordinates=True,
+            chunks={"x": self.chunk_size, "y": self.chunk_size},
+        ).squeeze(
+            "band", drop=True
+        )  # remove band coordinate added by rasterio.open()
+        self._write_netcdf_conventions_in_place(dem, self.catchment_geometry.crs)
+
+        if "data_source" in dem.keys():
+            dem["data_source"] = dem.data_source.astype(geometry.RASTER_TYPE)
+        if "lidar_source" in dem.keys():
+            dem["lidar_source"] = dem.lidar_source.astype(geometry.RASTER_TYPE)
+        if "z" in dem.keys():
+            dem["z"] = dem.z.astype(geometry.RASTER_TYPE)
+        if "zo" in dem.keys():
+            dem["zo"] = dem.zo.astype(geometry.RASTER_TYPE)
+
+        return dem
+
+    def save_dem(
+        self, filename: pathlib.Path, dem: xarray.Dataset, compression: dict = None
+    ):
+        """Save the DEM to a netCDF file and optionally reload it
+
+        :param filename: .nc file where to save the DEM
+        :param reload: reload DEM from the saved file
+        """
+
+        assert not any(
+            array.rio.crs is None for array in dem.data_vars.values()
+        ), "all DataArray variables of a xarray.Dataset must have a CRS"
+
+        try:
+            self._write_netcdf_conventions_in_place(dem, self.catchment_geometry.crs)
+            if compression is not None:
+                compression["grid_mapping"] = dem.encoding["grid_mapping"]
+                encoding = {}
+                for key in dem.data_vars:
+                    compression["dtype"] = dem[key].dtype
+                    encoding["key"] = compression
+                dem.to_netcdf(
+                    filename, format="NETCDF4", engine="netcdf4", encoding=encoding
+                )
+            else:
+                dem.to_netcdf(filename, format="NETCDF4", engine="netcdf4")
+            dem.close()
+
+        except (Exception, KeyboardInterrupt) as caught_exception:
+            pathlib.Path(filename).unlink()
+            self.logger.info(
+                f"Caught error {caught_exception} and deleting"
+                "partially created netCDF output "
+                f"{filename} before re-raising error."
+            )
+            raise caught_exception
 
     @staticmethod
     def _ensure_positive_indexing(
@@ -439,22 +497,22 @@ class HydrologicallyConditionedDem(DemBase):
         catchment_geometry: geometry.CatchmentGeometry,
         raw_dem_path: str | pathlib.Path,
         interpolation_method: str,
+        chunk_size,
     ):
         """Load in the extents and dense DEM. Ensure the dense DEM is clipped within the
         extents"""
         super(HydrologicallyConditionedDem, self).__init__(
             catchment_geometry=catchment_geometry,
+            chunk_size=chunk_size,
         )
         self.logger = logging.getLogger(f"{__name__}.{self.__class__.__name__}")
 
         # Read in the dense DEM raster - and free up file by performing a deep copy.
         raw_dem = rioxarray.rioxarray.open_rasterio(
             pathlib.Path(raw_dem_path), masked=True, parse_coordinates=True, chunks=True
-        )
-
-        # Deep copy to ensure the opened file is properly unlocked; Squeeze as
-        # rasterio.open() adds band coordinate
-        raw_dem = raw_dem.squeeze("band", drop=True)
+        ).squeeze(
+            "band", drop=True
+        )  # remove band coordinate added by rasterio.open()
         self._write_netcdf_conventions_in_place(raw_dem, catchment_geometry.crs)
 
         # Clip to catchment and set the data_source layer to NaN where there is no data
@@ -948,10 +1006,10 @@ class LidarBase(DemBase):
 
         super(LidarBase, self).__init__(
             catchment_geometry=catchment_geometry,
+            chunk_size=chunk_size,
         )
         self.logger = logging.getLogger(f"{__name__}.{self.__class__.__name__}")
 
-        self.chunk_size = chunk_size
         self.elevation_range = elevation_range
         assert elevation_range is None or (
             type(elevation_range) == list and len(elevation_range) == 2
@@ -1202,58 +1260,6 @@ class LidarBase(DemBase):
             "_add_lidar_no_chunking must be instantiated in the " "child class"
         )
 
-    def _load_dem(self, filename: pathlib.Path) -> xarray.Dataset:
-        """Load in and replace the DEM with a previously cached version."""
-        dem = rioxarray.rioxarray.open_rasterio(
-            filename,
-            masked=True,
-            parse_coordinates=True,
-            chunks={"x": self.chunk_size, "y": self.chunk_size},
-        )
-        dem = dem.squeeze("band", drop=True)
-        self._write_netcdf_conventions_in_place(dem, self.catchment_geometry.crs)
-
-        if "data_source" in dem.keys():
-            dem["data_source"] = dem.data_source.astype(geometry.RASTER_TYPE)
-        if "lidar_source" in dem.keys():
-            dem["lidar_source"] = dem.lidar_source.astype(geometry.RASTER_TYPE)
-        if "z" in dem.keys():
-            dem["z"] = dem.z.astype(geometry.RASTER_TYPE)
-
-        return dem
-
-    def save_dem(
-        self, filename: pathlib.Path, dem: xarray.Dataset, encoding: dict = None
-    ):
-        """Save the DEM to a netCDF file and optionally reload it
-
-        :param filename: .nc file where to save the DEM
-        :param reload: reload DEM from the saved file
-        """
-
-        assert not any(
-            arr.rio.crs is None for arr in dem.data_vars.values()
-        ), "all DataArray variables of a xarray.Dataset must have a CRS"
-
-        try:
-            self._write_netcdf_conventions_in_place(dem, self.catchment_geometry.crs)
-            if encoding is not None:
-                dem.to_netcdf(
-                    filename, format="NETCDF4", engine="netcdf4", encoding=encoding
-                )
-            else:
-                dem.to_netcdf(filename, format="NETCDF4", engine="netcdf4")
-            dem.close()
-
-        except (Exception, KeyboardInterrupt) as caught_exception:
-            pathlib.Path(filename).unlink()
-            self.logger.info(
-                f"Caught error {caught_exception} and deleting"
-                "partially created netCDF output "
-                f"{filename} before re-raising error."
-            )
-            raise caught_exception
-
     def save_and_load_dem(
         self,
         filename: pathlib.Path,
@@ -1265,11 +1271,9 @@ class LidarBase(DemBase):
             f"{filename}"
         )
 
-        dem = self._dem
-        self.save_dem(filename=filename, dem=dem)
-        del dem, self._dem
-        dem = self._load_dem(filename=filename)
-        self._dem = dem
+        self.save_dem(filename=filename, dem=self._dem)
+        del self._dem
+        self._dem = self._load_dem(filename=filename)
 
 
 class RawDem(LidarBase):
@@ -2057,14 +2061,15 @@ class RoughnessDem(LidarBase):
         )
         self.logger = logging.getLogger(f"{__name__}.{self.__class__.__name__}")
 
-        # Load hyrdological DEM. Squeeze as rasterio.open() adds band coordinate.
+        # Load hyrdological DEM.
         hydrological_dem = rioxarray.rioxarray.open_rasterio(
             pathlib.Path(hydrological_dem_path),
             masked=True,
             parse_coordinates=True,
             chunks=True,
-        )
-        hydrological_dem = hydrological_dem.squeeze("band", drop=True)
+        ).squeeze(
+            "band", drop=True
+        )  # remove band coordinate added by rasterio.open()
         self._write_netcdf_conventions_in_place(
             hydrological_dem, catchment_geometry.crs
         )
@@ -2083,6 +2088,10 @@ class RoughnessDem(LidarBase):
         hydrological_dem = hydrological_dem.rio.clip_box(**catchment.bounds.iloc[0])
         mask = clip_mask(hydrological_dem.z, catchment.geometry, self.chunk_size)
         hydrological_dem = hydrological_dem.where(mask)
+        # Rerun as otherwise the no data as NaN seems to be lost for the data_source layer
+        self._write_netcdf_conventions_in_place(
+            hydrological_dem, catchment_geometry.crs
+        )
 
         self.temp_folder = temp_folder
         self.interpolation_method = interpolation_method
@@ -2207,6 +2216,7 @@ class RoughnessDem(LidarBase):
             self._dem.z, self.catchment_geometry.catchment.geometry, self.chunk_size
         )
         self._dem = self._dem.where(mask)
+        self._write_netcdf_conventions_in_place(self._dem, self.catchment_geometry.crs)
 
     def _add_tiled_lidar_chunked(
         self,
