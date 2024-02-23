@@ -363,7 +363,7 @@ class DemBase(abc.ABC):
                 encoding = {}
                 for key in dem.data_vars:
                     compression["dtype"] = dem[key].dtype
-                    encoding["key"] = compression
+                    encoding[key] = compression
                 dem.to_netcdf(
                     filename, format="NETCDF4", engine="netcdf4", encoding=encoding
                 )
