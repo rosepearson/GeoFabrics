@@ -245,6 +245,7 @@ class BaseProcessor(abc.ABC):
                 "rivers": "bed_elevation_Rupp_and_Smart",
                 "ocean": None,
             },
+            "ignore_clipping": False,
             "filter_waterways_by_osm_ids": [],
         }
 
@@ -925,16 +926,17 @@ class RawLidarDemGenerator(BaseProcessor):
             self.raw_dem.save_and_load_dem(cached_file)
 
             # Clip LiDAR - ensure within bounds/foreshore
-            self.raw_dem.clip_lidar()
+            if not self.get_instruction_general("ignore_clipping"):
+                self.raw_dem.clip_lidar()
 
-            # Save a cached copy of DEM to temporary memory cache
-            temp_file = temp_folder / "raw_lidar_clipped.nc"
-            self.logger.info(f"Save temp raw DEM to netCDF: {temp_file}")
-            self.raw_dem.save_and_load_dem(temp_file)
+                # Save a cached copy of DEM to temporary memory cache
+                temp_file = temp_folder / "raw_lidar_clipped.nc"
+                self.logger.info(f"Save temp raw DEM to netCDF: {temp_file}")
+                self.raw_dem.save_and_load_dem(temp_file)
 
-            # Remove previous cached file and replace with new one
-            cached_file.unlink()
-            cached_file = temp_file
+                # Remove previous cached file and replace with new one
+                cached_file.unlink()
+                cached_file = temp_file
 
             # Add a coarse DEM if significant area without LiDAR and a coarse DEM
             if self.check_vector_or_raster(key="coarse_dems", api_type="raster"):
@@ -968,25 +970,11 @@ class RawLidarDemGenerator(BaseProcessor):
                 "In processor.DemGenerator - write out the raw DEM to netCDF: "
                 f"{self.get_instruction_path('raw_dem')}"
             )
-            encoding = {
-                "data_source": {
-                    "zlib": True,
-                    "complevel": 1,
-                },
-                "lidar_source": {
-                    "zlib": True,
-                    "complevel": 1,
-                },
-                "z": {
-                    "zlib": True,
-                    "complevel": 1,
-                },
-            }
-            encoding = None  # Separately test compressing final netCDF outputs
+            compression = {"zlib": True, "complevel": 1}
             self.raw_dem.save_dem(
                 self.get_instruction_path("raw_dem"),
                 dem=self.raw_dem.dem,
-                encoding=encoding,
+                compression=compression,
             )
             self.logger.info(f"Remove folder {temp_folder} for temporary files")
             shutil.rmtree(temp_folder)
@@ -1171,6 +1159,7 @@ class HydrologicDemGenerator(BaseProcessor):
             self.hydrologic_dem = dem.HydrologicallyConditionedDem(
                 catchment_geometry=self.catchment_geometry,
                 raw_dem_path=self.get_instruction_path("raw_dem"),
+                chunk_size=self.get_processing_instructions("chunk_size"),
                 interpolation_method=self.get_instruction_general(
                     key="interpolation", subkey="no_data"
                 ),
@@ -1187,10 +1176,11 @@ class HydrologicDemGenerator(BaseProcessor):
                 "In processor.DemGenerator - write out the raw DEM to netCDF"
             )
             try:
-                self.hydrologic_dem.dem.to_netcdf(
+                compression = {"zlib": True, "complevel": 1}
+                self.hydrologic_dem.save_dem(
                     self.get_instruction_path("result_dem"),
-                    format="NETCDF4",
-                    engine="netcdf4",
+                    dem=self.hydrologic_dem.dem,
+                    compression=compression,
                 )
             except (Exception, KeyboardInterrupt) as caught_exception:
                 pathlib.Path(self.get_instruction_path("raw_dem")).unlink()
@@ -1375,29 +1365,11 @@ class RoughnessLengthGenerator(BaseProcessor):
                 "the raw DEM to netCDF: "
                 f"{self.get_instruction_path('result_geofabric')}"
             )
-            encoding = {
-                "data_source": {
-                    "zlib": True,
-                    "complevel": 1,
-                },
-                "lidar_source": {
-                    "zlib": True,
-                    "complevel": 1,
-                },
-                "z": {
-                    "zlib": True,
-                    "complevel": 1,
-                },
-                "zo": {
-                    "zlib": True,
-                    "complevel": 1,
-                },
-            }
-            encoding = None  # Separately test compressing final netCDF outputs
+            compression = {"zlib": True, "complevel": 1}
             self.roughness_dem.save_dem(
                 filename=self.get_instruction_path("result_geofabric"),
                 dem=self.roughness_dem.dem,
-                encoding=encoding,
+                compression=compression,
             )
             self.logger.info(
                 "In processor.RoughnessLengthGenerator - clean folder for "
@@ -2806,9 +2778,9 @@ class WaterwayBedElevationEstimator(BaseProcessor):
         if polygon_file.is_file() and elevation_file.is_file():
             self.logger.info("Open waterways already recorded. ")
             return
-        # If not - estimate the elevations along the open waterways
+        # If not - estimate the elevations along the open waterways - drop any invalid geometries
         open_waterways = waterways[numpy.logical_not(waterways["tunnel"])]
-
+        open_waterways = open_waterways[~open_waterways.geometry.isna()]
         # sample the ends of the waterway - sample over a polygon at each end
         polygons = open_waterways.interpolate(0).buffer(open_waterways["width"])
         open_waterways["start_elevation"] = polygons.apply(
@@ -2946,15 +2918,22 @@ class WaterwayBedElevationEstimator(BaseProcessor):
                 key="waterways_polygon"
             )
             dem_instruction_paths["raw_dem"] = self.get_result_file_name(key="raw_dem")
+            if "general" not in dem_instructions:
+                dem_instructions["general"] = {}
+            dem_instructions["general"]["ignore_clipping"] = True
 
             # Create the ground DEM file if this has not be created yet!
             self.logger.info("Generating waterway DEM.")
             runner = RawLidarDemGenerator(self.instructions)
             runner.run()
         # Load in the DEM
-        dem = rioxarray.rioxarray.open_rasterio(dem_file, masked=True).squeeze(
-            "band", drop=True
-        )
+        chunk_size = self.get_processing_instructions("chunk_size")
+        dem = rioxarray.rioxarray.open_rasterio(
+            dem_file,
+            masked=True,
+            parse_coordinates=True,
+            chunks={"x": chunk_size, "y": chunk_size},
+        ).squeeze("band", drop=True)
         return dem
 
     def download_osm_values(self) -> bool:
