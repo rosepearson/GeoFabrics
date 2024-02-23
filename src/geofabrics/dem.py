@@ -309,11 +309,7 @@ class DemBase(abc.ABC):
         "no data": -1,
     }
 
-    def __init__(
-        self,
-        catchment_geometry: geometry.CatchmentGeometry,
-        chunk_size: int
-    ):
+    def __init__(self, catchment_geometry: geometry.CatchmentGeometry, chunk_size: int):
         """Setup base DEM to add future tiles too"""
 
         self.catchment_geometry = catchment_geometry
@@ -331,7 +327,9 @@ class DemBase(abc.ABC):
             masked=True,
             parse_coordinates=True,
             chunks={"x": self.chunk_size, "y": self.chunk_size},
-        ).squeeze("band", drop=True) # remove band coordinate added by rasterio.open()
+        ).squeeze(
+            "band", drop=True
+        )  # remove band coordinate added by rasterio.open()
         self._write_netcdf_conventions_in_place(dem, self.catchment_geometry.crs)
 
         if "data_source" in dem.keys():
@@ -504,14 +502,17 @@ class HydrologicallyConditionedDem(DemBase):
         """Load in the extents and dense DEM. Ensure the dense DEM is clipped within the
         extents"""
         super(HydrologicallyConditionedDem, self).__init__(
-            catchment_geometry=catchment_geometry, chunk_size=chunk_size,
+            catchment_geometry=catchment_geometry,
+            chunk_size=chunk_size,
         )
         self.logger = logging.getLogger(f"{__name__}.{self.__class__.__name__}")
 
         # Read in the dense DEM raster - and free up file by performing a deep copy.
         raw_dem = rioxarray.rioxarray.open_rasterio(
             pathlib.Path(raw_dem_path), masked=True, parse_coordinates=True, chunks=True
-        ).squeeze("band", drop=True) # remove band coordinate added by rasterio.open()
+        ).squeeze(
+            "band", drop=True
+        )  # remove band coordinate added by rasterio.open()
         self._write_netcdf_conventions_in_place(raw_dem, catchment_geometry.crs)
 
         # Clip to catchment and set the data_source layer to NaN where there is no data
@@ -1004,7 +1005,8 @@ class LidarBase(DemBase):
         """Setup base DEM to add future tiles too"""
 
         super(LidarBase, self).__init__(
-            catchment_geometry=catchment_geometry, chunk_size=chunk_size,
+            catchment_geometry=catchment_geometry,
+            chunk_size=chunk_size,
         )
         self.logger = logging.getLogger(f"{__name__}.{self.__class__.__name__}")
 
@@ -2065,7 +2067,9 @@ class RoughnessDem(LidarBase):
             masked=True,
             parse_coordinates=True,
             chunks=True,
-        ).squeeze("band", drop=True) # remove band coordinate added by rasterio.open()
+        ).squeeze(
+            "band", drop=True
+        )  # remove band coordinate added by rasterio.open()
         self._write_netcdf_conventions_in_place(
             hydrological_dem, catchment_geometry.crs
         )
