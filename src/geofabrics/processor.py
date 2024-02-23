@@ -970,7 +970,7 @@ class RawLidarDemGenerator(BaseProcessor):
                 "In processor.DemGenerator - write out the raw DEM to netCDF: "
                 f"{self.get_instruction_path('raw_dem')}"
             )
-            compression = { "zlib": True,"complevel": 1 }
+            compression = {"zlib": True, "complevel": 1}
             self.raw_dem.save_dem(
                 self.get_instruction_path("raw_dem"),
                 dem=self.raw_dem.dem,
@@ -1365,7 +1365,7 @@ class RoughnessLengthGenerator(BaseProcessor):
                 "the raw DEM to netCDF: "
                 f"{self.get_instruction_path('result_geofabric')}"
             )
-            compression = {"zlib": True, "complevel": 1 }
+            compression = {"zlib": True, "complevel": 1}
             self.roughness_dem.save_dem(
                 filename=self.get_instruction_path("result_geofabric"),
                 dem=self.roughness_dem.dem,
@@ -2927,7 +2927,7 @@ class WaterwayBedElevationEstimator(BaseProcessor):
             runner = RawLidarDemGenerator(self.instructions)
             runner.run()
         # Load in the DEM
-        chunk_size=self.get_processing_instructions("chunk_size")
+        chunk_size = self.get_processing_instructions("chunk_size")
         dem = rioxarray.rioxarray.open_rasterio(
             dem_file,
             masked=True,
