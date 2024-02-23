@@ -322,6 +322,41 @@ class DemBase(abc.ABC):
         """Return the DEM over the catchment region"""
         raise NotImplementedError("dem must be instantiated in the child class")
 
+    def save_dem(
+        self, filename: pathlib.Path, dem: xarray.Dataset, encoding: dict = None
+    ):
+        """Save the DEM to a netCDF file and optionally reload it
+
+        :param filename: .nc file where to save the DEM
+        :param reload: reload DEM from the saved file
+        """
+
+        assert not any(
+            arr.rio.crs is None for arr in dem.data_vars.values()
+        ), "all DataArray variables of a xarray.Dataset must have a CRS"
+
+        try:
+            self._write_netcdf_conventions_in_place(dem, self.catchment_geometry.crs)
+            if encoding is not None:
+                '''for key in encoding:
+                    encoding[key] = {**encoding[key], **dem[key].encoding}'''
+                dem.to_netcdf(
+                    filename, format="NETCDF4", engine="netcdf4", encoding=encoding
+                )
+            else:
+                dem.to_netcdf(filename, format="NETCDF4", engine="netcdf4")
+            dem.close()
+
+        except (Exception, KeyboardInterrupt) as caught_exception:
+            pathlib.Path(filename).unlink()
+            self.logger.info(
+                f"Caught error {caught_exception} and deleting"
+                "partially created netCDF output "
+                f"{filename} before re-raising error."
+            )
+            raise caught_exception
+
+
     @staticmethod
     def _ensure_positive_indexing(
         dem: xarray.core.dataarray.DataArray,
@@ -452,8 +487,7 @@ class HydrologicallyConditionedDem(DemBase):
             pathlib.Path(raw_dem_path), masked=True, parse_coordinates=True, chunks=True
         )
 
-        # Deep copy to ensure the opened file is properly unlocked; Squeeze as
-        # rasterio.open() adds band coordinate
+        # Squeeze as rasterio.open() adds band coordinate
         raw_dem = raw_dem.squeeze("band", drop=True)
         self._write_netcdf_conventions_in_place(raw_dem, catchment_geometry.crs)
 
@@ -1221,38 +1255,6 @@ class LidarBase(DemBase):
             dem["z"] = dem.z.astype(geometry.RASTER_TYPE)
 
         return dem
-
-    def save_dem(
-        self, filename: pathlib.Path, dem: xarray.Dataset, encoding: dict = None
-    ):
-        """Save the DEM to a netCDF file and optionally reload it
-
-        :param filename: .nc file where to save the DEM
-        :param reload: reload DEM from the saved file
-        """
-
-        assert not any(
-            arr.rio.crs is None for arr in dem.data_vars.values()
-        ), "all DataArray variables of a xarray.Dataset must have a CRS"
-
-        try:
-            self._write_netcdf_conventions_in_place(dem, self.catchment_geometry.crs)
-            if encoding is not None:
-                dem.to_netcdf(
-                    filename, format="NETCDF4", engine="netcdf4", encoding=encoding
-                )
-            else:
-                dem.to_netcdf(filename, format="NETCDF4", engine="netcdf4")
-            dem.close()
-
-        except (Exception, KeyboardInterrupt) as caught_exception:
-            pathlib.Path(filename).unlink()
-            self.logger.info(
-                f"Caught error {caught_exception} and deleting"
-                "partially created netCDF output "
-                f"{filename} before re-raising error."
-            )
-            raise caught_exception
 
     def save_and_load_dem(
         self,
@@ -2083,6 +2085,8 @@ class RoughnessDem(LidarBase):
         hydrological_dem = hydrological_dem.rio.clip_box(**catchment.bounds.iloc[0])
         mask = clip_mask(hydrological_dem.z, catchment.geometry, self.chunk_size)
         hydrological_dem = hydrological_dem.where(mask)
+        # Rerun as otherwise the no data as NaN seems to be lost for the data_source layer
+        self._write_netcdf_conventions_in_place(hydrological_dem, catchment_geometry.crs)
 
         self.temp_folder = temp_folder
         self.interpolation_method = interpolation_method
@@ -2207,6 +2211,7 @@ class RoughnessDem(LidarBase):
             self._dem.z, self.catchment_geometry.catchment.geometry, self.chunk_size
         )
         self._dem = self._dem.where(mask)
+        self._write_netcdf_conventions_in_place(self._dem, self.catchment_geometry.crs)
 
     def _add_tiled_lidar_chunked(
         self,

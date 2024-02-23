@@ -1188,10 +1188,24 @@ class HydrologicDemGenerator(BaseProcessor):
                 "In processor.DemGenerator - write out the raw DEM to netCDF"
             )
             try:
-                self.hydrologic_dem.dem.to_netcdf(
+                encoding = {
+                    "data_source": {
+                        "zlib": True,
+                        "complevel": 1,
+                    },
+                    "lidar_source": {
+                        "zlib": True,
+                        "complevel": 1,
+                    },
+                    "z": {
+                        "zlib": True,
+                        "complevel": 1,
+                    },
+                }
+                self.hydrologic_dem.save_dem(
                     self.get_instruction_path("result_dem"),
-                    format="NETCDF4",
-                    engine="netcdf4",
+                    dem=self.hydrologic_dem.dem,
+                    encoding=encoding,
                 )
             except (Exception, KeyboardInterrupt) as caught_exception:
                 pathlib.Path(self.get_instruction_path("raw_dem")).unlink()
@@ -1369,7 +1383,7 @@ class RoughnessLengthGenerator(BaseProcessor):
                 metadata=self.create_metadata(),
                 parameters=roughness_parameters,
             )  # Note must be called after all others if it is to be complete
-
+            
             # save results
             self.logger.info(
                 "In processor.RoughnessLengthGenerator - write out "
@@ -1394,6 +1408,7 @@ class RoughnessLengthGenerator(BaseProcessor):
                     "complevel": 1,
                 },
             }
+            encoding = None
             self.roughness_dem.save_dem(
                 filename=self.get_instruction_path("result_geofabric"),
                 dem=self.roughness_dem.dem,
