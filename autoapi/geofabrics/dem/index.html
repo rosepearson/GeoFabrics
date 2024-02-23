@@ -259,7 +259,7 @@ filtering.</p>
 
 <dl class="py class">
 <dt class="sig sig-object py" id="geofabrics.dem.DemBase">
-<em class="property"><span class="pre">class</span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">geofabrics.dem.</span></span><span class="sig-name descname"><span class="pre">DemBase</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">catchment_geometry</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#geofabrics.dem.DemBase" title="Link to this definition"></a></dt>
+<em class="property"><span class="pre">class</span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">geofabrics.dem.</span></span><span class="sig-name descname"><span class="pre">DemBase</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">catchment_geometry</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">chunk_size</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#geofabrics.dem.DemBase" title="Link to this definition"></a></dt>
 <dd><p>Bases: <code class="xref py py-obj docutils literal notranslate"><span class="pre">abc.ABC</span></code></p>
 <p>An abstract class to manage the different geofabric layers in a
 catchment context. The geofabruc has a z, and data_source layer and may
@@ -274,6 +274,7 @@ variable.</p>
 <li><p><strong>catchment_geometry</strong> (<a class="reference internal" href="../geometry/index.html#geofabrics.geometry.CatchmentGeometry" title="geofabrics.geometry.CatchmentGeometry"><em>geofabrics.geometry.CatchmentGeometry</em></a>) – Defines the spatial extents of the catchment, land, foreshore, and offshore
 regions</p></li>
 <li><p><strong>extents</strong> – Defines the extents of any dense (LiDAR or refernence DEM) values already added.</p></li>
+<li><p><strong>chunk_size</strong> (<em>int</em>) – </p></li>
 </ul>
 </dd>
 </dl>
@@ -288,11 +289,27 @@ regions</p></li>
 </dl>
 </dd></dl>
 
+<dl class="py method">
+<dt class="sig sig-object py" id="geofabrics.dem.DemBase.save_dem">
+<span class="sig-name descname"><span class="pre">save_dem</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">filename</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">dem</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">compression</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#geofabrics.dem.DemBase.save_dem" title="Link to this definition"></a></dt>
+<dd><p>Save the DEM to a netCDF file and optionally reload it</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>filename</strong> (<em>pathlib.Path</em>) – .nc file where to save the DEM</p></li>
+<li><p><strong>reload</strong> – reload DEM from the saved file</p></li>
+<li><p><strong>dem</strong> (<em>xarray.Dataset</em>) – </p></li>
+<li><p><strong>compression</strong> (<em>dict</em>) – </p></li>
+</ul>
+</dd>
+</dl>
+</dd></dl>
+
 </dd></dl>
 
 <dl class="py class">
 <dt class="sig sig-object py" id="geofabrics.dem.HydrologicallyConditionedDem">
-<em class="property"><span class="pre">class</span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">geofabrics.dem.</span></span><span class="sig-name descname"><span class="pre">HydrologicallyConditionedDem</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">catchment_geometry</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">raw_dem_path</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">interpolation_method</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#geofabrics.dem.HydrologicallyConditionedDem" title="Link to this definition"></a></dt>
+<em class="property"><span class="pre">class</span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">geofabrics.dem.</span></span><span class="sig-name descname"><span class="pre">HydrologicallyConditionedDem</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">catchment_geometry</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">raw_dem_path</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">interpolation_method</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">chunk_size</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#geofabrics.dem.HydrologicallyConditionedDem" title="Link to this definition"></a></dt>
 <dd><p>Bases: <a class="reference internal" href="#geofabrics.dem.DemBase" title="geofabrics.dem.DemBase"><code class="xref py py-obj docutils literal notranslate"><span class="pre">DemBase</span></code></a></p>
 <p>A class to manage loading in an already created and saved dense DEM that has yet
 to have an offshore DEM associated with it.</p>
@@ -416,22 +433,6 @@ standard list</p></li>
 <li><p><strong>meta_data</strong> – Information to include in the created DEM - must include
 <cite>dataset_mapping</cite> key if datasets (not a single LAZ file) included.</p></li>
 <li><p><strong>metadata</strong> (<em>dict</em>) – </p></li>
-</ul>
-</dd>
-</dl>
-</dd></dl>
-
-<dl class="py method">
-<dt class="sig sig-object py" id="geofabrics.dem.LidarBase.save_dem">
-<span class="sig-name descname"><span class="pre">save_dem</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">filename</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">dem</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">encoding</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#geofabrics.dem.LidarBase.save_dem" title="Link to this definition"></a></dt>
-<dd><p>Save the DEM to a netCDF file and optionally reload it</p>
-<dl class="field-list simple">
-<dt class="field-odd">Parameters<span class="colon">:</span></dt>
-<dd class="field-odd"><ul class="simple">
-<li><p><strong>filename</strong> (<em>pathlib.Path</em>) – .nc file where to save the DEM</p></li>
-<li><p><strong>reload</strong> – reload DEM from the saved file</p></li>
-<li><p><strong>dem</strong> (<em>xarray.Dataset</em>) – </p></li>
-<li><p><strong>encoding</strong> (<em>dict</em>) – </p></li>
 </ul>
 </dd>
 </dl>

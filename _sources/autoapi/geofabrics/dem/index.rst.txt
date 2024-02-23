@@ -102,7 +102,7 @@ Attributes
 
 
 
-.. py:class:: DemBase(catchment_geometry)
+.. py:class:: DemBase(catchment_geometry, chunk_size)
 
 
    Bases: :py:obj:`abc.ABC`
@@ -127,8 +127,16 @@ Attributes
 
       Return the DEM over the catchment region
 
+   .. py:method:: save_dem(filename, dem, compression = None)
 
-.. py:class:: HydrologicallyConditionedDem(catchment_geometry, raw_dem_path, interpolation_method)
+      Save the DEM to a netCDF file and optionally reload it
+
+      :param filename: .nc file where to save the DEM
+      :param reload: reload DEM from the saved file
+
+
+
+.. py:class:: HydrologicallyConditionedDem(catchment_geometry, raw_dem_path, interpolation_method, chunk_size)
 
 
    Bases: :py:obj:`DemBase`
@@ -205,14 +213,6 @@ Attributes
                                             standard list
       :param meta_data: Information to include in the created DEM - must include
                         `dataset_mapping` key if datasets (not a single LAZ file) included.
-
-
-   .. py:method:: save_dem(filename, dem, encoding = None)
-
-      Save the DEM to a netCDF file and optionally reload it
-
-      :param filename: .nc file where to save the DEM
-      :param reload: reload DEM from the saved file
 
 
    .. py:method:: save_and_load_dem(filename)
