@@ -1448,7 +1448,9 @@ class RawDem(LidarBase):
             }
             elevations = {
                 "no LiDAR": dask.array.full(
-                    fill_value=numpy.nan, shape=(len(y), len(x)), dtype=raster_options["raster_type"]
+                    fill_value=numpy.nan,
+                    shape=(len(y), len(x)),
+                    dtype=raster_options["raster_type"],
                 )
             }
             dem = self._create_data_set(
