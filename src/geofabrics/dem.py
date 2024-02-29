@@ -1178,9 +1178,10 @@ class LidarBase(DemBase):
                 )
             # Check some LiDAR files are specified
             lidar_files = lidar_datasets_info[dataset_name]["file_paths"]
-            assert len(lidar_files) >= 1, (
-                "There are no LiDAR files specified in dataset: " f"{dataset_name}"
-            )
+            if len(lidar_files) == 0:
+                self.logger.warning(
+                    f"Ignoring LiDAR dataset {dataset_name} as there are no LiDAR files within the ROI."
+                )
             # Check for valid combination of chunk_size, lidar_files and tile_index_file
             if self.chunk_size is None:
                 assert len(lidar_files) == 1, (
