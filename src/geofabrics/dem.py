@@ -1161,7 +1161,7 @@ class LidarBase(DemBase):
             A dictionary of dictionaties of LiDAR dataset information. The CRS, list of
             LAS files, and tile index file are included for each dataset.
         """
-
+        empty_datasets = []
         for dataset_name in lidar_datasets_info:
             # Check the source_crs is valid
             source_crs = lidar_datasets_info[dataset_name]["crs"]
@@ -1182,6 +1182,8 @@ class LidarBase(DemBase):
                 self.logger.warning(
                     f"Ignoring LiDAR dataset {dataset_name} as there are no LiDAR files within the ROI."
                 )
+                empty_datasets.append(dataset_name)
+                continue
             # Check for valid combination of chunk_size, lidar_files and tile_index_file
             if self.chunk_size is None:
                 assert len(lidar_files) == 1, (
@@ -1197,6 +1199,10 @@ class LidarBase(DemBase):
                     "A tile index file must be provided if chunking is "
                     f"defined for {dataset_name}"
                 )
+        # Re move a dataset if no LIDAR
+        if len(empty_datasets) > 0:
+            for empty_dataset in empty_datasets:
+                lidar_datasets_info.pop(empty_dataset)
         # There should only be one dataset if there is no chunking information
         if self.chunk_size is None:
             assert len(lidar_datasets_info) == 1, (
