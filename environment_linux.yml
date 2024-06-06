@@ -10,3 +10,4 @@ dependencies:
   - osmpythontools >= 0.3.5
   - python-pdal >= 3.3.0
   - distributed >= 2023.6.0
+  - netcdf4
