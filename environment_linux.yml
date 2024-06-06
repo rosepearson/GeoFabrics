@@ -5,18 +5,8 @@ channels:
   - conda-forge
   - defaults
 dependencies:
-  - pip
-  - libprotobuf == 4.23.3
-  - dask
-  - distributed
-  - gdal
-  - geopandas >=0.10.2
-  - fiona >=1.9.6
-  - pdal
-  - rioxarray
-  - pytest
-  - python-dotenv
-  - python-pdal
-  - netcdf4
-  - geoapis >=0.3.2
-  - osmpythontools >=0.3.5
+  - rioxarray >= 0.15.1
+  - geoapis>= 0.3.2
+  - osmpythontools >= 0.3.5
+  - python-pdal >= 3.3.0
+  - distributed >= 2023.6.0
