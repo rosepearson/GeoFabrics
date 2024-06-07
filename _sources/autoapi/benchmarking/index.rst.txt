@@ -1,5 +1,5 @@
-:py:mod:`benchmarking`
-======================
+benchmarking
+============
 
 .. py:module:: benchmarking
 
@@ -11,12 +11,8 @@
 
 
 
-Module Contents
----------------
-
-
 Functions
-~~~~~~~~~
+---------
 
 .. autoapisummary::
 
@@ -25,6 +21,8 @@ Functions
    benchmarking.main
 
 
+Module Contents
+---------------
 
 .. py:function:: parse_args()
 

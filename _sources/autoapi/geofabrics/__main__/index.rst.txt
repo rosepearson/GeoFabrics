@@ -1,5 +1,5 @@
-:py:mod:`geofabrics.__main__`
-=============================
+geofabrics.__main__
+===================
 
 .. py:module:: geofabrics.__main__
 
@@ -10,12 +10,8 @@
 
 
 
-Module Contents
----------------
-
-
 Functions
-~~~~~~~~~
+---------
 
 .. autoapisummary::
 
@@ -24,6 +20,8 @@ Functions
    geofabrics.__main__.cli_run_from_file
 
 
+Module Contents
+---------------
 
 .. py:function:: parse_args()
 

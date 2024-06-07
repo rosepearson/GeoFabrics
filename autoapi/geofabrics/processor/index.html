@@ -7,7 +7,7 @@
   <title>geofabrics.processor &mdash; Geofabrics 0.7.6 documentation</title>
       <link rel="stylesheet" type="text/css" href="../../../_static/pygments.css?v=80d5e7a1" />
       <link rel="stylesheet" type="text/css" href="../../../_static/css/theme.css?v=19f00094" />
-      <link rel="stylesheet" type="text/css" href="../../../_static/graphviz.css?v=eafc0fe6" />
+      <link rel="stylesheet" type="text/css" href="../../../_static/graphviz.css?v=fd3f3429" />
 
   
   <!--[if lt IE 9]>
@@ -17,7 +17,7 @@
         <script src="../../../_static/jquery.js?v=5d32c60e"></script>
         <script src="../../../_static/_sphinx_javascript_frameworks_compat.js?v=2cd50e6c"></script>
         <script src="../../../_static/documentation_options.js?v=918ced64"></script>
-        <script src="../../../_static/doctools.js?v=888ff710"></script>
+        <script src="../../../_static/doctools.js?v=9a2dae69"></script>
         <script src="../../../_static/sphinx_highlight.js?v=dc90522c"></script>
     <script src="../../../_static/js/theme.js"></script>
     <link rel="index" title="Index" href="../../../genindex.html" />
@@ -47,20 +47,20 @@
         </div><div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="Navigation menu">
               <ul class="current">
 <li class="toctree-l1 current"><a class="reference internal" href="../../index.html">API Reference</a><ul class="current">
-<li class="toctree-l2"><a class="reference internal" href="../../benchmarking/index.html"><code class="xref py py-mod docutils literal notranslate"><span class="pre">benchmarking</span></code></a></li>
-<li class="toctree-l2 current"><a class="reference internal" href="../index.html"><code class="xref py py-mod docutils literal notranslate"><span class="pre">geofabrics</span></code></a><ul class="current">
+<li class="toctree-l2 current"><a class="reference internal" href="../index.html">geofabrics</a><ul class="current">
 <li class="toctree-l3 current"><a class="reference internal" href="../index.html#submodules">Submodules</a><ul class="current">
-<li class="toctree-l4"><a class="reference internal" href="../__main__/index.html"><code class="xref py py-mod docutils literal notranslate"><span class="pre">geofabrics.__main__</span></code></a></li>
-<li class="toctree-l4"><a class="reference internal" href="../bathymetry_estimation/index.html"><code class="xref py py-mod docutils literal notranslate"><span class="pre">geofabrics.bathymetry_estimation</span></code></a></li>
-<li class="toctree-l4"><a class="reference internal" href="../dem/index.html"><code class="xref py py-mod docutils literal notranslate"><span class="pre">geofabrics.dem</span></code></a></li>
-<li class="toctree-l4"><a class="reference internal" href="../geometry/index.html"><code class="xref py py-mod docutils literal notranslate"><span class="pre">geofabrics.geometry</span></code></a></li>
-<li class="toctree-l4 current"><a class="current reference internal" href="#"><code class="xref py py-mod docutils literal notranslate"><span class="pre">geofabrics.processor</span></code></a></li>
-<li class="toctree-l4"><a class="reference internal" href="../runner/index.html"><code class="xref py py-mod docutils literal notranslate"><span class="pre">geofabrics.runner</span></code></a></li>
-<li class="toctree-l4"><a class="reference internal" href="../version/index.html"><code class="xref py py-mod docutils literal notranslate"><span class="pre">geofabrics.version</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="../__main__/index.html">geofabrics.__main__</a></li>
+<li class="toctree-l4"><a class="reference internal" href="../bathymetry_estimation/index.html">geofabrics.bathymetry_estimation</a></li>
+<li class="toctree-l4"><a class="reference internal" href="../dem/index.html">geofabrics.dem</a></li>
+<li class="toctree-l4"><a class="reference internal" href="../geometry/index.html">geofabrics.geometry</a></li>
+<li class="toctree-l4 current"><a class="current reference internal" href="#">geofabrics.processor</a></li>
+<li class="toctree-l4"><a class="reference internal" href="../runner/index.html">geofabrics.runner</a></li>
+<li class="toctree-l4"><a class="reference internal" href="../version/index.html">geofabrics.version</a></li>
 </ul>
 </li>
 </ul>
 </li>
+<li class="toctree-l2"><a class="reference internal" href="../../benchmarking/index.html">benchmarking</a></li>
 </ul>
 </li>
 </ul>
@@ -80,8 +80,8 @@
   <ul class="wy-breadcrumbs">
       <li><a href="../../../index.html" class="icon icon-home" aria-label="Home"></a></li>
           <li class="breadcrumb-item"><a href="../../index.html">API Reference</a></li>
-          <li class="breadcrumb-item"><a href="../index.html"><code class="xref py py-mod docutils literal notranslate"><span class="pre">geofabrics</span></code></a></li>
-      <li class="breadcrumb-item active"><code class="xref py py-mod docutils literal notranslate"><span class="pre">geofabrics.processor</span></code></li>
+          <li class="breadcrumb-item"><a href="../index.html">geofabrics</a></li>
+      <li class="breadcrumb-item active">geofabrics.processor</li>
       <li class="wy-breadcrumbs-aside">
             <a href="../../../_sources/autoapi/geofabrics/processor/index.rst.txt" rel="nofollow"> View page source</a>
       </li>
@@ -92,14 +92,12 @@
            <div itemprop="articleBody">
              
   <section id="module-geofabrics.processor">
-<span id="geofabrics-processor"></span><h1><a class="reference internal" href="#module-geofabrics.processor" title="geofabrics.processor"><code class="xref py py-mod docutils literal notranslate"><span class="pre">geofabrics.processor</span></code></a><a class="headerlink" href="#module-geofabrics.processor" title="Link to this heading"></a></h1>
+<span id="geofabrics-processor"></span><h1>geofabrics.processor<a class="headerlink" href="#module-geofabrics.processor" title="Link to this heading"></a></h1>
 <p>This module contains classes associated with generating GeoFabric layers from
 LiDAR and bathymetry contours based on the instructions contained in a JSON file.</p>
 <p>GeoFabric layers include hydrologically conditioned DEMs.</p>
-<section id="module-contents">
-<h2>Module Contents<a class="headerlink" href="#module-contents" title="Link to this heading"></a></h2>
 <section id="classes">
-<h3>Classes<a class="headerlink" href="#classes" title="Link to this heading"></a></h3>
+<h2>Classes<a class="headerlink" href="#classes" title="Link to this heading"></a></h2>
 <table class="autosummary longtable docutils align-default">
 <tbody>
 <tr class="row-odd"><td><p><a class="reference internal" href="#geofabrics.processor.BaseProcessor" title="geofabrics.processor.BaseProcessor"><code class="xref py py-obj docutils literal notranslate"><span class="pre">BaseProcessor</span></code></a></p></td>
@@ -125,6 +123,9 @@ LiDAR and bathymetry contours based on the instructions contained in a JSON file
 </tr>
 </tbody>
 </table>
+</section>
+<section id="module-contents">
+<h2>Module Contents<a class="headerlink" href="#module-contents" title="Link to this heading"></a></h2>
 <dl class="py class">
 <dt class="sig sig-object py" id="geofabrics.processor.BaseProcessor">
 <em class="property"><span class="pre">class</span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">geofabrics.processor.</span></span><span class="sig-name descname"><span class="pre">BaseProcessor</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">json_instructions</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#geofabrics.processor.BaseProcessor" title="Link to this definition"></a></dt>
@@ -135,7 +136,7 @@ functions for downloading remote data using geopais, and constructing data
 file lists.</p>
 <dl class="field-list simple">
 <dt class="field-odd">Parameters<span class="colon">:</span></dt>
-<dd class="field-odd"><p><strong>json_instructions</strong> (<em>json</em>) – </p>
+<dd class="field-odd"><p><strong>json_instructions</strong> (<em>json</em>)</p>
 </dd>
 </dl>
 <dl class="py method">
@@ -158,8 +159,8 @@ the key is not in the instructions.</p>
 <dl class="field-list simple">
 <dt class="field-odd">Parameters<span class="colon">:</span></dt>
 <dd class="field-odd"><ul class="simple">
-<li><p><strong>key</strong> (<em>str</em>) – </p></li>
-<li><p><strong>defaults</strong> (<em>dict</em>) – </p></li>
+<li><p><strong>key</strong> (<em>str</em>)</p></li>
+<li><p><strong>defaults</strong> (<em>dict</em>)</p></li>
 </ul>
 </dd>
 <dt class="field-even">Return type<span class="colon">:</span></dt>
@@ -175,7 +176,7 @@ the key is not in the instructions.</p>
 if there is a default value and the local cache is specified.</p>
 <dl class="field-list simple">
 <dt class="field-odd">Parameters<span class="colon">:</span></dt>
-<dd class="field-odd"><p><strong>key</strong> (<em>str</em>) – </p>
+<dd class="field-odd"><p><strong>key</strong> (<em>str</em>)</p>
 </dd>
 <dt class="field-even">Return type<span class="colon">:</span></dt>
 <dd class="field-even"><p>bool</p>
@@ -226,8 +227,8 @@ value. If the default is used it is added to the instructions.</p>
 <dl class="field-list simple">
 <dt class="field-odd">Parameters<span class="colon">:</span></dt>
 <dd class="field-odd"><ul class="simple">
-<li><p><strong>key</strong> (<em>str</em>) – </p></li>
-<li><p><strong>subkey</strong> (<em>str</em>) – </p></li>
+<li><p><strong>key</strong> (<em>str</em>)</p></li>
+<li><p><strong>subkey</strong> (<em>str</em>)</p></li>
 </ul>
 </dd>
 </dl>
@@ -373,8 +374,8 @@ an instruction file.</p>
 <dl class="field-list simple">
 <dt class="field-odd">Parameters<span class="colon">:</span></dt>
 <dd class="field-odd"><ul class="simple">
-<li><p><strong>json_instructions</strong> (<em>json</em>) – </p></li>
-<li><p><strong>debug</strong> (<em>bool</em>) – </p></li>
+<li><p><strong>json_instructions</strong> (<em>json</em>)</p></li>
+<li><p><strong>debug</strong> (<em>bool</em>)</p></li>
 </ul>
 </dd>
 </dl>
@@ -413,8 +414,8 @@ an instruction file</p>
 <dl class="field-list simple">
 <dt class="field-odd">Parameters<span class="colon">:</span></dt>
 <dd class="field-odd"><ul class="simple">
-<li><p><strong>json_instructions</strong> (<em>json</em>) – </p></li>
-<li><p><strong>debug</strong> (<em>bool</em>) – </p></li>
+<li><p><strong>json_instructions</strong> (<em>json</em>)</p></li>
+<li><p><strong>debug</strong> (<em>bool</em>)</p></li>
 </ul>
 </dd>
 </dl>
@@ -425,8 +426,8 @@ an instruction file</p>
 <dl class="field-list simple">
 <dt class="field-odd">Parameters<span class="colon">:</span></dt>
 <dd class="field-odd"><ul class="simple">
-<li><p><strong>area_threshold</strong> (<em>float</em>) – </p></li>
-<li><p><strong>catchment_dirs</strong> (<em>pathlib.Path</em>) – </p></li>
+<li><p><strong>area_threshold</strong> (<em>float</em>)</p></li>
+<li><p><strong>catchment_dirs</strong> (<em>pathlib.Path</em>)</p></li>
 </ul>
 </dd>
 </dl>
@@ -460,8 +461,8 @@ generation of a DEM as polygons.</p></li>
 <dl class="field-list simple">
 <dt class="field-odd">Parameters<span class="colon">:</span></dt>
 <dd class="field-odd"><ul class="simple">
-<li><p><strong>json_instructions</strong> (<em>json</em>) – </p></li>
-<li><p><strong>debug</strong> (<em>bool</em>) – </p></li>
+<li><p><strong>json_instructions</strong> (<em>json</em>)</p></li>
+<li><p><strong>debug</strong> (<em>bool</em>)</p></li>
 </ul>
 </dd>
 </dl>
@@ -472,8 +473,8 @@ generation of a DEM as polygons.</p></li>
 <dl class="field-list simple">
 <dt class="field-odd">Parameters<span class="colon">:</span></dt>
 <dd class="field-odd"><ul class="simple">
-<li><p><strong>behaviour</strong> (<em>instructions  The json instructions defining the</em>) – </p></li>
-<li><p><strong>key</strong> (<em>str</em>) – </p></li>
+<li><p><strong>behaviour</strong> (<em>instructions  The json instructions defining the</em>)</p></li>
+<li><p><strong>key</strong> (<em>str</em>)</p></li>
 </ul>
 </dd>
 </dl>
@@ -498,8 +499,8 @@ the pipeline logic and data.</p>
 <dl class="field-list simple">
 <dt class="field-odd">Parameters<span class="colon">:</span></dt>
 <dd class="field-odd"><ul class="simple">
-<li><p><strong>json_instructions</strong> (<em>json</em>) – </p></li>
-<li><p><strong>debug</strong> (<em>bool</em>) – </p></li>
+<li><p><strong>json_instructions</strong> (<em>json</em>)</p></li>
+<li><p><strong>debug</strong> (<em>bool</em>)</p></li>
 </ul>
 </dd>
 </dl>
@@ -510,8 +511,8 @@ the pipeline logic and data.</p>
 <dl class="field-list simple">
 <dt class="field-odd">Parameters<span class="colon">:</span></dt>
 <dd class="field-odd"><ul class="simple">
-<li><p><strong>behaviour</strong> (<em>instructions  The json instructions defining the</em>) – </p></li>
-<li><p><strong>key</strong> (<em>str</em>) – </p></li>
+<li><p><strong>behaviour</strong> (<em>instructions  The json instructions defining the</em>)</p></li>
+<li><p><strong>key</strong> (<em>str</em>)</p></li>
 </ul>
 </dd>
 </dl>
@@ -523,7 +524,7 @@ the pipeline logic and data.</p>
 <dd><p>Calculate and save depth estimates along the river mouth fan.</p>
 <dl class="field-list simple">
 <dt class="field-odd">Parameters<span class="colon">:</span></dt>
-<dd class="field-odd"><p><strong>defaults</strong> (<em>dict</em>) – </p>
+<dd class="field-odd"><p><strong>defaults</strong> (<em>dict</em>)</p>
 </dd>
 </dl>
 </dd></dl>
@@ -550,8 +551,8 @@ data.</p>
 <dl class="field-list simple">
 <dt class="field-odd">Parameters<span class="colon">:</span></dt>
 <dd class="field-odd"><ul class="simple">
-<li><p><strong>json_instructions</strong> (<em>json</em>) – </p></li>
-<li><p><strong>debug</strong> (<em>bool</em>) – </p></li>
+<li><p><strong>json_instructions</strong> (<em>json</em>)</p></li>
+<li><p><strong>debug</strong> (<em>bool</em>)</p></li>
 </ul>
 </dd>
 </dl>
@@ -613,7 +614,7 @@ data.</p>
 <dd><p>Return true if the DEMs are required for later processing</p>
 <dl class="field-list simple">
 <dt class="field-odd">Parameters<span class="colon">:</span></dt>
-<dd class="field-odd"><p><strong>behaviour</strong> (<em>instructions  The json instructions defining the</em>) – </p>
+<dd class="field-odd"><p><strong>behaviour</strong> (<em>instructions  The json instructions defining the</em>)</p>
 </dd>
 <dt class="field-even">Return type<span class="colon">:</span></dt>
 <dd class="field-even"><p>bool</p>
@@ -628,9 +629,9 @@ data.</p>
 <dl class="field-list simple">
 <dt class="field-odd">Parameters<span class="colon">:</span></dt>
 <dd class="field-odd"><ul class="simple">
-<li><p><strong>behaviour</strong> (<em>instructions  The json instructions defining the</em>) – </p></li>
-<li><p><strong>key</strong> (<em>str</em>) – </p></li>
-<li><p><strong>name</strong> (<em>str</em>) – </p></li>
+<li><p><strong>behaviour</strong> (<em>instructions  The json instructions defining the</em>)</p></li>
+<li><p><strong>key</strong> (<em>str</em>)</p></li>
+<li><p><strong>name</strong> (<em>str</em>)</p></li>
 </ul>
 </dd>
 <dt class="field-even">Return type<span class="colon">:</span></dt>
@@ -646,9 +647,9 @@ data.</p>
 <dl class="field-list simple">
 <dt class="field-odd">Parameters<span class="colon">:</span></dt>
 <dd class="field-odd"><ul class="simple">
-<li><p><strong>behaviour</strong> (<em>instructions  The json instructions defining the</em>) – </p></li>
-<li><p><strong>key</strong> (<em>str</em>) – </p></li>
-<li><p><strong>name</strong> (<em>str</em>) – </p></li>
+<li><p><strong>behaviour</strong> (<em>instructions  The json instructions defining the</em>)</p></li>
+<li><p><strong>key</strong> (<em>str</em>)</p></li>
+<li><p><strong>name</strong> (<em>str</em>)</p></li>
 </ul>
 </dd>
 <dt class="field-even">Return type<span class="colon">:</span></dt>
@@ -664,8 +665,8 @@ data.</p>
 <dl class="field-list simple">
 <dt class="field-odd">Parameters<span class="colon">:</span></dt>
 <dd class="field-odd"><ul class="simple">
-<li><p><strong>behaviour</strong> (<em>instructions  The json instructions defining the</em>) – </p></li>
-<li><p><strong>key</strong> (<em>str</em>) – </p></li>
+<li><p><strong>behaviour</strong> (<em>instructions  The json instructions defining the</em>)</p></li>
+<li><p><strong>key</strong> (<em>str</em>)</p></li>
 </ul>
 </dd>
 </dl>
@@ -690,8 +691,8 @@ or load it.</p>
 <dl class="field-list simple">
 <dt class="field-odd">Parameters<span class="colon">:</span></dt>
 <dd class="field-odd"><ul class="simple">
-<li><p><strong>behaviour</strong> (<em>instructions  The json instructions defining the</em>) – </p></li>
-<li><p><strong>channel</strong> (<a class="reference internal" href="../geometry/index.html#geofabrics.geometry.CatchmentGeometry" title="geofabrics.geometry.CatchmentGeometry"><em>geofabrics.geometry.CatchmentGeometry</em></a>) – </p></li>
+<li><p><strong>behaviour</strong> (<em>instructions  The json instructions defining the</em>)</p></li>
+<li><p><strong>channel</strong> (<a class="reference internal" href="../geometry/index.html#geofabrics.geometry.CatchmentGeometry" title="geofabrics.geometry.CatchmentGeometry"><em>geofabrics.geometry.CatchmentGeometry</em></a>)</p></li>
 </ul>
 </dd>
 <dt class="field-even">Return type<span class="colon">:</span></dt>
@@ -709,9 +710,9 @@ channel.</p>
 <dt class="field-odd">Parameters<span class="colon">:</span></dt>
 <dd class="field-odd"><ul class="simple">
 <li><p><strong>other</strong> (<em>channel_width  The class for characterising channel width and</em>) – properties</p></li>
-<li><p><strong>alignment</strong> (<em>channel  The river network defined channel</em>) – </p></li>
-<li><p><strong>channel_width</strong> (<a class="reference internal" href="../bathymetry_estimation/index.html#geofabrics.bathymetry_estimation.ChannelCharacteristics" title="geofabrics.bathymetry_estimation.ChannelCharacteristics"><em>geofabrics.bathymetry_estimation.ChannelCharacteristics</em></a>) – </p></li>
-<li><p><strong>channel</strong> (<a class="reference internal" href="../bathymetry_estimation/index.html#geofabrics.bathymetry_estimation.Channel" title="geofabrics.bathymetry_estimation.Channel"><em>geofabrics.bathymetry_estimation.Channel</em></a>) – </p></li>
+<li><p><strong>alignment</strong> (<em>channel  The river network defined channel</em>)</p></li>
+<li><p><strong>channel_width</strong> (<a class="reference internal" href="../bathymetry_estimation/index.html#geofabrics.bathymetry_estimation.ChannelCharacteristics" title="geofabrics.bathymetry_estimation.ChannelCharacteristics"><em>geofabrics.bathymetry_estimation.ChannelCharacteristics</em></a>)</p></li>
+<li><p><strong>channel</strong> (<a class="reference internal" href="../bathymetry_estimation/index.html#geofabrics.bathymetry_estimation.Channel" title="geofabrics.bathymetry_estimation.Channel"><em>geofabrics.bathymetry_estimation.Channel</em></a>)</p></li>
 </ul>
 </dd>
 <dt class="field-even">Return type<span class="colon">:</span></dt>
@@ -729,9 +730,9 @@ channel.</p>
 <dt class="field-odd">Parameters<span class="colon">:</span></dt>
 <dd class="field-odd"><ul class="simple">
 <li><p><strong>other</strong> (<em>channel_width  The class for characterising channel width and</em>) – properties</p></li>
-<li><p><strong>alignment</strong> (<em>channel  The river network defined channel</em>) – </p></li>
-<li><p><strong>channel_width</strong> (<a class="reference internal" href="../bathymetry_estimation/index.html#geofabrics.bathymetry_estimation.ChannelCharacteristics" title="geofabrics.bathymetry_estimation.ChannelCharacteristics"><em>geofabrics.bathymetry_estimation.ChannelCharacteristics</em></a>) – </p></li>
-<li><p><strong>aligned_channel</strong> (<em>geopandas.GeoDataFrame</em>) – </p></li>
+<li><p><strong>alignment</strong> (<em>channel  The river network defined channel</em>)</p></li>
+<li><p><strong>channel_width</strong> (<a class="reference internal" href="../bathymetry_estimation/index.html#geofabrics.bathymetry_estimation.ChannelCharacteristics" title="geofabrics.bathymetry_estimation.ChannelCharacteristics"><em>geofabrics.bathymetry_estimation.ChannelCharacteristics</em></a>)</p></li>
+<li><p><strong>aligned_channel</strong> (<em>geopandas.GeoDataFrame</em>)</p></li>
 </ul>
 </dd>
 <dt class="field-even">Return type<span class="colon">:</span></dt>
@@ -808,8 +809,8 @@ to be the tunnel elevation, and ensuring opne waterways flow downhill.</p>
 <dl class="field-list simple">
 <dt class="field-odd">Parameters<span class="colon">:</span></dt>
 <dd class="field-odd"><ul class="simple">
-<li><p><strong>json_instructions</strong> (<em>json</em>) – </p></li>
-<li><p><strong>debug</strong> (<em>bool</em>) – </p></li>
+<li><p><strong>json_instructions</strong> (<em>json</em>)</p></li>
+<li><p><strong>debug</strong> (<em>bool</em>)</p></li>
 </ul>
 </dd>
 </dl>
@@ -819,7 +820,7 @@ to be the tunnel elevation, and ensuring opne waterways flow downhill.</p>
 <dd><p>Return the name of the file to save.</p>
 <dl class="field-list simple">
 <dt class="field-odd">Parameters<span class="colon">:</span></dt>
-<dd class="field-odd"><p><strong>key</strong> (<em>str</em>) – </p>
+<dd class="field-odd"><p><strong>key</strong> (<em>str</em>)</p>
 </dd>
 <dt class="field-even">Return type<span class="colon">:</span></dt>
 <dd class="field-even"><p>str</p>
@@ -834,8 +835,8 @@ to be the tunnel elevation, and ensuring opne waterways flow downhill.</p>
 <dl class="field-list simple">
 <dt class="field-odd">Parameters<span class="colon">:</span></dt>
 <dd class="field-odd"><ul class="simple">
-<li><p><strong>behaviour</strong> (<em>instructions  The json instructions defining the</em>) – </p></li>
-<li><p><strong>key</strong> (<em>str</em>) – </p></li>
+<li><p><strong>behaviour</strong> (<em>instructions  The json instructions defining the</em>)</p></li>
+<li><p><strong>key</strong> (<em>str</em>)</p></li>
 </ul>
 </dd>
 <dt class="field-even">Return type<span class="colon">:</span></dt>
@@ -860,8 +861,8 @@ then returning the minimum elevation.</p>
 <dl class="field-list simple">
 <dt class="field-odd">Parameters<span class="colon">:</span></dt>
 <dd class="field-odd"><ul class="simple">
-<li><p><strong>geometry</strong> (<em>shapely.geometry.Polygon</em>) – </p></li>
-<li><p><strong>dem</strong> (<em>xarray.Dataset</em>) – </p></li>
+<li><p><strong>geometry</strong> (<em>shapely.geometry.Polygon</em>)</p></li>
+<li><p><strong>dem</strong> (<em>xarray.Dataset</em>)</p></li>
 </ul>
 </dd>
 </dl>
@@ -874,8 +875,8 @@ then returning the minimum elevation.</p>
 <dl class="field-list simple">
 <dt class="field-odd">Parameters<span class="colon">:</span></dt>
 <dd class="field-odd"><ul class="simple">
-<li><p><strong>waterways</strong> (<em>geopandas.GeoDataFrame</em>) – </p></li>
-<li><p><strong>dem</strong> (<em>xarray.Dataset</em>) – </p></li>
+<li><p><strong>waterways</strong> (<em>geopandas.GeoDataFrame</em>)</p></li>
+<li><p><strong>dem</strong> (<em>xarray.Dataset</em>)</p></li>
 </ul>
 </dd>
 </dl>
@@ -888,8 +889,8 @@ then returning the minimum elevation.</p>
 <dl class="field-list simple">
 <dt class="field-odd">Parameters<span class="colon">:</span></dt>
 <dd class="field-odd"><ul class="simple">
-<li><p><strong>waterways</strong> (<em>geopandas.GeoDataFrame</em>) – </p></li>
-<li><p><strong>dem</strong> (<em>xarray.Dataset</em>) – </p></li>
+<li><p><strong>waterways</strong> (<em>geopandas.GeoDataFrame</em>)</p></li>
+<li><p><strong>dem</strong> (<em>xarray.Dataset</em>)</p></li>
 </ul>
 </dd>
 </dl>
@@ -901,7 +902,7 @@ then returning the minimum elevation.</p>
 <dd><p>Create and return a DEM at a resolution 1.5x the waterway width.</p>
 <dl class="field-list simple">
 <dt class="field-odd">Parameters<span class="colon">:</span></dt>
-<dd class="field-odd"><p><strong>waterways</strong> (<em>geopandas.GeoDataFrame</em>) – </p>
+<dd class="field-odd"><p><strong>waterways</strong> (<em>geopandas.GeoDataFrame</em>)</p>
 </dd>
 <dt class="field-even">Return type<span class="colon">:</span></dt>
 <dd class="field-even"><p>xarray.Dataset</p>
@@ -936,7 +937,6 @@ then returning the minimum elevation.</p>
 
 </dd></dl>
 
-</section>
 </section>
 </section>
 

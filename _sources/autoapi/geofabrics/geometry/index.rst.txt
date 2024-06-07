@@ -1,5 +1,5 @@
-:py:mod:`geofabrics.geometry`
-=============================
+geofabrics.geometry
+===================
 
 .. py:module:: geofabrics.geometry
 
@@ -9,11 +9,8 @@
 
 
 
-Module Contents
----------------
-
 Classes
-~~~~~~~
+-------
 
 .. autoapisummary::
 
@@ -25,10 +22,10 @@ Classes
    geofabrics.geometry.RiverMouthFan
 
 
-
+Module Contents
+---------------
 
 .. py:class:: CatchmentGeometry(catchment_file, crs, resolution, foreshore_buffer = 2)
-
 
    A class defining revelant catchment regions by polygons.
 
@@ -54,37 +51,39 @@ Classes
    (i.e. land, offshore,
    foreshore, etc) can be accessed.
 
-   .. py:property:: catchment
 
+   .. py:property:: catchment
       Return the catchment region
 
-   .. py:property:: land
 
+   .. py:property:: land
       Return the catchment land region
 
-   .. py:property:: full_land
 
+   .. py:property:: full_land
       Return the full land region
 
-   .. py:property:: foreshore
 
+   .. py:property:: foreshore
       Return the catchment foreshore region
 
-   .. py:property:: land_and_foreshore
 
+   .. py:property:: land_and_foreshore
       Return the catchment land and foreshore region
 
-   .. py:property:: foreshore_and_offshore
 
+   .. py:property:: foreshore_and_offshore
       Return the catchment foreshore and offshore region
 
-   .. py:property:: offshore
 
+   .. py:property:: offshore
       Return the catchment offshore region
+
 
    .. py:method:: land_and_foreshore_without_lidar(dense_extents)
 
       Return the land and foreshore region without LiDAR
+
 
 
    .. py:method:: offshore_without_lidar(dense_extents)
@@ -92,10 +91,12 @@ Classes
       Return the offshore region without LiDAR
 
 
+
    .. py:method:: offshore_dense_data_edge(dense_extents)
 
       Return the offshore edge of where there is 'dense data' i.e. LiDAR or
       reference DEM
+
 
 
    .. py:method:: offshore_no_dense_data(lidar_extents)
@@ -106,10 +107,10 @@ Classes
 
 .. py:class:: BathymetryContours(contour_file, catchment_geometry, z_label=None, exclusion_extent=None)
 
-
    A class for sampling from bathymetry contours.
 
    Assumes contours to be sampled to the catchment_geometry resolution
+
 
    .. py:method:: sample_contours(resolution)
 
@@ -119,63 +120,53 @@ Classes
 
 .. py:class:: MarineBathymetryPoints(points_file, catchment_geometry, exclusion_extent=None)
 
-
    A class for accesing marine bathymetry points. These can be used as
    depths to interpolate elevations offshore.
 
-   .. py:property:: points
 
+   .. py:property:: points
       Return the points
 
-   .. py:property:: x
 
+   .. py:property:: x
       The x values
 
-   .. py:property:: y
 
+   .. py:property:: y
       The y values
 
-   .. py:property:: z
 
+   .. py:property:: z
       The z values
 
 
 .. py:class:: EstimatedBathymetryPoints(points_files, polygon_files, catchment_geometry, filter_osm_ids = [], z_labels = None)
 
-
    A class for accessing river and mouth bathymetry points. Paired river
    and mouth elevation and polygon files are expected. These depths can be
    used to interpolate elevations within the river and mouth polygon.
+
 
    .. py:property:: polygons
       :type: geopandas.GeoDataFrame
 
       Return the polygons.
 
+
    .. py:property:: points_array
       :type: numpy.ndarray
 
       Return the points as a single array.
 
-   .. py:property:: points
 
+   .. py:property:: points
       Return the points
 
-   .. py:property:: x
-
-      The x values
-
-   .. py:property:: y
-
-      The y values
-
-   .. py:property:: z
-
-      The z values
 
    .. py:method:: bank_heights_exist()
 
       Return true if the bank heights are defined in array
+
 
 
    .. py:method:: bank_height_points()
@@ -184,18 +175,28 @@ Classes
 
 
 
-.. py:class:: TileInfo(tile_file, catchment_geometry)
+   .. py:property:: x
+      The x values
 
+
+   .. py:property:: y
+      The y values
+
+
+   .. py:property:: z
+      The z values
+
+
+.. py:class:: TileInfo(tile_file, catchment_geometry)
 
    A class for working with tiling information.
 
-   .. py:property:: tile_names
 
+   .. py:property:: tile_names
       Return the names of all tiles within the catchment
 
 
 .. py:class:: RiverMouthFan(aligned_channel_file, river_bathymetry_file, river_polygon_file, ocean_contour_file, crs, cross_section_spacing, elevation_labels, ocean_contour_depth_label = None)
-
 
    A class for creating an appropiate river mouth fan to transition from
    river depth estimates to the ocean bathymetry values. This fan region defines a
@@ -233,6 +234,7 @@ Classes
    .. attribute:: ocean_contour_depth_label  The column label for the depth values.
 
       
+
 
    .. py:method:: polygon_and_bathymetry()
 

@@ -1,5 +1,5 @@
-:py:mod:`geofabrics`
-====================
+geofabrics
+==========
 
 .. py:module:: geofabrics
 
@@ -18,16 +18,16 @@
 
 Submodules
 ----------
+
 .. toctree::
-   :titlesonly:
    :maxdepth: 1
 
-   __main__/index.rst
-   bathymetry_estimation/index.rst
-   dem/index.rst
-   geometry/index.rst
-   processor/index.rst
-   runner/index.rst
-   version/index.rst
+   /autoapi/geofabrics/__main__/index
+   /autoapi/geofabrics/bathymetry_estimation/index
+   /autoapi/geofabrics/dem/index
+   /autoapi/geofabrics/geometry/index
+   /autoapi/geofabrics/processor/index
+   /autoapi/geofabrics/runner/index
+   /autoapi/geofabrics/version/index
 
 

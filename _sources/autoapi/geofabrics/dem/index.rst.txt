@@ -1,5 +1,5 @@
-:py:mod:`geofabrics.dem`
-========================
+geofabrics.dem
+==============
 
 .. py:module:: geofabrics.dem
 
@@ -10,11 +10,18 @@
 
 
 
-Module Contents
----------------
+Attributes
+----------
+
+.. autoapisummary::
+
+   geofabrics.dem.delayed_chunk_coarse_dem
+   geofabrics.dem.delayed_roughness_over_chunk
+   geofabrics.dem.delayed_elevation_over_chunk
+
 
 Classes
-~~~~~~~
+-------
 
 .. autoapisummary::
 
@@ -26,9 +33,8 @@ Classes
    geofabrics.dem.RoughnessDem
 
 
-
 Functions
-~~~~~~~~~
+---------
 
 .. autoapisummary::
 
@@ -43,19 +49,10 @@ Functions
    geofabrics.dem.chunk_coarse_dem
 
 
-
-Attributes
-~~~~~~~~~~
-
-.. autoapisummary::
-
-   geofabrics.dem.delayed_chunk_coarse_dem
-   geofabrics.dem.delayed_roughness_over_chunk
-   geofabrics.dem.delayed_elevation_over_chunk
-
+Module Contents
+---------------
 
 .. py:class:: CoarseDem(dem_file, extents, set_foreshore = True)
-
 
    A class to manage coarse or background DEMs in the catchment context
 
@@ -65,15 +62,24 @@ Attributes
 
    If set_foreshore is True all positive DEM values in the foreshore are set to zero.
 
+
+   .. py:method:: __del__()
+
+      Ensure the memory associated with netCDF files is properly freed.
+
+
+
    .. py:property:: dem
       :type: xarray.Dataset
 
       Return the DEM over the catchment region
 
+
    .. py:property:: resolution
       :type: float
 
       Return the largest dimension of the coarse DEM resolution
+
 
    .. py:property:: points
       :type: numpy.ndarray
@@ -81,19 +87,17 @@ Attributes
       The coarse DEM points after any extent or foreshore value
       filtering.
 
+
    .. py:property:: extents
       :type: geopandas.GeoDataFrame
 
       The extents for the coarse DEM
 
+
    .. py:property:: empty
       :type: bool
 
       True if the DEM is empty
-
-   .. py:method:: __del__()
-
-      Ensure the memory associated with netCDF files is properly freed.
 
 
    .. py:method:: calculate_dem_bounds(dem)
@@ -104,8 +108,8 @@ Attributes
 
 .. py:class:: DemBase(catchment_geometry, chunk_size)
 
-
    Bases: :py:obj:`abc.ABC`
+
 
    An abstract class to manage the different geofabric layers in a
    catchment context. The geofabruc has a z, and data_source layer and may
@@ -121,11 +125,14 @@ Attributes
                               regions
    :param extents: Defines the extents of any dense (LiDAR or refernence DEM) values already added.
 
+
    .. py:property:: dem
       :type: xarray.Dataset
+
       :abstractmethod:
 
       Return the DEM over the catchment region
+
 
    .. py:method:: save_dem(filename, dem, compression = None)
 
@@ -138,8 +145,8 @@ Attributes
 
 .. py:class:: HydrologicallyConditionedDem(catchment_geometry, raw_dem_path, interpolation_method, chunk_size)
 
-
    Bases: :py:obj:`DemBase`
+
 
    A class to manage loading in an already created and saved dense DEM that has yet
    to have an offshore DEM associated with it.
@@ -149,17 +156,19 @@ Attributes
                                            If not None, interpolate using that method. Valid options are 'linear',
                                            'nearest', and 'cubic'
 
-   .. py:property:: raw_extents
-
-      Return the combined DEM from tiles and any interpolated offshore values
-
-   .. py:property:: dem
-
-      Return the combined DEM from tiles and any interpolated offshore values
 
    .. py:method:: __del__()
 
       Ensure the memory associated with netCDF files is properly freed.
+
+
+
+   .. py:property:: raw_extents
+      Return the combined DEM from tiles and any interpolated offshore values
+
+
+   .. py:property:: dem
+      Return the combined DEM from tiles and any interpolated offshore values
 
 
    .. py:method:: interpolate_ocean_bathymetry(bathy_contours)
@@ -168,9 +177,11 @@ Attributes
       function.
 
 
+
    .. py:method:: interpolate_waterways(estimated_bathymetry, method)
 
       Performs interpolation of the estimated waterways.
+
 
 
    .. py:method:: interpolate_rivers(estimated_bathymetry, method)
@@ -183,25 +194,28 @@ Attributes
 
 .. py:class:: LidarBase(catchment_geometry, chunk_size, elevation_range = None)
 
-
    Bases: :py:obj:`DemBase`
+
 
    A class with some base methods for reading in LiDAR data.
 
    :param catchment_geometry: Defines the geometry of the catchment
    :param elevation_range: The range of valid LiDAR elevations. i.e. define elevation filtering to apply.
 
-   .. py:property:: dem
-
-      Return the positivelly indexed DEM from tiles
 
    .. py:method:: __del__()
 
       Ensure the memory associated with netCDF files is properly freed.
 
 
+
+   .. py:property:: dem
+      Return the positivelly indexed DEM from tiles
+
+
    .. py:method:: add_lidar(lidar_datasets_info, chunk_size, lidar_classifications_to_keep, metadata)
       :abstractmethod:
+
 
       Read in all LiDAR files and use to create a 'raw' DEM.
 
@@ -215,6 +229,7 @@ Attributes
                         `dataset_mapping` key if datasets (not a single LAZ file) included.
 
 
+
    .. py:method:: save_and_load_dem(filename)
 
       Update the saved file cache for the DEM (self._dem) as a netCDF file.
@@ -223,8 +238,8 @@ Attributes
 
 .. py:class:: RawDem(catchment_geometry, lidar_interpolation_method, drop_offshore_lidar, buffer_cells, elevation_range = None, chunk_size = None)
 
-
    Bases: :py:obj:`LidarBase`
+
 
    A class to manage the creation of a 'raw' DEM from LiDAR tiles, and/or a
    coarse DEM.
@@ -238,9 +253,6 @@ Attributes
    :param buffer_cells - the number of empty cells to keep around LiDAR cells for: interpolation after the coarse DEM added to ensure a smooth boundary.
    :param chunk_size: The chunk size in pixels for parallel/staged processing
 
-   .. py:property:: no_values_mask
-
-      No values mask from DEM within land and foreshore region
 
    .. py:method:: add_lidar(lidar_datasets_info, lidar_classifications_to_keep, metadata)
 
@@ -255,9 +267,11 @@ Attributes
                         `dataset_mapping` key if datasets (not a single LAZ file) included.
 
 
+
    .. py:method:: clip_lidar()
 
       Clip the  a 'raw' DEM. Should be called immediately after the add_lidar function.
+
 
 
    .. py:method:: add_coarse_dem(coarse_dem_path, area_threshold)
@@ -273,10 +287,14 @@ Attributes
 
 
 
+   .. py:property:: no_values_mask
+      No values mask from DEM within land and foreshore region
+
+
 .. py:class:: RoughnessDem(catchment_geometry, hydrological_dem_path, temp_folder, interpolation_method, default_values, drop_offshore_lidar, chunk_size = None, elevation_range = None)
 
-
    Bases: :py:obj:`LidarBase`
+
 
    A class to add a roughness (zo) layer to a hydrologically conditioned DEM.
 
@@ -291,6 +309,7 @@ Attributes
    :param interpolation_method: If not None, interpolate using that method. Valid options are 'linear',
                                 'nearest', and 'cubic'.
    :param lidar_interpolation_method: The interpolation method to apply to LiDAR. Options are: mean, median, IDW.
+
 
    .. py:method:: add_lidar(lidar_datasets_info, lidar_classifications_to_keep, metadata, parameters)
 

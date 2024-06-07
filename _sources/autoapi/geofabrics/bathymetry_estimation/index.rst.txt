@@ -1,5 +1,5 @@
-:py:mod:`geofabrics.bathymetry_estimation`
-==========================================
+geofabrics.bathymetry_estimation
+================================
 
 .. py:module:: geofabrics.bathymetry_estimation
 
@@ -10,11 +10,8 @@
 
 
 
-Module Contents
----------------
-
 Classes
-~~~~~~~
+-------
 
 .. autoapisummary::
 
@@ -23,15 +20,16 @@ Classes
    geofabrics.bathymetry_estimation.ChannelCharacteristics
 
 
-
 Functions
-~~~~~~~~~
+---------
 
 .. autoapisummary::
 
    geofabrics.bathymetry_estimation.node_centred_reach_cross_section
 
 
+Module Contents
+---------------
 
 .. py:function:: node_centred_reach_cross_section(sampled_channel, transect_radius)
 
@@ -44,11 +42,12 @@ Functions
 
 .. py:class:: Channel(channel, resolution, sampling_direction = 1)
 
-
    A class to define a channel centre line from a digital network.
+
 
    .. py:method:: from_network(network_file, crs, starting_id, resolution, area_threshold, name_dict, sampling_direction = -1)
       :classmethod:
+
 
       Create a channel object from a REC file.
 
@@ -60,6 +59,7 @@ Functions
       :param resolution: The resolution of the upstream polyline trace to create from the network.
       :param sampling_direction: The direction to sample each reach polyline. 1 if each reach is defined
                                  downstream to upstream, -1 otherwise.
+
 
 
    .. py:method:: get_parametric_spline_fit_points(k = 3, spacing = None)
@@ -74,6 +74,7 @@ Functions
       :param spacing: The spacing between sampled points along straight segments
 
 
+
    .. py:method:: get_parametric_spline_fit(k = 3, spacing = None)
 
       Return the spline smoothed polyline created from two splines defining a
@@ -84,6 +85,7 @@ Functions
 
       :param k: The polynomial degree. Should be off. 1 <= k <= 5.
       :param spacing: The spacing between sampled points along straight segments
+
 
 
    .. py:method:: get_b_spline_fit(smoothing_multiplier = 50, spacing = None)
@@ -97,6 +99,7 @@ Functions
       :param spacing: The spacing between sampled points along straight segments
 
 
+
    .. py:method:: get_b_spline_fit_points(smoothing_multiplier = 50, spacing = None)
 
       Return the spline smoothed polyline points created using a B-spline fit to
@@ -108,6 +111,7 @@ Functions
       :param spacing: The spacing between sampled points along straight segments
 
 
+
    .. py:method:: get_channel_catchment(corridor_radius)
 
       Create a catchment from the smooth channel and the specified
@@ -115,6 +119,7 @@ Functions
 
       :param corridor_radius: The radius of the channel corridor. This will determine the width of
                               the channel catchment.
+
 
 
    .. py:method:: get_spaced_points(channel, spacing, sampling_direction)
@@ -125,6 +130,7 @@ Functions
       :param spacing: The spacing between sampled points along straight segments
       :param sample_direction: Are the reaches sampled in the same direction they are ordered.
                                1 if in the same direction, -1 if in the opposite direction.
+
 
 
    .. py:method:: get_spaced_points_with_corners(channel, spacing, sampling_direction)
@@ -140,14 +146,15 @@ Functions
 
 .. py:class:: InterpolateMeasuredElevations(riverbank_file, measured_sections_file, thalweg_file, cross_section_spacing, crs)
 
-
    Interpolate measured river bed elevations. Requires LineStrings of
    riverbed elevations, and the LineStrings defining the left and right
    riverbank.
 
+
    .. py:method:: check_valid_inputs()
 
       Check expected entries in the input data
+
 
 
    .. py:method:: interpolate(samples_per_section, thalweg_centre = True)
@@ -157,11 +164,13 @@ Functions
       :param number_samples: The number of samples along each cross section.
 
 
+
    .. py:method:: uniform_spacing(samples_per_section, cross_sections)
 
       Interpolate with equally spaced points along each cross section
 
       :param number_samples: The number of samples along each cross section.
+
 
 
    .. py:method:: thalweg_centred_spacing(samples_per_section, cross_sections)
@@ -170,6 +179,7 @@ Functions
       of the Thalweg.
 
       :param number_samples: The number of samples along each cross section.
+
 
 
    .. py:method:: thalweg_from_measured_centred_spacing(samples_per_section, cross_sections, measured_sections_exploded)
@@ -183,9 +193,9 @@ Functions
 
 .. py:class:: ChannelCharacteristics(gnd_dem, veg_dem, cross_section_spacing, resolution, debug = False)
 
-
    A class to estimate the width, slope and other characteristics of a
    channel from a detailed DEM and a river network.
+
 
    .. py:property:: number_of_samples
       :type: int
@@ -194,10 +204,6 @@ Functions
       be an odd number. Subtract 1 instead of adding to ensure within the
       generated DEM.
 
-   .. py:property:: centre_index
-      :type: int
-
-      Return the centre index for samples taken along a transect.
 
    .. py:method:: calculate_min_z_start_i(min_z_search_radius)
 
@@ -205,6 +211,7 @@ Functions
       looking for the minimum z.
 
       :param min_z_search_radius: The distance to search from the centre.
+
 
 
    .. py:method:: calculate_min_z_stop_i(min_z_search_radius)
@@ -215,6 +222,13 @@ Functions
       :param min_z_search_radius: The distance to search from the centre.
 
 
+
+   .. py:property:: centre_index
+      :type: int
+
+      Return the centre index for samples taken along a transect.
+
+
    .. py:method:: sample_cross_sections(cross_sections, min_z_search_radius)
 
       Return the elevations along the cross_section sampled at the
@@ -223,6 +237,7 @@ Functions
 
       :param cross_sections: The cross_sections with geometry defined as polylines.
       :param min_z_search_radius: The distance to search from the centre.
+
 
 
    .. py:method:: fixed_thresholded_widths_from_centre_within_radius(cross_sections, cross_section_elevations, threshold, resolution, search_radius, min_channel_width)
@@ -238,6 +253,7 @@ Functions
       :param resolution: The resolution to sample at.
       :param search_radius: The distance to search side to side from the centre index.
       :param min_channel_width: The minimum width of a 'valid' channel.
+
 
 
    .. py:method:: variable_thresholded_widths_from_centre_within_radius(cross_sections, cross_section_elevations, threshold, resolution, search_radius, maximum_threshold, min_channel_width=float)
@@ -256,6 +272,7 @@ Functions
       :param min_channel_width: The minimum width of a 'valid' channel.
 
 
+
    .. py:method:: fixed_threshold_width(gnd_samples, veg_samples, start_index, z_water, threshold, search_radius_index, min_channel_width)
 
       Calculate the maximum width for a cross section given a fixed
@@ -272,6 +289,7 @@ Functions
       :param min_channel_width: The minimum width of a 'valid' channel.
 
 
+
    .. py:method:: fixed_threshold_width_outwards(gnd_samples, veg_samples, start_index, z_water, threshold)
 
       If the start_index is nan or less than the threshold, then cycle
@@ -282,6 +300,7 @@ Functions
       :param start_index: The index to start the outward search from.
       :param z_water: The elevation of the water.
       :param threshold: The height above the water level to detect as a bank.
+
 
 
    .. py:method:: fixed_threshold_width_forwards(gnd_samples, veg_samples, start_index, z_water, threshold, stop_index)
@@ -296,6 +315,7 @@ Functions
       :param stop_index: The maximum index to search through
 
 
+
    .. py:method:: fixed_threshold_width_backwards(gnd_samples, veg_samples, start_index, z_water, threshold, stop_index)
 
       Check for channels approaching backwards.
@@ -306,6 +326,7 @@ Functions
       :param z_water: The elevation of the water.
       :param threshold: The height above the water level to detect as a bank.
       :param stop_index: The minimum index to search through
+
 
 
    .. py:method:: align_channel(threshold, search_radius, min_channel_width, initial_channel, width_centre_smoothing_multiplier, cross_section_radius)
@@ -320,6 +341,7 @@ Functions
                                                 smoothing.
       :param cross_section_radius: The radius (or 1/2 length) of the cross sections along which to
                                    sample.
+
 
 
    .. py:method:: estimate_width_and_slope(aligned_channel, threshold, max_threshold, cross_section_radius, search_radius, min_channel_width)

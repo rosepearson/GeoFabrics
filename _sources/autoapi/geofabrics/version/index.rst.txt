@@ -1,5 +1,5 @@
-:py:mod:`geofabrics.version`
-============================
+geofabrics.version
+==================
 
 .. py:module:: geofabrics.version
 
