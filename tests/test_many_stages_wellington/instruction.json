@@ -108,7 +108,8 @@
 		},
 		"waterways": {
 			"widths": {"drain": 5, "stream": 7.5, "river": 10}
-		}
+		},
+		"source": "osm"
 	},
 	"dem":
 	{

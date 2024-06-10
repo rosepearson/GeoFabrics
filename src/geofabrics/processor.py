@@ -3044,8 +3044,15 @@ class WaterwayBedElevationEstimator(BaseProcessor):
         # Load in catchment
         self.catchment_geometry = self.create_catchment()
 
-        # Download waterways and tunnels from OSM
-        waterways = self.download_osm_values()
+        # Download waterways and tunnels from OSM - the only option currently
+        if "source" not in self.instructions["waterways"]:
+            self.instructions["waterways"]["source"] = "osm"
+        if ("source" in self.instructions["waterways"] and "osm" == self.instructions["waterways"]["source"]):    
+            waterways = self.download_osm_values()
+        else:
+            self.logger.error("'osm' standing for OpenStreetMaps is the only "
+                              "'source' currently supported. Please log an "
+                              "issue on GitHub if you want another added.")
 
         # There are no waterways to write out empty files and exit
         if len(waterways) == 0:
