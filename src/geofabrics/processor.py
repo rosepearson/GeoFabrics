@@ -161,6 +161,45 @@ class BaseProcessor(abc.ABC):
         results_folder = self.get_instruction_path("subfolder")
         results_folder.mkdir(parents=True, exist_ok=True)
 
+    def save_dem(self, filename: pathlib.Path, dataset: xarray.Dataset, generator: dem.DemBase):
+        """ Save out the dem/geofabrics labelled array.
+
+        Parameters
+        ----------
+
+        filename
+            The filename including extension to save the DEM/geofabric to.
+        dataset
+            The labelled array data to save.
+        generator
+            The dem.DemBase object with a 'save_dem' function.
+        """
+
+        if filename.suffix.lower() == ".nc":
+            self.logger.info(
+                "In processor.DemGenerator - write out the raw DEM to "
+                f"netCDF: {filename}"
+            )
+            compression = {"zlib": True, "complevel": 1}
+        elif filename.suffix.lower() == ".tif":
+            self.logger.info(
+                "In processor.DemGenerator - write out the raw DEM as a "
+                f"series of GeoTiff's': {filename.stem}_data_source.tif, "
+                f"{filename.stem}_lidar_source.tif, "
+                f"{filename.stem}_dem.tif"
+            )
+            compression = True
+        else:
+            raise ValueError(
+                "In processor.DemGenerator - unsupported DEM file extension "
+                f" of {filename.suffix}. Only .nc and .tif are supported."
+            )
+        generator.save_dem(
+            filename=filename,
+            dem=dataset,
+            compression=compression,
+        )
+
     def get_resolution(self) -> float:
         """Return the resolution from the instruction file. Raise an error if
         not in the instructions."""
@@ -966,26 +1005,10 @@ class RawLidarDemGenerator(BaseProcessor):
                     cached_file = temp_file
 
             # compute and save raw DEM
-            file_name = pathlib.Path(self.get_instruction_path("raw_dem"))
-            if file_name.suffix.lower() == ".nc":
-                self.logger.info(
-                    "In processor.DemGenerator - write out the raw DEM to "
-                    f"netCDF: {file_name}"
-                )
-                compression = {"zlib": True, "complevel": 1}
-                
-            elif file_name.suffix.lower() == ".nc":
-                self.logger.info(
-                    "In processor.DemGenerator - write out the raw DEM as a "
-                    f"series of GeoTiff's': {file_name.stem}_data_source.tif, "
-                    f"{file_name.stem}_lidar_source.tif, "
-                    f"{file_name.stem}_dem.tif"
-                )
-                compression = True
-            self.raw_dem.save_dem(
-                self.get_instruction_path("raw_dem"),
-                dem=self.raw_dem.dem,
-                compression=compression,
+            self.save_dem(
+                filename=pathlib.Path(self.get_instruction_path("raw_dem")),
+                dataset=self.raw_dem.dem,
+                generator=self.raw_dem,
             )
             self.logger.info(f"Remove folder {temp_folder} for temporary files")
             shutil.rmtree(temp_folder)
@@ -1187,18 +1210,17 @@ class HydrologicDemGenerator(BaseProcessor):
                 "In processor.DemGenerator - write out the raw DEM to netCDF"
             )
             try:
-                compression = {"zlib": True, "complevel": 1}
-                self.hydrologic_dem.save_dem(
-                    self.get_instruction_path("result_dem"),
-                    dem=self.hydrologic_dem.dem,
-                    compression=compression,
+                self.save_dem(
+                    filename=self.get_instruction_path("result_dem"),
+                    dataset=self.hydrologic_dem.dem,
+                    generator=self.hydrologic_dem
                 )
             except (Exception, KeyboardInterrupt) as caught_exception:
-                pathlib.Path(self.get_instruction_path("raw_dem")).unlink()
+                pathlib.Path(self.get_instruction_path("result_dem")).unlink()
                 self.logger.info(
                     f"Caught error {caught_exception} and deleting"
                     "partially created netCDF output "
-                    f"{self.get_instruction_path('raw_dem')}"
+                    f"{self.get_instruction_path('result_dem')}"
                     " before re-raising error."
                 )
                 raise caught_exception
@@ -1376,11 +1398,10 @@ class RoughnessLengthGenerator(BaseProcessor):
                 "the raw DEM to netCDF: "
                 f"{self.get_instruction_path('result_geofabric')}"
             )
-            compression = {"zlib": True, "complevel": 1}
-            self.roughness_dem.save_dem(
+            self.save_dem(
                 filename=self.get_instruction_path("result_geofabric"),
-                dem=self.roughness_dem.dem,
-                compression=compression,
+                dataset=self.roughness_dem.dem,
+                generator=self.roughness_dem,
             )
             self.logger.info(
                 "In processor.RoughnessLengthGenerator - clean folder for "

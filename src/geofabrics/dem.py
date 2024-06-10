@@ -348,8 +348,9 @@ class DemBase(abc.ABC):
     ):
         """Save the DEM to a netCDF file.
 
-        :param filename: .nc file where to save the DEM
-        :param reload: reload DEM from the saved file
+        :param filename: .nc or .tif file to save the DEM.
+        :param dem: the DEM to save.
+        :param compression: the compression instructions if compressing.
         """
 
         assert not any(
@@ -371,11 +372,13 @@ class DemBase(abc.ABC):
                 else:
                     dem.to_netcdf(filename, format="NETCDF4", engine="netcdf4")
             elif filename.suffix.lower() == ".tif":
-                for data_var in dem.data_vars:
-                    filename_layer = filename.parent / f"{filename.stem}_{data_var}{filename.suffix}"
-                    data_var.encoding = {'dtype': data_var.dtype, 'grid_mapping': dem.encoding['grid_mapping'], 'rasterio_dtype': data_var.dtype}
+                for key, array in dem.data_vars.items():
+                    filename_layer = filename.parent / f"{filename.stem}_{key}{filename.suffix}"
+                    array.encoding = {'dtype': array.dtype, 'grid_mapping': array.encoding['grid_mapping'], 'rasterio_dtype': array.dtype}
                     if compression:
-                        data_var.rio.to_raster(filename_layer, compress='deflate')
+                        array.rio.to_raster(filename_layer, compress='deflate')
+                    else:
+                        array.rio.to_raster(filename_layer)
             dem.close()
 
         except (Exception, KeyboardInterrupt) as caught_exception:
