@@ -346,7 +346,7 @@ class DemBase(abc.ABC):
     def save_dem(
         self, filename: pathlib.Path, dem: xarray.Dataset, compression: dict = None
     ):
-        """Save the DEM to a netCDF file and optionally reload it
+        """Save the DEM to a netCDF file.
 
         :param filename: .nc file where to save the DEM
         :param reload: reload DEM from the saved file
@@ -358,17 +358,24 @@ class DemBase(abc.ABC):
 
         try:
             self._write_netcdf_conventions_in_place(dem, self.catchment_geometry.crs)
-            if compression is not None:
-                compression["grid_mapping"] = dem.encoding["grid_mapping"]
-                encoding = {}
-                for key in dem.data_vars:
-                    compression["dtype"] = dem[key].dtype
-                    encoding[key] = compression
-                dem.to_netcdf(
-                    filename, format="NETCDF4", engine="netcdf4", encoding=encoding
-                )
-            else:
-                dem.to_netcdf(filename, format="NETCDF4", engine="netcdf4")
+            if filename.suffix.lower() == ".nc":
+                if compression is not None:
+                    compression["grid_mapping"] = dem.encoding["grid_mapping"]
+                    encoding = {}
+                    for key in dem.data_vars:
+                        compression["dtype"] = dem[key].dtype
+                        encoding[key] = compression
+                    dem.to_netcdf(
+                        filename, format="NETCDF4", engine="netcdf4", encoding=encoding
+                    )
+                else:
+                    dem.to_netcdf(filename, format="NETCDF4", engine="netcdf4")
+            elif filename.suffix.lower() == ".tif":
+                for data_var in dem.data_vars:
+                    filename_layer = filename.parent / f"{filename.stem}_{data_var}{filename.suffix}"
+                    data_var.encoding = {'dtype': data_var.dtype, 'grid_mapping': dem.encoding['grid_mapping'], 'rasterio_dtype': data_var.dtype}
+                    if compression:
+                        data_var.rio.to_raster(filename_layer, compress='deflate')
             dem.close()
 
         except (Exception, KeyboardInterrupt) as caught_exception:

@@ -966,11 +966,22 @@ class RawLidarDemGenerator(BaseProcessor):
                     cached_file = temp_file
 
             # compute and save raw DEM
-            self.logger.info(
-                "In processor.DemGenerator - write out the raw DEM to netCDF: "
-                f"{self.get_instruction_path('raw_dem')}"
-            )
-            compression = {"zlib": True, "complevel": 1}
+            file_name = pathlib.Path(self.get_instruction_path("raw_dem"))
+            if file_name.suffix.lower() == ".nc":
+                self.logger.info(
+                    "In processor.DemGenerator - write out the raw DEM to "
+                    f"netCDF: {file_name}"
+                )
+                compression = {"zlib": True, "complevel": 1}
+                
+            elif file_name.suffix.lower() == ".nc":
+                self.logger.info(
+                    "In processor.DemGenerator - write out the raw DEM as a "
+                    f"series of GeoTiff's': {file_name.stem}_data_source.tif, "
+                    f"{file_name.stem}_lidar_source.tif, "
+                    f"{file_name.stem}_dem.tif"
+                )
+                compression = True
             self.raw_dem.save_dem(
                 self.get_instruction_path("raw_dem"),
                 dem=self.raw_dem.dem,
