@@ -127,6 +127,7 @@ class BaseProcessor(abc.ABC):
                 )
                 return file_path
         elif key in defaults.keys():
+            path_instructions[key] = defaults[key]
             return local_cache.absolute() / subfolder / defaults[key]
         else:
             assert False, (
