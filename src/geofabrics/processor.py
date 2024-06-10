@@ -982,7 +982,7 @@ class RawLidarDemGenerator(BaseProcessor):
         if self.debug:
             # Record the parameter used during execution - append to existing
             with open(subfolder / "dem_instructions.json", "a") as file_pointer:
-                json.dump(self.instructions, file_pointer)
+                json.dump(self.instructions, file_pointer, sort_keys=True, indent=2)
 
 
 class HydrologicDemGenerator(BaseProcessor):
@@ -1197,7 +1197,7 @@ class HydrologicDemGenerator(BaseProcessor):
                 self.get_instruction_path("subfolder") / "dem_instructions.json",
                 "a",
             ) as file_pointer:
-                json.dump(self.instructions, file_pointer)
+                json.dump(self.instructions, file_pointer, sort_keys=True, indent=2)
 
 
 class RoughnessLengthGenerator(BaseProcessor):
@@ -1383,7 +1383,7 @@ class RoughnessLengthGenerator(BaseProcessor):
                 self.get_instruction_path("subfolder") / "roughness_instructions.json",
                 "a",
             ) as file_pointer:
-                json.dump(self.instructions, file_pointer)
+                json.dump(self.instructions, file_pointer, sort_keys=True, indent=2)
 
 
 class MeasuredRiverGenerator(BaseProcessor):
@@ -1602,7 +1602,7 @@ class MeasuredRiverGenerator(BaseProcessor):
                 self.get_instruction_path("subfolder") / "measured_instructions.json",
                 "a",
             ) as file_pointer:
-                json.dump(self.instructions, file_pointer)
+                json.dump(self.instructions, file_pointer, sort_keys=True, indent=2)
 
 
 class RiverBathymetryGenerator(BaseProcessor):
@@ -2596,7 +2596,7 @@ class RiverBathymetryGenerator(BaseProcessor):
                 self.get_instruction_path("subfolder") / "rivers_instructions.json",
                 "a",
             ) as file_pointer:
-                json.dump(self.instructions, file_pointer)
+                json.dump(self.instructions, file_pointer, sort_keys=True, indent=2)
 
 
 class WaterwayBedElevationEstimator(BaseProcessor):
@@ -3084,4 +3084,4 @@ class WaterwayBedElevationEstimator(BaseProcessor):
                 self.get_instruction_path("subfolder") / "waterway_instructions.json",
                 "a",
             ) as file_pointer:
-                json.dump(self.instructions, file_pointer)
+                json.dump(self.instructions, file_pointer, sort_keys=True, indent=2)
