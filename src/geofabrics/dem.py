@@ -1828,9 +1828,10 @@ class RawDem(LidarBase):
                     "description": f"{metadata['library_name']}:"
                     f"{metadata['class_name']} resolution "
                     f"{self.catchment_geometry.resolution}",
-                    "history": f"{metadata['utc_time']}: {metadata['library_name']}"
-                    f":{metadata['class_name']} resolution "
-                    f"{self.catchment_geometry.resolution};",
+                    "history": f"{metadata['utc_time']}:"
+                    f"{metadata['library_name']}:{metadata['class_name']} "
+                    f"version {metadata['library_version']} "
+                    f"resolution {self.catchment_geometry.resolution};",
                     "geofabrics_instructions": f"{metadata['instructions']}",
                 },
             )
@@ -2494,6 +2495,23 @@ class RoughnessDem(LidarBase):
                 self._dem.zo < self.default_values["maximum"],
                 self.default_values["maximum"],
             )
+
+        # update metadata
+        history = self._dem.getattr("history")
+        history = (
+            f"{metadata['utc_time']}:{metadata['library_name']}"
+            f":{metadata['class_name']} "
+            f"version {metadata['library_version']} "
+            f" resolution {self.catchment_geometry.resolution};"
+            ).append(history)
+        self._dem.setattr("source",
+                          f"{metadata['library_name']} version "
+                          f"{metadata['library_version']}")
+        self._dem.setattr("description",
+                          f"{metadata['library_name']}:"
+                          f"{metadata['class_name']} resolution "
+                          f"{self.catchment_geometry.resolution}")
+        self._dem.setattr("geofabrics_instructions", f"{metadata['instructions']}")
 
         # ensure the expected CF conventions are followed
         self._write_netcdf_conventions_in_place(self._dem, self.catchment_geometry.crs)
