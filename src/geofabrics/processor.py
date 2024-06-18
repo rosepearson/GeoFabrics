@@ -990,8 +990,8 @@ class RawLidarDemGenerator(BaseProcessor):
                     # Stop if no areas (on land and foreshore) still without values
                     if not self.raw_dem.no_values_mask.any():
                         self.logger.info(
-                            "No land and foreshore areas without LiDAR values. "
-                            "Ignoring all remaining coarse DEMs."
+                            "No land and foreshore areas without elevation "
+                            "values. Ignoring all remaining coarse DEMs."
                         )
                         break
 

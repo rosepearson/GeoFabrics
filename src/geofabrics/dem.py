@@ -1037,7 +1037,7 @@ class LidarBase(DemBase):
 
     @property
     def dem(self):
-        """Return the positivelly indexed DEM from tiles"""
+        """Return the positivly indexed DEM from tiles"""
 
         # Ensure positively increasing indices as required by some programs
         self._dem = self._ensure_positive_indexing(self._dem)
