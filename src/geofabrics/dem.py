@@ -1130,8 +1130,8 @@ class LidarBase(DemBase):
         tile_index_file: str | pathlib.Path,
         region_to_rasterise: geopandas.GeoDataFrame,
     ):
-        """Read in tile index file and determine the column name of the tile
-        geometries"""
+        """Read in LiDAR tile index file and determine the column name of the
+        tile geometries"""
         # Check to see if a extents file was added
         tile_index_extents = geopandas.read_file(tile_index_file)
 
@@ -2497,21 +2497,22 @@ class RoughnessDem(LidarBase):
             )
 
         # update metadata
-        history = self._dem.getattr("history")
+        history = self._dem.attrs["history"]
         history = (
             f"{metadata['utc_time']}:{metadata['library_name']}"
-            f":{metadata['class_name']} "
-            f"version {metadata['library_version']} "
+            f":{metadata['class_name']} version {metadata['library_version']} "
             f" resolution {self.catchment_geometry.resolution};"
             ).append(history)
-        self._dem.setattr("source",
-                          f"{metadata['library_name']} version "
-                          f"{metadata['library_version']}")
-        self._dem.setattr("description",
-                          f"{metadata['library_name']}:"
-                          f"{metadata['class_name']} resolution "
-                          f"{self.catchment_geometry.resolution}")
-        self._dem.setattr("geofabrics_instructions", f"{metadata['instructions']}")
+        self._dem.attrs["history"] = history
+        self._dem.attrs["source"] = (
+            f"{metadata['library_name']} version {metadata['library_version']}"
+            )
+        self._dem.attrs["description"] = (
+            f"{metadata['library_name']}:{metadata['class_name']} resolution "
+            f"{self.catchment_geometry.resolution}")
+        self._dem.attrs["geofabrics_instructions"] = (
+            f"{metadata['instructions']}"
+            )
 
         # ensure the expected CF conventions are followed
         self._write_netcdf_conventions_in_place(self._dem, self.catchment_geometry.crs)
