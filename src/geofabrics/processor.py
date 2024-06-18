@@ -984,6 +984,15 @@ class RawLidarDemGenerator(BaseProcessor):
                     key="coarse_dems", data_type="raster"
                 )
                 self.logger.info(f"Incorporating coarse DEMs: {coarse_dem_paths}")
+                self.raw_dem = dem.PatchDem(
+                    catchment_geometry=self.catchment_geometry,
+                    patch_on_top=False,
+                    drop_patch_offshore=True,
+                    initial_dem_path=cached_file,
+                    elevation_range=self.get_instruction_general("elevation_range"),
+                    chunk_size=self.get_processing_instructions("chunk_size"),
+                    buffer_cells=self.get_instruction_general("lidar_buffer"),
+                )
 
                 # Add coarse DEMs if there are any and if area
                 for coarse_dem_path in coarse_dem_paths:

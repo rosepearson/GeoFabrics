@@ -1859,6 +1859,59 @@ class RawDem(LidarBase):
 
         return dem
 
+class PatchDem(LidarBase):
+    """A class to manage the addition of a DEM to the foreground or background
+    of a preexisting DEM.
+
+    Parameters
+    ----------
+
+    patch_on_top
+        If True only patch the DEM values on top of the initial DEM. If False
+        patch only where values are NaN.
+    drop_patch_offshore
+        If True only keep patch values on land and the foreshore.
+    elevation_range
+        Optitionally specify a range of valid elevations. Any LiDAR points with
+        elevations outside this range will be filtered out.
+    initial_dem_path
+        The DEM to patch the other DEM on top / only where values are NaN.
+    buffer_cells - the number of empty cells to keep around LiDAR cells for
+        interpolation after the coarse DEM added to ensure a smooth boundary.
+    chunk_size
+        The chunk size in pixels for parallel/staged processing
+    """
+
+    def __init__(
+        self,
+        catchment_geometry: geometry.CatchmentGeometry,
+        patch_on_top: bool,
+        drop_patch_offshore: bool,
+        buffer_cells: int,
+        initial_dem_path: pathlib.Path | str,
+        elevation_range: list | None = None,
+        chunk_size: int | None = None
+    ):
+        """Setup base DEM to add future tiles too"""
+
+        super(RawDem, self).__init__(
+            catchment_geometry=catchment_geometry,
+            chunk_size=chunk_size,
+            elevation_range=elevation_range,
+        )
+        self.logger = logging.getLogger(f"{__name__}.{self.__class__.__name__}")
+
+        self.patch_on_top = patch_on_top
+        self.buffer_cells = buffer_cells
+        # Read in the DEM raster
+        initial_dem = rioxarray.rioxarray.open_rasterio(
+            pathlib.Path(initial_dem_path), masked=True, parse_coordinates=True, chunks=True
+        ).squeeze(
+            "band", drop=True
+        )  # remove band coordinate added by rasterio.open()
+        self._write_netcdf_conventions_in_place(initial_dem, catchment_geometry.crs)
+        self._dem = initial_dem
+
     def add_coarse_dem(self, coarse_dem_path: pathlib.Path, area_threshold: float):
         """Check if gaps in DEM on land, if so iterate through coarse DEMs
         adding missing detail.
@@ -2036,7 +2089,6 @@ class RawDem(LidarBase):
             no_values_mask = xarray.zeros_like(self._dem.z, dtype=bool)
 
         return no_values_mask
-
 
 class RoughnessDem(LidarBase):
     """A class to add a roughness (zo) layer to a hydrologically conditioned DEM.
