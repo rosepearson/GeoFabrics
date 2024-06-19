@@ -162,8 +162,10 @@ class BaseProcessor(abc.ABC):
         results_folder = self.get_instruction_path("subfolder")
         results_folder.mkdir(parents=True, exist_ok=True)
 
-    def save_dem(self, filename: pathlib.Path, dataset: xarray.Dataset, generator: dem.DemBase):
-        """ Save out the dem/geofabrics labelled array.
+    def save_dem(
+        self, filename: pathlib.Path, dataset: xarray.Dataset, generator: dem.DemBase
+    ):
+        """Save out the dem/geofabrics labelled array.
 
         Parameters
         ----------
@@ -1223,7 +1225,7 @@ class HydrologicDemGenerator(BaseProcessor):
                 self.save_dem(
                     filename=self.get_instruction_path("result_dem"),
                     dataset=self.hydrologic_dem.dem,
-                    generator=self.hydrologic_dem
+                    generator=self.hydrologic_dem,
                 )
             except (Exception, KeyboardInterrupt) as caught_exception:
                 pathlib.Path(self.get_instruction_path("result_dem")).unlink()

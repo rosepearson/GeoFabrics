@@ -373,10 +373,16 @@ class DemBase(abc.ABC):
                     dem.to_netcdf(filename, format="NETCDF4", engine="netcdf4")
             elif filename.suffix.lower() == ".tif":
                 for key, array in dem.data_vars.items():
-                    filename_layer = filename.parent / f"{filename.stem}_{key}{filename.suffix}"
-                    array.encoding = {'dtype': array.dtype, 'grid_mapping': array.encoding['grid_mapping'], 'rasterio_dtype': array.dtype}
+                    filename_layer = (
+                        filename.parent / f"{filename.stem}_{key}{filename.suffix}"
+                    )
+                    array.encoding = {
+                        "dtype": array.dtype,
+                        "grid_mapping": array.encoding["grid_mapping"],
+                        "rasterio_dtype": array.dtype,
+                    }
                     if compression:
-                        array.rio.to_raster(filename_layer, compress='deflate')
+                        array.rio.to_raster(filename_layer, compress="deflate")
                     else:
                         array.rio.to_raster(filename_layer)
             dem.close()
@@ -1859,6 +1865,7 @@ class RawDem(LidarBase):
 
         return dem
 
+
 class PatchDem(LidarBase):
     """A class to manage the addition of a DEM to the foreground or background
     of a preexisting DEM.
@@ -1890,7 +1897,7 @@ class PatchDem(LidarBase):
         buffer_cells: int,
         initial_dem_path: pathlib.Path | str,
         elevation_range: list | None = None,
-        chunk_size: int | None = None
+        chunk_size: int | None = None,
     ):
         """Setup base DEM to add future tiles too"""
 
@@ -1905,7 +1912,10 @@ class PatchDem(LidarBase):
         self.buffer_cells = buffer_cells
         # Read in the DEM raster
         initial_dem = rioxarray.rioxarray.open_rasterio(
-            pathlib.Path(initial_dem_path), masked=True, parse_coordinates=True, chunks=True
+            pathlib.Path(initial_dem_path),
+            masked=True,
+            parse_coordinates=True,
+            chunks=True,
         ).squeeze(
             "band", drop=True
         )  # remove band coordinate added by rasterio.open()
@@ -2089,6 +2099,7 @@ class PatchDem(LidarBase):
             no_values_mask = xarray.zeros_like(self._dem.z, dtype=bool)
 
         return no_values_mask
+
 
 class RoughnessDem(LidarBase):
     """A class to add a roughness (zo) layer to a hydrologically conditioned DEM.
@@ -2554,17 +2565,16 @@ class RoughnessDem(LidarBase):
             f"{metadata['utc_time']}:{metadata['library_name']}"
             f":{metadata['class_name']} version {metadata['library_version']} "
             f" resolution {self.catchment_geometry.resolution};"
-            ).append(history)
+        ).append(history)
         self._dem.attrs["history"] = history
-        self._dem.attrs["source"] = (
-            f"{metadata['library_name']} version {metadata['library_version']}"
-            )
+        self._dem.attrs[
+            "source"
+        ] = f"{metadata['library_name']} version {metadata['library_version']}"
         self._dem.attrs["description"] = (
             f"{metadata['library_name']}:{metadata['class_name']} resolution "
-            f"{self.catchment_geometry.resolution}")
-        self._dem.attrs["geofabrics_instructions"] = (
-            f"{metadata['instructions']}"
-            )
+            f"{self.catchment_geometry.resolution}"
+        )
+        self._dem.attrs["geofabrics_instructions"] = f"{metadata['instructions']}"
 
         # ensure the expected CF conventions are followed
         self._write_netcdf_conventions_in_place(self._dem, self.catchment_geometry.crs)
