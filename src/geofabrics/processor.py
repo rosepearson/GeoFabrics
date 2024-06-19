@@ -1245,6 +1245,119 @@ class HydrologicDemGenerator(BaseProcessor):
                 json.dump(self.instructions, file_pointer, sort_keys=True, indent=2)
 
 
+class PatchDemGenerator(BaseProcessor):
+    """PatchDemGenerator executes a pipeline for loading in a raw DEM and extents
+    before incorporating bathymetry (offshore, rivers and waterways) to produce a
+    hydrologically conditioned DEM. The data and pipeline logic is defined in
+    the json_instructions file.
+
+    The `PatchDemGenerator` class contains several important class members:
+     * catchment_geometry - Defines all relevant regions in a catchment required in the
+       generation of a DEM as polygons.
+     * patch_dem - Manages the inclusion of a DEM patch into a DEM.
+
+    See the README.md for usage examples or GeoFabrics/tests/ for examples of usage and
+    an instruction file
+    """
+
+    def __init__(self, json_instructions: json, debug: bool = True):
+        super(HydrologicDemGenerator, self).__init__(
+            json_instructions=json_instructions
+        )
+        self.logger = logging.getLogger(f"{__name__}.{self.__class__.__name__}")
+
+        self.patch_dem = None
+        self.debug = debug
+
+    def get_patch_instruction(self, key: str):
+        """Return true if the DEMs are required for later processing
+
+
+        Parameters:
+            instructions  The json instructions defining the behaviour
+        """
+        defaults = {
+            "patch_on_top": True,
+            "drop_patch_offshore": False,
+            "buffer_cells": None,
+        }
+
+        if "patch" in self.instructions and key in self.instructions["patch"]:
+            value = self.instructions["patch"][key]
+            return value
+        elif key in defaults:
+            if "roughness" not in self.instructions:
+                self.instructions["roughness"] = {}
+            self.instructions["roughness"][key] = defaults[key]
+            return defaults[key]
+        else:
+            raise KeyError(
+                f"The key: {key} is missing from the measured instructions, and"
+                " does not have a default value."
+            )
+
+    def run(self):
+        """This method executes the geofabrics generation pipeline to produce geofabric
+        derivatives."""
+
+        # Ensure the results folder has been created
+        self.create_results_folder()
+
+        # create the catchment geometry object
+        self.catchment_geometry = self.create_catchment()
+
+        # Setup Dask cluster and client - LAZY SAVE LIDAR DEM
+        cluster_kwargs = {
+            "n_workers": self.get_processing_instructions("number_of_cores"),
+            "threads_per_worker": 1,
+            "processes": True,
+            "memory_limit": self.get_processing_instructions("memory_limit"),
+        }
+        cluster = distributed.LocalCluster(**cluster_kwargs)
+        with cluster, distributed.Client(cluster) as client:
+            self.logger.info(f"Dask client: {client}")
+            self.logger.info(f"Dask dashboard: {client.dashboard_link}")
+            client.forward_logging()  # Ensure root logging configuration is used
+
+            # setup the hydrologically conditioned DEM generator
+            self.patch_dem = dem.PatchDem(
+                catchment_geometry=self.catchment_geometry,
+                initial_dem_path=self.get_instruction_path("initial_dem_path"),
+                chunk_size=self.get_processing_instructions("chunk_size"),
+                patch_on_top=self.get_patch_instruction("patch_on_top"),
+                drop_patch_offshore=self.get_patch_instruction("drop_patch_offshore"),
+                buffer_cells=self.get_processing_instructions("buffer_cells"),
+                elevation_range=None
+            )
+
+            # fill combined dem - save results
+            self.logger.info(
+                "In processor.PatchDemGenerator - write out the raw DEM to netCDF"
+            )
+            try:
+                self.save_dem(
+                    filename=self.get_instruction_path("result_dem"),
+                    dataset=self.hydrologic_dem.dem,
+                    generator=self.hydrologic_dem
+                )
+            except (Exception, KeyboardInterrupt) as caught_exception:
+                pathlib.Path(self.get_instruction_path("result_dem")).unlink()
+                self.logger.info(
+                    f"Caught error {caught_exception} and deleting"
+                    "partially created netCDF output "
+                    f"{self.get_instruction_path('result_dem')}"
+                    " before re-raising error."
+                )
+                raise caught_exception
+        if self.debug:
+            # Record the parameter used during execution - append to existing
+            with open(
+                self.get_instruction_path("subfolder") / "patch_instructions.json",
+                "a",
+            ) as file_pointer:
+                json.dump(self.instructions, file_pointer, sort_keys=True, indent=2)
+
+
 class RoughnessLengthGenerator(BaseProcessor):
     """RoughnessLengthGenerator executes a pipeline for loading in a hydrologically
     conditioned DEM and LiDAR tiles to produce a roughness length layer that is added to
