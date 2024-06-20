@@ -1895,13 +1895,13 @@ class PatchDem(LidarBase):
         patch_on_top: bool,
         drop_patch_offshore: bool,
         buffer_cells: int,
-        initial_dem_path: pathlib.Path | str,
+        initial_dem_path: str | pathlib.Path,
         elevation_range: list | None = None,
         chunk_size: int | None = None,
     ):
         """Setup base DEM to add future tiles too"""
 
-        super(RawDem, self).__init__(
+        super(PatchDem, self).__init__(
             catchment_geometry=catchment_geometry,
             chunk_size=chunk_size,
             elevation_range=elevation_range,
