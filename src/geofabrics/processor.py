@@ -980,10 +980,12 @@ class RawLidarDemGenerator(BaseProcessor):
                 try:
                     cached_file.unlink()
                 except (Exception, PermissionError) as caught_exception:
-                    logging.warning(f"Caught error {caught_exception} "
-                                    "during unlink of cached_file. "
-                                    "Supressing. You will have to "
-                                    "manually delete.")
+                    logging.warning(
+                        f"Caught error {caught_exception} "
+                        "during unlink of cached_file. "
+                        "Supressing. You will have to "
+                        "manually delete."
+                    )
                 cached_file = temp_file
 
             # Add a coarse DEM if significant area without LiDAR and a coarse DEM
@@ -1023,10 +1025,12 @@ class RawLidarDemGenerator(BaseProcessor):
                     try:
                         cached_file.unlink()
                     except (Exception, PermissionError) as caught_exception:
-                        logging.warning(f"Caught error {caught_exception} "
-                                        "during unlink of cached_file. "
-                                        "Supressing. You will have to "
-                                        "manually delete.")
+                        logging.warning(
+                            f"Caught error {caught_exception} "
+                            "during unlink of cached_file. "
+                            "Supressing. You will have to "
+                            "manually delete."
+                        )
                     cached_file = temp_file
 
             # compute and save raw DEM
