@@ -986,6 +986,7 @@ class RawLidarDemGenerator(BaseProcessor):
                     key="coarse_dems", data_type="raster"
                 )
                 self.logger.info(f"Incorporating coarse DEMs: {coarse_dem_paths}")
+                del self.raw_dem
                 self.raw_dem = dem.PatchDem(
                     catchment_geometry=self.catchment_geometry,
                     patch_on_top=False,

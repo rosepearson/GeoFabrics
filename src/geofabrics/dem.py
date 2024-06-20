@@ -2561,12 +2561,11 @@ class RoughnessDem(LidarBase):
 
         # update metadata
         history = self._dem.attrs["history"]
-        history = (
+        self._dem.attrs["history"] = (
             f"{metadata['utc_time']}:{metadata['library_name']}"
             f":{metadata['class_name']} version {metadata['library_version']} "
-            f" resolution {self.catchment_geometry.resolution};"
-        ).append(history)
-        self._dem.attrs["history"] = history
+            f" resolution {self.catchment_geometry.resolution}; {history}"
+        )
         self._dem.attrs[
             "source"
         ] = f"{metadata['library_name']} version {metadata['library_version']}"
