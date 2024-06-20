@@ -29,9 +29,9 @@ jobs:
       uses: actions/cache@v3
       with:
         path: .git/lfs/objects
-        key: ${{ runner.os }}-lfs-${{ hashFiles('.lfs-assets-id') }}
+        key: ${{ matrix.os }}-lfs-${{ hashFiles('.lfs-assets-id') }}
         restore-keys: |
-          ${{ runner.os }}-lfs-
+          ${{ matrix.os }}-lfs-
 
     - name: Git LFS Pull
       run: git lfs pull
