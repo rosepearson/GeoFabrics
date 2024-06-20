@@ -977,7 +977,13 @@ class RawLidarDemGenerator(BaseProcessor):
                 self.raw_dem.save_and_load_dem(temp_file)
 
                 # Remove previous cached file and replace with new one
-                cached_file.unlink()
+                try:
+                    cached_file.unlink()
+                except (Exception, PermissionError) as caught_exception:
+                    logging.warning(f"Caught error {caught_exception} "
+                                    "during unlink of cached_file. "
+                                    "Supressing. You will have to "
+                                    "manually delete.")
                 cached_file = temp_file
 
             # Add a coarse DEM if significant area without LiDAR and a coarse DEM
@@ -1014,7 +1020,13 @@ class RawLidarDemGenerator(BaseProcessor):
                     self.raw_dem.save_and_load_dem(temp_file)
 
                     # Remove previous cached file and replace with new one
-                    cached_file.unlink()
+                    try:
+                        cached_file.unlink()
+                    except (Exception, PermissionError) as caught_exception:
+                        logging.warning(f"Caught error {caught_exception} "
+                                        "during unlink of cached_file. "
+                                        "Supressing. You will have to "
+                                        "manually delete.")
                     cached_file = temp_file
 
             # compute and save raw DEM
@@ -1229,13 +1241,13 @@ class HydrologicDemGenerator(BaseProcessor):
                     generator=self.hydrologic_dem,
                 )
             except (Exception, KeyboardInterrupt) as caught_exception:
-                pathlib.Path(self.get_instruction_path("result_dem")).unlink()
                 self.logger.info(
                     f"Caught error {caught_exception} and deleting"
                     "partially created netCDF output "
                     f"{self.get_instruction_path('result_dem')}"
                     " before re-raising error."
                 )
+                pathlib.Path(self.get_instruction_path("result_dem")).unlink()
                 raise caught_exception
         if self.debug:
             # Record the parameter used during execution - append to existing
