@@ -981,10 +981,9 @@ class RawLidarDemGenerator(BaseProcessor):
                     cached_file.unlink()
                 except (Exception, PermissionError) as caught_exception:
                     logging.warning(
-                        f"Caught error {caught_exception} "
-                        "during unlink of cached_file. "
-                        "Supressing. You will have to "
-                        "manually delete."
+                        f"Caught error {caught_exception} during unlink of "
+                        "cached_file. Supressing error. You will have to "
+                        f"manually delete {cached_file}."
                     )
                 cached_file = temp_file
 
@@ -1026,10 +1025,9 @@ class RawLidarDemGenerator(BaseProcessor):
                         cached_file.unlink()
                     except (Exception, PermissionError) as caught_exception:
                         logging.warning(
-                            f"Caught error {caught_exception} "
-                            "during unlink of cached_file. "
-                            "Supressing. You will have to "
-                            "manually delete."
+                            f"Caught error {caught_exception} during unlink of "
+                            "cached_file. Supressing error. You will have to "
+                            f"manually delete {cached_file}."
                         )
                     cached_file = temp_file
 
@@ -1040,8 +1038,14 @@ class RawLidarDemGenerator(BaseProcessor):
                 generator=self.raw_dem,
             )
             self.logger.info(f"Remove folder {temp_folder} for temporary files")
-            shutil.rmtree(temp_folder)
-
+            try:
+                shutil.rmtree(temp_folder)
+            except (Exception, PermissionError) as caught_exception:
+                logging.warning(
+                    f"Caught error {caught_exception} during rmtree of "
+                    "temp_folder. Supressing error. You will have to "
+                    f"manually delete {temp_folder}."
+                )
         if self.debug:
             # Record the parameter used during execution - append to existing
             with open(subfolder / "dem_instructions.json", "a") as file_pointer:
@@ -1436,7 +1440,14 @@ class RoughnessLengthGenerator(BaseProcessor):
                 "In processor.RoughnessLengthGenerator - clean folder for "
                 f"writing temporarily cached netCDF files in {temp_folder}"
             )
-            shutil.rmtree(temp_folder)
+            try:
+                shutil.rmtree(temp_folder)
+            except (Exception, PermissionError) as caught_exception:
+                logging.warning(
+                    f"Caught error {caught_exception} during rmtree of "
+                    "temp_folder. Supressing error. You will have to "
+                    f"manually delete {temp_folder}."
+                )
 
         if self.debug:
             # Record the parameter used during execution - append to existing
