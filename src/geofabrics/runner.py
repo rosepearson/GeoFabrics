@@ -97,6 +97,7 @@ def run_processor_class(processor_class, processor_label: str, instructions: dic
     )
     logger.info(message)
     del runner
+    del logger
     return
 
 
@@ -252,6 +253,7 @@ def from_instructions_dict(instructions: dict):
     logger.info(
         f"Total execution time is {datetime.datetime.now() - initial_start_time}"
     )
+    del logger
 
 
 def from_instructions_file(

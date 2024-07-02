@@ -79,4 +79,4 @@ jobs:
 
     - name: Run tests with pytest
       run: |
-        pytest tests/test_many_stages_local/test_many_stages_local.py tests/test_many_stages_multiple_1/test_many_stages_multiple_1.py tests/test_many_stages_multiple_2/test_many_stages_multiple_2.py
+        pytest
