@@ -12,8 +12,8 @@ import shutil
 import rioxarray
 import xarray
 import numpy
-import shapely
 import geopandas
+import shapely
 import pdal
 import logging
 import gc
@@ -189,7 +189,7 @@ class Test(unittest.TestCase):
     def tearDownClass(cls):
         """Remove created files in the cache directory as part of the testing process at
         the end of the test."""
-
+        gc.collect()
         cls.clean_data_folder()
 
     @classmethod
