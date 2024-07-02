@@ -1073,10 +1073,6 @@ class HydrologicDemGenerator(BaseProcessor):
     The `HydrologicDemGenerator` class contains several important class members:
      * catchment_geometry - Defines all relevant regions in a catchment required in the
        generation of a DEM as polygons.
-     * hydrologic_dem - Defines the hydrologically conditioned DEM as a combination of
-       tiles from LiDAR and interpolated from bathymetry.
-     * bathy_contours - This object defines the bathymetry vectors used to define the
-       DEM values offshore.
 
     See the README.md for usage examples or GeoFabrics/tests/ for examples of usage and
     an instruction file
@@ -1087,18 +1083,16 @@ class HydrologicDemGenerator(BaseProcessor):
             json_instructions=json_instructions
         )
         self.logger = logging.getLogger(f"{__name__}.{self.__class__.__name__}")
-
-        self.hydrologic_dem = None
-        self.bathy_contours = None
         self.debug = debug
 
-    def add_bathymetry(self, area_threshold: float, catchment_dirs: pathlib.Path):
+    def add_bathymetry(self, hydrologic_dem: dem.HydrologicallyConditionedDem,
+                       area_threshold: float, catchment_dirs: pathlib.Path):
         """Add in any bathymetry data - ocean or river"""
 
         # Check for ocean bathymetry. Interpolate offshore if significant
         # offshore area is not covered by LiDAR
         area_without_lidar = self.catchment_geometry.offshore_without_lidar(
-            self.hydrologic_dem.raw_extents
+            hydrologic_dem.raw_extents
         ).geometry.area.sum()
         if (
             self.check_vector_or_raster(key="ocean_contours", api_type="vector")
@@ -1128,10 +1122,10 @@ class HydrologicDemGenerator(BaseProcessor):
                     z_label=self.get_instruction_general(
                         key="z_labels", subkey="ocean"
                     ),
-                    exclusion_extent=self.hydrologic_dem.raw_extents,
+                    exclusion_extent=hydrologic_dem.raw_extents,
                 )
                 # Interpolate
-                self.hydrologic_dem.interpolate_ocean_bathymetry(bathy_contours)
+                hydrologic_dem.interpolate_ocean_bathymetry(bathy_contours)
         # Check for waterways and interpolate if they exist
         if "waterways" in self.instructions["data_paths"]:
             # Load in all open and closed waterway elevation and extents in one go
@@ -1169,7 +1163,7 @@ class HydrologicDemGenerator(BaseProcessor):
             # Call interpolate river on the DEM - the class checks to see if any pixels
             # actually fall inside the polygon
             if len(estimated_bathymetry_points.polygons) > 0:  # Skip if no waterways
-                self.hydrologic_dem.interpolate_waterways(
+                hydrologic_dem.interpolate_waterways(
                     estimated_bathymetry=estimated_bathymetry_points,
                     method=self.get_instruction_general(
                         key="interpolation", subkey="waterways"
@@ -1201,7 +1195,7 @@ class HydrologicDemGenerator(BaseProcessor):
 
                 # Call interpolate river on the DEM - the class checks to see if any pixels
                 # actually fall inside the polygon
-                self.hydrologic_dem.interpolate_rivers(
+                hydrologic_dem.interpolate_rivers(
                     estimated_bathymetry=estimated_bathymetry_points,
                     method=self.get_instruction_general(
                         key="interpolation", subkey="rivers"
@@ -1235,7 +1229,7 @@ class HydrologicDemGenerator(BaseProcessor):
             client.forward_logging()  # Ensure root logging configuration is used
 
             # setup the hydrologically conditioned DEM generator
-            self.hydrologic_dem = dem.HydrologicallyConditionedDem(
+            hydrologic_dem = dem.HydrologicallyConditionedDem(
                 catchment_geometry=self.catchment_geometry,
                 raw_dem_path=self.get_instruction_path("raw_dem"),
                 chunk_size=self.get_processing_instructions("chunk_size"),
@@ -1257,9 +1251,10 @@ class HydrologicDemGenerator(BaseProcessor):
             try:
                 self.save_dem(
                     filename=self.get_instruction_path("result_dem"),
-                    dataset=self.hydrologic_dem.dem,
-                    generator=self.hydrologic_dem,
+                    dataset=hydrologic_dem.dem,
+                    generator=hydrologic_dem,
                 )
+                del hydrologic_dem
             except (Exception, KeyboardInterrupt) as caught_exception:
                 self.logger.info(
                     f"Caught error {caught_exception} and deleting"
