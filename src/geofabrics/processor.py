@@ -925,7 +925,15 @@ class RawLidarDemGenerator(BaseProcessor):
         temp_folder = subfolder / "temp" / f"{self.get_resolution()}m_results"
         self.logger.info(f"Create folder {temp_folder} for temporary files")
         if temp_folder.exists():
-            shutil.rmtree(temp_folder)
+            try:
+                gc.collect()
+                shutil.rmtree(temp_folder)
+            except (Exception, PermissionError) as caught_exception:
+                logging.warning(
+                    f"Caught error {caught_exception} during rmtree of "
+                    f"{temp_folder}. Supressing error. You will have to "
+                    f"manually delete {temp_folder}."
+                )
         temp_folder.mkdir(parents=True, exist_ok=True)
 
         # setup the raw DEM generator
