@@ -190,7 +190,9 @@ class Test(unittest.TestCase):
             + f"sizes of {self.FILE_SIZES.values()}",
         )
 
-    @pytest.mark.skipif(sys.platform != "win32", reason="Windows test - this is less strict")
+    @pytest.mark.skipif(
+        sys.platform != "win32", reason="Windows test - this is less strict"
+    )
     def test_result_dem_windows(self):
         """A basic comparison between the generated and benchmark DEM"""
 
