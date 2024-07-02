@@ -107,7 +107,7 @@ class BaseProcessor(abc.ABC):
         # return the full path of the specified key
         if key in path_instructions:
             # check if a list or single path
-            if type(path_instructions[key]) == list:
+            if type(path_instructions[key]) is list:
                 absolute_file_paths = []
                 file_paths = path_instructions[key]
                 for file_path in file_paths:
@@ -2296,7 +2296,7 @@ class RiverBathymetryGenerator(BaseProcessor):
             The width in samples of the averaging filter
         """
         assert (
-            number_of_samples > 0 and type(number_of_samples) == int
+            number_of_samples > 0 and type(number_of_samples) is int
         ), "Must be more than 0 and an int"
         rolling_mean = (
             numpy.convolve(

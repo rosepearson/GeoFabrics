@@ -553,7 +553,7 @@ class EstimatedBathymetryPoints:
                 "files"
             )
 
-        if z_labels is not None and type(z_labels) == str:
+        if z_labels is not None and type(z_labels) is str:
             z_labels = [z_labels for i in range(len(points_files))]
 
         if z_labels is not None and len(z_labels) != len(points_files):
@@ -1043,7 +1043,6 @@ class RiverMouthFan:
             min_index = ocean_contours.distance(mouth_point).idxmin()
             intersection_line = ocean_contours.loc[min_index].geometry
             end_depth = ocean_contours.loc[min_index][self.ocean_contour_depth_label]
-            distance = ocean_contours.distance(mouth_point).min()
         else:
             self.logger.warning(
                 "No ocean contour intersected. Instaed assumed fan geoemtry"
@@ -1054,7 +1053,6 @@ class RiverMouthFan:
                     [fan_polygon.exterior.xy[0][3], fan_polygon.exterior.xy[1][3]],
                 ]
             )
-            distance = self.FAN_MAX_LENGTH
 
         # Construct a fan ending at the contour
         (x, y) = intersection_line.xy

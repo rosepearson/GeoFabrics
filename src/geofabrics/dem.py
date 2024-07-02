@@ -1028,7 +1028,7 @@ class LidarBase(DemBase):
 
         self.elevation_range = elevation_range
         assert elevation_range is None or (
-            type(elevation_range) == list and len(elevation_range) == 2
+            type(elevation_range) is list and len(elevation_range) == 2
         ), "Error the 'elevation_range' must either be none, or a two entry list"
 
         self._dem = None
