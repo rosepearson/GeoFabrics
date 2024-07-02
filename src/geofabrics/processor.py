@@ -978,15 +978,8 @@ class RawLidarDemGenerator(BaseProcessor):
                 self.raw_dem.save_and_load_dem(temp_file)
 
                 # Remove previous cached file and replace with new one
-                try:
-                    gc.collect()
-                    cached_file.unlink()
-                except (Exception, PermissionError) as caught_exception:
-                    logging.warning(
-                        f"Caught error {caught_exception} during unlink of "
-                        "cached_file. Supressing error. You will have to "
-                        f"manually delete {cached_file}."
-                    )
+                gc.collect()
+                cached_file.unlink()
                 cached_file = temp_file
 
             # Add a coarse DEM if significant area without LiDAR and a coarse DEM
@@ -1023,15 +1016,8 @@ class RawLidarDemGenerator(BaseProcessor):
                     self.raw_dem.save_and_load_dem(temp_file)
 
                     # Remove previous cached file and replace with new one
-                    try:
-                        gc.collect()
-                        cached_file.unlink()
-                    except (Exception, PermissionError) as caught_exception:
-                        logging.warning(
-                            f"Caught error {caught_exception} during unlink of "
-                            "cached_file. Supressing error. You will have to "
-                            f"manually delete {cached_file}."
-                        )
+                    gc.collect()
+                    cached_file.unlink()
                     cached_file = temp_file
 
             # compute and save raw DEM
@@ -1041,15 +1027,8 @@ class RawLidarDemGenerator(BaseProcessor):
                 generator=self.raw_dem,
             )
             self.logger.info(f"Remove folder {temp_folder} for temporary files")
-            try:
-                gc.collect()
-                shutil.rmtree(temp_folder)
-            except (Exception, PermissionError) as caught_exception:
-                logging.warning(
-                    f"Caught error {caught_exception} during rmtree of "
-                    "temp_folder. Supressing error. You will have to "
-                    f"manually delete {temp_folder}."
-                )
+            gc.collect()
+            shutil.rmtree(temp_folder)
         if self.debug:
             # Record the parameter used during execution - append to existing
             with open(subfolder / "dem_instructions.json", "a") as file_pointer:
