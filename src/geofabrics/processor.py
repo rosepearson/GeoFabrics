@@ -881,7 +881,6 @@ class RawLidarDemGenerator(BaseProcessor):
         super(RawLidarDemGenerator, self).__init__(json_instructions=json_instructions)
         self.logger = logging.getLogger(f"{__name__}.{self.__class__.__name__}")
 
-        self.raw_dem = None
         self.debug = debug
 
     def run(self):
@@ -937,7 +936,7 @@ class RawLidarDemGenerator(BaseProcessor):
         temp_folder.mkdir(parents=True, exist_ok=True)
 
         # setup the raw DEM generator
-        self.raw_dem = dem.RawDem(
+        raw_dem = dem.RawDem(
             catchment_geometry=self.catchment_geometry,
             drop_offshore_lidar=drop_offshore_lidar,
             lidar_interpolation_method=self.get_instruction_general(
@@ -963,7 +962,7 @@ class RawLidarDemGenerator(BaseProcessor):
             self.logger.info(f"Dask dashboard: {client.dashboard_link}")
 
             # Load in LiDAR tiles
-            self.raw_dem.add_lidar(
+            raw_dem.add_lidar(
                 lidar_datasets_info=lidar_datasets_info,
                 lidar_classifications_to_keep=self.get_instruction_general(
                     "lidar_classifications_to_keep"
@@ -974,16 +973,16 @@ class RawLidarDemGenerator(BaseProcessor):
             # Save a cached copy of DEM to temporary memory cache
             cached_file = temp_folder / "raw_lidar.nc"
             self.logger.info(f"Save temp raw DEM to netCDF: {cached_file}")
-            self.raw_dem.save_and_load_dem(cached_file)
+            raw_dem.save_and_load_dem(cached_file)
 
             # Clip LiDAR - ensure within bounds/foreshore
             if not self.get_instruction_general("ignore_clipping"):
-                self.raw_dem.clip_lidar()
+                raw_dem.clip_lidar()
 
                 # Save a cached copy of DEM to temporary memory cache
                 temp_file = temp_folder / "raw_lidar_clipped.nc"
                 self.logger.info(f"Save temp raw DEM to netCDF: {temp_file}")
-                self.raw_dem.save_and_load_dem(temp_file)
+                raw_dem.save_and_load_dem(temp_file)
 
                 # Remove previous cached file and replace with new one
                 try:
@@ -1003,8 +1002,8 @@ class RawLidarDemGenerator(BaseProcessor):
                     key="coarse_dems", data_type="raster"
                 )
                 self.logger.info(f"Incorporating coarse DEMs: {coarse_dem_paths}")
-                del self.raw_dem
-                self.raw_dem = dem.PatchDem(
+                del raw_dem
+                raw_dem = dem.PatchDem(
                     catchment_geometry=self.catchment_geometry,
                     patch_on_top=False,
                     drop_patch_offshore=True,
@@ -1017,18 +1016,18 @@ class RawLidarDemGenerator(BaseProcessor):
                 # Add coarse DEMs if there are any and if area
                 for coarse_dem_path in coarse_dem_paths:
                     # Stop if no areas (on land and foreshore) still without values
-                    if not self.raw_dem.no_values_mask.any():
+                    if not raw_dem.no_values_mask.any():
                         self.logger.info(
                             "No land and foreshore areas without elevation "
                             "values. Ignoring all remaining coarse DEMs."
                         )
                         break
 
-                    self.raw_dem.add_coarse_dem(coarse_dem_path, area_threshold)
+                    raw_dem.add_coarse_dem(coarse_dem_path, area_threshold)
 
                     temp_file = temp_folder / f"raw_dem_{coarse_dem_path.stem}.nc"
                     self.logger.info(f"Save temp raw DEM to netCDF: {temp_file}")
-                    self.raw_dem.save_and_load_dem(temp_file)
+                    raw_dem.save_and_load_dem(temp_file)
 
                     # Remove previous cached file and replace with new one
                     try:
@@ -1045,10 +1044,11 @@ class RawLidarDemGenerator(BaseProcessor):
             # compute and save raw DEM
             self.save_dem(
                 filename=pathlib.Path(self.get_instruction_path("raw_dem")),
-                dataset=self.raw_dem.dem,
-                generator=self.raw_dem,
+                dataset=raw_dem.dem,
+                generator=raw_dem,
             )
             self.logger.info(f"Remove folder {temp_folder} for temporary files")
+            del raw_dem
             try:
                 gc.collect()
                 shutil.rmtree(temp_folder)

@@ -82,8 +82,10 @@ class Test(unittest.TestCase):
         # Run pipeline - download files and generated DEM
         runner = processor.RawLidarDemGenerator(cls.instructions)
         runner.run()
+        del runner
         runner = processor.HydrologicDemGenerator(cls.instructions)
         runner.run()
+        del runner
 
     @classmethod
     def tearDownClass(cls):
