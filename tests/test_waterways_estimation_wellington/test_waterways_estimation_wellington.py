@@ -17,6 +17,7 @@ import sys
 import pytest
 import logging
 import numpy
+import gc
 
 from src.geofabrics import processor
 
@@ -89,6 +90,7 @@ class Test(unittest.TestCase):
         """Remove created cache directory and included created and downloaded files at
         the end of the test."""
 
+        gc.collect()
         cls.clean_data_folder()
 
     @classmethod
