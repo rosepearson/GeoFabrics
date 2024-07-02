@@ -98,6 +98,7 @@ class Test(unittest.TestCase):
     def tearDownClass(cls):
         """Remove created and downloaded files at the end of the test."""
 
+        gc.collect()
         cls.clean_data_folder()
 
     @classmethod
@@ -214,7 +215,6 @@ class Test(unittest.TestCase):
         # explicitly free memory as xarray seems to be hanging onto memory
         del test_dem
         del benchmark_dem
-        gc.collect()
 
     @pytest.mark.skipif(
         sys.platform != "linux", reason="Linux test - this is less strict"
@@ -253,7 +253,6 @@ class Test(unittest.TestCase):
         # explicitly free memory as xarray seems to be hanging onto memory
         del test_dem
         del benchmark_dem
-        gc.collect()
 
 
 if __name__ == "__main__":

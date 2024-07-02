@@ -9,6 +9,7 @@ import numpy
 import json
 import pathlib
 import abc
+import gc
 import logging
 import distributed
 import dask.dataframe
@@ -127,6 +128,7 @@ class BaseProcessor(abc.ABC):
                 )
                 return file_path
         elif key in defaults.keys():
+            path_instructions[key] = defaults[key]
             return local_cache.absolute() / subfolder / defaults[key]
         else:
             assert False, (
@@ -160,6 +162,47 @@ class BaseProcessor(abc.ABC):
 
         results_folder = self.get_instruction_path("subfolder")
         results_folder.mkdir(parents=True, exist_ok=True)
+
+    def save_dem(
+        self, filename: pathlib.Path, dataset: xarray.Dataset, generator: dem.DemBase
+    ):
+        """Save out the dem/geofabrics labelled array.
+
+        Parameters
+        ----------
+
+        filename
+            The filename including extension to save the DEM/geofabric to.
+        dataset
+            The labelled array data to save.
+        generator
+            The dem.DemBase object with a 'save_dem' function.
+        """
+
+        if filename.suffix.lower() == ".nc":
+            self.logger.info(
+                "In processor.DemGenerator - write out the raw DEM to "
+                f"netCDF: {filename}"
+            )
+            compression = {"zlib": True, "complevel": 1}
+        elif filename.suffix.lower() == ".tif":
+            self.logger.info(
+                "In processor.DemGenerator - write out the raw DEM as a "
+                f"series of GeoTiff's': {filename.stem}_data_source.tif, "
+                f"{filename.stem}_lidar_source.tif, "
+                f"{filename.stem}_dem.tif"
+            )
+            compression = True
+        else:
+            raise ValueError(
+                "In processor.DemGenerator - unsupported DEM file extension "
+                f" of {filename.suffix}. Only .nc and .tif are supported."
+            )
+        generator.save_dem(
+            filename=filename,
+            dem=dataset,
+            compression=compression,
+        )
 
     def get_resolution(self) -> float:
         """Return the resolution from the instruction file. Raise an error if
@@ -935,7 +978,15 @@ class RawLidarDemGenerator(BaseProcessor):
                 self.raw_dem.save_and_load_dem(temp_file)
 
                 # Remove previous cached file and replace with new one
-                cached_file.unlink()
+                try:
+                    gc.collect()
+                    cached_file.unlink()
+                except (Exception, PermissionError) as caught_exception:
+                    logging.warning(
+                        f"Caught error {caught_exception} during unlink of "
+                        "cached_file. Supressing error. You will have to "
+                        f"manually delete {cached_file}."
+                    )
                 cached_file = temp_file
 
             # Add a coarse DEM if significant area without LiDAR and a coarse DEM
@@ -944,14 +995,24 @@ class RawLidarDemGenerator(BaseProcessor):
                     key="coarse_dems", data_type="raster"
                 )
                 self.logger.info(f"Incorporating coarse DEMs: {coarse_dem_paths}")
+                del self.raw_dem
+                self.raw_dem = dem.PatchDem(
+                    catchment_geometry=self.catchment_geometry,
+                    patch_on_top=False,
+                    drop_patch_offshore=True,
+                    initial_dem_path=cached_file,
+                    elevation_range=self.get_instruction_general("elevation_range"),
+                    chunk_size=self.get_processing_instructions("chunk_size"),
+                    buffer_cells=self.get_instruction_general("lidar_buffer"),
+                )
 
                 # Add coarse DEMs if there are any and if area
                 for coarse_dem_path in coarse_dem_paths:
                     # Stop if no areas (on land and foreshore) still without values
                     if not self.raw_dem.no_values_mask.any():
                         self.logger.info(
-                            "No land and foreshore areas without LiDAR values. "
-                            "Ignoring all remaining coarse DEMs."
+                            "No land and foreshore areas without elevation "
+                            "values. Ignoring all remaining coarse DEMs."
                         )
                         break
 
@@ -962,27 +1023,37 @@ class RawLidarDemGenerator(BaseProcessor):
                     self.raw_dem.save_and_load_dem(temp_file)
 
                     # Remove previous cached file and replace with new one
-                    cached_file.unlink()
+                    try:
+                        gc.collect()
+                        cached_file.unlink()
+                    except (Exception, PermissionError) as caught_exception:
+                        logging.warning(
+                            f"Caught error {caught_exception} during unlink of "
+                            "cached_file. Supressing error. You will have to "
+                            f"manually delete {cached_file}."
+                        )
                     cached_file = temp_file
 
             # compute and save raw DEM
-            self.logger.info(
-                "In processor.DemGenerator - write out the raw DEM to netCDF: "
-                f"{self.get_instruction_path('raw_dem')}"
-            )
-            compression = {"zlib": True, "complevel": 1}
-            self.raw_dem.save_dem(
-                self.get_instruction_path("raw_dem"),
-                dem=self.raw_dem.dem,
-                compression=compression,
+            self.save_dem(
+                filename=pathlib.Path(self.get_instruction_path("raw_dem")),
+                dataset=self.raw_dem.dem,
+                generator=self.raw_dem,
             )
             self.logger.info(f"Remove folder {temp_folder} for temporary files")
-            shutil.rmtree(temp_folder)
-
+            try:
+                gc.collect()
+                shutil.rmtree(temp_folder)
+            except (Exception, PermissionError) as caught_exception:
+                logging.warning(
+                    f"Caught error {caught_exception} during rmtree of "
+                    "temp_folder. Supressing error. You will have to "
+                    f"manually delete {temp_folder}."
+                )
         if self.debug:
             # Record the parameter used during execution - append to existing
             with open(subfolder / "dem_instructions.json", "a") as file_pointer:
-                json.dump(self.instructions, file_pointer)
+                json.dump(self.instructions, file_pointer, sort_keys=True, indent=2)
 
 
 class HydrologicDemGenerator(BaseProcessor):
@@ -1176,20 +1247,19 @@ class HydrologicDemGenerator(BaseProcessor):
                 "In processor.DemGenerator - write out the raw DEM to netCDF"
             )
             try:
-                compression = {"zlib": True, "complevel": 1}
-                self.hydrologic_dem.save_dem(
-                    self.get_instruction_path("result_dem"),
-                    dem=self.hydrologic_dem.dem,
-                    compression=compression,
+                self.save_dem(
+                    filename=self.get_instruction_path("result_dem"),
+                    dataset=self.hydrologic_dem.dem,
+                    generator=self.hydrologic_dem,
                 )
             except (Exception, KeyboardInterrupt) as caught_exception:
-                pathlib.Path(self.get_instruction_path("raw_dem")).unlink()
                 self.logger.info(
                     f"Caught error {caught_exception} and deleting"
                     "partially created netCDF output "
-                    f"{self.get_instruction_path('raw_dem')}"
+                    f"{self.get_instruction_path('result_dem')}"
                     " before re-raising error."
                 )
+                pathlib.Path(self.get_instruction_path("result_dem")).unlink()
                 raise caught_exception
         if self.debug:
             # Record the parameter used during execution - append to existing
@@ -1197,7 +1267,7 @@ class HydrologicDemGenerator(BaseProcessor):
                 self.get_instruction_path("subfolder") / "dem_instructions.json",
                 "a",
             ) as file_pointer:
-                json.dump(self.instructions, file_pointer)
+                json.dump(self.instructions, file_pointer, sort_keys=True, indent=2)
 
 
 class RoughnessLengthGenerator(BaseProcessor):
@@ -1319,7 +1389,15 @@ class RoughnessLengthGenerator(BaseProcessor):
             f" cached netCDF files in {temp_folder}"
         )
         if temp_folder.exists():
-            shutil.rmtree(temp_folder)
+            try:
+                gc.collect()
+                shutil.rmtree(temp_folder)
+            except (Exception, PermissionError) as caught_exception:
+                logging.warning(
+                    f"Caught error {caught_exception} during rmtree of "
+                    f"{temp_folder}. Supressing error. You will have to "
+                    f"manually delete {temp_folder}."
+                )
         temp_folder.mkdir(parents=True, exist_ok=True)
 
         # Setup Dask cluster and client
@@ -1365,17 +1443,23 @@ class RoughnessLengthGenerator(BaseProcessor):
                 "the raw DEM to netCDF: "
                 f"{self.get_instruction_path('result_geofabric')}"
             )
-            compression = {"zlib": True, "complevel": 1}
-            self.roughness_dem.save_dem(
+            self.save_dem(
                 filename=self.get_instruction_path("result_geofabric"),
-                dem=self.roughness_dem.dem,
-                compression=compression,
+                dataset=self.roughness_dem.dem,
+                generator=self.roughness_dem,
             )
             self.logger.info(
                 "In processor.RoughnessLengthGenerator - clean folder for "
                 f"writing temporarily cached netCDF files in {temp_folder}"
             )
-            shutil.rmtree(temp_folder)
+            try:
+                shutil.rmtree(temp_folder)
+            except (Exception, PermissionError) as caught_exception:
+                logging.warning(
+                    f"Caught error {caught_exception} during rmtree of "
+                    "temp_folder. Supressing error. You will have to "
+                    f"manually delete {temp_folder}."
+                )
 
         if self.debug:
             # Record the parameter used during execution - append to existing
@@ -1383,7 +1467,7 @@ class RoughnessLengthGenerator(BaseProcessor):
                 self.get_instruction_path("subfolder") / "roughness_instructions.json",
                 "a",
             ) as file_pointer:
-                json.dump(self.instructions, file_pointer)
+                json.dump(self.instructions, file_pointer, sort_keys=True, indent=2)
 
 
 class MeasuredRiverGenerator(BaseProcessor):
@@ -1602,7 +1686,7 @@ class MeasuredRiverGenerator(BaseProcessor):
                 self.get_instruction_path("subfolder") / "measured_instructions.json",
                 "a",
             ) as file_pointer:
-                json.dump(self.instructions, file_pointer)
+                json.dump(self.instructions, file_pointer, sort_keys=True, indent=2)
 
 
 class RiverBathymetryGenerator(BaseProcessor):
@@ -2596,7 +2680,7 @@ class RiverBathymetryGenerator(BaseProcessor):
                 self.get_instruction_path("subfolder") / "rivers_instructions.json",
                 "a",
             ) as file_pointer:
-                json.dump(self.instructions, file_pointer)
+                json.dump(self.instructions, file_pointer, sort_keys=True, indent=2)
 
 
 class WaterwayBedElevationEstimator(BaseProcessor):
@@ -2904,7 +2988,7 @@ class WaterwayBedElevationEstimator(BaseProcessor):
             # Create DEM over the waterway region
             # Save out the waterway polygons as a file with a single multipolygon
             waterways_polygon_file = self.get_result_file_path(key="waterways_polygon")
-            waterways_polygon = waterways.buffer(waterways["width"])
+            waterways_polygon = waterways.buffer(waterways["width"].to_numpy())
             waterways_polygon = geopandas.GeoDataFrame(
                 geometry=[shapely.ops.unary_union(waterways_polygon.geometry.array)],
                 crs=waterways_polygon.crs,
@@ -3044,8 +3128,20 @@ class WaterwayBedElevationEstimator(BaseProcessor):
         # Load in catchment
         self.catchment_geometry = self.create_catchment()
 
-        # Download waterways and tunnels from OSM
-        waterways = self.download_osm_values()
+        # Download waterways and tunnels from OSM - the only option currently
+        if "source" not in self.instructions["waterways"]:
+            self.instructions["waterways"]["source"] = "osm"
+        if (
+            "source" in self.instructions["waterways"]
+            and "osm" == self.instructions["waterways"]["source"]
+        ):
+            waterways = self.download_osm_values()
+        else:
+            self.logger.error(
+                "'osm' standing for OpenStreetMaps is the only "
+                "'source' currently supported. Please log an "
+                "issue on GitHub if you want another added."
+            )
 
         # There are no waterways to write out empty files and exit
         if len(waterways) == 0:
@@ -3077,4 +3173,4 @@ class WaterwayBedElevationEstimator(BaseProcessor):
                 self.get_instruction_path("subfolder") / "waterway_instructions.json",
                 "a",
             ) as file_pointer:
-                json.dump(self.instructions, file_pointer)
+                json.dump(self.instructions, file_pointer, sort_keys=True, indent=2)

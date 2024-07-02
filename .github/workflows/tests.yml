@@ -7,7 +7,7 @@ on: push
 
 jobs:
   build:
-    runs-on: ubuntu-latest
+    runs-on: ${{ matrix.os }}
     defaults:
       run:
         shell: bash -el {0}
@@ -29,9 +29,9 @@ jobs:
       uses: actions/cache@v3
       with:
         path: .git/lfs/objects
-        key: ${{ runner.os }}-lfs-${{ hashFiles('.lfs-assets-id') }}
+        key: ${{ matrix.os }}-lfs-${{ hashFiles('.lfs-assets-id') }}
         restore-keys: |
-          ${{ runner.os }}-lfs-
+          ${{ matrix.os }}-lfs-
 
     - name: Git LFS Pull
       run: git lfs pull
@@ -43,7 +43,7 @@ jobs:
         miniforge-variant: Mambaforge
         channels: conda-forge # defaults automatically added
         python-version: ${{ matrix.python-version }}
-        activate-environment: geofabrics
+        activate-environment: geofabrics_CI
         environment-file: environment_CI.yml
         use-mamba: true
         auto-activate-base: false
@@ -51,6 +51,10 @@ jobs:
     - name: Conda list
       shell: pwsh
       run: conda list
+
+    - name: Conda version
+      shell: pwsh
+      run: conda -V
 
     - name: Install test dependencies
       run: |

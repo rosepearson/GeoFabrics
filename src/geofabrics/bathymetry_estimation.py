@@ -1037,8 +1037,8 @@ class InterpolateMeasuredElevations:
         )
         # Clip to river polygon - take the zero index which should be the one most in the centre
         cross_sections = cross_sections.clip(river_polygon).sort_index()
-        cross_sections = cross_sections.explode()[
-            cross_sections.explode().index.get_level_values(1) == 0
+        cross_sections = cross_sections.explode(index_parts=True)[
+            cross_sections.explode(index_parts=True).index.get_level_values(1) == 0
         ].reset_index(drop=True)
         # Check all intersect with the thalweg
         if not cross_sections.explode().intersects(self.thalweg.iloc[0].geometry).all():
