@@ -14,8 +14,6 @@ import numpy
 import shapely
 import geopandas
 import pdal
-import pytest
-import sys
 import logging
 import gc
 
@@ -178,8 +176,7 @@ class Test(unittest.TestCase):
                         shutil.rmtree(file)
                 shutil.rmtree(path)
 
-    @pytest.mark.skipif(sys.platform != "win32", reason="Windows test - this is strict")
-    def test_result_dem_windows(self):
+    def test_result_dem(self):
         """A basic comparison between the generated and benchmark DEM"""
 
         # Load in benchmark DEM
@@ -223,57 +220,6 @@ class Test(unittest.TestCase):
         # explicitly free memory as xarray seems to be hanging onto memory
         del test_dem
         del benchmark_dem
-        gc.collect()
-
-    @pytest.mark.skipif(
-        sys.platform != "linux", reason="Linux test - this is less strict"
-    )
-    def test_result_dem_linux(self):
-        """A basic comparison between the generated and benchmark DEM"""
-
-        # Load in benchmark DEM
-        file_path = self.cache_dir / self.instructions["data_paths"]["benchmark_dem"]
-        with rioxarray.rioxarray.open_rasterio(file_path, masked=True) as benchmark_dem:
-            benchmark_dem.load()
-        # Load in result DEM
-        file_path = self.results_dir / self.instructions["data_paths"]["result_dem"]
-        with rioxarray.rioxarray.open_rasterio(file_path, masked=True) as test_dem:
-            test_dem.load()
-        # Compare DEMs z elevations
-        diff_array = test_dem.z.data - benchmark_dem.z.data
-        logging.info(f"DEM z diff is: {diff_array[diff_array != 0]}")
-        numpy.testing.assert_array_almost_equal(
-            test_dem.z.data,
-            benchmark_dem.z.data,
-            decimal=4,
-            err_msg="The generated result_dem has different data from the "
-            + "benchmark_dem",
-        )
-
-        # Compare DEMs data source classification
-        diff_array = test_dem.data_source.data - benchmark_dem.data_source.data
-        logging.info(f"DEM z array diff is: {diff_array[diff_array != 0]}")
-        numpy.testing.assert_array_almost_equal(
-            test_dem.data_source.data,
-            benchmark_dem.data_source.data,
-            err_msg="The generated test data_source layer has different data "
-            "from the benchmark",
-        )
-
-        # Compare DEMs lidar source classification
-        diff_array = test_dem.lidar_source.data - benchmark_dem.lidar_source.data
-        logging.info(f"DEM z array diff is: {diff_array[diff_array != 0]}")
-        numpy.testing.assert_array_almost_equal(
-            test_dem.lidar_source.data,
-            benchmark_dem.lidar_source.data,
-            err_msg="The generated test lidar_source layer has different data "
-            "from the benchmark",
-        )
-
-        # explicitly free memory as xarray seems to be hanging onto memory
-        del test_dem
-        del benchmark_dem
-        gc.collect()
 
 
 if __name__ == "__main__":

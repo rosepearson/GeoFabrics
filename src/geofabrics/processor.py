@@ -9,6 +9,7 @@ import numpy
 import json
 import pathlib
 import abc
+import gc
 import logging
 import distributed
 import dask.dataframe
@@ -978,6 +979,7 @@ class RawLidarDemGenerator(BaseProcessor):
 
                 # Remove previous cached file and replace with new one
                 try:
+                    gc.collect()
                     cached_file.unlink()
                 except (Exception, PermissionError) as caught_exception:
                     logging.warning(
@@ -1022,6 +1024,7 @@ class RawLidarDemGenerator(BaseProcessor):
 
                     # Remove previous cached file and replace with new one
                     try:
+                        gc.collect()
                         cached_file.unlink()
                     except (Exception, PermissionError) as caught_exception:
                         logging.warning(
@@ -1039,6 +1042,7 @@ class RawLidarDemGenerator(BaseProcessor):
             )
             self.logger.info(f"Remove folder {temp_folder} for temporary files")
             try:
+                gc.collect()
                 shutil.rmtree(temp_folder)
             except (Exception, PermissionError) as caught_exception:
                 logging.warning(
