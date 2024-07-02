@@ -79,4 +79,4 @@ jobs:
 
     - name: Run tests with pytest
       run: |
-        pytest tests\test_dem_generation_wellington_1\test_dem_generation_wellington_1.py tests\test_dem_generation_westport_1\test_dem_generation_westport_1.py tests\test_dem_generation_westport_2\test_dem_generation_westport_2.py
+        pytest tests/test_dem_generation_wellington_1/test_dem_generation_wellington_1.py tests/test_dem_generation_westport_1/test_dem_generation_westport_1.py tests/test_dem_generation_westport_2/test_dem_generation_westport_2.py
