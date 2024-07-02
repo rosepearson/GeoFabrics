@@ -1085,8 +1085,12 @@ class HydrologicDemGenerator(BaseProcessor):
         self.logger = logging.getLogger(f"{__name__}.{self.__class__.__name__}")
         self.debug = debug
 
-    def add_bathymetry(self, hydrologic_dem: dem.HydrologicallyConditionedDem,
-                       area_threshold: float, catchment_dirs: pathlib.Path):
+    def add_bathymetry(
+        self,
+        hydrologic_dem: dem.HydrologicallyConditionedDem,
+        area_threshold: float,
+        catchment_dirs: pathlib.Path,
+    ):
         """Add in any bathymetry data - ocean or river"""
 
         # Check for ocean bathymetry. Interpolate offshore if significant
