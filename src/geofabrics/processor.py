@@ -2980,7 +2980,7 @@ class WaterwayBedElevationEstimator(BaseProcessor):
             # Create DEM over the waterway region
             # Save out the waterway polygons as a file with a single multipolygon
             waterways_polygon_file = self.get_result_file_path(key="waterways_polygon")
-            waterways_polygon = waterways.buffer(waterways["width"])
+            waterways_polygon = waterways.buffer(waterways["width"].to_numpy())
             waterways_polygon = geopandas.GeoDataFrame(
                 geometry=[shapely.ops.unary_union(waterways_polygon.geometry.array)],
                 crs=waterways_polygon.crs,
