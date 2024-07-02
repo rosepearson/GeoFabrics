@@ -1240,6 +1240,7 @@ class HydrologicDemGenerator(BaseProcessor):
 
             # Check for and add any bathymetry information
             self.add_bathymetry(
+                hydrologic_dem=hydrologic_dem,
                 area_threshold=area_threshold,
                 catchment_dirs=self.get_instruction_path("extents"),
             )
