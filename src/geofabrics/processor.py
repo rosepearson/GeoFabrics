@@ -1296,8 +1296,6 @@ class RoughnessLengthGenerator(BaseProcessor):
             json_instructions=json_instructions
         )
         self.logger = logging.getLogger(f"{__name__}.{self.__class__.__name__}")
-
-        self.roughness_dem = None
         self.debug = debug
 
     def get_roughness_instruction(self, key: str):
@@ -1422,7 +1420,7 @@ class RoughnessLengthGenerator(BaseProcessor):
             client.forward_logging()  # Ensure root logging configuration is used
 
             # setup the roughness DEM generator
-            self.roughness_dem = dem.RoughnessDem(
+            roughness_dem = dem.RoughnessDem(
                 catchment_geometry=self.catchment_geometry,
                 hydrological_dem_path=self.get_instruction_path("result_dem"),
                 temp_folder=temp_folder,
@@ -1436,7 +1434,7 @@ class RoughnessLengthGenerator(BaseProcessor):
             )
 
             # Load in LiDAR tiles
-            self.roughness_dem.add_lidar(
+            roughness_dem.add_lidar(
                 lidar_datasets_info=lidar_datasets_info,
                 lidar_classifications_to_keep=self.get_instruction_general(
                     "lidar_classifications_to_keep"
@@ -1453,14 +1451,16 @@ class RoughnessLengthGenerator(BaseProcessor):
             )
             self.save_dem(
                 filename=self.get_instruction_path("result_geofabric"),
-                dataset=self.roughness_dem.dem,
-                generator=self.roughness_dem,
+                dataset=roughness_dem.dem,
+                generator=roughness_dem,
             )
+            del roughness_dem
             self.logger.info(
                 "In processor.RoughnessLengthGenerator - clean folder for "
                 f"writing temporarily cached netCDF files in {temp_folder}"
             )
             try:
+                gc.collect()
                 shutil.rmtree(temp_folder)
             except (Exception, PermissionError) as caught_exception:
                 logging.warning(
@@ -1490,7 +1490,6 @@ class MeasuredRiverGenerator(BaseProcessor):
             json_instructions=json_instructions
         )
         self.logger = logging.getLogger(f"{__name__}.{self.__class__.__name__}")
-
         self.debug = debug
 
     def get_measured_instruction(self, key: str):
@@ -1722,7 +1721,6 @@ class RiverBathymetryGenerator(BaseProcessor):
             json_instructions=json_instructions
         )
         self.logger = logging.getLogger(f"{__name__}.{self.__class__.__name__}")
-
         self.debug = debug
 
     def channel_characteristics_exist(self) -> bool:
@@ -1931,6 +1929,8 @@ class RiverBathymetryGenerator(BaseProcessor):
             instruction_paths["raw_dem"] = str(self.get_result_file_name(key="gnd_dem"))
             runner = RawLidarDemGenerator(self.instructions)
             runner.run()
+            del runner
+            gc.collect()
             instruction_paths.pop("raw_dem")
         # Load the Ground DEM
         self.logger.info("Loading ground DEM.")  # drop band added by rasterio.open()
@@ -1947,6 +1947,8 @@ class RiverBathymetryGenerator(BaseProcessor):
             instruction_paths["raw_dem"] = str(self.get_result_file_name(key="veg_dem"))
             runner = RawLidarDemGenerator(self.instructions)
             runner.run()
+            del ruuner
+            gc.collect()
             instruction_paths.pop("raw_dem")
         # Load the Veg DEM - drop band added by rasterio.open()
         self.logger.info("Loading the vegetation DEM.")
@@ -3024,6 +3026,8 @@ class WaterwayBedElevationEstimator(BaseProcessor):
             self.logger.info("Generating waterway DEM.")
             runner = RawLidarDemGenerator(self.instructions)
             runner.run()
+            del runner
+            gc.collect()
         # Load in the DEM
         chunk_size = self.get_processing_instructions("chunk_size")
         dem = rioxarray.rioxarray.open_rasterio(
