@@ -2792,7 +2792,9 @@ class WaterwayBedElevationEstimator(BaseProcessor):
             return
         # If not - estimate elevations along close waterways
         closed_waterways = waterways[waterways["tunnel"]]
-        closed_waterways["polygon"] = closed_waterways.buffer(closed_waterways["width"].to_numpy())
+        closed_waterways["polygon"] = closed_waterways.buffer(
+            closed_waterways["width"].to_numpy()
+        )
         # If no closed waterways write out empty files and return
         if len(closed_waterways) == 0:
             closed_waterways["elevation"] = []
@@ -2874,7 +2876,9 @@ class WaterwayBedElevationEstimator(BaseProcessor):
         open_waterways = waterways[numpy.logical_not(waterways["tunnel"])]
         open_waterways = open_waterways[~open_waterways.geometry.isna()]
         # sample the ends of the waterway - sample over a polygon at each end
-        polygons = open_waterways.interpolate(0).buffer(open_waterways["width"].to_numpy())
+        polygons = open_waterways.interpolate(0).buffer(
+            open_waterways["width"].to_numpy()
+        )
         open_waterways["start_elevation"] = polygons.apply(
             lambda geometry: self.minimum_elevation_in_polygon(
                 geometry=geometry, dem=dem
@@ -2956,7 +2960,9 @@ class WaterwayBedElevationEstimator(BaseProcessor):
         open_waterways = open_waterways.sort_index(ascending=True).explode(
             ignore_index=False, index_parts=True, column="geometry"
         )
-        open_waterways["polygons"] = open_waterways.buffer(open_waterways["width"].to_numpy())
+        open_waterways["polygons"] = open_waterways.buffer(
+            open_waterways["width"].to_numpy()
+        )
         # Sample the minimum elevations along each  open waterway
         open_waterways["elevation"] = open_waterways["polygons"].apply(
             lambda geometry: self.minimum_elevation_in_polygon(
