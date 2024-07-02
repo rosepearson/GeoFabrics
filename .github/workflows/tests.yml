@@ -52,6 +52,10 @@ jobs:
       shell: pwsh
       run: conda list
 
+    - name: Conda version
+      shell: pwsh
+      run: conda -V
+
     - name: Install test dependencies
       run: |
         mamba install flake8 pytest
@@ -75,4 +79,4 @@ jobs:
 
     - name: Run tests with pytest
       run: |
-        pytest tests/test_dem_generation_local_1/test_dem_generation_local_1.py tests/test_dem_generation_local_3/test_dem_generation_local_3.py tests/test_dem_generation_local_2/test_dem_generation_local_2.py
+        pytest
