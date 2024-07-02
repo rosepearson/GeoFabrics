@@ -1,6 +1,6 @@
 # YML file for setting up a virtual environment capable of running GeoFabrics
 
-name: geofabrics
+name: geofabrics_CI
 channels:
   - conda-forge
   - defaults

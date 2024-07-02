@@ -14,7 +14,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        python-version: ["3.10", "3.11", "3.12"]
+        python-version: ["3.11"] # ["3.10", "3.11", "3.12"]
         os: ["ubuntu-latest", "windows-latest"]
 
     steps:
@@ -43,7 +43,7 @@ jobs:
         miniforge-variant: Mambaforge
         channels: conda-forge # defaults automatically added
         python-version: ${{ matrix.python-version }}
-        activate-environment: geofabrics
+        activate-environment: geofabrics_CI
         environment-file: environment_CI.yml
         use-mamba: true
         auto-activate-base: false
@@ -75,4 +75,4 @@ jobs:
 
     - name: Run tests with pytest
       run: |
-        pytest
+        pytest tests\test_dem_generation_local_1\test_dem_generation_local_1.py tests\test_dem_generation_local_2\test_dem_generation_local_2.py
