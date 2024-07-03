@@ -22,6 +22,7 @@ import numpy
 
 from src.geofabrics import runner
 
+
 @pytest.mark.skipif(
     sys.platform != "linux", reason="Skip test if not linux"
 )
