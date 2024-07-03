@@ -285,7 +285,7 @@ class BaseProcessor(abc.ABC):
             },
             "z_labels": {
                 "waterways": "elevations",
-                "rivers": "bed_elevation_Rupp_and_Smart",
+                "rivers": "z",
                 "ocean": None,
             },
             "ignore_clipping": False,
@@ -1177,7 +1177,16 @@ class HydrologicDemGenerator(BaseProcessor):
         if "rivers" in self.instructions["data_paths"]:
             # Loop through each river in turn adding individually
             subfolder = self.get_instruction_path(key="subfolder")
-            for river_dict in self.instructions["data_paths"]["rivers"]:
+            z_labels=self.get_instruction_general(key="z_labels", subkey="rivers")
+            rivers = self.instructions["data_paths"]["rivers"]
+            if isinstance(z_labels, str):
+                z_labels = [z_labels for i in range(len(rivers))]
+            elif not isinstance(z_labels, list) or len(z_labels) != len(rivers):
+                raise ValueError(
+                    "There is a mismatch in length between the provided z_labels "
+                    f"and the rivers: {z_labels} {rivers}"
+                )
+            for index, river_dict in enumerate(rivers):
                 bathy_dir = pathlib.Path(river_dict["elevations"])
                 poly_dir = pathlib.Path(river_dict["extents"])
                 if not bathy_dir.is_absolute():
@@ -1188,19 +1197,22 @@ class HydrologicDemGenerator(BaseProcessor):
                 self.logger.info(f"Incorporating river: {bathy_dir}")
 
                 # Load in bathymetry
-                estimated_bathymetry_points = geometry.EstimatedBathymetryPoints(
+                estimated_bathymetry = geometry.EstimatedBathymetryPoints(
                     points_files=[bathy_dir],
                     polygon_files=[poly_dir],
                     catchment_geometry=self.catchment_geometry,
-                    z_labels=self.get_instruction_general(
-                        key="z_labels", subkey="rivers"
-                    ),
+                    z_labels=z_labels[index],
                 )
+
+                if len(estimated_bathymetry.points_array) == 0 or estimated_bathymetry.polygons.area.sum() < self.catchment_geometry.resolution ** 2:
+                    self.logger.warning("No points or an area less than one grid cell in "
+                                        f"river {bathy_dir}. Ignoring.")
+                    continue
 
                 # Call interpolate river on the DEM - the class checks to see if any pixels
                 # actually fall inside the polygon
                 hydrologic_dem.interpolate_rivers(
-                    estimated_bathymetry=estimated_bathymetry_points,
+                    estimated_bathymetry=estimated_bathymetry,
                     method=self.get_instruction_general(
                         key="interpolation", subkey="rivers"
                     ),

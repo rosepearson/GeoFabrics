@@ -898,6 +898,10 @@ class HydrologicallyConditionedDem(DemBase):
         # Extract river points and polygon
         estimated_points = estimated_bathymetry.points_array
         estimated_polygons = estimated_bathymetry.polygons
+        
+        if len(estimated_points) == 0 or estimated_polygons.area.sum() < self.catchment_geometry.resolution ** 2:
+            self.logger.warning("No points or an area less than one grid cell in the rivers dataset. Ignoring.")
+            return
 
         # Get the river and fan edge points - from DEM
         edge_dem = self._dem.rio.clip(
