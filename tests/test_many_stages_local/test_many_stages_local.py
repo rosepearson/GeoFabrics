@@ -200,7 +200,7 @@ class Test(unittest.TestCase):
     @classmethod
     def clean_data_folder(cls):
         """Remove all generated or downloaded files from the data directory,
-           but with only warnings if files can't be removed."""
+        but with only warnings if files can't be removed."""
 
         assert cls.cache_dir.exists(), (
             "The data directory that should include the comparison benchmark dem file "
