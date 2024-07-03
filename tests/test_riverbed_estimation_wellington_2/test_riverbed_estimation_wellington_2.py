@@ -157,7 +157,7 @@ class Test(unittest.TestCase):
 
         test = geopandas.read_file(self.results_dir / "river_polygon.geojson")
         benchmark = geopandas.read_file(
-            self.cache_dir / data_path_instructions["river_polygon_benchmark"]
+            self.cache_dir / data_path_instructions["benchmark"]["extents"]
         )
 
         # check the polygons match

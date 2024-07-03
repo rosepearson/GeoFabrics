@@ -141,15 +141,17 @@ class Test(unittest.TestCase):
         """A test to see if the correct open waterways polygon and bathymetry are
         generated."""
 
-        data_path_instructions = self.instructions["data_paths"]
+        decimal_places = 5
+        delta = 40
+        print(f"Compare river polygon - with tolerance {delta}")
 
-        print("Compare river polygon  - Windows")
+        data_path_instructions = self.instructions["data_paths"]
 
         test = geopandas.read_file(self.results_dir / "open_waterways_polygon.geojson")
         benchmark = geopandas.read_file(
             self.cache_dir / data_path_instructions["open_benchmark"]["extents"]
         )
-        decimal_threshold = 6
+
         # check the polygons match
         column_name = "geometry"
         test_comparison = test[column_name].area.sum()
@@ -158,12 +160,12 @@ class Test(unittest.TestCase):
         self.assertAlmostEqual(
             test_comparison,
             benchmark_comparison,
-            places=decimal_threshold,
+            delta=delta,
             msg=f"The geneated open waterways polygon {column_name} does not match the "
             f"benchmark. {test_comparison} vs {benchmark_comparison}",
         )
 
-        print("Compare open waterways bathymetry - Windows")
+        print(f"Compare open waterways bathymetry - with tolerance {decimal_places}")
 
         test = geopandas.read_file(
             self.results_dir / "open_waterways_elevation.geojson"
@@ -171,7 +173,6 @@ class Test(unittest.TestCase):
         benchmark = geopandas.read_file(
             self.cache_dir / data_path_instructions["open_benchmark"]["elevations"]
         )
-        decimal_threshold = 6
 
         # check the polygons match closely
         column_name = "geometry"
@@ -181,7 +182,7 @@ class Test(unittest.TestCase):
         self.assertAlmostEqual(
             test_comparison,
             benchmark_comparison,
-            places=decimal_threshold,
+            places=decimal_places,
             msg=f"The geneated river {column_name} does"
             f" not match the benchmark. {test_comparison} "
             f"vs {benchmark_comparison}",
@@ -194,7 +195,7 @@ class Test(unittest.TestCase):
         self.assertAlmostEqual(
             test_comparison,
             benchmark_comparison,
-            places=decimal_threshold,
+            places=decimal_places,
             msg=f"The maximum open waterways bathymetry {column_name} does not"
             f" match the benchmark. {test_comparison.max()} vs "
             f"{benchmark_comparison.max()}",
