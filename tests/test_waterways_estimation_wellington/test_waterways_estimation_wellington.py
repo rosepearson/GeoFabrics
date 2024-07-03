@@ -187,7 +187,7 @@ class Test(unittest.TestCase):
             f"vs {benchmark_comparison}",
         )
         # check some of the bathymetry columns match
-        column_name = "elevation"
+        column_name = "z"
         test_comparison = test[column_name].array
         benchmark_comparison = benchmark[column_name].array
         # Temporary simple max test
@@ -254,7 +254,7 @@ class Test(unittest.TestCase):
             f"vs {benchmark_comparison}",
         )
         # check some of the bathymetry columns match
-        column_name = "elevation"
+        column_name = "z"
         test_comparison = test[column_name].array
         benchmark_comparison = benchmark[column_name].array
         # Temporary simple max test
@@ -336,7 +336,7 @@ class Test(unittest.TestCase):
             self.cache_dir / data_path_instructions["closed_benchmark"]["elevations"]
         )
 
-        column_name = "elevation"
+        column_name = "z"
         test_comparison = test[column_name].array
         benchmark_comparison = benchmark[column_name].array
         print(
@@ -408,7 +408,7 @@ class Test(unittest.TestCase):
         )
 
         # check some of the bathymetrt columns match
-        column_name = "elevation"
+        column_name = "z"
         test_comparison = test[column_name].array
         benchmark_comparison = benchmark[column_name].array
         print(
