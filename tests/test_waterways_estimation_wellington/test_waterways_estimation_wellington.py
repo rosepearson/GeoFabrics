@@ -134,7 +134,9 @@ class Test(unittest.TestCase):
                         "delete."
                     )
 
-    @pytest.mark.skipif(sys.platform != "win32", reason="Windows test - this is less strict")
+    @pytest.mark.skipif(
+        sys.platform != "win32", reason="Windows test - this is less strict"
+    )
     def test_open_waterways_windows(self):
         """A test to see if the correct open waterways polygon and bathymetry are
         generated."""
@@ -292,7 +294,9 @@ class Test(unittest.TestCase):
             f"distances of {comparison}",
         )"""
 
-    @pytest.mark.skipif(sys.platform != "win32", reason="Windows test - this is less strict")
+    @pytest.mark.skipif(
+        sys.platform != "win32", reason="Windows test - this is less strict"
+    )
     def test_closed_waterways_windows(self):
         """A test to see if the correct close waterways polygon and bathymetry are
         generated."""
@@ -323,7 +327,6 @@ class Test(unittest.TestCase):
             msg=f"The geneated closed waterways polygon {column_name} does not match the"
             f" benchmark. {test_comparison} vs {benchmark_comparison}",
         )
-
 
         # Compare the bathymetries
         test = geopandas.read_file(
