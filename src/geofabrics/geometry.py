@@ -511,8 +511,8 @@ class MarineBathymetryPoints:
 
 class EstimatedElevationPoints:
     """A class for accessing estimated or measured river, mouth and waterway
-       elevations as points. Paired elevation and polygon files are expected.
-       The elevations are used to interpolate elevations within the polygons.
+    elevations as points. Paired elevation and polygon files are expected.
+    The elevations are used to interpolate elevations within the polygons.
     """
 
     Z_LABEL = "z"
