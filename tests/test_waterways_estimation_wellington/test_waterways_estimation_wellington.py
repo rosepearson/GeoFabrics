@@ -312,7 +312,7 @@ class Test(unittest.TestCase):
         benchmark = geopandas.read_file(
             self.cache_dir / data_path_instructions["closed_benchmark"]["extents"]
         )
-
+        decimal_threshold = 6
         column_name = "geometry"
         test_comparison = test[column_name].area.item()
         benchmark_comparison = benchmark[column_name].area.item()
