@@ -1177,7 +1177,7 @@ class HydrologicDemGenerator(BaseProcessor):
         if "rivers" in self.instructions["data_paths"]:
             # Loop through each river in turn adding individually
             subfolder = self.get_instruction_path(key="subfolder")
-            z_labels=self.get_instruction_general(key="z_labels", subkey="rivers")
+            z_labels = self.get_instruction_general(key="z_labels", subkey="rivers")
             rivers = self.instructions["data_paths"]["rivers"]
             if isinstance(z_labels, str):
                 z_labels = [z_labels for i in range(len(rivers))]
@@ -1204,9 +1204,15 @@ class HydrologicDemGenerator(BaseProcessor):
                     z_labels=z_labels[index],
                 )
 
-                if len(estimated_bathymetry.points_array) == 0 or estimated_bathymetry.polygons.area.sum() < self.catchment_geometry.resolution ** 2:
-                    self.logger.warning("No points or an area less than one grid cell in "
-                                        f"river {bathy_dir}. Ignoring.")
+                if (
+                    len(estimated_bathymetry.points_array) == 0
+                    or estimated_bathymetry.polygons.area.sum()
+                    < self.catchment_geometry.resolution**2
+                ):
+                    self.logger.warning(
+                        "No points or an area less than one grid cell in "
+                        f"river {bathy_dir}. Ignoring."
+                    )
                     continue
 
                 # Call interpolate river on the DEM - the class checks to see if any pixels
