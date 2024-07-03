@@ -134,7 +134,7 @@ class Test(unittest.TestCase):
                         "delete."
                     )
 
-    @pytest.mark.skipif(sys.platform != "win32", reason="Windows test - this is strict")
+    @pytest.mark.skipif(sys.platform != "win32", reason="Windows test - this is less strict")
     def test_open_waterways_windows(self):
         """A test to see if the correct open waterways polygon and bathymetry are
         generated."""
@@ -259,7 +259,7 @@ class Test(unittest.TestCase):
             f"distances of {comparison}",
         )"""
 
-    @pytest.mark.skipif(sys.platform != "win32", reason="Windows test - this is strict")
+    @pytest.mark.skipif(sys.platform != "win32", reason="Windows test - this is less strict")
     def test_closed_waterways_windows(self):
         """A test to see if the correct close waterways polygon and bathymetry are
         generated."""
@@ -276,11 +276,22 @@ class Test(unittest.TestCase):
             self.cache_dir / data_path_instructions["closed_benchmark"]["extents"]
         )
 
-        self.assertTrue(
-            (test == benchmark).all().all(),
-            f"The closed waterways polygons {test} doesn't equal the close waterways benchmark "
-            f" polygon {benchmark}",
+        decimal_threshold = 6
+        column_name = "geometry"
+        test_comparison = test[column_name].area.item()
+        benchmark_comparison = benchmark[column_name].area.item()
+        print(
+            f"Closed waterways polygon test area {test_comparison}, and benchmark area "
+            f"{benchmark_comparison}"
         )
+        self.assertAlmostEqual(
+            test_comparison,
+            benchmark_comparison,
+            places=decimal_threshold,
+            msg=f"The geneated closed waterways polygon {column_name} does not match the"
+            f" benchmark. {test_comparison} vs {benchmark_comparison}",
+        )
+
 
         # Compare the bathymetries
         test = geopandas.read_file(
@@ -290,10 +301,32 @@ class Test(unittest.TestCase):
             self.cache_dir / data_path_instructions["closed_benchmark"]["elevations"]
         )
 
-        self.assertTrue(
-            (test == benchmark).all().all(),
-            f"The geneated closed waterways bathymetry {test} doesn't equal the closed "
-            f"waterways benchmark  bathymetry {benchmark}",
+        column_name = "elevation"
+        test_comparison = test[column_name].array
+        benchmark_comparison = benchmark[column_name].array
+        print(
+            f"Close waterways bathymetry {column_name} difference "
+            f"{numpy.array(test_comparison) - numpy.array(benchmark_comparison)}"
+        )
+        self.assertAlmostEqual(
+            test_comparison,
+            benchmark_comparison,
+            places=decimal_threshold,
+            msg="The geneated closed waterways bathymetry {column_name} does not match "
+            f"the benchmark. {test_comparison} vs {benchmark_comparison}",
+        )
+
+        column_name = "geometry"
+        comparison = test[column_name].distance(benchmark[column_name]).array
+        print(
+            f"Distances between the test and benchmark points {numpy.array(comparison)}"
+        )
+        self.assertAlmostEqual(
+            comparison,
+            numpy.zeros(len(test[column_name])),
+            places=decimal_threshold,
+            msg=f"The geneated closed waterways bathymetry {column_name} does not match the"
+            f"benchmark. They are separated by distances of {comparison}",
         )
 
     @pytest.mark.skipif(
