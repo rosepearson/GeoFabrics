@@ -22,9 +22,8 @@ import numpy
 
 from src.geofabrics import runner
 
-@pytest.mark.skipif(
-    sys.platform != "linux", reason="Linux test - this is less strict"
-)
+
+@pytest.mark.skipif(sys.platform != "linux", reason="Linux test - this is less strict")
 class Test(unittest.TestCase):
     """A class to test the basic river bathymetry estimation functionality
     contained in processor.RiverBathymetryGenerator.
