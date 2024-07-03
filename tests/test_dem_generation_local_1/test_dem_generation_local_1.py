@@ -244,19 +244,25 @@ class Test(unittest.TestCase):
         """A basic comparison between the generated and benchmark DEM"""
 
         decimal_tolerance = 5
-        test_name = pathlib.Path(self.results_dir / self.instructions["data_paths"]["result_dem"])
-        
+        test_name = pathlib.Path(
+            self.results_dir / self.instructions["data_paths"]["result_dem"]
+        )
+
         for key, value in self.instructions["data_paths"]["benchmark_dem"].items():
-            
-            
-            test_name_layer = test_name.parent / f"{test_name.stem}_{key}{test_name.suffix}"
+            test_name_layer = (
+                test_name.parent / f"{test_name.stem}_{key}{test_name.suffix}"
+            )
 
             # Load in benchmark DEM
-            with rioxarray.rioxarray.open_rasterio(self.cache_dir / value, masked=True) as benchmark_dem:
+            with rioxarray.rioxarray.open_rasterio(
+                self.cache_dir / value, masked=True
+            ) as benchmark_dem:
                 benchmark_dem = benchmark_dem.squeeze("band", drop=True)
 
             # Load in result DEM
-            with rioxarray.rioxarray.open_rasterio(test_name_layer, masked=True) as test_dem:
+            with rioxarray.rioxarray.open_rasterio(
+                test_name_layer, masked=True
+            ) as test_dem:
                 test_dem = test_dem.squeeze("band", drop=True)
             # Compare DEMs - load both from file as rioxarray.rioxarray.open_rasterio
             # ignores index order
@@ -283,19 +289,25 @@ class Test(unittest.TestCase):
         """A basic comparison between the generated and benchmark DEM"""
 
         decimal_tolerance = 5
-        test_name = pathlib.Path(self.results_dir / self.instructions["data_paths"]["result_dem"])
-        
+        test_name = pathlib.Path(
+            self.results_dir / self.instructions["data_paths"]["result_dem"]
+        )
+
         for key, value in self.instructions["data_paths"]["benchmark_dem"].items():
-            
-            
-            test_name_layer = test_name.parent / f"{test_name.stem}_{key}{test_name.suffix}"
+            test_name_layer = (
+                test_name.parent / f"{test_name.stem}_{key}{test_name.suffix}"
+            )
 
             # Load in benchmark DEM
-            with rioxarray.rioxarray.open_rasterio(self.cache_dir / value, masked=True) as benchmark_dem:
+            with rioxarray.rioxarray.open_rasterio(
+                self.cache_dir / value, masked=True
+            ) as benchmark_dem:
                 benchmark_dem = benchmark_dem.squeeze("band", drop=True)
 
             # Load in result DEM
-            with rioxarray.rioxarray.open_rasterio(test_name_layer, masked=True) as test_dem:
+            with rioxarray.rioxarray.open_rasterio(
+                test_name_layer, masked=True
+            ) as test_dem:
                 test_dem = test_dem.squeeze("band", drop=True)
             # Compare DEMs - load both from file as rioxarray.rioxarray.open_rasterio
             # ignores index order
