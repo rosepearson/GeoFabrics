@@ -809,7 +809,7 @@ class HydrologicallyConditionedDem(DemBase):
 
     def interpolate_waterways(
         self,
-        estimated_bathymetry: geometry.EstimatedBathymetryPoints,
+        estimated_bathymetry: geometry.EstimatedElevationPoints,
         method: str,
     ) -> xarray.Dataset:
         """Performs interpolation of the estimated waterways."""
@@ -887,7 +887,7 @@ class HydrologicallyConditionedDem(DemBase):
 
     def interpolate_rivers(
         self,
-        estimated_bathymetry: geometry.EstimatedBathymetryPoints,
+        estimated_bathymetry: geometry.EstimatedElevationPoints,
         method: str,
     ) -> xarray.Dataset:
         """Performs interpolation from estimated bathymetry points within a polygon
