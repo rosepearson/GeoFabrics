@@ -57,7 +57,7 @@ class Test(unittest.TestCase):
         cls.cache_dir = test_path / "data"
         cls.results_dir = cls.cache_dir / "results"
         cls.tearDownClass()
-        cls.results_dir.mkdir()
+        cls.results_dir.mkdir(parents=True)
 
         # Run pipeline - download files and generated DEM
         runner = processor.MeasuredRiverGenerator(
@@ -75,7 +75,8 @@ class Test(unittest.TestCase):
 
     @classmethod
     def clean_data_folder(cls):
-        """Remove all generated or downloaded files from the data directory"""
+        """Remove all generated or downloaded files from the data directory,
+           but with only warnings if files can't be removed."""
 
         assert cls.cache_dir.exists(), (
             "The data directory that should include the comparison benchmark dem file "
@@ -87,12 +88,31 @@ class Test(unittest.TestCase):
             if path.is_dir():
                 for file in path.glob("*"):  # only files
                     if file.is_file():
-                        file.unlink()
+                        try:
+                            file.unlink()
+                        except (Exception, PermissionError) as caught_exception:
+                            logging.warning(
+                                f"Caught error {caught_exception} during "
+                                f"rmtree of {file}. Supressing error. You "
+                                "will have to manually delete."
+                            )
                     elif file.is_dir():
-                        shutil.rmtree(file)
-                shutil.rmtree(path)
-        if cls.results_dir.exists():
-            cls.results_dir.rmdir()
+                        try:
+                            shutil.rmtree(file)
+                        except (Exception, PermissionError) as caught_exception:
+                            logging.warning(
+                                f"Caught error {caught_exception} during "
+                                f"rmtree of {file}. Supressing error. You "
+                                "will have to manually delete."
+                            )
+                try:
+                    shutil.rmtree(path)
+                except (Exception, PermissionError) as caught_exception:
+                    logging.warning(
+                        f"Caught error {caught_exception} during rmtree of "
+                        f"{path}. Supressing error. You will have to manually "
+                        "delete."
+                    )
 
     @pytest.mark.skipif(sys.platform != "win32", reason="Windows test - this is strict")
     def test_river_polygon_windows(self):
