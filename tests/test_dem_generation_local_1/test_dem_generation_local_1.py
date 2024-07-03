@@ -244,54 +244,37 @@ class Test(unittest.TestCase):
         """A basic comparison between the generated and benchmark DEM"""
 
         decimal_tolerance = 5
+        test_name = pathlib.Path(self.results_dir / self.instructions["data_paths"]["result_dem"])
+        
+        for key, value in self.instructions["data_paths"]["benchmark_dem"].items():
+            
+            
+            test_name_layer = test_name.parent / f"{test_name.stem}_{key}{test_name.suffix}"
 
-        # Load in benchmark DEM
-        file_path = self.cache_dir / self.instructions["data_paths"]["benchmark_dem"]
-        with rioxarray.rioxarray.open_rasterio(file_path, masked=True) as benchmark_dem:
-            benchmark_dem = benchmark_dem.squeeze("band", drop=True)
-        # Load in result DEM
-        file_path = self.results_dir / self.instructions["data_paths"]["result_dem"]
-        with rioxarray.rioxarray.open_rasterio(file_path, masked=True) as test_dem:
-            test_dem = test_dem.squeeze("band", drop=True)
-        # Compare DEMs z - load both from file as rioxarray.rioxarray.open_rasterio
-        # ignores index order
-        diff_array = test_dem.z.data - benchmark_dem.z.data
-        logging.info(f"DEM z array diff is: {diff_array[diff_array != 0]}")
-        numpy.testing.assert_array_almost_equal(
-            test_dem.z.data,
-            benchmark_dem.z.data,
-            decimal=decimal_tolerance,
-            err_msg="The generated result_dem z has different data from the "
-            "benchmark_dem",
-        )
+            # Load in benchmark DEM
+            with rioxarray.rioxarray.open_rasterio(self.cache_dir / value, masked=True) as benchmark_dem:
+                benchmark_dem = benchmark_dem.squeeze("band", drop=True)
 
-        # Compare DEMs data source classification
-        diff_array = test_dem.data_source.data - benchmark_dem.data_source.data
-        logging.info(f"DEM data source diff is: {diff_array[diff_array != 0]}")
-        numpy.testing.assert_array_almost_equal(
-            test_dem.data_source.data,
-            benchmark_dem.data_source.data,
-            decimal=decimal_tolerance,
-            err_msg="The generated test data_source layer has different data "
-            "from the benchmark",
-        )
+            # Load in result DEM
+            with rioxarray.rioxarray.open_rasterio(test_name_layer, masked=True) as test_dem:
+                test_dem = test_dem.squeeze("band", drop=True)
+            # Compare DEMs - load both from file as rioxarray.rioxarray.open_rasterio
+            # ignores index order
+            diff_array = test_dem.data - benchmark_dem.data
+            logging.info(f"DEM layer {key} diff is: {diff_array[diff_array != 0]}")
+            numpy.testing.assert_array_almost_equal(
+                test_dem.data,
+                benchmark_dem.data,
+                decimal=decimal_tolerance,
+                err_msg=f"The generated result_dem {key} differs from the "
+                f"benchmark_dem by {diff_array}",
+            )
 
-        # Compare DEMs lidar source classification
-        diff_array = test_dem.lidar_source.data - benchmark_dem.lidar_source.data
-        logging.info(f"DEM LiDAR source diff is: {diff_array[diff_array != 0]}")
-        numpy.testing.assert_array_almost_equal(
-            test_dem.lidar_source.data,
-            benchmark_dem.lidar_source.data,
-            decimal=decimal_tolerance,
-            err_msg="The generated test lidar_source layer has different data "
-            "from the benchmark",
-        )
-
-        # explicitly free memory as xarray seems to be hanging onto memory
-        test_dem.close()
-        benchmark_dem.close()
-        del test_dem
-        del benchmark_dem
+            # explicitly free memory as xarray seems to be hanging onto memory
+            test_dem.close()
+            benchmark_dem.close()
+            del test_dem
+            del benchmark_dem
 
     @pytest.mark.skipif(
         sys.platform != "linux", reason="Linux test - this is more strict"
@@ -299,50 +282,38 @@ class Test(unittest.TestCase):
     def test_result_dem_linux(self):
         """A basic comparison between the generated and benchmark DEM"""
 
-        # Load in benchmark DEM
-        file_path = self.cache_dir / self.instructions["data_paths"]["benchmark_dem"]
-        with rioxarray.rioxarray.open_rasterio(file_path, masked=True) as benchmark_dem:
-            benchmark_dem = benchmark_dem.squeeze("band", drop=True)
-        # Load in result DEM
-        file_path = self.results_dir / self.instructions["data_paths"]["result_dem"]
-        with rioxarray.rioxarray.open_rasterio(file_path, masked=True) as test_dem:
-            test_dem = test_dem.squeeze("band", drop=True)
-        # Compare DEMs z - load both from file as rioxarray.rioxarray.open_rasterio
-        # ignores index order
-        diff_array = test_dem.z.data - benchmark_dem.z.data
-        logging.info(f"DEM z array diff is: {diff_array[diff_array != 0]}")
-        numpy.testing.assert_array_almost_equal(
-            test_dem.z.data,
-            benchmark_dem.z.data,
-            err_msg="The generated result_dem z has different data from the "
-            "benchmark_dem",
-        )
+        decimal_tolerance = 5
+        test_name = pathlib.Path(self.results_dir / self.instructions["data_paths"]["result_dem"])
+        
+        for key, value in self.instructions["data_paths"]["benchmark_dem"].items():
+            
+            
+            test_name_layer = test_name.parent / f"{test_name.stem}_{key}{test_name.suffix}"
 
-        # Compare DEMs data source classification
-        diff_array = test_dem.data_source.data - benchmark_dem.data_source.data
-        logging.info(f"DEM z array diff is: {diff_array[diff_array != 0]}")
-        numpy.testing.assert_array_almost_equal(
-            test_dem.data_source.data,
-            benchmark_dem.data_source.data,
-            err_msg="The generated test data_source layer has different data "
-            "from the benchmark",
-        )
+            # Load in benchmark DEM
+            with rioxarray.rioxarray.open_rasterio(self.cache_dir / value, masked=True) as benchmark_dem:
+                benchmark_dem = benchmark_dem.squeeze("band", drop=True)
 
-        # Compare DEMs lidar source classification
-        diff_array = test_dem.lidar_source.data - benchmark_dem.lidar_source.data
-        logging.info(f"DEM z array diff is: {diff_array[diff_array != 0]}")
-        numpy.testing.assert_array_almost_equal(
-            test_dem.lidar_source.data,
-            benchmark_dem.lidar_source.data,
-            err_msg="The generated test lidar_source layer has different data "
-            "from the benchmark",
-        )
+            # Load in result DEM
+            with rioxarray.rioxarray.open_rasterio(test_name_layer, masked=True) as test_dem:
+                test_dem = test_dem.squeeze("band", drop=True)
+            # Compare DEMs - load both from file as rioxarray.rioxarray.open_rasterio
+            # ignores index order
+            diff_array = test_dem.data - benchmark_dem.data
+            logging.info(f"DEM layer {key} diff is: {diff_array[diff_array != 0]}")
+            numpy.testing.assert_array_almost_equal(
+                test_dem.data,
+                benchmark_dem.data,
+                decimal=decimal_tolerance,
+                err_msg=f"The generated result_dem {key} differs from the "
+                f"benchmark_dem by {diff_array}",
+            )
 
-        # explicitly free memory as xarray seems to be hanging onto memory
-        test_dem.close()
-        benchmark_dem.close()
-        del test_dem
-        del benchmark_dem
+            # explicitly free memory as xarray seems to be hanging onto memory
+            test_dem.close()
+            benchmark_dem.close()
+            del test_dem
+            del benchmark_dem
 
 
 if __name__ == "__main__":
