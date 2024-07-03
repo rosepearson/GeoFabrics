@@ -20,9 +20,7 @@ import gc
 
 from src.geofabrics import runner
 
-@pytest.mark.skipif(
-    sys.platform != "linux", reason="Skip test if not linux"
-)
+
 class Test(unittest.TestCase):
     """A class to test the basic measured river interpolation functionality
     contained in processor.MeasuredRiverGenerator.
