@@ -1947,7 +1947,7 @@ class RiverBathymetryGenerator(BaseProcessor):
             instruction_paths["raw_dem"] = str(self.get_result_file_name(key="veg_dem"))
             runner = RawLidarDemGenerator(self.instructions)
             runner.run()
-            del ruuner
+            del runner
             gc.collect()
             instruction_paths.pop("raw_dem")
         # Load the Veg DEM - drop band added by rasterio.open()
