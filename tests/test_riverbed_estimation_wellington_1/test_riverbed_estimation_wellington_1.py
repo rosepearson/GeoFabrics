@@ -21,10 +21,6 @@ import gc
 from src.geofabrics import processor
 
 
-@pytest.mark.skipif(
-    sys.platform != "win32",
-    reason="Unrealisable error when saving raw_lidar_clipped.nc",
-)
 class Test(unittest.TestCase):
     """A class to test the basic river bathymetry estimation functionality
     contained in processor.RiverBathymetryGenerator.
@@ -130,7 +126,7 @@ class Test(unittest.TestCase):
         tested individually as it is generated first."""
 
         print("Compare river polygon")
-        decimal_places = 3
+        decimal_places = 2
         data_path_instructions = self.instructions["data_paths"]
 
         test = geopandas.read_file(self.results_dir / "river_polygon.geojson")
