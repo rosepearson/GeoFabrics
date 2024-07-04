@@ -135,7 +135,8 @@ class Test(unittest.TestCase):
                     )
 
     @pytest.mark.skipif(
-        sys.platform != "win32" and sys.platform != "linux", reason="Test both - this is less strict"
+        sys.platform != "win32" and sys.platform != "linux",
+        reason="Test both - this is less strict",
     )
     def test_open_waterways_to_tolerance(self):
         """A test to see if the correct open waterways polygon and bathymetry are
@@ -201,9 +202,7 @@ class Test(unittest.TestCase):
             f"{benchmark_comparison.max()}",
         )"""
 
-    @pytest.mark.skipif(
-        True, reason="Skip always"
-    )
+    @pytest.mark.skipif(True, reason="Skip always")
     def test_open_waterways_strict(self):
         """A test to see if the correct open waterways polygon and bathymetry are
         generated."""

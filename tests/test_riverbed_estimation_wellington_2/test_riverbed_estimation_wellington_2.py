@@ -117,7 +117,8 @@ class Test(unittest.TestCase):
                     )
 
     @pytest.mark.skipif(
-        sys.platform != "win32" and sys.platform != "linux", reason="Test both - this is less strict"
+        sys.platform != "win32" and sys.platform != "linux",
+        reason="Test both - this is less strict",
     )
     def test_river_polygon_to_tolerance(self):
         """A test to see if the correct river polygon is generated. This is
@@ -169,7 +170,8 @@ class Test(unittest.TestCase):
         )
 
     @pytest.mark.skipif(
-        sys.platform != "win32" and sys.platform != "linux", reason="Test both - this is less strict"
+        sys.platform != "win32" and sys.platform != "linux",
+        reason="Test both - this is less strict",
     )
     def test_river_bathymetry_to_tolerance(self):
         """A test to see if the correct river polygon is generated. This is
