@@ -121,7 +121,7 @@ class Test(unittest.TestCase):
                     )
 
     @pytest.mark.skipif(sys.platform != "win32", reason="Windows test - this is strict")
-    def test_river_polygon_windows(self):
+    def test_river_polygon_to_tolerance(self):
         """A test to see if the correct river polygon is generated. This is
         tested individually as it is generated first."""
 
@@ -151,7 +151,7 @@ class Test(unittest.TestCase):
     @pytest.mark.skipif(
         sys.platform != "linux", reason="Linux test - this is less strict"
     )
-    def test_river_polygon_linux(self):
+    def test_river_polygon_strict(self):
         """A test to see if the correct river polygon is generated. This is
         tested individually as it is generated first."""
 
@@ -173,7 +173,7 @@ class Test(unittest.TestCase):
         )
 
     @pytest.mark.skipif(sys.platform != "win32", reason="Windows test - this is strict")
-    def test_river_bathymetry_windows(self):
+    def test_river_bathymetry_to_tolerance(self):
         """A test to see if the correct river polygon is generated. This is
         tested individually as it is generated on its own."""
 
@@ -235,7 +235,7 @@ class Test(unittest.TestCase):
     @pytest.mark.skipif(
         sys.platform != "linux", reason="Linux test - this is less strict"
     )
-    def test_river_bathymetry_linux(self):
+    def test_river_bathymetry_strict(self):
         """A test to see if the correct river polygon is generated. This is
         tested individually as it is generated on its own."""
 
@@ -248,12 +248,13 @@ class Test(unittest.TestCase):
             self.cache_dir / data_path_instructions["benchmark"]["elevations"]
         )
 
-        # check the bathymetries match
+        # check the bathymetries match - exclude other columns where there may be NaN
+        comparison = (test == benchmark)[["bed_elevation_Neal_et_al", "bed_elevation_Rupp_and_Smart"]].all().all()
         self.assertTrue(
-            (test == benchmark).all().all(),
+            comparison,
             "The geneated river"
             f"bathymetry {test} doesn't equal the river benchmark "
-            f"river bathymetry {benchmark}",
+            f"river bathymetry {benchmark}: {comparison}",
         )
 
 
