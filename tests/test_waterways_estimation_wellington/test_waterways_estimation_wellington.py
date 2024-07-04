@@ -137,7 +137,7 @@ class Test(unittest.TestCase):
     @pytest.mark.skipif(
         sys.platform != "win32", reason="Windows test - this is less strict"
     )
-    def test_open_waterways_windows(self):
+    def test_open_waterways_to_tolerance(self):
         """A test to see if the correct open waterways polygon and bathymetry are
         generated."""
 
@@ -204,7 +204,7 @@ class Test(unittest.TestCase):
     @pytest.mark.skipif(
         sys.platform != "linux", reason="Linux test - this is less strict"
     )
-    def test_open_waterways_linux(self):
+    def test_open_waterways_strict(self):
         """A test to see if the correct open waterways polygon and bathymetry are
         generated."""
 
@@ -223,12 +223,10 @@ class Test(unittest.TestCase):
         test_comparison = test[column_name].area.sum()
         benchmark_comparison = benchmark[column_name].area.sum()
         print(f"test area {test_comparison}, and benchmark area {benchmark_comparison}")
-        self.assertAlmostEqual(
-            test_comparison,
-            benchmark_comparison,
-            delta=50,
-            msg=f"The geneated open waterways polygon {column_name} does not match the "
-            f"benchmark. {test_comparison} vs {benchmark_comparison}",
+        self.assertTrue(
+            test_comparison==benchmark_comparison,
+            f"The geneated open waterways polygon {column_name} does not match the "
+            f"benchmark. {test_comparison} vs {benchmark_comparison}"
         )
 
         print("Compare open waterways bathymetry - Linux")
@@ -239,66 +237,34 @@ class Test(unittest.TestCase):
         benchmark = geopandas.read_file(
             self.cache_dir / data_path_instructions["open_benchmark"]["elevations"]
         )
-        decimal_threshold = 6
 
         # check the polygons match closely
         column_name = "geometry"
         test_comparison = test[column_name].area.sum()
         benchmark_comparison = benchmark[column_name].area.sum()
         print(f"test area {test_comparison}, and benchmark area {benchmark_comparison}")
-        self.assertAlmostEqual(
-            test_comparison,
-            benchmark_comparison,
-            places=decimal_threshold,
-            msg=f"The geneated river {column_name} does"
-            f" not match the benchmark. {test_comparison} "
-            f"vs {benchmark_comparison}",
+        self.assertTrue(
+            test_comparison==benchmark_comparison,
+            f"The geneated river {column_name} does not match the benchmark. "
+            f"{test_comparison} vs {benchmark_comparison}"
         )
+
         # check some of the bathymetry columns match
         column_name = "z"
         test_comparison = test[column_name].array
         benchmark_comparison = benchmark[column_name].array
         # Temporary simple max test
-        self.assertAlmostEqual(
-            test_comparison.max(),
-            benchmark_comparison.max(),
-            places=1,
-            msg=f"The maximum open waterways bathymetry {column_name} does not"
+        self.assertTrue(
+            test_comparison.max()==benchmark_comparison.max(),
+            f"The maximum open waterways bathymetry {column_name} does not"
             f" match the benchmark. {test_comparison.max()} vs "
             f"{benchmark_comparison.max()}",
         )
 
-        # TODO - trun back on more robust comparison
-        """print(
-            f"Open waterways elevation {column_name} difference "
-            f"{numpy.array(test_comparison) - numpy.array(benchmark_comparison)}"
-        )
-        self.assertAlmostEqual(
-            test_comparison,
-            benchmark_comparison,
-            places=7,
-            msg=f"The geneated open waterways bathymetry {column_name} does not"
-            f" match the benchmark. {test_comparison} vs {benchmark_comparison}",
-        )
-
-        column_name = "geometry"
-        comparison = test[column_name].distance(benchmark[column_name]).array
-        print(
-            f"Distances between the test and benchmark points {numpy.array(comparison)}"
-        )
-        self.assertAlmostEqual(
-            comparison,
-            numpy.zeros(len(test[column_name])),
-            places=7,
-            msg=f"The geneated river {column_name} does not"
-            f" match the benchmark. They are separated by "
-            f"distances of {comparison}",
-        )"""
-
     @pytest.mark.skipif(
         sys.platform != "win32", reason="Windows test - this is less strict"
     )
-    def test_closed_waterways_windows(self):
+    def test_closed_waterways_to_tolerance(self):
         """A test to see if the correct close waterways polygon and bathymetry are
         generated."""
 
@@ -368,7 +334,7 @@ class Test(unittest.TestCase):
     @pytest.mark.skipif(
         sys.platform != "linux", reason="Linux test - this is less strict"
     )
-    def test_closed_waterways_linux(self):
+    def test_closed_waterways_strict(self):
         """A test to see if the correct close waterways polygon and bathymetry are
         generated."""
 
@@ -392,11 +358,9 @@ class Test(unittest.TestCase):
             f"Closed waterways polygon test area {test_comparison}, and benchmark area "
             f"{benchmark_comparison}"
         )
-        self.assertAlmostEqual(
-            test_comparison,
-            benchmark_comparison,
-            places=6,
-            msg=f"The geneated closed waterways polygon {column_name} does not match the"
+        self.assertTrue(
+            test_comparison == benchmark_comparison,
+            f"The geneated closed waterways polygon {column_name} does not match the"
             f" benchmark. {test_comparison} vs {benchmark_comparison}",
         )
 
@@ -416,11 +380,9 @@ class Test(unittest.TestCase):
             f"Close waterways bathymetry {column_name} difference "
             f"{numpy.array(test_comparison) - numpy.array(benchmark_comparison)}"
         )
-        self.assertAlmostEqual(
-            test_comparison,
-            benchmark_comparison,
-            places=7,
-            msg="The geneated closed waterways bathymetry {column_name} does not match "
+        self.assertTrue(
+            test_comparison == benchmark_comparison,
+            "The geneated closed waterways bathymetry {column_name} does not match "
             f"the benchmark. {test_comparison} vs {benchmark_comparison}",
         )
 
@@ -430,10 +392,8 @@ class Test(unittest.TestCase):
             f"Distances between the test and benchmark points {numpy.array(comparison)}"
         )
         self.assertAlmostEqual(
-            comparison,
-            numpy.zeros(len(test[column_name])),
-            places=7,
-            msg=f"The geneated closed waterways bathymetry {column_name} does not match the"
+            comparison == numpy.zeros(len(test[column_name])),
+            f"The geneated closed waterways bathymetry {column_name} does not match the"
             f"benchmark. They are separated by distances of {comparison}",
         )
 
