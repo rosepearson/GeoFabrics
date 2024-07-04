@@ -249,7 +249,13 @@ class Test(unittest.TestCase):
         )
 
         # check the bathymetries match - exclude other columns where there may be NaN
-        comparison = (test == benchmark)[["bed_elevation_Neal_et_al", "bed_elevation_Rupp_and_Smart"]].all().all()
+        comparison = (
+            (test == benchmark)[
+                ["bed_elevation_Neal_et_al", "bed_elevation_Rupp_and_Smart"]
+            ]
+            .all()
+            .all()
+        )
         self.assertTrue(
             comparison,
             "The geneated river"

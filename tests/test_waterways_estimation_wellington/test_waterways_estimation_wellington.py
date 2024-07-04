@@ -224,9 +224,9 @@ class Test(unittest.TestCase):
         benchmark_comparison = benchmark[column_name].area.sum()
         print(f"test area {test_comparison}, and benchmark area {benchmark_comparison}")
         self.assertTrue(
-            test_comparison==benchmark_comparison,
+            test_comparison == benchmark_comparison,
             f"The geneated open waterways polygon {column_name} does not match the "
-            f"benchmark. {test_comparison} vs {benchmark_comparison}"
+            f"benchmark. {test_comparison} vs {benchmark_comparison}",
         )
 
         print("Compare open waterways bathymetry - Linux")
@@ -244,9 +244,9 @@ class Test(unittest.TestCase):
         benchmark_comparison = benchmark[column_name].area.sum()
         print(f"test area {test_comparison}, and benchmark area {benchmark_comparison}")
         self.assertTrue(
-            test_comparison==benchmark_comparison,
+            test_comparison == benchmark_comparison,
             f"The geneated river {column_name} does not match the benchmark. "
-            f"{test_comparison} vs {benchmark_comparison}"
+            f"{test_comparison} vs {benchmark_comparison}",
         )
 
         # check some of the bathymetry columns match
@@ -255,7 +255,7 @@ class Test(unittest.TestCase):
         benchmark_comparison = benchmark[column_name].array
         # Temporary simple max test
         self.assertTrue(
-            test_comparison.max()==benchmark_comparison.max(),
+            test_comparison.max() == benchmark_comparison.max(),
             f"The maximum open waterways bathymetry {column_name} does not"
             f" match the benchmark. {test_comparison.max()} vs "
             f"{benchmark_comparison.max()}",
