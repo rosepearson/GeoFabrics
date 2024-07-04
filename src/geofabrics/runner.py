@@ -10,7 +10,6 @@ import logging
 import pathlib
 import typing
 import copy
-import sys
 
 
 def config_logging(logging_filepath: pathlib):
@@ -97,7 +96,9 @@ def run_processor_class(processor_class, processor_label: str, instructions: dic
         f"{processor_class.__name__}"
     )
     logger.info(message)
-    return runner
+    del runner
+    del logger
+    return
 
 
 def merge_dicts(dict_a: dict, dict_b: dict, logger: logging.Logger, replace_a: bool):
@@ -252,6 +253,7 @@ def from_instructions_dict(instructions: dict):
     logger.info(
         f"Total execution time is {datetime.datetime.now() - initial_start_time}"
     )
+    del logger
 
 
 def from_instructions_file(

@@ -346,10 +346,11 @@ class DemBase(abc.ABC):
     def save_dem(
         self, filename: pathlib.Path, dem: xarray.Dataset, compression: dict = None
     ):
-        """Save the DEM to a netCDF file and optionally reload it
+        """Save the DEM to a netCDF file.
 
-        :param filename: .nc file where to save the DEM
-        :param reload: reload DEM from the saved file
+        :param filename: .nc or .tif file to save the DEM.
+        :param dem: the DEM to save.
+        :param compression: the compression instructions if compressing.
         """
 
         assert not any(
@@ -358,17 +359,32 @@ class DemBase(abc.ABC):
 
         try:
             self._write_netcdf_conventions_in_place(dem, self.catchment_geometry.crs)
-            if compression is not None:
-                compression["grid_mapping"] = dem.encoding["grid_mapping"]
-                encoding = {}
-                for key in dem.data_vars:
-                    compression["dtype"] = dem[key].dtype
-                    encoding[key] = compression
-                dem.to_netcdf(
-                    filename, format="NETCDF4", engine="netcdf4", encoding=encoding
-                )
-            else:
-                dem.to_netcdf(filename, format="NETCDF4", engine="netcdf4")
+            if filename.suffix.lower() == ".nc":
+                if compression is not None:
+                    compression["grid_mapping"] = dem.encoding["grid_mapping"]
+                    encoding = {}
+                    for key in dem.data_vars:
+                        compression["dtype"] = dem[key].dtype
+                        encoding[key] = compression
+                    dem.to_netcdf(
+                        filename, format="NETCDF4", engine="netcdf4", encoding=encoding
+                    )
+                else:
+                    dem.to_netcdf(filename, format="NETCDF4", engine="netcdf4")
+            elif filename.suffix.lower() == ".tif":
+                for key, array in dem.data_vars.items():
+                    filename_layer = (
+                        filename.parent / f"{filename.stem}_{key}{filename.suffix}"
+                    )
+                    array.encoding = {
+                        "dtype": array.dtype,
+                        "grid_mapping": array.encoding["grid_mapping"],
+                        "rasterio_dtype": array.dtype,
+                    }
+                    if compression:
+                        array.rio.to_raster(filename_layer, compress="deflate")
+                    else:
+                        array.rio.to_raster(filename_layer)
             dem.close()
 
         except (Exception, KeyboardInterrupt) as caught_exception:
@@ -793,7 +809,7 @@ class HydrologicallyConditionedDem(DemBase):
 
     def interpolate_waterways(
         self,
-        estimated_bathymetry: geometry.EstimatedBathymetryPoints,
+        estimated_bathymetry: geometry.EstimatedElevationPoints,
         method: str,
     ) -> xarray.Dataset:
         """Performs interpolation of the estimated waterways."""
@@ -871,7 +887,7 @@ class HydrologicallyConditionedDem(DemBase):
 
     def interpolate_rivers(
         self,
-        estimated_bathymetry: geometry.EstimatedBathymetryPoints,
+        estimated_bathymetry: geometry.EstimatedElevationPoints,
         method: str,
     ) -> xarray.Dataset:
         """Performs interpolation from estimated bathymetry points within a polygon
@@ -882,6 +898,15 @@ class HydrologicallyConditionedDem(DemBase):
         # Extract river points and polygon
         estimated_points = estimated_bathymetry.points_array
         estimated_polygons = estimated_bathymetry.polygons
+
+        if (
+            len(estimated_points) == 0
+            or estimated_polygons.area.sum() < self.catchment_geometry.resolution**2
+        ):
+            self.logger.warning(
+                "No points or an area less than one grid cell in the rivers dataset. Ignoring."
+            )
+            return
 
         # Get the river and fan edge points - from DEM
         edge_dem = self._dem.rio.clip(
@@ -1012,7 +1037,7 @@ class LidarBase(DemBase):
 
         self.elevation_range = elevation_range
         assert elevation_range is None or (
-            type(elevation_range) == list and len(elevation_range) == 2
+            type(elevation_range) is list and len(elevation_range) == 2
         ), "Error the 'elevation_range' must either be none, or a two entry list"
 
         self._dem = None
@@ -1027,7 +1052,7 @@ class LidarBase(DemBase):
 
     @property
     def dem(self):
-        """Return the positivelly indexed DEM from tiles"""
+        """Return the positivly indexed DEM from tiles"""
 
         # Ensure positively increasing indices as required by some programs
         self._dem = self._ensure_positive_indexing(self._dem)
@@ -1120,8 +1145,8 @@ class LidarBase(DemBase):
         tile_index_file: str | pathlib.Path,
         region_to_rasterise: geopandas.GeoDataFrame,
     ):
-        """Read in tile index file and determine the column name of the tile
-        geometries"""
+        """Read in LiDAR tile index file and determine the column name of the
+        tile geometries"""
         # Check to see if a extents file was added
         tile_index_extents = geopandas.read_file(tile_index_file)
 
@@ -1818,9 +1843,10 @@ class RawDem(LidarBase):
                     "description": f"{metadata['library_name']}:"
                     f"{metadata['class_name']} resolution "
                     f"{self.catchment_geometry.resolution}",
-                    "history": f"{metadata['utc_time']}: {metadata['library_name']}"
-                    f":{metadata['class_name']} resolution "
-                    f"{self.catchment_geometry.resolution};",
+                    "history": f"{metadata['utc_time']}:"
+                    f"{metadata['library_name']}:{metadata['class_name']} "
+                    f"version {metadata['library_version']} "
+                    f"resolution {self.catchment_geometry.resolution};",
                     "geofabrics_instructions": f"{metadata['instructions']}",
                 },
             )
@@ -1847,6 +1873,63 @@ class RawDem(LidarBase):
         )
 
         return dem
+
+
+class PatchDem(LidarBase):
+    """A class to manage the addition of a DEM to the foreground or background
+    of a preexisting DEM.
+
+    Parameters
+    ----------
+
+    patch_on_top
+        If True only patch the DEM values on top of the initial DEM. If False
+        patch only where values are NaN.
+    drop_patch_offshore
+        If True only keep patch values on land and the foreshore.
+    elevation_range
+        Optitionally specify a range of valid elevations. Any LiDAR points with
+        elevations outside this range will be filtered out.
+    initial_dem_path
+        The DEM to patch the other DEM on top / only where values are NaN.
+    buffer_cells - the number of empty cells to keep around LiDAR cells for
+        interpolation after the coarse DEM added to ensure a smooth boundary.
+    chunk_size
+        The chunk size in pixels for parallel/staged processing
+    """
+
+    def __init__(
+        self,
+        catchment_geometry: geometry.CatchmentGeometry,
+        patch_on_top: bool,
+        drop_patch_offshore: bool,
+        buffer_cells: int,
+        initial_dem_path: str | pathlib.Path,
+        elevation_range: list | None = None,
+        chunk_size: int | None = None,
+    ):
+        """Setup base DEM to add future tiles too"""
+
+        super(PatchDem, self).__init__(
+            catchment_geometry=catchment_geometry,
+            chunk_size=chunk_size,
+            elevation_range=elevation_range,
+        )
+        self.logger = logging.getLogger(f"{__name__}.{self.__class__.__name__}")
+
+        self.patch_on_top = patch_on_top
+        self.buffer_cells = buffer_cells
+        # Read in the DEM raster
+        initial_dem = rioxarray.rioxarray.open_rasterio(
+            pathlib.Path(initial_dem_path),
+            masked=True,
+            parse_coordinates=True,
+            chunks=True,
+        ).squeeze(
+            "band", drop=True
+        )  # remove band coordinate added by rasterio.open()
+        self._write_netcdf_conventions_in_place(initial_dem, catchment_geometry.crs)
+        self._dem = initial_dem
 
     def add_coarse_dem(self, coarse_dem_path: pathlib.Path, area_threshold: float):
         """Check if gaps in DEM on land, if so iterate through coarse DEMs
@@ -2484,6 +2567,22 @@ class RoughnessDem(LidarBase):
                 self._dem.zo < self.default_values["maximum"],
                 self.default_values["maximum"],
             )
+
+        # update metadata
+        history = self._dem.attrs["history"]
+        self._dem.attrs["history"] = (
+            f"{metadata['utc_time']}:{metadata['library_name']}"
+            f":{metadata['class_name']} version {metadata['library_version']} "
+            f" resolution {self.catchment_geometry.resolution}; {history}"
+        )
+        self._dem.attrs[
+            "source"
+        ] = f"{metadata['library_name']} version {metadata['library_version']}"
+        self._dem.attrs["description"] = (
+            f"{metadata['library_name']}:{metadata['class_name']} resolution "
+            f"{self.catchment_geometry.resolution}"
+        )
+        self._dem.attrs["geofabrics_instructions"] = f"{metadata['instructions']}"
 
         # ensure the expected CF conventions are followed
         self._write_netcdf_conventions_in_place(self._dem, self.catchment_geometry.crs)
