@@ -191,6 +191,21 @@ if there is a default value and the local cache is specified.</p>
 </dd></dl>
 
 <dl class="py method">
+<dt class="sig sig-object py" id="geofabrics.processor.BaseProcessor.save_dem">
+<span class="sig-name descname"><span class="pre">save_dem</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">filename</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">dataset</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">generator</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#geofabrics.processor.BaseProcessor.save_dem" title="Link to this definition"></a></dt>
+<dd><p>Save out the dem/geofabrics labelled array.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>filename</strong> (<em>pathlib.Path</em>) – The filename including extension to save the DEM/geofabric to.</p></li>
+<li><p><strong>dataset</strong> (<em>xarray.Dataset</em>) – The labelled array data to save.</p></li>
+<li><p><strong>generator</strong> (<a class="reference internal" href="../dem/index.html#geofabrics.dem.DemBase" title="geofabrics.dem.DemBase"><em>geofabrics.dem.DemBase</em></a>) – The dem.DemBase object with a ‘save_dem’ function.</p></li>
+</ul>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
 <dt class="sig sig-object py" id="geofabrics.processor.BaseProcessor.get_resolution">
 <span class="sig-name descname"><span class="pre">get_resolution</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="headerlink" href="#geofabrics.processor.BaseProcessor.get_resolution" title="Link to this definition"></a></dt>
 <dd><p>Return the resolution from the instruction file. Raise an error if
@@ -402,10 +417,6 @@ the json_instructions file.</p>
 <dt>The <cite>HydrologicDemGenerator</cite> class contains several important class members:</dt><dd><ul class="simple">
 <li><p>catchment_geometry - Defines all relevant regions in a catchment required in the
 generation of a DEM as polygons.</p></li>
-<li><p>hydrologic_dem - Defines the hydrologically conditioned DEM as a combination of
-tiles from LiDAR and interpolated from bathymetry.</p></li>
-<li><p>bathy_contours - This object defines the bathymetry vectors used to define the
-DEM values offshore.</p></li>
 </ul>
 </dd>
 </dl>
@@ -421,11 +432,12 @@ an instruction file</p>
 </dl>
 <dl class="py method">
 <dt class="sig sig-object py" id="geofabrics.processor.HydrologicDemGenerator.add_bathymetry">
-<span class="sig-name descname"><span class="pre">add_bathymetry</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">area_threshold</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">catchment_dirs</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#geofabrics.processor.HydrologicDemGenerator.add_bathymetry" title="Link to this definition"></a></dt>
+<span class="sig-name descname"><span class="pre">add_bathymetry</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">hydrologic_dem</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">area_threshold</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">catchment_dirs</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#geofabrics.processor.HydrologicDemGenerator.add_bathymetry" title="Link to this definition"></a></dt>
 <dd><p>Add in any bathymetry data - ocean or river</p>
 <dl class="field-list simple">
 <dt class="field-odd">Parameters<span class="colon">:</span></dt>
 <dd class="field-odd"><ul class="simple">
+<li><p><strong>hydrologic_dem</strong> (<a class="reference internal" href="../dem/index.html#geofabrics.dem.HydrologicallyConditionedDem" title="geofabrics.dem.HydrologicallyConditionedDem"><em>geofabrics.dem.HydrologicallyConditionedDem</em></a>)</p></li>
 <li><p><strong>area_threshold</strong> (<em>float</em>)</p></li>
 <li><p><strong>catchment_dirs</strong> (<em>pathlib.Path</em>)</p></li>
 </ul>

@@ -118,7 +118,7 @@
   <td style="width: 33%; vertical-align: top;"><ul>
       <li><a href="autoapi/geofabrics/processor/index.html#geofabrics.processor.HydrologicDemGenerator.add_bathymetry">add_bathymetry() (geofabrics.processor.HydrologicDemGenerator method)</a>
 </li>
-      <li><a href="autoapi/geofabrics/dem/index.html#geofabrics.dem.RawDem.add_coarse_dem">add_coarse_dem() (geofabrics.dem.RawDem method)</a>
+      <li><a href="autoapi/geofabrics/dem/index.html#geofabrics.dem.PatchDem.add_coarse_dem">add_coarse_dem() (geofabrics.dem.PatchDem method)</a>
 </li>
       <li><a href="autoapi/geofabrics/dem/index.html#geofabrics.dem.LidarBase.add_lidar">add_lidar() (geofabrics.dem.LidarBase method)</a>
 
@@ -148,9 +148,9 @@
 <h2 id="B">B</h2>
 <table style="width: 100%" class="indextable genindextable"><tr>
   <td style="width: 33%; vertical-align: top;"><ul>
-      <li><a href="autoapi/geofabrics/geometry/index.html#geofabrics.geometry.EstimatedBathymetryPoints.bank_height_points">bank_height_points() (geofabrics.geometry.EstimatedBathymetryPoints method)</a>
+      <li><a href="autoapi/geofabrics/geometry/index.html#geofabrics.geometry.EstimatedElevationPoints.bank_height_points">bank_height_points() (geofabrics.geometry.EstimatedElevationPoints method)</a>
 </li>
-      <li><a href="autoapi/geofabrics/geometry/index.html#geofabrics.geometry.EstimatedBathymetryPoints.bank_heights_exist">bank_heights_exist() (geofabrics.geometry.EstimatedBathymetryPoints method)</a>
+      <li><a href="autoapi/geofabrics/geometry/index.html#geofabrics.geometry.EstimatedElevationPoints.bank_heights_exist">bank_heights_exist() (geofabrics.geometry.EstimatedElevationPoints method)</a>
 </li>
       <li><a href="autoapi/geofabrics/processor/index.html#geofabrics.processor.BaseProcessor">BaseProcessor (class in geofabrics.processor)</a>
 </li>
@@ -285,7 +285,7 @@
       </ul></li>
       <li><a href="autoapi/geofabrics/bathymetry_estimation/index.html#geofabrics.bathymetry_estimation.ChannelCharacteristics.estimate_width_and_slope">estimate_width_and_slope() (geofabrics.bathymetry_estimation.ChannelCharacteristics method)</a>
 </li>
-      <li><a href="autoapi/geofabrics/geometry/index.html#geofabrics.geometry.EstimatedBathymetryPoints">EstimatedBathymetryPoints (class in geofabrics.geometry)</a>
+      <li><a href="autoapi/geofabrics/geometry/index.html#geofabrics.geometry.EstimatedElevationPoints">EstimatedElevationPoints (class in geofabrics.geometry)</a>
 </li>
       <li><a href="autoapi/geofabrics/dem/index.html#geofabrics.dem.CoarseDem.extents">extents (geofabrics.dem.CoarseDem property)</a>
 </li>
@@ -528,7 +528,7 @@
 <h2 id="N">N</h2>
 <table style="width: 100%" class="indextable genindextable"><tr>
   <td style="width: 33%; vertical-align: top;"><ul>
-      <li><a href="autoapi/geofabrics/dem/index.html#geofabrics.dem.RawDem.no_values_mask">no_values_mask (geofabrics.dem.RawDem property)</a>
+      <li><a href="autoapi/geofabrics/dem/index.html#geofabrics.dem.PatchDem.no_values_mask">no_values_mask (geofabrics.dem.PatchDem property)</a>
 </li>
   </ul></td>
   <td style="width: 33%; vertical-align: top;"><ul>
@@ -564,21 +564,23 @@
         <li><a href="autoapi/geofabrics/__main__/index.html#geofabrics.__main__.parse_args">(in module geofabrics.__main__)</a>
 </li>
       </ul></li>
+      <li><a href="autoapi/geofabrics/dem/index.html#geofabrics.dem.PatchDem">PatchDem (class in geofabrics.dem)</a>
+</li>
       <li><a href="autoapi/geofabrics/dem/index.html#geofabrics.dem.CoarseDem.points">points (geofabrics.dem.CoarseDem property)</a>
 
       <ul>
-        <li><a href="autoapi/geofabrics/geometry/index.html#geofabrics.geometry.EstimatedBathymetryPoints.points">(geofabrics.geometry.EstimatedBathymetryPoints property)</a>
+        <li><a href="autoapi/geofabrics/geometry/index.html#geofabrics.geometry.EstimatedElevationPoints.points">(geofabrics.geometry.EstimatedElevationPoints property)</a>
 </li>
         <li><a href="autoapi/geofabrics/geometry/index.html#geofabrics.geometry.MarineBathymetryPoints.points">(geofabrics.geometry.MarineBathymetryPoints property)</a>
 </li>
       </ul></li>
   </ul></td>
   <td style="width: 33%; vertical-align: top;"><ul>
-      <li><a href="autoapi/geofabrics/geometry/index.html#geofabrics.geometry.EstimatedBathymetryPoints.points_array">points_array (geofabrics.geometry.EstimatedBathymetryPoints property)</a>
+      <li><a href="autoapi/geofabrics/geometry/index.html#geofabrics.geometry.EstimatedElevationPoints.points_array">points_array (geofabrics.geometry.EstimatedElevationPoints property)</a>
 </li>
       <li><a href="autoapi/geofabrics/geometry/index.html#geofabrics.geometry.RiverMouthFan.polygon_and_bathymetry">polygon_and_bathymetry() (geofabrics.geometry.RiverMouthFan method)</a>
 </li>
-      <li><a href="autoapi/geofabrics/geometry/index.html#geofabrics.geometry.EstimatedBathymetryPoints.polygons">polygons (geofabrics.geometry.EstimatedBathymetryPoints property)</a>
+      <li><a href="autoapi/geofabrics/geometry/index.html#geofabrics.geometry.EstimatedElevationPoints.polygons">polygons (geofabrics.geometry.EstimatedElevationPoints property)</a>
 </li>
   </ul></td>
 </tr></table>
@@ -638,12 +640,16 @@
 </li>
       <li><a href="autoapi/geofabrics/bathymetry_estimation/index.html#geofabrics.bathymetry_estimation.ChannelCharacteristics.sample_cross_sections">sample_cross_sections() (geofabrics.bathymetry_estimation.ChannelCharacteristics method)</a>
 </li>
-  </ul></td>
-  <td style="width: 33%; vertical-align: top;"><ul>
       <li><a href="autoapi/geofabrics/dem/index.html#geofabrics.dem.LidarBase.save_and_load_dem">save_and_load_dem() (geofabrics.dem.LidarBase method)</a>
 </li>
+  </ul></td>
+  <td style="width: 33%; vertical-align: top;"><ul>
       <li><a href="autoapi/geofabrics/dem/index.html#geofabrics.dem.DemBase.save_dem">save_dem() (geofabrics.dem.DemBase method)</a>
+
+      <ul>
+        <li><a href="autoapi/geofabrics/processor/index.html#geofabrics.processor.BaseProcessor.save_dem">(geofabrics.processor.BaseProcessor method)</a>
 </li>
+      </ul></li>
       <li><a href="autoapi/geofabrics/runner/index.html#geofabrics.runner.setup_logging_for_run">setup_logging_for_run() (in module geofabrics.runner)</a>
 </li>
   </ul></td>
@@ -696,7 +702,7 @@
 <h2 id="X">X</h2>
 <table style="width: 100%" class="indextable genindextable"><tr>
   <td style="width: 33%; vertical-align: top;"><ul>
-      <li><a href="autoapi/geofabrics/geometry/index.html#geofabrics.geometry.EstimatedBathymetryPoints.x">x (geofabrics.geometry.EstimatedBathymetryPoints property)</a>
+      <li><a href="autoapi/geofabrics/geometry/index.html#geofabrics.geometry.EstimatedElevationPoints.x">x (geofabrics.geometry.EstimatedElevationPoints property)</a>
 
       <ul>
         <li><a href="autoapi/geofabrics/geometry/index.html#geofabrics.geometry.MarineBathymetryPoints.x">(geofabrics.geometry.MarineBathymetryPoints property)</a>
@@ -708,7 +714,7 @@
 <h2 id="Y">Y</h2>
 <table style="width: 100%" class="indextable genindextable"><tr>
   <td style="width: 33%; vertical-align: top;"><ul>
-      <li><a href="autoapi/geofabrics/geometry/index.html#geofabrics.geometry.EstimatedBathymetryPoints.y">y (geofabrics.geometry.EstimatedBathymetryPoints property)</a>
+      <li><a href="autoapi/geofabrics/geometry/index.html#geofabrics.geometry.EstimatedElevationPoints.y">y (geofabrics.geometry.EstimatedElevationPoints property)</a>
 
       <ul>
         <li><a href="autoapi/geofabrics/geometry/index.html#geofabrics.geometry.MarineBathymetryPoints.y">(geofabrics.geometry.MarineBathymetryPoints property)</a>
@@ -720,7 +726,7 @@
 <h2 id="Z">Z</h2>
 <table style="width: 100%" class="indextable genindextable"><tr>
   <td style="width: 33%; vertical-align: top;"><ul>
-      <li><a href="autoapi/geofabrics/geometry/index.html#geofabrics.geometry.EstimatedBathymetryPoints.z">z (geofabrics.geometry.EstimatedBathymetryPoints property)</a>
+      <li><a href="autoapi/geofabrics/geometry/index.html#geofabrics.geometry.EstimatedElevationPoints.z">z (geofabrics.geometry.EstimatedElevationPoints property)</a>
 
       <ul>
         <li><a href="autoapi/geofabrics/geometry/index.html#geofabrics.geometry.MarineBathymetryPoints.z">(geofabrics.geometry.MarineBathymetryPoints property)</a>

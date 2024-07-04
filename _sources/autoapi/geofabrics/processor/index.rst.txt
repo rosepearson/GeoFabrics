@@ -67,6 +67,16 @@ Module Contents
 
 
 
+   .. py:method:: save_dem(filename, dataset, generator)
+
+      Save out the dem/geofabrics labelled array.
+
+      :param filename: The filename including extension to save the DEM/geofabric to.
+      :param dataset: The labelled array data to save.
+      :param generator: The dem.DemBase object with a 'save_dem' function.
+
+
+
    .. py:method:: get_resolution()
 
       Return the resolution from the instruction file. Raise an error if
@@ -220,16 +230,12 @@ Module Contents
    The `HydrologicDemGenerator` class contains several important class members:
     * catchment_geometry - Defines all relevant regions in a catchment required in the
       generation of a DEM as polygons.
-    * hydrologic_dem - Defines the hydrologically conditioned DEM as a combination of
-      tiles from LiDAR and interpolated from bathymetry.
-    * bathy_contours - This object defines the bathymetry vectors used to define the
-      DEM values offshore.
 
    See the README.md for usage examples or GeoFabrics/tests/ for examples of usage and
    an instruction file
 
 
-   .. py:method:: add_bathymetry(area_threshold, catchment_dirs)
+   .. py:method:: add_bathymetry(hydrologic_dem, area_threshold, catchment_dirs)
 
       Add in any bathymetry data - ocean or river
 

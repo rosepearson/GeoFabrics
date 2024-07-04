@@ -130,7 +130,10 @@ DEMs.</p>
 <tr class="row-odd"><td><p><a class="reference internal" href="#geofabrics.dem.RawDem" title="geofabrics.dem.RawDem"><code class="xref py py-obj docutils literal notranslate"><span class="pre">RawDem</span></code></a></p></td>
 <td><p>A class to manage the creation of a 'raw' DEM from LiDAR tiles, and/or a</p></td>
 </tr>
-<tr class="row-even"><td><p><a class="reference internal" href="#geofabrics.dem.RoughnessDem" title="geofabrics.dem.RoughnessDem"><code class="xref py py-obj docutils literal notranslate"><span class="pre">RoughnessDem</span></code></a></p></td>
+<tr class="row-even"><td><p><a class="reference internal" href="#geofabrics.dem.PatchDem" title="geofabrics.dem.PatchDem"><code class="xref py py-obj docutils literal notranslate"><span class="pre">PatchDem</span></code></a></p></td>
+<td><p>A class to manage the addition of a DEM to the foreground or background</p></td>
+</tr>
+<tr class="row-odd"><td><p><a class="reference internal" href="#geofabrics.dem.RoughnessDem" title="geofabrics.dem.RoughnessDem"><code class="xref py py-obj docutils literal notranslate"><span class="pre">RoughnessDem</span></code></a></p></td>
 <td><p>A class to add a roughness (zo) layer to a hydrologically conditioned DEM.</p></td>
 </tr>
 </tbody>
@@ -295,14 +298,13 @@ regions</p></li>
 <dl class="py method">
 <dt class="sig sig-object py" id="geofabrics.dem.DemBase.save_dem">
 <span class="sig-name descname"><span class="pre">save_dem</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">filename</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">dem</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">compression</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#geofabrics.dem.DemBase.save_dem" title="Link to this definition"></a></dt>
-<dd><p>Save the DEM to a netCDF file and optionally reload it</p>
+<dd><p>Save the DEM to a netCDF file.</p>
 <dl class="field-list simple">
 <dt class="field-odd">Parameters<span class="colon">:</span></dt>
 <dd class="field-odd"><ul class="simple">
-<li><p><strong>filename</strong> (<em>pathlib.Path</em>) – .nc file where to save the DEM</p></li>
-<li><p><strong>reload</strong> – reload DEM from the saved file</p></li>
-<li><p><strong>dem</strong> (<em>xarray.Dataset</em>)</p></li>
-<li><p><strong>compression</strong> (<em>dict</em>)</p></li>
+<li><p><strong>filename</strong> (<em>pathlib.Path</em>) – .nc or .tif file to save the DEM.</p></li>
+<li><p><strong>dem</strong> (<em>xarray.Dataset</em>) – the DEM to save.</p></li>
+<li><p><strong>compression</strong> (<em>dict</em>) – the compression instructions if compressing.</p></li>
 </ul>
 </dd>
 </dl>
@@ -365,7 +367,7 @@ function.</p>
 <dl class="field-list simple">
 <dt class="field-odd">Parameters<span class="colon">:</span></dt>
 <dd class="field-odd"><ul class="simple">
-<li><p><strong>estimated_bathymetry</strong> (<a class="reference internal" href="../geometry/index.html#geofabrics.geometry.EstimatedBathymetryPoints" title="geofabrics.geometry.EstimatedBathymetryPoints"><em>geofabrics.geometry.EstimatedBathymetryPoints</em></a>)</p></li>
+<li><p><strong>estimated_bathymetry</strong> (<a class="reference internal" href="../geometry/index.html#geofabrics.geometry.EstimatedElevationPoints" title="geofabrics.geometry.EstimatedElevationPoints"><em>geofabrics.geometry.EstimatedElevationPoints</em></a>)</p></li>
 <li><p><strong>method</strong> (<em>str</em>)</p></li>
 </ul>
 </dd>
@@ -384,7 +386,7 @@ on the type label. The type_label also determines the source classification.</p>
 <dl class="field-list simple">
 <dt class="field-odd">Parameters<span class="colon">:</span></dt>
 <dd class="field-odd"><ul class="simple">
-<li><p><strong>estimated_bathymetry</strong> (<a class="reference internal" href="../geometry/index.html#geofabrics.geometry.EstimatedBathymetryPoints" title="geofabrics.geometry.EstimatedBathymetryPoints"><em>geofabrics.geometry.EstimatedBathymetryPoints</em></a>)</p></li>
+<li><p><strong>estimated_bathymetry</strong> (<a class="reference internal" href="../geometry/index.html#geofabrics.geometry.EstimatedElevationPoints" title="geofabrics.geometry.EstimatedElevationPoints"><em>geofabrics.geometry.EstimatedElevationPoints</em></a>)</p></li>
 <li><p><strong>method</strong> (<em>str</em>)</p></li>
 </ul>
 </dd>
@@ -420,7 +422,7 @@ on the type label. The type_label also determines the source classification.</p>
 <dt class="sig sig-object py" id="geofabrics.dem.LidarBase.dem">
 <em class="property"><span class="pre">property</span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">dem</span></span><a class="headerlink" href="#geofabrics.dem.LidarBase.dem" title="Link to this definition"></a></dt>
 <dt class="sig sig-object py">
-<span class="sig-name descname"><span class="pre">Return</span> <span class="pre">the</span> <span class="pre">positivelly</span> <span class="pre">indexed</span> <span class="pre">DEM</span> <span class="pre">from</span> <span class="pre">tiles</span></span></dt>
+<span class="sig-name descname"><span class="pre">Return</span> <span class="pre">the</span> <span class="pre">positivly</span> <span class="pre">indexed</span> <span class="pre">DEM</span> <span class="pre">from</span> <span class="pre">tiles</span></span></dt>
 <dd></dd></dl>
 
 <dl class="py method">
@@ -505,9 +507,33 @@ standard list</p></li>
 <dd><p>Clip the  a ‘raw’ DEM. Should be called immediately after the add_lidar function.</p>
 </dd></dl>
 
+</dd></dl>
+
+<dl class="py class">
+<dt class="sig sig-object py" id="geofabrics.dem.PatchDem">
+<em class="property"><span class="pre">class</span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">geofabrics.dem.</span></span><span class="sig-name descname"><span class="pre">PatchDem</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">catchment_geometry</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">patch_on_top</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">drop_patch_offshore</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">buffer_cells</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">initial_dem_path</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">elevation_range</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">chunk_size</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#geofabrics.dem.PatchDem" title="Link to this definition"></a></dt>
+<dd><p>Bases: <a class="reference internal" href="#geofabrics.dem.LidarBase" title="geofabrics.dem.LidarBase"><code class="xref py py-obj docutils literal notranslate"><span class="pre">LidarBase</span></code></a></p>
+<p>A class to manage the addition of a DEM to the foreground or background
+of a preexisting DEM.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>patch_on_top</strong> (<em>bool</em>) – If True only patch the DEM values on top of the initial DEM. If False
+patch only where values are NaN.</p></li>
+<li><p><strong>drop_patch_offshore</strong> (<em>bool</em>) – If True only keep patch values on land and the foreshore.</p></li>
+<li><p><strong>elevation_range</strong> (<em>list</em><em> | </em><em>None</em>) – Optitionally specify a range of valid elevations. Any LiDAR points with
+elevations outside this range will be filtered out.</p></li>
+<li><p><strong>initial_dem_path</strong> (<em>str</em><em> | </em><em>pathlib.Path</em>) – The DEM to patch the other DEM on top / only where values are NaN.</p></li>
+<li><p><strong>for</strong> (<em>buffer_cells - the number</em><em> of </em><em>empty cells to keep around LiDAR cells</em>) – interpolation after the coarse DEM added to ensure a smooth boundary.</p></li>
+<li><p><strong>chunk_size</strong> (<em>int</em><em> | </em><em>None</em>) – The chunk size in pixels for parallel/staged processing</p></li>
+<li><p><strong>catchment_geometry</strong> (<a class="reference internal" href="../geometry/index.html#geofabrics.geometry.CatchmentGeometry" title="geofabrics.geometry.CatchmentGeometry"><em>geofabrics.geometry.CatchmentGeometry</em></a>)</p></li>
+<li><p><strong>buffer_cells</strong> (<em>int</em>)</p></li>
+</ul>
+</dd>
+</dl>
 <dl class="py method">
-<dt class="sig sig-object py" id="geofabrics.dem.RawDem.add_coarse_dem">
-<span class="sig-name descname"><span class="pre">add_coarse_dem</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">coarse_dem_path</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">area_threshold</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#geofabrics.dem.RawDem.add_coarse_dem" title="Link to this definition"></a></dt>
+<dt class="sig sig-object py" id="geofabrics.dem.PatchDem.add_coarse_dem">
+<span class="sig-name descname"><span class="pre">add_coarse_dem</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">coarse_dem_path</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">area_threshold</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#geofabrics.dem.PatchDem.add_coarse_dem" title="Link to this definition"></a></dt>
 <dd><p>Check if gaps in DEM on land, if so iterate through coarse DEMs
 adding missing detail.</p>
 <p>Note the Coarse DEM values are only applied on land and not
@@ -525,8 +551,8 @@ in the ocean.</p>
 </dd></dl>
 
 <dl class="py property">
-<dt class="sig sig-object py" id="geofabrics.dem.RawDem.no_values_mask">
-<em class="property"><span class="pre">property</span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">no_values_mask</span></span><a class="headerlink" href="#geofabrics.dem.RawDem.no_values_mask" title="Link to this definition"></a></dt>
+<dt class="sig sig-object py" id="geofabrics.dem.PatchDem.no_values_mask">
+<em class="property"><span class="pre">property</span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">no_values_mask</span></span><a class="headerlink" href="#geofabrics.dem.PatchDem.no_values_mask" title="Link to this definition"></a></dt>
 <dt class="sig sig-object py">
 <span class="sig-name descname"><span class="pre">No</span> <span class="pre">values</span> <span class="pre">mask</span> <span class="pre">from</span> <span class="pre">DEM</span> <span class="pre">within</span> <span class="pre">land</span> <span class="pre">and</span> <span class="pre">foreshore</span> <span class="pre">region</span></span></dt>
 <dd></dd></dl>
