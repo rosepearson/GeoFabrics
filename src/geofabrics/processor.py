@@ -1385,7 +1385,7 @@ class PatchDemGenerator(BaseProcessor):
                 patch_on_top=self.get_patch_instruction("patch_on_top"),
                 drop_patch_offshore=self.get_patch_instruction("drop_patch_offshore"),
                 buffer_cells=self.get_processing_instructions("buffer_cells"),
-                elevation_range=None
+                elevation_range=None,
             )
             patch_paths = self.get_vector_or_raster_paths(
                 key="patchs", data_type="raster"
@@ -1418,7 +1418,7 @@ class PatchDemGenerator(BaseProcessor):
                 self.save_dem(
                     filename=self.get_instruction_path("result_dem"),
                     dataset=self.hydrologic_dem.dem,
-                    generator=self.hydrologic_dem
+                    generator=self.hydrologic_dem,
                 )
             except (Exception, KeyboardInterrupt) as caught_exception:
                 pathlib.Path(self.get_instruction_path("result_dem")).unlink()
