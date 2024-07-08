@@ -12,7 +12,7 @@
 		"local_cache": "tests/test_add_patches/data",
 		"subfolder": "results",
 		"extents": "catchment_boundary.geojson",
-		"patch_dems": ["patch_1.nc", "patch_2.tif"],
+		"patchs": ["patch_1.nc", "patch_2.tif"],
 		"result_dem": "initial_dem.nc",
 		"benchmark_dem": "benchmark_dem.nc"
 	},

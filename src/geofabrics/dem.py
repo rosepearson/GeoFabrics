@@ -305,6 +305,7 @@ class DemBase(abc.ABC):
         "rivers and fans": 3,
         "waterways": 4,
         "coarse DEM": 5,
+        "patch": 6,
         "interpolated": 0,
         "no data": -1,
     }
@@ -1931,7 +1932,7 @@ class PatchDem(LidarBase):
         self._write_netcdf_conventions_in_place(initial_dem, catchment_geometry.crs)
         self._dem = initial_dem
 
-    def add_coarse_dem(self, coarse_dem_path: pathlib.Path, area_threshold: float):
+    def add_patch(self, coarse_dem_path: pathlib.Path, label: str):
         """Check if gaps in DEM on land, if so iterate through coarse DEMs
         adding missing detail.
 
@@ -1942,8 +1943,6 @@ class PatchDem(LidarBase):
         ----------
 
             coarse_dem_path - coarse DEM file paths to try add
-            area_threshold - the ratio of area without LiDAR required to for
-                coarse DEMs to be used.
         """
         # Check for overlap with the Coarse DEM
         coarse_dem = rioxarray.rioxarray.open_rasterio(
@@ -2050,7 +2049,7 @@ class PatchDem(LidarBase):
         # Update the data source layer
         self._dem["data_source"] = self._dem.data_source.where(
             ~(no_values_mask & self._dem.z.notnull()),
-            self.SOURCE_CLASSIFICATION["coarse DEM"],
+            self.SOURCE_CLASSIFICATION[label],
         )
 
         # Ensure Coarse DEM values along the foreshore are less than zero

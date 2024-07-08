@@ -895,11 +895,6 @@ class RawLidarDemGenerator(BaseProcessor):
         # Ensure the results folder has been created
         self.create_results_folder()
 
-        # Only include data in addition to LiDAR if the area_threshold is not covered
-        area_threshold = (
-            10.0 / 100
-        )  # Used to decide if non-LiDAR data should be included
-
         # create the catchment geometry object
         self.catchment_geometry = self.create_catchment()
 
@@ -1023,7 +1018,7 @@ class RawLidarDemGenerator(BaseProcessor):
                         )
                         break
 
-                    raw_dem.add_coarse_dem(coarse_dem_path, area_threshold)
+                    raw_dem.add_patch(coarse_dem_path, label="coarse DEM")
 
                     temp_file = temp_folder / f"raw_dem_{coarse_dem_path.stem}.nc"
                     self.logger.info(f"Save temp raw DEM to netCDF: {temp_file}")
@@ -1297,15 +1292,8 @@ class HydrologicDemGenerator(BaseProcessor):
 
 
 class PatchDemGenerator(BaseProcessor):
-    """PatchDemGenerator executes a pipeline for loading in a raw DEM and extents
-    before incorporating bathymetry (offshore, rivers and waterways) to produce a
-    hydrologically conditioned DEM. The data and pipeline logic is defined in
-    the json_instructions file.
-
-    The `PatchDemGenerator` class contains several important class members:
-     * catchment_geometry - Defines all relevant regions in a catchment required in the
-       generation of a DEM as polygons.
-     * patch_dem - Manages the inclusion of a DEM patch into a DEM.
+    """PatchDemGenerator executes a pipeline for loading in a DEM / roughness
+    GeoFabrics profuct before adding specified patches to it.
 
     See the README.md for usage examples or GeoFabrics/tests/ for examples of usage and
     an instruction file
@@ -1316,8 +1304,6 @@ class PatchDemGenerator(BaseProcessor):
             json_instructions=json_instructions
         )
         self.logger = logging.getLogger(f"{__name__}.{self.__class__.__name__}")
-
-        self.patch_dem = None
         self.debug = debug
 
     def get_patch_instruction(self, key: str):
@@ -1331,19 +1317,20 @@ class PatchDemGenerator(BaseProcessor):
             "patch_on_top": True,
             "drop_patch_offshore": False,
             "buffer_cells": None,
+            "layer": "dem",
         }
 
         if "patch" in self.instructions and key in self.instructions["patch"]:
             value = self.instructions["patch"][key]
             return value
         elif key in defaults:
-            if "roughness" not in self.instructions:
-                self.instructions["roughness"] = {}
-            self.instructions["roughness"][key] = defaults[key]
+            if "patch" not in self.instructions:
+                self.instructions["patch"] = {}
+            self.instructions["patch"][key] = defaults[key]
             return defaults[key]
         else:
             raise KeyError(
-                f"The key: {key} is missing from the measured instructions, and"
+                f"The key: {key} is missing from the patch instructions, and"
                 " does not have a default value."
             )
 
@@ -1357,6 +1344,23 @@ class PatchDemGenerator(BaseProcessor):
         # create the catchment geometry object
         self.catchment_geometry = self.create_catchment()
 
+        # Setup cache folder
+        subfolder = self.get_instruction_path("subfolder")
+        temp_folder = subfolder / "temp" / f"{self.get_resolution()}m_results"
+        self.logger.info(f"Create folder {temp_folder} for temporary files")
+        if temp_folder.exists():
+            try:
+                gc.collect()
+                shutil.rmtree(temp_folder)
+            except (Exception, PermissionError) as caught_exception:
+                logging.warning(
+                    f"Caught error {caught_exception} during rmtree of "
+                    f"{temp_folder}. Supressing error. You will have to "
+                    f"manually delete {temp_folder}."
+                )
+        temp_folder.mkdir(parents=True, exist_ok=True)
+        cached_file = None
+
         # Setup Dask cluster and client - LAZY SAVE LIDAR DEM
         cluster_kwargs = {
             "n_workers": self.get_processing_instructions("number_of_cores"),
@@ -1369,9 +1373,12 @@ class PatchDemGenerator(BaseProcessor):
             self.logger.info(f"Dask client: {client}")
             self.logger.info(f"Dask dashboard: {client.dashboard_link}")
             client.forward_logging()  # Ensure root logging configuration is used
+            
+            layer = self.get_patch_instruction("layer")
+            # TODO ensure roughness and dem layers are supported.
 
-            # setup the hydrologically conditioned DEM generator
-            self.patch_dem = dem.PatchDem(
+            # setup the DEM patch generator
+            patch_dem = dem.PatchDem(
                 catchment_geometry=self.catchment_geometry,
                 initial_dem_path=self.get_instruction_path("initial_dem_path"),
                 chunk_size=self.get_processing_instructions("chunk_size"),
@@ -1380,10 +1387,32 @@ class PatchDemGenerator(BaseProcessor):
                 buffer_cells=self.get_processing_instructions("buffer_cells"),
                 elevation_range=None
             )
+            patch_paths = self.get_vector_or_raster_paths(
+                key="patchs", data_type="raster"
+            )
+            for patch_path in patch_paths:
+                patch_dem.add_patch(patch_path, label="patch")
+
+                temp_file = temp_folder / f"raw_dem_{patch_path.stem}.nc"
+                self.logger.info(f"Save patched DEM to netCDF: {temp_file}")
+                patch_dem.save_and_load_dem(temp_file)
+                
+                if cached_file is not None:
+                    # Remove previous cached file and replace with new one
+                    try:
+                        gc.collect()
+                        cached_file.unlink()
+                    except (Exception, PermissionError) as caught_exception:
+                        logging.warning(
+                            f"Caught error {caught_exception} during unlink of "
+                            "cached_file. Supressing error. You will have to "
+                            f"manually delete {cached_file}."
+                        )
+                cached_file = temp_file
 
             # fill combined dem - save results
             self.logger.info(
-                "In processor.PatchDemGenerator - write out the raw DEM to netCDF"
+                "In processor.PatchDemGenerator - write out the patched DEM to netCDF"
             )
             try:
                 self.save_dem(
