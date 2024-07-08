@@ -1018,9 +1018,9 @@ class RawLidarDemGenerator(BaseProcessor):
                         )
                         break
 
-                    raw_dem.add_patch(patch_path=coarse_dem_path,
-                                      label="coarse DEM",
-                                      layer="z")
+                    raw_dem.add_patch(
+                        patch_path=coarse_dem_path, label="coarse DEM", layer="z"
+                    )
 
                     temp_file = temp_folder / f"raw_dem_{coarse_dem_path.stem}.nc"
                     self.logger.info(f"Save temp raw DEM to netCDF: {temp_file}")
@@ -1398,10 +1398,7 @@ class PatchDemGenerator(BaseProcessor):
                 key="patchs", data_type="raster"
             )
             for patch_path in patch_paths:
-                patch_dem.add_patch(patch_path=patch_path,
-                                    label="patch",
-                                    layer=layer
-                                    )
+                patch_dem.add_patch(patch_path=patch_path, label="patch", layer=layer)
 
                 temp_file = temp_folder / f"raw_dem_{patch_path.stem}.nc"
                 self.logger.info(f"Save patched DEM to netCDF: {temp_file}")
