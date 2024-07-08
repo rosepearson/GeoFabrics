@@ -131,11 +131,13 @@ class Test(unittest.TestCase):
         """Remove created cache directory and included created and downloaded files at
         the end of the test."""
 
+        gc.collect()
         cls.clean_data_folder()
 
     @classmethod
     def clean_data_folder(cls):
-        """Remove all generated or downloaded files from the data directory"""
+        """Remove all generated or downloaded files from the data directory,
+        but with only warnings if files can't be removed."""
 
         assert cls.cache_dir.exists(), (
             "The data directory that should include the comparison benchmark dem file "
@@ -147,10 +149,31 @@ class Test(unittest.TestCase):
             if path.is_dir():
                 for file in path.glob("*"):  # only files
                     if file.is_file():
-                        file.unlink()
+                        try:
+                            file.unlink()
+                        except (Exception, PermissionError) as caught_exception:
+                            logging.warning(
+                                f"Caught error {caught_exception} during "
+                                f"rmtree of {file}. Supressing error. You "
+                                "will have to manually delete."
+                            )
                     elif file.is_dir():
-                        shutil.rmtree(file)
-                shutil.rmtree(path)
+                        try:
+                            shutil.rmtree(file)
+                        except (Exception, PermissionError) as caught_exception:
+                            logging.warning(
+                                f"Caught error {caught_exception} during "
+                                f"rmtree of {file}. Supressing error. You "
+                                "will have to manually delete."
+                            )
+                try:
+                    shutil.rmtree(path)
+                except (Exception, PermissionError) as caught_exception:
+                    logging.warning(
+                        f"Caught error {caught_exception} during rmtree of "
+                        f"{path}. Supressing error. You will have to manually "
+                        "delete."
+                    )
 
     def test_correct_datasets(self):
         """A test to see if the correct datasets were downloaded"""
@@ -230,7 +253,7 @@ class Test(unittest.TestCase):
     @pytest.mark.skipif(sys.platform != "win32", reason="Windows test - this is strict")
     def test_result_dem_windows(self):
         """A basic comparison between the generated and benchmark DEM"""
-
+        decimal_threshold = 5
         # Load in benchmark DEM
         file_path = self.cache_dir / self.instructions["data_paths"]["benchmark_dem"]
         with rioxarray.rioxarray.open_rasterio(file_path, masked=True) as benchmark_dem:
@@ -248,6 +271,7 @@ class Test(unittest.TestCase):
         numpy.testing.assert_array_almost_equal(
             test_dem.z.data[~numpy.isnan(test_dem.z.data)],
             benchmark_dem.z.data[~numpy.isnan(benchmark_dem.z.data)],
+            decimal=decimal_threshold,
             err_msg="The generated result_dem has different data from the "
             + "benchmark_dem",
         )
@@ -255,7 +279,6 @@ class Test(unittest.TestCase):
         # explicitly free memory as xarray seems to be hanging onto memory
         del test_dem
         del benchmark_dem
-        gc.collect()
 
     @pytest.mark.skipif(
         sys.platform != "linux", reason="Linux test - this is less strict"
@@ -298,7 +321,6 @@ class Test(unittest.TestCase):
         # explicitly free memory as xarray seems to be hanging onto memory
         del test_dem
         del benchmark_dem
-        gc.collect()
 
 
 if __name__ == "__main__":

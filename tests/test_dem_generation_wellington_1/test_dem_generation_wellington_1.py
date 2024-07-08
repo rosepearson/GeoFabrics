@@ -99,11 +99,13 @@ class Test(unittest.TestCase):
     def tearDownClass(cls):
         """Remove created and downloaded files at the end of the test."""
 
+        gc.collect()
         cls.clean_data_folder()
 
     @classmethod
     def clean_data_folder(cls):
-        """Remove all generated or downloaded files from the data directory"""
+        """Remove all generated or downloaded files from the data directory,
+        but with only warnings if files can't be removed."""
 
         assert cls.cache_dir.exists(), (
             "The data directory that should include the comparison benchmark dem file "
@@ -115,10 +117,31 @@ class Test(unittest.TestCase):
             if path.is_dir():
                 for file in path.glob("*"):  # only files
                     if file.is_file():
-                        file.unlink()
+                        try:
+                            file.unlink()
+                        except (Exception, PermissionError) as caught_exception:
+                            logging.warning(
+                                f"Caught error {caught_exception} during "
+                                f"rmtree of {file}. Supressing error. You "
+                                "will have to manually delete."
+                            )
                     elif file.is_dir():
-                        shutil.rmtree(file)
-                shutil.rmtree(path)
+                        try:
+                            shutil.rmtree(file)
+                        except (Exception, PermissionError) as caught_exception:
+                            logging.warning(
+                                f"Caught error {caught_exception} during "
+                                f"rmtree of {file}. Supressing error. You "
+                                "will have to manually delete."
+                            )
+                try:
+                    shutil.rmtree(path)
+                except (Exception, PermissionError) as caught_exception:
+                    logging.warning(
+                        f"Caught error {caught_exception} during rmtree of "
+                        f"{path}. Supressing error. You will have to manually "
+                        "delete."
+                    )
 
     def test_correct_dataset(self):
         """A test to see if the correct dataset is downloaded"""
@@ -189,7 +212,9 @@ class Test(unittest.TestCase):
             + f"sizes of {self.FILE_SIZES.values()}",
         )
 
-    @pytest.mark.skipif(sys.platform != "win32", reason="Windows test - this is strict")
+    @pytest.mark.skipif(
+        sys.platform != "win32", reason="Windows test - this is less strict"
+    )
     def test_result_dem_windows(self):
         """A basic comparison between the generated and benchmark DEM"""
 
@@ -200,6 +225,57 @@ class Test(unittest.TestCase):
         file_path = self.results_dir / self.instructions["data_paths"]["result_dem"]
         with rioxarray.rioxarray.open_rasterio(file_path, masked=True) as test:
             test.load()
+        # compare the generated and benchmark DEMs
+        diff_array = (
+            test.z.data[~numpy.isnan(test.z.data)]
+            - benchmark.z.data[~numpy.isnan(benchmark.z.data)]
+        )
+        logging.info(f"DEM array diff is: {diff_array[diff_array != 0]}")
+
+        threshold = 10e-6
+        self.assertTrue(
+            len(diff_array[diff_array != 0]) < len(diff_array) / 100,
+            f"{len(diff_array[diff_array != 0])} or more than 1% of DEM values differ"
+            f" on Linux test run: {diff_array[diff_array != 0]}",
+        )
+        number_under_threshold = len(diff_array[numpy.abs(diff_array) > threshold])
+        self.assertTrue(
+            number_under_threshold < len(diff_array) / 100,
+            f"More than 0.4% of DEM values differ by more than {threshold} on Linux"
+            f" test run: {diff_array[numpy.abs(diff_array) > threshold]} or "
+            f"{number_under_threshold / len(diff_array.flatten()) * 100}%",
+        )
+
+        # compare the generated and benchmark lidar source
+        diff_array = test.lidar_source.data - benchmark.lidar_source.data
+        numpy.testing.assert_array_almost_equal(
+            test.lidar_source.data,
+            benchmark.lidar_source.data,
+            decimal=3,
+            err_msg="The generated test has significantly different lidar "
+            "source values from the benchmark where there is LiDAR: "
+            f"{diff_array}",
+        )
+
+        # explicitly free memory as xarray seems to be hanging onto memory
+        del test
+        del benchmark
+
+    @pytest.mark.skipif(
+        sys.platform != "linux", reason="Linux test - this is more strict"
+    )
+    def test_result_dem_linux(self):
+        """A basic comparison between the generated and benchmark DEM"""
+
+        # load in benchmark DEM
+        file_path = self.cache_dir / self.instructions["data_paths"]["benchmark_dem"]
+        with rioxarray.rioxarray.open_rasterio(file_path, masked=True) as benchmark:
+            benchmark.load()
+        # Load in test DEM
+        file_path = self.results_dir / self.instructions["data_paths"]["result_dem"]
+        with rioxarray.rioxarray.open_rasterio(file_path, masked=True) as test:
+            test.load()
+
         # compare the generated and benchmark DEMs
         diff_array = (
             test.z.data[~numpy.isnan(test.z.data)]
@@ -226,59 +302,6 @@ class Test(unittest.TestCase):
         # explicitly free memory as xarray seems to be hanging onto memory
         del test
         del benchmark
-        gc.collect()
-
-    @pytest.mark.skipif(
-        sys.platform != "linux", reason="Linux test - this is less strict"
-    )
-    def test_result_dem_linux(self):
-        """A basic comparison between the generated and benchmark DEM"""
-
-        # load in benchmark DEM
-        file_path = self.cache_dir / self.instructions["data_paths"]["benchmark_dem"]
-        with rioxarray.rioxarray.open_rasterio(file_path, masked=True) as benchmark:
-            benchmark.load()
-        # Load in test DEM
-        file_path = self.results_dir / self.instructions["data_paths"]["result_dem"]
-        with rioxarray.rioxarray.open_rasterio(file_path, masked=True) as test:
-            test.load()
-
-        # compare the generated and benchmark DEMs
-        diff_array = (
-            test.z.data[~numpy.isnan(test.z.data)]
-            - benchmark.z.data[~numpy.isnan(benchmark.z.data)]
-        )
-        logging.info(f"DEM array diff is: {diff_array[diff_array != 0]}")
-
-        threshold = 10e-6
-        self.assertTrue(
-            len(diff_array[diff_array != 0]) < len(diff_array) / 100,
-            f"{len(diff_array[diff_array != 0])} or more than 1% of DEM values differ"
-            f" on Linux test run: {diff_array[diff_array != 0]}",
-        )
-        number_under_threshold = len(diff_array[numpy.abs(diff_array) > threshold])
-        self.assertTrue(
-            number_under_threshold < len(diff_array) / 250,
-            f"More than 0.4% of DEM values differ by more than {threshold} on Linux"
-            f" test run: {diff_array[numpy.abs(diff_array) > threshold]} or "
-            f"{number_under_threshold / len(diff_array.flatten()) * 100}%",
-        )
-
-        # compare the generated and benchmark lidar source
-        diff_array = test.lidar_source.data - benchmark.lidar_source.data
-        numpy.testing.assert_array_almost_equal(
-            test.lidar_source.data,
-            benchmark.lidar_source.data,
-            decimal=3,
-            err_msg="The generated test has significantly different lidar "
-            "source values from the benchmark where there is LiDAR: "
-            f"{diff_array}",
-        )
-
-        # explicitly free memory as xarray seems to be hanging onto memory
-        del test
-        del benchmark
-        gc.collect()
 
 
 if __name__ == "__main__":

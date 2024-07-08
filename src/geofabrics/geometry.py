@@ -509,13 +509,13 @@ class MarineBathymetryPoints:
         return self._z
 
 
-class EstimatedBathymetryPoints:
-    """A class for accessing river and mouth bathymetry points. Paired river
-    and mouth elevation and polygon files are expected. These depths can be
-    used to interpolate elevations within the river and mouth polygon.
+class EstimatedElevationPoints:
+    """A class for accessing estimated or measured river, mouth and waterway
+    elevations as points. Paired elevation and polygon files are expected.
+    The elevations are used to interpolate elevations within the polygons.
     """
 
-    DEPTH_LABEL = "elevation"
+    Z_LABEL = "z"
     BANK_HEIGHT_LABEL = "bank_height"
     WIDTH_LABEL = "width"
     OSM_ID = "OSM_id"
@@ -553,7 +553,7 @@ class EstimatedBathymetryPoints:
                 "files"
             )
 
-        if z_labels is not None and type(z_labels) == str:
+        if z_labels is not None and type(z_labels) is str:
             z_labels = [z_labels for i in range(len(points_files))]
 
         if z_labels is not None and len(z_labels) != len(points_files):
@@ -568,9 +568,9 @@ class EstimatedBathymetryPoints:
         for i in range(0, len(points_files)):
             # Points - rename depth labels to standard if  specified
             points_i = geopandas.read_file(points_files[i])
-            if z_labels is not None and z_labels[i] != self.DEPTH_LABEL:
-                points_i = points_i.rename(columns={z_labels[i]: self.DEPTH_LABEL})
-            columns_i = [self.DEPTH_LABEL, "geometry"]
+            if z_labels is not None and z_labels[i] != self.Z_LABEL:
+                points_i = points_i.rename(columns={z_labels[i]: self.Z_LABEL})
+            columns_i = [self.Z_LABEL, "geometry"]
             if self.BANK_HEIGHT_LABEL in points_i.columns:
                 columns_i.append(self.BANK_HEIGHT_LABEL)
             if self.WIDTH_LABEL in points_i.columns:
@@ -638,7 +638,7 @@ class EstimatedBathymetryPoints:
         points_array["Y"] = points.apply(lambda row: row.geometry.y, axis=1).to_list()
         if self.z_label:
             points_array["Z"] = points.apply(
-                lambda row: row[self.DEPTH_LABEL], axis=1
+                lambda row: row[self.Z_LABEL], axis=1
             ).to_list()
         else:
             points_array["Z"] = points.apply(
@@ -707,7 +707,7 @@ class EstimatedBathymetryPoints:
 
         if self.z_label:
             self._z = self._points.apply(
-                lambda row: row[self.DEPTH_LABEL], axis=1
+                lambda row: row[self.Z_LABEL], axis=1
             ).to_list()
         else:
             self._z = self._points.apply(lambda row: row.geometry.z, axis=1).to_list()
@@ -1043,7 +1043,6 @@ class RiverMouthFan:
             min_index = ocean_contours.distance(mouth_point).idxmin()
             intersection_line = ocean_contours.loc[min_index].geometry
             end_depth = ocean_contours.loc[min_index][self.ocean_contour_depth_label]
-            distance = ocean_contours.distance(mouth_point).min()
         else:
             self.logger.warning(
                 "No ocean contour intersected. Instaed assumed fan geoemtry"
@@ -1054,7 +1053,6 @@ class RiverMouthFan:
                     [fan_polygon.exterior.xy[0][3], fan_polygon.exterior.xy[1][3]],
                 ]
             )
-            distance = self.FAN_MAX_LENGTH
 
         # Construct a fan ending at the contour
         (x, y) = intersection_line.xy

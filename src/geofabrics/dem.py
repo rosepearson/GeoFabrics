@@ -809,7 +809,7 @@ class HydrologicallyConditionedDem(DemBase):
 
     def interpolate_waterways(
         self,
-        estimated_bathymetry: geometry.EstimatedBathymetryPoints,
+        estimated_bathymetry: geometry.EstimatedElevationPoints,
         method: str,
     ) -> xarray.Dataset:
         """Performs interpolation of the estimated waterways."""
@@ -887,7 +887,7 @@ class HydrologicallyConditionedDem(DemBase):
 
     def interpolate_rivers(
         self,
-        estimated_bathymetry: geometry.EstimatedBathymetryPoints,
+        estimated_bathymetry: geometry.EstimatedElevationPoints,
         method: str,
     ) -> xarray.Dataset:
         """Performs interpolation from estimated bathymetry points within a polygon
@@ -898,6 +898,15 @@ class HydrologicallyConditionedDem(DemBase):
         # Extract river points and polygon
         estimated_points = estimated_bathymetry.points_array
         estimated_polygons = estimated_bathymetry.polygons
+
+        if (
+            len(estimated_points) == 0
+            or estimated_polygons.area.sum() < self.catchment_geometry.resolution**2
+        ):
+            self.logger.warning(
+                "No points or an area less than one grid cell in the rivers dataset. Ignoring."
+            )
+            return
 
         # Get the river and fan edge points - from DEM
         edge_dem = self._dem.rio.clip(
@@ -1028,7 +1037,7 @@ class LidarBase(DemBase):
 
         self.elevation_range = elevation_range
         assert elevation_range is None or (
-            type(elevation_range) == list and len(elevation_range) == 2
+            type(elevation_range) is list and len(elevation_range) == 2
         ), "Error the 'elevation_range' must either be none, or a two entry list"
 
         self._dem = None
@@ -1895,13 +1904,13 @@ class PatchDem(LidarBase):
         patch_on_top: bool,
         drop_patch_offshore: bool,
         buffer_cells: int,
-        initial_dem_path: pathlib.Path | str,
+        initial_dem_path: str | pathlib.Path,
         elevation_range: list | None = None,
         chunk_size: int | None = None,
     ):
         """Setup base DEM to add future tiles too"""
 
-        super(RawDem, self).__init__(
+        super(PatchDem, self).__init__(
             catchment_geometry=catchment_geometry,
             chunk_size=chunk_size,
             elevation_range=elevation_range,
@@ -2561,12 +2570,11 @@ class RoughnessDem(LidarBase):
 
         # update metadata
         history = self._dem.attrs["history"]
-        history = (
+        self._dem.attrs["history"] = (
             f"{metadata['utc_time']}:{metadata['library_name']}"
             f":{metadata['class_name']} version {metadata['library_version']} "
-            f" resolution {self.catchment_geometry.resolution};"
-        ).append(history)
-        self._dem.attrs["history"] = history
+            f" resolution {self.catchment_geometry.resolution}; {history}"
+        )
         self._dem.attrs[
             "source"
         ] = f"{metadata['library_name']} version {metadata['library_version']}"

@@ -1,3 +1,5 @@
+# YML file for setting up a virtual environment capable of running GeoFabrics
+
 name: geofabrics
 channels:
   - conda-forge
@@ -7,5 +9,8 @@ dependencies:
   - geoapis>= 0.3.2
   - osmpythontools >= 0.3.5
   - python-pdal >= 3.3.0
+  - dask >= 2023.6.0
   - distributed >= 2023.6.0
-  - pytest >= 7.4.0
+  - netcdf4
+  - geofabrics>=1.1.13
+

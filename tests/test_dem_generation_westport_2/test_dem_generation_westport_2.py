@@ -97,19 +97,23 @@ class Test(unittest.TestCase):
         # Run pipeline - download files and generated DEM
         runner = processor.RawLidarDemGenerator(cls.instructions)
         runner.run()
+        del runner
         runner = processor.HydrologicDemGenerator(cls.instructions)
         runner.run()
+        del runner
 
     @classmethod
     def tearDownClass(cls):
         """Remove created cache directory and included created and downloaded files at
         the end of the test."""
 
+        gc.collect()
         cls.clean_data_folder()
 
     @classmethod
     def clean_data_folder(cls):
-        """Remove all generated or downloaded files from the data directory"""
+        """Remove all generated or downloaded files from the data directory,
+        but with only warnings if files can't be removed."""
 
         assert cls.cache_dir.exists(), (
             "The data directory that should include the comparison benchmark dem file "
@@ -121,10 +125,31 @@ class Test(unittest.TestCase):
             if path.is_dir():
                 for file in path.glob("*"):  # only files
                     if file.is_file():
-                        file.unlink()
+                        try:
+                            file.unlink()
+                        except (Exception, PermissionError) as caught_exception:
+                            logging.warning(
+                                f"Caught error {caught_exception} during "
+                                f"rmtree of {file}. Supressing error. You "
+                                "will have to manually delete."
+                            )
                     elif file.is_dir():
-                        shutil.rmtree(file)
-                shutil.rmtree(path)
+                        try:
+                            shutil.rmtree(file)
+                        except (Exception, PermissionError) as caught_exception:
+                            logging.warning(
+                                f"Caught error {caught_exception} during "
+                                f"rmtree of {file}. Supressing error. You "
+                                "will have to manually delete."
+                            )
+                try:
+                    shutil.rmtree(path)
+                except (Exception, PermissionError) as caught_exception:
+                    logging.warning(
+                        f"Caught error {caught_exception} during rmtree of "
+                        f"{path}. Supressing error. You will have to manually "
+                        "delete."
+                    )
 
     def test_correct_dataset(self):
         """A test to see if the correct dataset is downloaded"""
@@ -222,7 +247,6 @@ class Test(unittest.TestCase):
         # explicitly free memory as xarray seems to be hanging onto memory
         del test_dem
         del benchmark_dem
-        gc.collect()
 
     @pytest.mark.skipif(
         sys.platform != "linux", reason="Linux test - this is less strict"
@@ -264,7 +288,6 @@ class Test(unittest.TestCase):
         # explicitly free memory as xarray seems to be hanging onto memory
         del test_dem
         del benchmark_dem
-        gc.collect()
 
 
 if __name__ == "__main__":
