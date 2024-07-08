@@ -1947,7 +1947,7 @@ class PatchDem(LidarBase):
             label - either "coarse DEM" or "patch". Defines the data_source
             layer - either 'z' or 'zo' and the layer to set the patch on
         """
-        
+
         if layer not in self._dem.keys():
             self.logger.error(
                 f"Invalid 'layer' option {layer}. Valid layers include "
@@ -1955,7 +1955,7 @@ class PatchDem(LidarBase):
                 "lidar_source' layers."
             )
             raise ValueError
-        
+
         # Check for overlap with the Coarse DEM
         patch = rioxarray.rioxarray.open_rasterio(
             patch_path,
@@ -1963,9 +1963,7 @@ class PatchDem(LidarBase):
         ).squeeze("band", drop=True)
         patch.rio.set_crs(self.catchment_geometry.crs["horizontal"])
         patch_resolution = patch.rio.resolution()
-        patch_resolution = max(
-            abs(patch_resolution[0]), abs(patch_resolution[1])
-        )
+        patch_resolution = max(abs(patch_resolution[0]), abs(patch_resolution[1]))
 
         # Define region to patch within
         if self.drop_patch_offshore:
@@ -2045,14 +2043,10 @@ class PatchDem(LidarBase):
                 coords={"x": self._dem.x, "y": self._dem.y},
             )
             patch.rio.write_transform(inplace=True)
-            patch.rio.write_crs(
-                self.catchment_geometry.crs["horizontal"], inplace=True
-            )
+            patch.rio.write_crs(self.catchment_geometry.crs["horizontal"], inplace=True)
             patch.rio.write_nodata(numpy.nan, encoded=True, inplace=True)
         else:  # No chunking use built in method
-            patch = patch.interp(
-                x=self._dem.x, y=self._dem.y, method="linear"
-            )
+            patch = patch.interp(x=self._dem.x, y=self._dem.y, method="linear")
 
         # Clip within region of interest (catchment, or land & foreshore)
         mask = clip_mask(patch, roi.geometry, self.chunk_size)
@@ -2061,15 +2055,17 @@ class PatchDem(LidarBase):
             self._dem[layer] = self._dem.z.where(patch.isnull(), patch)
             mask = patch.isnull()
             self._dem["lidar_source"] = self._dem.lidar_source.where(
-                mask, self.SOURCE_CLASSIFICATION["no data"],
+                mask,
+                self.SOURCE_CLASSIFICATION["no data"],
             )
-        else: # patch on bottom (where NaN)
+        else:  # patch on bottom (where NaN)
             self._dem[layer] = self._dem.z.where(~no_values_mask, patch)
             mask = ~(no_values_mask & self._dem.z.notnull())
 
         # Update the data source layer
         self._dem["data_source"] = self._dem.data_source.where(
-            mask, self.SOURCE_CLASSIFICATION[label],
+            mask,
+            self.SOURCE_CLASSIFICATION[label],
         )
 
         if label == "coarse DEM":
@@ -2086,7 +2082,7 @@ class PatchDem(LidarBase):
                         keep_geom_type=True,
                     )
                 )
-    
+
                 # Clip coarse DEM patch to buffered foreshore
                 patch_mask = (
                     self._dem.data_source == self.SOURCE_CLASSIFICATION["coarse DEM"]
@@ -2095,7 +2091,7 @@ class PatchDem(LidarBase):
                     self._dem.z, buffered_foreshore.geometry, self.chunk_size
                 )
                 mask = ~((self._dem.z > 0) & foreshore_mask & patch_mask)
-    
+
                 # Set any positive Coarse DEM foreshore points to zero
                 self._dem["data_source"] = self._dem.data_source.where(
                     mask, self.SOURCE_CLASSIFICATION["ocean bathymetry"]
@@ -2961,6 +2957,7 @@ def elevation_over_chunk(
     grid_z = z_flat.reshape(grid_x.shape)
 
     return grid_z
+
 
 """ Wrap the `roughness_over_chunk` routine in dask.delayed """
 delayed_roughness_over_chunk = dask.delayed(roughness_over_chunk)
