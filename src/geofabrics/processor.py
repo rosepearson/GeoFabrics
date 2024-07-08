@@ -1373,7 +1373,7 @@ class PatchDemGenerator(BaseProcessor):
             self.logger.info(f"Dask client: {client}")
             self.logger.info(f"Dask dashboard: {client.dashboard_link}")
             client.forward_logging()  # Ensure root logging configuration is used
-            
+
             layer = self.get_patch_instruction("layer")
             # TODO ensure roughness and dem layers are supported.
 
@@ -1396,7 +1396,7 @@ class PatchDemGenerator(BaseProcessor):
                 temp_file = temp_folder / f"raw_dem_{patch_path.stem}.nc"
                 self.logger.info(f"Save patched DEM to netCDF: {temp_file}")
                 patch_dem.save_and_load_dem(temp_file)
-                
+
                 if cached_file is not None:
                     # Remove previous cached file and replace with new one
                     try:
