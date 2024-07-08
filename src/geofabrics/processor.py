@@ -1318,8 +1318,7 @@ class PatchDemGenerator(BaseProcessor):
         defaults = {
             "patch_on_top": True,
             "drop_patch_offshore": False,
-            "buffer_cells": None,
-            "layer": "dem",
+            "layer": "z",
         }
 
         if "patch" in self.instructions and key in self.instructions["patch"]:
@@ -1391,7 +1390,7 @@ class PatchDemGenerator(BaseProcessor):
                 chunk_size=self.get_processing_instructions("chunk_size"),
                 patch_on_top=self.get_patch_instruction("patch_on_top"),
                 drop_patch_offshore=self.get_patch_instruction("drop_patch_offshore"),
-                buffer_cells=self.get_processing_instructions("buffer_cells"),
+                buffer_cells=self.get_instruction_general("lidar_buffer"),
                 elevation_range=None,
             )
             patch_paths = self.get_vector_or_raster_paths(
