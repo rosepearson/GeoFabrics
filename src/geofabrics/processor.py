@@ -1018,7 +1018,9 @@ class RawLidarDemGenerator(BaseProcessor):
                         )
                         break
 
-                    raw_dem.add_patch(coarse_dem_path, label="coarse DEM")
+                    raw_dem.add_patch(patch_path=coarse_dem_path,
+                                      label="coarse DEM",
+                                      layer="z")
 
                     temp_file = temp_folder / f"raw_dem_{coarse_dem_path.stem}.nc"
                     self.logger.info(f"Save temp raw DEM to netCDF: {temp_file}")
@@ -1375,7 +1377,12 @@ class PatchDemGenerator(BaseProcessor):
             client.forward_logging()  # Ensure root logging configuration is used
             
             layer = self.get_patch_instruction("layer")
-            # TODO ensure roughness and dem layers are supported.
+            if layer != "z" and layer != "zo":
+                self.logger.error(
+                    f"Invalid 'layer' option {layer}. Valid layers include "
+                    "'z' or 'zo'"
+                )
+                raise ValueError
 
             # setup the DEM patch generator
             patch_dem = dem.PatchDem(
@@ -1391,7 +1398,10 @@ class PatchDemGenerator(BaseProcessor):
                 key="patchs", data_type="raster"
             )
             for patch_path in patch_paths:
-                patch_dem.add_patch(patch_path, label="patch")
+                patch_dem.add_patch(patch_path=patch_path,
+                                    label="patch",
+                                    layer=layer
+                                    )
 
                 temp_file = temp_folder / f"raw_dem_{patch_path.stem}.nc"
                 self.logger.info(f"Save patched DEM to netCDF: {temp_file}")
