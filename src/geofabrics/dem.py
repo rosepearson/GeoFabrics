@@ -2011,13 +2011,15 @@ class PatchDem(LidarBase):
 
         self.logger.info(f"\t\tAdd data from coarse DEM: {patch_path.name}")
 
-        # If chunking ensure efficient parallelisation
-        if (
+        # Check if same resolution
+        if all(patch.x.isin(self._dem.x)) and all(patch.y.isin(self._dem.y)):
+            # Do a stright replacement if grid aligned
+            patch = patch.reindex_like(self._dem, fill_value=numpy.nan)
+        elif (
             self.chunk_size is not None
             and max(len(self._dem.x), len(self._dem.y)) > self.chunk_size
-        ):
-            # Note expect Xarray with dims (y, x) not dims (x, y) as is default
-            # for rioxarray
+        ):  # Ensure parallelisation if chunks specified
+            # Expect xarray dims (y, x), not (x, y) as default for rioxarray
             interpolator = scipy.interpolate.RegularGridInterpolator(
                 (patch.y.values, patch.x.values),
                 patch.values,
@@ -2047,7 +2049,7 @@ class PatchDem(LidarBase):
         patch.rio.write_crs(self.catchment_geometry.crs["horizontal"], inplace=True)
         patch.rio.write_nodata(numpy.nan, encoded=True, inplace=True)
 
-        # Clip within region of interest (catchment, or land & foreshore)
+        # Ensure clipped in region of interest (catchment, or land & foreshore)
         mask = clip_mask(patch, roi.geometry, self.chunk_size)
         patch = patch.where(mask)
         if self.patch_on_top:
