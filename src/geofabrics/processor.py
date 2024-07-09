@@ -1302,9 +1302,7 @@ class PatchDemGenerator(BaseProcessor):
     """
 
     def __init__(self, json_instructions: json, debug: bool = True):
-        super(PatchDemGenerator, self).__init__(
-            json_instructions=json_instructions
-        )
+        super(PatchDemGenerator, self).__init__(json_instructions=json_instructions)
         self.logger = logging.getLogger(f"{__name__}.{self.__class__.__name__}")
         self.debug = debug
 
