@@ -1,0 +1,76 @@
+{
+	"stopbanks":
+	{
+		"output": {
+			"crs": {
+				"horizontal": 2193,
+				"vertical": 7839
+			},
+			"grid_params": {
+				"resolution": 1
+			}
+		},
+		"processing": {
+			"chunk_size": 2500,
+			"number_of_cores": 2,
+			"memory_limit": "5GiB"
+		},
+		"data_paths": {
+			"local_cache": "tests/test_stopbanks_waikanae/data",
+			"subfolder": "results/stopbanks",
+			"extents": "../catchment.geojson",
+			"stopbanks": "../stopbanks.geojson"
+		},
+		"datasets": {
+			"lidar": {
+				"open_topography": {
+					"NZ21_Kapiti": true
+				}
+			}
+		},
+		"general": {
+			"lidar_classifications_to_keep": [2, 9]
+		},
+		"stopbanks": {
+			"width": 8
+		},
+		"source": "file"
+	},
+	"dem":
+	{
+		"output": {
+			"crs": {
+				"horizontal": 2193,
+				"vertical": 7839
+			},
+			"grid_params": {
+				"resolution": 10
+			}
+		},
+		"processing": {
+			"chunk_size": 500,
+			"number_of_cores": 2,
+			"memory_limit": "5GiB"
+		},
+		"data_paths": {
+			"local_cache": "tests/test_stopbanks_waikanae/data",
+			"subfolder": "results",
+			"extents": "catchment.geojson",
+			"raw_dem": "raw_dem.nc",
+			"stopbanks": [{"extents": "stopbanks/stopbanks_polygon.geojson", "elevations": "stopbanks/stopbanks_elevation.geojson"}],
+			"result_dem": "test_dem.nc"
+		},
+		"datasets": {
+			"lidar": {
+				"open_topography": {
+					"NZ21_Kapiti": true
+				}
+			}
+		},
+		"general": {
+			"z_labels": {"stopbanks": "z"},
+			"lidar_classifications_to_keep": [2, 9],
+			"interpolation": {"no_data": "linear"}
+		}
+	}
+}

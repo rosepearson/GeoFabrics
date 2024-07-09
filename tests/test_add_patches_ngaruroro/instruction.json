@@ -14,7 +14,7 @@
 		"memory_limit": "5GiB"
 	},
 	"data_paths": {
-		"local_cache": "tests/test_add_patches/data",
+		"local_cache": "tests/test_add_patches_ngaruroro/data",
 		"subfolder": "results",
 		"extents": "catchment_boundary.geojson",
 		"patchs": ["../patch_1.nc", "../patch_2.tif"],

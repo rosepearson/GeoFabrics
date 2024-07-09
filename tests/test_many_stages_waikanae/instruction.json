@@ -16,7 +16,7 @@
 			"memory_limit": "5GiB"
 		},
 		"data_paths": {
-			"local_cache": "tests/test_many_stages_wellington/data",
+			"local_cache": "tests/test_many_stages_waikanae/data",
 			"subfolder": "results/rivers"
 		},
 		"datasets": {
@@ -59,7 +59,7 @@
 			"osm_id": 132793862,
 			"estimate_fan": true,
 			"network_id": 9003742,
-			"network_file": "tests/test_many_stages_wellington/data/rec1_flow_and_friction.geojson",
+			"network_file": "tests/test_many_stages_waikanae/data/rec1_flow_and_friction.geojson",
 			"network_columns": {"id": "NZREACH", "to_node": "to_node", "from_node": "from_node", "flow": "flow", "mannings_n": "n", "area": "CATCHAREA"}
 		}
 	},
@@ -80,7 +80,7 @@
 			"memory_limit": "5GiB"
 		},
 		"data_paths": {
-			"local_cache": "tests/test_many_stages_wellington/data",
+			"local_cache": "tests/test_many_stages_waikanae/data",
 			"subfolder": "results/waterways",
 			"extents": "../catchment.geojson"
 		},
@@ -128,7 +128,7 @@
 			"memory_limit": "5GiB"
 		},
 		"data_paths": {
-			"local_cache": "tests/test_many_stages_wellington/data",
+			"local_cache": "tests/test_many_stages_waikanae/data",
 			"subfolder": "results",
 			"extents": "catchment.geojson",
 			"raw_dem": "raw_dem.nc",
@@ -184,7 +184,7 @@
 			"memory_limit": "5GiB"
 		},
 		"data_paths": {
-			"local_cache": "tests/test_many_stages_wellington/data",
+			"local_cache": "tests/test_many_stages_waikanae/data",
 			"subfolder": "results",
 			"extents": "catchment.geojson",
 			"result_dem": "test_dem.nc",

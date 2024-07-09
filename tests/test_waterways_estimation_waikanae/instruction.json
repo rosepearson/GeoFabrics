@@ -14,7 +14,7 @@
 		"memory_limit": "5GiB"
 	},
 	"data_paths": {
-		"local_cache": "tests/test_waterways_estimation_wellington/data",
+		"local_cache": "tests/test_waterways_estimation_waikanae/data",
 		"subfolder": "results",
 		"extents": "catchment.geojson",
 		"open_benchmark": {"extents": "open_waterways_polygon_benchmark.geojson", "elevations": "open_waterways_elevation_benchmark.geojson"},

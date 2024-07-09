@@ -14,7 +14,7 @@
 		"memory_limit": "5GiB"
 	},
 	"data_paths": {
-		"local_cache": "tests/test_dem_generation_wellington_2/data",
+		"local_cache": "tests/test_dem_generation_waikanae_2/data",
 		"subfolder": "results",
 		"extents": "catchment.geojson",
 		"land": "catchment.geojson",

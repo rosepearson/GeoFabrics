@@ -6,7 +6,7 @@
 		}
 	},
 	"data_paths": {
-		"local_cache": "tests/test_riverbed_interpolated_wellington/data",
+		"local_cache": "tests/test_riverbed_interpolated_waikanae/data",
 		"subfolder": "results",
 		"measured_sections": "../measured_sections.geojson",
 		"riverbanks": "../delineated_riverbanks.geojson",
