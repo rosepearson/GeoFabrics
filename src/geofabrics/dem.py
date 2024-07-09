@@ -1964,7 +1964,6 @@ class PatchDem(LidarBase):
         patch.rio.set_crs(self.catchment_geometry.crs["horizontal"])
         patch_resolution = patch.rio.resolution()
         patch_resolution = max(abs(patch_resolution[0]), abs(patch_resolution[1]))
-
         # Define region to patch within
         if self.drop_patch_offshore:
             roi = self.catchment_geometry.land_and_foreshore
@@ -2043,10 +2042,10 @@ class PatchDem(LidarBase):
                 coords={"x": self._dem.x, "y": self._dem.y},
             )
             patch.rio.write_transform(inplace=True)
-            patch.rio.write_crs(self.catchment_geometry.crs["horizontal"], inplace=True)
-            patch.rio.write_nodata(numpy.nan, encoded=True, inplace=True)
         else:  # No chunking use built in method
             patch = patch.interp(x=self._dem.x, y=self._dem.y, method="linear")
+        patch.rio.write_crs(self.catchment_geometry.crs["horizontal"], inplace=True)
+        patch.rio.write_nodata(numpy.nan, encoded=True, inplace=True)
 
         # Clip within region of interest (catchment, or land & foreshore)
         mask = clip_mask(patch, roi.geometry, self.chunk_size)

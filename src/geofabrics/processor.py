@@ -1302,7 +1302,7 @@ class PatchDemGenerator(BaseProcessor):
     """
 
     def __init__(self, json_instructions: json, debug: bool = True):
-        super(HydrologicDemGenerator, self).__init__(
+        super(PatchDemGenerator, self).__init__(
             json_instructions=json_instructions
         )
         self.logger = logging.getLogger(f"{__name__}.{self.__class__.__name__}")
@@ -1386,7 +1386,7 @@ class PatchDemGenerator(BaseProcessor):
             # setup the DEM patch generator
             patch_dem = dem.PatchDem(
                 catchment_geometry=self.catchment_geometry,
-                initial_dem_path=self.get_instruction_path("initial_dem_path"),
+                initial_dem_path=self.get_instruction_path("raw_dem"),
                 chunk_size=self.get_processing_instructions("chunk_size"),
                 patch_on_top=self.get_patch_instruction("patch_on_top"),
                 drop_patch_offshore=self.get_patch_instruction("drop_patch_offshore"),
@@ -1423,8 +1423,8 @@ class PatchDemGenerator(BaseProcessor):
             try:
                 self.save_dem(
                     filename=self.get_instruction_path("result_dem"),
-                    dataset=self.hydrologic_dem.dem,
-                    generator=self.hydrologic_dem,
+                    dataset=patch_dem.dem,
+                    generator=patch_dem,
                 )
             except (Exception, KeyboardInterrupt) as caught_exception:
                 pathlib.Path(self.get_instruction_path("result_dem")).unlink()
