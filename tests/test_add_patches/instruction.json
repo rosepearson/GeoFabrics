@@ -1,0 +1,28 @@
+{
+	"output": {
+		"crs": {
+			"horizontal": 2193,
+			"vertical": 7839
+		},
+		"grid_params": {
+			"resolution": 10
+		}
+	},
+    "processing": {
+		"chunk_size": 50,
+		"number_of_cores": 1,
+		"memory_limit": "5GiB"
+	},
+	"data_paths": {
+		"local_cache": "tests/test_add_patches/data",
+		"subfolder": "results",
+		"extents": "catchment_boundary.geojson",
+		"patchs": ["../patch_1.nc", "../patch_2.tif"],
+        "raw_dem": "../initial_dem.nc",
+		"result_dem": "test_dem.nc",
+		"benchmark_dem": "benchmark_dem.nc"
+	},
+	"patch": {
+		"layers": "z"
+	}
+}

@@ -21,9 +21,10 @@ import pytest
 import sys
 
 from src.geofabrics import processor
+from tests import base_test
 
 
-class Test(unittest.TestCase):
+class Test(base_test.Test):
     """Tests the basic DemGenerator processor class for a simple example with land,
     offshore, a coarse DEM and
     LiDAR using the data specified in the instruction.json
@@ -37,32 +38,10 @@ class Test(unittest.TestCase):
 
     @classmethod
     def setUpClass(cls):
-        """Create a cache directory and CatchmentGeometry object for use in the tests
-        and also download the files used
-        in the tests."""
+        """Setup for test."""
 
-        test_path = pathlib.Path().cwd() / pathlib.Path(
-            "tests/test_dem_generation_local_1"
-        )
-
-        # Setup logging
-        logging.basicConfig(
-            filename=test_path / "test.log",
-            encoding="utf-8",
-            level=logging.INFO,
-            force=True,
-        )
-        logging.info("In test_processor_local_files.py")
-
-        # Load in the test instructions
-        instruction_file_path = test_path / "instruction.json"
-        with open(instruction_file_path, "r") as file_pointer:
-            cls.instructions = json.load(file_pointer)
-        # Remove any files from last test, then create a results directory
-        cls.cache_dir = test_path / "data"
-        cls.results_dir = cls.cache_dir / "results"
-        cls.clean_data_folder()
-        cls.results_dir.mkdir()
+        cls.test_path = pathlib.Path(__file__).parent.resolve()
+        super(Test, cls).setUpClass()
 
         # Generate catchment data
         catchment_file = cls.results_dir / "catchment_boundary.geojson"

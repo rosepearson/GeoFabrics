@@ -6,7 +6,6 @@ Created on Wed Jun 30 11:11:25 2021
 """
 
 import unittest
-import json
 import pathlib
 import shapely
 import geopandas
@@ -16,12 +15,12 @@ import rioxarray
 import pytest
 import sys
 import logging
-import gc
 
 from src.geofabrics import processor
+from tests import base_test
 
 
-class Test(unittest.TestCase):
+class Test(base_test.Test):
     """A class to test the basic processor class Processor functionality for remote
     tiles by downloading files from
     OpenTopography within a small region and then generating a DEM. All files are
@@ -40,30 +39,10 @@ class Test(unittest.TestCase):
 
     @classmethod
     def setUpClass(cls):
-        """Create a CatchmentGeometry object and then run the DemGenerator processing
-        chain to download remote files and produce a DEM prior to testing."""
+        """Setup for test."""
 
-        name = "test_many_stages_multiple_2"
-        test_path = pathlib.Path().cwd() / "tests" / name
-
-        # Setup logging
-        logging.basicConfig(
-            filename=test_path / "test.log",
-            encoding="utf-8",
-            level=logging.INFO,
-            force=True,
-        )
-        logging.info(f"In {name}")
-
-        # load in the test instructions
-        instruction_file_path = test_path / "instruction.json"
-        with open(instruction_file_path, "r") as file_pointer:
-            cls.instructions = json.load(file_pointer)
-        # Remove any files from last test, then create a results directory
-        cls.cache_dir = test_path / "data"
-        cls.results_dir = cls.cache_dir / "results"
-        cls.tearDownClass()
-        cls.results_dir.mkdir()
+        cls.test_path = pathlib.Path(__file__).parent.resolve()
+        super(Test, cls).setUpClass()
 
         # create fake catchment boundary
         x0 = 1778250
@@ -87,13 +66,6 @@ class Test(unittest.TestCase):
         runner.run()
         runner = processor.RoughnessLengthGenerator(cls.instructions["roughness"])
         runner.run()
-
-    @classmethod
-    def tearDownClass(cls):
-        """Remove created and downloaded files at the end of the test."""
-
-        gc.collect()
-        cls.clean_data_folder()
 
     @classmethod
     def clean_data_folder(cls):

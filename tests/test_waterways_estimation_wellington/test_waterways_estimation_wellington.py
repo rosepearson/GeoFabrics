@@ -6,23 +6,20 @@ Created on Wed Jun 30 11:11:25 2021
 """
 
 import unittest
-import json
 import pathlib
 import geopandas
 import shapely
-import shutil
 import dotenv
 import os
 import sys
 import pytest
-import logging
 import numpy
-import gc
 
 from src.geofabrics import processor
+from tests import base_test
 
 
-class Test(unittest.TestCase):
+class Test(base_test.Test):
     """A class to test the basic waterway elevation estimation functionality
     contained in processor.RiverBathymetryGenerator.
 
@@ -34,39 +31,15 @@ class Test(unittest.TestCase):
 
     @classmethod
     def setUpClass(cls):
-        """Create a CatchmentGeometry object and then run the DemGenerator processing
-        chain to download remote files and produce a DEM prior to testing."""
+        """Setup for test."""
 
-        test_path = pathlib.Path().cwd() / pathlib.Path(
-            "tests/test_waterways_estimation_wellington"
-        )
+        cls.test_path = pathlib.Path(__file__).parent.resolve()
+        super(Test, cls).setUpClass()
 
-        # Setup logging
-        logging.basicConfig(
-            filename=test_path / "test.log",
-            encoding="utf-8",
-            level=logging.INFO,
-            force=True,
-        )
-        logging.info("In test_waterways_estimation_wellington")
-
-        # load in the test instructions
-        instruction_file_path = test_path / "instruction.json"
-        with open(instruction_file_path, "r") as file_pointer:
-            cls.instructions = json.load(file_pointer)
         # Load in environment variables to get and set the private API keys
         dotenv.load_dotenv()
         linz_key = os.environ.get("LINZ_API", None)
         cls.instructions["datasets"]["vector"]["linz"]["key"] = linz_key
-
-        # define the cache directory location - from the instruction file
-        path_instructions = cls.instructions["data_paths"]
-        cls.cache_dir = pathlib.Path(path_instructions["local_cache"])
-
-        # Remove any files from last test, then create a results directory
-        cls.results_dir = cls.cache_dir / path_instructions["subfolder"]
-        cls.tearDownClass()
-        cls.results_dir.mkdir()
 
         # create fake catchment boundary
         x0 = 1770797
@@ -84,55 +57,6 @@ class Test(unittest.TestCase):
         # Run pipeline - download files and generated DEM
         runner = processor.WaterwayBedElevationEstimator(cls.instructions, debug=False)
         runner.run()
-
-    @classmethod
-    def tearDownClass(cls):
-        """Remove created cache directory and included created and downloaded files at
-        the end of the test."""
-
-        gc.collect()
-        cls.clean_data_folder()
-
-    @classmethod
-    def clean_data_folder(cls):
-        """Remove all generated or downloaded files from the data directory,
-        but with only warnings if files can't be removed."""
-
-        assert cls.cache_dir.exists(), (
-            "The data directory that should include the comparison benchmark dem file "
-            "doesn't exist"
-        )
-
-        # Cycle through all folders within the cache dir deleting their contents
-        for path in cls.cache_dir.iterdir():
-            if path.is_dir():
-                for file in path.glob("*"):  # only files
-                    if file.is_file():
-                        try:
-                            file.unlink()
-                        except (Exception, PermissionError) as caught_exception:
-                            logging.warning(
-                                f"Caught error {caught_exception} during "
-                                f"rmtree of {file}. Supressing error. You "
-                                "will have to manually delete."
-                            )
-                    elif file.is_dir():
-                        try:
-                            shutil.rmtree(file)
-                        except (Exception, PermissionError) as caught_exception:
-                            logging.warning(
-                                f"Caught error {caught_exception} during "
-                                f"rmtree of {file}. Supressing error. You "
-                                "will have to manually delete."
-                            )
-                try:
-                    shutil.rmtree(path)
-                except (Exception, PermissionError) as caught_exception:
-                    logging.warning(
-                        f"Caught error {caught_exception} during rmtree of "
-                        f"{path}. Supressing error. You will have to manually "
-                        "delete."
-                    )
 
     @pytest.mark.skipif(
         sys.platform != "win32" and sys.platform != "linux",

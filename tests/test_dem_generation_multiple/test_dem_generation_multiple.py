@@ -6,22 +6,20 @@ Created on Wed Jun 30 11:11:25 2021
 """
 
 import unittest
-import json
 import pathlib
 import shapely
 import geopandas
-import shutil
 import numpy
 import rioxarray
 import pytest
 import sys
 import logging
-import gc
 
 from src.geofabrics import processor
+from tests import base_test
 
 
-class Test(unittest.TestCase):
+class Test(base_test.Test):
     """A class to test the basic processor class Processor functionality for remote
     tiles by downloading files from
     OpenTopography within a small region and then generating a DEM. All files are
@@ -40,31 +38,10 @@ class Test(unittest.TestCase):
 
     @classmethod
     def setUpClass(cls):
-        """Create a CatchmentGeometry object and then run the DemGenerator processing
-        chain to download remote files and produce a DEM prior to testing."""
+        """Setup for test."""
 
-        test_path = pathlib.Path().cwd() / pathlib.Path(
-            "tests/test_dem_generation_multiple"
-        )
-
-        # Setup logging
-        logging.basicConfig(
-            filename=test_path / "test.log",
-            encoding="utf-8",
-            level=logging.INFO,
-            force=True,
-        )
-        logging.info("In test_dem_generation_multiple")
-
-        # load in the test instructions
-        instruction_file_path = test_path / "instruction.json"
-        with open(instruction_file_path, "r") as file_pointer:
-            cls.instructions = json.load(file_pointer)
-        # Remove any files from last test, then create a results directory
-        cls.cache_dir = test_path / "data"
-        cls.results_dir = cls.cache_dir / "results"
-        cls.tearDownClass()
-        cls.results_dir.mkdir()
+        cls.test_path = pathlib.Path(__file__).parent.resolve()
+        super(Test, cls).setUpClass()
 
         # create fake catchment boundary
         x0 = 1778250
@@ -86,54 +63,6 @@ class Test(unittest.TestCase):
         runner = processor.HydrologicDemGenerator(cls.instructions)
         runner.run()
         del runner
-
-    @classmethod
-    def tearDownClass(cls):
-        """Remove created and downloaded files at the end of the test."""
-
-        gc.collect()
-        cls.clean_data_folder()
-
-    @classmethod
-    def clean_data_folder(cls):
-        """Remove all generated or downloaded files from the data directory,
-        but with only warnings if files can't be removed."""
-
-        assert cls.cache_dir.exists(), (
-            "The data directory that should include the comparison benchmark dem file "
-            "doesn't exist"
-        )
-
-        # Cycle through all folders within the cache dir deleting their contents
-        for path in cls.cache_dir.iterdir():
-            if path.is_dir():
-                for file in path.glob("*"):  # only files
-                    if file.is_file():
-                        try:
-                            file.unlink()
-                        except (Exception, PermissionError) as caught_exception:
-                            logging.warning(
-                                f"Caught error {caught_exception} during "
-                                f"rmtree of {file}. Supressing error. You "
-                                "will have to manually delete."
-                            )
-                    elif file.is_dir():
-                        try:
-                            shutil.rmtree(file)
-                        except (Exception, PermissionError) as caught_exception:
-                            logging.warning(
-                                f"Caught error {caught_exception} during "
-                                f"rmtree of {file}. Supressing error. You "
-                                "will have to manually delete."
-                            )
-                try:
-                    shutil.rmtree(path)
-                except (Exception, PermissionError) as caught_exception:
-                    logging.warning(
-                        f"Caught error {caught_exception} during rmtree of "
-                        f"{path}. Supressing error. You will have to manually "
-                        "delete."
-                    )
 
     @pytest.mark.skipif(sys.platform != "win32", reason="Windows test - this is strict")
     def test_result_dem_windows(self):
