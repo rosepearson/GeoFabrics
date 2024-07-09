@@ -20,6 +20,7 @@ Classes
    geofabrics.processor.BaseProcessor
    geofabrics.processor.RawLidarDemGenerator
    geofabrics.processor.HydrologicDemGenerator
+   geofabrics.processor.PatchDemGenerator
    geofabrics.processor.RoughnessLengthGenerator
    geofabrics.processor.MeasuredRiverGenerator
    geofabrics.processor.RiverBathymetryGenerator
@@ -238,6 +239,34 @@ Module Contents
    .. py:method:: add_bathymetry(hydrologic_dem, area_threshold, catchment_dirs)
 
       Add in any bathymetry data - ocean or river
+
+
+
+   .. py:method:: run()
+
+      This method executes the geofabrics generation pipeline to produce geofabric
+      derivatives.
+
+
+
+.. py:class:: PatchDemGenerator(json_instructions, debug = True)
+
+   Bases: :py:obj:`BaseProcessor`
+
+
+   PatchDemGenerator executes a pipeline for loading in a DEM / roughness
+   GeoFabrics profuct before adding specified patches to it.
+
+   See the README.md for usage examples or GeoFabrics/tests/ for examples of usage and
+   an instruction file
+
+
+   .. py:method:: get_patch_instruction(key)
+
+      Return true if the DEMs are required for later processing
+
+
+      :param instructions  The json instructions defining the behaviour:
 
 
 

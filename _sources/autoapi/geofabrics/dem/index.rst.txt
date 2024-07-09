@@ -15,7 +15,6 @@ Attributes
 
 .. autoapisummary::
 
-   geofabrics.dem.delayed_chunk_coarse_dem
    geofabrics.dem.delayed_roughness_over_chunk
    geofabrics.dem.delayed_elevation_over_chunk
 
@@ -47,7 +46,6 @@ Functions
    geofabrics.dem.load_tiles_in_chunk
    geofabrics.dem.roughness_over_chunk
    geofabrics.dem.elevation_over_chunk
-   geofabrics.dem.chunk_coarse_dem
 
 
 Module Contents
@@ -294,7 +292,7 @@ Module Contents
    :param chunk_size: The chunk size in pixels for parallel/staged processing
 
 
-   .. py:method:: add_coarse_dem(coarse_dem_path, area_threshold)
+   .. py:method:: add_patch(patch_path, label, layer)
 
       Check if gaps in DEM on land, if so iterate through coarse DEMs
       adding missing detail.
@@ -302,8 +300,9 @@ Module Contents
       Note the Coarse DEM values are only applied on land and not
       in the ocean.
 
-      :param coarse_dem_path - coarse DEM file paths to try add:
-      :param area_threshold - the ratio of area without LiDAR required to for: coarse DEMs to be used.
+      :param patch_path - patch file path to try add:
+      :param label - either "coarse DEM" or "patch". Defines the data_source:
+      :param layer - either 'z' or 'zo' and the layer to set the patch on:
 
 
 
@@ -394,16 +393,6 @@ Module Contents
 
    Rasterise all points within a chunk.
 
-
-.. py:function:: chunk_coarse_dem(dem_file, extents, set_foreshore)
-
-   Load in a coarse DEM and trim to points within bbox and return the
-   points.
-
-
-.. py:data:: delayed_chunk_coarse_dem
-
-   Wrap the `roughness_over_chunk` routine in dask.delayed
 
 .. py:data:: delayed_roughness_over_chunk
 

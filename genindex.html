@@ -118,8 +118,6 @@
   <td style="width: 33%; vertical-align: top;"><ul>
       <li><a href="autoapi/geofabrics/processor/index.html#geofabrics.processor.HydrologicDemGenerator.add_bathymetry">add_bathymetry() (geofabrics.processor.HydrologicDemGenerator method)</a>
 </li>
-      <li><a href="autoapi/geofabrics/dem/index.html#geofabrics.dem.PatchDem.add_coarse_dem">add_coarse_dem() (geofabrics.dem.PatchDem method)</a>
-</li>
       <li><a href="autoapi/geofabrics/dem/index.html#geofabrics.dem.LidarBase.add_lidar">add_lidar() (geofabrics.dem.LidarBase method)</a>
 
       <ul>
@@ -128,6 +126,8 @@
         <li><a href="autoapi/geofabrics/dem/index.html#geofabrics.dem.RoughnessDem.add_lidar">(geofabrics.dem.RoughnessDem method)</a>
 </li>
       </ul></li>
+      <li><a href="autoapi/geofabrics/dem/index.html#geofabrics.dem.PatchDem.add_patch">add_patch() (geofabrics.dem.PatchDem method)</a>
+</li>
   </ul></td>
   <td style="width: 33%; vertical-align: top;"><ul>
       <li><a href="autoapi/geofabrics/bathymetry_estimation/index.html#geofabrics.bathymetry_estimation.ChannelCharacteristics.align_channel">align_channel() (geofabrics.bathymetry_estimation.ChannelCharacteristics method)</a>
@@ -199,10 +199,10 @@
 </li>
       <li><a href="autoapi/geofabrics/processor/index.html#geofabrics.processor.RiverBathymetryGenerator.channel_characteristics_exist">channel_characteristics_exist() (geofabrics.processor.RiverBathymetryGenerator method)</a>
 </li>
-      <li><a href="autoapi/geofabrics/bathymetry_estimation/index.html#geofabrics.bathymetry_estimation.ChannelCharacteristics">ChannelCharacteristics (class in geofabrics.bathymetry_estimation)</a>
-</li>
   </ul></td>
   <td style="width: 33%; vertical-align: top;"><ul>
+      <li><a href="autoapi/geofabrics/bathymetry_estimation/index.html#geofabrics.bathymetry_estimation.ChannelCharacteristics">ChannelCharacteristics (class in geofabrics.bathymetry_estimation)</a>
+</li>
       <li><a href="autoapi/geofabrics/processor/index.html#geofabrics.processor.RiverBathymetryGenerator.characterise_channel">characterise_channel() (geofabrics.processor.RiverBathymetryGenerator method)</a>
 </li>
       <li><a href="autoapi/geofabrics/processor/index.html#geofabrics.processor.BaseProcessor.check_datasets">check_datasets() (geofabrics.processor.BaseProcessor method)</a>
@@ -212,8 +212,6 @@
       <li><a href="autoapi/geofabrics/bathymetry_estimation/index.html#geofabrics.bathymetry_estimation.InterpolateMeasuredElevations.check_valid_inputs">check_valid_inputs() (geofabrics.bathymetry_estimation.InterpolateMeasuredElevations method)</a>
 </li>
       <li><a href="autoapi/geofabrics/processor/index.html#geofabrics.processor.BaseProcessor.check_vector_or_raster">check_vector_or_raster() (geofabrics.processor.BaseProcessor method)</a>
-</li>
-      <li><a href="autoapi/geofabrics/dem/index.html#geofabrics.dem.chunk_coarse_dem">chunk_coarse_dem() (in module geofabrics.dem)</a>
 </li>
       <li><a href="autoapi/geofabrics/__main__/index.html#geofabrics.__main__.cli_run_from_dict">cli_run_from_dict() (in module geofabrics.__main__)</a>
 </li>
@@ -237,8 +235,6 @@
 <h2 id="D">D</h2>
 <table style="width: 100%" class="indextable genindextable"><tr>
   <td style="width: 33%; vertical-align: top;"><ul>
-      <li><a href="autoapi/geofabrics/dem/index.html#geofabrics.dem.delayed_chunk_coarse_dem">delayed_chunk_coarse_dem (in module geofabrics.dem)</a>
-</li>
       <li><a href="autoapi/geofabrics/dem/index.html#geofabrics.dem.delayed_elevation_over_chunk">delayed_elevation_over_chunk (in module geofabrics.dem)</a>
 </li>
       <li><a href="autoapi/geofabrics/dem/index.html#geofabrics.dem.delayed_roughness_over_chunk">delayed_roughness_over_chunk (in module geofabrics.dem)</a>
@@ -411,6 +407,8 @@
 </li>
       <li><a href="autoapi/geofabrics/bathymetry_estimation/index.html#geofabrics.bathymetry_estimation.Channel.get_parametric_spline_fit_points">get_parametric_spline_fit_points() (geofabrics.bathymetry_estimation.Channel method)</a>
 </li>
+      <li><a href="autoapi/geofabrics/processor/index.html#geofabrics.processor.PatchDemGenerator.get_patch_instruction">get_patch_instruction() (geofabrics.processor.PatchDemGenerator method)</a>
+</li>
       <li><a href="autoapi/geofabrics/processor/index.html#geofabrics.processor.BaseProcessor.get_processing_instructions">get_processing_instructions() (geofabrics.processor.BaseProcessor method)</a>
 </li>
       <li><a href="autoapi/geofabrics/processor/index.html#geofabrics.processor.BaseProcessor.get_resolution">get_resolution() (geofabrics.processor.BaseProcessor method)</a>
@@ -566,6 +564,8 @@
       </ul></li>
       <li><a href="autoapi/geofabrics/dem/index.html#geofabrics.dem.PatchDem">PatchDem (class in geofabrics.dem)</a>
 </li>
+      <li><a href="autoapi/geofabrics/processor/index.html#geofabrics.processor.PatchDemGenerator">PatchDemGenerator (class in geofabrics.processor)</a>
+</li>
       <li><a href="autoapi/geofabrics/dem/index.html#geofabrics.dem.CoarseDem.points">points (geofabrics.dem.CoarseDem property)</a>
 
       <ul>
@@ -606,10 +606,10 @@
 </li>
       <li><a href="autoapi/geofabrics/dem/index.html#geofabrics.dem.roughness_over_chunk">roughness_over_chunk() (in module geofabrics.dem)</a>
 </li>
-  </ul></td>
-  <td style="width: 33%; vertical-align: top;"><ul>
       <li><a href="autoapi/geofabrics/dem/index.html#geofabrics.dem.RoughnessDem">RoughnessDem (class in geofabrics.dem)</a>
 </li>
+  </ul></td>
+  <td style="width: 33%; vertical-align: top;"><ul>
       <li><a href="autoapi/geofabrics/processor/index.html#geofabrics.processor.RoughnessLengthGenerator">RoughnessLengthGenerator (class in geofabrics.processor)</a>
 </li>
       <li><a href="autoapi/geofabrics/processor/index.html#geofabrics.processor.BaseProcessor.run">run() (geofabrics.processor.BaseProcessor method)</a>
@@ -618,6 +618,8 @@
         <li><a href="autoapi/geofabrics/processor/index.html#geofabrics.processor.HydrologicDemGenerator.run">(geofabrics.processor.HydrologicDemGenerator method)</a>
 </li>
         <li><a href="autoapi/geofabrics/processor/index.html#geofabrics.processor.MeasuredRiverGenerator.run">(geofabrics.processor.MeasuredRiverGenerator method)</a>
+</li>
+        <li><a href="autoapi/geofabrics/processor/index.html#geofabrics.processor.PatchDemGenerator.run">(geofabrics.processor.PatchDemGenerator method)</a>
 </li>
         <li><a href="autoapi/geofabrics/processor/index.html#geofabrics.processor.RawLidarDemGenerator.run">(geofabrics.processor.RawLidarDemGenerator method)</a>
 </li>

@@ -99,13 +99,10 @@ DEMs.</p>
 <h2>Attributes<a class="headerlink" href="#attributes" title="Link to this heading"></a></h2>
 <table class="autosummary longtable docutils align-default">
 <tbody>
-<tr class="row-odd"><td><p><a class="reference internal" href="#geofabrics.dem.delayed_chunk_coarse_dem" title="geofabrics.dem.delayed_chunk_coarse_dem"><code class="xref py py-obj docutils literal notranslate"><span class="pre">delayed_chunk_coarse_dem</span></code></a></p></td>
-<td><p>Wrap the <cite>roughness_over_chunk</cite> routine in dask.delayed</p></td>
-</tr>
-<tr class="row-even"><td><p><a class="reference internal" href="#geofabrics.dem.delayed_roughness_over_chunk" title="geofabrics.dem.delayed_roughness_over_chunk"><code class="xref py py-obj docutils literal notranslate"><span class="pre">delayed_roughness_over_chunk</span></code></a></p></td>
+<tr class="row-odd"><td><p><a class="reference internal" href="#geofabrics.dem.delayed_roughness_over_chunk" title="geofabrics.dem.delayed_roughness_over_chunk"><code class="xref py py-obj docutils literal notranslate"><span class="pre">delayed_roughness_over_chunk</span></code></a></p></td>
 <td><p>Wrap the <cite>rasterise_chunk</cite> routine in dask.delayed</p></td>
 </tr>
-<tr class="row-odd"><td><p><a class="reference internal" href="#geofabrics.dem.delayed_elevation_over_chunk" title="geofabrics.dem.delayed_elevation_over_chunk"><code class="xref py py-obj docutils literal notranslate"><span class="pre">delayed_elevation_over_chunk</span></code></a></p></td>
+<tr class="row-even"><td><p><a class="reference internal" href="#geofabrics.dem.delayed_elevation_over_chunk" title="geofabrics.dem.delayed_elevation_over_chunk"><code class="xref py py-obj docutils literal notranslate"><span class="pre">delayed_elevation_over_chunk</span></code></a></p></td>
 <td><p>Wrap the <cite>load_tiles_in_chunk</cite> routine in dask.delayed</p></td>
 </tr>
 </tbody>
@@ -166,9 +163,6 @@ DEMs.</p>
 </tr>
 <tr class="row-even"><td><p><a class="reference internal" href="#geofabrics.dem.elevation_over_chunk" title="geofabrics.dem.elevation_over_chunk"><code class="xref py py-obj docutils literal notranslate"><span class="pre">elevation_over_chunk</span></code></a>(dim_x, dim_y, tile_points, options)</p></td>
 <td><p>Rasterise all points within a chunk.</p></td>
-</tr>
-<tr class="row-odd"><td><p><a class="reference internal" href="#geofabrics.dem.chunk_coarse_dem" title="geofabrics.dem.chunk_coarse_dem"><code class="xref py py-obj docutils literal notranslate"><span class="pre">chunk_coarse_dem</span></code></a>(dem_file, extents, set_foreshore)</p></td>
-<td><p>Load in a coarse DEM and trim to points within bbox and return the</p></td>
 </tr>
 </tbody>
 </table>
@@ -532,8 +526,8 @@ elevations outside this range will be filtered out.</p></li>
 </dd>
 </dl>
 <dl class="py method">
-<dt class="sig sig-object py" id="geofabrics.dem.PatchDem.add_coarse_dem">
-<span class="sig-name descname"><span class="pre">add_coarse_dem</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">coarse_dem_path</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">area_threshold</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#geofabrics.dem.PatchDem.add_coarse_dem" title="Link to this definition"></a></dt>
+<dt class="sig sig-object py" id="geofabrics.dem.PatchDem.add_patch">
+<span class="sig-name descname"><span class="pre">add_patch</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">patch_path</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">label</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">layer</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#geofabrics.dem.PatchDem.add_patch" title="Link to this definition"></a></dt>
 <dd><p>Check if gaps in DEM on land, if so iterate through coarse DEMs
 adding missing detail.</p>
 <p>Note the Coarse DEM values are only applied on land and not
@@ -541,10 +535,12 @@ in the ocean.</p>
 <dl class="field-list simple">
 <dt class="field-odd">Parameters<span class="colon">:</span></dt>
 <dd class="field-odd"><ul class="simple">
-<li><p><strong>add</strong> (<em>coarse_dem_path - coarse DEM file paths to try</em>)</p></li>
-<li><p><strong>for</strong> (<em>area_threshold - the ratio</em><em> of </em><em>area without LiDAR required to</em>) – coarse DEMs to be used.</p></li>
-<li><p><strong>coarse_dem_path</strong> (<em>pathlib.Path</em>)</p></li>
-<li><p><strong>area_threshold</strong> (<em>float</em>)</p></li>
+<li><p><strong>add</strong> (<em>patch_path - patch file path to try</em>)</p></li>
+<li><p><strong>data_source</strong> (<em>label - either &quot;coarse DEM&quot;</em><em> or </em><em>&quot;patch&quot;. Defines the</em>)</p></li>
+<li><p><strong>on</strong> (<em>layer - either 'z'</em><em> or </em><em>'zo' and the layer to set the patch</em>)</p></li>
+<li><p><strong>patch_path</strong> (<em>pathlib.Path</em>)</p></li>
+<li><p><strong>label</strong> (<em>str</em>)</p></li>
+<li><p><strong>layer</strong> (<em>str</em>)</p></li>
 </ul>
 </dd>
 </dl>
@@ -759,28 +755,6 @@ the region within which to rasterise.</p>
 <dd class="field-even"><p>numpy.ndarray</p>
 </dd>
 </dl>
-</dd></dl>
-
-<dl class="py function">
-<dt class="sig sig-object py" id="geofabrics.dem.chunk_coarse_dem">
-<span class="sig-prename descclassname"><span class="pre">geofabrics.dem.</span></span><span class="sig-name descname"><span class="pre">chunk_coarse_dem</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">dem_file</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">extents</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">set_foreshore</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#geofabrics.dem.chunk_coarse_dem" title="Link to this definition"></a></dt>
-<dd><p>Load in a coarse DEM and trim to points within bbox and return the
-points.</p>
-<dl class="field-list simple">
-<dt class="field-odd">Parameters<span class="colon">:</span></dt>
-<dd class="field-odd"><ul class="simple">
-<li><p><strong>dem_file</strong> (<em>pathlib.Path</em>)</p></li>
-<li><p><strong>extents</strong> (<em>dict</em>)</p></li>
-<li><p><strong>set_foreshore</strong> (<em>bool</em>)</p></li>
-</ul>
-</dd>
-</dl>
-</dd></dl>
-
-<dl class="py data">
-<dt class="sig sig-object py" id="geofabrics.dem.delayed_chunk_coarse_dem">
-<span class="sig-prename descclassname"><span class="pre">geofabrics.dem.</span></span><span class="sig-name descname"><span class="pre">delayed_chunk_coarse_dem</span></span><a class="headerlink" href="#geofabrics.dem.delayed_chunk_coarse_dem" title="Link to this definition"></a></dt>
-<dd><p>Wrap the <cite>roughness_over_chunk</cite> routine in dask.delayed</p>
 </dd></dl>
 
 <dl class="py data">
