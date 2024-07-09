@@ -6,13 +6,10 @@ Created on Wed Jun 30 11:11:25 2021
 """
 
 import unittest
-import json
 import pathlib
-import gc
 import rioxarray
 import shapely
 import geopandas
-import shutil
 import dotenv
 import os
 import sys
@@ -21,10 +18,11 @@ import logging
 import numpy
 
 from src.geofabrics import runner
+from tests import base_test
 
 
 @pytest.mark.skipif(sys.platform != "linux", reason="Skip test if not linux")
-class Test(unittest.TestCase):
+class Test(base_test.Test):
     """A class to test the basic river bathymetry estimation functionality
     contained in processor.RiverBathymetryGenerator.
 
@@ -35,36 +33,17 @@ class Test(unittest.TestCase):
 
     @classmethod
     def setUpClass(cls):
-        """Create a CatchmentGeometry object and then run the DemGenerator processing
-        chain to download remote files and produce a DEM prior to testing."""
-        name = "test_many_stages_wellington"
-        test_path = pathlib.Path().cwd() / "tests" / name
+        """Setup for test."""
 
-        # Setup logging
-        logging.basicConfig(
-            filename=test_path / "test.log",
-            encoding="utf-8",
-            level=logging.INFO,
-            force=True,
-        )
-        logging.info(f"In {name}")
+        cls.test_path = pathlib.Path(__file__).parent.resolve()
+        super(Test, cls).setUpClass()
 
-        # load in the test instructions
-        instruction_file_path = test_path / "instruction.json"
-        with open(instruction_file_path, "r") as file_pointer:
-            cls.instructions = json.load(file_pointer)
         # Load in environment variables to get and set the private API keys
         dotenv.load_dotenv()
         linz_key = os.environ.get("LINZ_API", None)
         cls.instructions["default"] = {
             "datasets": {"vector": {"linz": {"key": linz_key}}}
         }
-
-        # Remove any files from last test, then create a results directory
-        cls.cache_dir = test_path / "data"
-        cls.results_dir = cls.cache_dir / "results"
-        cls.tearDownClass()
-        cls.results_dir.mkdir()
 
         # create fake catchment boundary
         x0 = 1768072
@@ -83,55 +62,6 @@ class Test(unittest.TestCase):
 
         # Run pipeline - download files and generated DEM
         runner.from_instructions_dict(cls.instructions)
-
-    @classmethod
-    def tearDownClass(cls):
-        """Remove created cache directory and included created and downloaded files at
-        the end of the test."""
-
-        gc.collect()
-        cls.clean_data_folder()
-
-    @classmethod
-    def clean_data_folder(cls):
-        """Remove all generated or downloaded files from the data directory,
-        but with only warnings if files can't be removed."""
-
-        assert cls.cache_dir.exists(), (
-            "The data directory that should include the comparison benchmark dem file "
-            "doesn't exist"
-        )
-
-        # Cycle through all folders within the cache dir deleting their contents
-        for path in cls.cache_dir.iterdir():
-            if path.is_dir():
-                for file in path.glob("*"):  # only files
-                    if file.is_file():
-                        try:
-                            file.unlink()
-                        except (Exception, PermissionError) as caught_exception:
-                            logging.warning(
-                                f"Caught error {caught_exception} during "
-                                f"rmtree of {file}. Supressing error. You "
-                                "will have to manually delete."
-                            )
-                    elif file.is_dir():
-                        try:
-                            shutil.rmtree(file)
-                        except (Exception, PermissionError) as caught_exception:
-                            logging.warning(
-                                f"Caught error {caught_exception} during "
-                                f"rmtree of {file}. Supressing error. You "
-                                "will have to manually delete."
-                            )
-                try:
-                    shutil.rmtree(path)
-                except (Exception, PermissionError) as caught_exception:
-                    logging.warning(
-                        f"Caught error {caught_exception} during rmtree of "
-                        f"{path}. Supressing error. You will have to manually "
-                        "delete."
-                    )
 
     @pytest.mark.skipif(sys.platform != "win32", reason="Windows test - this is strict")
     def test_result_geofabric_windows(self):

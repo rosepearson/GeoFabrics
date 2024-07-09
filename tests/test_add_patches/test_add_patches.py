@@ -6,17 +6,12 @@ Created on Wed Jun 30 11:11:25 2021
 """
 
 import unittest
-import json
 import pathlib
-import shutil
 import rioxarray
-import xarray
 import numpy
 import shapely
 import geopandas
-import pdal
 import logging
-import gc
 
 from src.geofabrics import processor
 from tests import base_test
@@ -33,8 +28,7 @@ class Test(base_test.Test):
 
     @classmethod
     def setUpClass(cls):
-        """Create a cache directory and CatchmentGeometry object for use in the tests
-        and also download the files used in the tests."""
+        """Setup for test."""
 
         cls.test_path = pathlib.Path(__file__).parent.resolve()
         super(Test, cls).setUpClass()
