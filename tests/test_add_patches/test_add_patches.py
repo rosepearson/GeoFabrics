@@ -19,9 +19,10 @@ import logging
 import gc
 
 from src.geofabrics import processor
+from tests import base_test
 
 
-class Test(unittest.TestCase):
+class Test(base_test.Test):
     """Test the PatchDemGenerator processor class for a simple example with
     two patches specified in the instruction.json
 
@@ -30,33 +31,13 @@ class Test(unittest.TestCase):
         tolerance
     """
 
-    LAS_GROUND = 2
-
     @classmethod
     def setUpClass(cls):
         """Create a cache directory and CatchmentGeometry object for use in the tests
         and also download the files used in the tests."""
 
-        test_path = pathlib.Path(__file__).parent.resolve()
-
-        # Setup logging
-        logging.basicConfig(
-            filename=test_path / "test.log",
-            encoding="utf-8",
-            level=logging.INFO,
-            force=True,
-        )
-        logging.info("In test_add_patches")
-
-        # Load in the test instructions
-        instruction_file_path = test_path / "instruction.json"
-        with open(instruction_file_path, "r") as file_pointer:
-            cls.instructions = json.load(file_pointer)
-        # Remove any files from last test, then create a results directory
-        cls.cache_dir = test_path / "data"
-        cls.results_dir = cls.cache_dir / "results"
-        cls.tearDownClass()
-        cls.results_dir.mkdir()
+        cls.test_path = pathlib.Path(__file__).parent.resolve()
+        super(Test, cls).setUpClass()
 
         # Generate catchment data
         catchment_file = cls.results_dir / "catchment_boundary.geojson"
@@ -72,55 +53,6 @@ class Test(unittest.TestCase):
         # Run geofabrics processing pipeline
         runner = processor.PatchDemGenerator(cls.instructions)
         runner.run()
-
-    @classmethod
-    def tearDownClass(cls):
-        """Remove created files in the cache directory as part of the testing process at
-        the end of the test."""
-
-        gc.collect()
-        cls.clean_data_folder()
-
-    @classmethod
-    def clean_data_folder(cls):
-        """Remove all generated or downloaded files from the data directory,
-        but with only warnings if files can't be removed."""
-
-        assert cls.cache_dir.exists(), (
-            "The data directory that should include the comparison benchmark dem file "
-            "doesn't exist"
-        )
-
-        # Cycle through all folders within the cache dir deleting their contents
-        for path in cls.cache_dir.iterdir():
-            if path.is_dir():
-                for file in path.glob("*"):  # only files
-                    if file.is_file():
-                        try:
-                            file.unlink()
-                        except (Exception, PermissionError) as caught_exception:
-                            logging.warning(
-                                f"Caught error {caught_exception} during "
-                                f"rmtree of {file}. Supressing error. You "
-                                "will have to manually delete."
-                            )
-                    elif file.is_dir():
-                        try:
-                            shutil.rmtree(file)
-                        except (Exception, PermissionError) as caught_exception:
-                            logging.warning(
-                                f"Caught error {caught_exception} during "
-                                f"rmtree of {file}. Supressing error. You "
-                                "will have to manually delete."
-                            )
-                try:
-                    shutil.rmtree(path)
-                except (Exception, PermissionError) as caught_exception:
-                    logging.warning(
-                        f"Caught error {caught_exception} during rmtree of "
-                        f"{path}. Supressing error. You will have to manually "
-                        "delete."
-                    )
 
     def test_result_dem(self):
         """A basic comparison between the generated and benchmark DEM"""
