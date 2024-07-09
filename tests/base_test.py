@@ -37,7 +37,7 @@ class Test(unittest.TestCase):
         """Create a cache directory and CatchmentGeometry object for use in the tests
         and also download the files used in the tests."""
 
-        #test_path = pathlib.Path(__file__).parent.resolve()
+        # test_path = pathlib.Path(__file__).parent.resolve()
 
         # Setup logging
         logging.basicConfig(
@@ -106,6 +106,7 @@ class Test(unittest.TestCase):
                         f"{path}. Supressing error. You will have to manually "
                         "delete."
                     )
+
 
 if __name__ == "__main__":
     unittest.main()
