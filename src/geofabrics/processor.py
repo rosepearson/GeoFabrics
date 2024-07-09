@@ -1394,6 +1394,8 @@ class PatchDemGenerator(BaseProcessor):
             patch_paths = self.get_vector_or_raster_paths(
                 key="patchs", data_type="raster"
             )
+            if self.get_patch_instruction("patch_on_top"):
+                patch_paths = patch_paths[::-1]  # Reverse so first ends up on top
             for patch_path in patch_paths:
                 patch_dem.add_patch(patch_path=patch_path, label="patch", layer=layer)
 
