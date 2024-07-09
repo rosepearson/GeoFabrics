@@ -60,8 +60,10 @@ class Test(unittest.TestCase):
 
         # Generate catchment data
         catchment_file = cls.results_dir / "catchment_boundary.geojson"
-        x0 = 1919400; y0 = 5610000
-        x1 = 1920703; y1 = 5611400
+        x0 = 1919400
+        y0 = 5610000
+        x1 = 1920703
+        y1 = 5611400
         catchment = shapely.geometry.Polygon([(x0, y0), (x1, y0), (x1, y1), (x0, y1)])
         catchment = geopandas.GeoSeries([catchment])
         catchment = catchment.set_crs(cls.instructions["output"]["crs"]["horizontal"])
