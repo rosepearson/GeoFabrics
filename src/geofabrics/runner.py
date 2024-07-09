@@ -249,6 +249,13 @@ def from_instructions_dict(instructions: dict):
             processor_label="roughness",
             instructions=instructions,
         )
+    if "patch" in instructions:
+        # Add patch to the hydrological dem or geofabric
+        run_processor_class(
+            processor_class=processor.PatchDemGenerator,
+            processor_label="patch",
+            instructions=instructions,
+        )
     logger = setup_logging_for_run(instructions=instructions, label="runner")
     logger.info(
         f"Total execution time is {datetime.datetime.now() - initial_start_time}"
