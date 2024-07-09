@@ -3,4 +3,4 @@
 Contains the package version information
 """
 
-__version__ = "1.1.16"
+__version__ = "1.1.17"
