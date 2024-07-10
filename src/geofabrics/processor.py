@@ -1129,12 +1129,12 @@ class HydrologicDemGenerator(BaseProcessor):
             subfolder = self.get_instruction_path(key="subfolder")
             elevations = []
             polygons = []
-            for key, value in self.instructions["data_paths"]["waterways"]:
-                elevation = pathlib.Path(value["elevations"])
+            for waterway_dict in self.instructions["data_paths"]["waterways"]:
+                elevation = pathlib.Path(waterway_dict["elevations"])
                 if not elevation.is_absolute():
                     elevation = subfolder / elevation
                 elevations.append(elevation)
-                polygon = pathlib.Path(value["extents"])
+                polygon = pathlib.Path(waterway_dict["extents"])
                 if not polygon.is_absolute():
                     polygon = subfolder / polygon
                 polygons.append(polygon)
@@ -1220,12 +1220,12 @@ class HydrologicDemGenerator(BaseProcessor):
                 subfolder = self.get_instruction_path(key="subfolder")
                 elevations = []
                 polygons = []
-                for key, value in self.instructions["data_paths"]["stopbanks"]:
-                    elevation = pathlib.Path(value["elevations"])
+                for stopbank_dict in self.instructions["data_paths"]["stopbanks"]:
+                    elevation = pathlib.Path(-stopbank_dict["elevations"])
                     if not elevation.is_absolute():
                         elevation = subfolder / elevation
                     elevations.append(elevation)
-                    polygon = pathlib.Path(value["extents"])
+                    polygon = pathlib.Path(stopbank_dict["extents"])
                     if not polygon.is_absolute():
                         polygon = subfolder / polygon
                     polygons.append(polygon)
