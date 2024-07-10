@@ -679,7 +679,7 @@ class HydrologicallyConditionedDem(DemBase):
 
         return offshore_edge
 
-    def _interpolate_bathymetry_points(
+    def _interpolate_elevation_points(
         self,
         bathymetry_points: numpy.ndarray,
         flat_x_array: numpy.ndarray,
@@ -793,7 +793,7 @@ class HydrologicallyConditionedDem(DemBase):
 
         # Set up the interpolation function
         self.logger.info("Offshore interpolation")
-        flat_z_masked = self._interpolate_bathymetry_points(
+        flat_z_masked = self._interpolate_elevation_points(
             bathymetry_points=offshore_points,
             flat_x_array=grid_x[mask],
             flat_y_array=grid_y[mask],
@@ -810,14 +810,14 @@ class HydrologicallyConditionedDem(DemBase):
 
     def interpolate_waterways(
         self,
-        estimated_bathymetry: geometry.EstimatedElevationPoints,
+        elevations: geometry.EstimatedElevationPoints,
         method: str,
     ) -> xarray.Dataset:
         """Performs interpolation of the estimated waterways."""
 
         # extract points and polygon
-        estimated_points = estimated_bathymetry.points_array
-        estimated_polygons = estimated_bathymetry.polygons
+        estimated_points = elevations.points_array
+        estimated_polygons = elevations.polygons
 
         # Get edge points - from DEM
         edge_dem = self._dem.rio.clip(
@@ -868,7 +868,7 @@ class HydrologicallyConditionedDem(DemBase):
 
         # Interpolate river area - use cubic or linear interpolation
         self.logger.info("Offshore interpolation")
-        flat_z_masked = self._interpolate_bathymetry_points(
+        flat_z_masked = self._interpolate_elevation_points(
             bathymetry_points=bathy_points,
             flat_x_array=flat_x_masked,
             flat_y_array=flat_y_masked,
@@ -888,7 +888,7 @@ class HydrologicallyConditionedDem(DemBase):
 
     def interpolate_rivers(
         self,
-        estimated_bathymetry: geometry.EstimatedElevationPoints,
+        elevations: geometry.EstimatedElevationPoints,
         method: str,
     ) -> xarray.Dataset:
         """Performs interpolation from estimated bathymetry points within a polygon
@@ -897,8 +897,8 @@ class HydrologicallyConditionedDem(DemBase):
         """
 
         # Extract river points and polygon
-        estimated_points = estimated_bathymetry.points_array
-        estimated_polygons = estimated_bathymetry.polygons
+        estimated_points = elevations.points_array
+        estimated_polygons = elevations.polygons
 
         if (
             len(estimated_points) == 0
@@ -927,16 +927,16 @@ class HydrologicallyConditionedDem(DemBase):
         mask_z = ~numpy.isnan(flat_z)
 
         # Interpolate the estimated river bank heights along only the river
-        if estimated_bathymetry.bank_heights_exist():
+        if elevations.bank_heights_exist():
             # Get the estimated river bank heights and define a mask where nan
-            river_bank_points = estimated_bathymetry.bank_height_points()
+            river_bank_points = elevations.bank_height_points()
             river_bank_nan_mask = numpy.logical_not(numpy.isnan(river_bank_points["Z"]))
             # Interpolate from the estimated river bank heights
             xy_out = numpy.concatenate(
                 [[flat_x[mask_z]], [flat_y[mask_z]]], axis=0
             ).transpose()
             options = {
-                "radius": estimated_bathymetry.points["width"].max(),
+                "radius": elevations.points["width"].max(),
                 "raster_type": geometry.RASTER_TYPE,
                 "method": "linear",
             }
@@ -989,7 +989,7 @@ class HydrologicallyConditionedDem(DemBase):
 
         # Interpolate river area - use specified interpolation
         self.logger.info("Offshore interpolation")
-        flat_z_masked = self._interpolate_bathymetry_points(
+        flat_z_masked = self._interpolate_elevation_points(
             bathymetry_points=bathy_points,
             flat_x_array=flat_x_masked,
             flat_y_array=flat_y_masked,

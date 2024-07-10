@@ -34,7 +34,8 @@
 		"stopbanks": {
 			"width": 8
 		},
-		"source": "file"
+		"source": "file",
+		"method": simple
 	},
 	"dem":
 	{

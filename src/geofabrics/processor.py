@@ -36,6 +36,12 @@ class BaseProcessor(abc.ABC):
     instruction files including populating default values. Also contains
     functions for downloading remote data using geopais, and constructing data
     file lists.
+    
+    The `BaseProcessor` class contains several important class members:
+     * instructions - Defines the pipeline execution instructions
+     * catchment_geometry - Defines all relevant regions in a catchment required in the
+       generation of a DEM as polygons.
+     * logger - logging within this class
     """
 
     OSM_CRS = "EPSG:4326"
@@ -864,17 +870,8 @@ class RawLidarDemGenerator(BaseProcessor):
     optionally a coarse DEM. The data sources and pipeline logic is defined in the
     json_instructions file.
 
-    The `DemGenerator` class contains several important class members:
-     * instructions - Defines the pipeline execution instructions
-     * catchment_geometry - Defines all relevant regions in a catchment required in the
-       generation of a DEM as polygons.
-     * raw_dem - A combination of LiDAR tiles and any referecnce DEM
-       from LiDAR and interpolated from bathymetry.
-     * coarse_dem - This optional object defines a background DEM that may be used to
-       fill on land gaps in the LiDAR.
-
-    See the README.md for usage examples or GeoFabrics/tests/ for examples of usage and
-    an instruction file.
+    See the GitHub repository wiki or GeoFabrics/tests/ for usage examples and
+    other documentation.
     """
 
     def __init__(self, json_instructions: json, debug: bool = True):
@@ -1062,17 +1059,13 @@ class RawLidarDemGenerator(BaseProcessor):
 
 
 class HydrologicDemGenerator(BaseProcessor):
-    """HydrologicDemGenerator executes a pipeline for loading in a raw DEM and extents
-    before incorporating bathymetry (offshore, rivers and waterways) to produce a
-    hydrologically conditioned DEM. The data and pipeline logic is defined in
-    the json_instructions file.
+    """HydrologicDemGenerator executes a pipeline for loading in a DEM then
+    incorporating hydrological features (e.g. ocean bathymetry, rivers,
+    waterways,stopbank creast heights) to produce a hydrologically conditioned
+    DEM. The data and pipeline logic is defined in the json_instructions file.
 
-    The `HydrologicDemGenerator` class contains several important class members:
-     * catchment_geometry - Defines all relevant regions in a catchment required in the
-       generation of a DEM as polygons.
-
-    See the README.md for usage examples or GeoFabrics/tests/ for examples of usage and
-    an instruction file
+    See the GitHub repository wiki or GeoFabrics/tests/ for usage examples and
+    other documentation.
     """
 
     def __init__(self, json_instructions: json, debug: bool = True):
@@ -1082,7 +1075,7 @@ class HydrologicDemGenerator(BaseProcessor):
         self.logger = logging.getLogger(f"{__name__}.{self.__class__.__name__}")
         self.debug = debug
 
-    def add_bathymetry(
+    def add_hydrological_features(
         self,
         hydrologic_dem: dem.HydrologicallyConditionedDem,
         area_threshold: float,
@@ -1101,24 +1094,24 @@ class HydrologicDemGenerator(BaseProcessor):
             > self.catchment_geometry.offshore.area.sum() * area_threshold
         ):
             # Get the bathymetry data directory
-            bathy_contour_dirs = self.get_vector_or_raster_paths(
+            ocean_contour_dirs = self.get_vector_or_raster_paths(
                 key="ocean_contours",
                 data_type="vector",
                 required=False,
             )
-            if len(bathy_contour_dirs) != 1:
+            if len(ocean_contour_dirs) != 1:
                 self.logger.warning(
-                    f"{len(bathy_contour_dirs)} ocean_contours's provided. "
-                    f"Specficially {bathy_contour_dirs}. Only consider the "
+                    f"{len(ocean_contour_dirs)} ocean_contours's provided. "
+                    f"Specficially {ocean_contour_dirs}. Only consider the "
                     "first if multiple."
                 )
 
-            self.logger.info(f"Incorporating Bathymetry: {bathy_contour_dirs}")
+            self.logger.info(f"Incorporating Bathymetry: {ocean_contour_dirs}")
 
             # Load in bathymetry
-            if len(bathy_contour_dirs) > 0:
-                bathy_contours = geometry.BathymetryContours(
-                    bathy_contour_dirs[0],
+            if len(ocean_contour_dirs) > 0:
+                ocean_contours = geometry.BathymetryContours(
+                    ocean_contour_dirs[0],
                     self.catchment_geometry,
                     z_label=self.get_instruction_general(
                         key="z_labels", subkey="ocean"
@@ -1126,32 +1119,30 @@ class HydrologicDemGenerator(BaseProcessor):
                     exclusion_extent=hydrologic_dem.raw_extents,
                 )
                 # Interpolate
-                hydrologic_dem.interpolate_ocean_bathymetry(bathy_contours)
+                hydrologic_dem.interpolate_ocean_bathymetry(ocean_contours)
         # Check for waterways and interpolate if they exist
         if "waterways" in self.instructions["data_paths"]:
             # Load in all open and closed waterway elevation and extents in one go
             # Get the polygons and bathymetry and can be multiple
             subfolder = self.get_instruction_path(key="subfolder")
-            bathy_dirs = [
-                pathlib.Path(waterway_dict["elevations"])
-                for waterway_dict in self.instructions["data_paths"]["waterways"]
-            ]
-            poly_dirs = [
-                pathlib.Path(waterway_dict["extents"])
-                for waterway_dict in self.instructions["data_paths"]["waterways"]
-            ]
-            for index, (bathy_dir, poly_dir) in enumerate(zip(bathy_dirs, poly_dirs)):
-                if not bathy_dir.is_absolute():
-                    bathy_dirs[index] = subfolder / bathy_dir
-                if not poly_dir.is_absolute():
-                    poly_dirs[index] = subfolder / poly_dir
+            elevations = []
+            polygons = []
+            for key, value in self.instructions["data_paths"]["waterways"]:
+                elevation = pathlib.Path(value["elevations"])
+                if not elevation.is_absolute():
+                    elevation = subfolder / elevation
+                elevations.append(elevation)
+                polygon = pathlib.Path(value["extents"])
+                if not polygon.is_absolute():
+                    polygon = subfolder / polygon
+                polygons.append(polygon)
 
-            self.logger.info(f"Incorporating waterways: {bathy_dirs}")
+            self.logger.info(f"Incorporating waterways: {elevations}")
 
             # Load in bathymetry
-            estimated_bathymetry_points = geometry.EstimatedElevationPoints(
-                points_files=bathy_dirs,
-                polygon_files=poly_dirs,
+            estimated_elevations = geometry.EstimatedElevationPoints(
+                points_files=elevations,
+                polygon_files=polygons,
                 filter_osm_ids=self.get_instruction_general(
                     key="filter_waterways_by_osm_ids"
                 ),
@@ -1163,9 +1154,9 @@ class HydrologicDemGenerator(BaseProcessor):
 
             # Call interpolate river on the DEM - the class checks to see if any pixels
             # actually fall inside the polygon
-            if len(estimated_bathymetry_points.polygons) > 0:  # Skip if no waterways
+            if len(estimated_elevations.polygons) > 0:  # Skip if no waterways
                 hydrologic_dem.interpolate_waterways(
-                    estimated_bathymetry=estimated_bathymetry_points,
+                    elevations=estimated_elevations,
                     method=self.get_instruction_general(
                         key="interpolation", subkey="waterways"
                     ),
@@ -1184,38 +1175,38 @@ class HydrologicDemGenerator(BaseProcessor):
                     f"and the rivers: {z_labels} {rivers}"
                 )
             for index, river_dict in enumerate(rivers):
-                bathy_dir = pathlib.Path(river_dict["elevations"])
-                poly_dir = pathlib.Path(river_dict["extents"])
-                if not bathy_dir.is_absolute():
-                    bathy_dir = subfolder / bathy_dir
-                if not poly_dir.is_absolute():
-                    poly_dir = subfolder / poly_dir
+                elevation = pathlib.Path(river_dict["elevations"])
+                polygon = pathlib.Path(river_dict["extents"])
+                if not elevation.is_absolute():
+                    elevation = subfolder / elevation
+                if not polygon.is_absolute():
+                    polygon = subfolder / polygon
 
-                self.logger.info(f"Incorporating river: {bathy_dir}")
+                self.logger.info(f"Incorporating river: {elevation}")
 
                 # Load in bathymetry
-                estimated_bathymetry = geometry.EstimatedElevationPoints(
-                    points_files=[bathy_dir],
-                    polygon_files=[poly_dir],
+                estimated_elevations = geometry.EstimatedElevationPoints(
+                    points_files=[elevation],
+                    polygon_files=[polygon],
                     catchment_geometry=self.catchment_geometry,
                     z_labels=z_labels[index],
                 )
 
                 if (
-                    len(estimated_bathymetry.points_array) == 0
-                    or estimated_bathymetry.polygons.area.sum()
+                    len(estimated_elevations.points_array) == 0
+                    or estimated_elevations.polygons.area.sum()
                     < self.catchment_geometry.resolution**2
                 ):
                     self.logger.warning(
                         "No points or an area less than one grid cell in "
-                        f"river {bathy_dir}. Ignoring."
+                        f"river {elevation}. Ignoring."
                     )
                     continue
 
                 # Call interpolate river on the DEM - the class checks to see if any pixels
                 # actually fall inside the polygon
                 hydrologic_dem.interpolate_rivers(
-                    estimated_bathymetry=estimated_bathymetry,
+                    elevations=estimated_elevations,
                     method=self.get_instruction_general(
                         key="interpolation", subkey="rivers"
                     ),
@@ -1258,7 +1249,7 @@ class HydrologicDemGenerator(BaseProcessor):
             )
 
             # Check for and add any bathymetry information
-            self.add_bathymetry(
+            self.add_hydrological_features(
                 hydrologic_dem=hydrologic_dem,
                 area_threshold=area_threshold,
                 catchment_dirs=self.get_instruction_path("extents"),
