@@ -3513,9 +3513,7 @@ class StopbankCrestElevationEstimator(BaseProcessor):
         ).explode(index_parts=True)
         # Sample maximum elevation in polygon around each point
         points["z"] = points.buffer(points["width"].to_numpy()).apply(
-            lambda row: self.maximum_elevation_in_polygon(
-                geometry=row, dem=dem
-            )
+            lambda row: self.maximum_elevation_in_polygon(geometry=row, dem=dem)
         )
 
         # Remove any NaN areas (where no LiDAR data to estimate elevations)
