@@ -3514,9 +3514,8 @@ class StopbankCrestElevationEstimator(BaseProcessor):
         # Sample maximum elevation in polygon around each point
         points["z"] = points.buffer(points["width"].to_numpy()).apply(
             lambda row: self.maximum_elevation_in_polygon(
-                geometry=row["geometry"], dem=dem
-            ),
-            axis=1,
+                geometry=row, dem=dem
+            )
         )
 
         # Remove any NaN areas (where no LiDAR data to estimate elevations)
@@ -3529,9 +3528,7 @@ class StopbankCrestElevationEstimator(BaseProcessor):
         # Create, filter to remove NaN areas and save overall polygon
         stopbanks["polygon"] = stopbanks.buffer(stopbanks["width"].to_numpy())
         stopbanks = stopbanks[nan_filter]
-        stopbanks.set_geometry("polygon", drop=True)[
-            ["geometry", "width", "z"]
-        ].to_file(polygon_file)
+        stopbanks.set_geometry("polygon", drop=True)[["geometry"]].to_file(polygon_file)
         # Filter points to keep not NaN values then save
         points = points[points["z"].notnull()]
         points.to_file(elevation_file)
