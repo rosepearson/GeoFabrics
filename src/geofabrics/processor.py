@@ -285,12 +285,14 @@ class BaseProcessor(abc.ABC):
             "interpolation": {
                 "rivers": "rbf",
                 "waterways": "cubic",
+                "stopbanks": "linear",
                 "ocean": "linear",
                 "lidar": "idw",
                 "no_data": None,
             },
             "z_labels": {
                 "waterways": "z",
+                "stopbanks": "z",
                 "rivers": "z",
                 "ocean": None,
             },
@@ -1211,6 +1213,44 @@ class HydrologicDemGenerator(BaseProcessor):
                         key="interpolation", subkey="rivers"
                     ),
                 )
+            # Check for stopbanks and interpolate if they exist
+            if "stopbanks" in self.instructions["data_paths"]:
+                # Load in all open and closed waterway elevation and extents in one go
+                # Get the polygons and bathymetry and can be multiple
+                subfolder = self.get_instruction_path(key="subfolder")
+                elevations = []
+                polygons = []
+                for key, value in self.instructions["data_paths"]["stopbanks"]:
+                    elevation = pathlib.Path(value["elevations"])
+                    if not elevation.is_absolute():
+                        elevation = subfolder / elevation
+                    elevations.append(elevation)
+                    polygon = pathlib.Path(value["extents"])
+                    if not polygon.is_absolute():
+                        polygon = subfolder / polygon
+                    polygons.append(polygon)
+
+                self.logger.info(f"Incorporating stopbanks: {elevations}")
+
+                # Load in bathymetry
+                estimated_elevations = geometry.EstimatedElevationPoints(
+                    points_files=elevations,
+                    polygon_files=polygons,
+                    catchment_geometry=self.catchment_geometry,
+                    z_labels=self.get_instruction_general(
+                        key="z_labels", subkey="stopbanks"
+                    ),
+                )
+
+                # Call interpolate river on the DEM - the class checks to see if any pixels
+                # actually fall inside the polygon
+                if len(estimated_elevations.polygons) > 0:  # Skip if no waterways
+                    hydrologic_dem.interpolate_elevations_within_polygon(
+                        elevations=estimated_elevations,
+                        method=self.get_instruction_general(
+                            key="interpolation", subkey="stopbanks"
+                        ),
+                    )
 
     def run(self):
         """This method executes the geofabrics generation pipeline to produce geofabric
