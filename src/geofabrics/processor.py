@@ -3414,7 +3414,7 @@ class StopbankCrestElevationEstimator(BaseProcessor):
         name_dictionary = {
             "raw_dem": "stopbank_raw_dem.nc",
             "stopbank_polygon": "stopbank_polygon.geojson",
-            "stopbank_elevation": "stopbank_elevation.geojson"
+            "stopbank_elevation": "stopbank_elevation.geojson",
         }
         return name_dictionary[key]
 
@@ -3437,10 +3437,7 @@ class StopbankCrestElevationEstimator(BaseProcessor):
 
         stopbank_polygon_file = self.get_result_file_path(key="stopbank_polygon")
         stopbank_elevation_file = self.get_result_file_path(key="stopbank_elevation")
-        if (
-            stopbank_polygon_file.is_file()
-            and stopbank_elevation_file.is_file()
-        ):
+        if stopbank_polygon_file.is_file() and stopbank_elevation_file.is_file():
             return True
         else:
             return False
@@ -3483,9 +3480,7 @@ class StopbankCrestElevationEstimator(BaseProcessor):
             self.logger.info("Stopbank crests already recorded. ")
             return
         # If not - estimate elevations along close waterways
-        stopbanks["polygon"] = stopbanks.buffer(
-            stopbanks["width"].to_numpy()
-        )
+        stopbanks["polygon"] = stopbanks.buffer(stopbanks["width"].to_numpy())
         # If no closed waterways write out empty files and return
         if len(stopbanks) == 0:
             stopbanks["z"] = []
@@ -3600,7 +3595,7 @@ class StopbankCrestElevationEstimator(BaseProcessor):
         """Download OpenStreetMap waterways and tunnels within the catchment BBox."""
 
         stopbanks_path = self.get_result_file_path(key="stopbanks")
-        
+
         if stopbanks_path.is_file():
             stopbanks = geopandas.read_file(stopbanks_path)
             if "width" not in stopbanks.columns:
@@ -3609,16 +3604,18 @@ class StopbankCrestElevationEstimator(BaseProcessor):
                         "No stopbank width defined either as a entry in the "
                         "instruction file, or as a column in the stopbanks "
                         f"file: {stopbanks_path}"
-                        )
+                    )
                     self.logger.warning(message)
                     raise ValueError(message)
-                stopbanks["width"] = self.instructions["stopbanks"]["width"]  
-        elif "osm" == self.instructions["stopbanks"]["source"]:  
+                stopbanks["width"] = self.instructions["stopbanks"]["width"]
+        elif "osm" == self.instructions["stopbanks"]["source"]:
             # Download from OSM and save
             bbox_lat_long = self.catchment_geometry.catchment.to_crs(self.OSM_CRS)
-            bbox=[
-                bbox_lat_long.bounds.miny[0], bbox_lat_long.bounds.minx[0],
-                bbox_lat_long.bounds.maxy[0], bbox_lat_long.bounds.maxx[0],
+            bbox = [
+                bbox_lat_long.bounds.miny[0],
+                bbox_lat_long.bounds.minx[0],
+                bbox_lat_long.bounds.maxy[0],
+                bbox_lat_long.bounds.maxx[0],
             ]
             element_dict = {
                 "geometry": [],
@@ -3683,7 +3680,7 @@ class StopbankCrestElevationEstimator(BaseProcessor):
             message = (
                 f"No stopbanks file: {stopbanks_path} exists, and the source "
                 "not OSM. Either specify a file or define the source as OSM."
-                )
+            )
             self.logger.warning(message)
             raise ValueError(message)
         return stopbanks
@@ -3712,14 +3709,19 @@ class StopbankCrestElevationEstimator(BaseProcessor):
 
         # Download waterways and tunnels from OSM - the only option currently
         if "source" not in self.instructions["stopbanks"] or not (
-                self.instructions["stopbanks"]["source"] != "osm" and
-                self.instructions["stopbanks"]["source"] != "file"):
-            self.logger.warning("'source' must be specified in the 'stopbanks'"
-                                "instruction key. Only 'osm' and 'file' are"
-                                "currently supported")
-            raise ValueError("'source' must be specified in the 'stopbanks'"
-                             "instruction key. Only 'osm' and 'file' are"
-                             "currently supported")
+            self.instructions["stopbanks"]["source"] != "osm"
+            and self.instructions["stopbanks"]["source"] != "file"
+        ):
+            self.logger.warning(
+                "'source' must be specified in the 'stopbanks'"
+                "instruction key. Only 'osm' and 'file' are"
+                "currently supported"
+            )
+            raise ValueError(
+                "'source' must be specified in the 'stopbanks'"
+                "instruction key. Only 'osm' and 'file' are"
+                "currently supported"
+            )
         stopbanks = self.load_stopbanks()
 
         # There are no waterways to write out empty files and exit

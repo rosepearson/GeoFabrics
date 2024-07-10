@@ -68,15 +68,12 @@ class Test(base_test.Test):
         """A basic comparison between the generated and benchmark DEM"""
 
         # Load in benchmark
-        file_path = (
-            self.cache_dir / self.instructions["dem"]["data_paths"]["benchmark"]
-        )
+        file_path = self.cache_dir / self.instructions["dem"]["data_paths"]["benchmark"]
         with rioxarray.rioxarray.open_rasterio(file_path, masked=True) as benchmark:
             benchmark.load()
         # Load in test
         file_path = (
-            self.results_dir
-            / self.instructions["dem"]["data_paths"]["result_dem"]
+            self.results_dir / self.instructions["dem"]["data_paths"]["result_dem"]
         )
         with rioxarray.rioxarray.open_rasterio(file_path, masked=True) as test:
             test.load()
@@ -104,15 +101,12 @@ class Test(base_test.Test):
         """A basic comparison between the generated and benchmark DEM"""
 
         # load in benchmark
-        file_path = (
-            self.cache_dir / self.instructions["dem"]["data_paths"]["benchmark"]
-        )
+        file_path = self.cache_dir / self.instructions["dem"]["data_paths"]["benchmark"]
         with rioxarray.rioxarray.open_rasterio(file_path, masked=True) as benchmark:
             benchmark.load()
         # Load in test
         file_path = (
-            self.results_dir
-            / self.instructions["dem"]["data_paths"]["result_dem"]
+            self.results_dir / self.instructions["dem"]["data_paths"]["result_dem"]
         )
         with rioxarray.rioxarray.open_rasterio(file_path, masked=True) as test:
             test.load()
