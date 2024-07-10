@@ -812,10 +812,10 @@ class HydrologicallyConditionedDem(DemBase):
         self,
         elevations: geometry.EstimatedElevationPoints,
         method: str,
-        include_edges: bool = True
+        include_edges: bool = True,
     ) -> xarray.Dataset:
         """Performs interpolation of the estimated waterways.
-        
+
         Parameters
         ----------
 
@@ -834,7 +834,9 @@ class HydrologicallyConditionedDem(DemBase):
         if include_edges:
             # Get edge points - from DEM
             edge_dem = self._dem.rio.clip(
-                estimated_polygons.dissolve().buffer(self.catchment_geometry.resolution),
+                estimated_polygons.dissolve().buffer(
+                    self.catchment_geometry.resolution
+                ),
                 drop=True,
             )
             edge_dem = edge_dem.rio.clip(
@@ -857,7 +859,7 @@ class HydrologicallyConditionedDem(DemBase):
             edge_points["X"] = grid_x[mask]
             edge_points["Y"] = grid_y[mask]
             edge_points["Z"] = edge_dem.z.values[mask]
-    
+
             # Combine the estimated and edge points
             point_cloud = numpy.concatenate([edge_points, point_cloud])
 

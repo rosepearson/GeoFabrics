@@ -3487,7 +3487,7 @@ class StopbankCrestElevationEstimator(BaseProcessor):
             stopbanks.to_file(elevation_file)
             return
         stopbanks = stopbanks.explode(ignore_index=True)
-        
+
         # Sampled points along stopbanks to define crest elevation at
         points = stopbanks["geometry"].apply(
             lambda row: shapely.geometry.MultiPoint(
@@ -3520,13 +3520,7 @@ class StopbankCrestElevationEstimator(BaseProcessor):
         )
 
         # Remove any NaN areas (where no LiDAR data to estimate elevations)
-        nan_filter = (
-            points["z"]
-            .notnull()
-            .groupby(level=0)
-            .all()
-            .values
-        )
+        nan_filter = points["z"].notnull().groupby(level=0).all().values
         if not nan_filter.all():
             self.logger.warning(
                 "Some open stopbanks are being ignored as there is not enough data to "
