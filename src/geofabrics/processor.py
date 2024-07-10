@@ -36,7 +36,7 @@ class BaseProcessor(abc.ABC):
     instruction files including populating default values. Also contains
     functions for downloading remote data using geopais, and constructing data
     file lists.
-    
+
     The `BaseProcessor` class contains several important class members:
      * instructions - Defines the pipeline execution instructions
      * catchment_geometry - Defines all relevant regions in a catchment required in the
