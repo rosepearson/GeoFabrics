@@ -3606,7 +3606,7 @@ class StopbankCrestElevationEstimator(BaseProcessor):
             element_dict = {
                 "geometry": [],
                 "OSM_id": [],
-                "waterway": [],
+                "stopbank": [],
             }
 
             # Construct query
@@ -3634,14 +3634,14 @@ class StopbankCrestElevationEstimator(BaseProcessor):
                 element_dict["geometry"].append(element.geometry())
                 element_dict["OSM_id"].append(element.id())
                 element_dict["stopbank"].append(element.tags()["man_made"])
-            man_made = (
+            stopbanks = (
                 geopandas.GeoDataFrame(element_dict, crs=self.OSM_CRS)
                 .to_crs(self.catchment_geometry.crs["horizontal"])
                 .set_index("OSM_id", drop=True)
             )
 
             # Remove polygons
-            man_made = man_made[man_made.geometry.type == "LineString"].sort_index(
+            stopbanks = stopbanks[stopbanks.geometry.type == "LineString"].sort_index(
                 ascending=True
             )
 
@@ -3650,7 +3650,7 @@ class StopbankCrestElevationEstimator(BaseProcessor):
             # Check if rivers are specified and remove if not
 
             # Identify and remove undefined waterway types
-            for stopbank_label in stopbanks["waterway"].unique():
+            for stopbank_label in stopbanks["stopbank"].unique():
                 if stopbank_label not in ["dyke", "embankment"]:
                     stopbanks = stopbanks[stopbanks["stopbank"] != stopbank_label]
             # Add width label
