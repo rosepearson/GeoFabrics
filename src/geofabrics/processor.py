@@ -1162,7 +1162,7 @@ class HydrologicDemGenerator(BaseProcessor):
                     method=self.get_instruction_general(
                         key="interpolation", subkey="waterways"
                     ),
-                    label = "waterways",
+                    label="waterways",
                 )
         # Load in river bathymetry and incorporate where discernable at the resolution
         if "rivers" in self.instructions["data_paths"]:
@@ -1251,7 +1251,7 @@ class HydrologicDemGenerator(BaseProcessor):
                     method=self.get_instruction_general(
                         key="interpolation", subkey="stopbanks"
                     ),
-                    label = "stopbanks",
+                    label="stopbanks",
                     include_edges=False,
                 )
 
