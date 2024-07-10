@@ -19,7 +19,7 @@
 			"local_cache": "tests/test_stopbanks_waikanae/data",
 			"subfolder": "results/stopbanks",
 			"extents": "../catchment.geojson",
-			"stopbanks": "../stopbanks.geojson"
+			"stopbanks": "../../stopbanks.geojson"
 		},
 		"datasets": {
 			"lidar": {
@@ -32,10 +32,9 @@
 			"lidar_classifications_to_keep": [2, 9]
 		},
 		"stopbanks": {
-			"width": 8
-		},
-		"source": "file",
-		"method": simple
+			"width": 10,
+		"source": "file"
+		}
 	},
 	"dem":
 	{
@@ -45,7 +44,7 @@
 				"vertical": 7839
 			},
 			"grid_params": {
-				"resolution": 10
+				"resolution": 8
 			}
 		},
 		"processing": {
@@ -58,8 +57,9 @@
 			"subfolder": "results",
 			"extents": "catchment.geojson",
 			"raw_dem": "raw_dem.nc",
-			"stopbanks": [{"extents": "stopbanks/stopbanks_polygon.geojson", "elevations": "stopbanks/stopbanks_elevation.geojson"}],
-			"result_dem": "test_dem.nc"
+			"stopbanks": [{"extents": "stopbanks/stopbank_polygon.geojson", "elevations": "stopbanks/stopbank_elevation.geojson"}],
+			"result_dem": "test_dem.nc",
+            "benchmark": "benchmark.nc"
 		},
 		"datasets": {
 			"lidar": {

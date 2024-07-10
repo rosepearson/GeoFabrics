@@ -46,10 +46,10 @@ class Test(base_test.Test):
         }
 
         # create fake catchment boundary
-        x0 = 1768072
-        y0 = 5473816
-        x1 = 1769545
-        y1 = 5472824
+        x0 = 1771850
+        y0 = 5472250
+        x1 = 1772150
+        y1 = 5472600
         catchment = shapely.geometry.Polygon([(x0, y0), (x1, y0), (x1, y1), (x0, y1)])
         catchment = geopandas.GeoSeries([catchment])
         catchment = catchment.set_crs(

@@ -1213,44 +1213,44 @@ class HydrologicDemGenerator(BaseProcessor):
                         key="interpolation", subkey="rivers"
                     ),
                 )
-            # Check for stopbanks and interpolate if they exist
-            if "stopbanks" in self.instructions["data_paths"]:
-                # Load in all open and closed waterway elevation and extents in one go
-                # Get the polygons and bathymetry and can be multiple
-                subfolder = self.get_instruction_path(key="subfolder")
-                elevations = []
-                polygons = []
-                for stopbank_dict in self.instructions["data_paths"]["stopbanks"]:
-                    elevation = pathlib.Path(-stopbank_dict["elevations"])
-                    if not elevation.is_absolute():
-                        elevation = subfolder / elevation
-                    elevations.append(elevation)
-                    polygon = pathlib.Path(stopbank_dict["extents"])
-                    if not polygon.is_absolute():
-                        polygon = subfolder / polygon
-                    polygons.append(polygon)
+        # Check for stopbanks and interpolate if they exist
+        if "stopbanks" in self.instructions["data_paths"]:
+            # Load in all open and closed waterway elevation and extents in one go
+            # Get the polygons and bathymetry and can be multiple
+            subfolder = self.get_instruction_path(key="subfolder")
+            elevations = []
+            polygons = []
+            for stopbank_dict in self.instructions["data_paths"]["stopbanks"]:
+                elevation = pathlib.Path(stopbank_dict["elevations"])
+                if not elevation.is_absolute():
+                    elevation = subfolder / elevation
+                elevations.append(elevation)
+                polygon = pathlib.Path(stopbank_dict["extents"])
+                if not polygon.is_absolute():
+                    polygon = subfolder / polygon
+                polygons.append(polygon)
 
-                self.logger.info(f"Incorporating stopbanks: {elevations}")
+            self.logger.info(f"Incorporating stopbanks: {elevations}")
 
-                # Load in bathymetry
-                estimated_elevations = geometry.EstimatedElevationPoints(
-                    points_files=elevations,
-                    polygon_files=polygons,
-                    catchment_geometry=self.catchment_geometry,
-                    z_labels=self.get_instruction_general(
-                        key="z_labels", subkey="stopbanks"
+            # Load in bathymetry
+            estimated_elevations = geometry.EstimatedElevationPoints(
+                points_files=elevations,
+                polygon_files=polygons,
+                catchment_geometry=self.catchment_geometry,
+                z_labels=self.get_instruction_general(
+                    key="z_labels", subkey="stopbanks"
+                ),
+            )
+
+            # Call interpolate river on the DEM - the class checks to see if any pixels
+            # actually fall inside the polygon
+            if len(estimated_elevations.polygons) > 0:  # Skip if no waterways
+                hydrologic_dem.interpolate_elevations_within_polygon(
+                    elevations=estimated_elevations,
+                    method=self.get_instruction_general(
+                        key="interpolation", subkey="stopbanks"
                     ),
                 )
-
-                # Call interpolate river on the DEM - the class checks to see if any pixels
-                # actually fall inside the polygon
-                if len(estimated_elevations.polygons) > 0:  # Skip if no waterways
-                    hydrologic_dem.interpolate_elevations_within_polygon(
-                        elevations=estimated_elevations,
-                        method=self.get_instruction_general(
-                            key="interpolation", subkey="stopbanks"
-                        ),
-                    )
 
     def run(self):
         """This method executes the geofabrics generation pipeline to produce geofabric
@@ -3431,7 +3431,7 @@ class StopbankCrestElevationEstimator(BaseProcessor):
 
         return subfolder / name
 
-    def waterway_elevations_exists(self):
+    def stopbanks_elevations_exists(self):
         """Check to see if the waterway and culvert bathymeties have already been
         estimated."""
 
@@ -3492,7 +3492,7 @@ class StopbankCrestElevationEstimator(BaseProcessor):
 
         # Sample the minimum elevation at each tunnel
         elevations = stopbanks.apply(
-            lambda row: self.minimum_elevation_in_polygon(
+            lambda row: self.maximum_elevation_in_polygon(
                 geometry=row["polygon"], dem=dem
             ),
             axis=1,
@@ -3594,12 +3594,12 @@ class StopbankCrestElevationEstimator(BaseProcessor):
     def load_stopbanks(self) -> bool:
         """Download OpenStreetMap waterways and tunnels within the catchment BBox."""
 
-        stopbanks_path = self.get_result_file_path(key="stopbanks")
+        stopbanks_path = self.get_instruction_path("stopbanks")
 
         if stopbanks_path.is_file():
             stopbanks = geopandas.read_file(stopbanks_path)
             if "width" not in stopbanks.columns:
-                if "width" not in self.instructions["stopbanks"]["width"]:
+                if "width" not in self.instructions["stopbanks"]:
                     message = (
                         "No stopbank width defined either as a entry in the "
                         "instruction file, or as a column in the stopbanks "
@@ -3694,7 +3694,7 @@ class StopbankCrestElevationEstimator(BaseProcessor):
         """
 
         # Don't reprocess if already estimated
-        if self.waterway_elevations_exists():
+        if self.stopbanks_elevations_exists():
             self.logger.info("Waterway and tunnel bed elevations already estimated.")
             return
         self.logger.info(
@@ -3709,8 +3709,8 @@ class StopbankCrestElevationEstimator(BaseProcessor):
 
         # Download waterways and tunnels from OSM - the only option currently
         if "source" not in self.instructions["stopbanks"] or not (
-            self.instructions["stopbanks"]["source"] != "osm"
-            and self.instructions["stopbanks"]["source"] != "file"
+            self.instructions["stopbanks"]["source"] == "osm"
+            or self.instructions["stopbanks"]["source"] == "file"
         ):
             self.logger.warning(
                 "'source' must be specified in the 'stopbanks'"
@@ -3742,9 +3742,8 @@ class StopbankCrestElevationEstimator(BaseProcessor):
         # Create a DEM where the waterways and tunnels are
         dem = self.create_dem(stopbanks=stopbanks)
 
-        # Estimate the waterway and tunnel bed elevations from the DEM
-        self.estimate_closed_elevations(stopbanks=stopbanks, dem=dem)
-        self.estimate_open_elevations(stopbanks=stopbanks, dem=dem)
+        # Estimate the stopbank crest elevations from the DEM
+        self.estimate_elevations(stopbanks=stopbanks, dem=dem)
 
         if self.debug:
             # Record the parameter used during execution - append to existing
