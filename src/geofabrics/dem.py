@@ -306,6 +306,7 @@ class DemBase(abc.ABC):
         "waterways": 4,
         "coarse DEM": 5,
         "patch": 6,
+        "stopbanks": 7,
         "interpolated": 0,
         "no data": -1,
     }
@@ -812,6 +813,7 @@ class HydrologicallyConditionedDem(DemBase):
         self,
         elevations: geometry.EstimatedElevationPoints,
         method: str,
+        label: str,
         include_edges: bool = True,
     ) -> xarray.Dataset:
         """Performs interpolation of the estimated waterways.
@@ -867,7 +869,7 @@ class HydrologicallyConditionedDem(DemBase):
         estimated_dem = self._dem.rio.clip(estimated_polygons.geometry)
         # Set value for all, then use clip to set regions outside polygon to NaN
         estimated_dem.z.data[:] = 0
-        estimated_dem.data_source.data[:] = self.SOURCE_CLASSIFICATION["waterways"]
+        estimated_dem.data_source.data[:] = self.SOURCE_CLASSIFICATION[label]
         estimated_dem.lidar_source.data[:] = self.SOURCE_CLASSIFICATION["no data"]
         estimated_dem = estimated_dem.rio.clip(estimated_polygons.geometry)
 
@@ -882,7 +884,7 @@ class HydrologicallyConditionedDem(DemBase):
         self.logger.info(f"There are {len(flat_z_masked)} estimated points")
 
         # Interpolate river area - use cubic or linear interpolation
-        self.logger.info("Offshore interpolation")
+        self.logger.info(f"{label} interpolation")
         flat_z_masked = self._interpolate_elevation_points(
             point_cloud=point_cloud,
             flat_x_array=flat_x_masked,
