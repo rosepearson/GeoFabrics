@@ -3410,6 +3410,28 @@ class StopbankCrestElevationEstimator(BaseProcessor):
 
         self.debug = debug
 
+    def get_stopbanks_instruction(self, key: str):
+        """Return true if the DEMs are required for later processing
+
+
+        Parameters:
+            instructions  The json instructions defining the behaviour
+        """
+        defaults = {
+            "features": ["dyke", "embankment"],
+            "source": "file",
+        }
+
+        assert key in defaults or key in self.instructions["stopbanks"], (
+            f"The key: {key} is missing from the river instructions, and"
+            " does not have a default value"
+        )
+        if "stopbanks" in self.instructions and key in self.instructions["stopbanks"]:
+            return self.instructions["stopbanks"][key]
+        else:
+            self.instructions["stopbanks"][key] = defaults[key]
+            return defaults[key]
+
     def get_result_file_name(self, key: str) -> str:
         """Return the name of the file to save."""
 
@@ -3593,8 +3615,8 @@ class StopbankCrestElevationEstimator(BaseProcessor):
                     )
                     self.logger.warning(message)
                     raise ValueError(message)
-                stopbanks["width"] = self.instructions["stopbanks"]["width"]
-        elif "osm" == self.instructions["stopbanks"]["source"]:
+                stopbanks["width"] = self.get_stopbanks_instruction("width")
+        elif "osm" == self.get_stopbanks_instruction("source"):
             # Download from OSM and save
             bbox_lat_long = self.catchment_geometry.catchment.to_crs(self.OSM_CRS)
             bbox = [
@@ -3623,7 +3645,7 @@ class StopbankCrestElevationEstimator(BaseProcessor):
             if "osm_date" in self.instructions["stopbanks"]:
                 stopbanks = overpass.query(
                     query,
-                    date=self.instructions["stopbanks"]["osm_date"],
+                    date=self.get_stopbanks_instruction("osm_date"),
                     timeout=60,
                 )
             else:
@@ -3646,12 +3668,12 @@ class StopbankCrestElevationEstimator(BaseProcessor):
             )
 
             # Get specified widths
-            width = self.instructions["stopbanks"]["width"]
+            width = self.get_stopbanks_instruction("width")
             # Check if rivers are specified and remove if not
 
             # Identify and remove undefined waterway types
             for stopbank_label in stopbanks["stopbank"].unique():
-                if stopbank_label not in ["dyke", "embankment"]:
+                if stopbank_label not in self.get_stopbanks_instruction("features"):
                     stopbanks = stopbanks[stopbanks["stopbank"] != stopbank_label]
             # Add width label
             stopbanks["width"] = width
@@ -3694,20 +3716,11 @@ class StopbankCrestElevationEstimator(BaseProcessor):
         self.catchment_geometry = self.create_catchment()
 
         # Download waterways and tunnels from OSM - the only option currently
-        if "source" not in self.instructions["stopbanks"] or not (
-            self.instructions["stopbanks"]["source"] == "osm"
-            or self.instructions["stopbanks"]["source"] == "file"
-        ):
-            self.logger.warning(
-                "'source' must be specified in the 'stopbanks'"
-                "instruction key. Only 'osm' and 'file' are"
-                "currently supported"
-            )
-            raise ValueError(
-                "'source' must be specified in the 'stopbanks'"
-                "instruction key. Only 'osm' and 'file' are"
-                "currently supported"
-            )
+        source = self.get_stopbanks_instruction("source")
+        if not (source == "osm" or source == "file"):
+            message = "The only valid 'source' keys are 'osm' and 'file'"
+            self.logger.warning(message)
+            raise ValueError(message)
         stopbanks = self.load_stopbanks()
 
         # There are no waterways to write out empty files and exit
