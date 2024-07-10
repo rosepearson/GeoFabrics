@@ -1250,6 +1250,7 @@ class HydrologicDemGenerator(BaseProcessor):
                     method=self.get_instruction_general(
                         key="interpolation", subkey="stopbanks"
                     ),
+                    include_edges=False,
                 )
 
     def run(self):
@@ -3479,26 +3480,15 @@ class StopbankCrestElevationEstimator(BaseProcessor):
         if polygon_file.is_file() and elevation_file.is_file():
             self.logger.info("Stopbank crests already recorded. ")
             return
-        # If not - estimate elevations along close waterways
-        stopbanks["polygon"] = stopbanks.buffer(stopbanks["width"].to_numpy())
-        # If no closed waterways write out empty files and return
+        # If no stopbanks return an empty result
         if len(stopbanks) == 0:
+            stopbanks.drop(columns=["width"]).to_file(polygon_file)
             stopbanks["z"] = []
-            stopbanks.set_geometry("polygon", drop=True)[
-                ["geometry", "width", "z"]
-            ].to_file(polygon_file)
-            stopbanks.drop(columns=["polygon"]).to_file(elevation_file)
+            stopbanks.to_file(elevation_file)
             return
-
-        # Sample the minimum elevation at each tunnel
-        elevations = stopbanks.apply(
-            lambda row: self.maximum_elevation_in_polygon(
-                geometry=row["polygon"], dem=dem
-            ),
-            axis=1,
-        )
-
-        # Create sampled points to go with the sampled elevations
+        stopbanks = stopbanks.explode(ignore_index=True)
+        
+        # Sampled points along stopbanks to define crest elevation at
         points = stopbanks["geometry"].apply(
             lambda row: shapely.geometry.MultiPoint(
                 [
@@ -3516,16 +3506,22 @@ class StopbankCrestElevationEstimator(BaseProcessor):
         )
         points = geopandas.GeoDataFrame(
             {
-                "z": elevations,
                 "geometry": points,
                 "width": stopbanks["width"],
             },
             crs=stopbanks.crs,
+        ).explode(index_parts=True)
+        # Sample maximum elevation in polygon around each point
+        points["z"] = points.buffer(points["width"].to_numpy()).apply(
+            lambda row: self.maximum_elevation_in_polygon(
+                geometry=row["geometry"], dem=dem
+            ),
+            axis=1,
         )
-        stopbanks["z"] = elevations
+
         # Remove any NaN areas (where no LiDAR data to estimate elevations)
         nan_filter = (
-            points.explode(ignore_index=False, index_parts=True)["z"]
+            points["z"]
             .notnull()
             .groupby(level=0)
             .all()
@@ -3536,16 +3532,15 @@ class StopbankCrestElevationEstimator(BaseProcessor):
                 "Some open stopbanks are being ignored as there is not enough data to "
                 "estimate their creast elevations."
             )
-        points_exploded = points[nan_filter].explode(
-            ignore_index=False, index_parts=True
-        )
+        # Create, filter to remove NaN areas and save overall polygon
+        stopbanks["polygon"] = stopbanks.buffer(stopbanks["width"].to_numpy())
         stopbanks = stopbanks[nan_filter]
-
-        # Save out polygons and elevations
         stopbanks.set_geometry("polygon", drop=True)[
             ["geometry", "width", "z"]
         ].to_file(polygon_file)
-        points_exploded.to_file(elevation_file)
+        # Filter points to keep not NaN values then save
+        points = points[points["z"].notnull()]
+        points.to_file(elevation_file)
 
     def create_dem(self, stopbanks: geopandas.GeoDataFrame) -> xarray.Dataset:
         """Create and return a DEM at a resolution 1.5x the waterway width."""

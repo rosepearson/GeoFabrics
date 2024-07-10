@@ -812,41 +812,54 @@ class HydrologicallyConditionedDem(DemBase):
         self,
         elevations: geometry.EstimatedElevationPoints,
         method: str,
+        include_edges: bool = True
     ) -> xarray.Dataset:
-        """Performs interpolation of the estimated waterways."""
+        """Performs interpolation of the estimated waterways.
+        
+        Parameters
+        ----------
+
+        elevations
+            z-points and polygon where to interpolate
+        method
+            Interpolation method (e.g. nearest-neighbour, linear, cubic, rbf)
+        include_edges
+            If True interpolate smoothly to the surrounding DEM elevations
+        """
 
         # extract points and polygon
-        estimated_points = elevations.points_array
+        point_cloud = elevations.points_array
         estimated_polygons = elevations.polygons
 
-        # Get edge points - from DEM
-        edge_dem = self._dem.rio.clip(
-            estimated_polygons.dissolve().buffer(self.catchment_geometry.resolution),
-            drop=True,
-        )
-        edge_dem = edge_dem.rio.clip(
-            estimated_polygons.dissolve().geometry,
-            invert=True,
-            drop=True,
-        )
-        # Define the edge points
-        grid_x, grid_y = numpy.meshgrid(edge_dem.x, edge_dem.y)
-        mask = edge_dem.z.notnull().values
-        # Define edge points and heights
-        edge_points = numpy.empty(
-            [mask.sum().sum()],
-            dtype=[
-                ("X", geometry.RASTER_TYPE),
-                ("Y", geometry.RASTER_TYPE),
-                ("Z", geometry.RASTER_TYPE),
-            ],
-        )
-        edge_points["X"] = grid_x[mask]
-        edge_points["Y"] = grid_y[mask]
-        edge_points["Z"] = edge_dem.z.values[mask]
-
-        # Combine the estimated and edge points
-        point_cloud = numpy.concatenate([edge_points, estimated_points])
+        if include_edges:
+            # Get edge points - from DEM
+            edge_dem = self._dem.rio.clip(
+                estimated_polygons.dissolve().buffer(self.catchment_geometry.resolution),
+                drop=True,
+            )
+            edge_dem = edge_dem.rio.clip(
+                estimated_polygons.dissolve().geometry,
+                invert=True,
+                drop=True,
+            )
+            # Define the edge points
+            grid_x, grid_y = numpy.meshgrid(edge_dem.x, edge_dem.y)
+            mask = edge_dem.z.notnull().values
+            # Define edge points and heights
+            edge_points = numpy.empty(
+                [mask.sum().sum()],
+                dtype=[
+                    ("X", geometry.RASTER_TYPE),
+                    ("Y", geometry.RASTER_TYPE),
+                    ("Z", geometry.RASTER_TYPE),
+                ],
+            )
+            edge_points["X"] = grid_x[mask]
+            edge_points["Y"] = grid_y[mask]
+            edge_points["Z"] = edge_dem.z.values[mask]
+    
+            # Combine the estimated and edge points
+            point_cloud = numpy.concatenate([edge_points, point_cloud])
 
         # Setup the empty area ready for interpolation
         estimated_dem = self._dem.rio.clip(estimated_polygons.geometry)
