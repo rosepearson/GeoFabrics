@@ -725,7 +725,7 @@ class HydrologicallyConditionedDem(DemBase):
                     flat_x_array[start_index:end_index],
                     flat_y_array[start_index:end_index],
                 )
-        elif method == "linear" or method == "cubic":
+        elif method == "linear" or method == "cubic" or method == "nearest":
             # Interpolate river area - use cubic or linear interpolation
             flat_z_array = scipy.interpolate.griddata(
                 points=(point_cloud["X"], point_cloud["Y"]),
@@ -734,7 +734,7 @@ class HydrologicallyConditionedDem(DemBase):
                 method=method,  # linear or cubic
             )
         else:
-            raise ValueError("method must be rbf, linear or cubic")
+            raise ValueError("method must be rbf, nearest, linear or cubic")
         return flat_z_array
 
     def interpolate_ocean_bathymetry(self, bathy_contours):
@@ -878,10 +878,9 @@ class HydrologicallyConditionedDem(DemBase):
 
         flat_x_masked = grid_x[mask]
         flat_y_masked = grid_y[mask]
-        flat_z_masked = estimated_dem.z.values[mask]
 
         # check there are actually pixels in the river
-        self.logger.info(f"There are {len(flat_z_masked)} estimated points")
+        self.logger.info(f"There are {len(flat_x_masked)} points to interpolate")
 
         # Interpolate river area - use cubic or linear interpolation
         self.logger.info(f"{label} interpolation")

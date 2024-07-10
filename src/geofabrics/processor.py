@@ -285,7 +285,7 @@ class BaseProcessor(abc.ABC):
             "interpolation": {
                 "rivers": "rbf",
                 "waterways": "cubic",
-                "stopbanks": "linear",
+                "stopbanks": "nearest",
                 "ocean": "linear",
                 "lidar": "idw",
                 "no_data": None,
