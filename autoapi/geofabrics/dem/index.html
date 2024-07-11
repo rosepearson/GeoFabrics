@@ -355,14 +355,16 @@ function.</p>
 </dd></dl>
 
 <dl class="py method">
-<dt class="sig sig-object py" id="geofabrics.dem.HydrologicallyConditionedDem.interpolate_waterways">
-<span class="sig-name descname"><span class="pre">interpolate_waterways</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">estimated_bathymetry</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">method</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#geofabrics.dem.HydrologicallyConditionedDem.interpolate_waterways" title="Link to this definition"></a></dt>
+<dt class="sig sig-object py" id="geofabrics.dem.HydrologicallyConditionedDem.interpolate_elevations_within_polygon">
+<span class="sig-name descname"><span class="pre">interpolate_elevations_within_polygon</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">elevations</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">method</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">label</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">include_edges</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">True</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#geofabrics.dem.HydrologicallyConditionedDem.interpolate_elevations_within_polygon" title="Link to this definition"></a></dt>
 <dd><p>Performs interpolation of the estimated waterways.</p>
 <dl class="field-list simple">
 <dt class="field-odd">Parameters<span class="colon">:</span></dt>
 <dd class="field-odd"><ul class="simple">
-<li><p><strong>estimated_bathymetry</strong> (<a class="reference internal" href="../geometry/index.html#geofabrics.geometry.EstimatedElevationPoints" title="geofabrics.geometry.EstimatedElevationPoints"><em>geofabrics.geometry.EstimatedElevationPoints</em></a>)</p></li>
-<li><p><strong>method</strong> (<em>str</em>)</p></li>
+<li><p><strong>elevations</strong> (<a class="reference internal" href="../geometry/index.html#geofabrics.geometry.EstimatedElevationPoints" title="geofabrics.geometry.EstimatedElevationPoints"><em>geofabrics.geometry.EstimatedElevationPoints</em></a>) – z-points and polygon where to interpolate</p></li>
+<li><p><strong>method</strong> (<em>str</em>) – Interpolation method (e.g. nearest-neighbour, linear, cubic, rbf)</p></li>
+<li><p><strong>include_edges</strong> (<em>bool</em>) – If True interpolate smoothly to the surrounding DEM elevations</p></li>
+<li><p><strong>label</strong> (<em>str</em>)</p></li>
 </ul>
 </dd>
 <dt class="field-even">Return type<span class="colon">:</span></dt>
@@ -373,14 +375,14 @@ function.</p>
 
 <dl class="py method">
 <dt class="sig sig-object py" id="geofabrics.dem.HydrologicallyConditionedDem.interpolate_rivers">
-<span class="sig-name descname"><span class="pre">interpolate_rivers</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">estimated_bathymetry</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">method</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#geofabrics.dem.HydrologicallyConditionedDem.interpolate_rivers" title="Link to this definition"></a></dt>
+<span class="sig-name descname"><span class="pre">interpolate_rivers</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">elevations</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">method</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#geofabrics.dem.HydrologicallyConditionedDem.interpolate_rivers" title="Link to this definition"></a></dt>
 <dd><p>Performs interpolation from estimated bathymetry points within a polygon
 using the specified interpolation approach after filtering the points based
 on the type label. The type_label also determines the source classification.</p>
 <dl class="field-list simple">
 <dt class="field-odd">Parameters<span class="colon">:</span></dt>
 <dd class="field-odd"><ul class="simple">
-<li><p><strong>estimated_bathymetry</strong> (<a class="reference internal" href="../geometry/index.html#geofabrics.geometry.EstimatedElevationPoints" title="geofabrics.geometry.EstimatedElevationPoints"><em>geofabrics.geometry.EstimatedElevationPoints</em></a>)</p></li>
+<li><p><strong>elevations</strong> (<a class="reference internal" href="../geometry/index.html#geofabrics.geometry.EstimatedElevationPoints" title="geofabrics.geometry.EstimatedElevationPoints"><em>geofabrics.geometry.EstimatedElevationPoints</em></a>)</p></li>
 <li><p><strong>method</strong> (<em>str</em>)</p></li>
 </ul>
 </dd>

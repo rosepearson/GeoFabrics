@@ -178,13 +178,17 @@ Module Contents
 
 
 
-   .. py:method:: interpolate_waterways(estimated_bathymetry, method)
+   .. py:method:: interpolate_elevations_within_polygon(elevations, method, label, include_edges = True)
 
       Performs interpolation of the estimated waterways.
 
+      :param elevations: z-points and polygon where to interpolate
+      :param method: Interpolation method (e.g. nearest-neighbour, linear, cubic, rbf)
+      :param include_edges: If True interpolate smoothly to the surrounding DEM elevations
 
 
-   .. py:method:: interpolate_rivers(estimated_bathymetry, method)
+
+   .. py:method:: interpolate_rivers(elevations, method)
 
       Performs interpolation from estimated bathymetry points within a polygon
       using the specified interpolation approach after filtering the points based
