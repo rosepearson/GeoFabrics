@@ -2909,6 +2909,27 @@ class WaterwayBedElevationEstimator(BaseProcessor):
 
         self.debug = debug
 
+    def get_waterways_instruction(self, key: str):
+        """Return true if the DEMs are required for later processing
+
+
+        Parameters:
+            instructions  The json instructions defining the behaviour
+        """
+        defaults = {
+            "source": "osm",
+        }
+
+        assert key in defaults or key in self.instructions["waterways"], (
+            f"The key: '{key}' is missing from the waterways instructions, and"
+            " does not have a default value"
+        )
+        if "waterways" in self.instructions and key in self.instructions["waterways"]:
+            return self.instructions["waterways"][key]
+        else:
+            self.instructions["waterways"][key] = defaults[key]
+            return defaults[key]
+
     def get_result_file_name(self, key: str) -> str:
         """Return the name of the file to save."""
 
@@ -2923,27 +2944,6 @@ class WaterwayBedElevationEstimator(BaseProcessor):
             "waterways": "waterways.geojson",
         }
         return name_dictionary[key]
-
-    def get_waterways_instruction(self, key: str):
-        """Return true if the DEMs are required for later processing
-
-
-        Parameters:
-            instructions  The json instructions defining the behaviour
-        """
-        defaults = {
-            "source": "osm",
-        }
-
-        assert key in defaults or key in self.instructions["waterways"], (
-            f"The key: {key} is missing from the river instructions, and"
-            " does not have a default value"
-        )
-        if "waterways" in self.instructions and key in self.instructions["waterways"]:
-            return self.instructions["waterways"][key]
-        else:
-            self.instructions["waterways"][key] = defaults[key]
-            return defaults[key]
 
     def get_result_file_path(self, key: str) -> pathlib.Path:
         """Return the file name of the file to save with the local cache path.
@@ -3283,7 +3283,7 @@ class WaterwayBedElevationEstimator(BaseProcessor):
                     )
                     self.logger.error(message)
                     raise ValueError(message)
-                widths = self.get_waterways_instruction("width")
+                widths = self.get_waterways_instruction("widths")
                 if isinstance(widths, dict):
                     waterways["width"] = waterways["waterway"].apply(
                         lambda waterway: widths[waterway]
@@ -3344,7 +3344,7 @@ class WaterwayBedElevationEstimator(BaseProcessor):
             )
 
             # Get specified widths
-            widths = self.get_waterways_instruction("width")
+            widths = self.get_waterways_instruction("widths")
             # Check if rivers are specified and remove if not
             if "ditch" not in widths.keys():
                 widths["ditch"] = widths["drain"]
@@ -3466,7 +3466,7 @@ class StopbankCrestElevationEstimator(BaseProcessor):
         }
 
         assert key in defaults or key in self.instructions["stopbanks"], (
-            f"The key: {key} is missing from the river instructions, and"
+            f"The key: '{key}' is missing from the stopbanks instructions, and"
             " does not have a default value"
         )
         if "stopbanks" in self.instructions and key in self.instructions["stopbanks"]:
