@@ -209,6 +209,13 @@ def from_instructions_dict(instructions: dict):
             processor_label="waterways",
             instructions=instructions,
         )
+    if "stopbanks" in instructions:
+        # Estimate waterway elevations
+        run_processor_class(
+            processor_class=processor.StopbankCrestElevationEstimator,
+            processor_label="stopbanks",
+            instructions=instructions,
+        )
     if "dem" in instructions:
         run_instructions = instructions["dem"]
         dem_paths = run_instructions["data_paths"]

@@ -14,7 +14,7 @@
 		"memory_limit": "5GiB"
 	},
 	"data_paths": {
-		"local_cache": "tests/test_riverbed_estimation_wellington_2/data",
+		"local_cache": "tests/test_riverbed_estimation_waikanae_1/data",
 		"subfolder": "results",
 		"benchmark": {"extents": "river_polygon_benchmark.geojson", "elevations": "river_bathymetry_benchmark.geojson"}
 	},
@@ -31,9 +31,6 @@
 		},
 		"vector": {
 			"linz": {
-				"land": {
-					"layers": [51559]
-				},
 				"ocean_contours": {
 					"layers": [50554]
 				}
@@ -47,20 +44,21 @@
 		"interpolation": {"no_data": "null"}
 	},
 	"rivers": {
-		"veg_lidar_classifications_to_keep": [2, 3, 4, 5, 9],
-		"river_corridor_width": 235,
-		"max_channel_width": 120,
-		"min_channel_width": 10,
-		"max_bank_height": 2,
-		"min_bank_height": 0.75,
-		"cross_section_spacing": 10,
-		"width_centre_smoothing": 10,
-		"area_threshold": 153000000,
-		"network_id": 9003742,
-		"estimate_fan": true,
-		"network_alignment_tolerance": 65,
-		"network_file": "tests/test_riverbed_estimation_wellington_2/data/rec1_flow_and_friction.geojson",
-		"network_columns": {"id": "NZREACH", "to_node": "to_node", "from_node": "from_node", "flow": "flow", "mannings_n": "n", "area": "CATCHAREA"}
+			"veg_lidar_classifications_to_keep": [2, 3, 4, 5, 9],
+			"river_corridor_width": 235,
+			"max_channel_width": 120,
+			"min_channel_width": 10,
+			"max_bank_height": 2,
+			"min_bank_height": 0.75,
+			"cross_section_spacing": 10,
+			"area_threshold": 153000000,
+			"keep_downstream_osm": true,
+			"estimate_fan": true,
+			"osm_id": 132793862,
+			"osm_date": "2023-01-01T00:00:00Z",
+			"network_id": 9003742,
+			"network_file": "tests/test_riverbed_estimation_waikanae_1/data/rec1_flow_and_friction.geojson",
+			"network_columns": {"id": "NZREACH", "to_node": "to_node", "from_node": "from_node", "flow": "flow", "mannings_n": "n", "area": "CATCHAREA"}
 	}
 }
 

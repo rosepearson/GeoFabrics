@@ -36,6 +36,12 @@ class BaseProcessor(abc.ABC):
     instruction files including populating default values. Also contains
     functions for downloading remote data using geopais, and constructing data
     file lists.
+
+    The `BaseProcessor` class contains several important class members:
+     * instructions - Defines the pipeline execution instructions
+     * catchment_geometry - Defines all relevant regions in a catchment required in the
+       generation of a DEM as polygons.
+     * logger - logging within this class
     """
 
     OSM_CRS = "EPSG:4326"
@@ -279,12 +285,14 @@ class BaseProcessor(abc.ABC):
             "interpolation": {
                 "rivers": "rbf",
                 "waterways": "cubic",
+                "stopbanks": "nearest",
                 "ocean": "linear",
                 "lidar": "idw",
                 "no_data": None,
             },
             "z_labels": {
                 "waterways": "z",
+                "stopbanks": "z",
                 "rivers": "z",
                 "ocean": None,
             },
@@ -864,17 +872,8 @@ class RawLidarDemGenerator(BaseProcessor):
     optionally a coarse DEM. The data sources and pipeline logic is defined in the
     json_instructions file.
 
-    The `DemGenerator` class contains several important class members:
-     * instructions - Defines the pipeline execution instructions
-     * catchment_geometry - Defines all relevant regions in a catchment required in the
-       generation of a DEM as polygons.
-     * raw_dem - A combination of LiDAR tiles and any referecnce DEM
-       from LiDAR and interpolated from bathymetry.
-     * coarse_dem - This optional object defines a background DEM that may be used to
-       fill on land gaps in the LiDAR.
-
-    See the README.md for usage examples or GeoFabrics/tests/ for examples of usage and
-    an instruction file.
+    See the GitHub repository wiki or GeoFabrics/tests/ for usage examples and
+    other documentation.
     """
 
     def __init__(self, json_instructions: json, debug: bool = True):
@@ -1062,17 +1061,13 @@ class RawLidarDemGenerator(BaseProcessor):
 
 
 class HydrologicDemGenerator(BaseProcessor):
-    """HydrologicDemGenerator executes a pipeline for loading in a raw DEM and extents
-    before incorporating bathymetry (offshore, rivers and waterways) to produce a
-    hydrologically conditioned DEM. The data and pipeline logic is defined in
-    the json_instructions file.
+    """HydrologicDemGenerator executes a pipeline for loading in a DEM then
+    incorporating hydrological features (e.g. ocean bathymetry, rivers,
+    waterways,stopbank creast heights) to produce a hydrologically conditioned
+    DEM. The data and pipeline logic is defined in the json_instructions file.
 
-    The `HydrologicDemGenerator` class contains several important class members:
-     * catchment_geometry - Defines all relevant regions in a catchment required in the
-       generation of a DEM as polygons.
-
-    See the README.md for usage examples or GeoFabrics/tests/ for examples of usage and
-    an instruction file
+    See the GitHub repository wiki or GeoFabrics/tests/ for usage examples and
+    other documentation.
     """
 
     def __init__(self, json_instructions: json, debug: bool = True):
@@ -1082,7 +1077,7 @@ class HydrologicDemGenerator(BaseProcessor):
         self.logger = logging.getLogger(f"{__name__}.{self.__class__.__name__}")
         self.debug = debug
 
-    def add_bathymetry(
+    def add_hydrological_features(
         self,
         hydrologic_dem: dem.HydrologicallyConditionedDem,
         area_threshold: float,
@@ -1101,24 +1096,24 @@ class HydrologicDemGenerator(BaseProcessor):
             > self.catchment_geometry.offshore.area.sum() * area_threshold
         ):
             # Get the bathymetry data directory
-            bathy_contour_dirs = self.get_vector_or_raster_paths(
+            ocean_contour_dirs = self.get_vector_or_raster_paths(
                 key="ocean_contours",
                 data_type="vector",
                 required=False,
             )
-            if len(bathy_contour_dirs) != 1:
+            if len(ocean_contour_dirs) != 1:
                 self.logger.warning(
-                    f"{len(bathy_contour_dirs)} ocean_contours's provided. "
-                    f"Specficially {bathy_contour_dirs}. Only consider the "
+                    f"{len(ocean_contour_dirs)} ocean_contours's provided. "
+                    f"Specficially {ocean_contour_dirs}. Only consider the "
                     "first if multiple."
                 )
 
-            self.logger.info(f"Incorporating Bathymetry: {bathy_contour_dirs}")
+            self.logger.info(f"Incorporating Bathymetry: {ocean_contour_dirs}")
 
             # Load in bathymetry
-            if len(bathy_contour_dirs) > 0:
-                bathy_contours = geometry.BathymetryContours(
-                    bathy_contour_dirs[0],
+            if len(ocean_contour_dirs) > 0:
+                ocean_contours = geometry.BathymetryContours(
+                    ocean_contour_dirs[0],
                     self.catchment_geometry,
                     z_label=self.get_instruction_general(
                         key="z_labels", subkey="ocean"
@@ -1126,32 +1121,30 @@ class HydrologicDemGenerator(BaseProcessor):
                     exclusion_extent=hydrologic_dem.raw_extents,
                 )
                 # Interpolate
-                hydrologic_dem.interpolate_ocean_bathymetry(bathy_contours)
+                hydrologic_dem.interpolate_ocean_bathymetry(ocean_contours)
         # Check for waterways and interpolate if they exist
         if "waterways" in self.instructions["data_paths"]:
             # Load in all open and closed waterway elevation and extents in one go
             # Get the polygons and bathymetry and can be multiple
             subfolder = self.get_instruction_path(key="subfolder")
-            bathy_dirs = [
-                pathlib.Path(waterway_dict["elevations"])
-                for waterway_dict in self.instructions["data_paths"]["waterways"]
-            ]
-            poly_dirs = [
-                pathlib.Path(waterway_dict["extents"])
-                for waterway_dict in self.instructions["data_paths"]["waterways"]
-            ]
-            for index, (bathy_dir, poly_dir) in enumerate(zip(bathy_dirs, poly_dirs)):
-                if not bathy_dir.is_absolute():
-                    bathy_dirs[index] = subfolder / bathy_dir
-                if not poly_dir.is_absolute():
-                    poly_dirs[index] = subfolder / poly_dir
+            elevations = []
+            polygons = []
+            for waterway_dict in self.instructions["data_paths"]["waterways"]:
+                elevation = pathlib.Path(waterway_dict["elevations"])
+                if not elevation.is_absolute():
+                    elevation = subfolder / elevation
+                elevations.append(elevation)
+                polygon = pathlib.Path(waterway_dict["extents"])
+                if not polygon.is_absolute():
+                    polygon = subfolder / polygon
+                polygons.append(polygon)
 
-            self.logger.info(f"Incorporating waterways: {bathy_dirs}")
+            self.logger.info(f"Incorporating waterways: {elevations}")
 
             # Load in bathymetry
-            estimated_bathymetry_points = geometry.EstimatedElevationPoints(
-                points_files=bathy_dirs,
-                polygon_files=poly_dirs,
+            estimated_elevations = geometry.EstimatedElevationPoints(
+                points_files=elevations,
+                polygon_files=polygons,
                 filter_osm_ids=self.get_instruction_general(
                     key="filter_waterways_by_osm_ids"
                 ),
@@ -1163,12 +1156,13 @@ class HydrologicDemGenerator(BaseProcessor):
 
             # Call interpolate river on the DEM - the class checks to see if any pixels
             # actually fall inside the polygon
-            if len(estimated_bathymetry_points.polygons) > 0:  # Skip if no waterways
-                hydrologic_dem.interpolate_waterways(
-                    estimated_bathymetry=estimated_bathymetry_points,
+            if len(estimated_elevations.polygons) > 0:  # Skip if no waterways
+                hydrologic_dem.interpolate_elevations_within_polygon(
+                    elevations=estimated_elevations,
                     method=self.get_instruction_general(
                         key="interpolation", subkey="waterways"
                     ),
+                    label="waterways",
                 )
         # Load in river bathymetry and incorporate where discernable at the resolution
         if "rivers" in self.instructions["data_paths"]:
@@ -1184,41 +1178,81 @@ class HydrologicDemGenerator(BaseProcessor):
                     f"and the rivers: {z_labels} {rivers}"
                 )
             for index, river_dict in enumerate(rivers):
-                bathy_dir = pathlib.Path(river_dict["elevations"])
-                poly_dir = pathlib.Path(river_dict["extents"])
-                if not bathy_dir.is_absolute():
-                    bathy_dir = subfolder / bathy_dir
-                if not poly_dir.is_absolute():
-                    poly_dir = subfolder / poly_dir
+                elevation = pathlib.Path(river_dict["elevations"])
+                polygon = pathlib.Path(river_dict["extents"])
+                if not elevation.is_absolute():
+                    elevation = subfolder / elevation
+                if not polygon.is_absolute():
+                    polygon = subfolder / polygon
 
-                self.logger.info(f"Incorporating river: {bathy_dir}")
+                self.logger.info(f"Incorporating river: {elevation}")
 
                 # Load in bathymetry
-                estimated_bathymetry = geometry.EstimatedElevationPoints(
-                    points_files=[bathy_dir],
-                    polygon_files=[poly_dir],
+                estimated_elevations = geometry.EstimatedElevationPoints(
+                    points_files=[elevation],
+                    polygon_files=[polygon],
                     catchment_geometry=self.catchment_geometry,
                     z_labels=z_labels[index],
                 )
 
                 if (
-                    len(estimated_bathymetry.points_array) == 0
-                    or estimated_bathymetry.polygons.area.sum()
+                    len(estimated_elevations.points_array) == 0
+                    or estimated_elevations.polygons.area.sum()
                     < self.catchment_geometry.resolution**2
                 ):
                     self.logger.warning(
                         "No points or an area less than one grid cell in "
-                        f"river {bathy_dir}. Ignoring."
+                        f"river {elevation}. Ignoring."
                     )
                     continue
 
                 # Call interpolate river on the DEM - the class checks to see if any pixels
                 # actually fall inside the polygon
                 hydrologic_dem.interpolate_rivers(
-                    estimated_bathymetry=estimated_bathymetry,
+                    elevations=estimated_elevations,
                     method=self.get_instruction_general(
                         key="interpolation", subkey="rivers"
                     ),
+                )
+        # Check for stopbanks and interpolate if they exist
+        if "stopbanks" in self.instructions["data_paths"]:
+            # Load in all open and closed waterway elevation and extents in one go
+            # Get the polygons and bathymetry and can be multiple
+            subfolder = self.get_instruction_path(key="subfolder")
+            elevations = []
+            polygons = []
+            for stopbank_dict in self.instructions["data_paths"]["stopbanks"]:
+                elevation = pathlib.Path(stopbank_dict["elevations"])
+                if not elevation.is_absolute():
+                    elevation = subfolder / elevation
+                elevations.append(elevation)
+                polygon = pathlib.Path(stopbank_dict["extents"])
+                if not polygon.is_absolute():
+                    polygon = subfolder / polygon
+                polygons.append(polygon)
+
+            self.logger.info(f"Incorporating stopbanks: {elevations}")
+
+            # Load in bathymetry
+            estimated_elevations = geometry.EstimatedElevationPoints(
+                points_files=elevations,
+                polygon_files=polygons,
+                catchment_geometry=self.catchment_geometry,
+                z_labels=self.get_instruction_general(
+                    key="z_labels", subkey="stopbanks"
+                ),
+            )
+
+            # Call interpolate river on the DEM - the class checks to see if any pixels
+            # actually fall inside the polygon
+            if len(estimated_elevations.polygons) > 0:  # Skip if no waterways
+                hydrologic_dem.interpolate_elevations_within_polygon(
+                    elevations=estimated_elevations,
+                    method=self.get_instruction_general(
+                        key="interpolation", subkey="stopbanks"
+                    ),
+                    label="stopbanks",
+                    include_edges=False,
                 )
 
     def run(self):
@@ -1258,7 +1292,7 @@ class HydrologicDemGenerator(BaseProcessor):
             )
 
             # Check for and add any bathymetry information
-            self.add_bathymetry(
+            self.add_hydrological_features(
                 hydrologic_dem=hydrologic_dem,
                 area_threshold=area_threshold,
                 catchment_dirs=self.get_instruction_path("extents"),
@@ -2875,6 +2909,27 @@ class WaterwayBedElevationEstimator(BaseProcessor):
 
         self.debug = debug
 
+    def get_waterways_instruction(self, key: str):
+        """Return true if the DEMs are required for later processing
+
+
+        Parameters:
+            instructions  The json instructions defining the behaviour
+        """
+        defaults = {
+            "source": "osm",
+        }
+
+        assert key in defaults or key in self.instructions["waterways"], (
+            f"The key: '{key}' is missing from the waterways instructions, and"
+            " does not have a default value"
+        )
+        if "waterways" in self.instructions and key in self.instructions["waterways"]:
+            return self.instructions["waterways"][key]
+        else:
+            self.instructions["waterways"][key] = defaults[key]
+            return defaults[key]
+
     def get_result_file_name(self, key: str) -> str:
         """Return the name of the file to save."""
 
@@ -3204,13 +3259,37 @@ class WaterwayBedElevationEstimator(BaseProcessor):
         ).squeeze("band", drop=True)
         return dem
 
-    def download_osm_values(self) -> bool:
+    def load_waterways(self) -> bool:
         """Download OpenStreetMap waterways and tunnels within the catchment BBox."""
 
-        waterways_file_path = self.get_result_file_path(key="waterways")
+        waterways_path = self.get_result_file_path(key="waterways")
+        source = self.get_waterways_instruction("source")
 
-        if waterways_file_path.is_file():  # already created. Load in.
-            waterways = geopandas.read_file(waterways_file_path)
+        if waterways_path.is_file():
+            waterways = geopandas.read_file(waterways_path)
+            if "width" not in waterways.columns and source == "osm":
+                message = (
+                    "For an 'osm' source, the waterways file is generated by "
+                    f" GeoFabrics. Please remove {waterways_path} before run."
+                )
+                self.logger.error(message)
+                raise ValueError(message)
+            if "width" not in waterways.columns:
+                if "width" not in self.instructions["waterways"]:
+                    message = (
+                        "No waterways width defined either as a entry in the "
+                        "instruction file, or as a column in the waterways "
+                        f"file: {waterways_path}"
+                    )
+                    self.logger.error(message)
+                    raise ValueError(message)
+                widths = self.get_waterways_instruction("widths")
+                if isinstance(widths, dict):
+                    waterways["width"] = waterways["waterway"].apply(
+                        lambda waterway: widths[waterway]
+                    )
+                else:  # Assume in int / float
+                    waterways["width"] = widths
         else:  # Download from OSM
             # Create area to query within
             bbox_lat_long = self.catchment_geometry.catchment.to_crs(self.OSM_CRS)
@@ -3234,7 +3313,7 @@ class WaterwayBedElevationEstimator(BaseProcessor):
             if "osm_date" in self.instructions["waterways"]:
                 waterways = overpass.query(
                     query,
-                    date=self.instructions["waterways"]["osm_date"],
+                    date=self.get_waterways_instruction("osm_date"),
                     timeout=60,
                 )
             else:
@@ -3265,7 +3344,7 @@ class WaterwayBedElevationEstimator(BaseProcessor):
             )
 
             # Get specified widths
-            widths = self.instructions["waterways"]["widths"]
+            widths = self.get_waterways_instruction("widths")
             # Check if rivers are specified and remove if not
             if "ditch" not in widths.keys():
                 widths["ditch"] = widths["drain"]
@@ -3287,7 +3366,7 @@ class WaterwayBedElevationEstimator(BaseProcessor):
             )
 
             # Save file
-            waterways.to_file(waterways_file_path)
+            waterways.to_file(waterways_path)
         return waterways
 
     def run(self):
@@ -3313,19 +3392,17 @@ class WaterwayBedElevationEstimator(BaseProcessor):
         self.catchment_geometry = self.create_catchment()
 
         # Download waterways and tunnels from OSM - the only option currently
-        if "source" not in self.instructions["waterways"]:
-            self.instructions["waterways"]["source"] = "osm"
-        if (
-            "source" in self.instructions["waterways"]
-            and "osm" == self.instructions["waterways"]["source"]
-        ):
-            waterways = self.download_osm_values()
+        source = self.get_waterways_instruction("source")
+        if source == "osm" or source == "file":
+            waterways = self.load_waterways()
         else:
-            self.logger.error(
-                "'osm' standing for OpenStreetMaps is the only "
-                "'source' currently supported. Please log an "
-                "issue on GitHub if you want another added."
+            message = (
+                "'osm' standing for OpenStreetMaps and 'file' are the only "
+                "'source' options currently supported. Please log an issue on "
+                "GitHub if you want another added."
             )
+            self.logger.error(message)
+            raise ValueError(message)
 
         # There are no waterways to write out empty files and exit
         if len(waterways) == 0:
@@ -3355,6 +3432,373 @@ class WaterwayBedElevationEstimator(BaseProcessor):
             # Record the parameter used during execution - append to existing
             with open(
                 self.get_instruction_path("subfolder") / "waterway_instructions.json",
+                "a",
+            ) as file_pointer:
+                json.dump(self.instructions, file_pointer, sort_keys=True, indent=2)
+
+
+class StopbankCrestElevationEstimator(BaseProcessor):
+    """StopbankCrestElevationEstimator executes a pipeline to estimate stopbank
+    crest elevations. A DEM is generated of the surrounding area and this used
+    to estimate crest elevations by taking the highest value in the area around
+    the stopebank.
+
+    """
+
+    def __init__(self, json_instructions: json, debug: bool = True):
+        super(StopbankCrestElevationEstimator, self).__init__(
+            json_instructions=json_instructions
+        )
+        self.logger = logging.getLogger(f"{__name__}.{self.__class__.__name__}")
+
+        self.debug = debug
+
+    def get_stopbanks_instruction(self, key: str):
+        """Return true if the DEMs are required for later processing
+
+
+        Parameters:
+            instructions  The json instructions defining the behaviour
+        """
+        defaults = {
+            "features": ["dyke", "embankment"],
+            "source": "file",
+        }
+
+        assert key in defaults or key in self.instructions["stopbanks"], (
+            f"The key: '{key}' is missing from the stopbanks instructions, and"
+            " does not have a default value"
+        )
+        if "stopbanks" in self.instructions and key in self.instructions["stopbanks"]:
+            return self.instructions["stopbanks"][key]
+        else:
+            self.instructions["stopbanks"][key] = defaults[key]
+            return defaults[key]
+
+    def get_result_file_name(self, key: str) -> str:
+        """Return the name of the file to save."""
+
+        # key to output name mapping
+        name_dictionary = {
+            "raw_dem": "stopbank_raw_dem.nc",
+            "stopbank_polygon": "stopbank_polygon.geojson",
+            "stopbank_elevation": "stopbank_elevation.geojson",
+        }
+        return name_dictionary[key]
+
+    def get_result_file_path(self, key: str) -> pathlib.Path:
+        """Return the file name of the file to save with the local cache path.
+
+        Parameters:
+            instructions  The json instructions defining the behaviour
+        """
+
+        subfolder = self.get_instruction_path("subfolder")
+
+        name = self.get_result_file_name(key=key)
+
+        return subfolder / name
+
+    def stopbanks_elevations_exists(self):
+        """Check to see if the waterway and culvert bathymeties have already been
+        estimated."""
+
+        stopbank_polygon_file = self.get_result_file_path(key="stopbank_polygon")
+        stopbank_elevation_file = self.get_result_file_path(key="stopbank_elevation")
+        if stopbank_polygon_file.is_file() and stopbank_elevation_file.is_file():
+            return True
+        else:
+            return False
+
+    def maximum_elevation_in_polygon(
+        self, geometry: shapely.geometry.Polygon, dem: xarray.Dataset
+    ):
+        """Determine the minimum value in each polygon. Select only coordinates
+        within the polygon bounding box before clipping to the bounding box and
+        then returning the minimum elevation."""
+
+        # Index in polygon bbox
+        bbox = geometry.bounds
+
+        # Select DEM within the bounding box - allow ascending or decending dimensions
+        y_slice = (
+            slice(bbox[1], bbox[3])
+            if dem.y[-1] - dem.y[0] > 0
+            else slice(bbox[3], bbox[1])
+        )
+        x_slice = (
+            slice(bbox[0], bbox[2])
+            if dem.x[-1] - dem.x[0] > 0
+            else slice(bbox[2], bbox[0])
+        )
+        small_z = dem.z.sel(x=x_slice, y=y_slice)
+
+        # clip to polygon and return minimum elevation
+        return float(small_z.max())
+
+    def estimate_elevations(
+        self, stopbanks: geopandas.GeoDataFrame, dem: xarray.Dataset
+    ):
+        """Sample the DEM around the tunnels to estimate the bed elevation."""
+
+        # Check if already generated
+        polygon_file = self.get_result_file_path(key="stopbank_polygon")
+        elevation_file = self.get_result_file_path(key="stopbank_elevation")
+        if polygon_file.is_file() and elevation_file.is_file():
+            self.logger.info("Stopbank crests already recorded. ")
+            return
+        # If no stopbanks return an empty result
+        if len(stopbanks) == 0:
+            stopbanks.drop(columns=["width"]).to_file(polygon_file)
+            stopbanks["z"] = []
+            stopbanks.to_file(elevation_file)
+            return
+        stopbanks = stopbanks.explode(ignore_index=True)
+
+        # Sampled points along stopbanks to define crest elevation at
+        points = stopbanks["geometry"].apply(
+            lambda row: shapely.geometry.MultiPoint(
+                [
+                    # Ensure even spacing across the length of the waterway
+                    row.interpolate(
+                        i
+                        * row.length
+                        / int(numpy.ceil(row.length / self.get_resolution()))
+                    )
+                    for i in range(
+                        int(numpy.ceil(row.length / self.get_resolution())) + 1
+                    )
+                ]
+            )
+        )
+        points = geopandas.GeoDataFrame(
+            {
+                "geometry": points,
+                "width": stopbanks["width"],
+            },
+            crs=stopbanks.crs,
+        ).explode(index_parts=True)
+        # Sample maximum elevation in polygon around each point
+        points["z"] = points.buffer(points["width"].to_numpy()).apply(
+            lambda row: self.maximum_elevation_in_polygon(geometry=row, dem=dem)
+        )
+
+        # Remove any NaN areas (where no LiDAR data to estimate elevations)
+        nan_filter = points["z"].notnull().groupby(level=0).all().values
+        if not nan_filter.all():
+            self.logger.warning(
+                "Some open stopbanks are being ignored as there is not enough data to "
+                "estimate their creast elevations."
+            )
+        # Create, filter to remove NaN areas and save overall polygon
+        stopbanks["polygon"] = stopbanks.buffer(stopbanks["width"].to_numpy())
+        stopbanks = stopbanks[nan_filter]
+        stopbanks.set_geometry("polygon", drop=True)[["geometry"]].to_file(polygon_file)
+        # Filter points to keep not NaN values then save
+        points = points[points["z"].notnull()]
+        points.to_file(elevation_file)
+
+    def create_dem(self, stopbanks: geopandas.GeoDataFrame) -> xarray.Dataset:
+        """Create and return a DEM at a resolution 1.5x the waterway width."""
+
+        dem_file = self.get_result_file_path(key="raw_dem")
+
+        # Load already created DEM file in
+        if not dem_file.is_file():
+            # Create DEM over the waterway region
+            # Save out the waterway polygons as a file with a single multipolygon
+            stopbank_polygon_file = self.get_result_file_path(key="stopbank_polygon")
+            stopbank_polygon = stopbanks.buffer(stopbanks["width"].to_numpy())
+            stopbank_polygon = geopandas.GeoDataFrame(
+                geometry=[shapely.ops.unary_union(stopbank_polygon.geometry.array)],
+                crs=stopbank_polygon.crs,
+            )
+            stopbank_polygon.to_file(stopbank_polygon_file)
+
+            # Create DEM generation instructions
+            dem_instructions = self.instructions
+            dem_instruction_paths = dem_instructions["data_paths"]
+            dem_instruction_paths["extents"] = self.get_result_file_name(
+                key="stopbank_polygon"
+            )
+            dem_instruction_paths["raw_dem"] = self.get_result_file_name(key="raw_dem")
+            if "general" not in dem_instructions:
+                dem_instructions["general"] = {}
+            dem_instructions["general"]["ignore_clipping"] = True
+
+            # Create the ground DEM file if this has not be created yet!
+            self.logger.info("Generating waterway DEM.")
+            runner = RawLidarDemGenerator(self.instructions)
+            runner.run()
+            del runner
+            gc.collect()
+        # Load in the DEM
+        chunk_size = self.get_processing_instructions("chunk_size")
+        dem = rioxarray.rioxarray.open_rasterio(
+            dem_file,
+            masked=True,
+            parse_coordinates=True,
+            chunks={"x": chunk_size, "y": chunk_size},
+        ).squeeze("band", drop=True)
+        return dem
+
+    def load_stopbanks(self) -> bool:
+        """Download OpenStreetMap waterways and tunnels within the catchment BBox."""
+
+        stopbanks_path = self.get_instruction_path("stopbanks")
+        source = self.get_stopbanks_instruction("source")
+
+        if stopbanks_path.is_file():
+            stopbanks = geopandas.read_file(stopbanks_path)
+            if "width" not in stopbanks.columns and source == "osm":
+                message = (
+                    "For an 'osm' source, the stopbanks file is generated by "
+                    f" GeoFabrics. Please remove {stopbanks_path} before run."
+                )
+                self.logger.warning(message)
+                raise ValueError(message)
+            if "width" not in stopbanks.columns:
+                if "width" not in self.instructions["stopbanks"]:
+                    message = (
+                        "No stopbank width defined either as a entry in the "
+                        "instruction file, or as a column in the stopbanks "
+                        f"file: {stopbanks_path}"
+                    )
+                    self.logger.warning(message)
+                    raise ValueError(message)
+                stopbanks["width"] = self.get_stopbanks_instruction("width")
+        elif "osm" == self.get_stopbanks_instruction("source"):
+            # Download from OSM and save
+            bbox_lat_long = self.catchment_geometry.catchment.to_crs(self.OSM_CRS)
+            bbox = [
+                bbox_lat_long.bounds.miny[0],
+                bbox_lat_long.bounds.minx[0],
+                bbox_lat_long.bounds.maxy[0],
+                bbox_lat_long.bounds.maxx[0],
+            ]
+            element_dict = {
+                "geometry": [],
+                "OSM_id": [],
+                "stopbank": [],
+            }
+
+            # Construct query
+            query = OSMPythonTools.overpass.overpassQueryBuilder(
+                bbox=bbox,
+                elementType="way",
+                selector="man_made",
+                out="body",
+                includeGeometry=True,
+            )
+
+            # Perform query
+            overpass = OSMPythonTools.overpass.Overpass()
+            if "osm_date" in self.instructions["stopbanks"]:
+                stopbanks = overpass.query(
+                    query,
+                    date=self.get_stopbanks_instruction("osm_date"),
+                    timeout=60,
+                )
+            else:
+                stopbanks = overpass.query(query, timeout=60)
+
+            # Extract information
+            for element in stopbanks.elements():
+                element_dict["geometry"].append(element.geometry())
+                element_dict["OSM_id"].append(element.id())
+                element_dict["stopbank"].append(element.tags()["man_made"])
+            stopbanks = (
+                geopandas.GeoDataFrame(element_dict, crs=self.OSM_CRS)
+                .to_crs(self.catchment_geometry.crs["horizontal"])
+                .set_index("OSM_id", drop=True)
+            )
+
+            # Remove polygons
+            stopbanks = stopbanks[stopbanks.geometry.type == "LineString"].sort_index(
+                ascending=True
+            )
+
+            # Get specified widths
+            width = self.get_stopbanks_instruction("width")
+            # Check if rivers are specified and remove if not
+
+            # Identify and remove undefined waterway types
+            for stopbank_label in stopbanks["stopbank"].unique():
+                if stopbank_label not in self.get_stopbanks_instruction("features"):
+                    stopbanks = stopbanks[stopbanks["stopbank"] != stopbank_label]
+            # Add width label
+            stopbanks["width"] = width
+            # Clip to land
+            stopbanks = stopbanks.clip(self.catchment_geometry.land).sort_index(
+                ascending=True
+            )
+
+            # Save file
+            stopbanks.to_file(stopbanks_path)
+        else:
+            message = (
+                f"No stopbanks file: {stopbanks_path} exists, and the source "
+                "not OSM. Either specify a file or define the source as OSM."
+            )
+            self.logger.warning(message)
+            raise ValueError(message)
+        return stopbanks
+
+    def run(self):
+        """This method runs a pipeline that:
+        * downloads all tunnels and waterways within a catchment.
+        * creates and samples a DEM around each feature to estimate the bed
+          elevation.
+        * saves out extents and bed elevations of the waterway and tunnel network
+        """
+
+        # Don't reprocess if already estimated
+        if self.stopbanks_elevations_exists():
+            self.logger.info("Waterway and tunnel bed elevations already estimated.")
+            return
+        self.logger.info(
+            "Estimating waterway and tunnel bed elevation from OpenStreetMap."
+        )
+
+        # Ensure the results folder has been created
+        self.create_results_folder()
+
+        # Load in catchment
+        self.catchment_geometry = self.create_catchment()
+
+        # Download waterways and tunnels from OSM - the only option currently
+        source = self.get_stopbanks_instruction("source")
+        if not (source == "osm" or source == "file"):
+            message = "The only valid 'source' keys are 'osm' and 'file'"
+            self.logger.warning(message)
+            raise ValueError(message)
+        stopbanks = self.load_stopbanks()
+
+        # There are no waterways to write out empty files and exit
+        if len(stopbanks) == 0:
+            self.logger.warning(
+                "There are no stopbanks in the catchment. Writing empty"
+                "polygon and elevation files and returning."
+            )
+            crs = self.catchment_geometry.crs["horizontal"]
+            polygons = geopandas.GeoDataFrame({"geometry": []}, crs=crs)
+            elevations = geopandas.GeoDataFrame(
+                {"geometry": [], "width": [], "z": []}, crs=crs
+            )
+            polygons.to_file(self.get_result_file_path(key="stopbank_polygon"))
+            elevations.to_file(self.get_result_file_path(key="stopbank_elevation"))
+            return
+
+        # Create a DEM where the waterways and tunnels are
+        dem = self.create_dem(stopbanks=stopbanks)
+
+        # Estimate the stopbank crest elevations from the DEM
+        self.estimate_elevations(stopbanks=stopbanks, dem=dem)
+
+        if self.debug:
+            # Record the parameter used during execution - append to existing
+            with open(
+                self.get_instruction_path("subfolder") / "stopbank_instructions.json",
                 "a",
             ) as file_pointer:
                 json.dump(self.instructions, file_pointer, sort_keys=True, indent=2)
