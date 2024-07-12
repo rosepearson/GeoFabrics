@@ -1087,13 +1087,13 @@ class HydrologicDemGenerator(BaseProcessor):
 
         # Check for ocean bathymetry. Interpolate offshore if significant
         # offshore area is not covered by LiDAR
-        area_without_lidar = self.catchment_geometry.offshore_without_lidar(
+        offshore_area_without_lidar = self.catchment_geometry.offshore_without_lidar(
             hydrologic_dem.raw_extents
         ).geometry.area.sum()
+        offshore_area = self.catchment_geometry.offshore.area.sum()
         if (
             self.check_vector_or_raster(key="ocean_contours", api_type="vector")
-            and area_without_lidar
-            > self.catchment_geometry.offshore.area.sum() * area_threshold
+            and offshore_area_without_lidar > offshore_area * area_threshold
         ):
             # Get the bathymetry data directory
             ocean_contour_dirs = self.get_vector_or_raster_paths(
@@ -1118,6 +1118,40 @@ class HydrologicDemGenerator(BaseProcessor):
                     z_label=self.get_instruction_general(
                         key="z_labels", subkey="ocean"
                     ),
+                    exclusion_extent=hydrologic_dem.raw_extents,
+                )
+                # Interpolate
+                hydrologic_dem.interpolate_ocean_bathymetry(ocean_contours)
+        # Check for ocean bathymetry. Interpolate offshore if significant
+        # offshore area is not covered by LiDAR
+        offshore_area_without_lidar = self.catchment_geometry.offshore_without_lidar(
+            hydrologic_dem.raw_extents
+        ).geometry.area.sum()
+        offshore_area = self.catchment_geometry.offshore.area.sum()
+        if (
+            self.check_vector_or_raster(key="ocean_points", api_type="vector")
+            and offshore_area_without_lidar > offshore_area * area_threshold
+        ):
+            # Get the bathymetry data directory
+            ocean_points_dirs = self.get_vector_or_raster_paths(
+                key="ocean_points",
+                data_type="vector",
+                required=False,
+            )
+            if len(ocean_points_dirs) != 1:
+                self.logger.warning(
+                    f"{len(ocean_points_dirs)} ocean_points's provided. "
+                    f"Specficially {ocean_points_dirs}. Only consider the "
+                    "first if multiple."
+                )
+
+            self.logger.info(f"Incorporating Bathymetry: {ocean_points_dirs}")
+
+            # Load in bathymetry
+            if len(ocean_points_dirs) > 0:
+                ocean_contours = geometry.MarineBathymetryPoints(
+                    ocean_points_dirs[0],
+                    self.catchment_geometry,
                     exclusion_extent=hydrologic_dem.raw_extents,
                 )
                 # Interpolate

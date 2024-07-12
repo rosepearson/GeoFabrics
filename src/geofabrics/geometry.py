@@ -442,10 +442,12 @@ class MarineBathymetryPoints:
         points_file: str,
         catchment_geometry: CatchmentGeometry,
         exclusion_extent=None,
+        is_depth = False,
     ):
         self.logger = logging.getLogger(f"{__name__}.{self.__class__.__name__}")
         self._points = geopandas.read_file(points_file)
         self.catchment_geometry = catchment_geometry
+        self.is_depth = is_depth
 
         self._extent = None
 
@@ -456,7 +458,7 @@ class MarineBathymetryPoints:
 
         self._points = self._points.to_crs(self.catchment_geometry.crs["horizontal"])
 
-        if exclusion_extent is not None:
+        '''if exclusion_extent is not None:
             exclusion_extent = exclusion_extent.clip(
                 self.catchment_geometry.offshore, keep_geom_type=True
             )
@@ -466,7 +468,7 @@ class MarineBathymetryPoints:
         else:
             self._extent = self.catchment_geometry.offshore
         self._points = self._points.clip(self._extent, keep_geom_type=True)
-        self._points = self._points.reset_index(drop=True)
+        self._points = self._points.reset_index(drop=True)'''
 
     @property
     def points(self):
@@ -507,6 +509,41 @@ class MarineBathymetryPoints:
                 * -1
             )
         return self._z
+    
+    def sample_contours(self, resolution: float) -> numpy.ndarray:
+        """Return points - rename in future."""
+        points = numpy.empty(
+            [self._points.apply(lambda row: len(row.geoms)).sum()],
+            dtype=[("X", RASTER_TYPE), ("Y", RASTER_TYPE), ("Z", RASTER_TYPE)],
+        )
+
+        # Extract the x, y and z values from the Shapely MultiPoints and possibly a
+        # depth column
+        points["X"] = numpy.concatenate(
+            self._points.apply(lambda row: [row_i.x for row_i in row.geoms]).to_list()
+        )
+        points["Y"] = numpy.concatenate(
+            self._points.apply(lambda row: [row_i.y for row_i in row.geoms]).to_list()
+        )
+        if self.is_depth:
+            points["Z"] = (
+                numpy.concatenate(
+                    self._points.apply(
+                        lambda row: [row_i.z for row_i in row.geoms]
+                    ).to_list()
+                )
+                * -1
+            )
+        else:
+            points["Z"] = (
+                numpy.concatenate(
+                    self._points.apply(
+                        lambda row: [row_i.z for row_i in row.geoms]
+                    ).to_list()
+                )
+            )
+        return points
+        
 
 
 class EstimatedElevationPoints:
