@@ -746,53 +746,70 @@ class HydrologicallyConditionedDem(DemBase):
     ) -> numpy.ndarray:
         """Interpolate the elevation points at the specified locations using the
         specified method."""
+        
+        xy_in = numpy.empty((len(point_cloud), 2))
+        xy_in[:, 0] = point_cloud["X"]
+        xy_in[:, 1] = point_cloud["Y"]
 
-        if method == "rbf":
-            # Ensure the number of points is not too great for RBF interpolation
-            if len(point_cloud) < self.CACHE_SIZE:
-                self.logger.warning(
-                    "The number of points to fit and RBF interpolant to is"
-                    f" {len(point_cloud)}. We recommend using fewer "
-                    f" than {self.CACHE_SIZE} for best performance and to. "
-                    "avoid errors in the `scipy.interpolate.Rbf` function"
-                )
-            # Create RBF function
-            self.logger.info("Creating RBF interpolant")
-            rbf_function = scipy.interpolate.Rbf(
-                point_cloud["X"],
-                point_cloud["Y"],
-                point_cloud["Z"],
-                function="linear",
-            )
-            # Tile area - this limits the maximum memory required at any one time
-            flat_z_array = numpy.ones_like(flat_x_array) * numpy.nan
-            number_offshore_tiles = math.ceil(len(flat_x_array) / self.CACHE_SIZE)
-            for i in range(number_offshore_tiles):
-                self.logger.info(
-                    f"Offshore intepolant tile {i+1} of {number_offshore_tiles}"
-                )
-                start_index = int(i * self.CACHE_SIZE)
-                end_index = (
-                    int((i + 1) * self.CACHE_SIZE)
-                    if i + 1 != number_offshore_tiles
-                    else len(flat_x_array)
-                )
+        xy_out = numpy.concatenate(
+            [[flat_x_array], [flat_y_array]], axis=0
+        ).transpose()
 
-                flat_z_array[start_index:end_index] = rbf_function(
-                    flat_x_array[start_index:end_index],
-                    flat_y_array[start_index:end_index],
-                )
-        elif method == "linear" or method == "cubic" or method == "nearest":
-            # Interpolate river area - use cubic or linear interpolation
-            flat_z_array = scipy.interpolate.griddata(
-                points=(point_cloud["X"], point_cloud["Y"]),
-                values=point_cloud["Z"],
-                xi=(flat_x_array, flat_y_array),
-                method=method,  # linear or cubic
-            )
-        else:
-            raise ValueError("method must be rbf, nearest, linear or cubic")
-        return flat_z_array
+        leaf_size = 10
+        number_neighbours = 20
+        eps = 0
+        raster_type = geometry.RASTER_TYPE
+
+        tree = scipy.spatial.KDTree(xy_in, leafsize=leaf_size)  # build the tree
+        tree_index_list = tree.query(
+            xy_out, r=number_neighbours, eps=eps
+        )  # , eps=0.2)
+        z_out = numpy.zeros(len(xy_out), dtype=raster_type)
+
+        for i, (near_indices, point) in enumerate(zip(tree_index_list, xy_out)):
+            if len(near_indices) == 0:  # Set NaN if no values in search region
+                z_out[i] = numpy.nan
+            else:
+                if method == "mean":
+                    z_out[i] = numpy.mean(point_cloud["Z"][near_indices])
+                elif method == "median":
+                    z_out[i] = numpy.median(point_cloud["Z"][near_indices])
+                elif method == "idw":
+                    z_out[i] = calculate_idw(
+                        near_indices=near_indices,
+                        point=point,
+                        tree=tree,
+                        point_cloud=point_cloud,
+                    )
+                elif method == "linear":
+                    z_out[i] = calculate_linear(
+                        near_indices=near_indices,
+                        point=point,
+                        tree=tree,
+                        point_cloud=point_cloud,
+                    )
+                elif method == "cubic":
+                    z_out[i] = calculate_cubic(
+                        near_indices=near_indices,
+                        point=point,
+                        tree=tree,
+                        point_cloud=point_cloud,
+                    )
+                elif method == "min":
+                    z_out[i] = numpy.min(point_cloud["Z"][near_indices])
+                elif method == "max":
+                    z_out[i] = numpy.max(point_cloud["Z"][near_indices])
+                elif method == "std":
+                    z_out[i] = numpy.std(point_cloud["Z"][near_indices])
+                elif method == "count":
+                    z_out[i] = numpy.len(point_cloud["Z"][near_indices])
+                else:
+                    assert (
+                        False
+                    ), f"An invalid lidar_interpolation_method of '{method}' was"
+                    " provided"
+
+        return z_out
 
     def interpolate_ocean_bathymetry(self, bathy_contours):
         """Performs interpolation offshore outside LiDAR extents using the SciPy RBF
@@ -908,7 +925,7 @@ class HydrologicallyConditionedDem(DemBase):
             point_cloud=offshore_points,
             flat_x_array=grid_x[mask],
             flat_y_array=grid_y[mask],
-            method="cubic",
+            method="linear",
         )
         flat_z = offshore_dem.z.values.flatten()
         flat_z[mask.flatten()] = flat_z_masked
@@ -2932,6 +2949,41 @@ def calculate_linear(
     if numpy.isnan(linear) and len(near_indices) > 0:
         linear = numpy.mean(point_cloud["Z"][near_indices])
     return linear
+
+def calculate_cubic(
+    near_indices: list,
+    point: numpy.ndarray,
+    tree: scipy.spatial.KDTree,
+    point_cloud: numpy.ndarray,
+):
+    """Calculate linear interpolation of the 'near_indices' points. Take the straight
+    mean if the points are co-linear or too few for linear interpolation."""
+
+    if len(near_indices) > 3:  # There are enough points for a linear interpolation
+        try:
+            value = scipy.interpolate.griddata(
+                points=tree.data[near_indices],
+                values=point_cloud["Z"][near_indices],
+                xi=point,
+                method="cubic",
+            )[0]
+        except (scipy.spatial.QhullError, Exception) as caught_exception:
+            logger = logging.getLogger(__name__)
+            logger.setLevel(logging.DEBUG)
+            logger.warning(
+                f"Exception {caught_exception} during "
+                "cubic interpolation. Set to NaN."
+            )
+            value = numpy.nan
+
+    elif len(near_indices) == 1:
+        value = point_cloud["Z"][near_indices][0]
+    else:
+        value = numpy.nan
+    # NaN will have occured if colinear points - replace with straight mean
+    if numpy.isnan(value) and len(near_indices) > 0:
+        value = numpy.mean(point_cloud["Z"][near_indices])
+    return value
 
 
 def select_lidar_files(
