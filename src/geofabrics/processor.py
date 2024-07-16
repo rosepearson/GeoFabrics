@@ -1155,7 +1155,7 @@ class HydrologicDemGenerator(BaseProcessor):
                     exclusion_extent=hydrologic_dem.raw_extents,
                 )
                 # Interpolate
-                hydrologic_dem.interpolate_ocean_bathymetry(ocean_contours)
+                hydrologic_dem.interpolate_ocean_points_as_patch(ocean_contours)
         # Check for waterways and interpolate if they exist
         if "waterways" in self.instructions["data_paths"]:
             # Load in all open and closed waterway elevation and extents in one go

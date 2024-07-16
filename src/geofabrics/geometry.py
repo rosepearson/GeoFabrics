@@ -457,6 +457,12 @@ class MarineBathymetryPoints:
         """Set CRS and clip to catchment"""
 
         self._points = self._points.to_crs(self.catchment_geometry.crs["horizontal"])
+        self._points = self._points.explode(ignore_index=True)
+        self._points = self._points.clip(
+            self.catchment_geometry.catchment.buffer(
+                numpy.sqrt(self.catchment_geometry.catchment.area.max())
+            )
+        )
 
         '''if exclusion_extent is not None:
             exclusion_extent = exclusion_extent.clip(
@@ -481,8 +487,8 @@ class MarineBathymetryPoints:
         """The x values"""
 
         if self._x is None:
-            self._x = self._points.points.apply(
-                lambda row: row["geometry"][0].x, axis=1
+            self._x = self._points.apply(
+                lambda row: row["geometry"].x, axis=1
             ).to_numpy()
         return self._x
 
@@ -491,8 +497,8 @@ class MarineBathymetryPoints:
         """The y values"""
 
         if self._y is None:
-            self._y = self._points.points.apply(
-                lambda row: row["geometry"][0].y, axis=1
+            self._y = self._points.apply(
+                lambda row: row["geometry"].y, axis=1
             ).to_numpy()
         return self._y
 
@@ -502,46 +508,40 @@ class MarineBathymetryPoints:
 
         if self._z is None:
             # map depth to elevation
-            self._z = (
-                self._points.points.apply(
-                    lambda row: row["geometry"][0].z, axis=1
-                ).to_numpy()
-                * -1
-            )
+            if self.is_depth:
+            self._z =  = self._points.apply(
+                lambda row: row["geometry"].z, axis=1
+            ).to_numpy() * -1
+        else:
+            self._z =  = self._points.apply(
+                lambda row: row["geometry"].z, axis=1
+            ).to_numpy()
         return self._z
     
     def sample_contours(self, resolution: float) -> numpy.ndarray:
         """Return points - rename in future."""
         points = numpy.empty(
-            [self._points.apply(lambda row: len(row.geoms)).sum()],
+            [len(self._points)],
             dtype=[("X", RASTER_TYPE), ("Y", RASTER_TYPE), ("Z", RASTER_TYPE)],
         )
 
         # Extract the x, y and z values from the Shapely MultiPoints and possibly a
         # depth column
-        points["X"] = numpy.concatenate(
-            self._points.apply(lambda row: [row_i.x for row_i in row.geoms]).to_list()
-        )
-        points["Y"] = numpy.concatenate(
-            self._points.apply(lambda row: [row_i.y for row_i in row.geoms]).to_list()
-        )
+        points["X"] = self._points.apply(
+                lambda row: row["geometry"].x, axis=1
+            ).to_numpy()
+        points["Y"] = self._points.apply(
+                lambda row: row["geometry"].y, axis=1
+            ).to_numpy()
         if self.is_depth:
-            points["Z"] = (
-                numpy.concatenate(
-                    self._points.apply(
-                        lambda row: [row_i.z for row_i in row.geoms]
-                    ).to_list()
-                )
-                * -1
-            )
+            points["Z"] = self._points.apply(
+                lambda row: row["geometry"].z, axis=1
+            ).to_numpy() * -1
         else:
-            points["Z"] = (
-                numpy.concatenate(
-                    self._points.apply(
-                        lambda row: [row_i.z for row_i in row.geoms]
-                    ).to_list()
-                )
-            )
+            points["Z"] = self._points.apply(
+                lambda row: row["geometry"].z, axis=1
+            ).to_numpy()
+
         return points
         
 

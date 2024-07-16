@@ -737,6 +737,63 @@ class HydrologicallyConditionedDem(DemBase):
             raise ValueError("method must be rbf, nearest, linear or cubic")
         return flat_z_array
 
+    def _interpolate_elevation_points_patch(
+        self,
+        point_cloud: numpy.ndarray,
+        flat_x_array: numpy.ndarray,
+        flat_y_array: numpy.ndarray,
+        method: str,
+    ) -> numpy.ndarray:
+        """Interpolate the elevation points at the specified locations using the
+        specified method."""
+
+        if method == "rbf":
+            # Ensure the number of points is not too great for RBF interpolation
+            if len(point_cloud) < self.CACHE_SIZE:
+                self.logger.warning(
+                    "The number of points to fit and RBF interpolant to is"
+                    f" {len(point_cloud)}. We recommend using fewer "
+                    f" than {self.CACHE_SIZE} for best performance and to. "
+                    "avoid errors in the `scipy.interpolate.Rbf` function"
+                )
+            # Create RBF function
+            self.logger.info("Creating RBF interpolant")
+            rbf_function = scipy.interpolate.Rbf(
+                point_cloud["X"],
+                point_cloud["Y"],
+                point_cloud["Z"],
+                function="linear",
+            )
+            # Tile area - this limits the maximum memory required at any one time
+            flat_z_array = numpy.ones_like(flat_x_array) * numpy.nan
+            number_offshore_tiles = math.ceil(len(flat_x_array) / self.CACHE_SIZE)
+            for i in range(number_offshore_tiles):
+                self.logger.info(
+                    f"Offshore intepolant tile {i+1} of {number_offshore_tiles}"
+                )
+                start_index = int(i * self.CACHE_SIZE)
+                end_index = (
+                    int((i + 1) * self.CACHE_SIZE)
+                    if i + 1 != number_offshore_tiles
+                    else len(flat_x_array)
+                )
+
+                flat_z_array[start_index:end_index] = rbf_function(
+                    flat_x_array[start_index:end_index],
+                    flat_y_array[start_index:end_index],
+                )
+        elif method == "linear" or method == "cubic" or method == "nearest":
+            # Interpolate river area - use cubic or linear interpolation
+            flat_z_array = scipy.interpolate.griddata(
+                points=(point_cloud["X"], point_cloud["Y"]),
+                values=point_cloud["Z"],
+                xi=(flat_x_array, flat_y_array),
+                method=method,  # linear or cubic
+            )
+        else:
+            raise ValueError("method must be rbf, nearest, linear or cubic")
+        return flat_z_array
+
     def interpolate_ocean_bathymetry(self, bathy_contours):
         """Performs interpolation offshore outside LiDAR extents using the SciPy RBF
         function."""
@@ -799,6 +856,59 @@ class HydrologicallyConditionedDem(DemBase):
             flat_x_array=grid_x[mask],
             flat_y_array=grid_y[mask],
             method="linear",
+        )
+        flat_z = offshore_dem.z.values.flatten()
+        flat_z[mask.flatten()] = flat_z_masked
+        offshore_dem.z.data = flat_z.reshape(offshore_dem.z.shape)
+
+        self._dem = rioxarray.merge.merge_datasets(
+            [self._raw_dem, offshore_dem],
+            method="first",
+        )
+
+    def interpolate_ocean_points_as_patch(self, bathy_contours):
+        """Performs interpolation offshore outside LiDAR extents using the SciPy RBF
+        function."""
+
+        # Reset the offshore DEM
+
+        offshore_edge_points = self._sample_offshore_edge(
+            self.catchment_geometry.resolution
+        )
+        bathy_points = bathy_contours.sample_contours(
+            self.catchment_geometry.resolution
+        )
+        if len(bathy_points) == 0:
+            self.logger.warning("No offshore values, interpolating from the coast.")
+            offshore_points = offshore_edge_points
+        else:
+            offshore_points = numpy.concatenate([offshore_edge_points, bathy_points])
+
+        # Setup the empty offshore area ready for interpolation
+        offshore_no_dense_data = self.catchment_geometry.offshore_no_dense_data(
+            self._raw_extents
+        )
+        offshore_dem = self._raw_dem.rio.clip(self.catchment_geometry.offshore.geometry)
+
+        # set all zero (or to ocean bathy classification) then clip out dense region
+        # where we don't need to interpolate
+        offshore_dem.z.data[:] = 0
+        offshore_dem.data_source.data[:] = self.SOURCE_CLASSIFICATION[
+            "ocean bathymetry"
+        ]
+        offshore_dem.lidar_source.data[:] = self.SOURCE_CLASSIFICATION["no data"]
+        offshore_dem = offshore_dem.rio.clip(offshore_no_dense_data.geometry)
+
+        grid_x, grid_y = numpy.meshgrid(offshore_dem.x, offshore_dem.y)
+        mask = offshore_dem.z.notnull().values
+
+        # Set up the interpolation function
+        self.logger.info("Offshore interpolation")
+        flat_z_masked = self._interpolate_elevation_points_patch(
+            point_cloud=offshore_points,
+            flat_x_array=grid_x[mask],
+            flat_y_array=grid_y[mask],
+            method="cubic",
         )
         flat_z = offshore_dem.z.values.flatten()
         flat_z[mask.flatten()] = flat_z_masked
