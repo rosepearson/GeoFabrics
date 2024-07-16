@@ -278,6 +278,7 @@ class BaseProcessor(abc.ABC):
         defaults = {
             "bathymetry_points_type": None,
             "drop_offshore_lidar": True,
+            "zero_positive_foreshore": True,
             "lidar_classifications_to_keep": [2],
             "elevation_range": None,
             "download_limit_gbytes": 100,
@@ -902,6 +903,7 @@ class RawLidarDemGenerator(BaseProcessor):
 
         # Get the drop_offshore_lidar selection for each dataset
         drop_offshore_lidar = self.get_instruction_general("drop_offshore_lidar")
+        zero_positive_foreshore = self.get_instruction_general("zero_positive_foreshore")
         if isinstance(drop_offshore_lidar, bool):
             drop_offshore_lidar_bool = drop_offshore_lidar
             drop_offshore_lidar = {}
@@ -933,6 +935,7 @@ class RawLidarDemGenerator(BaseProcessor):
         raw_dem = dem.RawDem(
             catchment_geometry=self.catchment_geometry,
             drop_offshore_lidar=drop_offshore_lidar,
+            zero_positive_foreshore=zero_positive_foreshore,
             lidar_interpolation_method=self.get_instruction_general(
                 key="interpolation", subkey="lidar"
             ),
