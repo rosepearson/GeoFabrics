@@ -509,13 +509,13 @@ class MarineBathymetryPoints:
         if self._z is None:
             # map depth to elevation
             if self.is_depth:
-            self._z =  = self._points.apply(
-                lambda row: row["geometry"].z, axis=1
-            ).to_numpy() * -1
-        else:
-            self._z =  = self._points.apply(
-                lambda row: row["geometry"].z, axis=1
-            ).to_numpy()
+                self._z = self._points.apply(
+                    lambda row: row["geometry"].z, axis=1
+                ).to_numpy() * -1
+            else:
+                self._z = self._points.apply(
+                    lambda row: row["geometry"].z, axis=1
+                ).to_numpy()
         return self._z
     
     def sample_contours(self, resolution: float) -> numpy.ndarray:
