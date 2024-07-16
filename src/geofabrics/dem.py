@@ -762,10 +762,9 @@ class HydrologicallyConditionedDem(DemBase):
 
         tree = scipy.spatial.KDTree(xy_in, leafsize=leaf_size)  # build the tree
         tree_index_list = tree.query(
-            xy_out, r=number_neighbours, eps=eps
-        )  # , eps=0.2)
+            xy_out, k=number_neighbours, eps=eps
+        )[1]  # , eps=0.2)
         z_out = numpy.zeros(len(xy_out), dtype=raster_type)
-
         for i, (near_indices, point) in enumerate(zip(tree_index_list, xy_out)):
             if len(near_indices) == 0:  # Set NaN if no values in search region
                 z_out[i] = numpy.nan
