@@ -680,6 +680,113 @@ class HydrologicallyConditionedDem(DemBase):
 
         return offshore_edge
 
+    def interpolate_ocean_chunked(
+        self,
+        bathy_contours,
+        cache_path: pathlib.Path,
+    ) -> xarray.Dataset:
+        """Create a 'raw'' DEM from a set of tiled LiDAR files. Read these in over
+        non-overlapping chunks and then combine"""
+        
+        raster_options = {
+            "raster_type": geometry.RASTER_TYPE,
+            "elevation_range": self.elevation_range,
+            "radius": 3000,
+            "method": "linear",
+            "crs": self.catchment_geometry.crs,
+        }
+
+        # Save point cloud as LAZ file
+        offshore_edge_points = self._sample_offshore_edge(
+            self.catchment_geometry.resolution
+        )
+        offshore_points = bathy_contours.sample_contours(
+            self.catchment_geometry.resolution
+        )
+        if len(offshore_points) == 0:
+            offshore_points = offshore_edge_points
+        else:
+            offshore_points = numpy.concatenate([offshore_edge_points, offshore_points])
+        crs = self.catchment_geometry.crs
+        lidar_file = cache_path / "combined_offshore_points.laz"
+        pdal_pipeline_instructions = [
+            {
+                "type": "writers.las",
+                "a_srs": f"EPSG:"
+                f"{crs['horizontal']}+"
+                f"{crs['vertical']}",
+                "filename": str(lidar_file),
+                "compression": "laszip",
+            }
+        ]
+        pdal_pipeline = pdal.Pipeline(
+            json.dumps(pdal_pipeline_instructions), [offshore_points]
+        )
+        pdal_pipeline.execute()
+        
+
+        assert self.chunk_size is not None, "chunk_size must be defined"
+
+        # get chunking information
+        chunked_dim_x, chunked_dim_y = self._set_up_chunks()
+        elevations = {}
+
+        self.logger.info(f"Preparing {[len(chunked_dim_x), len(chunked_dim_y)]} chunks")
+
+        # Define the region to rasterise
+        region_to_rasterise = self.catchment_geometry.offshore
+
+        # cycle through index chunks - and collect in a delayed array
+        self.logger.info("Running over ocean chunked")
+        delayed_chunked_matrix = []
+        for i, dim_y in enumerate(chunked_dim_y):
+            delayed_chunked_x = []
+            for j, dim_x in enumerate(chunked_dim_x):
+                self.logger.debug(f"\tLiDAR chunk {[i, j]}")
+
+                # Define the region to tile
+                chunk_region_to_tile = self._define_chunk_region(
+                    region_to_rasterise=region_to_rasterise,
+                    dim_x=dim_x,
+                    dim_y=dim_y,
+                    radius=raster_options["radius"],
+                )
+                # Load in points
+                chunk_points = delayed_load_tiles_in_chunk(
+                    lidar_files=[lidar_file],
+                    source_crs=raster_options["crs"],
+                    chunk_region_to_tile=chunk_region_to_tile,
+                    crs=raster_options["crs"],
+                )
+                # Rasterise tiles
+                delayed_chunked_x.append(
+                    dask.array.from_delayed(
+                        delayed_elevation_over_chunk(
+                            dim_x=dim_x,
+                            dim_y=dim_y,
+                            tile_points=chunk_points,
+                            options=raster_options,
+                        ),
+                        shape=(len(dim_y), len(dim_x)),
+                        dtype=raster_options["raster_type"],
+                    )
+                )
+            delayed_chunked_matrix.append(delayed_chunked_x)
+
+        # Combine chunks into a dataset
+        elevations = dask.array.block(delayed_chunked_matrix)
+        
+        # Update DEM layers - copy only where no offshore data
+        no_values_mask = self._dem.z.isnull() & clip_mask(
+            self._dem.z, region_to_rasterise, self.chunk_size, )
+        no_values_mask.load()
+        self._dem['z'] = self._dem.z.where(~no_values_mask, elevations)
+        mask = ~(no_values_mask & self._dem.z.notnull())
+        self._dem["data_source"] = self._dem.data_source.where(
+            mask,
+            self.SOURCE_CLASSIFICATION['ocean bathymetry'],
+        )
+
     def _interpolate_elevation_points(
         self,
         point_cloud: numpy.ndarray,
@@ -2048,6 +2155,7 @@ class PatchDem(LidarBase):
         catchment_geometry: geometry.CatchmentGeometry,
         patch_on_top: bool,
         drop_patch_offshore: bool,
+        zero_positive_foreshore: bool,
         buffer_cells: int,
         initial_dem_path: str | pathlib.Path,
         elevation_range: list | None = None,
@@ -2063,6 +2171,7 @@ class PatchDem(LidarBase):
         self.logger = logging.getLogger(f"{__name__}.{self.__class__.__name__}")
 
         self.drop_patch_offshore = drop_patch_offshore
+        self.zero_positive_foreshore = zero_positive_foreshore
         self.patch_on_top = patch_on_top
         self.buffer_cells = buffer_cells
         # Read in the DEM raster
@@ -2213,7 +2322,7 @@ class PatchDem(LidarBase):
             self.SOURCE_CLASSIFICATION[label],
         )
 
-        if label == "coarse DEM":
+        if label == "coarse DEM" and self.zero_positive_foreshore:
             # Ensure Coarse DEM values along the foreshore are less than zero
             foreshore = self.catchment_geometry.foreshore
             if foreshore.area.sum() > 0:
@@ -2876,6 +2985,20 @@ def elevation_from_points(
                     tree=tree,
                     point_cloud=point_cloud,
                 )
+            elif options["method"] == "cubic":
+                z_out[i] = calculate_cubic(
+                    near_indices=near_indices,
+                    point=point,
+                    tree=tree,
+                    point_cloud=point_cloud,
+                )
+            elif options["method"] == "rbf":
+                z_out[i] = calculate_rbf(
+                    near_indices=near_indices,
+                    point=point,
+                    tree=tree,
+                    point_cloud=point_cloud,
+                )
             elif options["method"] == "min":
                 z_out[i] = numpy.min(point_cloud["Z"][near_indices])
             elif options["method"] == "max":
@@ -2985,6 +3108,21 @@ def calculate_cubic(
     if numpy.isnan(value) and len(near_indices) > 0:
         value = numpy.mean(point_cloud["Z"][near_indices])
     return value
+
+def calculate_rbf(
+    near_indices: list,
+    point: numpy.ndarray,
+    tree: scipy.spatial.KDTree,
+    point_cloud: numpy.ndarray
+):
+    rbf_function = scipy.interpolate.Rbf(
+        point_cloud["X"],
+        point_cloud["Y"],
+        point_cloud["Z"],
+        function="thin_plate_spline",
+    )
+    value = rbf_function(point)
+    return value 
 
 
 def select_lidar_files(

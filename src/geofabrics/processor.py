@@ -1004,6 +1004,7 @@ class RawLidarDemGenerator(BaseProcessor):
                     catchment_geometry=self.catchment_geometry,
                     patch_on_top=False,
                     drop_patch_offshore=True,
+                    zero_positive_foreshore=zero_positive_foreshore,
                     initial_dem_path=cached_file,
                     elevation_range=self.get_instruction_general("elevation_range"),
                     chunk_size=self.get_processing_instructions("chunk_size"),
@@ -1085,6 +1086,7 @@ class HydrologicDemGenerator(BaseProcessor):
         hydrologic_dem: dem.HydrologicallyConditionedDem,
         area_threshold: float,
         catchment_dirs: pathlib.Path,
+        temp_folder: pathlib.Path,
     ):
         """Add in any bathymetry data - ocean or river"""
 
@@ -1158,7 +1160,11 @@ class HydrologicDemGenerator(BaseProcessor):
                     exclusion_extent=hydrologic_dem.raw_extents,
                 )
                 # Interpolate
-                hydrologic_dem.interpolate_ocean_points_as_patch(ocean_contours)
+                hydrologic_dem.interpolate_ocean_chunked(
+                    ocean_contours=ocean_contours,
+                    cache_path=temp_folder,
+                                                         )
+                #hydrologic_dem.interpolate_ocean_points_as_patch(ocean_contours)
         # Check for waterways and interpolate if they exist
         if "waterways" in self.instructions["data_paths"]:
             # Load in all open and closed waterway elevation and extents in one go
@@ -1304,6 +1310,22 @@ class HydrologicDemGenerator(BaseProcessor):
 
         # create the catchment geometry object
         self.catchment_geometry = self.create_catchment()
+        
+        # Create folder for caching raw DEM files during DEM generation
+        subfolder = self.get_instruction_path("subfolder")
+        temp_folder = subfolder / "temp" / f"{self.get_resolution()}m_results"
+        self.logger.info(f"Create folder {temp_folder} for temporary files")
+        if temp_folder.exists():
+            try:
+                gc.collect()
+                shutil.rmtree(temp_folder)
+            except (Exception, PermissionError) as caught_exception:
+                logging.warning(
+                    f"Caught error {caught_exception} during rmtree of "
+                    f"{temp_folder}. Supressing error. You will have to "
+                    f"manually delete {temp_folder}."
+                )
+        temp_folder.mkdir(parents=True, exist_ok=True)
 
         # Setup Dask cluster and client - LAZY SAVE LIDAR DEM
         cluster_kwargs = {
@@ -1331,6 +1353,7 @@ class HydrologicDemGenerator(BaseProcessor):
             # Check for and add any bathymetry information
             self.add_hydrological_features(
                 hydrologic_dem=hydrologic_dem,
+                temp_folder=temp_folder,
                 area_threshold=area_threshold,
                 catchment_dirs=self.get_instruction_path("extents"),
             )
