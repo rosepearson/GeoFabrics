@@ -442,7 +442,7 @@ class MarineBathymetryPoints:
         points_file: str,
         catchment_geometry: CatchmentGeometry,
         exclusion_extent=None,
-        is_depth = False,
+        is_depth=False,
     ):
         self.logger = logging.getLogger(f"{__name__}.{self.__class__.__name__}")
         self._points = geopandas.read_file(points_file)
@@ -464,7 +464,7 @@ class MarineBathymetryPoints:
             )
         )
 
-        '''if exclusion_extent is not None:
+        """if exclusion_extent is not None:
             exclusion_extent = exclusion_extent.clip(
                 self.catchment_geometry.offshore, keep_geom_type=True
             )
@@ -474,7 +474,7 @@ class MarineBathymetryPoints:
         else:
             self._extent = self.catchment_geometry.offshore
         self._points = self._points.clip(self._extent, keep_geom_type=True)
-        self._points = self._points.reset_index(drop=True)'''
+        self._points = self._points.reset_index(drop=True)"""
 
     @property
     def points(self):
@@ -509,15 +509,16 @@ class MarineBathymetryPoints:
         if self._z is None:
             # map depth to elevation
             if self.is_depth:
-                self._z = self._points.apply(
-                    lambda row: row["geometry"].z, axis=1
-                ).to_numpy() * -1
+                self._z = (
+                    self._points.apply(lambda row: row["geometry"].z, axis=1).to_numpy()
+                    * -1
+                )
             else:
                 self._z = self._points.apply(
                     lambda row: row["geometry"].z, axis=1
                 ).to_numpy()
         return self._z
-    
+
     def sample_contours(self, resolution: float) -> numpy.ndarray:
         """Return points - rename in future."""
         points = numpy.empty(
@@ -528,22 +529,22 @@ class MarineBathymetryPoints:
         # Extract the x, y and z values from the Shapely MultiPoints and possibly a
         # depth column
         points["X"] = self._points.apply(
-                lambda row: row["geometry"].x, axis=1
-            ).to_numpy()
+            lambda row: row["geometry"].x, axis=1
+        ).to_numpy()
         points["Y"] = self._points.apply(
-                lambda row: row["geometry"].y, axis=1
-            ).to_numpy()
+            lambda row: row["geometry"].y, axis=1
+        ).to_numpy()
         if self.is_depth:
-            points["Z"] = self._points.apply(
-                lambda row: row["geometry"].z, axis=1
-            ).to_numpy() * -1
+            points["Z"] = (
+                self._points.apply(lambda row: row["geometry"].z, axis=1).to_numpy()
+                * -1
+            )
         else:
             points["Z"] = self._points.apply(
                 lambda row: row["geometry"].z, axis=1
             ).to_numpy()
 
         return points
-        
 
 
 class EstimatedElevationPoints:

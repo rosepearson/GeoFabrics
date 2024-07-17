@@ -903,7 +903,9 @@ class RawLidarDemGenerator(BaseProcessor):
 
         # Get the drop_offshore_lidar selection for each dataset
         drop_offshore_lidar = self.get_instruction_general("drop_offshore_lidar")
-        zero_positive_foreshore = self.get_instruction_general("zero_positive_foreshore")
+        zero_positive_foreshore = self.get_instruction_general(
+            "zero_positive_foreshore"
+        )
         if isinstance(drop_offshore_lidar, bool):
             drop_offshore_lidar_bool = drop_offshore_lidar
             drop_offshore_lidar = {}
@@ -1163,8 +1165,8 @@ class HydrologicDemGenerator(BaseProcessor):
                 hydrologic_dem.interpolate_ocean_chunked(
                     ocean_points=ocean_points,
                     cache_path=temp_folder,
-                                                         )
-                #hydrologic_dem.interpolate_ocean_points_as_patch(ocean_contours)
+                )
+                # hydrologic_dem.interpolate_ocean_points_as_patch(ocean_contours)
         # Check for waterways and interpolate if they exist
         if "waterways" in self.instructions["data_paths"]:
             # Load in all open and closed waterway elevation and extents in one go
@@ -1310,7 +1312,7 @@ class HydrologicDemGenerator(BaseProcessor):
 
         # create the catchment geometry object
         self.catchment_geometry = self.create_catchment()
-        
+
         # Create folder for caching raw DEM files during DEM generation
         subfolder = self.get_instruction_path("subfolder")
         temp_folder = subfolder / "temp" / f"{self.get_resolution()}m_results"
