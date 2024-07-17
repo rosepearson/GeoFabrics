@@ -1154,14 +1154,14 @@ class HydrologicDemGenerator(BaseProcessor):
 
             # Load in bathymetry
             if len(ocean_points_dirs) > 0:
-                ocean_contours = geometry.MarineBathymetryPoints(
+                ocean_points = geometry.MarineBathymetryPoints(
                     ocean_points_dirs[0],
                     self.catchment_geometry,
                     exclusion_extent=hydrologic_dem.raw_extents,
                 )
                 # Interpolate
                 hydrologic_dem.interpolate_ocean_chunked(
-                    ocean_contours=ocean_contours,
+                    ocean_points=ocean_points,
                     cache_path=temp_folder,
                                                          )
                 #hydrologic_dem.interpolate_ocean_points_as_patch(ocean_contours)
@@ -1378,6 +1378,15 @@ class HydrologicDemGenerator(BaseProcessor):
                 )
                 pathlib.Path(self.get_instruction_path("result_dem")).unlink()
                 raise caught_exception
+            try:
+                gc.collect()
+                shutil.rmtree(temp_folder)
+            except (Exception, PermissionError) as caught_exception:
+                logging.warning(
+                    f"Caught error {caught_exception} during rmtree of "
+                    "temp_folder. Supressing error. You will have to "
+                    f"manually delete {temp_folder}."
+                )
         if self.debug:
             # Record the parameter used during execution - append to existing
             with open(

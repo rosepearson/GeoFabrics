@@ -496,6 +496,88 @@ class DemBase(abc.ABC):
 
         return dense_extents
 
+    def _chunks_from_dem(self, chunk_size, dem: xarray.Dataset) -> (list, list):
+        """Define the chunks to break the catchment into when reading in and
+        downsampling LiDAR.
+
+        Parameters
+        ----------
+
+        chunk_size
+            The size in pixels of each chunk.
+        """
+
+        dim_x_all = dem.x.data
+        dim_y_all = dem.y.data
+
+        # Determine the number of chunks
+        n_chunks_x = int(numpy.ceil(len(dim_x_all) / chunk_size))
+        n_chunks_y = int(numpy.ceil(len(dim_y_all) / chunk_size))
+
+        # Determine x coordinates rounded up to the nearest chunk
+        dim_x = []
+        for i in range(n_chunks_x):
+            if i + 1 < n_chunks_x:
+                # Add full sized chunk
+                dim_x.append(dim_x_all[i * chunk_size : (i + 1) * chunk_size])
+            else:
+                # Add rest of array
+                dim_x.append(dim_x_all[i * chunk_size :])
+
+        # Determine y coordinates rounded up to the nearest chunk
+        dim_y = []
+        for i in range(n_chunks_y):
+            if i + 1 < n_chunks_y:
+                # Add full sized chunk
+                dim_y.append(dim_y_all[i * chunk_size : (i + 1) * chunk_size])
+            else:
+                # Add rest of array
+                dim_y.append(dim_y_all[i * chunk_size :])
+
+        return dim_x, dim_y
+
+    def _define_chunk_region(
+        self,
+        region_to_rasterise: geopandas.GeoDataFrame,
+        dim_x: numpy.ndarray,
+        dim_y: numpy.ndarray,
+        radius: float,
+    ):
+        """Define the region to rasterise within a single chunk."""
+        # Define the region to tile
+        chunk_geometry = geopandas.GeoDataFrame(
+            {
+                "geometry": [
+                    shapely.geometry.Polygon(
+                        [
+                            (dim_x.min(), dim_y.min()),
+                            (dim_x.max(), dim_y.min()),
+                            (dim_x.max(), dim_y.max()),
+                            (dim_x.min(), dim_y.max()),
+                        ]
+                    )
+                ]
+            },
+            crs=self.catchment_geometry.crs["horizontal"],
+        )
+
+        # Define region to rasterise inside the chunk area
+        if region_to_rasterise.area.sum() > 0:
+            chunk_region_to_tile = geopandas.GeoDataFrame(
+                geometry=region_to_rasterise.buffer(radius).clip(
+                    chunk_geometry.buffer(radius), keep_geom_type=True
+                )
+            )
+        else:
+            chunk_region_to_tile = region_to_rasterise
+        # remove any subpixel polygons
+        chunk_region_to_tile = chunk_region_to_tile[
+            chunk_region_to_tile.area
+            > self.catchment_geometry.resolution * self.catchment_geometry.resolution
+        ]
+
+        return chunk_region_to_tile
+
 
 class HydrologicallyConditionedDem(DemBase):
     """A class to manage loading in an already created and saved dense DEM that has yet
@@ -682,32 +764,32 @@ class HydrologicallyConditionedDem(DemBase):
 
     def interpolate_ocean_chunked(
         self,
-        bathy_contours,
+        ocean_points,
         cache_path: pathlib.Path,
     ) -> xarray.Dataset:
         """Create a 'raw'' DEM from a set of tiled LiDAR files. Read these in over
         non-overlapping chunks and then combine"""
         
+        crs = self.catchment_geometry.crs
         raster_options = {
             "raster_type": geometry.RASTER_TYPE,
-            "elevation_range": self.elevation_range,
+            "elevation_range": None,
             "radius": 3000,
             "method": "linear",
-            "crs": self.catchment_geometry.crs,
+            "crs": crs,
         }
 
         # Save point cloud as LAZ file
         offshore_edge_points = self._sample_offshore_edge(
             self.catchment_geometry.resolution
         )
-        offshore_points = bathy_contours.sample_contours(
+        offshore_points = ocean_points.sample_contours(
             self.catchment_geometry.resolution
         )
         if len(offshore_points) == 0:
             offshore_points = offshore_edge_points
         else:
             offshore_points = numpy.concatenate([offshore_edge_points, offshore_points])
-        crs = self.catchment_geometry.crs
         lidar_file = cache_path / "combined_offshore_points.laz"
         pdal_pipeline_instructions = [
             {
@@ -728,7 +810,7 @@ class HydrologicallyConditionedDem(DemBase):
         assert self.chunk_size is not None, "chunk_size must be defined"
 
         # get chunking information
-        chunked_dim_x, chunked_dim_y = self._set_up_chunks()
+        chunked_dim_x, chunked_dim_y = self._chunks_from_dem(self.chunk_size, self._dem)
         elevations = {}
 
         self.logger.info(f"Preparing {[len(chunked_dim_x), len(chunked_dim_y)]} chunks")
@@ -778,7 +860,7 @@ class HydrologicallyConditionedDem(DemBase):
         
         # Update DEM layers - copy only where no offshore data
         no_values_mask = self._dem.z.isnull() & clip_mask(
-            self._dem.z, region_to_rasterise, self.chunk_size, )
+            self._dem.z, region_to_rasterise.geometry, self.chunk_size, )
         no_values_mask.load()
         self._dem['z'] = self._dem.z.where(~no_values_mask, elevations)
         mask = ~(no_values_mask & self._dem.z.notnull())
@@ -786,6 +868,7 @@ class HydrologicallyConditionedDem(DemBase):
             mask,
             self.SOURCE_CLASSIFICATION['ocean bathymetry'],
         )
+        self._write_netcdf_conventions_in_place(self._dem, self.catchment_geometry.crs)
 
     def _interpolate_elevation_points(
         self,
@@ -1307,88 +1390,6 @@ class LidarBase(DemBase):
         # Ensure positively increasing indices as required by some programs
         self._dem = self._ensure_positive_indexing(self._dem)
         return self._dem
-
-    def _chunks_from_dem(self, chunk_size, dem: xarray.Dataset) -> (list, list):
-        """Define the chunks to break the catchment into when reading in and
-        downsampling LiDAR.
-
-        Parameters
-        ----------
-
-        chunk_size
-            The size in pixels of each chunk.
-        """
-
-        dim_x_all = dem.x.data
-        dim_y_all = dem.y.data
-
-        # Determine the number of chunks
-        n_chunks_x = int(numpy.ceil(len(dim_x_all) / chunk_size))
-        n_chunks_y = int(numpy.ceil(len(dim_y_all) / chunk_size))
-
-        # Determine x coordinates rounded up to the nearest chunk
-        dim_x = []
-        for i in range(n_chunks_x):
-            if i + 1 < n_chunks_x:
-                # Add full sized chunk
-                dim_x.append(dim_x_all[i * chunk_size : (i + 1) * chunk_size])
-            else:
-                # Add rest of array
-                dim_x.append(dim_x_all[i * chunk_size :])
-
-        # Determine y coordinates rounded up to the nearest chunk
-        dim_y = []
-        for i in range(n_chunks_y):
-            if i + 1 < n_chunks_y:
-                # Add full sized chunk
-                dim_y.append(dim_y_all[i * chunk_size : (i + 1) * chunk_size])
-            else:
-                # Add rest of array
-                dim_y.append(dim_y_all[i * chunk_size :])
-
-        return dim_x, dim_y
-
-    def _define_chunk_region(
-        self,
-        region_to_rasterise: geopandas.GeoDataFrame,
-        dim_x: numpy.ndarray,
-        dim_y: numpy.ndarray,
-        radius: float,
-    ):
-        """Define the region to rasterise within a single chunk."""
-        # Define the region to tile
-        chunk_geometry = geopandas.GeoDataFrame(
-            {
-                "geometry": [
-                    shapely.geometry.Polygon(
-                        [
-                            (dim_x.min(), dim_y.min()),
-                            (dim_x.max(), dim_y.min()),
-                            (dim_x.max(), dim_y.max()),
-                            (dim_x.min(), dim_y.max()),
-                        ]
-                    )
-                ]
-            },
-            crs=self.catchment_geometry.crs["horizontal"],
-        )
-
-        # Define region to rasterise inside the chunk area
-        if region_to_rasterise.area.sum() > 0:
-            chunk_region_to_tile = geopandas.GeoDataFrame(
-                geometry=region_to_rasterise.buffer(radius).clip(
-                    chunk_geometry.buffer(radius), keep_geom_type=True
-                )
-            )
-        else:
-            chunk_region_to_tile = region_to_rasterise
-        # remove any subpixel polygons
-        chunk_region_to_tile = chunk_region_to_tile[
-            chunk_region_to_tile.area
-            > self.catchment_geometry.resolution * self.catchment_geometry.resolution
-        ]
-
-        return chunk_region_to_tile
 
     def _tile_index_column_name(
         self,
