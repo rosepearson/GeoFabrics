@@ -687,7 +687,7 @@ class HydrologicallyConditionedDem(DemBase):
     ) -> xarray.Dataset:
         """Create a 'raw'' DEM from a set of tiled LiDAR files. Read these in over
         non-overlapping chunks and then combine"""
-        
+
         raster_options = {
             "raster_type": geometry.RASTER_TYPE,
             "elevation_range": self.elevation_range,
@@ -712,9 +712,7 @@ class HydrologicallyConditionedDem(DemBase):
         pdal_pipeline_instructions = [
             {
                 "type": "writers.las",
-                "a_srs": f"EPSG:"
-                f"{crs['horizontal']}+"
-                f"{crs['vertical']}",
+                "a_srs": f"EPSG:" f"{crs['horizontal']}+" f"{crs['vertical']}",
                 "filename": str(lidar_file),
                 "compression": "laszip",
             }
@@ -723,7 +721,6 @@ class HydrologicallyConditionedDem(DemBase):
             json.dumps(pdal_pipeline_instructions), [offshore_points]
         )
         pdal_pipeline.execute()
-        
 
         assert self.chunk_size is not None, "chunk_size must be defined"
 
@@ -775,16 +772,19 @@ class HydrologicallyConditionedDem(DemBase):
 
         # Combine chunks into a dataset
         elevations = dask.array.block(delayed_chunked_matrix)
-        
+
         # Update DEM layers - copy only where no offshore data
         no_values_mask = self._dem.z.isnull() & clip_mask(
-            self._dem.z, region_to_rasterise, self.chunk_size, )
+            self._dem.z,
+            region_to_rasterise,
+            self.chunk_size,
+        )
         no_values_mask.load()
-        self._dem['z'] = self._dem.z.where(~no_values_mask, elevations)
+        self._dem["z"] = self._dem.z.where(~no_values_mask, elevations)
         mask = ~(no_values_mask & self._dem.z.notnull())
         self._dem["data_source"] = self._dem.data_source.where(
             mask,
-            self.SOURCE_CLASSIFICATION['ocean bathymetry'],
+            self.SOURCE_CLASSIFICATION["ocean bathymetry"],
         )
 
     def _interpolate_elevation_points(
@@ -853,14 +853,12 @@ class HydrologicallyConditionedDem(DemBase):
     ) -> numpy.ndarray:
         """Interpolate the elevation points at the specified locations using the
         specified method."""
-        
+
         xy_in = numpy.empty((len(point_cloud), 2))
         xy_in[:, 0] = point_cloud["X"]
         xy_in[:, 1] = point_cloud["Y"]
 
-        xy_out = numpy.concatenate(
-            [[flat_x_array], [flat_y_array]], axis=0
-        ).transpose()
+        xy_out = numpy.concatenate([[flat_x_array], [flat_y_array]], axis=0).transpose()
 
         leaf_size = 10
         radius = 3000
@@ -868,9 +866,7 @@ class HydrologicallyConditionedDem(DemBase):
         raster_type = geometry.RASTER_TYPE
 
         tree = scipy.spatial.KDTree(xy_in, leafsize=leaf_size)  # build the tree
-        tree_index_list = tree.query_ball_point(
-            xy_out, r=radius, eps=eps
-        )  # , eps=0.2)
+        tree_index_list = tree.query_ball_point(xy_out, r=radius, eps=eps)  # , eps=0.2)
         z_out = numpy.zeros(len(xy_out), dtype=raster_type)
         for i, (near_indices, point) in enumerate(zip(tree_index_list, xy_out)):
             if len(near_indices) == 0:  # Set NaN if no values in search region
@@ -1779,7 +1775,11 @@ class RawDem(LidarBase):
 
         # If drop offshore LiDAR ensure the foreshore values are 0 or negative
         foreshore = self.catchment_geometry.foreshore
-        if self.drop_offshore_lidar and foreshore.area.sum() > 0 and self.zero_positive_foreshore:
+        if (
+            self.drop_offshore_lidar
+            and foreshore.area.sum() > 0
+            and self.zero_positive_foreshore
+        ):
             buffer_radius = self.catchment_geometry.resolution * numpy.sqrt(2)
             buffered_foreshore = (
                 foreshore.buffer(buffer_radius)
@@ -3074,6 +3074,7 @@ def calculate_linear(
         linear = numpy.mean(point_cloud["Z"][near_indices])
     return linear
 
+
 def calculate_cubic(
     near_indices: list,
     point: numpy.ndarray,
@@ -3109,11 +3110,12 @@ def calculate_cubic(
         value = numpy.mean(point_cloud["Z"][near_indices])
     return value
 
+
 def calculate_rbf(
     near_indices: list,
     point: numpy.ndarray,
     tree: scipy.spatial.KDTree,
-    point_cloud: numpy.ndarray
+    point_cloud: numpy.ndarray,
 ):
     rbf_function = scipy.interpolate.Rbf(
         point_cloud["X"],
@@ -3122,7 +3124,7 @@ def calculate_rbf(
         function="thin_plate_spline",
     )
     value = rbf_function(point)
-    return value 
+    return value
 
 
 def select_lidar_files(
