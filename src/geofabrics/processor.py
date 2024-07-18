@@ -1167,6 +1167,9 @@ class HydrologicDemGenerator(BaseProcessor):
                     cache_path=temp_folder,
                 )
                 # hydrologic_dem.interpolate_ocean_points_as_patch(ocean_contours)
+                temp_file = temp_folder / "raw_dem_ocean_points.nc"
+                self.logger.info(f"Save temp raw DEM to netCDF: {temp_file}")
+                hydrologic_dem.save_and_load_dem(temp_file)
         # Check for waterways and interpolate if they exist
         if "waterways" in self.instructions["data_paths"]:
             # Load in all open and closed waterway elevation and extents in one go

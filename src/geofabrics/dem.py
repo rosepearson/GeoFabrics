@@ -398,6 +398,21 @@ class DemBase(abc.ABC):
             )
             raise caught_exception
 
+    def save_and_load_dem(
+        self,
+        filename: pathlib.Path,
+    ):
+        """Update the saved file cache for the DEM (self._dem) as a netCDF file."""
+
+        self.logger.info(
+            "In LidarBase.save_and_load_dem saving _dem as NetCDF file to "
+            f"{filename}"
+        )
+
+        self.save_dem(filename=filename, dem=self._dem)
+        del self._dem
+        self._dem = self._load_dem(filename=filename)
+
     @staticmethod
     def _ensure_positive_indexing(
         dem: xarray.core.dataarray.DataArray,
@@ -822,7 +837,6 @@ class HydrologicallyConditionedDem(DemBase):
             delayed_chunked_x = []
             for j, dim_x in enumerate(chunked_dim_x):
                 self.logger.debug(f"\tLiDAR chunk {[i, j]}")
-
                 # Define the region to tile
                 chunk_region_to_tile = self._define_chunk_region(
                     region_to_rasterise=region_to_rasterise,
@@ -1538,21 +1552,6 @@ class LidarBase(DemBase):
         raise NotImplementedError(
             "_add_lidar_no_chunking must be instantiated in the " "child class"
         )
-
-    def save_and_load_dem(
-        self,
-        filename: pathlib.Path,
-    ):
-        """Update the saved file cache for the DEM (self._dem) as a netCDF file."""
-
-        self.logger.info(
-            "In LidarBase.save_and_load_dem saving _dem as NetCDF file to "
-            f"{filename}"
-        )
-
-        self.save_dem(filename=filename, dem=self._dem)
-        del self._dem
-        self._dem = self._load_dem(filename=filename)
 
 
 class RawDem(LidarBase):
@@ -3167,17 +3166,18 @@ def load_tiles_in_chunk(
     lidar_points = []
 
     # Cycle through each file loading it in an adding it to a numpy array
-    for lidar_file in lidar_files:
-        logger.debug(f"Loading in file {lidar_file}")
+    if len(chunk_region_to_tile) > 0 and chunk_region_to_tile.area.sum() > 0:
+        for lidar_file in lidar_files:
+            logger.debug(f"Loading in file {lidar_file}")
 
-        # read in the LiDAR file
-        pdal_pipeline = read_file_with_pdal(
-            lidar_file=lidar_file,
-            region_to_tile=chunk_region_to_tile,
-            source_crs=source_crs,
-            crs=crs,
-        )
-        lidar_points.append(pdal_pipeline.arrays[0])
+            # read in the LiDAR file
+            pdal_pipeline = read_file_with_pdal(
+                lidar_file=lidar_file,
+                region_to_tile=chunk_region_to_tile,
+                source_crs=source_crs,
+                crs=crs,
+            )
+            lidar_points.append(pdal_pipeline.arrays[0])
     if len(lidar_points) > 0:
         lidar_points = numpy.concatenate(lidar_points)
     return lidar_points
