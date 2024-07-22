@@ -1496,6 +1496,7 @@ class PatchDemGenerator(BaseProcessor):
                 chunk_size=self.get_processing_instructions("chunk_size"),
                 patch_on_top=self.get_patch_instruction("patch_on_top"),
                 drop_patch_offshore=self.get_patch_instruction("drop_patch_offshore"),
+                zero_positive_foreshore = self.get_instruction_general("zero_positive_foreshore")
                 buffer_cells=self.get_instruction_general("lidar_buffer"),
                 elevation_range=None,
             )
