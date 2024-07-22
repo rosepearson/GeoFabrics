@@ -26,6 +26,7 @@ from . import geometry
 
 RBF_CACHE_SIZE = 10000
 
+
 def chunk_mask(mask, chunk_size):
     arrs = []
     for i in range(0, mask.shape[0], chunk_size):
@@ -3140,11 +3141,11 @@ def calculate_rbf(
                 "RBF interpolation. Apply cubic."
             )
             value = calculate_cubic(
-                    near_indices=near_indices,
-                    point=point,
-                    tree=tree,
-                    point_cloud=point_cloud,
-                )
+                near_indices=near_indices,
+                point=point,
+                tree=tree,
+                point_cloud=point_cloud,
+            )
     else:
         logger.warning(
             "Too many or few points for RBF "
@@ -3152,12 +3153,12 @@ def calculate_rbf(
             "Instead applying cubic interpolation."
         )
         value = calculate_cubic(
-                near_indices=near_indices,
-                point=point,
-                tree=tree,
-                point_cloud=point_cloud,
-            )
-    
+            near_indices=near_indices,
+            point=point,
+            tree=tree,
+            point_cloud=point_cloud,
+        )
+
     if numpy.isnan(value) and len(near_indices) > 0:
         value = numpy.mean(point_cloud["Z"][near_indices])
     return value
