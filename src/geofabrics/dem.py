@@ -24,6 +24,8 @@ import scipy.spatial
 from . import geometry
 
 
+RBF_CACHE_SIZE = 10000
+
 def chunk_mask(mask, chunk_size):
     arrs = []
     for i in range(0, mask.shape[0], chunk_size):
@@ -672,7 +674,7 @@ class HydrologicallyConditionedDem(DemBase):
     @property
     def dem(self):
         """Return the combined DEM from tiles and any interpolated offshore values"""
-
+        self._write_netcdf_conventions_in_place(self._dem, self.catchment_geometry.crs)
         # Ensure valid name and increasing dimension indexing for the dem
         if (
             self.interpolation_method is not None
@@ -790,7 +792,7 @@ class HydrologicallyConditionedDem(DemBase):
             "raster_type": geometry.RASTER_TYPE,
             "elevation_range": None,
             "radius": 3000,
-            "method": "linear",
+            "method": "rbf",
             "crs": crs,
         }
 
@@ -3048,7 +3050,7 @@ def calculate_linear(
     """Calculate linear interpolation of the 'near_indices' points. Take the straight
     mean if the points are co-linear or too few for linear interpolation."""
 
-    if len(near_indices) > 3:  # There are enough points for a linear interpolation
+    if len(near_indices) >= 3:  # There are enough points for a linear interpolation
         try:
             linear = scipy.interpolate.griddata(
                 points=tree.data[near_indices],
@@ -3067,6 +3069,8 @@ def calculate_linear(
 
     elif len(near_indices) == 1:
         linear = point_cloud["Z"][near_indices][0]
+    elif len(near_indices) == 2:
+        linear = numpy.mean(point_cloud["Z"][near_indices])
     else:
         linear = numpy.nan
     # NaN will have occured if colinear points - replace with straight mean
@@ -3084,7 +3088,7 @@ def calculate_cubic(
     """Calculate linear interpolation of the 'near_indices' points. Take the straight
     mean if the points are co-linear or too few for linear interpolation."""
 
-    if len(near_indices) > 3:  # There are enough points for a linear interpolation
+    if len(near_indices) >= 3:  # There are enough points for a linear interpolation
         try:
             value = scipy.interpolate.griddata(
                 points=tree.data[near_indices],
@@ -3103,6 +3107,8 @@ def calculate_cubic(
 
     elif len(near_indices) == 1:
         value = point_cloud["Z"][near_indices][0]
+    elif len(near_indices) == 2:
+        linear = numpy.mean(point_cloud["Z"][near_indices])
     else:
         value = numpy.nan
     # NaN will have occured if colinear points - replace with straight mean
@@ -3117,13 +3123,43 @@ def calculate_rbf(
     tree: scipy.spatial.KDTree,
     point_cloud: numpy.ndarray,
 ):
-    rbf_function = scipy.interpolate.Rbf(
-        point_cloud["X"],
-        point_cloud["Y"],
-        point_cloud["Z"],
-        function="thin_plate_spline",
-    )
-    value = rbf_function(point)
+    logger = logging.getLogger(__name__)
+    logger.setLevel(logging.DEBUG)
+    if len(near_indices) < RBF_CACHE_SIZE and len(near_indices) >= 3:
+        try:
+            rbf_function = scipy.interpolate.RBFInterpolator(
+                y=tree.data[near_indices],
+                d=point_cloud["Z"][near_indices],
+                kernel="thin_plate_spline",
+                smoothing=0,
+            )
+            value = rbf_function([point])
+        except (ValueError, Exception) as caught_exception:
+            logger.warning(
+                f"Exception {caught_exception} during "
+                "RBF interpolation. Apply cubic."
+            )
+            value = calculate_cubic(
+                    near_indices=near_indices,
+                    point=point,
+                    tree=tree,
+                    point_cloud=point_cloud,
+                )
+    else:
+        logger.warning(
+            "Too many or few points for RBF "
+            f"interpolation: {len(near_indices)}. "
+            "Instead applying cubic interpolation."
+        )
+        value = calculate_cubic(
+                near_indices=near_indices,
+                point=point,
+                tree=tree,
+                point_cloud=point_cloud,
+            )
+    
+    if numpy.isnan(value) and len(near_indices) > 0:
+        value = numpy.mean(point_cloud["Z"][near_indices])
     return value
 
 
