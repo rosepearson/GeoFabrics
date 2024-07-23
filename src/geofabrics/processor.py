@@ -1162,7 +1162,7 @@ class HydrologicDemGenerator(BaseProcessor):
                     exclusion_extent=hydrologic_dem.raw_extents,
                 )
                 # Interpolate
-                hydrologic_dem.interpolate_ocean_chunked(
+                hydrologic_dem.interpolate_ocean_chunked_edge(
                     ocean_points=ocean_points,
                     cache_path=temp_folder,
                 )

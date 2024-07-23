@@ -887,6 +887,139 @@ class HydrologicallyConditionedDem(DemBase):
         )
         self._write_netcdf_conventions_in_place(self._dem, self.catchment_geometry.crs)
 
+    def interpolate_ocean_chunked_edge(
+        self,
+        ocean_points,
+        cache_path: pathlib.Path,
+    ) -> xarray.Dataset:
+        """Create a 'raw'' DEM from a set of tiled LiDAR files. Read these in over
+        non-overlapping chunks and then combine"""
+
+        crs = self.catchment_geometry.crs
+        raster_options = {
+            "raster_type": geometry.RASTER_TYPE,
+            "elevation_range": None,
+            "k_nearest_neighbours": 30,
+            "method": "rbf",
+            "crs": crs,
+        }
+        offshore_files = []
+        coast_edge_files = []
+
+        # Save point cloud as LAZ file
+        offshore_edge_points = self._sample_offshore_edge(
+            self.catchment_geometry.resolution
+        )
+        offshore_points = ocean_points.sample_contours(
+            self.catchment_geometry.resolution
+        )
+        if len(offshore_points) > 0:
+            lidar_file = cache_path / "offshore_points.laz"
+            pdal_pipeline_instructions = [
+                {
+                    "type": "writers.las",
+                    "a_srs": f"EPSG:" f"{crs['horizontal']}+" f"{crs['vertical']}",
+                    "filename": str(lidar_file),
+                    "compression": "laszip",
+                }
+            ]
+            pdal_pipeline = pdal.Pipeline(
+                json.dumps(pdal_pipeline_instructions), [offshore_points]
+            )
+            pdal_pipeline.execute()
+            offshore_files = offshore_files.append(lidar_file)
+        if len(offshore_edge_points) > 0:
+            lidar_file = cache_path / "coast_edge_points.laz"
+            pdal_pipeline_instructions = [
+                {
+                    "type": "writers.las",
+                    "a_srs": f"EPSG:" f"{crs['horizontal']}+" f"{crs['vertical']}",
+                    "filename": str(lidar_file),
+                    "compression": "laszip",
+                }
+            ]
+            pdal_pipeline = pdal.Pipeline(
+                json.dumps(pdal_pipeline_instructions), [offshore_edge_points]
+            )
+            pdal_pipeline.execute()
+            coast_edge_files = coast_edge_files.append(lidar_file)
+        
+        if len(coast_edge_files) == 0 and len(offshore_files) == 0:
+            self.logger.warning("No offshore or coast points.")
+            return
+
+        assert self.chunk_size is not None, "chunk_size must be defined"
+
+        # get chunking information
+        chunked_dim_x, chunked_dim_y = self._chunks_from_dem(self.chunk_size, self._dem)
+        elevations = {}
+
+        self.logger.info(f"Preparing {[len(chunked_dim_x), len(chunked_dim_y)]} chunks")
+
+        # Define the region to rasterise
+        region_to_rasterise = self.catchment_geometry.offshore
+
+        # cycle through index chunks - and collect in a delayed array
+        self.logger.info("Running over ocean chunked")
+        delayed_chunked_matrix = []
+        for i, dim_y in enumerate(chunked_dim_y):
+            delayed_chunked_x = []
+            for j, dim_x in enumerate(chunked_dim_x):
+                self.logger.debug(f"\tLiDAR chunk {[i, j]}")
+                # Define the region to tile
+                chunk_region_to_tile = self._define_chunk_region(
+                    region_to_rasterise=region_to_rasterise,
+                    dim_x=dim_x,
+                    dim_y=dim_y,
+                    radius=raster_options["radius"],
+                )
+                # Load in points
+                chunk_offshore_points = delayed_load_tiles_in_chunk(
+                    lidar_files=offshore_files,
+                    source_crs=raster_options["crs"],
+                    chunk_region_to_tile=chunk_region_to_tile,
+                    crs=raster_options["crs"],
+                )
+                chunk_coast_edge_points = delayed_load_tiles_in_chunk(
+                    lidar_files=coast_edge_files,
+                    source_crs=raster_options["crs"],
+                    chunk_region_to_tile=chunk_region_to_tile,
+                    crs=raster_options["crs"],
+                )
+                # Rasterise tiles
+                delayed_chunked_x.append(
+                    dask.array.from_delayed(
+                        delayed_elevation_over_chunk_nearest(
+                            dim_x=dim_x,
+                            dim_y=dim_y,
+                            points=chunk_offshore_points,
+                            edge_points=chunk_coast_edge_points,
+                            options=raster_options,
+                        ),
+                        shape=(len(dim_y), len(dim_x)),
+                        dtype=raster_options["raster_type"],
+                    )
+                )
+            delayed_chunked_matrix.append(delayed_chunked_x)
+
+        # Combine chunks into a dataset
+        elevations = dask.array.block(delayed_chunked_matrix)
+
+        # Update DEM layers - copy only where no offshore data
+        no_values_mask = self._dem.z.isnull() & clip_mask(
+            self._dem.z,
+            region_to_rasterise.geometry,
+            self.chunk_size,
+        )
+        no_values_mask.load()
+        self._dem["z"] = self._dem.z.where(~no_values_mask, elevations)
+        mask = ~(no_values_mask & self._dem.z.notnull())
+        self._dem["data_source"] = self._dem.data_source.where(
+            mask,
+            self.SOURCE_CLASSIFICATION["ocean bathymetry"],
+        )
+        self._write_netcdf_conventions_in_place(self._dem, self.catchment_geometry.crs)
+
     def _interpolate_elevation_points(
         self,
         point_cloud: numpy.ndarray,
@@ -2967,49 +3100,162 @@ def elevation_from_points(
     z_out = numpy.zeros(len(xy_out), dtype=options["raster_type"])
 
     for i, (near_indices, point) in enumerate(zip(tree_index_list, xy_out)):
+        
+        near_points=tree.data[near_indices]
+        near_z=point_cloud["Z"][near_indices]
+
         if len(near_indices) == 0:  # Set NaN if no values in search region
             z_out[i] = numpy.nan
         else:
             if options["method"] == "mean":
-                z_out[i] = numpy.mean(point_cloud["Z"][near_indices])
+                z_out[i] = numpy.mean(near_z)
             elif options["method"] == "median":
-                z_out[i] = numpy.median(point_cloud["Z"][near_indices])
+                z_out[i] = numpy.median(near_z)
             elif options["method"] == "idw":
                 z_out[i] = calculate_idw(
-                    near_indices=near_indices,
+                    near_points=near_points,
+                    near_z=near_z,
                     point=point,
-                    tree=tree,
-                    point_cloud=point_cloud,
                 )
             elif options["method"] == "linear":
                 z_out[i] = calculate_linear(
-                    near_indices=near_indices,
+                    near_points=near_points,
+                    near_z=near_z,
                     point=point,
-                    tree=tree,
-                    point_cloud=point_cloud,
                 )
             elif options["method"] == "cubic":
                 z_out[i] = calculate_cubic(
-                    near_indices=near_indices,
+                    near_points=near_points,
+                    near_z=near_z,
                     point=point,
-                    tree=tree,
-                    point_cloud=point_cloud,
                 )
             elif options["method"] == "rbf":
                 z_out[i] = calculate_rbf(
-                    near_indices=near_indices,
+                    near_points=near_points,
+                    near_z=near_z,
                     point=point,
-                    tree=tree,
-                    point_cloud=point_cloud,
                 )
             elif options["method"] == "min":
-                z_out[i] = numpy.min(point_cloud["Z"][near_indices])
+                z_out[i] = numpy.min(near_z)
             elif options["method"] == "max":
-                z_out[i] = numpy.max(point_cloud["Z"][near_indices])
+                z_out[i] = numpy.max(near_z)
             elif options["method"] == "std":
-                z_out[i] = numpy.std(point_cloud["Z"][near_indices])
+                z_out[i] = numpy.std(near_z)
             elif options["method"] == "count":
-                z_out[i] = numpy.len(point_cloud["Z"][near_indices])
+                z_out[i] = numpy.len(near_z)
+            else:
+                assert (
+                    False
+                ), f"An invalid lidar_interpolation_method of '{options['method']}' was"
+                " provided"
+    return z_out
+
+
+def elevation_from_points_nearest(
+    point_cloud: numpy.ndarray,
+    edge_point_cloud: numpy.ndarray,
+    xy_out,
+    options: dict,
+    eps: float = 0,
+    leaf_size: int = 10,
+) -> numpy.ndarray:
+    """Calculate DEM elevation values at the specified locations using the selected
+    approach. Options include: mean, median, and inverse distance weighing (IDW). This
+    implementation is based on the scipy.spatial.KDTree"""
+    
+    logger = logging.getLogger(__name__)
+    logger.setLevel(logging.DEBUG)
+    
+    if len(point_cloud) == 0 and len(edge_point_cloud) == 0:
+        logger.warning("No points provided. Returning NaN array.")
+        z_out = numpy.ones(len(xy_out), dtype=options["raster_type"]) * numpy.nan
+        return z_out
+    k = options["k_nearest_neighbours"]
+    if k > len(point_cloud) or k > len(edge_point_cloud):
+        logger.warning(
+            "Fewer points than the nearest k to search for provided: k = {k} "
+            f"> points {len(point_cloud)} or edge points "
+            f"{len(edge_point_cloud)}. Returning NaN array."
+            )
+        z_out = numpy.ones(len(xy_out), dtype=options["raster_type"]) * numpy.nan
+        return z_out
+    xy_in = numpy.empty((len(point_cloud), 2))
+    xy_in[:, 0] = point_cloud["X"]
+    xy_in[:, 1] = point_cloud["Y"]
+    tree = scipy.spatial.KDTree(xy_in, leafsize=leaf_size)  # build the tree
+    (tree_distance_list, tree_index_list) = tree.query(
+        xy_out, k=k, eps=eps
+    )
+
+    xy_in = numpy.empty((len(edge_point_cloud), 2))
+    xy_in[:, 0] = edge_point_cloud["X"]
+    xy_in[:, 1] = edge_point_cloud["Y"]
+    edge_tree = scipy.spatial.KDTree(xy_in, leafsize=leaf_size)  # build the tree
+    (edge_tree_distance_list, edge_tree_index_list) = edge_tree.query(
+        xy_out, k=k, eps=eps
+    )
+    
+    z_out = numpy.zeros(len(xy_out), dtype=options["raster_type"])
+
+    for i, point in enumerate(xy_out):
+        near_indices = tree_index_list[i]
+        if min(edge_tree_distance_list[i]) > max(tree_distance_list[i]):
+            # Exclude edge tree values as none are nearby
+            near_z = point_cloud["Z"][near_indices]
+            near_points = tree.data[near_indices]
+        else:
+            # Combine the edge and other values
+            edge_near_indices = edge_tree_index_list[i]
+            near_z = numpy.concat(
+                (point_cloud["Z"][near_indices],
+                 edge_point_cloud["Z"][edge_near_indices])
+                )
+            
+            near_points=numpy.concat(
+                (tree.data[near_indices],
+                 edge_tree.data[edge_near_indices])
+                )
+            
+        
+        if len(near_indices) == 0:  # Set NaN if no values in search region
+            z_out[i] = numpy.nan
+        else:
+            if options["method"] == "mean":
+                z_out[i] = numpy.mean(near_z)
+            elif options["method"] == "median":
+                z_out[i] = numpy.median(near_z)
+            elif options["method"] == "idw":
+                z_out[i] = calculate_idw(
+                    near_points=near_points,
+                    near_z=near_z,
+                    point=point,
+                )
+            elif options["method"] == "linear":
+                z_out[i] = calculate_linear(
+                    near_points=near_points,
+                    near_z=near_z,
+                    point=point,
+                )
+            elif options["method"] == "cubic":
+                z_out[i] = calculate_cubic(
+                    near_points=near_points,
+                    near_z=near_z,
+                    point=point,
+                )
+            elif options["method"] == "rbf":
+                z_out[i] = calculate_rbf(
+                    near_points=near_points,
+                    near_z=near_z,
+                    point=point,
+                )
+            elif options["method"] == "min":
+                z_out[i] = numpy.min(near_z)
+            elif options["method"] == "max":
+                z_out[i] = numpy.max(near_z)
+            elif options["method"] == "std":
+                z_out[i] = numpy.std(near_z)
+            elif options["method"] == "count":
+                z_out[i] = numpy.len(near_z)
             else:
                 assert (
                     False
@@ -3019,43 +3265,42 @@ def elevation_from_points(
 
 
 def calculate_idw(
-    near_indices: list,
+    near_points: numpy.ndarray,
+    near_z: numpy.ndarray,
     point: numpy.ndarray,
-    tree: scipy.spatial.KDTree,
-    point_cloud: numpy.ndarray,
     smoothing: float = 0,
     power: int = 2,
 ):
     """Calculate the IDW mean of the 'near_indices' points. This implementation is based
     on the scipy.spatial.KDTree"""
 
-    distance_vectors = point - tree.data[near_indices]
+    # Near points will be ordered by proximinty. Close to far.
+    distance_vectors = point - near_points
     smoothed_distances = numpy.sqrt(
         ((distance_vectors**2).sum(axis=1) + smoothing**2)
     )
-    if smoothed_distances.min() == 0:  # in the case of an exact match
-        idw = point_cloud["Z"][tree.query(point, k=1)[1]]
+    if smoothed_distances[0] == 0:  # in the case of an exact match
+        idw = near_z[0]
     else:
-        idw = (point_cloud["Z"][near_indices] / (smoothed_distances**power)).sum(
+        idw = (near_z / (smoothed_distances**power)).sum(
             axis=0
         ) / (1 / (smoothed_distances**power)).sum(axis=0)
     return idw
 
 
 def calculate_linear(
-    near_indices: list,
-    point: numpy.ndarray,
-    tree: scipy.spatial.KDTree,
-    point_cloud: numpy.ndarray,
+        near_points: numpy.ndarray,
+        near_z: numpy.ndarray,
+        point: numpy.ndarray,
 ):
     """Calculate linear interpolation of the 'near_indices' points. Take the straight
     mean if the points are co-linear or too few for linear interpolation."""
 
-    if len(near_indices) >= 3:  # There are enough points for a linear interpolation
+    if len(near_z) >= 3:  # There are enough points for a linear interpolation
         try:
-            linear = scipy.interpolate.griddata(
-                points=tree.data[near_indices],
-                values=point_cloud["Z"][near_indices],
+            value = scipy.interpolate.griddata(
+                points=near_points,
+                values=near_z,
                 xi=point,
                 method="linear",
             )[0]
@@ -3066,34 +3311,33 @@ def calculate_linear(
                 f"Exception {caught_exception} during "
                 "linear interpolation. Set to NaN."
             )
-            linear = numpy.nan
+            value = numpy.nan
 
-    elif len(near_indices) == 1:
-        linear = point_cloud["Z"][near_indices][0]
-    elif len(near_indices) == 2:
-        linear = numpy.mean(point_cloud["Z"][near_indices])
+    elif len(near_z) == 1:
+        value = near_z[0]
+    elif len(near_z) == 2:
+        value = numpy.mean(near_z)
     else:
-        linear = numpy.nan
+        value = numpy.nan
     # NaN will have occured if colinear points - replace with straight mean
-    if numpy.isnan(linear) and len(near_indices) > 0:
-        linear = numpy.mean(point_cloud["Z"][near_indices])
-    return linear
+    if numpy.isnan(value) and len(near_z) > 0:
+        value = numpy.mean(near_z)
+    return value
 
 
 def calculate_cubic(
-    near_indices: list,
-    point: numpy.ndarray,
-    tree: scipy.spatial.KDTree,
-    point_cloud: numpy.ndarray,
+        near_points: numpy.ndarray,
+        near_z: numpy.ndarray,
+        point: numpy.ndarray,
 ):
     """Calculate linear interpolation of the 'near_indices' points. Take the straight
     mean if the points are co-linear or too few for linear interpolation."""
 
-    if len(near_indices) >= 3:  # There are enough points for a linear interpolation
+    if len(near_z) >= 3:  # There are enough points for a linear interpolation
         try:
             value = scipy.interpolate.griddata(
-                points=tree.data[near_indices],
-                values=point_cloud["Z"][near_indices],
+                points=near_points,
+                values=near_z,
                 xi=point,
                 method="cubic",
             )[0]
@@ -3106,31 +3350,30 @@ def calculate_cubic(
             )
             value = numpy.nan
 
-    elif len(near_indices) == 1:
-        value = point_cloud["Z"][near_indices][0]
-    elif len(near_indices) == 2:
-        linear = numpy.mean(point_cloud["Z"][near_indices])
+    elif len(near_z) == 1:
+        value = near_z[0]
+    elif len(near_z) == 2:
+        value = numpy.mean(near_z)
     else:
         value = numpy.nan
     # NaN will have occured if colinear points - replace with straight mean
-    if numpy.isnan(value) and len(near_indices) > 0:
-        value = numpy.mean(point_cloud["Z"][near_indices])
+    if numpy.isnan(value) and len(near_z) > 0:
+        value = numpy.mean(near_z)
     return value
 
 
 def calculate_rbf(
-    near_indices: list,
-    point: numpy.ndarray,
-    tree: scipy.spatial.KDTree,
-    point_cloud: numpy.ndarray,
+        near_points: numpy.ndarray,
+        near_z: numpy.ndarray,
+        point: numpy.ndarray,
 ):
     logger = logging.getLogger(__name__)
     logger.setLevel(logging.DEBUG)
-    if len(near_indices) < RBF_CACHE_SIZE and len(near_indices) >= 3:
+    if len(near_z) < RBF_CACHE_SIZE and len(near_z) >= 3:
         try:
             rbf_function = scipy.interpolate.RBFInterpolator(
-                y=tree.data[near_indices],
-                d=point_cloud["Z"][near_indices],
+                y=near_points,
+                d=near_z,
                 kernel="thin_plate_spline",
                 smoothing=0,
             )
@@ -3141,26 +3384,24 @@ def calculate_rbf(
                 "RBF interpolation. Apply cubic."
             )
             value = calculate_cubic(
-                near_indices=near_indices,
+                near_points=near_points,
+                near_z=near_z,
                 point=point,
-                tree=tree,
-                point_cloud=point_cloud,
             )
     else:
         logger.warning(
             "Too many or few points for RBF "
-            f"interpolation: {len(near_indices)}. "
+            f"interpolation: {len(near_z)}. "
             "Instead applying cubic interpolation."
         )
         value = calculate_cubic(
-            near_indices=near_indices,
+            near_points=near_points,
+            near_z=near_z,
             point=point,
-            tree=tree,
-            point_cloud=point_cloud,
         )
 
-    if numpy.isnan(value) and len(near_indices) > 0:
-        value = numpy.mean(point_cloud["Z"][near_indices])
+    if numpy.isnan(value) and len(near_z) > 0:
+        value = numpy.mean(near_z)
     return value
 
 
@@ -3316,13 +3557,46 @@ def elevation_over_chunk(
 
     return grid_z
 
+def elevation_over_chunk_nearest(
+    dim_x: numpy.ndarray,
+    dim_y: numpy.ndarray,
+    points: numpy.ndarray,
+    edge_points: numpy.ndarray,
+    options: dict,
+) -> numpy.ndarray:
+    """Rasterise all points within a chunk."""
+
+    # Get the indicies overwhich to perform IDW
+    grid_x, grid_y = numpy.meshgrid(dim_x, dim_y)
+    xy_out = numpy.concatenate(
+        [[grid_x.flatten()], [grid_y.flatten()]], axis=0
+    ).transpose()
+    grid_z = numpy.ones(grid_x.shape) * numpy.nan
+
+    # If no points return an array of NaN
+    if len(points) == 0 and len(edge_points) == 0:
+        logger = logging.getLogger(__name__)
+        logger.setLevel(logging.DEBUG)
+        logger.debug(" The latest chunk has no data and is being ignored.")
+        return grid_z
+
+    # Perform the specified averaging method over the dense DEM within the extents of
+    # this point cloud tile
+    z_flat = elevation_from_points_nearest(
+        point_cloud=points, edge_point_cloud=edge_points, xy_out=xy_out, options=options
+    )
+    grid_z = z_flat.reshape(grid_x.shape)
+
+    return grid_z
 
 """ Wrap the `roughness_over_chunk` routine in dask.delayed """
 delayed_roughness_over_chunk = dask.delayed(roughness_over_chunk)
 
-""" Wrap the `rasterise_chunk` routine in dask.delayed """
+""" Wrap the `elevation_over_chunk` routine in dask.delayed """
 delayed_elevation_over_chunk = dask.delayed(elevation_over_chunk)
 
+""" Wrap the `elevation_over_chunk` routine in dask.delayed """
+delayed_elevation_over_chunk_nearest = dask.delayed(elevation_over_chunk_nearest)
 
 """ Wrap the `load_tiles_in_chunk` routine in dask.delayed """
 delayed_load_tiles_in_chunk = dask.delayed(load_tiles_in_chunk)
