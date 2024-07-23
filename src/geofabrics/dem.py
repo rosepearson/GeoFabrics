@@ -891,6 +891,7 @@ class HydrologicallyConditionedDem(DemBase):
         self,
         ocean_points,
         cache_path: pathlib.Path,
+        k_nearest_neighbours: int = 30,
     ) -> xarray.Dataset:
         """Create a 'raw'' DEM from a set of tiled LiDAR files. Read these in over
         non-overlapping chunks and then combine"""
@@ -903,8 +904,6 @@ class HydrologicallyConditionedDem(DemBase):
             "method": "rbf",
             "crs": crs,
         }
-        offshore_files = []
-        coast_edge_files = []
 
         # Save point cloud as LAZ file
         offshore_edge_points = self._sample_offshore_edge(
@@ -913,40 +912,40 @@ class HydrologicallyConditionedDem(DemBase):
         offshore_points = ocean_points.sample_contours(
             self.catchment_geometry.resolution
         )
-        if len(offshore_points) > 0:
-            lidar_file = cache_path / "offshore_points.laz"
-            pdal_pipeline_instructions = [
-                {
-                    "type": "writers.las",
-                    "a_srs": f"EPSG:" f"{crs['horizontal']}+" f"{crs['vertical']}",
-                    "filename": str(lidar_file),
-                    "compression": "laszip",
-                }
-            ]
-            pdal_pipeline = pdal.Pipeline(
-                json.dumps(pdal_pipeline_instructions), [offshore_points]
+        if len(offshore_points) < k_nearest_neighbours or len(offshore_edge_points) < k:
+            self.logger.warning(
+                f"Fewer ocean points ({len(offshore_points)}) or edge points "
+                f"({len(offshore_edge_points)}) than k_nearest_neighbours "
+                f"{k_nearest_neighbours}. Skip offshore interpolation."
             )
-            pdal_pipeline.execute()
-            offshore_files = offshore_files.append(lidar_file)
-        if len(offshore_edge_points) > 0:
-            lidar_file = cache_path / "coast_edge_points.laz"
-            pdal_pipeline_instructions = [
-                {
-                    "type": "writers.las",
-                    "a_srs": f"EPSG:" f"{crs['horizontal']}+" f"{crs['vertical']}",
-                    "filename": str(lidar_file),
-                    "compression": "laszip",
-                }
-            ]
-            pdal_pipeline = pdal.Pipeline(
-                json.dumps(pdal_pipeline_instructions), [offshore_edge_points]
-            )
-            pdal_pipeline.execute()
-            coast_edge_files = coast_edge_files.append(lidar_file)
-        
-        if len(coast_edge_files) == 0 and len(offshore_files) == 0:
-            self.logger.warning("No offshore or coast points.")
             return
+        offshore_file = cache_path / "offshore_points.laz"
+        pdal_pipeline_instructions = [
+            {
+                "type": "writers.las",
+                "a_srs": f"EPSG:" f"{crs['horizontal']}+" f"{crs['vertical']}",
+                "filename": str(offshore_file),
+                "compression": "laszip",
+            }
+        ]
+        pdal_pipeline = pdal.Pipeline(
+            json.dumps(pdal_pipeline_instructions), [offshore_points]
+        )
+        pdal_pipeline.execute()
+
+        coast_edge_file = cache_path / "coast_edge_points.laz"
+        pdal_pipeline_instructions = [
+            {
+                "type": "writers.las",
+                "a_srs": f"EPSG:" f"{crs['horizontal']}+" f"{crs['vertical']}",
+                "filename": str(coast_edge_file),
+                "compression": "laszip",
+            }
+        ]
+        pdal_pipeline = pdal.Pipeline(
+            json.dumps(pdal_pipeline_instructions), [offshore_edge_points]
+        )
+        pdal_pipeline.execute()
 
         assert self.chunk_size is not None, "chunk_size must be defined"
 
@@ -975,13 +974,13 @@ class HydrologicallyConditionedDem(DemBase):
                 )
                 # Load in points
                 chunk_offshore_points = delayed_load_tiles_in_chunk(
-                    lidar_files=offshore_files,
+                    lidar_files=[offshore_file],
                     source_crs=raster_options["crs"],
                     chunk_region_to_tile=chunk_region_to_tile,
                     crs=raster_options["crs"],
                 )
                 chunk_coast_edge_points = delayed_load_tiles_in_chunk(
-                    lidar_files=coast_edge_files,
+                    lidar_files=[coast_edge_file],
                     source_crs=raster_options["crs"],
                     chunk_region_to_tile=chunk_region_to_tile,
                     crs=raster_options["crs"],
