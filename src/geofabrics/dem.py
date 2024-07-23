@@ -912,7 +912,10 @@ class HydrologicallyConditionedDem(DemBase):
         offshore_points = ocean_points.sample_contours(
             self.catchment_geometry.resolution
         )
-        if len(offshore_points) < k_nearest_neighbours or len(offshore_edge_points) < k_nearest_neighbours:
+        if (
+            len(offshore_points) < k_nearest_neighbours
+            or len(offshore_edge_points) < k_nearest_neighbours
+        ):
             self.logger.warning(
                 f"Fewer ocean points ({len(offshore_points)}) or edge points "
                 f"({len(offshore_edge_points)}) than k_nearest_neighbours "
