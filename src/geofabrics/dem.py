@@ -943,7 +943,7 @@ class HydrologicallyConditionedDem(DemBase):
             )
             pdal_pipeline.execute()
             coast_edge_files = coast_edge_files.append(lidar_file)
-        
+
         if len(coast_edge_files) == 0 and len(offshore_files) == 0:
             self.logger.warning("No offshore or coast points.")
             return
@@ -3100,9 +3100,8 @@ def elevation_from_points(
     z_out = numpy.zeros(len(xy_out), dtype=options["raster_type"])
 
     for i, (near_indices, point) in enumerate(zip(tree_index_list, xy_out)):
-        
-        near_points=tree.data[near_indices]
-        near_z=point_cloud["Z"][near_indices]
+        near_points = tree.data[near_indices]
+        near_z = point_cloud["Z"][near_indices]
 
         if len(near_indices) == 0:  # Set NaN if no values in search region
             z_out[i] = numpy.nan
@@ -3162,10 +3161,10 @@ def elevation_from_points_nearest(
     """Calculate DEM elevation values at the specified locations using the selected
     approach. Options include: mean, median, and inverse distance weighing (IDW). This
     implementation is based on the scipy.spatial.KDTree"""
-    
+
     logger = logging.getLogger(__name__)
     logger.setLevel(logging.DEBUG)
-    
+
     if len(point_cloud) == 0 and len(edge_point_cloud) == 0:
         logger.warning("No points provided. Returning NaN array.")
         z_out = numpy.ones(len(xy_out), dtype=options["raster_type"]) * numpy.nan
@@ -3176,16 +3175,14 @@ def elevation_from_points_nearest(
             "Fewer points than the nearest k to search for provided: k = {k} "
             f"> points {len(point_cloud)} or edge points "
             f"{len(edge_point_cloud)}. Returning NaN array."
-            )
+        )
         z_out = numpy.ones(len(xy_out), dtype=options["raster_type"]) * numpy.nan
         return z_out
     xy_in = numpy.empty((len(point_cloud), 2))
     xy_in[:, 0] = point_cloud["X"]
     xy_in[:, 1] = point_cloud["Y"]
     tree = scipy.spatial.KDTree(xy_in, leafsize=leaf_size)  # build the tree
-    (tree_distance_list, tree_index_list) = tree.query(
-        xy_out, k=k, eps=eps
-    )
+    (tree_distance_list, tree_index_list) = tree.query(xy_out, k=k, eps=eps)
 
     xy_in = numpy.empty((len(edge_point_cloud), 2))
     xy_in[:, 0] = edge_point_cloud["X"]
@@ -3194,7 +3191,7 @@ def elevation_from_points_nearest(
     (edge_tree_distance_list, edge_tree_index_list) = edge_tree.query(
         xy_out, k=k, eps=eps
     )
-    
+
     z_out = numpy.zeros(len(xy_out), dtype=options["raster_type"])
 
     for i, point in enumerate(xy_out):
@@ -3207,16 +3204,16 @@ def elevation_from_points_nearest(
             # Combine the edge and other values
             edge_near_indices = edge_tree_index_list[i]
             near_z = numpy.concat(
-                (point_cloud["Z"][near_indices],
-                 edge_point_cloud["Z"][edge_near_indices])
+                (
+                    point_cloud["Z"][near_indices],
+                    edge_point_cloud["Z"][edge_near_indices],
                 )
-            
-            near_points=numpy.concat(
-                (tree.data[near_indices],
-                 edge_tree.data[edge_near_indices])
-                )
-            
-        
+            )
+
+            near_points = numpy.concat(
+                (tree.data[near_indices], edge_tree.data[edge_near_indices])
+            )
+
         if len(near_indices) == 0:  # Set NaN if no values in search region
             z_out[i] = numpy.nan
         else:
@@ -3282,16 +3279,16 @@ def calculate_idw(
     if smoothed_distances[0] == 0:  # in the case of an exact match
         idw = near_z[0]
     else:
-        idw = (near_z / (smoothed_distances**power)).sum(
-            axis=0
-        ) / (1 / (smoothed_distances**power)).sum(axis=0)
+        idw = (near_z / (smoothed_distances**power)).sum(axis=0) / (
+            1 / (smoothed_distances**power)
+        ).sum(axis=0)
     return idw
 
 
 def calculate_linear(
-        near_points: numpy.ndarray,
-        near_z: numpy.ndarray,
-        point: numpy.ndarray,
+    near_points: numpy.ndarray,
+    near_z: numpy.ndarray,
+    point: numpy.ndarray,
 ):
     """Calculate linear interpolation of the 'near_indices' points. Take the straight
     mean if the points are co-linear or too few for linear interpolation."""
@@ -3326,9 +3323,9 @@ def calculate_linear(
 
 
 def calculate_cubic(
-        near_points: numpy.ndarray,
-        near_z: numpy.ndarray,
-        point: numpy.ndarray,
+    near_points: numpy.ndarray,
+    near_z: numpy.ndarray,
+    point: numpy.ndarray,
 ):
     """Calculate linear interpolation of the 'near_indices' points. Take the straight
     mean if the points are co-linear or too few for linear interpolation."""
@@ -3363,9 +3360,9 @@ def calculate_cubic(
 
 
 def calculate_rbf(
-        near_points: numpy.ndarray,
-        near_z: numpy.ndarray,
-        point: numpy.ndarray,
+    near_points: numpy.ndarray,
+    near_z: numpy.ndarray,
+    point: numpy.ndarray,
 ):
     logger = logging.getLogger(__name__)
     logger.setLevel(logging.DEBUG)
@@ -3557,6 +3554,7 @@ def elevation_over_chunk(
 
     return grid_z
 
+
 def elevation_over_chunk_nearest(
     dim_x: numpy.ndarray,
     dim_y: numpy.ndarray,
@@ -3588,6 +3586,7 @@ def elevation_over_chunk_nearest(
     grid_z = z_flat.reshape(grid_x.shape)
 
     return grid_z
+
 
 """ Wrap the `roughness_over_chunk` routine in dask.delayed """
 delayed_roughness_over_chunk = dask.delayed(roughness_over_chunk)
