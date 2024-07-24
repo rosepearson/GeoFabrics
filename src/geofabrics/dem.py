@@ -969,24 +969,17 @@ class HydrologicallyConditionedDem(DemBase):
             delayed_chunked_x = []
             for j, dim_x in enumerate(chunked_dim_x):
                 self.logger.debug(f"\tLiDAR chunk {[i, j]}")
-                # Define the region to tile
-                chunk_region_to_tile = self._define_chunk_region(
-                    region_to_rasterise=region_to_rasterise,
-                    dim_x=dim_x,
-                    dim_y=dim_y,
-                    radius=raster_options["radius"],
-                )
                 # Load in points
                 chunk_offshore_points = delayed_load_tiles_in_chunk(
                     lidar_files=[offshore_file],
                     source_crs=raster_options["crs"],
-                    chunk_region_to_tile=chunk_region_to_tile,
+                    chunk_region_to_tile=None,
                     crs=raster_options["crs"],
                 )
                 chunk_coast_edge_points = delayed_load_tiles_in_chunk(
                     lidar_files=[coast_edge_file],
                     source_crs=raster_options["crs"],
-                    chunk_region_to_tile=chunk_region_to_tile,
+                    chunk_region_to_tile=None,
                     crs=raster_options["crs"],
                 )
                 # Rasterise tiles
@@ -2416,7 +2409,7 @@ class PatchDem(LidarBase):
                 (patch.y.values, patch.x.values),
                 patch.values,
                 bounds_error=False,
-                fill_value=numpy.NaN,
+                fill_value=numpy.nan,
                 method="linear",
             )
 
@@ -3029,12 +3022,13 @@ def read_file_with_pdal(
             }
         )
     # Add instructions for clip within either the catchment, or the land and foreshore
-    pdal_pipeline_instructions.append(
-        {
-            "type": "filters.crop",
-            "polygon": str(region_to_tile.loc[0].geometry),
-        }
-    )
+    if region_to_tile is not None:
+        pdal_pipeline_instructions.append(
+            {
+                "type": "filters.crop",
+                "polygon": str(region_to_tile.loc[0].geometry),
+            }
+        )
 
     # Load in LiDAR and perform operations
     pdal_pipeline = pdal.Pipeline(json.dumps(pdal_pipeline_instructions))
@@ -3175,7 +3169,7 @@ def elevation_from_points_nearest(
     k = options["k_nearest_neighbours"]
     if k > len(point_cloud) or k > len(edge_point_cloud):
         logger.warning(
-            "Fewer points than the nearest k to search for provided: k = {k} "
+            f"Fewer points than the nearest k to search for provided: k = {k} "
             f"> points {len(point_cloud)} or edge points "
             f"{len(edge_point_cloud)}. Returning NaN array."
         )
@@ -3206,14 +3200,14 @@ def elevation_from_points_nearest(
         else:
             # Combine the edge and other values
             edge_near_indices = edge_tree_index_list[i]
-            near_z = numpy.concat(
+            near_z = numpy.concatenate(
                 (
                     point_cloud["Z"][near_indices],
                     edge_point_cloud["Z"][edge_near_indices],
                 )
             )
 
-            near_points = numpy.concat(
+            near_points = numpy.concatenate(
                 (tree.data[near_indices], edge_tree.data[edge_near_indices])
             )
 
@@ -3444,7 +3438,7 @@ def load_tiles_in_chunk(
     lidar_points = []
 
     # Cycle through each file loading it in an adding it to a numpy array
-    if len(chunk_region_to_tile) > 0 and chunk_region_to_tile.area.sum() > 0:
+    if chunk_region_to_tile is None or len(chunk_region_to_tile) > 0 and chunk_region_to_tile.area.sum() > 0:
         for lidar_file in lidar_files:
             logger.debug(f"Loading in file {lidar_file}")
 
