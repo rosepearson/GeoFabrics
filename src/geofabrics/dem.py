@@ -3438,7 +3438,11 @@ def load_tiles_in_chunk(
     lidar_points = []
 
     # Cycle through each file loading it in an adding it to a numpy array
-    if chunk_region_to_tile is None or len(chunk_region_to_tile) > 0 and chunk_region_to_tile.area.sum() > 0:
+    if (
+        chunk_region_to_tile is None
+        or len(chunk_region_to_tile) > 0
+        and chunk_region_to_tile.area.sum() > 0
+    ):
         for lidar_file in lidar_files:
             logger.debug(f"Loading in file {lidar_file}")
 
