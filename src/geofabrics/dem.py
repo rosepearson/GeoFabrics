@@ -922,9 +922,6 @@ class HydrologicallyConditionedDem(DemBase):
                 f"{k_nearest_neighbours}. Skip offshore interpolation."
             )
 
-        if len(coast_edge_files) == 0 and len(offshore_files) == 0:
-            self.logger.warning("No offshore or coast points.")
-            return
         # Save offshore points in a temporary laz file
         offshore_file = cache_path / "offshore_points.laz"
         pdal_pipeline_instructions = [
