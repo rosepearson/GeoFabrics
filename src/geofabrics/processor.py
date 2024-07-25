@@ -287,7 +287,7 @@ class BaseProcessor(abc.ABC):
                 "rivers": "rbf",
                 "waterways": "cubic",
                 "stopbanks": "nearest",
-                "ocean": "linear",
+                "ocean": "rbf",
                 "lidar": "idw",
                 "no_data": None,
             },
@@ -1098,29 +1098,64 @@ class HydrologicDemGenerator(BaseProcessor):
             hydrologic_dem.raw_extents
         ).geometry.area.sum()
         offshore_area = self.catchment_geometry.offshore.area.sum()
+        if self.check_vector_or_raster(key="ocean_contours", api_type="vector") and self.check_vector_or_raster(key="ocean_points", api_type="vector"):
+            self.logger.warning(
+                "Both ocean_contours and ocean_points provided. Will use only "
+                "ocean_points. Synethsise datasets before use to include both."
+                )
+            ocean_data_key = 'ocean_points'
+        elif self.check_vector_or_raster(key="ocean_points", api_type="vector"):
+            ocean_data_key = 'ocean_points'
+        elif self.check_vector_or_raster(key="ocean_contours", api_type="vector"):
+            ocean_data_key = 'ocean_contours'
+        else:
+            ocean_data_key = None
+        
         if (
-            self.check_vector_or_raster(key="ocean_contours", api_type="vector")
+            ocean_data_key is not None
             and offshore_area_without_lidar > offshore_area * area_threshold
         ):
             # Get the bathymetry data directory
-            ocean_contour_dirs = self.get_vector_or_raster_paths(
-                key="ocean_contours",
+            ocean_data_dirs = self.get_vector_or_raster_paths(
+                key=ocean_data_key,
                 data_type="vector",
                 required=False,
             )
-            if len(ocean_contour_dirs) != 1:
+            if len(ocean_data_dirs) != 1:
                 self.logger.warning(
-                    f"{len(ocean_contour_dirs)} ocean_contours's provided. "
-                    f"Specficially {ocean_contour_dirs}. Only consider the "
+                    f"{len(ocean_data_dirs)} {ocean_data_key}'s provided. "
+                    f"Specficially {ocean_data_dirs}. Only consider the "
                     "first if multiple."
                 )
 
-            self.logger.info(f"Incorporating Bathymetry: {ocean_contour_dirs}")
+            self.logger.info(f"Incorporating Bathymetry: {ocean_data_dirs}")
 
             # Load in bathymetry
-            if len(ocean_contour_dirs) > 0:
-                ocean_contours = geometry.BathymetryContours(
-                    ocean_contour_dirs[0],
+            if len(ocean_data_dirs) > 0 and ocean_data_key == "ocean_points":
+                ocean_points = geometry.OceanPoints(
+                    points_file=ocean_data_dirs[0],
+                    catchment_geometry=self.catchment_geometry,
+                    z_label=self.get_instruction_general(
+                        key="z_labels", subkey="ocean"
+                    ),
+                    is_depth = False,
+                )
+                # Interpolate
+                hydrologic_dem.interpolate_ocean_chunked(
+                    ocean_points=ocean_points,
+                    cache_path=temp_folder,
+                    k_nearest_neighbours=40,
+                    buffer=self.get_instruction_general(key="lidar_buffer"),
+                    method=self.get_instruction_general(
+                        key="interpolation", subkey="ocean"
+                    ),
+                )
+                temp_file = temp_folder / "raw_dem_ocean_points.nc"
+                self.logger.info(f"Save temp raw DEM to netCDF: {temp_file}")
+                hydrologic_dem.save_and_load_dem(temp_file)
+            elif len(ocean_data_dirs) > 0 and ocean_data_key == "ocean_contours":
+                ocean_data = geometry.BathymetryContours(
+                    ocean_data_dirs[0],
                     self.catchment_geometry,
                     z_label=self.get_instruction_general(
                         key="z_labels", subkey="ocean"
@@ -1128,48 +1163,8 @@ class HydrologicDemGenerator(BaseProcessor):
                     exclusion_extent=hydrologic_dem.raw_extents,
                 )
                 # Interpolate
-                hydrologic_dem.interpolate_ocean_bathymetry(ocean_contours)
-        # Check for ocean bathymetry. Interpolate offshore if significant
-        # offshore area is not covered by LiDAR
-        offshore_area_without_lidar = self.catchment_geometry.offshore_without_lidar(
-            hydrologic_dem.raw_extents
-        ).geometry.area.sum()
-        offshore_area = self.catchment_geometry.offshore.area.sum()
-        if (
-            self.check_vector_or_raster(key="ocean_points", api_type="vector")
-            and offshore_area_without_lidar > offshore_area * area_threshold
-        ):
-            # Get the bathymetry data directory
-            ocean_points_dirs = self.get_vector_or_raster_paths(
-                key="ocean_points",
-                data_type="vector",
-                required=False,
-            )
-            if len(ocean_points_dirs) != 1:
-                self.logger.warning(
-                    f"{len(ocean_points_dirs)} ocean_points's provided. "
-                    f"Specficially {ocean_points_dirs}. Only consider the "
-                    "first if multiple."
-                )
+                hydrologic_dem.interpolate_ocean_bathymetry(ocean_data)
 
-            self.logger.info(f"Incorporating Bathymetry: {ocean_points_dirs}")
-
-            # Load in bathymetry
-            if len(ocean_points_dirs) > 0:
-                ocean_points = geometry.MarineBathymetryPoints(
-                    ocean_points_dirs[0],
-                    self.catchment_geometry,
-                    exclusion_extent=hydrologic_dem.raw_extents,
-                )
-                # Interpolate
-                hydrologic_dem.interpolate_ocean_chunked_edge(
-                    ocean_points=ocean_points,
-                    cache_path=temp_folder,
-                )
-                # hydrologic_dem.interpolate_ocean_points_as_patch(ocean_contours)
-                temp_file = temp_folder / "raw_dem_ocean_points.nc"
-                self.logger.info(f"Save temp raw DEM to netCDF: {temp_file}")
-                hydrologic_dem.save_and_load_dem(temp_file)
         # Check for waterways and interpolate if they exist
         if "waterways" in self.instructions["data_paths"]:
             # Load in all open and closed waterway elevation and extents in one go
