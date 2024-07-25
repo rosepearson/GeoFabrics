@@ -892,8 +892,8 @@ class HydrologicallyConditionedDem(DemBase):
         ocean_points,
         cache_path: pathlib.Path,
         k_nearest_neighbours: int = 30,
-        use_edge = False,
-        buffer = 0
+        use_edge=False,
+        buffer=0,
     ) -> xarray.Dataset:
         """Create a 'raw'' DEM from a set of tiled LiDAR files. Read these in over
         non-overlapping chunks and then combine"""
@@ -905,24 +905,30 @@ class HydrologicallyConditionedDem(DemBase):
             "k_nearest_neighbours": k_nearest_neighbours,
             "method": "rbf",
             "crs": crs,
-            "use_edge": use_edge
+            "use_edge": use_edge,
         }
         if use_edge:
             # Save point cloud as LAZ file
             offshore_edge_points = self._sample_offshore_edge(
                 self.catchment_geometry.resolution
             )
-            #offshore_edge_points["Z"] = -1.2
+            # offshore_edge_points["Z"] = -1.2
             # Remove any ocean points on land and within the buffered distance
             # of the foreshoreto avoid any sharp changes that may cause jumps
             bounds = ocean_points._points.total_bounds
             offshore_region = geopandas.GeoDataFrame(
-                geometry=[shapely.geometry.Polygon([
-                    [bounds[0], bounds[1]],
-                    [bounds[2], bounds[1]],
-                    [bounds[2], bounds[3]],
-                    [bounds[0], bounds[3]],
-                ])], crs=self.catchment_geometry.crs["horizontal"])
+                geometry=[
+                    shapely.geometry.Polygon(
+                        [
+                            [bounds[0], bounds[1]],
+                            [bounds[2], bounds[1]],
+                            [bounds[2], bounds[3]],
+                            [bounds[0], bounds[3]],
+                        ]
+                    )
+                ],
+                crs=self.catchment_geometry.crs["horizontal"],
+            )
             buffer_radius = self.catchment_geometry.resolution * buffer
             offshore_region = offshore_region.overlay(
                 self.catchment_geometry.land_and_foreshore.buffer(
@@ -931,7 +937,9 @@ class HydrologicallyConditionedDem(DemBase):
                 how="difference",
                 keep_geom_type=True,
             )
-            ocean_points._points = ocean_points._points.clip(offshore_region, keep_geom_type=True)
+            ocean_points._points = ocean_points._points.clip(
+                offshore_region, keep_geom_type=True
+            )
         offshore_points = ocean_points.sample_contours(
             self.catchment_geometry.resolution
         )
@@ -3226,14 +3234,17 @@ def elevation_from_points_nearest(
         near_indices = tree_index_list[i]
         near_z = point_cloud["Z"][near_indices]
         near_points = tree.data[near_indices]
-        if options["use_edge"] and min(edge_tree_distance_list[i]) <= max(tree_distance_list[i]):
+        if options["use_edge"] and min(edge_tree_distance_list[i]) <= max(
+            tree_distance_list[i]
+        ):
             # Add inthe edge values as they are nearby
             edge_near_indices = edge_tree_index_list[i]
             # Take the mean of the edge values and the closest edge location
             mean_edge = numpy.mean(edge_point_cloud["Z"][edge_near_indices])
             near_z = numpy.concatenate((near_z, [mean_edge]))
             near_points = numpy.concatenate(
-                (near_points, [edge_tree.data[edge_near_indices[0]]]))
+                (near_points, [edge_tree.data[edge_near_indices[0]]])
+            )
 
         if len(near_indices) == 0:  # Set NaN if no values in search region
             z_out[i] = numpy.nan
