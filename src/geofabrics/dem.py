@@ -3297,7 +3297,7 @@ def calculate_idw(
     smoothed_distances = numpy.sqrt(
         ((distance_vectors**2).sum(axis=1) + smoothing**2)
     )
-    if smoothed_distances[0] == 0:  # in the case of an exact match
+    if smoothed_distances.min() == 0:  # in the case of an exact match
         idw = near_z[0]
     else:
         idw = (near_z / (smoothed_distances**power)).sum(axis=0) / (
