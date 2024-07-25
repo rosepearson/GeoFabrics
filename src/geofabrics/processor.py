@@ -1098,19 +1098,21 @@ class HydrologicDemGenerator(BaseProcessor):
             hydrologic_dem.raw_extents
         ).geometry.area.sum()
         offshore_area = self.catchment_geometry.offshore.area.sum()
-        if self.check_vector_or_raster(key="ocean_contours", api_type="vector") and self.check_vector_or_raster(key="ocean_points", api_type="vector"):
+        if self.check_vector_or_raster(
+            key="ocean_contours", api_type="vector"
+        ) and self.check_vector_or_raster(key="ocean_points", api_type="vector"):
             self.logger.warning(
                 "Both ocean_contours and ocean_points provided. Will use only "
                 "ocean_points. Synethsise datasets before use to include both."
-                )
-            ocean_data_key = 'ocean_points'
+            )
+            ocean_data_key = "ocean_points"
         elif self.check_vector_or_raster(key="ocean_points", api_type="vector"):
-            ocean_data_key = 'ocean_points'
+            ocean_data_key = "ocean_points"
         elif self.check_vector_or_raster(key="ocean_contours", api_type="vector"):
-            ocean_data_key = 'ocean_contours'
+            ocean_data_key = "ocean_contours"
         else:
             ocean_data_key = None
-        
+
         if (
             ocean_data_key is not None
             and offshore_area_without_lidar > offshore_area * area_threshold
@@ -1138,7 +1140,7 @@ class HydrologicDemGenerator(BaseProcessor):
                     z_label=self.get_instruction_general(
                         key="z_labels", subkey="ocean"
                     ),
-                    is_depth = False,
+                    is_depth=False,
                 )
                 # Interpolate
                 hydrologic_dem.interpolate_ocean_chunked(

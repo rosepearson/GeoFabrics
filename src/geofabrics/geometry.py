@@ -453,7 +453,7 @@ class OceanPoints:
         self._set_up()
 
     def _set_up(self):
-        """Set CRS and clip to > 2x catchment area. """
+        """Set CRS and clip to > 2x catchment area."""
 
         self._points = self._points.to_crs(self.catchment_geometry.crs["horizontal"])
         self._points = self._points.explode(ignore_index=True)

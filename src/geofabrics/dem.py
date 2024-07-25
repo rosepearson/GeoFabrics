@@ -787,7 +787,7 @@ class HydrologicallyConditionedDem(DemBase):
         k_nearest_neighbours: int,
         use_edge: bool,
         buffer: int,
-        method: str
+        method: str,
     ) -> xarray.Dataset:
         """Create a 'raw'' DEM from a set of tiled LiDAR files. Read these in over
         non-overlapping chunks and then combine"""
@@ -3389,7 +3389,9 @@ delayed_roughness_over_chunk = dask.delayed(roughness_over_chunk)
 delayed_elevation_over_chunk = dask.delayed(elevation_over_chunk)
 
 """ Wrap the `elevation_over_chunk` routine in dask.delayed """
-delayed_elevation_over_chunk_from_nearest = dask.delayed(elevation_over_chunk_from_nearest)
+delayed_elevation_over_chunk_from_nearest = dask.delayed(
+    elevation_over_chunk_from_nearest
+)
 
 """ Wrap the `load_tiles_in_chunk` routine in dask.delayed """
 delayed_load_tiles_in_chunk = dask.delayed(load_tiles_in_chunk)
