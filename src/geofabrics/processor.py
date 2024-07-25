@@ -1365,11 +1365,12 @@ class HydrologicDemGenerator(BaseProcessor):
 
             # fill combined dem - save results
             self.logger.info(
-                "In processor.DemGenerator - write out the raw DEM to netCDF"
+                "In processor.DemGenerator - write out the conditioned DEM to netCDF"
             )
+            result_path = pathlib.Path(self.get_instruction_path("result_dem"))
             try:
                 self.save_dem(
-                    filename=self.get_instruction_path("result_dem"),
+                    filename=result_path,
                     dataset=hydrologic_dem.dem,
                     generator=hydrologic_dem,
                 )
@@ -1381,7 +1382,8 @@ class HydrologicDemGenerator(BaseProcessor):
                     f"{self.get_instruction_path('result_dem')}"
                     " before re-raising error."
                 )
-                pathlib.Path(self.get_instruction_path("result_dem")).unlink()
+                if result_path.exists():
+                    result_path.unlink()
                 raise caught_exception
             try:
                 gc.collect()

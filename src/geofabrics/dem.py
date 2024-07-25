@@ -892,6 +892,8 @@ class HydrologicallyConditionedDem(DemBase):
         ocean_points,
         cache_path: pathlib.Path,
         k_nearest_neighbours: int = 30,
+        use_edge = False,
+        buffer = 0
     ) -> xarray.Dataset:
         """Create a 'raw'' DEM from a set of tiled LiDAR files. Read these in over
         non-overlapping chunks and then combine"""
@@ -900,27 +902,51 @@ class HydrologicallyConditionedDem(DemBase):
         raster_options = {
             "raster_type": geometry.RASTER_TYPE,
             "elevation_range": None,
-            "k_nearest_neighbours": 30,
+            "k_nearest_neighbours": k_nearest_neighbours,
             "method": "rbf",
             "crs": crs,
+            "use_edge": use_edge
         }
-
-        # Save point cloud as LAZ file
-        offshore_edge_points = self._sample_offshore_edge(
-            self.catchment_geometry.resolution
-        )
+        if use_edge:
+            # Save point cloud as LAZ file
+            offshore_edge_points = self._sample_offshore_edge(
+                self.catchment_geometry.resolution
+            )
+            #offshore_edge_points["Z"] = -1.2
+            # Remove any ocean points on land and within the buffered distance
+            # of the foreshoreto avoid any sharp changes that may cause jumps
+            bounds = ocean_points._points.total_bounds
+            offshore_region = geopandas.GeoDataFrame(
+                geometry=[shapely.geometry.Polygon([
+                    [bounds[0], bounds[1]],
+                    [bounds[2], bounds[1]],
+                    [bounds[2], bounds[3]],
+                    [bounds[0], bounds[3]],
+                ])], crs=self.catchment_geometry.crs["horizontal"])
+            buffer_radius = self.catchment_geometry.resolution * buffer
+            offshore_region = offshore_region.overlay(
+                self.catchment_geometry.land_and_foreshore.buffer(
+                    buffer_radius
+                ).to_frame("geometry"),
+                how="difference",
+                keep_geom_type=True,
+            )
+            ocean_points._points = ocean_points._points.clip(offshore_region, keep_geom_type=True)
         offshore_points = ocean_points.sample_contours(
             self.catchment_geometry.resolution
         )
-        if (
-            len(offshore_points) < k_nearest_neighbours
-            or len(offshore_edge_points) < k_nearest_neighbours
-        ):
+        if len(offshore_points) < k_nearest_neighbours:
             self.logger.warning(
-                f"Fewer ocean points ({len(offshore_points)}) or edge points "
-                f"({len(offshore_edge_points)}) than k_nearest_neighbours "
+                f"Fewer ocean points ({len(offshore_points)}) than k_nearest_neighbours "
                 f"{k_nearest_neighbours}. Skip offshore interpolation."
             )
+            return
+        if use_edge and len(offshore_edge_points) < k_nearest_neighbours:
+            self.logger.warning(
+                f"Fewer edge points ({len(offshore_edge_points)}) than "
+                f"k_nearest_neighbours {k_nearest_neighbours}. Skip offshore interpolation."
+            )
+            return
 
         # Save offshore points in a temporary laz file
         offshore_file = cache_path / "offshore_points.laz"
@@ -936,20 +962,21 @@ class HydrologicallyConditionedDem(DemBase):
             json.dumps(pdal_pipeline_instructions), [offshore_points]
         )
         pdal_pipeline.execute()
-        # Save edge points in a temporary laz file
-        coast_edge_file = cache_path / "coast_edge_points.laz"
-        pdal_pipeline_instructions = [
-            {
-                "type": "writers.las",
-                "a_srs": f"EPSG:" f"{crs['horizontal']}+" f"{crs['vertical']}",
-                "filename": str(coast_edge_file),
-                "compression": "laszip",
-            }
-        ]
-        pdal_pipeline = pdal.Pipeline(
-            json.dumps(pdal_pipeline_instructions), [offshore_edge_points]
-        )
-        pdal_pipeline.execute()
+        if use_edge:
+            # Save edge points in a temporary laz file
+            coast_edge_file = cache_path / "coast_edge_points.laz"
+            pdal_pipeline_instructions = [
+                {
+                    "type": "writers.las",
+                    "a_srs": f"EPSG:" f"{crs['horizontal']}+" f"{crs['vertical']}",
+                    "filename": str(coast_edge_file),
+                    "compression": "laszip",
+                }
+            ]
+            pdal_pipeline = pdal.Pipeline(
+                json.dumps(pdal_pipeline_instructions), [offshore_edge_points]
+            )
+            pdal_pipeline.execute()
 
         assert self.chunk_size is not None, "chunk_size must be defined"
 
@@ -976,12 +1003,15 @@ class HydrologicallyConditionedDem(DemBase):
                     chunk_region_to_tile=None,
                     crs=raster_options["crs"],
                 )
-                chunk_coast_edge_points = delayed_load_tiles_in_chunk(
-                    lidar_files=[coast_edge_file],
-                    source_crs=raster_options["crs"],
-                    chunk_region_to_tile=None,
-                    crs=raster_options["crs"],
-                )
+                if use_edge:
+                    chunk_coast_edge_points = delayed_load_tiles_in_chunk(
+                        lidar_files=[coast_edge_file],
+                        source_crs=raster_options["crs"],
+                        chunk_region_to_tile=None,
+                        crs=raster_options["crs"],
+                    )
+                else:
+                    chunk_coast_edge_points = None
                 # Rasterise tiles
                 delayed_chunked_x.append(
                     dask.array.from_delayed(
@@ -3162,12 +3192,12 @@ def elevation_from_points_nearest(
     logger = logging.getLogger(__name__)
     logger.setLevel(logging.DEBUG)
 
-    if len(point_cloud) == 0 and len(edge_point_cloud) == 0:
+    if len(point_cloud) == 0 and (options["use_edge"] and len(edge_point_cloud) == 0):
         logger.warning("No points provided. Returning NaN array.")
         z_out = numpy.ones(len(xy_out), dtype=options["raster_type"]) * numpy.nan
         return z_out
     k = options["k_nearest_neighbours"]
-    if k > len(point_cloud) or k > len(edge_point_cloud):
+    if k > len(point_cloud) or (options["use_edge"] and k > len(edge_point_cloud)):
         logger.warning(
             f"Fewer points than the nearest k to search for provided: k = {k} "
             f"> points {len(point_cloud)} or edge points "
@@ -3181,35 +3211,29 @@ def elevation_from_points_nearest(
     tree = scipy.spatial.KDTree(xy_in, leafsize=leaf_size)  # build the tree
     (tree_distance_list, tree_index_list) = tree.query(xy_out, k=k, eps=eps)
 
-    xy_in = numpy.empty((len(edge_point_cloud), 2))
-    xy_in[:, 0] = edge_point_cloud["X"]
-    xy_in[:, 1] = edge_point_cloud["Y"]
-    edge_tree = scipy.spatial.KDTree(xy_in, leafsize=leaf_size)  # build the tree
-    (edge_tree_distance_list, edge_tree_index_list) = edge_tree.query(
-        xy_out, k=k, eps=eps
-    )
+    if options["use_edge"]:
+        xy_in = numpy.empty((len(edge_point_cloud), 2))
+        xy_in[:, 0] = edge_point_cloud["X"]
+        xy_in[:, 1] = edge_point_cloud["Y"]
+        edge_tree = scipy.spatial.KDTree(xy_in, leafsize=leaf_size)  # build the tree
+        (edge_tree_distance_list, edge_tree_index_list) = edge_tree.query(
+            xy_out, k=k, eps=eps
+        )
 
     z_out = numpy.zeros(len(xy_out), dtype=options["raster_type"])
 
     for i, point in enumerate(xy_out):
         near_indices = tree_index_list[i]
-        if min(edge_tree_distance_list[i]) > max(tree_distance_list[i]):
-            # Exclude edge tree values as none are nearby
-            near_z = point_cloud["Z"][near_indices]
-            near_points = tree.data[near_indices]
-        else:
-            # Combine the edge and other values
+        near_z = point_cloud["Z"][near_indices]
+        near_points = tree.data[near_indices]
+        if options["use_edge"] and min(edge_tree_distance_list[i]) <= max(tree_distance_list[i]):
+            # Add inthe edge values as they are nearby
             edge_near_indices = edge_tree_index_list[i]
-            near_z = numpy.concatenate(
-                (
-                    point_cloud["Z"][near_indices],
-                    edge_point_cloud["Z"][edge_near_indices],
-                )
-            )
-
+            # Take the mean of the edge values and the closest edge location
+            mean_edge = numpy.mean(edge_point_cloud["Z"][edge_near_indices])
+            near_z = numpy.concatenate((near_z, [mean_edge]))
             near_points = numpy.concatenate(
-                (tree.data[near_indices], edge_tree.data[edge_near_indices])
-            )
+                (near_points, [edge_tree.data[edge_near_indices[0]]]))
 
         if len(near_indices) == 0:  # Set NaN if no values in search region
             z_out[i] = numpy.nan
