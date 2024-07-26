@@ -1157,11 +1157,11 @@ class HydrologicDemGenerator(BaseProcessor):
                     use_edge=self.get_instruction_general(
                         key="ocean",
                         subkey="use_edge"
-                        ),
+                    ),
                     k_nearest_neighbours=self.get_instruction_general(
                         key="ocean",
                         subkey="nearest_k_for_interpolation"
-                        ),
+                    ),
                     buffer=self.get_instruction_general(key="lidar_buffer"),
                     method=self.get_instruction_general(
                         key="interpolation", subkey="ocean"
