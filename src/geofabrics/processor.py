@@ -1150,7 +1150,7 @@ class HydrologicDemGenerator(BaseProcessor):
                     cache_path=temp_folder,
                     use_edge=self.get_instruction_general(
                         key="use_edge_for_ocean_interpolation"
-                        ),
+                    ),
                     k_nearest_neighbours=self.get_instruction_general(
                         key="nearest_k_ocean_points_for_interpolation"
                     ),
