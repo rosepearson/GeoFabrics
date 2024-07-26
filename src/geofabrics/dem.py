@@ -1684,7 +1684,7 @@ class RawDem(LidarBase):
     def clip_lidar(
         self,
     ):
-        """Clip the  a 'raw' DEM. Should be called immediately after the add_lidar function."""
+        """Clip the 'raw' DEM. Should be called immediately after the add_lidar function."""
 
         # Clip DEM to Catchment and ensure NaN outside region to rasterise
         catchment = self.catchment_geometry.catchment

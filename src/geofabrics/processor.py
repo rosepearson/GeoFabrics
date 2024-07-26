@@ -298,6 +298,7 @@ class BaseProcessor(abc.ABC):
                 "ocean": None,
             },
             "ignore_clipping": False,
+            "nearest_k_ocean_points_for_interpolation": 40,
             "filter_waterways_by_osm_ids": [],
         }
 
@@ -1146,7 +1147,7 @@ class HydrologicDemGenerator(BaseProcessor):
                 hydrologic_dem.interpolate_ocean_chunked(
                     ocean_points=ocean_points,
                     cache_path=temp_folder,
-                    k_nearest_neighbours=40,
+                    k_nearest_neighbours=self.get_instruction_general(key="nearest_k_ocean_points_for_interpolation"),
                     buffer=self.get_instruction_general(key="lidar_buffer"),
                     method=self.get_instruction_general(
                         key="interpolation", subkey="ocean"
