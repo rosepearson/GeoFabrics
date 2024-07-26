@@ -299,6 +299,7 @@ class BaseProcessor(abc.ABC):
             },
             "ignore_clipping": False,
             "nearest_k_ocean_points_for_interpolation": 40,
+            "use_edge_for_ocean_interpolation": False,
             "filter_waterways_by_osm_ids": [],
         }
 
@@ -1147,6 +1148,9 @@ class HydrologicDemGenerator(BaseProcessor):
                 hydrologic_dem.interpolate_ocean_chunked(
                     ocean_points=ocean_points,
                     cache_path=temp_folder,
+                    use_edge=self.get_instruction_general(
+                        key="use_edge_for_ocean_interpolation"
+                        ),
                     k_nearest_neighbours=self.get_instruction_general(
                         key="nearest_k_ocean_points_for_interpolation"
                     ),
