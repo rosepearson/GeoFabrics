@@ -1147,7 +1147,9 @@ class HydrologicDemGenerator(BaseProcessor):
                 hydrologic_dem.interpolate_ocean_chunked(
                     ocean_points=ocean_points,
                     cache_path=temp_folder,
-                    k_nearest_neighbours=self.get_instruction_general(key="nearest_k_ocean_points_for_interpolation"),
+                    k_nearest_neighbours=self.get_instruction_general(
+                        key="nearest_k_ocean_points_for_interpolation"
+                    ),
                     buffer=self.get_instruction_general(key="lidar_buffer"),
                     method=self.get_instruction_general(
                         key="interpolation", subkey="ocean"
