@@ -301,7 +301,7 @@ class BaseProcessor(abc.ABC):
             "ocean": {
                 "nearest_k_for_interpolation": 40,
                 "use_edge": False,
-                "is_depth": False
+                "is_depth": False,
             },
             "filter_waterways_by_osm_ids": [],
         }
@@ -1146,21 +1146,18 @@ class HydrologicDemGenerator(BaseProcessor):
                         key="z_labels", subkey="ocean"
                     ),
                     is_depth=self.get_instruction_general(
-                        key="ocean",
-                        subkey="is_depth"
-                        ),
+                        key="ocean", subkey="is_depth"
+                    ),
                 )
                 # Interpolate
                 hydrologic_dem.interpolate_ocean_chunked(
                     ocean_points=ocean_points,
                     cache_path=temp_folder,
                     use_edge=self.get_instruction_general(
-                        key="ocean",
-                        subkey="use_edge"
+                        key="ocean", subkey="use_edge"
                     ),
                     k_nearest_neighbours=self.get_instruction_general(
-                        key="ocean",
-                        subkey="nearest_k_for_interpolation"
+                        key="ocean", subkey="nearest_k_for_interpolation"
                     ),
                     buffer=self.get_instruction_general(key="lidar_buffer"),
                     method=self.get_instruction_general(
