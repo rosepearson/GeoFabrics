@@ -991,7 +991,7 @@ class HydrologicallyConditionedDem(DemBase):
             raise ValueError("method must be rbf, nearest, linear or cubic")
         return flat_z_array
 
-    def interpolate_ocean_bathymetry(self, bathy_contours):
+    def interpolate_ocean_bathymetry(self, bathy_contours, method="linear"):
         """Performs interpolation offshore outside LiDAR extents using the SciPy RBF
         function."""
 
@@ -1052,7 +1052,7 @@ class HydrologicallyConditionedDem(DemBase):
             point_cloud=offshore_points,
             flat_x_array=grid_x[mask],
             flat_y_array=grid_y[mask],
-            method="linear",
+            method=method,
         )
         flat_z = offshore_dem.z.values.flatten()
         flat_z[mask.flatten()] = flat_z_masked
