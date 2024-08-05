@@ -933,8 +933,7 @@ class HydrologicallyConditionedDem(DemBase):
             self.SOURCE_CLASSIFICATION["ocean bathymetry"],
         )
         self._dem["lidar_source"] = self._dem.lidar_source.where(
-            mask,
-            self.SOURCE_CLASSIFICATION["no data"]
+            mask, self.SOURCE_CLASSIFICATION["no data"]
         )
         self._write_netcdf_conventions_in_place(self._dem, self.catchment_geometry.crs)
 
@@ -2283,7 +2282,8 @@ class PatchDem(LidarBase):
                     mask, self.SOURCE_CLASSIFICATION["ocean bathymetry"]
                 )
                 self._dem["lidar_source"] = self._dem.lidar_source.where(
-                    mask, self.SOURCE_CLASSIFICATION["no data"],
+                    mask,
+                    self.SOURCE_CLASSIFICATION["no data"],
                 )
                 self._dem["z"] = self._dem.z.where(mask, 0)
 
