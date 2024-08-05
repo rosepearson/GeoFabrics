@@ -808,7 +808,7 @@ class HydrologicallyConditionedDem(DemBase):
             )
             # Remove any ocean points on land and within the buffered distance
             # of the foreshore to avoid any sharp changes that may cause jumps
-            offshore_region = ocean_points.boundary()
+            offshore_region = ocean_points.boundary
             buffer_radius = self.catchment_geometry.resolution * buffer
             offshore_region = offshore_region.overlay(
                 self.catchment_geometry.land_and_foreshore.buffer(
@@ -931,6 +931,10 @@ class HydrologicallyConditionedDem(DemBase):
         self._dem["data_source"] = self._dem.data_source.where(
             mask,
             self.SOURCE_CLASSIFICATION["ocean bathymetry"],
+        )
+        self._dem["lidar_source"] = self._dem.lidar_source.where(
+            mask,
+            self.SOURCE_CLASSIFICATION["no data"]
         )
         self._write_netcdf_conventions_in_place(self._dem, self.catchment_geometry.crs)
 
@@ -1684,7 +1688,7 @@ class RawDem(LidarBase):
     def clip_lidar(
         self,
     ):
-        """Clip the 'raw' DEM. Should be called immediately after the add_lidar function."""
+        """Clip the  a 'raw' DEM. Should be called immediately after the add_lidar function."""
 
         # Clip DEM to Catchment and ensure NaN outside region to rasterise
         catchment = self.catchment_geometry.catchment
@@ -2277,6 +2281,9 @@ class PatchDem(LidarBase):
                 # Set any positive Coarse DEM foreshore points to zero
                 self._dem["data_source"] = self._dem.data_source.where(
                     mask, self.SOURCE_CLASSIFICATION["ocean bathymetry"]
+                )
+                self._dem["lidar_source"] = self._dem.lidar_source.where(
+                    mask, self.SOURCE_CLASSIFICATION["no data"],
                 )
                 self._dem["z"] = self._dem.z.where(mask, 0)
 
@@ -2995,7 +3002,7 @@ def elevation_from_nearest_points(
         if options["use_edge"] and min(edge_tree_distance_list[i]) <= max(
             tree_distance_list[i]
         ):
-            # Add inthe edge values as they are nearby
+            # Add in the edge values as they are nearby
             edge_near_indices = edge_tree_index_list[i]
             # Take the mean of the edge values and the closest edge location
             mean_edge = numpy.mean(edge_point_cloud["Z"][edge_near_indices])
@@ -3082,7 +3089,8 @@ def calculate_linear(
 ):
     """Calculate linear interpolation of the 'near_indices' points. Take the straight
     mean if the points are co-linear or too few for linear interpolation."""
-
+    logger = logging.getLogger(__name__)
+    logger.setLevel(logging.DEBUG)
     if len(near_z) >= 3:  # There are enough points for a linear interpolation
         try:
             value = scipy.interpolate.griddata(
@@ -3092,8 +3100,6 @@ def calculate_linear(
                 method="linear",
             )[0]
         except (scipy.spatial.QhullError, Exception) as caught_exception:
-            logger = logging.getLogger(__name__)
-            logger.setLevel(logging.DEBUG)
             logger.warning(
                 f"Exception {caught_exception} during "
                 "linear interpolation. Set to NaN."
@@ -3103,12 +3109,16 @@ def calculate_linear(
     elif len(near_z) == 1:
         value = near_z[0]
     elif len(near_z) == 2:
-        value = numpy.mean(near_z)
+        # take the distance weighted average
+        distance_vectors = point - near_points
+        distances = numpy.sqrt((distance_vectors**2).sum(axis=1))
+        value = (near_z / distances).sum(axis=0) / (1 / distances).sum(axis=0)
     else:
         value = numpy.nan
-    # NaN will have occured if colinear points - replace with straight mean
     if numpy.isnan(value) and len(near_z) > 0:
-        value = numpy.mean(near_z)
+        logger.warning(
+            "NaN - this will occur if colinear points or outside convex hull"
+        )
     return value
 
 
@@ -3119,7 +3129,8 @@ def calculate_cubic(
 ):
     """Calculate linear interpolation of the 'near_indices' points. Take the straight
     mean if the points are co-linear or too few for linear interpolation."""
-
+    logger = logging.getLogger(__name__)
+    logger.setLevel(logging.DEBUG)
     if len(near_z) >= 3:  # There are enough points for a linear interpolation
         try:
             value = scipy.interpolate.griddata(
@@ -3129,8 +3140,6 @@ def calculate_cubic(
                 method="cubic",
             )[0]
         except (scipy.spatial.QhullError, Exception) as caught_exception:
-            logger = logging.getLogger(__name__)
-            logger.setLevel(logging.DEBUG)
             logger.warning(
                 f"Exception {caught_exception} during "
                 "cubic interpolation. Set to NaN."
@@ -3140,12 +3149,17 @@ def calculate_cubic(
     elif len(near_z) == 1:
         value = near_z[0]
     elif len(near_z) == 2:
-        value = numpy.mean(near_z)
+        # take the distance weighted average
+        distance_vectors = point - near_points
+        distances = numpy.sqrt((distance_vectors**2).sum(axis=1))
+        value = (near_z / distances).sum(axis=0) / (1 / distances).sum(axis=0)
     else:
         value = numpy.nan
-    # NaN will have occured if colinear points - replace with straight mean
+
     if numpy.isnan(value) and len(near_z) > 0:
-        value = numpy.mean(near_z)
+        logger.warning(
+            "NaN - this will occur if colinear points or outside convex hull"
+        )
     return value
 
 
@@ -3186,9 +3200,6 @@ def calculate_rbf(
             near_z=near_z,
             point=point,
         )
-
-    if numpy.isnan(value) and len(near_z) > 0:
-        value = numpy.mean(near_z)
     return value
 
 

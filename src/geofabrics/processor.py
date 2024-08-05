@@ -468,11 +468,14 @@ class BaseProcessor(abc.ABC):
         base_dir = pathlib.Path(self.get_instruction_path("local_cache"))
         subfolder = self.get_instruction_path("subfolder").relative_to(base_dir)
         cache_dir = pathlib.Path(self.get_instruction_path("downloads"))
-        bounding_polygon = (
-            self.catchment_geometry.catchment
-            if self.catchment_geometry is not None
-            else None
-        )
+        if data_type == "vector" and self.catchment_geometry is not None:
+            bounding_polygon = self.catchment_geometry.catchment.buffer(
+                numpy.sqrt(self.catchment_geometry.catchment.area.sum()))
+        elif data_type == "raster" and self.catchment_geometry is not None:
+            bounding_polygon = self.catchment_geometry.catchment
+        else:
+            bounding_polygon = None
+    
         for data_service in data_services.keys():
             if (
                 self.check_datasets(data_service, data_type=data_type)
