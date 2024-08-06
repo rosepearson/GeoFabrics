@@ -24,7 +24,7 @@ import scipy.spatial
 from . import geometry
 
 
-RBF_CACHE_SIZE = 10000
+RBF_CACHE_SIZE = 1000
 
 
 def chunk_mask(mask, chunk_size):
@@ -301,7 +301,6 @@ class DemBase(abc.ABC):
         Defines the extents of any dense (LiDAR or refernence DEM) values already added.
     """
 
-    CACHE_SIZE = 10000  # The maximum RBF input without performance issues
     SOURCE_CLASSIFICATION = {
         "LiDAR": 1,
         "ocean bathymetry": 2,
@@ -800,7 +799,10 @@ class HydrologicallyConditionedDem(DemBase):
             "method": method,
             "crs": crs,
             "use_edge": use_edge,
+            "strict": True,
         }
+        if method == "rbf":
+            raster_options["kernel"] = "thin_plate_spline"
         if use_edge:
             # Save point cloud as LAZ file
             offshore_edge_points = self._sample_offshore_edge(
@@ -949,11 +951,11 @@ class HydrologicallyConditionedDem(DemBase):
 
         if method == "rbf":
             # Ensure the number of points is not too great for RBF interpolation
-            if len(point_cloud) < self.CACHE_SIZE:
+            if len(point_cloud) < RBF_CACHE_SIZE:
                 self.logger.warning(
                     "The number of points to fit and RBF interpolant to is"
                     f" {len(point_cloud)}. We recommend using fewer "
-                    f" than {self.CACHE_SIZE} for best performance and to. "
+                    f" than {RBF_CACHE_SIZE} for best performance and to. "
                     "avoid errors in the `scipy.interpolate.Rbf` function"
                 )
             # Create RBF function
@@ -966,14 +968,14 @@ class HydrologicallyConditionedDem(DemBase):
             )
             # Tile area - this limits the maximum memory required at any one time
             flat_z_array = numpy.ones_like(flat_x_array) * numpy.nan
-            number_offshore_tiles = math.ceil(len(flat_x_array) / self.CACHE_SIZE)
+            number_offshore_tiles = math.ceil(len(flat_x_array) / RBF_CACHE_SIZE)
             for i in range(number_offshore_tiles):
                 self.logger.info(
                     f"Offshore intepolant tile {i+1} of {number_offshore_tiles}"
                 )
-                start_index = int(i * self.CACHE_SIZE)
+                start_index = int(i * RBF_CACHE_SIZE)
                 end_index = (
-                    int((i + 1) * self.CACHE_SIZE)
+                    int((i + 1) * RBF_CACHE_SIZE)
                     if i + 1 != number_offshore_tiles
                     else len(flat_x_array)
                 )
@@ -1012,11 +1014,11 @@ class HydrologicallyConditionedDem(DemBase):
             offshore_points = numpy.concatenate([offshore_edge_points, bathy_points])
 
         # Resample at a lower resolution if too many offshore points
-        if len(offshore_points) > self.CACHE_SIZE:
+        if len(offshore_points) > RBF_CACHE_SIZE:
             reduced_resolution = (
                 self.catchment_geometry.resolution
                 * len(offshore_points)
-                / self.CACHE_SIZE
+                / RBF_CACHE_SIZE
             )
             self.logger.info(
                 "Reducing the number of 'offshore_points' used to create the RBF "
@@ -1087,7 +1089,10 @@ class HydrologicallyConditionedDem(DemBase):
             "crs": crs,
             "radius": elevations.points["width"].max()
             + 2 * self.catchment_geometry.resolution,
+            "strict": False,
         }
+        if method == "rbf":
+            raster_options["kernel"] = "linear"
 
         # Define the region to rasterise
         region_to_rasterise = elevations.polygons
@@ -1142,7 +1147,7 @@ class HydrologicallyConditionedDem(DemBase):
         )
         pdal_pipeline.execute()
 
-        if self.chunk_size is not None:
+        if self.chunk_size is None:
             logging.warning("Chunksize of none. set to DEM shape.")
             self.chunk_size = max(len(self._dem.x), len(self._dem.y))
 
@@ -1313,9 +1318,11 @@ class HydrologicallyConditionedDem(DemBase):
             "elevation_range": None,
             "method": method,
             "crs": crs,
-            "radius": 5400,
+            "radius": 2400, # 2400
+            "strict": False,
         }
-
+        if method == "rbf":
+            raster_options["kernel"] = "linear"
         # Define the region to rasterise
         region_to_rasterise = elevations.polygons
 
@@ -1352,6 +1359,7 @@ class HydrologicallyConditionedDem(DemBase):
                 "radius": elevations.points["width"].max(),
                 "raster_type": geometry.RASTER_TYPE,
                 "method": "linear",
+                "strict": False,
             }
             estimated_river_edge_z = elevation_from_points(
                 point_cloud=river_bank_points[river_bank_nan_mask],
@@ -1397,7 +1405,7 @@ class HydrologicallyConditionedDem(DemBase):
         )
         pdal_pipeline.execute()
 
-        if self.chunk_size is not None:
+        if self.chunk_size is None:
             logging.warning("Chunksize of none. set to DEM shape.")
             self.chunk_size = max(len(self._dem.x), len(self._dem.y))
 
@@ -1932,7 +1940,10 @@ class RawDem(LidarBase):
             "radius": self.catchment_geometry.resolution / numpy.sqrt(2),
             "method": self.lidar_interpolation_method,
             "crs": self.catchment_geometry.crs,
+            "strict": True,
         }
+        if self.lidar_interpolation_method == "rbf":
+            raster_options["kernel"] = "linear"
 
         # Don't use dask delayed if there is no chunking
         if len(lidar_datasets_info) == 0:
@@ -3220,18 +3231,21 @@ def elevation_from_points(
                     near_points=near_points,
                     near_z=near_z,
                     point=point,
+                    strict=options["strict"],
                 )
             elif options["method"] == "cubic":
                 z_out[i] = calculate_cubic(
                     near_points=near_points,
                     near_z=near_z,
                     point=point,
+                    strict=options["strict"],
                 )
             elif options["method"] == "rbf":
                 z_out[i] = calculate_rbf(
                     near_points=near_points,
                     near_z=near_z,
                     point=point,
+                    kernel=options["kernel"],
                 )
             elif options["method"] == "min":
                 z_out[i] = numpy.min(near_z)
@@ -3328,18 +3342,21 @@ def elevation_from_nearest_points(
                     near_points=near_points,
                     near_z=near_z,
                     point=point,
+                    strict=options["strict"],
                 )
             elif options["method"] == "cubic":
                 z_out[i] = calculate_cubic(
                     near_points=near_points,
                     near_z=near_z,
                     point=point,
+                    strict=options["strict"],
                 )
             elif options["method"] == "rbf":
                 z_out[i] = calculate_rbf(
                     near_points=near_points,
                     near_z=near_z,
                     point=point,
+                    kernel=options["kernel"],
                 )
             elif options["method"] == "min":
                 z_out[i] = numpy.min(near_z)
@@ -3385,6 +3402,7 @@ def calculate_linear(
     near_points: numpy.ndarray,
     near_z: numpy.ndarray,
     point: numpy.ndarray,
+    strict: bool,
 ):
     """Calculate linear interpolation of the 'near_indices' points. Take the straight
     mean if the points are co-linear or too few for linear interpolation."""
@@ -3414,10 +3432,17 @@ def calculate_linear(
         value = (near_z / distances).sum(axis=0) / (1 / distances).sum(axis=0)
     else:
         value = numpy.nan
-    if numpy.isnan(value) and len(near_z) > 0:
+    if numpy.isnan(value) and len(near_z) > 0 and strict:
         logger.warning(
             "NaN - this will occur if colinear points or outside convex hull"
         )
+    elif numpy.isnan(value) and len(near_z) > 0 and not strict:
+        logger.warning(
+            "Was NaN - will estimate as distance weighted mean"
+        )
+        distance_vectors = point - near_points
+        distances = numpy.sqrt((distance_vectors**2).sum(axis=1))
+        value = (near_z / distances).sum(axis=0) / (1 / distances).sum(axis=0)
     return value
 
 
@@ -3425,6 +3450,7 @@ def calculate_cubic(
     near_points: numpy.ndarray,
     near_z: numpy.ndarray,
     point: numpy.ndarray,
+    strict: bool,
 ):
     """Calculate linear interpolation of the 'near_indices' points. Take the straight
     mean if the points are co-linear or too few for linear interpolation."""
@@ -3459,6 +3485,13 @@ def calculate_cubic(
         logger.warning(
             "NaN - this will occur if colinear points or outside convex hull"
         )
+    elif numpy.isnan(value) and len(near_z) > 0 and not strict:
+        logger.warning(
+            "Was NaN - will estimate as distance weighted mean"
+        )
+        distance_vectors = point - near_points
+        distances = numpy.sqrt((distance_vectors**2).sum(axis=1))
+        value = (near_z / distances).sum(axis=0) / (1 / distances).sum(axis=0)
     return value
 
 
@@ -3466,16 +3499,23 @@ def calculate_rbf(
     near_points: numpy.ndarray,
     near_z: numpy.ndarray,
     point: numpy.ndarray,
+    kernel: str
 ):
     logger = logging.getLogger(__name__)
     logger.setLevel(logging.DEBUG)
-    if len(near_z) < RBF_CACHE_SIZE and len(near_z) >= 3:
+    if len(near_z) >= 3:
+        if len(near_z) < RBF_CACHE_SIZE:
+            logging.warning(
+                "Using RBFInterpolator 'neighbors' option "
+                f"as {len(near_z)} points nearby"
+            )
         try:
             rbf_function = scipy.interpolate.RBFInterpolator(
                 y=near_points,
                 d=near_z,
-                kernel="thin_plate_spline",
+                kernel=kernel,
                 smoothing=0,
+                neighbors=RBF_CACHE_SIZE,
             )
             value = rbf_function([point])
         except (ValueError, Exception) as caught_exception:
@@ -3487,6 +3527,7 @@ def calculate_rbf(
                 near_points=near_points,
                 near_z=near_z,
                 point=point,
+                strict=True,
             )
     else:
         logger.warning(
@@ -3498,6 +3539,7 @@ def calculate_rbf(
             near_points=near_points,
             near_z=near_z,
             point=point,
+            strict=True,
         )
     return value
 
