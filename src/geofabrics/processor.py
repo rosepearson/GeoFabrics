@@ -1227,7 +1227,9 @@ class HydrologicDemGenerator(BaseProcessor):
                     cache_path=temp_folder,
                 )
                 temp_file = temp_folder / "dem_added_waterways.nc"
-                self.logger.info(f"Save temp DEM with waterways added to netCDF: {temp_file}")
+                self.logger.info(
+                    f"Save temp DEM with waterways added to netCDF: {temp_file}"
+                )
                 hydrologic_dem.save_and_load_dem(temp_file)
         # Load in river bathymetry and incorporate where discernable at the resolution
         if "rivers" in self.instructions["data_paths"]:
@@ -1281,7 +1283,9 @@ class HydrologicDemGenerator(BaseProcessor):
                     cache_path=temp_folder,
                 )
                 temp_file = temp_folder / "dem_added_rivers.nc"
-                self.logger.info(f"Save temp DEM with rivers added to netCDF: {temp_file}")
+                self.logger.info(
+                    f"Save temp DEM with rivers added to netCDF: {temp_file}"
+                )
                 hydrologic_dem.save_and_load_dem(temp_file)
 
         # Check for stopbanks and interpolate if they exist
@@ -1326,7 +1330,9 @@ class HydrologicDemGenerator(BaseProcessor):
                     cache_path=temp_folder,
                 )
                 temp_file = temp_folder / "dem_added_stopbanks.nc"
-                self.logger.info(f"Save temp DEM with stopbanks added to netCDF: {temp_file}")
+                self.logger.info(
+                    f"Save temp DEM with stopbanks added to netCDF: {temp_file}"
+                )
                 hydrologic_dem.save_and_load_dem(temp_file)
 
     def run(self):

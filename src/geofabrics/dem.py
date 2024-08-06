@@ -1078,19 +1078,20 @@ class HydrologicallyConditionedDem(DemBase):
         using the specified interpolation approach after filtering the points based
         on the type label. The type_label also determines the source classification.
         """
-        
+
         crs = self.catchment_geometry.crs
         raster_options = {
             "raster_type": geometry.RASTER_TYPE,
             "elevation_range": None,
             "method": method,
             "crs": crs,
-            "radius": elevations.points["width"].max() + 2 * self.catchment_geometry.resolution,
+            "radius": elevations.points["width"].max()
+            + 2 * self.catchment_geometry.resolution,
         }
 
         # Define the region to rasterise
         region_to_rasterise = elevations.polygons
-        
+
         # Extract river elevations
         point_cloud = elevations.points_array
 
@@ -1125,7 +1126,7 @@ class HydrologicallyConditionedDem(DemBase):
 
             # Combine the estimated and edge points
             point_cloud = numpy.concatenate([edge_points, point_cloud])
-        
+
         # Save river points in a temporary laz file
         lidar_file = cache_path / "waterways_points.laz"
         pdal_pipeline_instructions = [
@@ -1150,8 +1151,6 @@ class HydrologicallyConditionedDem(DemBase):
         elevations = {}
 
         self.logger.info(f"Preparing {[len(chunked_dim_x), len(chunked_dim_y)]} chunks")
-
-        
 
         # cycle through index chunks - and collect in a delayed array
         self.logger.info("Running over ocean chunked")
@@ -1307,7 +1306,7 @@ class HydrologicallyConditionedDem(DemBase):
         using the specified interpolation approach after filtering the points based
         on the type label. The type_label also determines the source classification.
         """
-        
+
         crs = self.catchment_geometry.crs
         raster_options = {
             "raster_type": geometry.RASTER_TYPE,
@@ -1319,7 +1318,7 @@ class HydrologicallyConditionedDem(DemBase):
 
         # Define the region to rasterise
         region_to_rasterise = elevations.polygons
-        
+
         # Extract river elevations
         estimated_points = elevations.points_array
 
@@ -1380,9 +1379,9 @@ class HydrologicallyConditionedDem(DemBase):
         edge_points["X"] = flat_x[mask_z]
         edge_points["Y"] = flat_y[mask_z]
         edge_points["Z"] = flat_z[mask_z]
-        
+
         point_cloud = numpy.concatenate([edge_points, estimated_points])
-        
+
         # Save river points in a temporary laz file
         lidar_file = cache_path / "river_points.laz"
         pdal_pipeline_instructions = [
@@ -1407,8 +1406,6 @@ class HydrologicallyConditionedDem(DemBase):
         elevations = {}
 
         self.logger.info(f"Preparing {[len(chunked_dim_x), len(chunked_dim_y)]} chunks")
-
-        
 
         # cycle through index chunks - and collect in a delayed array
         self.logger.info("Running over ocean chunked")
