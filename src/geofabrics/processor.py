@@ -1168,7 +1168,7 @@ class HydrologicDemGenerator(BaseProcessor):
                         key="interpolation", subkey="ocean"
                     ),
                 )
-                temp_file = temp_folder / "raw_dem_ocean_points.nc"
+                temp_file = temp_folder / "dem_added_ocean.nc"
                 self.logger.info(f"Save temp raw DEM to netCDF: {temp_file}")
                 hydrologic_dem.save_and_load_dem(temp_file)
             elif len(ocean_data_dirs) > 0 and ocean_data_key == "ocean_contours":
@@ -1218,13 +1218,17 @@ class HydrologicDemGenerator(BaseProcessor):
             # Call interpolate river on the DEM - the class checks to see if any pixels
             # actually fall inside the polygon
             if len(estimated_elevations.polygons) > 0:  # Skip if no waterways
-                hydrologic_dem.interpolate_elevations_within_polygon(
+                hydrologic_dem.interpolate_elevations_within_polygon_chunked(
                     elevations=estimated_elevations,
                     method=self.get_instruction_general(
                         key="interpolation", subkey="waterways"
                     ),
                     label="waterways",
+                    cache_path=temp_folder,
                 )
+                temp_file = temp_folder / "dem_added_waterways.nc"
+                self.logger.info(f"Save temp DEM with waterways added to netCDF: {temp_file}")
+                hydrologic_dem.save_and_load_dem(temp_file)
         # Load in river bathymetry and incorporate where discernable at the resolution
         if "rivers" in self.instructions["data_paths"]:
             # Loop through each river in turn adding individually
@@ -1269,12 +1273,17 @@ class HydrologicDemGenerator(BaseProcessor):
 
                 # Call interpolate river on the DEM - the class checks to see if any pixels
                 # actually fall inside the polygon
-                hydrologic_dem.interpolate_rivers(
+                hydrologic_dem.interpolate_rivers_chunked(
                     elevations=estimated_elevations,
                     method=self.get_instruction_general(
                         key="interpolation", subkey="rivers"
                     ),
+                    cache_path=temp_folder,
                 )
+                temp_file = temp_folder / "dem_added_rivers.nc"
+                self.logger.info(f"Save temp DEM with rivers added to netCDF: {temp_file}")
+                hydrologic_dem.save_and_load_dem(temp_file)
+
         # Check for stopbanks and interpolate if they exist
         if "stopbanks" in self.instructions["data_paths"]:
             # Load in all open and closed waterway elevation and extents in one go
@@ -1306,15 +1315,19 @@ class HydrologicDemGenerator(BaseProcessor):
 
             # Call interpolate river on the DEM - the class checks to see if any pixels
             # actually fall inside the polygon
-            if len(estimated_elevations.polygons) > 0:  # Skip if no waterways
-                hydrologic_dem.interpolate_elevations_within_polygon(
+            if len(estimated_elevations.polygons) > 0:  # Skip if no stopbanks
+                hydrologic_dem.interpolate_elevations_within_polygon_chunked(
                     elevations=estimated_elevations,
                     method=self.get_instruction_general(
                         key="interpolation", subkey="stopbanks"
                     ),
                     label="stopbanks",
                     include_edges=False,
+                    cache_path=temp_folder,
                 )
+                temp_file = temp_folder / "dem_added_stopbanks.nc"
+                self.logger.info(f"Save temp DEM with stopbanks added to netCDF: {temp_file}")
+                hydrologic_dem.save_and_load_dem(temp_file)
 
     def run(self):
         """This method executes the geofabrics generation pipeline to produce geofabric

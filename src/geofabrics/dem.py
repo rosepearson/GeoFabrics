@@ -1066,6 +1066,144 @@ class HydrologicallyConditionedDem(DemBase):
             method="first",
         )
 
+    def interpolate_elevations_within_polygon_chunked(
+        self,
+        elevations: geometry.EstimatedElevationPoints,
+        method: str,
+        cache_path: pathlib.Path,
+        label: str,
+        include_edges: bool = True,
+    ) -> xarray.Dataset:
+        """Performs interpolation from estimated bathymetry points within a polygon
+        using the specified interpolation approach after filtering the points based
+        on the type label. The type_label also determines the source classification.
+        """
+        
+        crs = self.catchment_geometry.crs
+        raster_options = {
+            "raster_type": geometry.RASTER_TYPE,
+            "elevation_range": None,
+            "method": method,
+            "crs": crs,
+            "radius": elevations.points["width"].max() + 2 * self.catchment_geometry.resolution,
+        }
+
+        # Define the region to rasterise
+        region_to_rasterise = elevations.polygons
+        
+        # Extract river elevations
+        point_cloud = elevations.points_array
+
+        if include_edges:
+            # Get edge points - from DEM
+            edge_dem = self._dem.rio.clip(
+                region_to_rasterise.dissolve().buffer(
+                    self.catchment_geometry.resolution
+                ),
+                drop=True,
+            )
+            edge_dem = edge_dem.rio.clip(
+                region_to_rasterise.dissolve().geometry,
+                invert=True,
+                drop=True,
+            )
+            # Define the edge points
+            grid_x, grid_y = numpy.meshgrid(edge_dem.x, edge_dem.y)
+            mask = edge_dem.z.notnull().values
+            # Define edge points and heights
+            edge_points = numpy.empty(
+                [mask.sum().sum()],
+                dtype=[
+                    ("X", geometry.RASTER_TYPE),
+                    ("Y", geometry.RASTER_TYPE),
+                    ("Z", geometry.RASTER_TYPE),
+                ],
+            )
+            edge_points["X"] = grid_x[mask]
+            edge_points["Y"] = grid_y[mask]
+            edge_points["Z"] = edge_dem.z.values[mask]
+
+            # Combine the estimated and edge points
+            point_cloud = numpy.concatenate([edge_points, point_cloud])
+        
+        # Save river points in a temporary laz file
+        lidar_file = cache_path / "waterways_points.laz"
+        pdal_pipeline_instructions = [
+            {
+                "type": "writers.las",
+                "a_srs": f"EPSG:" f"{crs['horizontal']}+" f"{crs['vertical']}",
+                "filename": str(lidar_file),
+                "compression": "laszip",
+            }
+        ]
+        pdal_pipeline = pdal.Pipeline(
+            json.dumps(pdal_pipeline_instructions), [point_cloud]
+        )
+        pdal_pipeline.execute()
+
+        if self.chunk_size is not None:
+            logging.warning("Chunksize of none. set to DEM shape.")
+            self.chunk_size = max(len(self._dem.x), len(self._dem.y))
+
+        # get chunking information
+        chunked_dim_x, chunked_dim_y = self._chunks_from_dem(self.chunk_size, self._dem)
+        elevations = {}
+
+        self.logger.info(f"Preparing {[len(chunked_dim_x), len(chunked_dim_y)]} chunks")
+
+        
+
+        # cycle through index chunks - and collect in a delayed array
+        self.logger.info("Running over ocean chunked")
+        delayed_chunked_matrix = []
+        for i, dim_y in enumerate(chunked_dim_y):
+            delayed_chunked_x = []
+            for j, dim_x in enumerate(chunked_dim_x):
+                self.logger.debug(f"\tLiDAR chunk {[i, j]}")
+                # Load in points
+                river_points = delayed_load_tiles_in_chunk(
+                    lidar_files=[lidar_file],
+                    source_crs=raster_options["crs"],
+                    chunk_region_to_tile=None,
+                    crs=raster_options["crs"],
+                )
+
+                # Rasterise tiles
+                delayed_chunked_x.append(
+                    dask.array.from_delayed(
+                        delayed_elevation_over_chunk(
+                            dim_x=dim_x,
+                            dim_y=dim_y,
+                            tile_points=river_points,
+                            options=raster_options,
+                        ),
+                        shape=(len(dim_y), len(dim_x)),
+                        dtype=raster_options["raster_type"],
+                    )
+                )
+            delayed_chunked_matrix.append(delayed_chunked_x)
+
+        # Combine chunks into a dataset
+        elevations = dask.array.block(delayed_chunked_matrix)
+
+        # Update DEM layers - copy everyhere within the region to rasterise
+        region_mask = clip_mask(
+            self._dem.z,
+            region_to_rasterise.geometry,
+            self.chunk_size,
+        )
+        region_mask.load()
+        self._dem["z"] = self._dem.z.where(~region_mask, elevations)
+        mask = ~(region_mask & self._dem.z.notnull())
+        self._dem["data_source"] = self._dem.data_source.where(
+            mask,
+            self.SOURCE_CLASSIFICATION[label],
+        )
+        self._dem["lidar_source"] = self._dem.lidar_source.where(
+            mask, self.SOURCE_CLASSIFICATION["no data"]
+        )
+        self._write_netcdf_conventions_in_place(self._dem, self.catchment_geometry.crs)
+
     def interpolate_elevations_within_polygon(
         self,
         elevations: geometry.EstimatedElevationPoints,
@@ -1159,6 +1297,170 @@ class HydrologicallyConditionedDem(DemBase):
             method="first",
         )
 
+    def interpolate_rivers_chunked(
+        self,
+        elevations: geometry.EstimatedElevationPoints,
+        method: str,
+        cache_path: pathlib.Path,
+    ) -> xarray.Dataset:
+        """Performs interpolation from estimated bathymetry points within a polygon
+        using the specified interpolation approach after filtering the points based
+        on the type label. The type_label also determines the source classification.
+        """
+        
+        crs = self.catchment_geometry.crs
+        raster_options = {
+            "raster_type": geometry.RASTER_TYPE,
+            "elevation_range": None,
+            "method": method,
+            "crs": crs,
+            "radius": 5400,
+        }
+
+        # Define the region to rasterise
+        region_to_rasterise = elevations.polygons
+        
+        # Extract river elevations
+        estimated_points = elevations.points_array
+
+        # Get the elevations adjacent to the river and fan locations - from DEM
+        edge_dem = self._dem.rio.clip(
+            region_to_rasterise.dissolve().buffer(self.catchment_geometry.resolution),
+            drop=True,
+        )
+        edge_dem = edge_dem.rio.clip(
+            region_to_rasterise.dissolve().geometry,
+            invert=True,
+            drop=True,
+        )
+        # Define the river and mouth edge points
+        grid_x, grid_y = numpy.meshgrid(edge_dem.x, edge_dem.y)
+        flat_x = grid_x.flatten()
+        flat_y = grid_y.flatten()
+        flat_z = edge_dem.z.values.flatten()
+        mask_z = ~numpy.isnan(flat_z)
+
+        # Interpolate the estimated river bank heights along only the river
+        if elevations.bank_heights_exist():
+            # Get the estimated river bank heights and define a mask where nan
+            river_bank_points = elevations.bank_height_points()
+            river_bank_nan_mask = numpy.logical_not(numpy.isnan(river_bank_points["Z"]))
+            # Interpolate from the estimated river bank heights
+            xy_out = numpy.concatenate(
+                [[flat_x[mask_z]], [flat_y[mask_z]]], axis=0
+            ).transpose()
+            options = {
+                "radius": elevations.points["width"].max(),
+                "raster_type": geometry.RASTER_TYPE,
+                "method": "linear",
+            }
+            estimated_river_edge_z = elevation_from_points(
+                point_cloud=river_bank_points[river_bank_nan_mask],
+                xy_out=xy_out,
+                options=options,
+            )
+
+            # Use the estimated bank heights where lower than the DEM edge values
+            mask_z_river_edge = mask_z.copy()
+            mask_z_river_edge[:] = False
+            mask_z_river_edge[mask_z] = flat_z[mask_z] > estimated_river_edge_z
+            flat_z[mask_z_river_edge] = estimated_river_edge_z[
+                flat_z[mask_z] > estimated_river_edge_z
+            ]
+
+        # Use the flat_x/y/z to define edge points and heights
+        edge_points = numpy.empty(
+            [mask_z.sum().sum()],
+            dtype=[
+                ("X", geometry.RASTER_TYPE),
+                ("Y", geometry.RASTER_TYPE),
+                ("Z", geometry.RASTER_TYPE),
+            ],
+        )
+        edge_points["X"] = flat_x[mask_z]
+        edge_points["Y"] = flat_y[mask_z]
+        edge_points["Z"] = flat_z[mask_z]
+        
+        point_cloud = numpy.concatenate([edge_points, estimated_points])
+        
+        # Save river points in a temporary laz file
+        lidar_file = cache_path / "river_points.laz"
+        pdal_pipeline_instructions = [
+            {
+                "type": "writers.las",
+                "a_srs": f"EPSG:" f"{crs['horizontal']}+" f"{crs['vertical']}",
+                "filename": str(lidar_file),
+                "compression": "laszip",
+            }
+        ]
+        pdal_pipeline = pdal.Pipeline(
+            json.dumps(pdal_pipeline_instructions), [point_cloud]
+        )
+        pdal_pipeline.execute()
+
+        if self.chunk_size is not None:
+            logging.warning("Chunksize of none. set to DEM shape.")
+            self.chunk_size = max(len(self._dem.x), len(self._dem.y))
+
+        # get chunking information
+        chunked_dim_x, chunked_dim_y = self._chunks_from_dem(self.chunk_size, self._dem)
+        elevations = {}
+
+        self.logger.info(f"Preparing {[len(chunked_dim_x), len(chunked_dim_y)]} chunks")
+
+        
+
+        # cycle through index chunks - and collect in a delayed array
+        self.logger.info("Running over ocean chunked")
+        delayed_chunked_matrix = []
+        for i, dim_y in enumerate(chunked_dim_y):
+            delayed_chunked_x = []
+            for j, dim_x in enumerate(chunked_dim_x):
+                self.logger.debug(f"\tLiDAR chunk {[i, j]}")
+                # Load in points
+                river_points = delayed_load_tiles_in_chunk(
+                    lidar_files=[lidar_file],
+                    source_crs=raster_options["crs"],
+                    chunk_region_to_tile=None,
+                    crs=raster_options["crs"],
+                )
+
+                # Rasterise tiles
+                delayed_chunked_x.append(
+                    dask.array.from_delayed(
+                        delayed_elevation_over_chunk(
+                            dim_x=dim_x,
+                            dim_y=dim_y,
+                            tile_points=river_points,
+                            options=raster_options,
+                        ),
+                        shape=(len(dim_y), len(dim_x)),
+                        dtype=raster_options["raster_type"],
+                    )
+                )
+            delayed_chunked_matrix.append(delayed_chunked_x)
+
+        # Combine chunks into a dataset
+        elevations = dask.array.block(delayed_chunked_matrix)
+
+        # Update DEM layers - copy everyhere within the region to rasterise
+        rivers_mask = clip_mask(
+            self._dem.z,
+            region_to_rasterise.geometry,
+            self.chunk_size,
+        )
+        rivers_mask.load()
+        self._dem["z"] = self._dem.z.where(~rivers_mask, elevations)
+        mask = ~(rivers_mask & self._dem.z.notnull())
+        self._dem["data_source"] = self._dem.data_source.where(
+            mask,
+            self.SOURCE_CLASSIFICATION["rivers and fans"],
+        )
+        self._dem["lidar_source"] = self._dem.lidar_source.where(
+            mask, self.SOURCE_CLASSIFICATION["no data"]
+        )
+        self._write_netcdf_conventions_in_place(self._dem, self.catchment_geometry.crs)
+
     def interpolate_rivers(
         self,
         elevations: geometry.EstimatedElevationPoints,
@@ -1196,7 +1498,7 @@ class HydrologicallyConditionedDem(DemBase):
         grid_x, grid_y = numpy.meshgrid(edge_dem.x, edge_dem.y)
         flat_x = grid_x.flatten()
         flat_y = grid_y.flatten()
-        flat_z = edge_dem.z.data.flatten()
+        flat_z = edge_dem.z.values.flatten()
         mask_z = ~numpy.isnan(flat_z)
 
         # Interpolate the estimated river bank heights along only the river
