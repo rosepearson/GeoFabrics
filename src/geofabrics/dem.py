@@ -3453,9 +3453,7 @@ def calculate_linear(
             "NaN - this will occur if colinear points or outside convex hull"
         )
     elif numpy.isnan(value) and len(near_z) > 0 and not strict:
-        logger.warning(
-            "Was NaN - will estimate as distance weighted mean"
-        )
+        logger.warning("Was NaN - will estimate as distance weighted mean")
         distance_vectors = point - near_points
         distances = numpy.sqrt((distance_vectors**2).sum(axis=1))
         value = (near_z / distances).sum(axis=0) / (1 / distances).sum(axis=0)
@@ -3502,9 +3500,7 @@ def calculate_cubic(
             "NaN - this will occur if colinear points or outside convex hull"
         )
     elif numpy.isnan(value) and len(near_z) > 0 and not strict:
-        logger.warning(
-            "Was NaN - will estimate as distance weighted mean"
-        )
+        logger.warning("Was NaN - will estimate as distance weighted mean")
         distance_vectors = point - near_points
         distances = numpy.sqrt((distance_vectors**2).sum(axis=1))
         value = (near_z / distances).sum(axis=0) / (1 / distances).sum(axis=0)
@@ -3512,10 +3508,7 @@ def calculate_cubic(
 
 
 def calculate_rbf(
-    near_points: numpy.ndarray,
-    near_z: numpy.ndarray,
-    point: numpy.ndarray,
-    kernel: str
+    near_points: numpy.ndarray, near_z: numpy.ndarray, point: numpy.ndarray, kernel: str
 ):
     logger = logging.getLogger(__name__)
     logger.setLevel(logging.DEBUG)
