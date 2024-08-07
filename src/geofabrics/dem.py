@@ -1306,6 +1306,7 @@ class HydrologicallyConditionedDem(DemBase):
         elevations: geometry.EstimatedElevationPoints,
         method: str,
         cache_path: pathlib.Path,
+        k_nearest_neighbours: int = 100,
     ) -> xarray.Dataset:
         """Performs interpolation from estimated bathymetry points within a polygon
         using the specified interpolation approach after filtering the points based
@@ -1318,7 +1319,8 @@ class HydrologicallyConditionedDem(DemBase):
             "elevation_range": None,
             "method": method,
             "crs": crs,
-            "radius": 2400, # 2400
+            "k_nearest_neighbours": k_nearest_neighbours,
+            "use_edge": True,
             "strict": False,
         }
         if method == "rbf":
@@ -1326,10 +1328,23 @@ class HydrologicallyConditionedDem(DemBase):
         # Define the region to rasterise
         region_to_rasterise = elevations.polygons
 
-        # Extract river elevations
-        estimated_points = elevations.points_array
+        # Extract and saveriver elevations
+        river_points = elevations.points_array
+        river_points_file = cache_path / "river_points.laz"
+        pdal_pipeline_instructions = [
+            {
+                "type": "writers.las",
+                "a_srs": f"EPSG:" f"{crs['horizontal']}+" f"{crs['vertical']}",
+                "filename": str(river_points_file),
+                "compression": "laszip",
+            }
+        ]
+        pdal_pipeline = pdal.Pipeline(
+            json.dumps(pdal_pipeline_instructions), [river_points]
+        )
+        pdal_pipeline.execute()
 
-        # Get the elevations adjacent to the river and fan locations - from DEM
+        # Extract and save river/fan adjacent elevations from DEM
         edge_dem = self._dem.rio.clip(
             region_to_rasterise.dissolve().buffer(self.catchment_geometry.resolution),
             drop=True,
@@ -1388,20 +1403,17 @@ class HydrologicallyConditionedDem(DemBase):
         edge_points["Y"] = flat_y[mask_z]
         edge_points["Z"] = flat_z[mask_z]
 
-        point_cloud = numpy.concatenate([edge_points, estimated_points])
-
-        # Save river points in a temporary laz file
-        lidar_file = cache_path / "river_points.laz"
+        river_edge_file = cache_path / "river_edge_points.laz"
         pdal_pipeline_instructions = [
             {
                 "type": "writers.las",
                 "a_srs": f"EPSG:" f"{crs['horizontal']}+" f"{crs['vertical']}",
-                "filename": str(lidar_file),
+                "filename": str(river_edge_file),
                 "compression": "laszip",
             }
         ]
         pdal_pipeline = pdal.Pipeline(
-            json.dumps(pdal_pipeline_instructions), [point_cloud]
+            json.dumps(pdal_pipeline_instructions), [edge_points]
         )
         pdal_pipeline.execute()
 
@@ -1424,7 +1436,14 @@ class HydrologicallyConditionedDem(DemBase):
                 self.logger.debug(f"\tLiDAR chunk {[i, j]}")
                 # Load in points
                 river_points = delayed_load_tiles_in_chunk(
-                    lidar_files=[lidar_file],
+                    lidar_files=[river_points_file],
+                    source_crs=raster_options["crs"],
+                    chunk_region_to_tile=None,
+                    crs=raster_options["crs"],
+                )
+                
+                river_edge_points = delayed_load_tiles_in_chunk(
+                    lidar_files=[river_edge_file],
                     source_crs=raster_options["crs"],
                     chunk_region_to_tile=None,
                     crs=raster_options["crs"],
@@ -1433,10 +1452,11 @@ class HydrologicallyConditionedDem(DemBase):
                 # Rasterise tiles
                 delayed_chunked_x.append(
                     dask.array.from_delayed(
-                        delayed_elevation_over_chunk(
+                        delayed_elevation_over_chunk_from_nearest(
                             dim_x=dim_x,
                             dim_y=dim_y,
-                            tile_points=river_points,
+                            points=river_points,
+                            edge_points=river_edge_points,
                             options=raster_options,
                         ),
                         shape=(len(dim_y), len(dim_x)),
@@ -3312,16 +3332,12 @@ def elevation_from_nearest_points(
         near_indices = tree_index_list[i]
         near_z = point_cloud["Z"][near_indices]
         near_points = tree.data[near_indices]
-        if options["use_edge"] and min(edge_tree_distance_list[i]) <= max(
-            tree_distance_list[i]
-        ):
+        if options["use_edge"]:
             # Add in the edge values as they are nearby
             edge_near_indices = edge_tree_index_list[i]
-            # Take the mean of the edge values and the closest edge location
-            mean_edge = numpy.mean(edge_point_cloud["Z"][edge_near_indices])
-            near_z = numpy.concatenate((near_z, [mean_edge]))
+            near_z = numpy.concatenate((near_z, edge_point_cloud["Z"][edge_near_indices]))
             near_points = numpy.concatenate(
-                (near_points, [edge_tree.data[edge_near_indices[0]]])
+                (near_points, edge_tree.data[edge_near_indices])
             )
 
         if len(near_indices) == 0:  # Set NaN if no values in search region
