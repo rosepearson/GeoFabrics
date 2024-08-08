@@ -1014,11 +1014,11 @@ class HydrologicallyConditionedDem(DemBase):
             offshore_points = numpy.concatenate([offshore_edge_points, bathy_points])
 
         # Resample at a lower resolution if too many offshore points
-        if len(offshore_points) > RBF_CACHE_SIZE:
+        if method == "rbf" and len(offshore_points) > RBF_CACHE_SIZE * 10:
             reduced_resolution = (
                 self.catchment_geometry.resolution
                 * len(offshore_points)
-                / RBF_CACHE_SIZE
+                / RBF_CACHE_SIZE * 10
             )
             self.logger.info(
                 "Reducing the number of 'offshore_points' used to create the RBF "

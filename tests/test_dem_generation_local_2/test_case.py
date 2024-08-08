@@ -137,91 +137,50 @@ class Test(base_test.Test):
         gc.collect()
         cls.clean_data_folder()
 
-    @classmethod
-    def clean_data_folder(cls):
-        """Remove all generated or downloaded files from the data directory,
-        but with only warnings if files can't be removed."""
-
-        assert cls.cache_dir.exists(), (
-            "The data directory that should include the comparison benchmark dem file "
-            "doesn't exist"
-        )
-
-        # Cycle through all folders within the cache dir deleting their contents
-        for path in cls.cache_dir.iterdir():
-            if path.is_dir():
-                for file in path.glob("*"):  # only files
-                    if file.is_file():
-                        try:
-                            file.unlink()
-                        except (Exception, PermissionError) as caught_exception:
-                            logging.warning(
-                                f"Caught error {caught_exception} during "
-                                f"rmtree of {file}. Supressing error. You "
-                                "will have to manually delete."
-                            )
-                    elif file.is_dir():
-                        try:
-                            shutil.rmtree(file)
-                        except (Exception, PermissionError) as caught_exception:
-                            logging.warning(
-                                f"Caught error {caught_exception} during "
-                                f"rmtree of {file}. Supressing error. You "
-                                "will have to manually delete."
-                            )
-                try:
-                    shutil.rmtree(path)
-                except (Exception, PermissionError) as caught_exception:
-                    logging.warning(
-                        f"Caught error {caught_exception} during rmtree of "
-                        f"{path}. Supressing error. You will have to manually "
-                        "delete."
-                    )
-
     def test_result_dem(self):
         """A basic comparison between the generated and benchmark DEM"""
 
         # Load in benchmark DEM
-        file_path = self.cache_dir / self.instructions["data_paths"]["benchmark_dem"]
-        with rioxarray.rioxarray.open_rasterio(file_path, masked=True) as benchmark_dem:
-            benchmark_dem.load()
+        file_path = self.cache_dir / self.instructions["data_paths"]["benchmark"]
+        with rioxarray.rioxarray.open_rasterio(file_path, masked=True) as benchmark:
+            benchmark.load()
         # Load in result DEM
         file_path = self.results_dir / self.instructions["data_paths"]["result_dem"]
         with rioxarray.rioxarray.open_rasterio(file_path, masked=True) as test_dem:
             test_dem.load()
         # Compare DEMs - load from file as rioxarray.rioxarray.open_rasterio ignores
         # index order
-        diff_array = test_dem.z.data - benchmark_dem.z.data
+        diff_array = test_dem.z.data - benchmark.z.data
         logging.info(f"DEM array diff is: {diff_array[diff_array != 0]}")
         numpy.testing.assert_array_equal(
             test_dem.z.data,
-            benchmark_dem.z.data,
-            err_msg="The generated result_dem differs from the benchmark_dem",
+            benchmark.z.data,
+            err_msg="The generated result_dem differs from the benchmark",
         )
 
         # Compare DEMs data source classification
-        diff_array = test_dem.data_source.data - benchmark_dem.data_source.data
+        diff_array = test_dem.data_source.data - benchmark.data_source.data
         logging.info(f"DEM z array diff is: {diff_array[diff_array != 0]}")
         numpy.testing.assert_array_almost_equal(
             test_dem.data_source.data,
-            benchmark_dem.data_source.data,
+            benchmark.data_source.data,
             err_msg="The generated test data_source layer has different data "
             "from the benchmark",
         )
 
         # Compare DEMs lidar source classification
-        diff_array = test_dem.lidar_source.data - benchmark_dem.lidar_source.data
+        diff_array = test_dem.lidar_source.data - benchmark.lidar_source.data
         logging.info(f"DEM z array diff is: {diff_array[diff_array != 0]}")
         numpy.testing.assert_array_almost_equal(
             test_dem.lidar_source.data,
-            benchmark_dem.lidar_source.data,
+            benchmark.lidar_source.data,
             err_msg="The generated test lidar_source layer has different data "
             "from the benchmark",
         )
 
         # explicitly free memory as xarray seems to be hanging onto memory
         del test_dem
-        del benchmark_dem
+        del benchmark
 
 
 if __name__ == "__main__":
