@@ -230,7 +230,7 @@ Module Contents
    other documentation.
 
 
-   .. py:method:: add_hydrological_features(hydrologic_dem, area_threshold, catchment_dirs)
+   .. py:method:: add_hydrological_features(hydrologic_dem, area_threshold, catchment_dirs, temp_folder)
 
       Add in any bathymetry data - ocean or river
 

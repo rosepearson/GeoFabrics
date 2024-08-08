@@ -17,6 +17,7 @@ Attributes
 
    geofabrics.dem.delayed_roughness_over_chunk
    geofabrics.dem.delayed_elevation_over_chunk
+   geofabrics.dem.delayed_elevation_over_chunk_from_nearest
 
 
 Classes
@@ -41,11 +42,14 @@ Functions
    geofabrics.dem.read_file_with_pdal
    geofabrics.dem.roughness_from_points
    geofabrics.dem.elevation_from_points
+   geofabrics.dem.elevation_from_nearest_points
+   geofabrics.dem.point_elevation
    geofabrics.dem.calculate_idw
-   geofabrics.dem.calculate_linear
+   geofabrics.dem.calculate_interpolate_griddata
    geofabrics.dem.load_tiles_in_chunk
    geofabrics.dem.roughness_over_chunk
    geofabrics.dem.elevation_over_chunk
+   geofabrics.dem.elevation_over_chunk_from_nearest
 
 
 Module Contents
@@ -143,6 +147,12 @@ Module Contents
 
 
 
+   .. py:method:: save_and_load_dem(filename)
+
+      Update the saved file cache for the DEM (self._dem) as a netCDF file.
+
+
+
 .. py:class:: HydrologicallyConditionedDem(catchment_geometry, raw_dem_path, interpolation_method, chunk_size)
 
    Bases: :py:obj:`DemBase`
@@ -171,24 +181,29 @@ Module Contents
       Return the combined DEM from tiles and any interpolated offshore values
 
 
-   .. py:method:: interpolate_ocean_bathymetry(bathy_contours)
+   .. py:method:: interpolate_ocean_chunked(ocean_points, cache_path, k_nearest_neighbours, use_edge, buffer, method)
+
+      Create a 'raw'' DEM from a set of tiled LiDAR files. Read these in over
+      non-overlapping chunks and then combine
+
+
+
+   .. py:method:: interpolate_ocean_bathymetry(bathy_contours, method='linear')
 
       Performs interpolation offshore outside LiDAR extents using the SciPy RBF
       function.
 
 
 
-   .. py:method:: interpolate_elevations_within_polygon(elevations, method, label, include_edges = True)
+   .. py:method:: interpolate_elevations_within_polygon(elevations, method, cache_path, label, include_edges = True)
 
-      Performs interpolation of the estimated waterways.
-
-      :param elevations: z-points and polygon where to interpolate
-      :param method: Interpolation method (e.g. nearest-neighbour, linear, cubic, rbf)
-      :param include_edges: If True interpolate smoothly to the surrounding DEM elevations
+      Performs interpolation from estimated bathymetry points within a polygon
+      using the specified interpolation approach after filtering the points based
+      on the type label. The type_label also determines the source classification.
 
 
 
-   .. py:method:: interpolate_rivers(elevations, method)
+   .. py:method:: interpolate_rivers(elevations, method, cache_path, k_nearest_neighbours = 100)
 
       Performs interpolation from estimated bathymetry points within a polygon
       using the specified interpolation approach after filtering the points based
@@ -234,13 +249,7 @@ Module Contents
 
 
 
-   .. py:method:: save_and_load_dem(filename)
-
-      Update the saved file cache for the DEM (self._dem) as a netCDF file.
-
-
-
-.. py:class:: RawDem(catchment_geometry, lidar_interpolation_method, drop_offshore_lidar, buffer_cells, elevation_range = None, chunk_size = None)
+.. py:class:: RawDem(catchment_geometry, lidar_interpolation_method, drop_offshore_lidar, zero_positive_foreshore, buffer_cells, elevation_range = None, chunk_size = None)
 
    Bases: :py:obj:`LidarBase`
 
@@ -278,7 +287,7 @@ Module Contents
 
 
 
-.. py:class:: PatchDem(catchment_geometry, patch_on_top, drop_patch_offshore, buffer_cells, initial_dem_path, elevation_range = None, chunk_size = None)
+.. py:class:: PatchDem(catchment_geometry, patch_on_top, drop_patch_offshore, zero_positive_foreshore, buffer_cells, initial_dem_path, elevation_range = None, chunk_size = None)
 
    Bases: :py:obj:`LidarBase`
 
@@ -370,13 +379,27 @@ Module Contents
    implementation is based on the scipy.spatial.KDTree
 
 
-.. py:function:: calculate_idw(near_indices, point, tree, point_cloud, smoothing = 0, power = 2)
+.. py:function:: elevation_from_nearest_points(point_cloud, edge_point_cloud, xy_out, options, eps = 0, leaf_size = 10)
+
+   Calculate DEM elevation values at the specified locations using the selected
+   approach. Options include: mean, median, and inverse distance weighing (IDW). This
+   implementation is based on the scipy.spatial.KDTree
+
+
+.. py:function:: point_elevation(near_z, near_points, point, options)
+
+   Calculate DEM elevation values at the specified locations using the selected
+   approach. Options include: mean, median, and inverse distance weighing (IDW). This
+   implementation is based on the scipy.spatial.KDTree
+
+
+.. py:function:: calculate_idw(near_points, near_z, point, smoothing = 0, power = 2)
 
    Calculate the IDW mean of the 'near_indices' points. This implementation is based
    on the scipy.spatial.KDTree
 
 
-.. py:function:: calculate_linear(near_indices, point, tree, point_cloud)
+.. py:function:: calculate_interpolate_griddata(near_points, near_z, point, strict, method)
 
    Calculate linear interpolation of the 'near_indices' points. Take the straight
    mean if the points are co-linear or too few for linear interpolation.
@@ -398,11 +421,20 @@ Module Contents
    Rasterise all points within a chunk.
 
 
+.. py:function:: elevation_over_chunk_from_nearest(dim_x, dim_y, points, edge_points, options)
+
+   Rasterise all points within a chunk.
+
+
 .. py:data:: delayed_roughness_over_chunk
 
-   Wrap the `rasterise_chunk` routine in dask.delayed
+   Wrap the `elevation_over_chunk` routine in dask.delayed
 
 .. py:data:: delayed_elevation_over_chunk
+
+   Wrap the `elevation_over_chunk` routine in dask.delayed
+
+.. py:data:: delayed_elevation_over_chunk_from_nearest
 
    Wrap the `load_tiles_in_chunk` routine in dask.delayed
 

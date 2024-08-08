@@ -16,7 +16,7 @@ Classes
 
    geofabrics.geometry.CatchmentGeometry
    geofabrics.geometry.BathymetryContours
-   geofabrics.geometry.MarineBathymetryPoints
+   geofabrics.geometry.OceanPoints
    geofabrics.geometry.EstimatedElevationPoints
    geofabrics.geometry.TileInfo
    geofabrics.geometry.RiverMouthFan
@@ -118,10 +118,14 @@ Module Contents
 
 
 
-.. py:class:: MarineBathymetryPoints(points_file, catchment_geometry, exclusion_extent=None)
+.. py:class:: OceanPoints(points_file, catchment_geometry, is_depth = False, z_label = None)
 
    A class for accesing marine bathymetry points. These can be used as
    depths to interpolate elevations offshore.
+
+
+   .. py:property:: boundary
+      Return the bounding box containing data
 
 
    .. py:property:: points
@@ -138,6 +142,12 @@ Module Contents
 
    .. py:property:: z
       The z values
+
+
+   .. py:method:: sample()
+
+      Return points - rename in future.
+
 
 
 .. py:class:: EstimatedElevationPoints(points_files, polygon_files, catchment_geometry, filter_osm_ids = [], z_labels = None)
