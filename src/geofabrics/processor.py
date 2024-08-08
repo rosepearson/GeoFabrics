@@ -278,6 +278,7 @@ class BaseProcessor(abc.ABC):
         defaults = {
             "bathymetry_points_type": None,
             "drop_offshore_lidar": True,
+            "zero_positive_foreshore": True,
             "lidar_classifications_to_keep": [2],
             "elevation_range": None,
             "download_limit_gbytes": 100,
@@ -286,7 +287,7 @@ class BaseProcessor(abc.ABC):
                 "rivers": "rbf",
                 "waterways": "cubic",
                 "stopbanks": "nearest",
-                "ocean": "linear",
+                "ocean": "rbf",
                 "lidar": "idw",
                 "no_data": None,
             },
@@ -297,6 +298,11 @@ class BaseProcessor(abc.ABC):
                 "ocean": None,
             },
             "ignore_clipping": False,
+            "ocean": {
+                "nearest_k_for_interpolation": 40,
+                "use_edge": False,
+                "is_depth": False,
+            },
             "filter_waterways_by_osm_ids": [],
         }
 
@@ -462,11 +468,15 @@ class BaseProcessor(abc.ABC):
         base_dir = pathlib.Path(self.get_instruction_path("local_cache"))
         subfolder = self.get_instruction_path("subfolder").relative_to(base_dir)
         cache_dir = pathlib.Path(self.get_instruction_path("downloads"))
-        bounding_polygon = (
-            self.catchment_geometry.catchment
-            if self.catchment_geometry is not None
-            else None
-        )
+        if data_type == "vector" and self.catchment_geometry is not None:
+            bounding_polygon = self.catchment_geometry.catchment.buffer(
+                numpy.sqrt(self.catchment_geometry.catchment.area.sum())
+            )
+        elif data_type == "raster" and self.catchment_geometry is not None:
+            bounding_polygon = self.catchment_geometry.catchment
+        else:
+            bounding_polygon = None
+
         for data_service in data_services.keys():
             if (
                 self.check_datasets(data_service, data_type=data_type)
@@ -902,6 +912,9 @@ class RawLidarDemGenerator(BaseProcessor):
 
         # Get the drop_offshore_lidar selection for each dataset
         drop_offshore_lidar = self.get_instruction_general("drop_offshore_lidar")
+        zero_positive_foreshore = self.get_instruction_general(
+            "zero_positive_foreshore"
+        )
         if isinstance(drop_offshore_lidar, bool):
             drop_offshore_lidar_bool = drop_offshore_lidar
             drop_offshore_lidar = {}
@@ -933,6 +946,7 @@ class RawLidarDemGenerator(BaseProcessor):
         raw_dem = dem.RawDem(
             catchment_geometry=self.catchment_geometry,
             drop_offshore_lidar=drop_offshore_lidar,
+            zero_positive_foreshore=zero_positive_foreshore,
             lidar_interpolation_method=self.get_instruction_general(
                 key="interpolation", subkey="lidar"
             ),
@@ -1001,6 +1015,7 @@ class RawLidarDemGenerator(BaseProcessor):
                     catchment_geometry=self.catchment_geometry,
                     patch_on_top=False,
                     drop_patch_offshore=True,
+                    zero_positive_foreshore=zero_positive_foreshore,
                     initial_dem_path=cached_file,
                     elevation_range=self.get_instruction_general("elevation_range"),
                     chunk_size=self.get_processing_instructions("chunk_size"),
@@ -1082,38 +1097,83 @@ class HydrologicDemGenerator(BaseProcessor):
         hydrologic_dem: dem.HydrologicallyConditionedDem,
         area_threshold: float,
         catchment_dirs: pathlib.Path,
+        temp_folder: pathlib.Path,
     ):
         """Add in any bathymetry data - ocean or river"""
 
         # Check for ocean bathymetry. Interpolate offshore if significant
         # offshore area is not covered by LiDAR
-        area_without_lidar = self.catchment_geometry.offshore_without_lidar(
+        offshore_area_without_lidar = self.catchment_geometry.offshore_without_lidar(
             hydrologic_dem.raw_extents
         ).geometry.area.sum()
+        offshore_area = self.catchment_geometry.offshore.area.sum()
+        if self.check_vector_or_raster(
+            key="ocean_contours", api_type="vector"
+        ) and self.check_vector_or_raster(key="ocean_points", api_type="vector"):
+            self.logger.warning(
+                "Both ocean_contours and ocean_points provided. Will use only "
+                "ocean_points. Synethsise datasets before use to include both."
+            )
+            ocean_data_key = "ocean_points"
+        elif self.check_vector_or_raster(key="ocean_points", api_type="vector"):
+            ocean_data_key = "ocean_points"
+        elif self.check_vector_or_raster(key="ocean_contours", api_type="vector"):
+            ocean_data_key = "ocean_contours"
+        else:
+            ocean_data_key = None
+
         if (
-            self.check_vector_or_raster(key="ocean_contours", api_type="vector")
-            and area_without_lidar
-            > self.catchment_geometry.offshore.area.sum() * area_threshold
+            ocean_data_key is not None
+            and offshore_area_without_lidar > offshore_area * area_threshold
         ):
             # Get the bathymetry data directory
-            ocean_contour_dirs = self.get_vector_or_raster_paths(
-                key="ocean_contours",
+            ocean_data_dirs = self.get_vector_or_raster_paths(
+                key=ocean_data_key,
                 data_type="vector",
                 required=False,
             )
-            if len(ocean_contour_dirs) != 1:
+            if len(ocean_data_dirs) != 1:
                 self.logger.warning(
-                    f"{len(ocean_contour_dirs)} ocean_contours's provided. "
-                    f"Specficially {ocean_contour_dirs}. Only consider the "
+                    f"{len(ocean_data_dirs)} {ocean_data_key}'s provided. "
+                    f"Specficially {ocean_data_dirs}. Only consider the "
                     "first if multiple."
                 )
 
-            self.logger.info(f"Incorporating Bathymetry: {ocean_contour_dirs}")
+            self.logger.info(f"Incorporating Bathymetry: {ocean_data_dirs}")
 
             # Load in bathymetry
-            if len(ocean_contour_dirs) > 0:
-                ocean_contours = geometry.BathymetryContours(
-                    ocean_contour_dirs[0],
+            if len(ocean_data_dirs) > 0 and ocean_data_key == "ocean_points":
+                ocean_points = geometry.OceanPoints(
+                    points_file=ocean_data_dirs[0],
+                    catchment_geometry=self.catchment_geometry,
+                    z_label=self.get_instruction_general(
+                        key="z_labels", subkey="ocean"
+                    ),
+                    is_depth=self.get_instruction_general(
+                        key="ocean", subkey="is_depth"
+                    ),
+                )
+                # Interpolate
+                hydrologic_dem.interpolate_ocean_chunked(
+                    ocean_points=ocean_points,
+                    cache_path=temp_folder,
+                    use_edge=self.get_instruction_general(
+                        key="ocean", subkey="use_edge"
+                    ),
+                    k_nearest_neighbours=self.get_instruction_general(
+                        key="ocean", subkey="nearest_k_for_interpolation"
+                    ),
+                    buffer=self.get_instruction_general(key="lidar_buffer"),
+                    method=self.get_instruction_general(
+                        key="interpolation", subkey="ocean"
+                    ),
+                )
+                temp_file = temp_folder / "dem_added_ocean.nc"
+                self.logger.info(f"Save temp raw DEM to netCDF: {temp_file}")
+                hydrologic_dem.save_and_load_dem(temp_file)
+            elif len(ocean_data_dirs) > 0 and ocean_data_key == "ocean_contours":
+                ocean_data = geometry.BathymetryContours(
+                    ocean_data_dirs[0],
                     self.catchment_geometry,
                     z_label=self.get_instruction_general(
                         key="z_labels", subkey="ocean"
@@ -1121,7 +1181,8 @@ class HydrologicDemGenerator(BaseProcessor):
                     exclusion_extent=hydrologic_dem.raw_extents,
                 )
                 # Interpolate
-                hydrologic_dem.interpolate_ocean_bathymetry(ocean_contours)
+                hydrologic_dem.interpolate_ocean_bathymetry(ocean_data)
+
         # Check for waterways and interpolate if they exist
         if "waterways" in self.instructions["data_paths"]:
             # Load in all open and closed waterway elevation and extents in one go
@@ -1163,7 +1224,13 @@ class HydrologicDemGenerator(BaseProcessor):
                         key="interpolation", subkey="waterways"
                     ),
                     label="waterways",
+                    cache_path=temp_folder,
                 )
+                temp_file = temp_folder / "dem_added_waterways.nc"
+                self.logger.info(
+                    f"Save temp DEM with waterways added to netCDF: {temp_file}"
+                )
+                hydrologic_dem.save_and_load_dem(temp_file)
         # Load in river bathymetry and incorporate where discernable at the resolution
         if "rivers" in self.instructions["data_paths"]:
             # Loop through each river in turn adding individually
@@ -1213,7 +1280,14 @@ class HydrologicDemGenerator(BaseProcessor):
                     method=self.get_instruction_general(
                         key="interpolation", subkey="rivers"
                     ),
+                    cache_path=temp_folder,
                 )
+                temp_file = temp_folder / "dem_added_rivers.nc"
+                self.logger.info(
+                    f"Save temp DEM with rivers added to netCDF: {temp_file}"
+                )
+                hydrologic_dem.save_and_load_dem(temp_file)
+
         # Check for stopbanks and interpolate if they exist
         if "stopbanks" in self.instructions["data_paths"]:
             # Load in all open and closed waterway elevation and extents in one go
@@ -1245,7 +1319,7 @@ class HydrologicDemGenerator(BaseProcessor):
 
             # Call interpolate river on the DEM - the class checks to see if any pixels
             # actually fall inside the polygon
-            if len(estimated_elevations.polygons) > 0:  # Skip if no waterways
+            if len(estimated_elevations.polygons) > 0:  # Skip if no stopbanks
                 hydrologic_dem.interpolate_elevations_within_polygon(
                     elevations=estimated_elevations,
                     method=self.get_instruction_general(
@@ -1253,7 +1327,13 @@ class HydrologicDemGenerator(BaseProcessor):
                     ),
                     label="stopbanks",
                     include_edges=False,
+                    cache_path=temp_folder,
                 )
+                temp_file = temp_folder / "dem_added_stopbanks.nc"
+                self.logger.info(
+                    f"Save temp DEM with stopbanks added to netCDF: {temp_file}"
+                )
+                hydrologic_dem.save_and_load_dem(temp_file)
 
     def run(self):
         """This method executes the geofabrics generation pipeline to produce geofabric
@@ -1267,6 +1347,22 @@ class HydrologicDemGenerator(BaseProcessor):
 
         # create the catchment geometry object
         self.catchment_geometry = self.create_catchment()
+
+        # Create folder for caching raw DEM files during DEM generation
+        subfolder = self.get_instruction_path("subfolder")
+        temp_folder = subfolder / "temp" / f"{self.get_resolution()}m_results"
+        self.logger.info(f"Create folder {temp_folder} for temporary files")
+        if temp_folder.exists():
+            try:
+                gc.collect()
+                shutil.rmtree(temp_folder)
+            except (Exception, PermissionError) as caught_exception:
+                logging.warning(
+                    f"Caught error {caught_exception} during rmtree of "
+                    f"{temp_folder}. Supressing error. You will have to "
+                    f"manually delete {temp_folder}."
+                )
+        temp_folder.mkdir(parents=True, exist_ok=True)
 
         # Setup Dask cluster and client - LAZY SAVE LIDAR DEM
         cluster_kwargs = {
@@ -1294,17 +1390,19 @@ class HydrologicDemGenerator(BaseProcessor):
             # Check for and add any bathymetry information
             self.add_hydrological_features(
                 hydrologic_dem=hydrologic_dem,
+                temp_folder=temp_folder,
                 area_threshold=area_threshold,
                 catchment_dirs=self.get_instruction_path("extents"),
             )
 
             # fill combined dem - save results
             self.logger.info(
-                "In processor.DemGenerator - write out the raw DEM to netCDF"
+                "In processor.DemGenerator - write out the conditioned DEM to netCDF"
             )
+            result_path = pathlib.Path(self.get_instruction_path("result_dem"))
             try:
                 self.save_dem(
-                    filename=self.get_instruction_path("result_dem"),
+                    filename=result_path,
                     dataset=hydrologic_dem.dem,
                     generator=hydrologic_dem,
                 )
@@ -1316,8 +1414,18 @@ class HydrologicDemGenerator(BaseProcessor):
                     f"{self.get_instruction_path('result_dem')}"
                     " before re-raising error."
                 )
-                pathlib.Path(self.get_instruction_path("result_dem")).unlink()
+                if result_path.exists():
+                    result_path.unlink()
                 raise caught_exception
+            try:
+                gc.collect()
+                shutil.rmtree(temp_folder)
+            except (Exception, PermissionError) as caught_exception:
+                logging.warning(
+                    f"Caught error {caught_exception} during rmtree of "
+                    "temp_folder. Supressing error. You will have to "
+                    f"manually delete {temp_folder}."
+                )
         if self.debug:
             # Record the parameter used during execution - append to existing
             with open(
@@ -1422,6 +1530,9 @@ class PatchDemGenerator(BaseProcessor):
                 chunk_size=self.get_processing_instructions("chunk_size"),
                 patch_on_top=self.get_patch_instruction("patch_on_top"),
                 drop_patch_offshore=self.get_patch_instruction("drop_patch_offshore"),
+                zero_positive_foreshore=self.get_instruction_general(
+                    "zero_positive_foreshore"
+                ),
                 buffer_cells=self.get_instruction_general("lidar_buffer"),
                 elevation_range=None,
             )

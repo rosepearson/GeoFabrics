@@ -24,6 +24,9 @@ import scipy.spatial
 from . import geometry
 
 
+RBF_CACHE_SIZE = 1000
+
+
 def chunk_mask(mask, chunk_size):
     arrs = []
     for i in range(0, mask.shape[0], chunk_size):
@@ -298,7 +301,6 @@ class DemBase(abc.ABC):
         Defines the extents of any dense (LiDAR or refernence DEM) values already added.
     """
 
-    CACHE_SIZE = 10000  # The maximum RBF input without performance issues
     SOURCE_CLASSIFICATION = {
         "LiDAR": 1,
         "ocean bathymetry": 2,
@@ -398,6 +400,21 @@ class DemBase(abc.ABC):
             )
             raise caught_exception
 
+    def save_and_load_dem(
+        self,
+        filename: pathlib.Path,
+    ):
+        """Update the saved file cache for the DEM (self._dem) as a netCDF file."""
+
+        self.logger.info(
+            "In LidarBase.save_and_load_dem saving _dem as NetCDF file to "
+            f"{filename}"
+        )
+
+        self.save_dem(filename=filename, dem=self._dem)
+        del self._dem
+        self._dem = self._load_dem(filename=filename)
+
     @staticmethod
     def _ensure_positive_indexing(
         dem: xarray.core.dataarray.DataArray,
@@ -496,6 +513,88 @@ class DemBase(abc.ABC):
 
         return dense_extents
 
+    def _chunks_from_dem(self, chunk_size, dem: xarray.Dataset) -> (list, list):
+        """Define the chunks to break the catchment into when reading in and
+        downsampling LiDAR.
+
+        Parameters
+        ----------
+
+        chunk_size
+            The size in pixels of each chunk.
+        """
+
+        dim_x_all = dem.x.data
+        dim_y_all = dem.y.data
+
+        # Determine the number of chunks
+        n_chunks_x = int(numpy.ceil(len(dim_x_all) / chunk_size))
+        n_chunks_y = int(numpy.ceil(len(dim_y_all) / chunk_size))
+
+        # Determine x coordinates rounded up to the nearest chunk
+        dim_x = []
+        for i in range(n_chunks_x):
+            if i + 1 < n_chunks_x:
+                # Add full sized chunk
+                dim_x.append(dim_x_all[i * chunk_size : (i + 1) * chunk_size])
+            else:
+                # Add rest of array
+                dim_x.append(dim_x_all[i * chunk_size :])
+
+        # Determine y coordinates rounded up to the nearest chunk
+        dim_y = []
+        for i in range(n_chunks_y):
+            if i + 1 < n_chunks_y:
+                # Add full sized chunk
+                dim_y.append(dim_y_all[i * chunk_size : (i + 1) * chunk_size])
+            else:
+                # Add rest of array
+                dim_y.append(dim_y_all[i * chunk_size :])
+
+        return dim_x, dim_y
+
+    def _define_chunk_region(
+        self,
+        region_to_rasterise: geopandas.GeoDataFrame,
+        dim_x: numpy.ndarray,
+        dim_y: numpy.ndarray,
+        radius: float,
+    ):
+        """Define the region to rasterise within a single chunk."""
+        # Define the region to tile
+        chunk_geometry = geopandas.GeoDataFrame(
+            {
+                "geometry": [
+                    shapely.geometry.Polygon(
+                        [
+                            (dim_x.min(), dim_y.min()),
+                            (dim_x.max(), dim_y.min()),
+                            (dim_x.max(), dim_y.max()),
+                            (dim_x.min(), dim_y.max()),
+                        ]
+                    )
+                ]
+            },
+            crs=self.catchment_geometry.crs["horizontal"],
+        )
+
+        # Define region to rasterise inside the chunk area
+        if region_to_rasterise.area.sum() > 0:
+            chunk_region_to_tile = geopandas.GeoDataFrame(
+                geometry=region_to_rasterise.buffer(radius).clip(
+                    chunk_geometry.buffer(radius), keep_geom_type=True
+                )
+            )
+        else:
+            chunk_region_to_tile = region_to_rasterise
+        # remove any subpixel polygons
+        chunk_region_to_tile = chunk_region_to_tile[
+            chunk_region_to_tile.area
+            > self.catchment_geometry.resolution * self.catchment_geometry.resolution
+        ]
+
+        return chunk_region_to_tile
+
 
 class HydrologicallyConditionedDem(DemBase):
     """A class to manage loading in an already created and saved dense DEM that has yet
@@ -575,7 +674,7 @@ class HydrologicallyConditionedDem(DemBase):
     @property
     def dem(self):
         """Return the combined DEM from tiles and any interpolated offshore values"""
-
+        self._write_netcdf_conventions_in_place(self._dem, self.catchment_geometry.crs)
         # Ensure valid name and increasing dimension indexing for the dem
         if (
             self.interpolation_method is not None
@@ -680,6 +779,166 @@ class HydrologicallyConditionedDem(DemBase):
 
         return offshore_edge
 
+    def interpolate_ocean_chunked(
+        self,
+        ocean_points,
+        cache_path: pathlib.Path,
+        k_nearest_neighbours: int,
+        use_edge: bool,
+        buffer: int,
+        method: str,
+    ) -> xarray.Dataset:
+        """Create a 'raw'' DEM from a set of tiled LiDAR files. Read these in over
+        non-overlapping chunks and then combine"""
+
+        crs = self.catchment_geometry.crs
+        raster_options = {
+            "raster_type": geometry.RASTER_TYPE,
+            "elevation_range": None,
+            "k_nearest_neighbours": k_nearest_neighbours,
+            "method": method,
+            "crs": crs,
+            "use_edge": use_edge,
+            "strict": True,
+        }
+        if method == "rbf":
+            raster_options["kernel"] = "thin_plate_spline"
+        if use_edge:
+            # Save point cloud as LAZ file
+            offshore_edge_points = self._sample_offshore_edge(
+                self.catchment_geometry.resolution
+            )
+            # Remove any ocean points on land and within the buffered distance
+            # of the foreshore to avoid any sharp changes that may cause jumps
+            offshore_region = ocean_points.boundary
+            buffer_radius = self.catchment_geometry.resolution * buffer
+            offshore_region = offshore_region.overlay(
+                self.catchment_geometry.land_and_foreshore.buffer(
+                    buffer_radius
+                ).to_frame("geometry"),
+                how="difference",
+                keep_geom_type=True,
+            )
+            ocean_points._points = ocean_points._points.clip(
+                offshore_region, keep_geom_type=True
+            )
+        offshore_points = ocean_points.sample()
+        if len(offshore_points) < k_nearest_neighbours:
+            self.logger.warning(
+                f"Fewer ocean points ({len(offshore_points)}) than k_nearest_neighbours "
+                f"{k_nearest_neighbours}. Skip offshore interpolation."
+            )
+            return
+        if use_edge and len(offshore_edge_points) < k_nearest_neighbours:
+            self.logger.warning(
+                f"Fewer edge points ({len(offshore_edge_points)}) than "
+                f"k_nearest_neighbours {k_nearest_neighbours}. Skip offshore interpolation."
+            )
+            return
+
+        # Save offshore points in a temporary laz file
+        offshore_file = cache_path / "offshore_points.laz"
+        pdal_pipeline_instructions = [
+            {
+                "type": "writers.las",
+                "a_srs": f"EPSG:" f"{crs['horizontal']}+" f"{crs['vertical']}",
+                "filename": str(offshore_file),
+                "compression": "laszip",
+            }
+        ]
+        pdal_pipeline = pdal.Pipeline(
+            json.dumps(pdal_pipeline_instructions), [offshore_points]
+        )
+        pdal_pipeline.execute()
+        if use_edge:
+            # Save edge points in a temporary laz file
+            coast_edge_file = cache_path / "coast_edge_points.laz"
+            pdal_pipeline_instructions = [
+                {
+                    "type": "writers.las",
+                    "a_srs": f"EPSG:" f"{crs['horizontal']}+" f"{crs['vertical']}",
+                    "filename": str(coast_edge_file),
+                    "compression": "laszip",
+                }
+            ]
+            pdal_pipeline = pdal.Pipeline(
+                json.dumps(pdal_pipeline_instructions), [offshore_edge_points]
+            )
+            pdal_pipeline.execute()
+
+        assert self.chunk_size is not None, "chunk_size must be defined"
+
+        # get chunking information
+        chunked_dim_x, chunked_dim_y = self._chunks_from_dem(self.chunk_size, self._dem)
+        elevations = {}
+
+        self.logger.info(f"Preparing {[len(chunked_dim_x), len(chunked_dim_y)]} chunks")
+
+        # Define the region to rasterise
+        region_to_rasterise = self.catchment_geometry.offshore_no_dense_data(
+            self._raw_extents
+        )
+
+        # cycle through index chunks - and collect in a delayed array
+        self.logger.info("Running over ocean chunked")
+        delayed_chunked_matrix = []
+        for i, dim_y in enumerate(chunked_dim_y):
+            delayed_chunked_x = []
+            for j, dim_x in enumerate(chunked_dim_x):
+                self.logger.debug(f"\tLiDAR chunk {[i, j]}")
+                # Load in points
+                chunk_offshore_points = delayed_load_tiles_in_chunk(
+                    lidar_files=[offshore_file],
+                    source_crs=raster_options["crs"],
+                    chunk_region_to_tile=None,
+                    crs=raster_options["crs"],
+                )
+                if use_edge:
+                    chunk_coast_edge_points = delayed_load_tiles_in_chunk(
+                        lidar_files=[coast_edge_file],
+                        source_crs=raster_options["crs"],
+                        chunk_region_to_tile=None,
+                        crs=raster_options["crs"],
+                    )
+                else:
+                    chunk_coast_edge_points = None
+                # Rasterise tiles
+                delayed_chunked_x.append(
+                    dask.array.from_delayed(
+                        delayed_elevation_over_chunk_from_nearest(
+                            dim_x=dim_x,
+                            dim_y=dim_y,
+                            points=chunk_offshore_points,
+                            edge_points=chunk_coast_edge_points,
+                            options=raster_options,
+                        ),
+                        shape=(len(dim_y), len(dim_x)),
+                        dtype=raster_options["raster_type"],
+                    )
+                )
+            delayed_chunked_matrix.append(delayed_chunked_x)
+
+        # Combine chunks into a dataset
+        elevations = dask.array.block(delayed_chunked_matrix)
+
+        # Update DEM layers - copy only where no offshore data
+        no_values_mask = self._dem.z.isnull() & clip_mask(
+            self._dem.z,
+            region_to_rasterise.geometry,
+            self.chunk_size,
+        )
+        no_values_mask.load()
+        self._dem["z"] = self._dem.z.where(~no_values_mask, elevations)
+        mask = ~(no_values_mask & self._dem.z.notnull())
+        self._dem["data_source"] = self._dem.data_source.where(
+            mask,
+            self.SOURCE_CLASSIFICATION["ocean bathymetry"],
+        )
+        self._dem["lidar_source"] = self._dem.lidar_source.where(
+            mask, self.SOURCE_CLASSIFICATION["no data"]
+        )
+        self._write_netcdf_conventions_in_place(self._dem, self.catchment_geometry.crs)
+
     def _interpolate_elevation_points(
         self,
         point_cloud: numpy.ndarray,
@@ -692,11 +951,11 @@ class HydrologicallyConditionedDem(DemBase):
 
         if method == "rbf":
             # Ensure the number of points is not too great for RBF interpolation
-            if len(point_cloud) < self.CACHE_SIZE:
+            if len(point_cloud) < RBF_CACHE_SIZE:
                 self.logger.warning(
                     "The number of points to fit and RBF interpolant to is"
                     f" {len(point_cloud)}. We recommend using fewer "
-                    f" than {self.CACHE_SIZE} for best performance and to. "
+                    f" than {RBF_CACHE_SIZE} for best performance and to. "
                     "avoid errors in the `scipy.interpolate.Rbf` function"
                 )
             # Create RBF function
@@ -709,14 +968,14 @@ class HydrologicallyConditionedDem(DemBase):
             )
             # Tile area - this limits the maximum memory required at any one time
             flat_z_array = numpy.ones_like(flat_x_array) * numpy.nan
-            number_offshore_tiles = math.ceil(len(flat_x_array) / self.CACHE_SIZE)
+            number_offshore_tiles = math.ceil(len(flat_x_array) / RBF_CACHE_SIZE)
             for i in range(number_offshore_tiles):
                 self.logger.info(
                     f"Offshore intepolant tile {i+1} of {number_offshore_tiles}"
                 )
-                start_index = int(i * self.CACHE_SIZE)
+                start_index = int(i * RBF_CACHE_SIZE)
                 end_index = (
-                    int((i + 1) * self.CACHE_SIZE)
+                    int((i + 1) * RBF_CACHE_SIZE)
                     if i + 1 != number_offshore_tiles
                     else len(flat_x_array)
                 )
@@ -737,7 +996,7 @@ class HydrologicallyConditionedDem(DemBase):
             raise ValueError("method must be rbf, nearest, linear or cubic")
         return flat_z_array
 
-    def interpolate_ocean_bathymetry(self, bathy_contours):
+    def interpolate_ocean_bathymetry(self, bathy_contours, method="linear"):
         """Performs interpolation offshore outside LiDAR extents using the SciPy RBF
         function."""
 
@@ -755,11 +1014,12 @@ class HydrologicallyConditionedDem(DemBase):
             offshore_points = numpy.concatenate([offshore_edge_points, bathy_points])
 
         # Resample at a lower resolution if too many offshore points
-        if len(offshore_points) > self.CACHE_SIZE:
+        if method == "rbf" and len(offshore_points) > RBF_CACHE_SIZE * 10:
             reduced_resolution = (
                 self.catchment_geometry.resolution
                 * len(offshore_points)
-                / self.CACHE_SIZE
+                / RBF_CACHE_SIZE
+                * 10
             )
             self.logger.info(
                 "Reducing the number of 'offshore_points' used to create the RBF "
@@ -798,7 +1058,7 @@ class HydrologicallyConditionedDem(DemBase):
             point_cloud=offshore_points,
             flat_x_array=grid_x[mask],
             flat_y_array=grid_y[mask],
-            method="linear",
+            method=method,
         )
         flat_z = offshore_dem.z.values.flatten()
         flat_z[mask.flatten()] = flat_z_masked
@@ -813,36 +1073,44 @@ class HydrologicallyConditionedDem(DemBase):
         self,
         elevations: geometry.EstimatedElevationPoints,
         method: str,
+        cache_path: pathlib.Path,
         label: str,
         include_edges: bool = True,
     ) -> xarray.Dataset:
-        """Performs interpolation of the estimated waterways.
-
-        Parameters
-        ----------
-
-        elevations
-            z-points and polygon where to interpolate
-        method
-            Interpolation method (e.g. nearest-neighbour, linear, cubic, rbf)
-        include_edges
-            If True interpolate smoothly to the surrounding DEM elevations
+        """Performs interpolation from estimated bathymetry points within a polygon
+        using the specified interpolation approach after filtering the points based
+        on the type label. The type_label also determines the source classification.
         """
 
-        # extract points and polygon
+        crs = self.catchment_geometry.crs
+        raster_options = {
+            "raster_type": geometry.RASTER_TYPE,
+            "elevation_range": None,
+            "method": method,
+            "crs": crs,
+            "radius": elevations.points["width"].max()
+            + 2 * self.catchment_geometry.resolution,
+            "strict": False,
+        }
+        if method == "rbf":
+            raster_options["kernel"] = "linear"
+
+        # Define the region to rasterise
+        region_to_rasterise = elevations.polygons
+
+        # Extract river elevations
         point_cloud = elevations.points_array
-        estimated_polygons = elevations.polygons
 
         if include_edges:
             # Get edge points - from DEM
             edge_dem = self._dem.rio.clip(
-                estimated_polygons.dissolve().buffer(
+                region_to_rasterise.dissolve().buffer(
                     self.catchment_geometry.resolution
                 ),
                 drop=True,
             )
             edge_dem = edge_dem.rio.clip(
-                estimated_polygons.dissolve().geometry,
+                region_to_rasterise.dissolve().geometry,
                 invert=True,
                 drop=True,
             )
@@ -865,73 +1133,132 @@ class HydrologicallyConditionedDem(DemBase):
             # Combine the estimated and edge points
             point_cloud = numpy.concatenate([edge_points, point_cloud])
 
-        # Setup the empty area ready for interpolation
-        estimated_dem = self._dem.rio.clip(estimated_polygons.geometry)
-        # Set value for all, then use clip to set regions outside polygon to NaN
-        estimated_dem.z.data[:] = 0
-        estimated_dem.data_source.data[:] = self.SOURCE_CLASSIFICATION[label]
-        estimated_dem.lidar_source.data[:] = self.SOURCE_CLASSIFICATION["no data"]
-        estimated_dem = estimated_dem.rio.clip(estimated_polygons.geometry)
-
-        grid_x, grid_y = numpy.meshgrid(estimated_dem.x, estimated_dem.y)
-        mask = estimated_dem.z.notnull().values
-
-        flat_x_masked = grid_x[mask]
-        flat_y_masked = grid_y[mask]
-
-        # check there are actually pixels in the river
-        self.logger.info(f"There are {len(flat_x_masked)} points to interpolate")
-
-        # Interpolate river area - use cubic or linear interpolation
-        self.logger.info(f"{label} interpolation")
-        flat_z_masked = self._interpolate_elevation_points(
-            point_cloud=point_cloud,
-            flat_x_array=flat_x_masked,
-            flat_y_array=flat_y_masked,
-            method=method,
+        # Save river points in a temporary laz file
+        lidar_file = cache_path / "waterways_points.laz"
+        pdal_pipeline_instructions = [
+            {
+                "type": "writers.las",
+                "a_srs": f"EPSG:" f"{crs['horizontal']}+" f"{crs['vertical']}",
+                "filename": str(lidar_file),
+                "compression": "laszip",
+            }
+        ]
+        pdal_pipeline = pdal.Pipeline(
+            json.dumps(pdal_pipeline_instructions), [point_cloud]
         )
+        pdal_pipeline.execute()
 
-        # Set the interpolated value in the DEM
-        flat_z = estimated_dem.z.values.flatten()
-        flat_z[mask.flatten()] = flat_z_masked
-        estimated_dem.z.data = flat_z.reshape(estimated_dem.z.data.shape)
+        if self.chunk_size is None:
+            logging.warning("Chunksize of none. set to DEM shape.")
+            self.chunk_size = max(len(self._dem.x), len(self._dem.y))
 
-        # Update the DEM
-        self._dem = rioxarray.merge.merge_datasets(
-            [estimated_dem, self._dem],
-            method="first",
+        # get chunking information
+        chunked_dim_x, chunked_dim_y = self._chunks_from_dem(self.chunk_size, self._dem)
+        elevations = {}
+
+        self.logger.info(f"Preparing {[len(chunked_dim_x), len(chunked_dim_y)]} chunks")
+
+        # cycle through index chunks - and collect in a delayed array
+        self.logger.info("Running over ocean chunked")
+        delayed_chunked_matrix = []
+        for i, dim_y in enumerate(chunked_dim_y):
+            delayed_chunked_x = []
+            for j, dim_x in enumerate(chunked_dim_x):
+                self.logger.debug(f"\tLiDAR chunk {[i, j]}")
+                # Load in points
+                river_points = delayed_load_tiles_in_chunk(
+                    lidar_files=[lidar_file],
+                    source_crs=raster_options["crs"],
+                    chunk_region_to_tile=None,
+                    crs=raster_options["crs"],
+                )
+
+                # Rasterise tiles
+                delayed_chunked_x.append(
+                    dask.array.from_delayed(
+                        delayed_elevation_over_chunk(
+                            dim_x=dim_x,
+                            dim_y=dim_y,
+                            tile_points=river_points,
+                            options=raster_options,
+                        ),
+                        shape=(len(dim_y), len(dim_x)),
+                        dtype=raster_options["raster_type"],
+                    )
+                )
+            delayed_chunked_matrix.append(delayed_chunked_x)
+
+        # Combine chunks into a dataset
+        elevations = dask.array.block(delayed_chunked_matrix)
+
+        # Update DEM layers - copy everyhere within the region to rasterise
+        region_mask = clip_mask(
+            self._dem.z,
+            region_to_rasterise.geometry,
+            self.chunk_size,
         )
+        region_mask.load()
+        self._dem["z"] = self._dem.z.where(~region_mask, elevations)
+        mask = ~(region_mask & self._dem.z.notnull())
+        self._dem["data_source"] = self._dem.data_source.where(
+            mask,
+            self.SOURCE_CLASSIFICATION[label],
+        )
+        self._dem["lidar_source"] = self._dem.lidar_source.where(
+            mask, self.SOURCE_CLASSIFICATION["no data"]
+        )
+        self._write_netcdf_conventions_in_place(self._dem, self.catchment_geometry.crs)
 
     def interpolate_rivers(
         self,
         elevations: geometry.EstimatedElevationPoints,
         method: str,
+        cache_path: pathlib.Path,
+        k_nearest_neighbours: int = 100,
     ) -> xarray.Dataset:
         """Performs interpolation from estimated bathymetry points within a polygon
         using the specified interpolation approach after filtering the points based
         on the type label. The type_label also determines the source classification.
         """
 
-        # Extract river points and polygon
-        estimated_points = elevations.points_array
-        estimated_polygons = elevations.polygons
+        crs = self.catchment_geometry.crs
+        raster_options = {
+            "raster_type": geometry.RASTER_TYPE,
+            "elevation_range": None,
+            "method": method,
+            "crs": crs,
+            "k_nearest_neighbours": k_nearest_neighbours,
+            "use_edge": True,
+            "strict": False,
+        }
+        if method == "rbf":
+            raster_options["kernel"] = "linear"
+        # Define the region to rasterise
+        region_to_rasterise = elevations.polygons
 
-        if (
-            len(estimated_points) == 0
-            or estimated_polygons.area.sum() < self.catchment_geometry.resolution**2
-        ):
-            self.logger.warning(
-                "No points or an area less than one grid cell in the rivers dataset. Ignoring."
-            )
-            return
+        # Extract and saveriver elevations
+        river_points = elevations.points_array
+        river_points_file = cache_path / "river_points.laz"
+        pdal_pipeline_instructions = [
+            {
+                "type": "writers.las",
+                "a_srs": f"EPSG:" f"{crs['horizontal']}+" f"{crs['vertical']}",
+                "filename": str(river_points_file),
+                "compression": "laszip",
+            }
+        ]
+        pdal_pipeline = pdal.Pipeline(
+            json.dumps(pdal_pipeline_instructions), [river_points]
+        )
+        pdal_pipeline.execute()
 
-        # Get the river and fan edge points - from DEM
+        # Extract and save river/fan adjacent elevations from DEM
         edge_dem = self._dem.rio.clip(
-            estimated_polygons.dissolve().buffer(self.catchment_geometry.resolution),
+            region_to_rasterise.dissolve().buffer(self.catchment_geometry.resolution),
             drop=True,
         )
         edge_dem = edge_dem.rio.clip(
-            estimated_polygons.dissolve().geometry,
+            region_to_rasterise.dissolve().geometry,
             invert=True,
             drop=True,
         )
@@ -939,7 +1266,7 @@ class HydrologicallyConditionedDem(DemBase):
         grid_x, grid_y = numpy.meshgrid(edge_dem.x, edge_dem.y)
         flat_x = grid_x.flatten()
         flat_y = grid_y.flatten()
-        flat_z = edge_dem.z.data.flatten()
+        flat_z = edge_dem.z.values.flatten()
         mask_z = ~numpy.isnan(flat_z)
 
         # Interpolate the estimated river bank heights along only the river
@@ -955,6 +1282,7 @@ class HydrologicallyConditionedDem(DemBase):
                 "radius": elevations.points["width"].max(),
                 "raster_type": geometry.RASTER_TYPE,
                 "method": "linear",
+                "strict": False,
             }
             estimated_river_edge_z = elevation_from_points(
                 point_cloud=river_bank_points[river_bank_nan_mask],
@@ -982,48 +1310,89 @@ class HydrologicallyConditionedDem(DemBase):
         edge_points["X"] = flat_x[mask_z]
         edge_points["Y"] = flat_y[mask_z]
         edge_points["Z"] = flat_z[mask_z]
-        # Combine the estimated and edge points
-        point_cloud = numpy.concatenate([edge_points, estimated_points])
 
-        # Setup the empty river (& fan) area ready for interpolation
-        estimated_dem = self._dem.rio.clip(estimated_polygons.geometry)
-        # Set value for all, then use clip to set regions outside polygon to NaN
-        estimated_dem.z.data[:] = 0
-        estimated_dem.data_source.data[:] = self.SOURCE_CLASSIFICATION[
-            "rivers and fans"
+        river_edge_file = cache_path / "river_edge_points.laz"
+        pdal_pipeline_instructions = [
+            {
+                "type": "writers.las",
+                "a_srs": f"EPSG:" f"{crs['horizontal']}+" f"{crs['vertical']}",
+                "filename": str(river_edge_file),
+                "compression": "laszip",
+            }
         ]
-        estimated_dem.lidar_source.data[:] = self.SOURCE_CLASSIFICATION["no data"]
-        estimated_dem = estimated_dem.rio.clip(estimated_polygons.geometry)
-
-        grid_x, grid_y = numpy.meshgrid(estimated_dem.x, estimated_dem.y)
-        flat_z = estimated_dem.z.data[:].flatten()
-        mask_z = ~numpy.isnan(flat_z)
-
-        flat_x_masked = grid_x.flatten()[mask_z]
-        flat_y_masked = grid_y.flatten()[mask_z]
-        flat_z_masked = flat_z[mask_z]
-
-        # Interpolate river area - use specified interpolation
-        self.logger.info("Offshore interpolation")
-        flat_z_masked = self._interpolate_elevation_points(
-            point_cloud=point_cloud,
-            flat_x_array=flat_x_masked,
-            flat_y_array=flat_y_masked,
-            method=method,
+        pdal_pipeline = pdal.Pipeline(
+            json.dumps(pdal_pipeline_instructions), [edge_points]
         )
+        pdal_pipeline.execute()
 
-        # Set the interpolated value in the DEM - In future reconfigure properly for dask
-        if not isinstance(flat_z, numpy.ndarray):
-            flat_z = flat_z.compute()
-            mask_z = mask_z.compute()
-        flat_z[mask_z] = flat_z_masked
-        estimated_dem.z.data = flat_z.reshape(estimated_dem.z.data.shape)
+        if self.chunk_size is None:
+            logging.warning("Chunksize of none. set to DEM shape.")
+            self.chunk_size = max(len(self._dem.x), len(self._dem.y))
 
-        # Update the DEM
-        self._dem = rioxarray.merge.merge_datasets(
-            [estimated_dem, self._dem],
-            method="first",
+        # get chunking information
+        chunked_dim_x, chunked_dim_y = self._chunks_from_dem(self.chunk_size, self._dem)
+        elevations = {}
+
+        self.logger.info(f"Preparing {[len(chunked_dim_x), len(chunked_dim_y)]} chunks")
+
+        # cycle through index chunks - and collect in a delayed array
+        self.logger.info("Running over ocean chunked")
+        delayed_chunked_matrix = []
+        for i, dim_y in enumerate(chunked_dim_y):
+            delayed_chunked_x = []
+            for j, dim_x in enumerate(chunked_dim_x):
+                self.logger.debug(f"\tLiDAR chunk {[i, j]}")
+                # Load in points
+                river_points = delayed_load_tiles_in_chunk(
+                    lidar_files=[river_points_file],
+                    source_crs=raster_options["crs"],
+                    chunk_region_to_tile=None,
+                    crs=raster_options["crs"],
+                )
+
+                river_edge_points = delayed_load_tiles_in_chunk(
+                    lidar_files=[river_edge_file],
+                    source_crs=raster_options["crs"],
+                    chunk_region_to_tile=None,
+                    crs=raster_options["crs"],
+                )
+
+                # Rasterise tiles
+                delayed_chunked_x.append(
+                    dask.array.from_delayed(
+                        delayed_elevation_over_chunk_from_nearest(
+                            dim_x=dim_x,
+                            dim_y=dim_y,
+                            points=river_points,
+                            edge_points=river_edge_points,
+                            options=raster_options,
+                        ),
+                        shape=(len(dim_y), len(dim_x)),
+                        dtype=raster_options["raster_type"],
+                    )
+                )
+            delayed_chunked_matrix.append(delayed_chunked_x)
+
+        # Combine chunks into a dataset
+        elevations = dask.array.block(delayed_chunked_matrix)
+
+        # Update DEM layers - copy everyhere within the region to rasterise
+        rivers_mask = clip_mask(
+            self._dem.z,
+            region_to_rasterise.geometry,
+            self.chunk_size,
         )
+        rivers_mask.load()
+        self._dem["z"] = self._dem.z.where(~rivers_mask, elevations)
+        mask = ~(rivers_mask & self._dem.z.notnull())
+        self._dem["data_source"] = self._dem.data_source.where(
+            mask,
+            self.SOURCE_CLASSIFICATION["rivers and fans"],
+        )
+        self._dem["lidar_source"] = self._dem.lidar_source.where(
+            mask, self.SOURCE_CLASSIFICATION["no data"]
+        )
+        self._write_netcdf_conventions_in_place(self._dem, self.catchment_geometry.crs)
 
 
 class LidarBase(DemBase):
@@ -1074,88 +1443,6 @@ class LidarBase(DemBase):
         # Ensure positively increasing indices as required by some programs
         self._dem = self._ensure_positive_indexing(self._dem)
         return self._dem
-
-    def _chunks_from_dem(self, chunk_size, dem: xarray.Dataset) -> (list, list):
-        """Define the chunks to break the catchment into when reading in and
-        downsampling LiDAR.
-
-        Parameters
-        ----------
-
-        chunk_size
-            The size in pixels of each chunk.
-        """
-
-        dim_x_all = dem.x.data
-        dim_y_all = dem.y.data
-
-        # Determine the number of chunks
-        n_chunks_x = int(numpy.ceil(len(dim_x_all) / chunk_size))
-        n_chunks_y = int(numpy.ceil(len(dim_y_all) / chunk_size))
-
-        # Determine x coordinates rounded up to the nearest chunk
-        dim_x = []
-        for i in range(n_chunks_x):
-            if i + 1 < n_chunks_x:
-                # Add full sized chunk
-                dim_x.append(dim_x_all[i * chunk_size : (i + 1) * chunk_size])
-            else:
-                # Add rest of array
-                dim_x.append(dim_x_all[i * chunk_size :])
-
-        # Determine y coordinates rounded up to the nearest chunk
-        dim_y = []
-        for i in range(n_chunks_y):
-            if i + 1 < n_chunks_y:
-                # Add full sized chunk
-                dim_y.append(dim_y_all[i * chunk_size : (i + 1) * chunk_size])
-            else:
-                # Add rest of array
-                dim_y.append(dim_y_all[i * chunk_size :])
-
-        return dim_x, dim_y
-
-    def _define_chunk_region(
-        self,
-        region_to_rasterise: geopandas.GeoDataFrame,
-        dim_x: numpy.ndarray,
-        dim_y: numpy.ndarray,
-        radius: float,
-    ):
-        """Define the region to rasterise within a single chunk."""
-        # Define the region to tile
-        chunk_geometry = geopandas.GeoDataFrame(
-            {
-                "geometry": [
-                    shapely.geometry.Polygon(
-                        [
-                            (dim_x.min(), dim_y.min()),
-                            (dim_x.max(), dim_y.min()),
-                            (dim_x.max(), dim_y.max()),
-                            (dim_x.min(), dim_y.max()),
-                        ]
-                    )
-                ]
-            },
-            crs=self.catchment_geometry.crs["horizontal"],
-        )
-
-        # Define region to rasterise inside the chunk area
-        if region_to_rasterise.area.sum() > 0:
-            chunk_region_to_tile = geopandas.GeoDataFrame(
-                geometry=region_to_rasterise.buffer(radius).clip(
-                    chunk_geometry.buffer(radius), keep_geom_type=True
-                )
-            )
-        else:
-            chunk_region_to_tile = region_to_rasterise
-        # remove any subpixel polygons
-        chunk_region_to_tile = chunk_region_to_tile[
-            chunk_region_to_tile.area
-            > self.catchment_geometry.resolution * self.catchment_geometry.resolution
-        ]
-
-        return chunk_region_to_tile
 
     def _tile_index_column_name(
         self,
@@ -1309,21 +1596,6 @@ class LidarBase(DemBase):
             "_add_lidar_no_chunking must be instantiated in the " "child class"
         )
 
-    def save_and_load_dem(
-        self,
-        filename: pathlib.Path,
-    ):
-        """Update the saved file cache for the DEM (self._dem) as a netCDF file."""
-
-        self.logger.info(
-            "In LidarBase.save_and_load_dem saving _dem as NetCDF file to "
-            f"{filename}"
-        )
-
-        self.save_dem(filename=filename, dem=self._dem)
-        del self._dem
-        self._dem = self._load_dem(filename=filename)
-
 
 class RawDem(LidarBase):
     """A class to manage the creation of a 'raw' DEM from LiDAR tiles, and/or a
@@ -1352,6 +1624,7 @@ class RawDem(LidarBase):
         catchment_geometry: geometry.CatchmentGeometry,
         lidar_interpolation_method: str,
         drop_offshore_lidar: dict,
+        zero_positive_foreshore: bool,
         buffer_cells: int,
         elevation_range: list | None = None,
         chunk_size: int | None = None,
@@ -1366,6 +1639,7 @@ class RawDem(LidarBase):
         self.logger = logging.getLogger(f"{__name__}.{self.__class__.__name__}")
 
         self.drop_offshore_lidar = drop_offshore_lidar
+        self.zero_positive_foreshore = zero_positive_foreshore
         self.lidar_interpolation_method = lidar_interpolation_method
         self.buffer_cells = buffer_cells
         self._dem = None
@@ -1471,7 +1745,10 @@ class RawDem(LidarBase):
             "radius": self.catchment_geometry.resolution / numpy.sqrt(2),
             "method": self.lidar_interpolation_method,
             "crs": self.catchment_geometry.crs,
+            "strict": True,
         }
+        if self.lidar_interpolation_method == "rbf":
+            raster_options["kernel"] = "linear"
 
         # Don't use dask delayed if there is no chunking
         if len(lidar_datasets_info) == 0:
@@ -1544,7 +1821,11 @@ class RawDem(LidarBase):
 
         # If drop offshore LiDAR ensure the foreshore values are 0 or negative
         foreshore = self.catchment_geometry.foreshore
-        if self.drop_offshore_lidar and foreshore.area.sum() > 0:
+        if (
+            self.drop_offshore_lidar
+            and foreshore.area.sum() > 0
+            and self.zero_positive_foreshore
+        ):
             buffer_radius = self.catchment_geometry.resolution * numpy.sqrt(2)
             buffered_foreshore = (
                 foreshore.buffer(buffer_radius)
@@ -1920,6 +2201,7 @@ class PatchDem(LidarBase):
         catchment_geometry: geometry.CatchmentGeometry,
         patch_on_top: bool,
         drop_patch_offshore: bool,
+        zero_positive_foreshore: bool,
         buffer_cells: int,
         initial_dem_path: str | pathlib.Path,
         elevation_range: list | None = None,
@@ -1935,6 +2217,7 @@ class PatchDem(LidarBase):
         self.logger = logging.getLogger(f"{__name__}.{self.__class__.__name__}")
 
         self.drop_patch_offshore = drop_patch_offshore
+        self.zero_positive_foreshore = zero_positive_foreshore
         self.patch_on_top = patch_on_top
         self.buffer_cells = buffer_cells
         # Read in the DEM raster
@@ -2040,7 +2323,7 @@ class PatchDem(LidarBase):
                 (patch.y.values, patch.x.values),
                 patch.values,
                 bounds_error=False,
-                fill_value=numpy.NaN,
+                fill_value=numpy.nan,
                 method="linear",
             )
 
@@ -2085,7 +2368,7 @@ class PatchDem(LidarBase):
             self.SOURCE_CLASSIFICATION[label],
         )
 
-        if label == "coarse DEM":
+        if label == "coarse DEM" and self.zero_positive_foreshore:
             # Ensure Coarse DEM values along the foreshore are less than zero
             foreshore = self.catchment_geometry.foreshore
             if foreshore.area.sum() > 0:
@@ -2112,6 +2395,10 @@ class PatchDem(LidarBase):
                 # Set any positive Coarse DEM foreshore points to zero
                 self._dem["data_source"] = self._dem.data_source.where(
                     mask, self.SOURCE_CLASSIFICATION["ocean bathymetry"]
+                )
+                self._dem["lidar_source"] = self._dem.lidar_source.where(
+                    mask,
+                    self.SOURCE_CLASSIFICATION["no data"],
                 )
                 self._dem["z"] = self._dem.z.where(mask, 0)
 
@@ -2653,12 +2940,13 @@ def read_file_with_pdal(
             }
         )
     # Add instructions for clip within either the catchment, or the land and foreshore
-    pdal_pipeline_instructions.append(
-        {
-            "type": "filters.crop",
-            "polygon": str(region_to_tile.loc[0].geometry),
-        }
-    )
+    if region_to_tile is not None:
+        pdal_pipeline_instructions.append(
+            {
+                "type": "filters.crop",
+                "polygon": str(region_to_tile.loc[0].geometry),
+            }
+        )
 
     # Load in LiDAR and perform operations
     pdal_pipeline = pdal.Pipeline(json.dumps(pdal_pipeline_instructions))
@@ -2727,101 +3015,261 @@ def elevation_from_points(
     z_out = numpy.zeros(len(xy_out), dtype=options["raster_type"])
 
     for i, (near_indices, point) in enumerate(zip(tree_index_list, xy_out)):
-        if len(near_indices) == 0:  # Set NaN if no values in search region
-            z_out[i] = numpy.nan
+        near_points = tree.data[near_indices]
+        near_z = point_cloud["Z"][near_indices]
+
+        z_out[i] = point_elevation(
+            near_z=near_z,
+            near_points=near_points,
+            point=point,
+            options=options,
+        )
+    return z_out
+
+
+def elevation_from_nearest_points(
+    point_cloud: numpy.ndarray,
+    edge_point_cloud: numpy.ndarray,
+    xy_out,
+    options: dict,
+    eps: float = 0,
+    leaf_size: int = 10,
+) -> numpy.ndarray:
+    """Calculate DEM elevation values at the specified locations using the selected
+    approach. Options include: mean, median, and inverse distance weighing (IDW). This
+    implementation is based on the scipy.spatial.KDTree"""
+
+    logger = logging.getLogger(__name__)
+    logger.setLevel(logging.DEBUG)
+
+    if len(point_cloud) == 0 and (options["use_edge"] and len(edge_point_cloud) == 0):
+        logger.warning("No points provided. Returning NaN array.")
+        z_out = numpy.ones(len(xy_out), dtype=options["raster_type"]) * numpy.nan
+        return z_out
+    k = options["k_nearest_neighbours"]
+    if k > len(point_cloud) or (options["use_edge"] and k > len(edge_point_cloud)):
+        logger.warning(
+            f"Fewer points than the nearest k to search for provided: k = {k} "
+            f"> points {len(point_cloud)} or edge points "
+            f"{len(edge_point_cloud)}. Returning NaN array."
+        )
+        z_out = numpy.ones(len(xy_out), dtype=options["raster_type"]) * numpy.nan
+        return z_out
+    xy_in = numpy.empty((len(point_cloud), 2))
+    xy_in[:, 0] = point_cloud["X"]
+    xy_in[:, 1] = point_cloud["Y"]
+    tree = scipy.spatial.KDTree(xy_in, leafsize=leaf_size)  # build the tree
+    (tree_distance_list, tree_index_list) = tree.query(xy_out, k=k, eps=eps)
+
+    if options["use_edge"]:
+        xy_in = numpy.empty((len(edge_point_cloud), 2))
+        xy_in[:, 0] = edge_point_cloud["X"]
+        xy_in[:, 1] = edge_point_cloud["Y"]
+        edge_tree = scipy.spatial.KDTree(xy_in, leafsize=leaf_size)  # build the tree
+        (edge_tree_distance_list, edge_tree_index_list) = edge_tree.query(
+            xy_out, k=k, eps=eps
+        )
+
+    z_out = numpy.zeros(len(xy_out), dtype=options["raster_type"])
+
+    for i, point in enumerate(xy_out):
+        near_indices = tree_index_list[i]
+        near_z = point_cloud["Z"][near_indices]
+        near_points = tree.data[near_indices]
+        if options["use_edge"]:
+            # Add in the edge values as they are nearby
+            edge_near_indices = edge_tree_index_list[i]
+            near_z = numpy.concatenate(
+                (near_z, edge_point_cloud["Z"][edge_near_indices])
+            )
+            near_points = numpy.concatenate(
+                (near_points, edge_tree.data[edge_near_indices])
+            )
+
+        z_out[i] = point_elevation(
+            near_z=near_z,
+            near_points=near_points,
+            point=point,
+            options=options,
+        )
+
+    return z_out
+
+
+def point_elevation(
+    near_z: numpy.ndarray,
+    near_points: numpy.ndarray,
+    point: numpy.ndarray,
+    options: dict,
+) -> float:
+    """Calculate DEM elevation values at the specified locations using the selected
+    approach. Options include: mean, median, and inverse distance weighing (IDW). This
+    implementation is based on the scipy.spatial.KDTree"""
+
+    logger = logging.getLogger(__name__)
+    logger.setLevel(logging.DEBUG)
+
+    if len(near_z) == 0:  # Set NaN if no values in search region
+        z_out = numpy.nan
+    else:
+        if options["method"] == "mean":
+            z_out = numpy.mean(near_z)
+        elif options["method"] == "median":
+            z_out = numpy.median(near_z)
+        elif options["method"] == "idw":
+            z_out = calculate_idw(
+                near_points=near_points,
+                near_z=near_z,
+                point=point,
+            )
+        elif options["method"] in ["cubic", "nearest", "linear"]:
+            z_out = calculate_interpolate_griddata(
+                near_points=near_points,
+                near_z=near_z,
+                point=point,
+                strict=options["strict"],
+                method=options["method"],
+            )
+        elif options["method"] == "rbf":
+            z_out = calculate_rbf(
+                near_points=near_points,
+                near_z=near_z,
+                point=point,
+                kernel=options["kernel"],
+            )
+        elif options["method"] == "min":
+            z_out = numpy.min(near_z)
+        elif options["method"] == "max":
+            z_out = numpy.max(near_z)
+        elif options["method"] == "std":
+            z_out = numpy.std(near_z)
+        elif options["method"] == "count":
+            z_out = numpy.len(near_z)
         else:
-            if options["method"] == "mean":
-                z_out[i] = numpy.mean(point_cloud["Z"][near_indices])
-            elif options["method"] == "median":
-                z_out[i] = numpy.median(point_cloud["Z"][near_indices])
-            elif options["method"] == "idw":
-                z_out[i] = calculate_idw(
-                    near_indices=near_indices,
-                    point=point,
-                    tree=tree,
-                    point_cloud=point_cloud,
-                )
-            elif options["method"] == "linear":
-                z_out[i] = calculate_linear(
-                    near_indices=near_indices,
-                    point=point,
-                    tree=tree,
-                    point_cloud=point_cloud,
-                )
-            elif options["method"] == "min":
-                z_out[i] = numpy.min(point_cloud["Z"][near_indices])
-            elif options["method"] == "max":
-                z_out[i] = numpy.max(point_cloud["Z"][near_indices])
-            elif options["method"] == "std":
-                z_out[i] = numpy.std(point_cloud["Z"][near_indices])
-            elif options["method"] == "count":
-                z_out[i] = numpy.len(point_cloud["Z"][near_indices])
-            else:
-                assert (
-                    False
-                ), f"An invalid lidar_interpolation_method of '{options['method']}' was"
-                " provided"
+            assert (
+                False
+            ), f"An invalid lidar_interpolation_method of '{options['method']}' was"
+            " provided"
     return z_out
 
 
 def calculate_idw(
-    near_indices: list,
+    near_points: numpy.ndarray,
+    near_z: numpy.ndarray,
     point: numpy.ndarray,
-    tree: scipy.spatial.KDTree,
-    point_cloud: numpy.ndarray,
     smoothing: float = 0,
     power: int = 2,
 ):
     """Calculate the IDW mean of the 'near_indices' points. This implementation is based
     on the scipy.spatial.KDTree"""
 
-    distance_vectors = point - tree.data[near_indices]
+    # Near points will be ordered by proximinty. Close to far.
+    distance_vectors = point - near_points
     smoothed_distances = numpy.sqrt(
         ((distance_vectors**2).sum(axis=1) + smoothing**2)
     )
     if smoothed_distances.min() == 0:  # in the case of an exact match
-        idw = point_cloud["Z"][tree.query(point, k=1)[1]]
+        idw = near_z[smoothed_distances.argmin()]
     else:
-        idw = (point_cloud["Z"][near_indices] / (smoothed_distances**power)).sum(
-            axis=0
-        ) / (1 / (smoothed_distances**power)).sum(axis=0)
+        idw = (near_z / (smoothed_distances**power)).sum(axis=0) / (
+            1 / (smoothed_distances**power)
+        ).sum(axis=0)
     return idw
 
 
-def calculate_linear(
-    near_indices: list,
+def calculate_interpolate_griddata(
+    near_points: numpy.ndarray,
+    near_z: numpy.ndarray,
     point: numpy.ndarray,
-    tree: scipy.spatial.KDTree,
-    point_cloud: numpy.ndarray,
+    strict: bool,
+    method: str,
 ):
     """Calculate linear interpolation of the 'near_indices' points. Take the straight
     mean if the points are co-linear or too few for linear interpolation."""
-
-    if len(near_indices) > 3:  # There are enough points for a linear interpolation
+    logger = logging.getLogger(__name__)
+    logger.setLevel(logging.DEBUG)
+    if len(near_z) >= 3:  # There are enough points for a linear interpolation
         try:
-            linear = scipy.interpolate.griddata(
-                points=tree.data[near_indices],
-                values=point_cloud["Z"][near_indices],
+            value = scipy.interpolate.griddata(
+                points=near_points,
+                values=near_z,
                 xi=point,
-                method="linear",
+                method=method,
             )[0]
         except (scipy.spatial.QhullError, Exception) as caught_exception:
-            logger = logging.getLogger(__name__)
-            logger.setLevel(logging.DEBUG)
             logger.warning(
                 f"Exception {caught_exception} during "
                 "linear interpolation. Set to NaN."
             )
-            linear = numpy.nan
+            value = numpy.nan
 
-    elif len(near_indices) == 1:
-        linear = point_cloud["Z"][near_indices][0]
+    elif len(near_z) == 1:
+        value = near_z[0]
+    elif len(near_z) == 2:
+        # take the distance weighted average
+        distance_vectors = point - near_points
+        distances = numpy.sqrt((distance_vectors**2).sum(axis=1))
+        value = (near_z / distances).sum(axis=0) / (1 / distances).sum(axis=0)
     else:
-        linear = numpy.nan
-    # NaN will have occured if colinear points - replace with straight mean
-    if numpy.isnan(linear) and len(near_indices) > 0:
-        linear = numpy.mean(point_cloud["Z"][near_indices])
-    return linear
+        value = numpy.nan
+    if numpy.isnan(value) and len(near_z) > 0 and strict:
+        logger.warning(
+            "NaN - this will occur if colinear points or outside convex hull"
+        )
+    elif numpy.isnan(value) and len(near_z) > 0 and not strict:
+        logger.warning("Was NaN - will estimate as distance weighted mean")
+        distance_vectors = point - near_points
+        distances = numpy.sqrt((distance_vectors**2).sum(axis=1))
+        value = (near_z / distances).sum(axis=0) / (1 / distances).sum(axis=0)
+    return value
+
+
+def calculate_rbf(
+    near_points: numpy.ndarray, near_z: numpy.ndarray, point: numpy.ndarray, kernel: str
+):
+    logger = logging.getLogger(__name__)
+    logger.setLevel(logging.DEBUG)
+    if len(near_z) >= 3:
+        if len(near_z) < RBF_CACHE_SIZE:
+            logging.warning(
+                "Using RBFInterpolator 'neighbors' option "
+                f"as {len(near_z)} points nearby"
+            )
+        try:
+            rbf_function = scipy.interpolate.RBFInterpolator(
+                y=near_points,
+                d=near_z,
+                kernel=kernel,
+                smoothing=0,
+                neighbors=RBF_CACHE_SIZE,
+            )
+            value = rbf_function([point])
+        except (ValueError, Exception) as caught_exception:
+            logger.warning(
+                f"Exception {caught_exception} during "
+                "RBF interpolation. Apply cubic."
+            )
+            value = calculate_interpolate_griddata(
+                near_points=near_points,
+                near_z=near_z,
+                point=point,
+                strict=True,
+                method="cubic",
+            )
+    else:
+        logger.warning(
+            "Too many or few points for RBF "
+            f"interpolation: {len(near_z)}. "
+            "Instead applying cubic interpolation."
+        )
+        value = calculate_interpolate_griddata(
+            near_points=near_points,
+            near_z=near_z,
+            point=point,
+            strict=True,
+            method="cubic",
+        )
+    return value
 
 
 def select_lidar_files(
@@ -2863,17 +3311,22 @@ def load_tiles_in_chunk(
     lidar_points = []
 
     # Cycle through each file loading it in an adding it to a numpy array
-    for lidar_file in lidar_files:
-        logger.debug(f"Loading in file {lidar_file}")
+    if (
+        chunk_region_to_tile is None
+        or len(chunk_region_to_tile) > 0
+        and chunk_region_to_tile.area.sum() > 0
+    ):
+        for lidar_file in lidar_files:
+            logger.debug(f"Loading in file {lidar_file}")
 
-        # read in the LiDAR file
-        pdal_pipeline = read_file_with_pdal(
-            lidar_file=lidar_file,
-            region_to_tile=chunk_region_to_tile,
-            source_crs=source_crs,
-            crs=crs,
-        )
-        lidar_points.append(pdal_pipeline.arrays[0])
+            # read in the LiDAR file
+            pdal_pipeline = read_file_with_pdal(
+                lidar_file=lidar_file,
+                region_to_tile=chunk_region_to_tile,
+                source_crs=source_crs,
+                crs=crs,
+            )
+            lidar_points.append(pdal_pipeline.arrays[0])
     if len(lidar_points) > 0:
         lidar_points = numpy.concatenate(lidar_points)
     return lidar_points
@@ -2976,12 +3429,49 @@ def elevation_over_chunk(
     return grid_z
 
 
+def elevation_over_chunk_from_nearest(
+    dim_x: numpy.ndarray,
+    dim_y: numpy.ndarray,
+    points: numpy.ndarray,
+    edge_points: numpy.ndarray,
+    options: dict,
+) -> numpy.ndarray:
+    """Rasterise all points within a chunk."""
+
+    # Get the indicies overwhich to perform IDW
+    grid_x, grid_y = numpy.meshgrid(dim_x, dim_y)
+    xy_out = numpy.concatenate(
+        [[grid_x.flatten()], [grid_y.flatten()]], axis=0
+    ).transpose()
+    grid_z = numpy.ones(grid_x.shape) * numpy.nan
+
+    # If no points return an array of NaN
+    if len(points) == 0 and len(edge_points) == 0:
+        logger = logging.getLogger(__name__)
+        logger.setLevel(logging.DEBUG)
+        logger.debug(" The latest chunk has no data and is being ignored.")
+        return grid_z
+
+    # Perform the specified averaging method over the dense DEM within the extents of
+    # this point cloud tile
+    z_flat = elevation_from_nearest_points(
+        point_cloud=points, edge_point_cloud=edge_points, xy_out=xy_out, options=options
+    )
+    grid_z = z_flat.reshape(grid_x.shape)
+
+    return grid_z
+
+
 """ Wrap the `roughness_over_chunk` routine in dask.delayed """
 delayed_roughness_over_chunk = dask.delayed(roughness_over_chunk)
 
-""" Wrap the `rasterise_chunk` routine in dask.delayed """
+""" Wrap the `elevation_over_chunk` routine in dask.delayed """
 delayed_elevation_over_chunk = dask.delayed(elevation_over_chunk)
 
+""" Wrap the `elevation_over_chunk` routine in dask.delayed """
+delayed_elevation_over_chunk_from_nearest = dask.delayed(
+    elevation_over_chunk_from_nearest
+)
 
 """ Wrap the `load_tiles_in_chunk` routine in dask.delayed """
 delayed_load_tiles_in_chunk = dask.delayed(load_tiles_in_chunk)

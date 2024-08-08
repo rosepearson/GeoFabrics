@@ -183,9 +183,9 @@ class Test(base_test.Test):
         """A basic comparison between the generated and benchmark DEM"""
         decimal_threshold = 5
         # Load in benchmark DEM
-        file_path = self.cache_dir / self.instructions["data_paths"]["benchmark_dem"]
-        with rioxarray.rioxarray.open_rasterio(file_path, masked=True) as benchmark_dem:
-            benchmark_dem.load()
+        file_path = self.cache_dir / self.instructions["data_paths"]["benchmark"]
+        with rioxarray.rioxarray.open_rasterio(file_path, masked=True) as benchmark:
+            benchmark.load()
         # Load in test DEM
         file_path = self.results_dir / self.instructions["data_paths"]["result_dem"]
         with rioxarray.rioxarray.open_rasterio(file_path, masked=True) as test_dem:
@@ -193,20 +193,19 @@ class Test(base_test.Test):
         # Compare the generated and benchmark DEMs
         diff_array = (
             test_dem.z.data[~numpy.isnan(test_dem.z.data)]
-            - benchmark_dem.z.data[~numpy.isnan(benchmark_dem.z.data)]
+            - benchmark.z.data[~numpy.isnan(benchmark.z.data)]
         )
         logging.info(f"DEM array diff is: {diff_array[diff_array != 0]}")
         numpy.testing.assert_array_almost_equal(
             test_dem.z.data[~numpy.isnan(test_dem.z.data)],
-            benchmark_dem.z.data[~numpy.isnan(benchmark_dem.z.data)],
+            benchmark.z.data[~numpy.isnan(benchmark.z.data)],
             decimal=decimal_threshold,
-            err_msg="The generated result_dem has different data from the "
-            + "benchmark_dem",
+            err_msg="The generated result_dem has different data from the " "benchmark",
         )
 
         # explicitly free memory as xarray seems to be hanging onto memory
         del test_dem
-        del benchmark_dem
+        del benchmark
 
     @pytest.mark.skipif(
         sys.platform != "linux", reason="Linux test - this is less strict"
@@ -215,9 +214,9 @@ class Test(base_test.Test):
         """A basic comparison between the generated and benchmark DEM"""
 
         # Load in benchmark DEM
-        file_path = self.cache_dir / self.instructions["data_paths"]["benchmark_dem"]
-        with rioxarray.rioxarray.open_rasterio(file_path, masked=True) as benchmark_dem:
-            benchmark_dem.load()
+        file_path = self.cache_dir / self.instructions["data_paths"]["benchmark"]
+        with rioxarray.rioxarray.open_rasterio(file_path, masked=True) as benchmark:
+            benchmark.load()
         # Load in test DEM
         file_path = self.results_dir / self.instructions["data_paths"]["result_dem"]
         with rioxarray.rioxarray.open_rasterio(file_path, masked=True) as test_dem:
@@ -225,7 +224,7 @@ class Test(base_test.Test):
         # Compare the generated and benchmark DEMs
         diff_array = (
             test_dem.z.data[~numpy.isnan(test_dem.z.data)]
-            - benchmark_dem.z.data[~numpy.isnan(benchmark_dem.z.data)]
+            - benchmark.z.data[~numpy.isnan(benchmark.z.data)]
         )
         logging.info(f"DEM array diff is: {diff_array[diff_array != 0]}")
 
@@ -248,7 +247,7 @@ class Test(base_test.Test):
 
         # explicitly free memory as xarray seems to be hanging onto memory
         del test_dem
-        del benchmark_dem
+        del benchmark
 
 
 if __name__ == "__main__":

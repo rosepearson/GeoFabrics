@@ -47,7 +47,7 @@ class Test(unittest.TestCase):
         cls.cache_dir = cls.test_path / "data"
         cls.results_dir = cls.cache_dir / "results"
         cls.tearDownClass()
-        cls.results_dir.mkdir()
+        cls.results_dir.mkdir(exist_ok=True)
 
     @classmethod
     def tearDownClass(cls):

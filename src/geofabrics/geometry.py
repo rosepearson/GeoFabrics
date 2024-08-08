@@ -433,7 +433,7 @@ class BathymetryContours:
         return points
 
 
-class MarineBathymetryPoints:
+class OceanPoints:
     """A class for accesing marine bathymetry points. These can be used as
     depths to interpolate elevations offshore."""
 
@@ -441,32 +441,47 @@ class MarineBathymetryPoints:
         self,
         points_file: str,
         catchment_geometry: CatchmentGeometry,
-        exclusion_extent=None,
+        is_depth: bool = False,
+        z_label: str = None,
     ):
         self.logger = logging.getLogger(f"{__name__}.{self.__class__.__name__}")
         self._points = geopandas.read_file(points_file)
         self.catchment_geometry = catchment_geometry
+        self.is_depth = is_depth
+        self.z_label = z_label
 
-        self._extent = None
+        self._set_up()
 
-        self._set_up(exclusion_extent)
-
-    def _set_up(self, exclusion_extent):
-        """Set CRS and clip to catchment"""
+    def _set_up(self):
+        """Set CRS and clip to > 2x catchment area."""
 
         self._points = self._points.to_crs(self.catchment_geometry.crs["horizontal"])
+        self._points = self._points.explode(ignore_index=True)
+        self._points = self._points.clip(
+            self.catchment_geometry.catchment.buffer(
+                numpy.sqrt(self.catchment_geometry.catchment.area.max())
+            )
+        )
 
-        if exclusion_extent is not None:
-            exclusion_extent = exclusion_extent.clip(
-                self.catchment_geometry.offshore, keep_geom_type=True
-            )
-            self._extent = self.catchment_geometry.offshore.overlay(
-                exclusion_extent, how="difference"
-            )
-        else:
-            self._extent = self.catchment_geometry.offshore
-        self._points = self._points.clip(self._extent, keep_geom_type=True)
-        self._points = self._points.reset_index(drop=True)
+    @property
+    def boundary(self):
+        """Return the bounding box containing data"""
+
+        bounds = self._points.total_bounds
+        boundary = geopandas.GeoDataFrame(
+            geometry=[
+                shapely.geometry.Polygon(
+                    [
+                        [bounds[0], bounds[1]],
+                        [bounds[2], bounds[1]],
+                        [bounds[2], bounds[3]],
+                        [bounds[0], bounds[3]],
+                    ]
+                )
+            ],
+            crs=self._points.crs,
+        )
+        return boundary
 
     @property
     def points(self):
@@ -479,8 +494,8 @@ class MarineBathymetryPoints:
         """The x values"""
 
         if self._x is None:
-            self._x = self._points.points.apply(
-                lambda row: row["geometry"][0].x, axis=1
+            self._x = self._points.apply(
+                lambda row: row["geometry"].x, axis=1
             ).to_numpy()
         return self._x
 
@@ -489,8 +504,8 @@ class MarineBathymetryPoints:
         """The y values"""
 
         if self._y is None:
-            self._y = self._points.points.apply(
-                lambda row: row["geometry"][0].y, axis=1
+            self._y = self._points.apply(
+                lambda row: row["geometry"].y, axis=1
             ).to_numpy()
         return self._y
 
@@ -500,13 +515,42 @@ class MarineBathymetryPoints:
 
         if self._z is None:
             # map depth to elevation
-            self._z = (
-                self._points.points.apply(
-                    lambda row: row["geometry"][0].z, axis=1
-                ).to_numpy()
+            multiplier = 1 if not self.is_depth else -1
+            if self.z_label is None:
+                self._z = (
+                    self._points.apply(lambda row: row["geometry"].z, axis=1).to_numpy()
+                    * multiplier
+                )
+            else:
+                self._z = self._points[self.z_label].to_numpy()
+        return self._z
+
+    def sample(self) -> numpy.ndarray:
+        """Return points - rename in future."""
+        points = numpy.empty(
+            [len(self._points)],
+            dtype=[("X", RASTER_TYPE), ("Y", RASTER_TYPE), ("Z", RASTER_TYPE)],
+        )
+
+        # Extract the x, y and z values from the Shapely MultiPoints and possibly a
+        # depth column
+        points["X"] = self._points.apply(
+            lambda row: row["geometry"].x, axis=1
+        ).to_numpy()
+        points["Y"] = self._points.apply(
+            lambda row: row["geometry"].y, axis=1
+        ).to_numpy()
+        if self.is_depth:
+            points["Z"] = (
+                self._points.apply(lambda row: row["geometry"].z, axis=1).to_numpy()
                 * -1
             )
-        return self._z
+        else:
+            points["Z"] = self._points.apply(
+                lambda row: row["geometry"].z, axis=1
+            ).to_numpy()
+
+        return points
 
 
 class EstimatedElevationPoints:
