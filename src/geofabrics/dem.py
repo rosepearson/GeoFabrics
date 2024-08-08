@@ -3023,7 +3023,7 @@ def elevation_from_points(
             near_points=near_points,
             point=point,
             options=options,
-            )
+        )
     return z_out
 
 
@@ -3091,9 +3091,10 @@ def elevation_from_nearest_points(
             near_points=near_points,
             point=point,
             options=options,
-            )
+        )
 
     return z_out
+
 
 def point_elevation(
     near_z: numpy.ndarray,
@@ -3150,6 +3151,7 @@ def point_elevation(
             ), f"An invalid lidar_interpolation_method of '{options['method']}' was"
             " provided"
     return z_out
+
 
 def calculate_idw(
     near_points: numpy.ndarray,
