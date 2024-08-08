@@ -3246,19 +3246,13 @@ def elevation_from_points(
                     near_z=near_z,
                     point=point,
                 )
-            elif options["method"] == "linear":
-                z_out[i] = calculate_linear(
+            elif options["method"] in ["cubic", "nearest", "linear"]:
+                z_out[i] = calculate_interpolate_griddata(
                     near_points=near_points,
                     near_z=near_z,
                     point=point,
                     strict=options["strict"],
-                )
-            elif options["method"] == "cubic":
-                z_out[i] = calculate_cubic(
-                    near_points=near_points,
-                    near_z=near_z,
-                    point=point,
-                    strict=options["strict"],
+                    method=options["method"],
                 )
             elif options["method"] == "rbf":
                 z_out[i] = calculate_rbf(
@@ -3355,19 +3349,13 @@ def elevation_from_nearest_points(
                     near_z=near_z,
                     point=point,
                 )
-            elif options["method"] == "linear":
-                z_out[i] = calculate_linear(
+            elif options["method"] in ["cubic", "nearest", "linear"]:
+                z_out[i] = calculate_interpolate_griddata(
                     near_points=near_points,
                     near_z=near_z,
                     point=point,
                     strict=options["strict"],
-                )
-            elif options["method"] == "cubic":
-                z_out[i] = calculate_cubic(
-                    near_points=near_points,
-                    near_z=near_z,
-                    point=point,
-                    strict=options["strict"],
+                    method=options["method"],
                 )
             elif options["method"] == "rbf":
                 z_out[i] = calculate_rbf(
@@ -3416,11 +3404,12 @@ def calculate_idw(
     return idw
 
 
-def calculate_linear(
+def calculate_interpolate_griddata(
     near_points: numpy.ndarray,
     near_z: numpy.ndarray,
     point: numpy.ndarray,
     strict: bool,
+    method: str,
 ):
     """Calculate linear interpolation of the 'near_indices' points. Take the straight
     mean if the points are co-linear or too few for linear interpolation."""
@@ -3432,7 +3421,7 @@ def calculate_linear(
                 points=near_points,
                 values=near_z,
                 xi=point,
-                method="linear",
+                method=method,
             )[0]
         except (scipy.spatial.QhullError, Exception) as caught_exception:
             logger.warning(
@@ -3451,53 +3440,6 @@ def calculate_linear(
     else:
         value = numpy.nan
     if numpy.isnan(value) and len(near_z) > 0 and strict:
-        logger.warning(
-            "NaN - this will occur if colinear points or outside convex hull"
-        )
-    elif numpy.isnan(value) and len(near_z) > 0 and not strict:
-        logger.warning("Was NaN - will estimate as distance weighted mean")
-        distance_vectors = point - near_points
-        distances = numpy.sqrt((distance_vectors**2).sum(axis=1))
-        value = (near_z / distances).sum(axis=0) / (1 / distances).sum(axis=0)
-    return value
-
-
-def calculate_cubic(
-    near_points: numpy.ndarray,
-    near_z: numpy.ndarray,
-    point: numpy.ndarray,
-    strict: bool,
-):
-    """Calculate linear interpolation of the 'near_indices' points. Take the straight
-    mean if the points are co-linear or too few for linear interpolation."""
-    logger = logging.getLogger(__name__)
-    logger.setLevel(logging.DEBUG)
-    if len(near_z) >= 3:  # There are enough points for a linear interpolation
-        try:
-            value = scipy.interpolate.griddata(
-                points=near_points,
-                values=near_z,
-                xi=point,
-                method="cubic",
-            )[0]
-        except (scipy.spatial.QhullError, Exception) as caught_exception:
-            logger.warning(
-                f"Exception {caught_exception} during "
-                "cubic interpolation. Set to NaN."
-            )
-            value = numpy.nan
-
-    elif len(near_z) == 1:
-        value = near_z[0]
-    elif len(near_z) == 2:
-        # take the distance weighted average
-        distance_vectors = point - near_points
-        distances = numpy.sqrt((distance_vectors**2).sum(axis=1))
-        value = (near_z / distances).sum(axis=0) / (1 / distances).sum(axis=0)
-    else:
-        value = numpy.nan
-
-    if numpy.isnan(value) and len(near_z) > 0:
         logger.warning(
             "NaN - this will occur if colinear points or outside convex hull"
         )
