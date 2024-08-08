@@ -3477,11 +3477,12 @@ def calculate_rbf(
                 f"Exception {caught_exception} during "
                 "RBF interpolation. Apply cubic."
             )
-            value = calculate_cubic(
+            value = calculate_interpolate_griddata(
                 near_points=near_points,
                 near_z=near_z,
                 point=point,
                 strict=True,
+                method="cubic",
             )
     else:
         logger.warning(
@@ -3489,11 +3490,12 @@ def calculate_rbf(
             f"interpolation: {len(near_z)}. "
             "Instead applying cubic interpolation."
         )
-        value = calculate_cubic(
+        value = calculate_interpolate_griddata(
             near_points=near_points,
             near_z=near_z,
             point=point,
             strict=True,
+            method="cubic",
         )
     return value
 
