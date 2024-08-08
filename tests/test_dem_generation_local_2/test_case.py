@@ -137,6 +137,47 @@ class Test(base_test.Test):
         gc.collect()
         cls.clean_data_folder()
 
+    @classmethod
+    def clean_data_folder(cls):
+        """Remove all generated or downloaded files from the data directory,
+        but with only warnings if files can't be removed."""
+
+        assert cls.cache_dir.exists(), (
+            "The data directory that should include the comparison benchmark dem file "
+            "doesn't exist"
+        )
+
+        # Cycle through all folders within the cache dir deleting their contents
+        for path in cls.cache_dir.iterdir():
+            if path.is_dir():
+                for file in path.glob("*"):  # only files
+                    if file.is_file():
+                        try:
+                            file.unlink()
+                        except (Exception, PermissionError) as caught_exception:
+                            logging.warning(
+                                f"Caught error {caught_exception} during "
+                                f"rmtree of {file}. Supressing error. You "
+                                "will have to manually delete."
+                            )
+                    elif file.is_dir():
+                        try:
+                            shutil.rmtree(file)
+                        except (Exception, PermissionError) as caught_exception:
+                            logging.warning(
+                                f"Caught error {caught_exception} during "
+                                f"rmtree of {file}. Supressing error. You "
+                                "will have to manually delete."
+                            )
+                try:
+                    shutil.rmtree(path)
+                except (Exception, PermissionError) as caught_exception:
+                    logging.warning(
+                        f"Caught error {caught_exception} during rmtree of "
+                        f"{path}. Supressing error. You will have to manually "
+                        "delete."
+                    )
+
     def test_result_dem(self):
         """A basic comparison between the generated and benchmark DEM"""
 
