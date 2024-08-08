@@ -1069,7 +1069,7 @@ class HydrologicallyConditionedDem(DemBase):
             method="first",
         )
 
-    def interpolate_elevations_within_polygon_chunked(
+    def interpolate_elevations_within_polygon(
         self,
         elevations: geometry.EstimatedElevationPoints,
         method: str,
@@ -1209,7 +1209,7 @@ class HydrologicallyConditionedDem(DemBase):
         )
         self._write_netcdf_conventions_in_place(self._dem, self.catchment_geometry.crs)
 
-    def interpolate_rivers_chunked(
+    def interpolate_rivers(
         self,
         elevations: geometry.EstimatedElevationPoints,
         method: str,
