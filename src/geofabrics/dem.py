@@ -3018,47 +3018,12 @@ def elevation_from_points(
         near_points = tree.data[near_indices]
         near_z = point_cloud["Z"][near_indices]
 
-        if len(near_indices) == 0:  # Set NaN if no values in search region
-            z_out[i] = numpy.nan
-        else:
-            if options["method"] == "mean":
-                z_out[i] = numpy.mean(near_z)
-            elif options["method"] == "median":
-                z_out[i] = numpy.median(near_z)
-            elif options["method"] == "idw":
-                z_out[i] = calculate_idw(
-                    near_points=near_points,
-                    near_z=near_z,
-                    point=point,
-                )
-            elif options["method"] in ["cubic", "nearest", "linear"]:
-                z_out[i] = calculate_interpolate_griddata(
-                    near_points=near_points,
-                    near_z=near_z,
-                    point=point,
-                    strict=options["strict"],
-                    method=options["method"],
-                )
-            elif options["method"] == "rbf":
-                z_out[i] = calculate_rbf(
-                    near_points=near_points,
-                    near_z=near_z,
-                    point=point,
-                    kernel=options["kernel"],
-                )
-            elif options["method"] == "min":
-                z_out[i] = numpy.min(near_z)
-            elif options["method"] == "max":
-                z_out[i] = numpy.max(near_z)
-            elif options["method"] == "std":
-                z_out[i] = numpy.std(near_z)
-            elif options["method"] == "count":
-                z_out[i] = numpy.len(near_z)
-            else:
-                assert (
-                    False
-                ), f"An invalid lidar_interpolation_method of '{options['method']}' was"
-                " provided"
+        z_out[i] = point_elevation(
+            near_z=near_z,
+            near_points=near_points,
+            point=point,
+            options=options,
+            )
     return z_out
 
 
@@ -3121,49 +3086,70 @@ def elevation_from_nearest_points(
                 (near_points, edge_tree.data[edge_near_indices])
             )
 
-        if len(near_indices) == 0:  # Set NaN if no values in search region
-            z_out[i] = numpy.nan
-        else:
-            if options["method"] == "mean":
-                z_out[i] = numpy.mean(near_z)
-            elif options["method"] == "median":
-                z_out[i] = numpy.median(near_z)
-            elif options["method"] == "idw":
-                z_out[i] = calculate_idw(
-                    near_points=near_points,
-                    near_z=near_z,
-                    point=point,
-                )
-            elif options["method"] in ["cubic", "nearest", "linear"]:
-                z_out[i] = calculate_interpolate_griddata(
-                    near_points=near_points,
-                    near_z=near_z,
-                    point=point,
-                    strict=options["strict"],
-                    method=options["method"],
-                )
-            elif options["method"] == "rbf":
-                z_out[i] = calculate_rbf(
-                    near_points=near_points,
-                    near_z=near_z,
-                    point=point,
-                    kernel=options["kernel"],
-                )
-            elif options["method"] == "min":
-                z_out[i] = numpy.min(near_z)
-            elif options["method"] == "max":
-                z_out[i] = numpy.max(near_z)
-            elif options["method"] == "std":
-                z_out[i] = numpy.std(near_z)
-            elif options["method"] == "count":
-                z_out[i] = numpy.len(near_z)
-            else:
-                assert (
-                    False
-                ), f"An invalid lidar_interpolation_method of '{options['method']}' was"
-                " provided"
+        z_out[i] = point_elevation(
+            near_z=near_z,
+            near_points=near_points,
+            point=point,
+            options=options,
+            )
+
     return z_out
 
+def point_elevation(
+    near_z: numpy.ndarray,
+    near_points: numpy.ndarray,
+    point: numpy.ndarray,
+    options: dict,
+) -> float:
+    """Calculate DEM elevation values at the specified locations using the selected
+    approach. Options include: mean, median, and inverse distance weighing (IDW). This
+    implementation is based on the scipy.spatial.KDTree"""
+
+    logger = logging.getLogger(__name__)
+    logger.setLevel(logging.DEBUG)
+
+    if len(near_z) == 0:  # Set NaN if no values in search region
+        z_out = numpy.nan
+    else:
+        if options["method"] == "mean":
+            z_out = numpy.mean(near_z)
+        elif options["method"] == "median":
+            z_out = numpy.median(near_z)
+        elif options["method"] == "idw":
+            z_out = calculate_idw(
+                near_points=near_points,
+                near_z=near_z,
+                point=point,
+            )
+        elif options["method"] in ["cubic", "nearest", "linear"]:
+            z_out = calculate_interpolate_griddata(
+                near_points=near_points,
+                near_z=near_z,
+                point=point,
+                strict=options["strict"],
+                method=options["method"],
+            )
+        elif options["method"] == "rbf":
+            z_out = calculate_rbf(
+                near_points=near_points,
+                near_z=near_z,
+                point=point,
+                kernel=options["kernel"],
+            )
+        elif options["method"] == "min":
+            z_out = numpy.min(near_z)
+        elif options["method"] == "max":
+            z_out = numpy.max(near_z)
+        elif options["method"] == "std":
+            z_out = numpy.std(near_z)
+        elif options["method"] == "count":
+            z_out = numpy.len(near_z)
+        else:
+            assert (
+                False
+            ), f"An invalid lidar_interpolation_method of '{options['method']}' was"
+            " provided"
+    return z_out
 
 def calculate_idw(
     near_points: numpy.ndarray,
