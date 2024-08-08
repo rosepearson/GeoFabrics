@@ -1018,7 +1018,8 @@ class HydrologicallyConditionedDem(DemBase):
             reduced_resolution = (
                 self.catchment_geometry.resolution
                 * len(offshore_points)
-                / RBF_CACHE_SIZE * 10
+                / RBF_CACHE_SIZE
+                * 10
             )
             self.logger.info(
                 "Reducing the number of 'offshore_points' used to create the RBF "

@@ -200,8 +200,7 @@ class Test(base_test.Test):
             test_dem.z.data[~numpy.isnan(test_dem.z.data)],
             benchmark.z.data[~numpy.isnan(benchmark.z.data)],
             decimal=decimal_threshold,
-            err_msg="The generated result_dem has different data from the "
-            "benchmark",
+            err_msg="The generated result_dem has different data from the " "benchmark",
         )
 
         # explicitly free memory as xarray seems to be hanging onto memory
