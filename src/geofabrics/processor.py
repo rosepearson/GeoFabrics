@@ -1218,7 +1218,7 @@ class HydrologicDemGenerator(BaseProcessor):
             # Call interpolate river on the DEM - the class checks to see if any pixels
             # actually fall inside the polygon
             if len(estimated_elevations.polygons) > 0:  # Skip if no waterways
-                hydrologic_dem.interpolate_elevations_within_polygon_chunked(
+                hydrologic_dem.interpolate_elevations_within_polygon(
                     elevations=estimated_elevations,
                     method=self.get_instruction_general(
                         key="interpolation", subkey="waterways"
@@ -1275,7 +1275,7 @@ class HydrologicDemGenerator(BaseProcessor):
 
                 # Call interpolate river on the DEM - the class checks to see if any pixels
                 # actually fall inside the polygon
-                hydrologic_dem.interpolate_rivers_chunked(
+                hydrologic_dem.interpolate_rivers(
                     elevations=estimated_elevations,
                     method=self.get_instruction_general(
                         key="interpolation", subkey="rivers"
@@ -1320,7 +1320,7 @@ class HydrologicDemGenerator(BaseProcessor):
             # Call interpolate river on the DEM - the class checks to see if any pixels
             # actually fall inside the polygon
             if len(estimated_elevations.polygons) > 0:  # Skip if no stopbanks
-                hydrologic_dem.interpolate_elevations_within_polygon_chunked(
+                hydrologic_dem.interpolate_elevations_within_polygon(
                     elevations=estimated_elevations,
                     method=self.get_instruction_general(
                         key="interpolation", subkey="stopbanks"
