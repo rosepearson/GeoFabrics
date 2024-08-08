@@ -1441,7 +1441,7 @@ class HydrologicallyConditionedDem(DemBase):
                     chunk_region_to_tile=None,
                     crs=raster_options["crs"],
                 )
-                
+
                 river_edge_points = delayed_load_tiles_in_chunk(
                     lidar_files=[river_edge_file],
                     source_crs=raster_options["crs"],
@@ -3335,7 +3335,9 @@ def elevation_from_nearest_points(
         if options["use_edge"]:
             # Add in the edge values as they are nearby
             edge_near_indices = edge_tree_index_list[i]
-            near_z = numpy.concatenate((near_z, edge_point_cloud["Z"][edge_near_indices]))
+            near_z = numpy.concatenate(
+                (near_z, edge_point_cloud["Z"][edge_near_indices])
+            )
             near_points = numpy.concatenate(
                 (near_points, edge_tree.data[edge_near_indices])
             )
