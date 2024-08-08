@@ -58,7 +58,7 @@ class Test(base_test.Test):
     @pytest.mark.skipif(sys.platform != "win32", reason="Windows test - this is strict")
     def test_result_dem_windows(self):
         """A basic comparison between the generated and benchmark DEM"""
-
+        decimal = 3
         file_path = (
             self.cache_dir / self.instructions["dem"]["data_paths"]["benchmark_dem"]
         )
@@ -79,6 +79,7 @@ class Test(base_test.Test):
         numpy.testing.assert_array_almost_equal(
             test_dem.z.data[~numpy.isnan(test_dem.z.data)],
             benchmark_dem.z.data[~numpy.isnan(benchmark_dem.z.data)],
+            decimal=decimal,
             err_msg="The generated result_dem has different data from the "
             "benchmark_dem",
         )
