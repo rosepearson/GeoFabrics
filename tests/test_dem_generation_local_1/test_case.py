@@ -8,7 +8,6 @@ Created on Wed Jun 30 11:11:25 2021
 import unittest
 import json
 import pathlib
-import shutil
 import rioxarray
 import xarray
 import numpy
@@ -16,11 +15,10 @@ import geopandas
 import shapely
 import pdal
 import logging
-import gc
 import pytest
 import sys
 
-from src.geofabrics import processor
+from geofabrics import processor
 from tests import base_test
 
 
