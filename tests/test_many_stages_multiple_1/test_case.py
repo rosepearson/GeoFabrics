@@ -15,7 +15,7 @@ import pytest
 import sys
 import logging
 
-from src.geofabrics import runner
+from geofabrics import runner
 from tests import base_test
 
 

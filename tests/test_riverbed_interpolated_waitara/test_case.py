@@ -12,7 +12,7 @@ import sys
 import pytest
 import numpy
 
-from src.geofabrics import processor
+from geofabrics import processor
 from tests import base_test
 
 

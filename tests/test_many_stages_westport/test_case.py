@@ -15,7 +15,7 @@ import logging
 import numpy
 import rioxarray
 
-from src.geofabrics import runner
+from geofabrics import runner
 from tests import base_test
 
 
