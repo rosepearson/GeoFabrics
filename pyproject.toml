@@ -40,9 +40,6 @@ requires-python = ">=3.10"
 geofabrics_from_file = "geofabrics.__main__:cli_run_from_file"
 geofabrics_from_dict = "geofabrics.__main__:cli_run_from_dict"
 
-[tool.setuptools]
-packages = ["src.geofabrics"]
-
 [project.optional-dependencies]
 dev = ["black", "check-manifest", "python-dotenv", "pip-tools", "pytest"]
 
