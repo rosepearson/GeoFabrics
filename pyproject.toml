@@ -24,9 +24,6 @@ keywords = ["GeoFabrics", "DEM", "Roughness", "Hydrologically conditioned", "LiD
 dependencies = [
     "dask",
     "distributed",
-    "gdal",
-    "geopandas>=0.10",
-	"pdal",
     "python-pdal",
     "rioxarray",
     "geoapis",
