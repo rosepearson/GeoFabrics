@@ -15,7 +15,8 @@ import shapely
 import geopandas
 import pdal
 import logging
-from src.geofabrics import runner
+
+from geofabrics import runner
 from tests import base_test
 
 

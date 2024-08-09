@@ -3,7 +3,6 @@
 name: geofabrics
 channels:
   - conda-forge
-  - defaults
 dependencies:
   - rioxarray >= 0.15.1
   - geoapis>= 0.3.2

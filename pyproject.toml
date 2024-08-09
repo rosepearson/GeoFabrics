@@ -7,7 +7,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "geofabrics"
-version = "1.1.18"
+version = "1.1.19"
 description = "A package for creating geofabrics for flood modelling."
 readme = "README.md"
 authors = [{ name = "Rose pearson", email = "rose.pearson@niwa.co.nz" }]
@@ -24,9 +24,6 @@ keywords = ["GeoFabrics", "DEM", "Roughness", "Hydrologically conditioned", "LiD
 dependencies = [
     "dask",
     "distributed",
-    "gdal",
-    "geopandas>=0.10",
-	"pdal",
     "python-pdal",
     "rioxarray",
     "geoapis",
@@ -39,9 +36,6 @@ requires-python = ">=3.10"
 [project.scripts]
 geofabrics_from_file = "geofabrics.__main__:cli_run_from_file"
 geofabrics_from_dict = "geofabrics.__main__:cli_run_from_dict"
-
-[tool.setuptools]
-packages = ["src.geofabrics"]
 
 [project.optional-dependencies]
 dev = ["black", "check-manifest", "python-dotenv", "pip-tools", "pytest"]

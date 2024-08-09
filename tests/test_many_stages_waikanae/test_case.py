@@ -17,7 +17,7 @@ import pytest
 import logging
 import numpy
 
-from src.geofabrics import runner
+from geofabrics import runner
 from tests import base_test
 
 

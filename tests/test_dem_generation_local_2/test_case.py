@@ -8,16 +8,13 @@ Created on Wed Jun 30 11:11:25 2021
 import unittest
 import json
 import pathlib
-import shutil
 import rioxarray
 import numpy
 import shapely
 import geopandas
 import pdal
 import logging
-import gc
-
-from src.geofabrics import processor
+from geofabrics import processor
 from tests import base_test
 
 

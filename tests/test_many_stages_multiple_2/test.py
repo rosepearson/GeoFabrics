@@ -16,7 +16,7 @@ import pytest
 import sys
 import logging
 
-from src.geofabrics import processor
+from geofabrics import processor
 from tests import base_test
 
 
