@@ -3132,7 +3132,9 @@ class WaterwayBedElevationEstimator(BaseProcessor):
             self.logger.info("Closed waterways already recorded. ")
             return
         # If not - estimate elevations along close waterways
-        closed_waterways = waterways[waterways["tunnel"]]
+        dem_bounds = geopandas.GeoSeries([shapely.geometry.box(*dem.rio.bounds())], crs=dem.rio.crs)
+        closed_waterways = waterways.clip(dem_bounds, keep_geom_type=True, sort=True)
+        closed_waterways = closed_waterways[closed_waterways["tunnel"]]
         closed_waterways["polygon"] = closed_waterways.buffer(
             closed_waterways["width"].to_numpy()
         )
@@ -3214,7 +3216,9 @@ class WaterwayBedElevationEstimator(BaseProcessor):
             self.logger.info("Open waterways already recorded. ")
             return
         # If not - estimate the elevations along the open waterways - drop any invalid geometries
-        open_waterways = waterways[numpy.logical_not(waterways["tunnel"])]
+        dem_bounds = geopandas.GeoSeries([shapely.geometry.box(*dem.rio.bounds())], crs=dem.rio.crs)
+        open_waterways = waterways.clip(dem_bounds, keep_geom_type=True, sort=True)
+        open_waterways = open_waterways[numpy.logical_not(open_waterways["tunnel"])]
         open_waterways = open_waterways[~open_waterways.geometry.isna()]
         # sample the ends of the waterway - sample over a polygon at each end
         polygons = open_waterways.interpolate(0).buffer(
