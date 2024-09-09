@@ -1007,14 +1007,17 @@ class RawLidarDemGenerator(BaseProcessor):
 
             # Add a coarse DEM if significant area without LiDAR and a coarse DEM
             coarse_dem_paths = self.get_vector_or_raster_paths(
-                    key="coarse_dems", data_type="raster", required=False
-                )
-            if self.check_vector_or_raster(key="coarse_dems", api_type="raster") and len(coarse_dem_paths) == 0:
+                key="coarse_dems", data_type="raster", required=False
+            )
+            if (
+                self.check_vector_or_raster(key="coarse_dems", api_type="raster")
+                and len(coarse_dem_paths) == 0
+            ):
                 logging.warning(
-                        "The coarse dem keyword specified in the instructions file, "
-                        "but no paths recovered - empty list. Please check the "
-                        "instruction file contents."
-                    )
+                    "The coarse dem keyword specified in the instructions file, "
+                    "but no paths recovered - empty list. Please check the "
+                    "instruction file contents."
+                )
             elif len(coarse_dem_paths) > 0:
                 self.logger.info(f"Incorporating coarse DEMs: {coarse_dem_paths}")
                 del raw_dem
@@ -3132,7 +3135,9 @@ class WaterwayBedElevationEstimator(BaseProcessor):
             self.logger.info("Closed waterways already recorded. ")
             return
         # If not - estimate elevations along close waterways
-        dem_bounds = geopandas.GeoSeries([shapely.geometry.box(*dem.rio.bounds())], crs=dem.rio.crs)
+        dem_bounds = geopandas.GeoSeries(
+            [shapely.geometry.box(*dem.rio.bounds())], crs=dem.rio.crs
+        )
         closed_waterways = waterways.clip(dem_bounds, keep_geom_type=True, sort=True)
         closed_waterways = closed_waterways[closed_waterways["tunnel"]]
         closed_waterways["polygon"] = closed_waterways.buffer(
@@ -3216,7 +3221,9 @@ class WaterwayBedElevationEstimator(BaseProcessor):
             self.logger.info("Open waterways already recorded. ")
             return
         # If not - estimate the elevations along the open waterways - drop any invalid geometries
-        dem_bounds = geopandas.GeoSeries([shapely.geometry.box(*dem.rio.bounds())], crs=dem.rio.crs)
+        dem_bounds = geopandas.GeoSeries(
+            [shapely.geometry.box(*dem.rio.bounds())], crs=dem.rio.crs
+        )
         open_waterways = waterways.clip(dem_bounds, keep_geom_type=True, sort=True)
         open_waterways = open_waterways[numpy.logical_not(open_waterways["tunnel"])]
         open_waterways = open_waterways[~open_waterways.geometry.isna()]
