@@ -1257,11 +1257,18 @@ class HydrologicallyConditionedDem(DemBase):
             region_to_rasterise.dissolve().buffer(self.catchment_geometry.resolution),
             drop=True,
         )
+        self._write_netcdf_conventions_in_place(edge_dem, self.catchment_geometry.crs)
+        edge_dem["z"] = edge_dem.z.rio.interpolate_na(method="nearest")
+        edge_dem = self._dem.rio.clip(
+            region_to_rasterise.dissolve().buffer(self.catchment_geometry.resolution),
+            drop=True,
+        )
         edge_dem = edge_dem.rio.clip(
             region_to_rasterise.dissolve().geometry,
             invert=True,
             drop=True,
         )
+
         # Define the river and mouth edge points
         grid_x, grid_y = numpy.meshgrid(edge_dem.x, edge_dem.y)
         flat_x = grid_x.flatten()

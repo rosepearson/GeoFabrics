@@ -1289,7 +1289,7 @@ class HydrologicDemGenerator(BaseProcessor):
                     ),
                     cache_path=temp_folder,
                 )
-                temp_file = temp_folder / "dem_added_rivers.nc"
+                temp_file = temp_folder / f"dem_added_{index + 1}_rivers.nc"
                 self.logger.info(
                     f"Save temp DEM with rivers added to netCDF: {temp_file}"
                 )
