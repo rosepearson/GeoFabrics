@@ -1214,7 +1214,7 @@ class HydrologicallyConditionedDem(DemBase):
         elevations: geometry.EstimatedElevationPoints,
         method: str,
         cache_path: pathlib.Path,
-        k_nearest_neighbours: int = 100,
+        k_nearest_neighbours: int = 5,
     ) -> xarray.Dataset:
         """Performs interpolation from estimated bathymetry points within a polygon
         using the specified interpolation approach after filtering the points based
@@ -1775,20 +1775,10 @@ class RawDem(LidarBase):
                 -resolution,
                 dtype=raster_options["raster_type"],
             )
-            metadata["instructions"]["dataset_mapping"]["lidar"] = {
-                "no LiDAR": self.SOURCE_CLASSIFICATION["no data"]
-            }
-            elevations = {
-                "no LiDAR": dask.array.full(
-                    fill_value=numpy.nan,
-                    shape=(len(y), len(x)),
-                    dtype=raster_options["raster_type"],
-                )
-            }
-            dem = self._create_data_set(
+            dem = self._create_empty_data_set(
                 x=x,
                 y=y,
-                elevations=elevations,
+                raster_type=raster_options["raster_type"],
                 metadata=metadata,
             )
         elif self.chunk_size is None:
@@ -2176,6 +2166,107 @@ class RawDem(LidarBase):
             dem.lidar_source.notnull(),
             dataset_mapping["no LiDAR"],
         )
+
+        return dem
+
+    def _create_empty_data_set(
+        self,
+        x: numpy.ndarray,
+        y: numpy.ndarray,
+        raster_type: str,
+        metadata: dict,
+    ) -> xarray.Dataset:
+        """A function to create a new but empty dataset from x, y arrays.
+
+        Parameters
+        ----------
+
+            x
+                X coordinates of the dataset.
+            y
+                Y coordinates of the dataset.
+            elevations
+                A dictionary of elevations over the x, and y coordiantes.Keyed
+                by the dataset name.
+            metadata
+                Used to pull out the dataset mapping for creating the
+                lidar_source layer
+        """
+
+        # Create the empty layers - z, data_source, lidar_source
+        # Set NaN where not z values so merging occurs correctly
+        z = dask.array.full(
+            fill_value=numpy.nan,
+            shape=(len(y), len(x)),
+            dtype=raster_type,
+            chunks={"x": self.chunk_size, "y": self.chunk_size},
+        )
+
+        # Create source variable - assume all values are defined from LiDAR
+        data_source = dask.array.full(
+            fill_value=self.SOURCE_CLASSIFICATION["no data"],
+            shape=(len(y), len(x)),
+            dtype=raster_type,
+            chunks={"x": self.chunk_size, "y": self.chunk_size},
+        )
+
+        # Create LiDAR id variable - name and value info in the metadata
+        lidar_source = dask.array.full(
+            fill_value=self.SOURCE_CLASSIFICATION["no data"],
+            shape=(len(y), len(x)),
+            dtype=raster_type,
+            chunks={"x": self.chunk_size, "y": self.chunk_size},
+        )
+
+        dem = xarray.Dataset(
+            data_vars=dict(
+                z=(
+                    ["y", "x"],
+                    z,
+                    {
+                        "units": "m",
+                        "long_name": "ground elevation",
+                        "vertical_datum": "EPSG:"
+                        f"{self.catchment_geometry.crs['vertical']}",
+                    },
+                ),
+                data_source=(
+                    ["y", "x"],
+                    data_source,
+                    {
+                        "units": "",
+                        "long_name": "source data classification",
+                        "mapping": f"{self.SOURCE_CLASSIFICATION}",
+                    },
+                ),
+                lidar_source=(
+                    ["y", "x"],
+                    lidar_source,
+                    {
+                        "units": "",
+                        "long_name": "source lidar ID",
+                        "mapping": f"{{'no LiDAR': self.SOURCE_CLASSIFICATION['no data']}}",
+                    },
+                ),
+            ),
+            coords=dict(x=(["x"], x), y=(["y"], y)),
+            attrs={
+                "title": "Geofabric representing elevation and roughness",
+                "source": f"{metadata['library_name']} version "
+                f"{metadata['library_version']}",
+                "description": f"{metadata['library_name']}:"
+                f"{metadata['class_name']} resolution "
+                f"{self.catchment_geometry.resolution}",
+                "history": f"{metadata['utc_time']}:"
+                f"{metadata['library_name']}:{metadata['class_name']} "
+                f"version {metadata['library_version']} "
+                f"resolution {self.catchment_geometry.resolution};",
+                "geofabrics_instructions": f"{metadata['instructions']}",
+            },
+        )
+        # ensure the expected CF conventions are followed
+        self._write_netcdf_conventions_in_place(dem, self.catchment_geometry.crs)
+        dem = dem.chunk(chunks={"x": self.chunk_size, "y": self.chunk_size})
 
         return dem
 
