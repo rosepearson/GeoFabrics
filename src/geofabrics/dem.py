@@ -146,7 +146,7 @@ class CoarseDem:
     def _set_up(self):
         """Set DEM CRS and trim the DEM to size"""
 
-        self._dem.rio.set_crs(self._extents["total"].crs)
+        self._dem.rio.write_crs(self._extents["total"].crs, inplace=True)
 
         # Calculate DEM bounds and check for overlap before clip
         dem_bounds = self.calculate_dem_bounds(self._dem)
@@ -2374,7 +2374,7 @@ class PatchDem(LidarBase):
             patch_path,
             masked=True,
         ).squeeze("band", drop=True)
-        patch.rio.set_crs(self.catchment_geometry.crs["horizontal"])
+        patch.rio.write_crs(self.catchment_geometry.crs["horizontal"], inplace=True)
         patch_resolution = patch.rio.resolution()
         patch_resolution = max(abs(patch_resolution[0]), abs(patch_resolution[1]))
         # Define region to patch within
