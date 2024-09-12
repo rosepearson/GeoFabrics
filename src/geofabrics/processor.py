@@ -170,7 +170,8 @@ class BaseProcessor(abc.ABC):
         results_folder.mkdir(parents=True, exist_ok=True)
 
     def save_dem(
-        self, filename: pathlib.Path, dataset: xarray.Dataset, generator: dem.DemBase
+        self, filename: pathlib.Path, dataset: xarray.Dataset, generator: dem.DemBase,
+        compression: int,
     ):
         """Save out the dem/geofabrics labelled array.
 
@@ -190,7 +191,7 @@ class BaseProcessor(abc.ABC):
                 "In processor.DemGenerator - write out the raw DEM to "
                 f"netCDF: {filename}"
             )
-            compression = {"zlib": True, "complevel": 1}
+            compression = {"zlib": True, "complevel": compression}
         elif filename.suffix.lower() == ".tif":
             self.logger.info(
                 "In processor.DemGenerator - write out the raw DEM as a "
@@ -304,6 +305,7 @@ class BaseProcessor(abc.ABC):
                 "is_depth": False,
             },
             "filter_waterways_by_osm_ids": [],
+            "compression": 1,
         }
 
         if key not in defaults and key not in self.instructions["general"]:
@@ -1067,6 +1069,7 @@ class RawLidarDemGenerator(BaseProcessor):
                 filename=pathlib.Path(self.get_instruction_path("raw_dem")),
                 dataset=raw_dem.dem,
                 generator=raw_dem,
+                compression=self.get_instruction_general("compression"),
             )
             self.logger.info(f"Remove folder {temp_folder} for temporary files")
             del raw_dem
@@ -1415,6 +1418,7 @@ class HydrologicDemGenerator(BaseProcessor):
                     filename=result_path,
                     dataset=hydrologic_dem.dem,
                     generator=hydrologic_dem,
+                    compression=self.get_instruction_general("compression"),
                 )
                 del hydrologic_dem
             except (Exception, KeyboardInterrupt) as caught_exception:
@@ -1580,6 +1584,7 @@ class PatchDemGenerator(BaseProcessor):
                     filename=self.get_instruction_path("result_dem"),
                     dataset=patch_dem.dem,
                     generator=patch_dem,
+                    compression=self.get_instruction_general("compression"),
                 )
             except (Exception, KeyboardInterrupt) as caught_exception:
                 pathlib.Path(self.get_instruction_path("result_dem")).unlink()
@@ -1774,6 +1779,7 @@ class RoughnessLengthGenerator(BaseProcessor):
                 filename=self.get_instruction_path("result_geofabric"),
                 dataset=roughness_dem.dem,
                 generator=roughness_dem,
+                compression=self.get_instruction_general("compression"),
             )
             del roughness_dem
             self.logger.info(
