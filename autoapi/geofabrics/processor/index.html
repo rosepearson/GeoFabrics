@@ -207,7 +207,7 @@ if there is a default value and the local cache is specified.</p>
 
 <dl class="py method">
 <dt class="sig sig-object py" id="geofabrics.processor.BaseProcessor.save_dem">
-<span class="sig-name descname"><span class="pre">save_dem</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">filename</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">dataset</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">generator</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#geofabrics.processor.BaseProcessor.save_dem" title="Link to this definition"></a></dt>
+<span class="sig-name descname"><span class="pre">save_dem</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">filename</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">dataset</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">generator</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">compression</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#geofabrics.processor.BaseProcessor.save_dem" title="Link to this definition"></a></dt>
 <dd><p>Save out the dem/geofabrics labelled array.</p>
 <dl class="field-list simple">
 <dt class="field-odd">Parameters<span class="colon">:</span></dt>
@@ -215,6 +215,7 @@ if there is a default value and the local cache is specified.</p>
 <li><p><strong>filename</strong> (<em>pathlib.Path</em>) – The filename including extension to save the DEM/geofabric to.</p></li>
 <li><p><strong>dataset</strong> (<em>xarray.Dataset</em>) – The labelled array data to save.</p></li>
 <li><p><strong>generator</strong> (<a class="reference internal" href="../dem/index.html#geofabrics.dem.DemBase" title="geofabrics.dem.DemBase"><em>geofabrics.dem.DemBase</em></a>) – The dem.DemBase object with a ‘save_dem’ function.</p></li>
+<li><p><strong>compression</strong> (<em>int</em>)</p></li>
 </ul>
 </dd>
 </dl>

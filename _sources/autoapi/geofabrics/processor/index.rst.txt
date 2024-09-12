@@ -75,7 +75,7 @@ Module Contents
 
 
 
-   .. py:method:: save_dem(filename, dataset, generator)
+   .. py:method:: save_dem(filename, dataset, generator, compression)
 
       Save out the dem/geofabrics labelled array.
 
