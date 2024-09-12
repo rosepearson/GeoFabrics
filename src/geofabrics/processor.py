@@ -170,7 +170,10 @@ class BaseProcessor(abc.ABC):
         results_folder.mkdir(parents=True, exist_ok=True)
 
     def save_dem(
-        self, filename: pathlib.Path, dataset: xarray.Dataset, generator: dem.DemBase,
+        self,
+        filename: pathlib.Path,
+        dataset: xarray.Dataset,
+        generator: dem.DemBase,
         compression: int,
     ):
         """Save out the dem/geofabrics labelled array.

@@ -1331,8 +1331,11 @@ class HydrologicallyConditionedDem(DemBase):
             json.dumps(pdal_pipeline_instructions), [edge_points]
         )
         pdal_pipeline.execute()
-        
-        if len(river_points) < k_nearest_neighbours or len(edge_points) < k_nearest_neighbours:
+
+        if (
+            len(river_points) < k_nearest_neighbours
+            or len(edge_points) < k_nearest_neighbours
+        ):
             logging.info(
                 f"Fewer river or edge points than the default expected {k_nearest_neighbours}. "
                 f"Updating k_nearest_neighbours to {min(len(river_points), len(edge_points))}."
