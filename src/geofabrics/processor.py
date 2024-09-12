@@ -170,7 +170,11 @@ class BaseProcessor(abc.ABC):
         results_folder.mkdir(parents=True, exist_ok=True)
 
     def save_dem(
-        self, filename: pathlib.Path, dataset: xarray.Dataset, generator: dem.DemBase
+        self,
+        filename: pathlib.Path,
+        dataset: xarray.Dataset,
+        generator: dem.DemBase,
+        compression: int,
     ):
         """Save out the dem/geofabrics labelled array.
 
@@ -190,7 +194,7 @@ class BaseProcessor(abc.ABC):
                 "In processor.DemGenerator - write out the raw DEM to "
                 f"netCDF: {filename}"
             )
-            compression = {"zlib": True, "complevel": 1}
+            compression = {"zlib": True, "complevel": compression}
         elif filename.suffix.lower() == ".tif":
             self.logger.info(
                 "In processor.DemGenerator - write out the raw DEM as a "
@@ -304,6 +308,7 @@ class BaseProcessor(abc.ABC):
                 "is_depth": False,
             },
             "filter_waterways_by_osm_ids": [],
+            "compression": 1,
         }
 
         if key not in defaults and key not in self.instructions["general"]:
@@ -505,6 +510,7 @@ class BaseProcessor(abc.ABC):
                         api_key,
                         bounding_polygon=bounding_polygon,
                         verbose=True,
+                        crs=self.get_crs()["horizontal"],
                     )
 
                     api_instruction = self.instructions["datasets"][data_type][
@@ -1005,10 +1011,19 @@ class RawLidarDemGenerator(BaseProcessor):
                 cached_file = temp_file
 
             # Add a coarse DEM if significant area without LiDAR and a coarse DEM
-            if self.check_vector_or_raster(key="coarse_dems", api_type="raster"):
-                coarse_dem_paths = self.get_vector_or_raster_paths(
-                    key="coarse_dems", data_type="raster"
+            coarse_dem_paths = self.get_vector_or_raster_paths(
+                key="coarse_dems", data_type="raster", required=False
+            )
+            if (
+                self.check_vector_or_raster(key="coarse_dems", api_type="raster")
+                and len(coarse_dem_paths) == 0
+            ):
+                logging.warning(
+                    "The coarse dem keyword specified in the instructions file, "
+                    "but no paths recovered - empty list. Please check the "
+                    "instruction file contents."
                 )
+            elif len(coarse_dem_paths) > 0:
                 self.logger.info(f"Incorporating coarse DEMs: {coarse_dem_paths}")
                 del raw_dem
                 raw_dem = dem.PatchDem(
@@ -1057,6 +1072,7 @@ class RawLidarDemGenerator(BaseProcessor):
                 filename=pathlib.Path(self.get_instruction_path("raw_dem")),
                 dataset=raw_dem.dem,
                 generator=raw_dem,
+                compression=self.get_instruction_general("compression"),
             )
             self.logger.info(f"Remove folder {temp_folder} for temporary files")
             del raw_dem
@@ -1282,7 +1298,7 @@ class HydrologicDemGenerator(BaseProcessor):
                     ),
                     cache_path=temp_folder,
                 )
-                temp_file = temp_folder / "dem_added_rivers.nc"
+                temp_file = temp_folder / f"dem_added_{index + 1}_rivers.nc"
                 self.logger.info(
                     f"Save temp DEM with rivers added to netCDF: {temp_file}"
                 )
@@ -1405,6 +1421,7 @@ class HydrologicDemGenerator(BaseProcessor):
                     filename=result_path,
                     dataset=hydrologic_dem.dem,
                     generator=hydrologic_dem,
+                    compression=self.get_instruction_general("compression"),
                 )
                 del hydrologic_dem
             except (Exception, KeyboardInterrupt) as caught_exception:
@@ -1570,6 +1587,7 @@ class PatchDemGenerator(BaseProcessor):
                     filename=self.get_instruction_path("result_dem"),
                     dataset=patch_dem.dem,
                     generator=patch_dem,
+                    compression=self.get_instruction_general("compression"),
                 )
             except (Exception, KeyboardInterrupt) as caught_exception:
                 pathlib.Path(self.get_instruction_path("result_dem")).unlink()
@@ -1764,6 +1782,7 @@ class RoughnessLengthGenerator(BaseProcessor):
                 filename=self.get_instruction_path("result_geofabric"),
                 dataset=roughness_dem.dem,
                 generator=roughness_dem,
+                compression=self.get_instruction_general("compression"),
             )
             del roughness_dem
             self.logger.info(
@@ -3125,7 +3144,11 @@ class WaterwayBedElevationEstimator(BaseProcessor):
             self.logger.info("Closed waterways already recorded. ")
             return
         # If not - estimate elevations along close waterways
-        closed_waterways = waterways[waterways["tunnel"]]
+        dem_bounds = geopandas.GeoSeries(
+            [shapely.geometry.box(*dem.rio.bounds())], crs=dem.rio.crs
+        )
+        closed_waterways = waterways.clip(dem_bounds, keep_geom_type=True, sort=True)
+        closed_waterways = closed_waterways[closed_waterways["tunnel"]]
         closed_waterways["polygon"] = closed_waterways.buffer(
             closed_waterways["width"].to_numpy()
         )
@@ -3207,7 +3230,11 @@ class WaterwayBedElevationEstimator(BaseProcessor):
             self.logger.info("Open waterways already recorded. ")
             return
         # If not - estimate the elevations along the open waterways - drop any invalid geometries
-        open_waterways = waterways[numpy.logical_not(waterways["tunnel"])]
+        dem_bounds = geopandas.GeoSeries(
+            [shapely.geometry.box(*dem.rio.bounds())], crs=dem.rio.crs
+        )
+        open_waterways = waterways.clip(dem_bounds, keep_geom_type=True, sort=True)
+        open_waterways = open_waterways[numpy.logical_not(open_waterways["tunnel"])]
         open_waterways = open_waterways[~open_waterways.geometry.isna()]
         # sample the ends of the waterway - sample over a polygon at each end
         polygons = open_waterways.interpolate(0).buffer(

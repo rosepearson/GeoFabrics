@@ -146,7 +146,7 @@ class CoarseDem:
     def _set_up(self):
         """Set DEM CRS and trim the DEM to size"""
 
-        self._dem.rio.set_crs(self._extents["total"].crs)
+        self._dem.rio.write_crs(self._extents["total"].crs, inplace=True)
 
         # Calculate DEM bounds and check for overlap before clip
         dem_bounds = self.calculate_dem_bounds(self._dem)
@@ -1257,11 +1257,18 @@ class HydrologicallyConditionedDem(DemBase):
             region_to_rasterise.dissolve().buffer(self.catchment_geometry.resolution),
             drop=True,
         )
+        self._write_netcdf_conventions_in_place(edge_dem, self.catchment_geometry.crs)
+        edge_dem["z"] = edge_dem.z.rio.interpolate_na(method="nearest")
+        edge_dem = self._dem.rio.clip(
+            region_to_rasterise.dissolve().buffer(self.catchment_geometry.resolution),
+            drop=True,
+        )
         edge_dem = edge_dem.rio.clip(
             region_to_rasterise.dissolve().geometry,
             invert=True,
             drop=True,
         )
+
         # Define the river and mouth edge points
         grid_x, grid_y = numpy.meshgrid(edge_dem.x, edge_dem.y)
         flat_x = grid_x.flatten()
@@ -1324,6 +1331,22 @@ class HydrologicallyConditionedDem(DemBase):
             json.dumps(pdal_pipeline_instructions), [edge_points]
         )
         pdal_pipeline.execute()
+
+        if (
+            len(river_points) < k_nearest_neighbours
+            or len(edge_points) < k_nearest_neighbours
+        ):
+            logging.info(
+                f"Fewer river or edge points than the default expected {k_nearest_neighbours}. "
+                f"Updating k_nearest_neighbours to {min(len(river_points), len(edge_points))}."
+            )
+            k_nearest_neighbours = min(len(river_points), len(edge_points))
+        if k_nearest_neighbours < 3:
+            logging.warning(
+                f"Not enough river or edge points to meaningfully include {k_nearest_neighbours}. "
+                f"Exiting without including the river and edge points."
+            )
+            return
 
         if self.chunk_size is None:
             logging.warning("Chunksize of none. set to DEM shape.")
@@ -1768,20 +1791,10 @@ class RawDem(LidarBase):
                 -resolution,
                 dtype=raster_options["raster_type"],
             )
-            metadata["instructions"]["dataset_mapping"]["lidar"] = {
-                "no LiDAR": self.SOURCE_CLASSIFICATION["no data"]
-            }
-            elevations = {
-                "no LiDAR": dask.array.full(
-                    fill_value=numpy.nan,
-                    shape=(len(y), len(x)),
-                    dtype=raster_options["raster_type"],
-                )
-            }
-            dem = self._create_data_set(
+            dem = self._create_empty_data_set(
                 x=x,
                 y=y,
-                elevations=elevations,
+                raster_type=raster_options["raster_type"],
                 metadata=metadata,
             )
         elif self.chunk_size is None:
@@ -2172,6 +2185,107 @@ class RawDem(LidarBase):
 
         return dem
 
+    def _create_empty_data_set(
+        self,
+        x: numpy.ndarray,
+        y: numpy.ndarray,
+        raster_type: str,
+        metadata: dict,
+    ) -> xarray.Dataset:
+        """A function to create a new but empty dataset from x, y arrays.
+
+        Parameters
+        ----------
+
+            x
+                X coordinates of the dataset.
+            y
+                Y coordinates of the dataset.
+            elevations
+                A dictionary of elevations over the x, and y coordiantes.Keyed
+                by the dataset name.
+            metadata
+                Used to pull out the dataset mapping for creating the
+                lidar_source layer
+        """
+
+        # Create the empty layers - z, data_source, lidar_source
+        # Set NaN where not z values so merging occurs correctly
+        z = dask.array.full(
+            fill_value=numpy.nan,
+            shape=(len(y), len(x)),
+            dtype=raster_type,
+            chunks={"x": self.chunk_size, "y": self.chunk_size},
+        )
+
+        # Create source variable - assume all values are defined from LiDAR
+        data_source = dask.array.full(
+            fill_value=self.SOURCE_CLASSIFICATION["no data"],
+            shape=(len(y), len(x)),
+            dtype=raster_type,
+            chunks={"x": self.chunk_size, "y": self.chunk_size},
+        )
+
+        # Create LiDAR id variable - name and value info in the metadata
+        lidar_source = dask.array.full(
+            fill_value=self.SOURCE_CLASSIFICATION["no data"],
+            shape=(len(y), len(x)),
+            dtype=raster_type,
+            chunks={"x": self.chunk_size, "y": self.chunk_size},
+        )
+
+        dem = xarray.Dataset(
+            data_vars=dict(
+                z=(
+                    ["y", "x"],
+                    z,
+                    {
+                        "units": "m",
+                        "long_name": "ground elevation",
+                        "vertical_datum": "EPSG:"
+                        f"{self.catchment_geometry.crs['vertical']}",
+                    },
+                ),
+                data_source=(
+                    ["y", "x"],
+                    data_source,
+                    {
+                        "units": "",
+                        "long_name": "source data classification",
+                        "mapping": f"{self.SOURCE_CLASSIFICATION}",
+                    },
+                ),
+                lidar_source=(
+                    ["y", "x"],
+                    lidar_source,
+                    {
+                        "units": "",
+                        "long_name": "source lidar ID",
+                        "mapping": f"{{'no LiDAR': self.SOURCE_CLASSIFICATION['no data']}}",
+                    },
+                ),
+            ),
+            coords=dict(x=(["x"], x), y=(["y"], y)),
+            attrs={
+                "title": "Geofabric representing elevation and roughness",
+                "source": f"{metadata['library_name']} version "
+                f"{metadata['library_version']}",
+                "description": f"{metadata['library_name']}:"
+                f"{metadata['class_name']} resolution "
+                f"{self.catchment_geometry.resolution}",
+                "history": f"{metadata['utc_time']}:"
+                f"{metadata['library_name']}:{metadata['class_name']} "
+                f"version {metadata['library_version']} "
+                f"resolution {self.catchment_geometry.resolution};",
+                "geofabrics_instructions": f"{metadata['instructions']}",
+            },
+        )
+        # ensure the expected CF conventions are followed
+        self._write_netcdf_conventions_in_place(dem, self.catchment_geometry.crs)
+        dem = dem.chunk(chunks={"x": self.chunk_size, "y": self.chunk_size})
+
+        return dem
+
 
 class PatchDem(LidarBase):
     """A class to manage the addition of a DEM to the foreground or background
@@ -2260,7 +2374,7 @@ class PatchDem(LidarBase):
             patch_path,
             masked=True,
         ).squeeze("band", drop=True)
-        patch.rio.set_crs(self.catchment_geometry.crs["horizontal"])
+        patch.rio.write_crs(self.catchment_geometry.crs["horizontal"], inplace=True)
         patch_resolution = patch.rio.resolution()
         patch_resolution = max(abs(patch_resolution[0]), abs(patch_resolution[1]))
         # Define region to patch within
