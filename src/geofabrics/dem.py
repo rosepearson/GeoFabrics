@@ -1214,7 +1214,7 @@ class HydrologicallyConditionedDem(DemBase):
         elevations: geometry.EstimatedElevationPoints,
         method: str,
         cache_path: pathlib.Path,
-        k_nearest_neighbours: int = 5,
+        k_nearest_neighbours: int = 100,
     ) -> xarray.Dataset:
         """Performs interpolation from estimated bathymetry points within a polygon
         using the specified interpolation approach after filtering the points based
@@ -1331,6 +1331,19 @@ class HydrologicallyConditionedDem(DemBase):
             json.dumps(pdal_pipeline_instructions), [edge_points]
         )
         pdal_pipeline.execute()
+        
+        if len(river_points) < k_nearest_neighbours or len(edge_points) < k_nearest_neighbours:
+            logging.info(
+                f"Fewer river or edge points than the default expected {k_nearest_neighbours}. "
+                f"Updating k_nearest_neighbours to {min(len(river_points), len(edge_points))}."
+            )
+            k_nearest_neighbours = min(len(river_points), len(edge_points))
+        if k_nearest_neighbours < 3:
+            logging.warning(
+                f"Not enough river or edge points to meaningfully include {k_nearest_neighbours}. "
+                f"Exiting without including the river and edge points."
+            )
+            return
 
         if self.chunk_size is None:
             logging.warning("Chunksize of none. set to DEM shape.")
