@@ -1,5 +1,6 @@
 {
 "type": "FeatureCollection",
+"name": "river_bathymetry",
 "crs": { "type": "name", "properties": { "name": "urn:ogc:def:crs:EPSG::2193" } },
 "features": [
 { "type": "Feature", "properties": { "bed_elevation_Neal_et_al": -1.9800297676823861, "bed_elevation_Rupp_and_Smart": -1.9821488336786652, "source": "fan", "bank_height": null, "width": null, "flat_widths_mean_0.25km": null }, "geometry": { "type": "Point", "coordinates": [ 1768280.463745290180668, 5473643.457869846373796 ] } },
@@ -89,6 +90,6 @@
 { "type": "Feature", "properties": { "bed_elevation_Neal_et_al": -0.30253025300280995, "bed_elevation_Rupp_and_Smart": -0.48265086268655177, "source": "fan", "bank_height": null, "width": null, "flat_widths_mean_0.25km": null }, "geometry": { "type": "Point", "coordinates": [ 1769107.685494090430439, 5473497.498360693454742 ] } },
 { "type": "Feature", "properties": { "bed_elevation_Neal_et_al": -0.28256002068519592, "bed_elevation_Rupp_and_Smart": -0.46479969636521706, "source": "river", "bank_height": -0.28256002068519592, "width": 72.92, "flat_widths_mean_0.25km": 70.2 }, "geometry": { "type": "Point", "coordinates": [ 1769117.533372052246705, 5473495.760747489519417 ] } },
 { "type": "Feature", "properties": { "bed_elevation_Neal_et_al": -0.22653034329414368, "bed_elevation_Rupp_and_Smart": -0.41098019732719182, "source": "river", "bank_height": -0.22653034329414368, "width": 73.48, "flat_widths_mean_0.25km": 70.76 }, "geometry": { "type": "Point", "coordinates": [ 1769154.230407415889204, 5473491.482265326194465 ] } },
-{ "type": "Feature", "properties": { "bed_elevation_Neal_et_al": -0.10629592090845108, "bed_elevation_Rupp_and_Smart": -0.2825425982888955, "source": "river", "bank_height": -0.10629592090845108, "width": 73.6, "flat_widths_mean_0.25km": 71.04 }, "geometry": { "type": "Point", "coordinates": [ 1769140.240694085601717, 5473453.941564731299877 ] } }
+{ "type": "Feature", "properties": { "bed_elevation_Neal_et_al": -0.10629592090845108, "bed_elevation_Rupp_and_Smart": -0.28254259828889527, "source": "river", "bank_height": -0.10629592090845108, "width": 73.6, "flat_widths_mean_0.25km": 71.04 }, "geometry": { "type": "Point", "coordinates": [ 1769140.240694085601717, 5473453.941564731299877 ] } }
 ]
 }
