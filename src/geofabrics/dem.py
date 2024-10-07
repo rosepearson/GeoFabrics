@@ -18,6 +18,7 @@ import dask.array
 import pdal
 import json
 import abc
+import gc
 import logging
 import scipy.interpolate
 import scipy.spatial
@@ -125,18 +126,10 @@ class CoarseDem:
 
     def calculate_dem_bounds(self, dem):
         """Return the bounds for a DEM."""
-        dem_bounds = dem.rio.bounds()
         dem_bounds = geopandas.GeoDataFrame(
             {
                 "geometry": [
-                    shapely.geometry.Polygon(
-                        [
-                            [dem_bounds[0], dem_bounds[1]],
-                            [dem_bounds[2], dem_bounds[1]],
-                            [dem_bounds[2], dem_bounds[3]],
-                            [dem_bounds[0], dem_bounds[3]],
-                        ]
-                    )
+                    shapely.geometry.box(*dem.rio.bounds())
                 ]
             },
             crs=dem.rio.crs,
@@ -410,9 +403,10 @@ class DemBase(abc.ABC):
             "In LidarBase.save_and_load_dem saving _dem as NetCDF file to "
             f"{filename}"
         )
-
+        #breakpoint()
         self.save_dem(filename=filename, dem=self._dem)
         del self._dem
+        gc.collect() 
         self._dem = self._load_dem(filename=filename)
 
     @staticmethod
@@ -2396,16 +2390,12 @@ class PatchDem(LidarBase):
                 f"{caught_exception}."
             )
             return
-        patch_bounds = patch.rio.bounds()
         patch_bounds = geopandas.GeoDataFrame(
             {
                 "geometry": [
                     shapely.geometry.Polygon(
                         [
-                            [patch_bounds[0], patch_bounds[1]],
-                            [patch_bounds[2], patch_bounds[1]],
-                            [patch_bounds[2], patch_bounds[3]],
-                            [patch_bounds[0], patch_bounds[3]],
+                            shapely.geometry.box(*patch.rio.bounds())
                         ]
                     )
                 ]
