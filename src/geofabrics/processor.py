@@ -3272,7 +3272,7 @@ class WaterwayBedElevationEstimator(BaseProcessor):
                 )
             )
             if start_elevation < end_elevation:
-                waterway = waterway.reserse()
+                waterway = waterway.reverse()
                 (start_elevation, end_elevation) = (end_elevation, start_elevation)
             open_waterways.loc[index, "start_elevation"] = start_elevation
             open_waterways.loc[index, "end_elevation"] = end_elevation
