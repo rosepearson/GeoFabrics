@@ -3257,9 +3257,7 @@ class WaterwayBedElevationEstimator(BaseProcessor):
         for index, row in open_waterways.iterrows():
             dem_file = self.get_result_file_path(key="raw_dem", index=index)
             dem = self.load_dem(filename=dem_file)
-            dem_bounds = geopandas.GeoSeries(
-                [shapely.geometry.box(*dem.rio.bounds())], crs=dem.rio.crs
-            )
+
             waterway = shapely.ops.clip_by_rect(row.geometry,  *dem.rio.bounds())
             start_elevation = (
                 self.minimum_elevation_in_polygon(
@@ -3303,27 +3301,23 @@ class WaterwayBedElevationEstimator(BaseProcessor):
             return
 
         # Sample down-slope location along each line
-        def sample_location_down_slope(row):
-            """Sample evenly space poinst along polylines in the downslope direction"""
+        def sample(geometry):
+            """Sample evenly space poinst along polylines"""
 
             resolution = self.get_resolution()
-            number_of_samples = int(numpy.ceil(row.geometry.length / resolution))
+            number_of_samples = int(numpy.ceil(geometry.length / resolution))
             normalised_sample_indices = (
                 numpy.array(range(number_of_samples + 1)) / number_of_samples 
             )
 
             sampled_multipoints = shapely.geometry.MultiPoint(
-                row.geometry.interpolate(normalised_sample_indices, normalized=True)
+                geometry.interpolate(normalised_sample_indices, normalized=True)
             )
 
             return sampled_multipoints
 
-        """open_waterways = dask.dataframe.from_pandas( # To incorporate later
-            open_waterways,
-            npartitions=self.get_processing_instructions("number_of_cores"))"""
-        open_waterways["points"] = open_waterways.apply(
-            lambda row: sample_location_down_slope(row=row),
-            axis=1,
+        open_waterways["points"] = open_waterways["geometry"].apply(
+            lambda geometry: sample(geometry=geometry)
         )
 
         open_waterways = open_waterways.set_geometry("points", drop=True)[
@@ -3599,6 +3593,22 @@ class StopbankCrestElevationEstimator(BaseProcessor):
 
         self.debug = debug
 
+    def load_dem(self, filename: pathlib.Path):
+        """ Load a DEM"""
+        chunk_size = self.get_processing_instructions("chunk_size")
+        if chunk_size is not None:
+            chunks = {"x": chunk_size, "y": chunk_size}
+        else:
+            chunks = True
+
+        dem = rioxarray.rioxarray.open_rasterio(
+            filename,
+            masked=True,
+            parse_coordinates=True,
+            chunks=chunks,
+        ).squeeze("band", drop=True)
+        return dem
+
     def get_stopbanks_instruction(self, key: str):
         """Return true if the DEMs are required for later processing
 
@@ -3609,6 +3619,7 @@ class StopbankCrestElevationEstimator(BaseProcessor):
         defaults = {
             "features": ["dyke", "embankment"],
             "source": "file",
+            "method": "simple",
         }
 
         assert key in defaults or key in self.instructions["stopbanks"], (
@@ -3621,18 +3632,18 @@ class StopbankCrestElevationEstimator(BaseProcessor):
             self.instructions["stopbanks"][key] = defaults[key]
             return defaults[key]
 
-    def get_result_file_name(self, key: str) -> str:
+    def get_result_file_name(self, key: str, index: int) -> str:
         """Return the name of the file to save."""
 
         # key to output name mapping
         name_dictionary = {
-            "raw_dem": "stopbank_raw_dem.nc",
+            "raw_dem": f"stopbank_raw_dem_{index}.nc",
             "stopbank_polygon": "stopbank_polygon.geojson",
             "stopbank_elevation": "stopbank_elevation.geojson",
         }
         return name_dictionary[key]
 
-    def get_result_file_path(self, key: str) -> pathlib.Path:
+    def get_result_file_path(self, key: str, index: int = None) -> pathlib.Path:
         """Return the file name of the file to save with the local cache path.
 
         Parameters:
@@ -3641,7 +3652,7 @@ class StopbankCrestElevationEstimator(BaseProcessor):
 
         subfolder = self.get_instruction_path("subfolder")
 
-        name = self.get_result_file_name(key=key)
+        name = self.get_result_file_name(key=key, index=index)
 
         return subfolder / name
 
@@ -3677,13 +3688,14 @@ class StopbankCrestElevationEstimator(BaseProcessor):
             if dem.x[-1] - dem.x[0] > 0
             else slice(bbox[2], bbox[0])
         )
+        #breakpoint()
         small_z = dem.z.sel(x=x_slice, y=y_slice)
 
         # clip to polygon and return minimum elevation
         return float(small_z.max())
 
-    def estimate_elevations(
-        self, stopbanks: geopandas.GeoDataFrame, dem: xarray.Dataset
+    def estimate_elevations_simple(
+        self, stopbanks: geopandas.GeoDataFrame
     ):
         """Sample the DEM around the tunnels to estimate the bed elevation."""
 
@@ -3693,41 +3705,53 @@ class StopbankCrestElevationEstimator(BaseProcessor):
         if polygon_file.is_file() and elevation_file.is_file():
             self.logger.info("Stopbank crests already recorded. ")
             return
+        # Remove any out of bounds
+        for index, row in stopbanks.iterrows():
+            dem_file = self.get_result_file_path(key="raw_dem", index=index)
+            dem = self.load_dem(filename=dem_file)
+            stopbanks.loc[index, "geometry"] = shapely.ops.clip_by_rect(
+                row.geometry,  *dem.rio.bounds())
+        
         # If no stopbanks return an empty result
         if len(stopbanks) == 0:
             stopbanks.drop(columns=["width"]).to_file(polygon_file)
             stopbanks["z"] = []
             stopbanks.to_file(elevation_file)
             return
-        stopbanks = stopbanks.explode(ignore_index=True)
-
+        
         # Sampled points along stopbanks to define crest elevation at
-        points = stopbanks["geometry"].apply(
-            lambda row: shapely.geometry.MultiPoint(
-                [
-                    # Ensure even spacing across the length of the waterway
-                    row.interpolate(
-                        i
-                        * row.length
-                        / int(numpy.ceil(row.length / self.get_resolution()))
-                    )
-                    for i in range(
-                        int(numpy.ceil(row.length / self.get_resolution())) + 1
-                    )
-                ]
+        def sample(geometry):
+            """Sample evenly space poinst along polylines"""
+            resolution = self.get_resolution()
+            number_of_samples = int(numpy.ceil(geometry.length / resolution))
+            normalised_sample_indices = (
+                numpy.array(range(number_of_samples + 1)) / number_of_samples 
             )
+
+            sampled_multipoints = shapely.geometry.MultiPoint(
+                geometry.interpolate(normalised_sample_indices, normalized=True)
+            )
+
+            return sampled_multipoints
+        
+        stopbanks["points"] = stopbanks["geometry"].apply(lambda geometry: sample(geometry))
+        points = stopbanks.set_geometry("points", drop=True)[["geometry", "width"]]
+        points = points.sort_index(ascending=True).explode(
+            ignore_index=False, index_parts=True, column="geometry"
         )
-        points = geopandas.GeoDataFrame(
-            {
-                "geometry": points,
-                "width": stopbanks["width"],
-            },
-            crs=stopbanks.crs,
-        ).explode(index_parts=True)
+        points["polygons"] = points.buffer(points["width"].to_numpy())
         # Sample maximum elevation in polygon around each point
-        points["z"] = points.buffer(points["width"].to_numpy()).apply(
-            lambda row: self.maximum_elevation_in_polygon(geometry=row, dem=dem)
-        )
+        points["z"] = numpy.nan
+        for index, rows in points.groupby(level=0):
+            dem_file = self.get_result_file_path(key="raw_dem", index=index)
+            dem = self.load_dem(filename=dem_file)
+            #breakpoint()
+            zs = rows["polygons"].apply(
+                lambda geometry: self.maximum_elevation_in_polygon(
+                    geometry=geometry, dem=dem
+                )
+            )
+            points.loc[index, "z"] = zs
 
         # Remove any NaN areas (where no LiDAR data to estimate elevations)
         nan_filter = points["z"].notnull().groupby(level=0).all().values
@@ -3738,55 +3762,44 @@ class StopbankCrestElevationEstimator(BaseProcessor):
             )
         # Create, filter to remove NaN areas and save overall polygon
         stopbanks["polygon"] = stopbanks.buffer(stopbanks["width"].to_numpy())
+        stopbanks = stopbanks.sort_index(ascending=True)
         stopbanks = stopbanks[nan_filter]
         stopbanks.set_geometry("polygon", drop=True)[["geometry"]].to_file(polygon_file)
         # Filter points to keep not NaN values then save
         points = points[points["z"].notnull()]
-        points.to_file(elevation_file)
+        points[["geometry", "width", "z"]].to_file(elevation_file)
 
     def create_dem(self, stopbanks: geopandas.GeoDataFrame) -> xarray.Dataset:
         """Create and return a DEM at a resolution 1.5x the waterway width."""
 
-        dem_file = self.get_result_file_path(key="raw_dem")
 
-        # Load already created DEM file in
-        if not dem_file.is_file():
-            # Create DEM over the waterway region
-            # Save out the waterway polygons as a file with a single multipolygon
-            stopbank_polygon_file = self.get_result_file_path(key="stopbank_polygon")
-            stopbank_polygon = stopbanks.buffer(stopbanks["width"].to_numpy())
-            stopbank_polygon = geopandas.GeoDataFrame(
-                geometry=[shapely.ops.unary_union(stopbank_polygon.geometry.array)],
-                crs=stopbank_polygon.crs,
-            )
-            stopbank_polygon.to_file(stopbank_polygon_file)
+        # Check for DEM for each stopbank
+        for index, row in stopbanks.iterrows():
+            dem_file = self.get_result_file_path(key="raw_dem", index=index)
+            if not dem_file.is_file():
+                # Create DEM over each stopbank region
+                stopbank_polygon_file = self.get_result_file_path(
+                    key="stopbank_polygon", index=index)
+                stopbank_polygon = geopandas.GeoDataFrame(
+                    geometry=[row.geometry.buffer(row.width)], crs=stopbanks.crs)
+                stopbank_polygon.to_file(stopbank_polygon_file)
 
-            # Create DEM generation instructions
-            dem_instructions = self.instructions
-            dem_instruction_paths = dem_instructions["data_paths"]
-            dem_instruction_paths["extents"] = self.get_result_file_name(
-                key="stopbank_polygon"
-            )
-            dem_instruction_paths["raw_dem"] = self.get_result_file_name(key="raw_dem")
-            if "general" not in dem_instructions:
-                dem_instructions["general"] = {}
-            dem_instructions["general"]["ignore_clipping"] = True
+                # Update instructions for next stopbank
+                dem_instructions = self.instructions
+                dem_instruction_paths = dem_instructions["data_paths"]
+                dem_instruction_paths["extents"] = stopbank_polygon_file.name
+                dem_instruction_paths["raw_dem"] = dem_file.name
+                if "general" not in dem_instructions:
+                    dem_instructions["general"] = {}
+                dem_instructions["general"]["ignore_clipping"] = True
 
-            # Create the ground DEM file if this has not be created yet!
-            self.logger.info("Generating waterway DEM.")
-            runner = RawLidarDemGenerator(self.instructions)
-            runner.run()
-            del runner
-            gc.collect()
-        # Load in the DEM
-        chunk_size = self.get_processing_instructions("chunk_size")
-        dem = rioxarray.rioxarray.open_rasterio(
-            dem_file,
-            masked=True,
-            parse_coordinates=True,
-            chunks={"x": chunk_size, "y": chunk_size},
-        ).squeeze("band", drop=True)
-        return dem
+                self.logger.info(f"Generating stopbank DEM {index}.")
+                runner = RawLidarDemGenerator(self.instructions)
+                runner.run()
+                del runner
+                gc.collect()
+                xarray.backends.file_manager.FILE_CACHE.clear()
+        return
 
     def load_stopbanks(self) -> bool:
         """Download OpenStreetMap waterways and tunnels within the catchment BBox."""
@@ -3936,10 +3949,13 @@ class StopbankCrestElevationEstimator(BaseProcessor):
             return
 
         # Create a DEM where the waterways and tunnels are
-        dem = self.create_dem(stopbanks=stopbanks)
+        self.create_dem(stopbanks=stopbanks)
 
         # Estimate the stopbank crest elevations from the DEM
-        self.estimate_elevations(stopbanks=stopbanks, dem=dem)
+        if self.get_stopbanks_instruction("method") == "simple":
+            self.estimate_elevations_simple(stopbanks=stopbanks)
+        elif self.get_stopbanks_instruction("method") == "aligning":
+            self.logger.warning("Auto-aligning stopbanks are not yet supported.")
 
         if self.debug:
             # Record the parameter used during execution - append to existing
