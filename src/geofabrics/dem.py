@@ -403,7 +403,6 @@ class DemBase(abc.ABC):
             "In LidarBase.save_and_load_dem saving _dem as NetCDF file to "
             f"{filename}"
         )
-        #breakpoint()
         self.save_dem(filename=filename, dem=self._dem)
         del self._dem
         gc.collect() 
