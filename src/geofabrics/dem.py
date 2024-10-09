@@ -438,7 +438,7 @@ class DemBase(abc.ABC):
             A dict with horizontal and vertical CRS information.
         """
         
-        reserved_names = ["_NCProperties", "_Netcdf4Coordinates"]
+        reserved_names = ["_NCProperties", "_Netcdf4Coordinates", "_Netcdf4Dimid"]
 
         dem.rio.write_crs(crs_dict["horizontal"], inplace=True)
         dem.rio.write_transform(inplace=True)
