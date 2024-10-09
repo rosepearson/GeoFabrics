@@ -2385,10 +2385,10 @@ class PatchDem(LidarBase):
             ValueError,
         ) as caught_exception:
             self.logger.warning(
-                "NoDataInDounds in PatchDem.add_patchs. Will skip."
-                f"{caught_exception}."
+                f"NoDataInDounds in PatchDem.add_patchs. Will skip {patch_path}."
+                f"Exception: {caught_exception}."
             )
-            return
+            return False
         patch_bounds = geopandas.GeoDataFrame(
             {
                 "geometry": [
@@ -2409,7 +2409,7 @@ class PatchDem(LidarBase):
             no_values_mask.load()
             # Early return if there is nowhere to add patch DEM data
             if not no_values_mask.any():
-                return
+                return False
 
         self.logger.info(f"\t\tAdd data from coarse DEM: {patch_path.name}")
 
@@ -2504,6 +2504,7 @@ class PatchDem(LidarBase):
                     self.SOURCE_CLASSIFICATION["no data"],
                 )
                 self._dem["z"] = self._dem.z.where(mask, 0)
+        return True
 
     @property
     def no_values_mask(self):

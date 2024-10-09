@@ -11,8 +11,8 @@ import pathlib
 import abc
 import gc
 import logging
+import dask
 import distributed
-import dask.dataframe
 import shutil
 import rioxarray
 import copy
@@ -1047,25 +1047,25 @@ class RawLidarDemGenerator(BaseProcessor):
                         )
                         break
 
-                    raw_dem.add_patch(
+                    status = raw_dem.add_patch(
                         patch_path=coarse_dem_path, label="coarse DEM", layer="z"
                     )
+                    if status: # Only update if patch sucessfully added
+                        temp_file = temp_folder / f"raw_dem_{coarse_dem_path.stem}.nc"
+                        self.logger.info(f"Save temp raw DEM to netCDF: {temp_file}")
+                        raw_dem.save_and_load_dem(temp_file)
 
-                    temp_file = temp_folder / f"raw_dem_{coarse_dem_path.stem}.nc"
-                    self.logger.info(f"Save temp raw DEM to netCDF: {temp_file}")
-                    raw_dem.save_and_load_dem(temp_file)
-
-                    # Remove previous cached file and replace with new one
-                    try:
-                        gc.collect()
-                        cached_file.unlink()
-                    except (Exception, PermissionError) as caught_exception:
-                        logging.warning(
-                            f"Caught error {caught_exception} during unlink of "
-                            "cached_file. Supressing error. You will have to "
-                            f"manually delete {cached_file}."
-                        )
-                    cached_file = temp_file
+                        # Remove previous cached file and replace with new one
+                        try:
+                            gc.collect()
+                            cached_file.unlink()
+                        except (Exception, PermissionError) as caught_exception:
+                            logging.warning(
+                                f"Caught error {caught_exception} during unlink of "
+                                "cached_file. Supressing error. You will have to "
+                                f"manually delete {cached_file}."
+                            )
+                        cached_file = temp_file
 
             # compute and save raw DEM
             self.save_dem(
