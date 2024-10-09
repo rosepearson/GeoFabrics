@@ -11,3 +11,4 @@ dependencies:
   - dask >= 2023.6.0
   - distributed >= 2023.6.0
   - h5netcdf
+  - libgdal-hdf5
