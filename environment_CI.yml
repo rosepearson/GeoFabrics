@@ -10,4 +10,4 @@ dependencies:
   - python-pdal >= 3.3.0
   - dask >= 2023.6.0
   - distributed >= 2023.6.0
-  - netcdf4 < 1.7
+  - h5netcdf

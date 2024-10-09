@@ -364,10 +364,10 @@ class DemBase(abc.ABC):
                         compression["dtype"] = dem[key].dtype
                         encoding[key] = compression
                     dem.to_netcdf(
-                        filename, format="NETCDF4", engine="netcdf4", encoding=encoding
+                        filename, format="NETCDF4", engine="h5netcdf", encoding=encoding
                     )
                 else:
-                    dem.to_netcdf(filename, format="NETCDF4", engine="netcdf4")
+                    dem.to_netcdf(filename, format="NETCDF4", engine="h5netcdf")
             elif filename.suffix.lower() == ".tif":
                 for key, array in dem.data_vars.items():
                     filename_layer = (
