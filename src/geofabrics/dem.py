@@ -437,17 +437,21 @@ class DemBase(abc.ABC):
         crs_dict
             A dict with horizontal and vertical CRS information.
         """
+        
+        reserved_names = ["_NCProperties", "_Netcdf4Coordinates"]
 
         dem.rio.write_crs(crs_dict["horizontal"], inplace=True)
         dem.rio.write_transform(inplace=True)
-        if "_NCProperties" in dem.attrs.keys():
-            del dem.attrs["_NCProperties"]
+        for reserved_name in reserved_names:
+            if reserved_name in dem.attrs.keys():
+                del dem.attrs[reserved_name]
         for layer in ["z", "data_source", "lidar_source", "zo"]:
             if layer in dem:
                 dem[layer].rio.write_crs(crs_dict["horizontal"], inplace=True)
                 dem[layer].rio.write_nodata(numpy.nan, encoded=True, inplace=True)
-                if "_NCProperties" in dem[layer].attrs.keys():
-                    del dem[layer].attrs["_NCProperties"]
+                for reserved_name in reserved_names:
+                    if reserved_name in dem[layer].attrs.keys():
+                        del dem[layer].attrs[reserved_name]
 
     def _extents_from_mask(self, mask: numpy.ndarray, transform: dict):
         """Define the spatial extents of the pixels in the DEM as defined by the mask
