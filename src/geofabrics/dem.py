@@ -440,18 +440,14 @@ class DemBase(abc.ABC):
 
         dem.rio.write_crs(crs_dict["horizontal"], inplace=True)
         dem.rio.write_transform(inplace=True)
-        if "z" in dem:
-            dem.z.rio.write_crs(crs_dict["horizontal"], inplace=True)
-            dem.z.rio.write_nodata(numpy.nan, encoded=True, inplace=True)
-        if "data_source" in dem:
-            dem.data_source.rio.write_crs(crs_dict["horizontal"], inplace=True)
-            dem.data_source.rio.write_nodata(numpy.nan, encoded=True, inplace=True)
-        if "lidar_source" in dem:
-            dem.lidar_source.rio.write_crs(crs_dict["horizontal"], inplace=True)
-            dem.lidar_source.rio.write_nodata(numpy.nan, encoded=True, inplace=True)
-        if "zo" in dem:
-            dem.zo.rio.write_crs(crs_dict["horizontal"], inplace=True)
-            dem.zo.rio.write_nodata(numpy.nan, encoded=True, inplace=True)
+        if "_NCProperties" in dem.attrs.keys():
+            del dem.attrs["_NCProperties"]
+        for layer in ["z", "data_source", "lidar_source", "zo"]:
+            if layer in dem:
+                dem[layer].rio.write_crs(crs_dict["horizontal"], inplace=True)
+                dem[layer].rio.write_nodata(numpy.nan, encoded=True, inplace=True)
+                if "_NCProperties" in dem[layer].attrs.keys():
+                    del dem[layer].attrs["_NCProperties"]
 
     def _extents_from_mask(self, mask: numpy.ndarray, transform: dict):
         """Define the spatial extents of the pixels in the DEM as defined by the mask
