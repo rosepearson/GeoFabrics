@@ -127,11 +127,7 @@ class CoarseDem:
     def calculate_dem_bounds(self, dem):
         """Return the bounds for a DEM."""
         dem_bounds = geopandas.GeoDataFrame(
-            {
-                "geometry": [
-                    shapely.geometry.box(*dem.rio.bounds())
-                ]
-            },
+            geometry=[shapely.geometry.box(*dem.rio.bounds())],
             crs=dem.rio.crs,
         )
         return dem_bounds
@@ -2390,15 +2386,7 @@ class PatchDem(LidarBase):
             )
             return False
         patch_bounds = geopandas.GeoDataFrame(
-            {
-                "geometry": [
-                    shapely.geometry.Polygon(
-                        [
-                            shapely.geometry.box(*patch.rio.bounds())
-                        ]
-                    )
-                ]
-            },
+            geometry=[shapely.geometry.box(*patch.rio.bounds())],
             crs=self.catchment_geometry.crs["horizontal"],
         )
         if not self.patch_on_top:
