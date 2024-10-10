@@ -18,6 +18,7 @@ import dask.array
 import pdal
 import json
 import abc
+import gc
 import logging
 import scipy.interpolate
 import scipy.spatial
@@ -125,20 +126,8 @@ class CoarseDem:
 
     def calculate_dem_bounds(self, dem):
         """Return the bounds for a DEM."""
-        dem_bounds = dem.rio.bounds()
         dem_bounds = geopandas.GeoDataFrame(
-            {
-                "geometry": [
-                    shapely.geometry.Polygon(
-                        [
-                            [dem_bounds[0], dem_bounds[1]],
-                            [dem_bounds[2], dem_bounds[1]],
-                            [dem_bounds[2], dem_bounds[3]],
-                            [dem_bounds[0], dem_bounds[3]],
-                        ]
-                    )
-                ]
-            },
+            geometry=[shapely.geometry.box(*dem.rio.bounds())],
             crs=dem.rio.crs,
         )
         return dem_bounds
@@ -410,9 +399,9 @@ class DemBase(abc.ABC):
             "In LidarBase.save_and_load_dem saving _dem as NetCDF file to "
             f"{filename}"
         )
-
         self.save_dem(filename=filename, dem=self._dem)
         del self._dem
+        gc.collect() 
         self._dem = self._load_dem(filename=filename)
 
     @staticmethod
@@ -448,21 +437,14 @@ class DemBase(abc.ABC):
         crs_dict
             A dict with horizontal and vertical CRS information.
         """
+        
 
         dem.rio.write_crs(crs_dict["horizontal"], inplace=True)
         dem.rio.write_transform(inplace=True)
-        if "z" in dem:
-            dem.z.rio.write_crs(crs_dict["horizontal"], inplace=True)
-            dem.z.rio.write_nodata(numpy.nan, encoded=True, inplace=True)
-        if "data_source" in dem:
-            dem.data_source.rio.write_crs(crs_dict["horizontal"], inplace=True)
-            dem.data_source.rio.write_nodata(numpy.nan, encoded=True, inplace=True)
-        if "lidar_source" in dem:
-            dem.lidar_source.rio.write_crs(crs_dict["horizontal"], inplace=True)
-            dem.lidar_source.rio.write_nodata(numpy.nan, encoded=True, inplace=True)
-        if "zo" in dem:
-            dem.zo.rio.write_crs(crs_dict["horizontal"], inplace=True)
-            dem.zo.rio.write_nodata(numpy.nan, encoded=True, inplace=True)
+        for layer in ["z", "data_source", "lidar_source", "zo"]:
+            if layer in dem:
+                dem[layer] = dem[layer].rio.write_crs(crs_dict["horizontal"])
+                dem[layer] = dem[layer].rio.write_nodata(numpy.nan, encoded=True)
 
     def _extents_from_mask(self, mask: numpy.ndarray, transform: dict):
         """Define the spatial extents of the pixels in the DEM as defined by the mask
@@ -2392,24 +2374,12 @@ class PatchDem(LidarBase):
             ValueError,
         ) as caught_exception:
             self.logger.warning(
-                "NoDataInDounds in PatchDem.add_patchs. Will skip."
-                f"{caught_exception}."
+                f"NoDataInDounds in PatchDem.add_patchs. Will skip {patch_path}."
+                f"Exception: {caught_exception}."
             )
-            return
-        patch_bounds = patch.rio.bounds()
+            return False
         patch_bounds = geopandas.GeoDataFrame(
-            {
-                "geometry": [
-                    shapely.geometry.Polygon(
-                        [
-                            [patch_bounds[0], patch_bounds[1]],
-                            [patch_bounds[2], patch_bounds[1]],
-                            [patch_bounds[2], patch_bounds[3]],
-                            [patch_bounds[0], patch_bounds[3]],
-                        ]
-                    )
-                ]
-            },
+            geometry=[shapely.geometry.box(*patch.rio.bounds())],
             crs=self.catchment_geometry.crs["horizontal"],
         )
         if not self.patch_on_top:
@@ -2420,7 +2390,7 @@ class PatchDem(LidarBase):
             no_values_mask.load()
             # Early return if there is nowhere to add patch DEM data
             if not no_values_mask.any():
-                return
+                return False
 
         self.logger.info(f"\t\tAdd data from coarse DEM: {patch_path.name}")
 
@@ -2515,6 +2485,7 @@ class PatchDem(LidarBase):
                     self.SOURCE_CLASSIFICATION["no data"],
                 )
                 self._dem["z"] = self._dem.z.where(mask, 0)
+        return True
 
     @property
     def no_values_mask(self):
