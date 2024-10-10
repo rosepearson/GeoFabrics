@@ -10,5 +10,5 @@ dependencies:
   - python-pdal >= 3.3.0
   - dask >= 2023.6.0
   - distributed >= 2023.6.0
-  - h5netcdf
+  - netcdf4
   - libgdal-hdf5

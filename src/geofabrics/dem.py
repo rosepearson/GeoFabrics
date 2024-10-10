@@ -360,10 +360,10 @@ class DemBase(abc.ABC):
                         compression["dtype"] = dem[key].dtype
                         encoding[key] = compression
                     dem.to_netcdf(
-                        filename, format="NETCDF4", engine="h5netcdf", encoding=encoding
+                        filename, format="NETCDF4", engine="netcdf4", encoding=encoding
                     )
                 else:
-                    dem.to_netcdf(filename, format="NETCDF4", engine="h5netcdf")
+                    dem.to_netcdf(filename, format="NETCDF4", engine="netcdf4")
             elif filename.suffix.lower() == ".tif":
                 for key, array in dem.data_vars.items():
                     filename_layer = (
@@ -438,20 +438,13 @@ class DemBase(abc.ABC):
             A dict with horizontal and vertical CRS information.
         """
         
-        reserved_names = ["_NCProperties", "_Netcdf4Coordinates", "_Netcdf4Dimid"]
 
         dem.rio.write_crs(crs_dict["horizontal"], inplace=True)
         dem.rio.write_transform(inplace=True)
-        for reserved_name in reserved_names:
-            if reserved_name in dem.attrs.keys():
-                del dem.attrs[reserved_name]
         for layer in ["z", "data_source", "lidar_source", "zo"]:
             if layer in dem:
-                dem[layer].rio.write_crs(crs_dict["horizontal"], inplace=True)
-                dem[layer].rio.write_nodata(numpy.nan, encoded=True, inplace=True)
-                for reserved_name in reserved_names:
-                    if reserved_name in dem[layer].attrs.keys():
-                        del dem[layer].attrs[reserved_name]
+                dem[layer] = dem[layer].rio.write_crs(crs_dict["horizontal"])
+                dem[layer] = dem[layer].rio.write_nodata(numpy.nan, encoded=True)
 
     def _extents_from_mask(self, mask: numpy.ndarray, transform: dict):
         """Define the spatial extents of the pixels in the DEM as defined by the mask
