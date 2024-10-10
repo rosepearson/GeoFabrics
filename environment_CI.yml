@@ -4,10 +4,12 @@ name: geofabrics_CI
 channels:
   - conda-forge
 dependencies:
-  - rioxarray >= 0.15.1
-  - geoapis>= 0.3.2
-  - osmpythontools >= 0.3.5
-  - python-pdal >= 3.3.0
-  - dask >= 2023.6.0
-  - distributed >= 2023.6.0
-  - netcdf4
+  - python=3.12
+  - python-pdal==3.4.5
+  - pip
+  - pip:
+    - rioxarray==0.17.0
+    - geoapis==0.3.4
+    - osmpythontools==0.3.5
+    - distributed==2024.8.2
+    - scipy==1.14.1
