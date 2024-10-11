@@ -3804,8 +3804,9 @@ class StopbankCrestElevationEstimator(BaseProcessor):
     def load_stopbanks(self) -> bool:
         """Download OpenStreetMap waterways and tunnels within the catchment BBox."""
 
-        stopbanks_path = self.get_instruction_path("stopbanks")
         source = self.get_stopbanks_instruction("source")
+        defaults = {"stopbanks": "osm_stopbanks.geojson"} if source is "osm" else {}
+        stopbanks_path = self.get_instruction_path("stopbanks", defaults=defaults)
 
         if stopbanks_path.is_file():
             stopbanks = geopandas.read_file(stopbanks_path)
@@ -3826,7 +3827,7 @@ class StopbankCrestElevationEstimator(BaseProcessor):
                     self.logger.warning(message)
                     raise ValueError(message)
                 stopbanks["width"] = self.get_stopbanks_instruction("width")
-        elif "osm" == self.get_stopbanks_instruction("source"):
+        elif "osm" == source:
             # Download from OSM and save
             bbox_lat_long = self.catchment_geometry.catchment.to_crs(self.OSM_CRS)
             bbox = [
