@@ -217,7 +217,7 @@
 			"interpolation": {"no_data": "linear"}
 		},
 		"roughness": {
-			"ignore_powerlines": false
+			"roads": {}
 		}
 	}
 }

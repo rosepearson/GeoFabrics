@@ -23,6 +23,7 @@
 	},
 	"general": {
 		"interpolation": {"no_data": "linear"}
-	}
-}
+		}
+	},
+"roughness": {"roughness": {"roads": {}}}
 }
