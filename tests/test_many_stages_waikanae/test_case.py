@@ -160,7 +160,7 @@ class Test(base_test.Test):
         numpy.testing.assert_array_almost_equal(
             test.zo.data,
             benchmark.zo.data,
-            decimal=1,
+            decimal=4,
             err_msg="The generated test has significantly different roughness from the "
             f"benchmark where there is LiDAR: {diff_array}",
         )

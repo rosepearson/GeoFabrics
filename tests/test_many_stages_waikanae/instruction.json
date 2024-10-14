@@ -217,7 +217,8 @@
 			"interpolation": {"no_data": "linear"}
 		},
 		"roughness": {
-			"roads": {}
+			"roads": {"source": "osm", "ignore": ["pedestrian", "footway", "footpath", "track", "path", "cycleway"],
+                      "widths": {"default": 10, "residential": 20, "tertiary": 20, "secondary": 20, "motorway": 20}}
 		}
 	}
 }

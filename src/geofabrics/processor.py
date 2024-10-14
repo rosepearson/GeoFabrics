@@ -1624,8 +1624,8 @@ class RoughnessLengthGenerator(BaseProcessor):
                 "rivers": 0.004,
                 "minimum": 0.00001,
                 "maximum": 5,
-                "paved": 0.011,
-                "unpaved": 0.001
+                "paved": 0.001,
+                "unpaved": 0.011
             },
             "roads": {"source": "osm", "ignore": ["pedestrian", "footway", "footpath", "track", "path", "cycleway"],
                       "widths": {"default": 8, "residential": 8, "tertiary": 12, "secondary": 12, "motorway": 12}},
@@ -1708,7 +1708,7 @@ class RoughnessLengthGenerator(BaseProcessor):
             element_dict = {
                 "geometry": [],
                 "OSM_id": [],
-                "raod": [],
+                "road": [],
                 "surface": [],
             }
 
@@ -1726,7 +1726,7 @@ class RoughnessLengthGenerator(BaseProcessor):
 
             # Ignore tracks and standadise surfacing
             road_instructions = self.get_roughness_instruction("roads")
-            roads = roads[~roads["roads"].isin(road_instructions["ignore"])]
+            roads = roads[~roads["road"].isin(road_instructions["ignore"])]
             for paving in ["asphalt", "concrete"]:
                 roads.loc[roads["surface"]==paving, "surface"] = "paved"
             logging.info(f"Surfaces of {roads[roads['surface']!='paved']['surface'].unique()} all assumed to be unpaved.")
@@ -1736,6 +1736,11 @@ class RoughnessLengthGenerator(BaseProcessor):
             roughness = self.get_roughness_instruction("default_values")
             roads["roughness"] = roughness["paved"]
             roads.loc[roads["surface"]!="paved", "roughness"] = roughness["unpaved"]
+            
+            # Add widths
+            roads["width"] = road_instructions["widths"]["default"]
+            for key, value in road_instructions["widths"].items():
+                roads.loc[roads["road"]==key, "width"] = value
             
             # Clip to land
             roads = roads.clip(self.catchment_geometry.land).sort_index(

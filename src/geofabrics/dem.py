@@ -2728,12 +2728,12 @@ class RoughnessDem(LidarBase):
  
             # Set unpaved roads
             mask = clip_mask(
-                self._dem.z, roads_polygon[roads_polygon["surface"]=="unpaved"], self.chunk_size
+                self._dem.z, roads_polygon[roads_polygon["surface"]=="unpaved"].geometry, self.chunk_size
             )
             self._dem["zo"] = self._dem.zo.where(~mask, self.default_values["unpaved"])
             # Then set paved roads
             mask = clip_mask(
-                self._dem.z, roads_polygon[roads_polygon["surface"]=="paved"], self.chunk_size
+                self._dem.z, roads_polygon[roads_polygon["surface"]=="paved"].geometry, self.chunk_size
             )
             self._dem["zo"] = self._dem.zo.where(~mask, self.default_values["paved"])
             self._write_netcdf_conventions_in_place(self._dem, self.catchment_geometry.crs)
