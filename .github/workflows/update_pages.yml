@@ -1,8 +1,8 @@
 name: Deploy Sphinx documentation to Pages
 
-on: [pull_request]
-  #push:
-    #branches: [main] # branch to trigger deployment
+on:
+  push:
+    branches: [main] # branch to trigger deployment
 
 jobs:
   pages:
