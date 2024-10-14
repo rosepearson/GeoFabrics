@@ -360,6 +360,14 @@ Module Contents
 
 
 
+   .. py:method:: add_roads(roads_polygon)
+
+      Set roads to paved and unpaved roughness values.
+
+      :param roads_polygon: Dataframe with polygon and associated roughness values
+
+
+
 .. py:function:: read_file_with_pdal(lidar_file, region_to_tile, crs, source_crs = None)
 
    Read a tile file in using PDAL with input and output CRS specified.

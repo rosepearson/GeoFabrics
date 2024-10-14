@@ -297,6 +297,12 @@ Module Contents
 
 
 
+   .. py:method:: load_roads_osm()
+
+      Download OpenStreetMap roads within the catchment BBox.
+
+
+
    .. py:method:: run()
 
       This method executes the geofabrics generation pipeline to produce geofabric
@@ -517,6 +523,12 @@ Module Contents
 
 
 
+   .. py:method:: load_dem(filename)
+
+      Load a DEM
+
+
+
    .. py:method:: get_waterways_instruction(key)
 
       Return true if the DEMs are required for later processing
@@ -526,13 +538,13 @@ Module Contents
 
 
 
-   .. py:method:: get_result_file_name(key)
+   .. py:method:: get_result_file_name(key, index)
 
       Return the name of the file to save.
 
 
 
-   .. py:method:: get_result_file_path(key)
+   .. py:method:: get_result_file_path(key, index = None)
 
       Return the file name of the file to save with the local cache path.
 
@@ -555,13 +567,13 @@ Module Contents
 
 
 
-   .. py:method:: estimate_closed_elevations(waterways, dem)
+   .. py:method:: estimate_closed_elevations(waterways)
 
       Sample the DEM around the tunnels to estimate the bed elevation.
 
 
 
-   .. py:method:: estimate_open_elevations(waterways, dem)
+   .. py:method:: estimate_open_elevations(waterways)
 
       Sample the DEM along the open waterways to enforce a decreasing elevation.
 
@@ -601,6 +613,12 @@ Module Contents
 
 
 
+   .. py:method:: load_dem(filename)
+
+      Load a DEM
+
+
+
    .. py:method:: get_stopbanks_instruction(key)
 
       Return true if the DEMs are required for later processing
@@ -610,13 +628,13 @@ Module Contents
 
 
 
-   .. py:method:: get_result_file_name(key)
+   .. py:method:: get_result_file_name(key, index)
 
       Return the name of the file to save.
 
 
 
-   .. py:method:: get_result_file_path(key)
+   .. py:method:: get_result_file_path(key, index = None)
 
       Return the file name of the file to save with the local cache path.
 
@@ -639,7 +657,7 @@ Module Contents
 
 
 
-   .. py:method:: estimate_elevations(stopbanks, dem)
+   .. py:method:: estimate_elevations_simple(stopbanks)
 
       Sample the DEM around the tunnels to estimate the bed elevation.
 

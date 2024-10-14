@@ -1,3 +1,5 @@
+
+
 <!DOCTYPE html>
 <html class="writer-html5" lang="en" data-content_root="../../../">
 <head>
@@ -6,19 +8,15 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>geofabrics.processor &mdash; Geofabrics 0.7.6 documentation</title>
       <link rel="stylesheet" type="text/css" href="../../../_static/pygments.css?v=80d5e7a1" />
-      <link rel="stylesheet" type="text/css" href="../../../_static/css/theme.css?v=19f00094" />
-      <link rel="stylesheet" type="text/css" href="../../../_static/graphviz.css?v=fd3f3429" />
+      <link rel="stylesheet" type="text/css" href="../../../_static/css/theme.css?v=e59714d7" />
+      <link rel="stylesheet" type="text/css" href="../../../_static/graphviz.css?v=4ae1632d" />
 
   
-  <!--[if lt IE 9]>
-    <script src="../../../_static/js/html5shiv.min.js"></script>
-  <![endif]-->
-  
-        <script src="../../../_static/jquery.js?v=5d32c60e"></script>
-        <script src="../../../_static/_sphinx_javascript_frameworks_compat.js?v=2cd50e6c"></script>
-        <script src="../../../_static/documentation_options.js?v=918ced64"></script>
-        <script src="../../../_static/doctools.js?v=9a2dae69"></script>
-        <script src="../../../_static/sphinx_highlight.js?v=dc90522c"></script>
+      <script src="../../../_static/jquery.js?v=5d32c60e"></script>
+      <script src="../../../_static/_sphinx_javascript_frameworks_compat.js?v=2cd50e6c"></script>
+      <script src="../../../_static/documentation_options.js?v=918ced64"></script>
+      <script src="../../../_static/doctools.js?v=9bcbadda"></script>
+      <script src="../../../_static/sphinx_highlight.js?v=dc90522c"></script>
     <script src="../../../_static/js/theme.js"></script>
     <link rel="index" title="Index" href="../../../genindex.html" />
     <link rel="search" title="Search" href="../../../search.html" />
@@ -530,6 +528,17 @@ generation of a DEM as polygons.</p></li>
 </dd></dl>
 
 <dl class="py method">
+<dt class="sig sig-object py" id="geofabrics.processor.RoughnessLengthGenerator.load_roads_osm">
+<span class="sig-name descname"><span class="pre">load_roads_osm</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="headerlink" href="#geofabrics.processor.RoughnessLengthGenerator.load_roads_osm" title="Link to this definition"></a></dt>
+<dd><p>Download OpenStreetMap roads within the catchment BBox.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Return type<span class="colon">:</span></dt>
+<dd class="field-odd"><p>bool</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
 <dt class="sig sig-object py" id="geofabrics.processor.RoughnessLengthGenerator.run">
 <span class="sig-name descname"><span class="pre">run</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="headerlink" href="#geofabrics.processor.RoughnessLengthGenerator.run" title="Link to this definition"></a></dt>
 <dd><p>This method executes the geofabrics generation pipeline to produce geofabric
@@ -864,6 +873,17 @@ to be the tunnel elevation, and ensuring opne waterways flow downhill.</p>
 </dd>
 </dl>
 <dl class="py method">
+<dt class="sig sig-object py" id="geofabrics.processor.WaterwayBedElevationEstimator.load_dem">
+<span class="sig-name descname"><span class="pre">load_dem</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">filename</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#geofabrics.processor.WaterwayBedElevationEstimator.load_dem" title="Link to this definition"></a></dt>
+<dd><p>Load a DEM</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><p><strong>filename</strong> (<em>pathlib.Path</em>)</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
 <dt class="sig sig-object py" id="geofabrics.processor.WaterwayBedElevationEstimator.get_waterways_instruction">
 <span class="sig-name descname"><span class="pre">get_waterways_instruction</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">key</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#geofabrics.processor.WaterwayBedElevationEstimator.get_waterways_instruction" title="Link to this definition"></a></dt>
 <dd><p>Return true if the DEMs are required for later processing</p>
@@ -879,11 +899,14 @@ to be the tunnel elevation, and ensuring opne waterways flow downhill.</p>
 
 <dl class="py method">
 <dt class="sig sig-object py" id="geofabrics.processor.WaterwayBedElevationEstimator.get_result_file_name">
-<span class="sig-name descname"><span class="pre">get_result_file_name</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">key</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#geofabrics.processor.WaterwayBedElevationEstimator.get_result_file_name" title="Link to this definition"></a></dt>
+<span class="sig-name descname"><span class="pre">get_result_file_name</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">key</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">index</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#geofabrics.processor.WaterwayBedElevationEstimator.get_result_file_name" title="Link to this definition"></a></dt>
 <dd><p>Return the name of the file to save.</p>
 <dl class="field-list simple">
 <dt class="field-odd">Parameters<span class="colon">:</span></dt>
-<dd class="field-odd"><p><strong>key</strong> (<em>str</em>)</p>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>key</strong> (<em>str</em>)</p></li>
+<li><p><strong>index</strong> (<em>int</em>)</p></li>
+</ul>
 </dd>
 <dt class="field-even">Return type<span class="colon">:</span></dt>
 <dd class="field-even"><p>str</p>
@@ -893,13 +916,14 @@ to be the tunnel elevation, and ensuring opne waterways flow downhill.</p>
 
 <dl class="py method">
 <dt class="sig sig-object py" id="geofabrics.processor.WaterwayBedElevationEstimator.get_result_file_path">
-<span class="sig-name descname"><span class="pre">get_result_file_path</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">key</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#geofabrics.processor.WaterwayBedElevationEstimator.get_result_file_path" title="Link to this definition"></a></dt>
+<span class="sig-name descname"><span class="pre">get_result_file_path</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">key</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">index</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#geofabrics.processor.WaterwayBedElevationEstimator.get_result_file_path" title="Link to this definition"></a></dt>
 <dd><p>Return the file name of the file to save with the local cache path.</p>
 <dl class="field-list simple">
 <dt class="field-odd">Parameters<span class="colon">:</span></dt>
 <dd class="field-odd"><ul class="simple">
 <li><p><strong>behaviour</strong> (<em>instructions  The json instructions defining the</em>)</p></li>
 <li><p><strong>key</strong> (<em>str</em>)</p></li>
+<li><p><strong>index</strong> (<em>int</em>)</p></li>
 </ul>
 </dd>
 <dt class="field-even">Return type<span class="colon">:</span></dt>
@@ -933,28 +957,22 @@ then returning the minimum elevation.</p>
 
 <dl class="py method">
 <dt class="sig sig-object py" id="geofabrics.processor.WaterwayBedElevationEstimator.estimate_closed_elevations">
-<span class="sig-name descname"><span class="pre">estimate_closed_elevations</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">waterways</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">dem</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#geofabrics.processor.WaterwayBedElevationEstimator.estimate_closed_elevations" title="Link to this definition"></a></dt>
+<span class="sig-name descname"><span class="pre">estimate_closed_elevations</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">waterways</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#geofabrics.processor.WaterwayBedElevationEstimator.estimate_closed_elevations" title="Link to this definition"></a></dt>
 <dd><p>Sample the DEM around the tunnels to estimate the bed elevation.</p>
 <dl class="field-list simple">
 <dt class="field-odd">Parameters<span class="colon">:</span></dt>
-<dd class="field-odd"><ul class="simple">
-<li><p><strong>waterways</strong> (<em>geopandas.GeoDataFrame</em>)</p></li>
-<li><p><strong>dem</strong> (<em>xarray.Dataset</em>)</p></li>
-</ul>
+<dd class="field-odd"><p><strong>waterways</strong> (<em>geopandas.GeoDataFrame</em>)</p>
 </dd>
 </dl>
 </dd></dl>
 
 <dl class="py method">
 <dt class="sig sig-object py" id="geofabrics.processor.WaterwayBedElevationEstimator.estimate_open_elevations">
-<span class="sig-name descname"><span class="pre">estimate_open_elevations</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">waterways</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">dem</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#geofabrics.processor.WaterwayBedElevationEstimator.estimate_open_elevations" title="Link to this definition"></a></dt>
+<span class="sig-name descname"><span class="pre">estimate_open_elevations</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">waterways</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#geofabrics.processor.WaterwayBedElevationEstimator.estimate_open_elevations" title="Link to this definition"></a></dt>
 <dd><p>Sample the DEM along the open waterways to enforce a decreasing elevation.</p>
 <dl class="field-list simple">
 <dt class="field-odd">Parameters<span class="colon">:</span></dt>
-<dd class="field-odd"><ul class="simple">
-<li><p><strong>waterways</strong> (<em>geopandas.GeoDataFrame</em>)</p></li>
-<li><p><strong>dem</strong> (<em>xarray.Dataset</em>)</p></li>
-</ul>
+<dd class="field-odd"><p><strong>waterways</strong> (<em>geopandas.GeoDataFrame</em>)</p>
 </dd>
 </dl>
 </dd></dl>
@@ -1017,6 +1035,17 @@ the stopebank.</p>
 </dd>
 </dl>
 <dl class="py method">
+<dt class="sig sig-object py" id="geofabrics.processor.StopbankCrestElevationEstimator.load_dem">
+<span class="sig-name descname"><span class="pre">load_dem</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">filename</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#geofabrics.processor.StopbankCrestElevationEstimator.load_dem" title="Link to this definition"></a></dt>
+<dd><p>Load a DEM</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><p><strong>filename</strong> (<em>pathlib.Path</em>)</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
 <dt class="sig sig-object py" id="geofabrics.processor.StopbankCrestElevationEstimator.get_stopbanks_instruction">
 <span class="sig-name descname"><span class="pre">get_stopbanks_instruction</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">key</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#geofabrics.processor.StopbankCrestElevationEstimator.get_stopbanks_instruction" title="Link to this definition"></a></dt>
 <dd><p>Return true if the DEMs are required for later processing</p>
@@ -1032,11 +1061,14 @@ the stopebank.</p>
 
 <dl class="py method">
 <dt class="sig sig-object py" id="geofabrics.processor.StopbankCrestElevationEstimator.get_result_file_name">
-<span class="sig-name descname"><span class="pre">get_result_file_name</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">key</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#geofabrics.processor.StopbankCrestElevationEstimator.get_result_file_name" title="Link to this definition"></a></dt>
+<span class="sig-name descname"><span class="pre">get_result_file_name</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">key</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">index</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#geofabrics.processor.StopbankCrestElevationEstimator.get_result_file_name" title="Link to this definition"></a></dt>
 <dd><p>Return the name of the file to save.</p>
 <dl class="field-list simple">
 <dt class="field-odd">Parameters<span class="colon">:</span></dt>
-<dd class="field-odd"><p><strong>key</strong> (<em>str</em>)</p>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>key</strong> (<em>str</em>)</p></li>
+<li><p><strong>index</strong> (<em>int</em>)</p></li>
+</ul>
 </dd>
 <dt class="field-even">Return type<span class="colon">:</span></dt>
 <dd class="field-even"><p>str</p>
@@ -1046,13 +1078,14 @@ the stopebank.</p>
 
 <dl class="py method">
 <dt class="sig sig-object py" id="geofabrics.processor.StopbankCrestElevationEstimator.get_result_file_path">
-<span class="sig-name descname"><span class="pre">get_result_file_path</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">key</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#geofabrics.processor.StopbankCrestElevationEstimator.get_result_file_path" title="Link to this definition"></a></dt>
+<span class="sig-name descname"><span class="pre">get_result_file_path</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">key</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">index</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#geofabrics.processor.StopbankCrestElevationEstimator.get_result_file_path" title="Link to this definition"></a></dt>
 <dd><p>Return the file name of the file to save with the local cache path.</p>
 <dl class="field-list simple">
 <dt class="field-odd">Parameters<span class="colon">:</span></dt>
 <dd class="field-odd"><ul class="simple">
 <li><p><strong>behaviour</strong> (<em>instructions  The json instructions defining the</em>)</p></li>
 <li><p><strong>key</strong> (<em>str</em>)</p></li>
+<li><p><strong>index</strong> (<em>int</em>)</p></li>
 </ul>
 </dd>
 <dt class="field-even">Return type<span class="colon">:</span></dt>
@@ -1085,15 +1118,12 @@ then returning the minimum elevation.</p>
 </dd></dl>
 
 <dl class="py method">
-<dt class="sig sig-object py" id="geofabrics.processor.StopbankCrestElevationEstimator.estimate_elevations">
-<span class="sig-name descname"><span class="pre">estimate_elevations</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">stopbanks</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">dem</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#geofabrics.processor.StopbankCrestElevationEstimator.estimate_elevations" title="Link to this definition"></a></dt>
+<dt class="sig sig-object py" id="geofabrics.processor.StopbankCrestElevationEstimator.estimate_elevations_simple">
+<span class="sig-name descname"><span class="pre">estimate_elevations_simple</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">stopbanks</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#geofabrics.processor.StopbankCrestElevationEstimator.estimate_elevations_simple" title="Link to this definition"></a></dt>
 <dd><p>Sample the DEM around the tunnels to estimate the bed elevation.</p>
 <dl class="field-list simple">
 <dt class="field-odd">Parameters<span class="colon">:</span></dt>
-<dd class="field-odd"><ul class="simple">
-<li><p><strong>stopbanks</strong> (<em>geopandas.GeoDataFrame</em>)</p></li>
-<li><p><strong>dem</strong> (<em>xarray.Dataset</em>)</p></li>
-</ul>
+<dd class="field-odd"><p><strong>stopbanks</strong> (<em>geopandas.GeoDataFrame</em>)</p>
 </dd>
 </dl>
 </dd></dl>
