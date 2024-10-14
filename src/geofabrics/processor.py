@@ -1634,7 +1634,7 @@ class RoughnessLengthGenerator(BaseProcessor):
         if "roughness" in self.instructions and key in self.instructions["roughness"]:
             roughness_instruction = self.instructions["roughness"][key]
             # ensure all default keys included if a dictionary
-            if key in ["default_values", "parameters", "roads"]:
+            if key in ["default_values", "parameters"]:
                 for sub_key in defaults[key]:
                     if sub_key not in roughness_instruction:
                         roughness_instruction[sub_key] = defaults[key][sub_key]
