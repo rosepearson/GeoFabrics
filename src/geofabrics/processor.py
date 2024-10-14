@@ -1783,7 +1783,7 @@ class RoughnessLengthGenerator(BaseProcessor):
         # If roads defined download roads
         roads = self.get_roughness_instruction("roads")
         if "source" in roads and "osm" in roads["source"]:
-            roads = self.load_roads()
+            roads = self.load_roads_osm()
         else:
             roads = None
 
