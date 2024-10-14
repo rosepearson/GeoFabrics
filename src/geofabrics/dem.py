@@ -2715,6 +2715,29 @@ class RoughnessDem(LidarBase):
         self._dem = self._dem.where(mask)
         self._write_netcdf_conventions_in_place(self._dem, self.catchment_geometry.crs)
 
+    def add_roads(self, roads_polygon: dict):
+            """Set roads to paved and unpaved roughness values.
+
+            Parameters
+            ----------
+
+            roads_polygon
+                Dataframe with polygon and associated roughness values
+            """
+
+ 
+            # Set unpaved roads
+            mask = clip_mask(
+                self._dem.z, roads_polygon[roads_polygon["surface"]=="unpaved"].geometry, self.chunk_size
+            )
+            self._dem["zo"] = self._dem.zo.where(~mask, self.default_values["unpaved"])
+            # Then set paved roads
+            mask = clip_mask(
+                self._dem.z, roads_polygon[roads_polygon["surface"]=="paved"].geometry, self.chunk_size
+            )
+            self._dem["zo"] = self._dem.zo.where(~mask, self.default_values["paved"])
+            self._write_netcdf_conventions_in_place(self._dem, self.catchment_geometry.crs)
+
     def _add_tiled_lidar_chunked(
         self,
         lidar_datasets_info: dict,
