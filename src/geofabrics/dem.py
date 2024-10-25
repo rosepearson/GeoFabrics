@@ -42,11 +42,11 @@ def chunk_mask(mask, chunk_size):
     return mask
 
 
-def clip_mask(arr, geometry, chunk_size):
+def clip_mask(arr, geometry, chunk_size, invert=False):
     mask = (
         xarray.ones_like(arr, dtype=numpy.float16)
         .compute()
-        .rio.clip(geometry, drop=False)
+        .rio.clip(geometry, drop=False, invert=invert)
         .notnull()
     )
     if chunk_size is not None:
@@ -298,6 +298,7 @@ class DemBase(abc.ABC):
         "coarse DEM": 5,
         "patch": 6,
         "stopbanks": 7,
+        "masked feature": 8,
         "interpolated": 0,
         "no data": -1,
     }
@@ -1050,6 +1051,44 @@ class HydrologicallyConditionedDem(DemBase):
             [self._raw_dem, offshore_dem],
             method="first",
         )
+
+    def clip_within_polygon(
+        self,
+        polygon_paths: list,
+        label: str
+    ):
+        """ Clip existing DEM to remove areas within the polygons """
+        dem_bounds = geopandas.GeoDataFrame(
+            geometry=[shapely.geometry.box(*self._dem.rio.bounds())],
+            crs=self.catchment_geometry.crs)
+        clip_polygon = []
+        for path in polygon_paths:
+            clip_polygon.append(
+                geopandas.read_file(path).to_crs(self.catchment_geometry.crs))
+        clip_polygon = pandas.concat(clip_polygon).dissolve()
+        clip_polygon = clip_polygon.clip(dem_bounds)
+        clip_polygon.area.sum() > self.catchment_geometry.resolution ** 2:
+            self.logger.info(f"Clipping to remove all features in polygons {polygon_paths}")
+            mask = clip_mask(
+                arr=self._dem.z, 
+                geometry=clip_polygon.geometry,
+                chunk_size=self.chunk_size,
+            )
+            self._dem["z"] = self._dem.z.where(
+                ~mask,
+                numpy.nan,
+            )
+            self._dem["data_source"] = self._dem.data_source.where(
+                ~mask,
+                self.SOURCE_CLASSIFICATION[label],
+            )
+            self._dem["lidar_source"] = self._dem.lidar_source.where(
+                ~mask, self.SOURCE_CLASSIFICATION["no data"]
+            )
+            self._write_netcdf_conventions_in_place(self._dem, self.catchment_geometry.crs)
+        else:
+            self.logger.warning(f"No clipping. Polygons {polygon_paths} do not overlap DEM.")
+        
 
     def interpolate_elevations_within_polygon(
         self,

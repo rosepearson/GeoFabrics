@@ -1377,6 +1377,32 @@ class HydrologicDemGenerator(BaseProcessor):
                     self.clean_cached_file(cached_file)
                 cached_file = temp_file
 
+        if "feature_masking" in self.instructions["data_paths"]:
+            # Remove values inside feature_masking polygons - e.g. to mask stopbanks
+            subfolder = self.get_instruction_path(key="subfolder")
+            file_names = []
+            for file_name in self.instructions["data_paths"]["feature_masking"]:
+                file_name = pathlib.Path(file_name)
+                if not file_name.is_absolute():
+                    file_name = subfolder / file_name
+                file_names.append(file_name)
+
+            self.logger.info(f"Removing values in feature_masking: {file_names}")
+
+            if len(file_names) > 0: 
+                hydrologic_dem.clip_within_polygon(
+                    polygons=file_names,
+                    label="masked feature",
+                )
+                temp_file = temp_folder / "dem_feature_masking.nc"
+                self.logger.info(
+                    f"Save temp DEM with feature_masking added to netCDF: {temp_file}"
+                )
+                hydrologic_dem.save_and_load_dem(temp_file)
+                if cached_file is not None:
+                    self.clean_cached_file(cached_file)
+                cached_file = temp_file
+
     def run(self):
         """This method executes the geofabrics generation pipeline to produce geofabric
         derivatives."""
