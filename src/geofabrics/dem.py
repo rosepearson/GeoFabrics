@@ -12,6 +12,7 @@ import math
 import typing
 import pathlib
 import geopandas
+import pandas
 import shapely
 import dask
 import dask.array
