@@ -402,7 +402,7 @@ class DemBase(abc.ABC):
         )
         self.save_dem(filename=filename, dem=self._dem)
         del self._dem
-        gc.collect() 
+        gc.collect()
         self._dem = self._load_dem(filename=filename)
 
     @staticmethod
@@ -438,7 +438,6 @@ class DemBase(abc.ABC):
         crs_dict
             A dict with horizontal and vertical CRS information.
         """
-        
 
         dem.rio.write_crs(crs_dict["horizontal"], inplace=True)
         dem.rio.write_transform(inplace=True)
@@ -1052,25 +1051,25 @@ class HydrologicallyConditionedDem(DemBase):
             method="first",
         )
 
-    def clip_within_polygon(
-        self,
-        polygon_paths: list,
-        label: str
-    ):
-        """ Clip existing DEM to remove areas within the polygons """
+    def clip_within_polygon(self, polygon_paths: list, label: str):
+        """Clip existing DEM to remove areas within the polygons"""
         dem_bounds = geopandas.GeoDataFrame(
             geometry=[shapely.geometry.box(*self._dem.rio.bounds())],
-            crs=self.catchment_geometry.crs)
+            crs=self.catchment_geometry.crs,
+        )
         clip_polygon = []
         for path in polygon_paths:
             clip_polygon.append(
-                geopandas.read_file(path).to_crs(self.catchment_geometry.crs))
+                geopandas.read_file(path).to_crs(self.catchment_geometry.crs)
+            )
         clip_polygon = pandas.concat(clip_polygon).dissolve()
         clip_polygon = clip_polygon.clip(dem_bounds)
-        if clip_polygon.area.sum() > self.catchment_geometry.resolution ** 2:
-            self.logger.info(f"Clipping to remove all features in polygons {polygon_paths}")
+        if clip_polygon.area.sum() > self.catchment_geometry.resolution**2:
+            self.logger.info(
+                f"Clipping to remove all features in polygons {polygon_paths}"
+            )
             mask = clip_mask(
-                arr=self._dem.z, 
+                arr=self._dem.z,
                 geometry=clip_polygon.geometry,
                 chunk_size=self.chunk_size,
             )
@@ -1085,10 +1084,13 @@ class HydrologicallyConditionedDem(DemBase):
             self._dem["lidar_source"] = self._dem.lidar_source.where(
                 ~mask, self.SOURCE_CLASSIFICATION["no data"]
             )
-            self._write_netcdf_conventions_in_place(self._dem, self.catchment_geometry.crs)
+            self._write_netcdf_conventions_in_place(
+                self._dem, self.catchment_geometry.crs
+            )
         else:
-            self.logger.warning(f"No clipping. Polygons {polygon_paths} do not overlap DEM.")
-        
+            self.logger.warning(
+                f"No clipping. Polygons {polygon_paths} do not overlap DEM."
+            )
 
     def interpolate_elevations_within_polygon(
         self,
@@ -2755,27 +2757,30 @@ class RoughnessDem(LidarBase):
         self._write_netcdf_conventions_in_place(self._dem, self.catchment_geometry.crs)
 
     def add_roads(self, roads_polygon: dict):
-            """Set roads to paved and unpaved roughness values.
+        """Set roads to paved and unpaved roughness values.
 
-            Parameters
-            ----------
+        Parameters
+        ----------
 
-            roads_polygon
-                Dataframe with polygon and associated roughness values
-            """
+        roads_polygon
+            Dataframe with polygon and associated roughness values
+        """
 
- 
-            # Set unpaved roads
-            mask = clip_mask(
-                self._dem.z, roads_polygon[roads_polygon["surface"]=="unpaved"].geometry, self.chunk_size
-            )
-            self._dem["zo"] = self._dem.zo.where(~mask, self.default_values["unpaved"])
-            # Then set paved roads
-            mask = clip_mask(
-                self._dem.z, roads_polygon[roads_polygon["surface"]=="paved"].geometry, self.chunk_size
-            )
-            self._dem["zo"] = self._dem.zo.where(~mask, self.default_values["paved"])
-            self._write_netcdf_conventions_in_place(self._dem, self.catchment_geometry.crs)
+        # Set unpaved roads
+        mask = clip_mask(
+            self._dem.z,
+            roads_polygon[roads_polygon["surface"] == "unpaved"].geometry,
+            self.chunk_size,
+        )
+        self._dem["zo"] = self._dem.zo.where(~mask, self.default_values["unpaved"])
+        # Then set paved roads
+        mask = clip_mask(
+            self._dem.z,
+            roads_polygon[roads_polygon["surface"] == "paved"].geometry,
+            self.chunk_size,
+        )
+        self._dem["zo"] = self._dem.zo.where(~mask, self.default_values["paved"])
+        self._write_netcdf_conventions_in_place(self._dem, self.catchment_geometry.crs)
 
     def _add_tiled_lidar_chunked(
         self,
