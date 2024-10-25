@@ -1067,7 +1067,7 @@ class HydrologicallyConditionedDem(DemBase):
                 geopandas.read_file(path).to_crs(self.catchment_geometry.crs))
         clip_polygon = pandas.concat(clip_polygon).dissolve()
         clip_polygon = clip_polygon.clip(dem_bounds)
-        clip_polygon.area.sum() > self.catchment_geometry.resolution ** 2:
+        if clip_polygon.area.sum() > self.catchment_geometry.resolution ** 2:
             self.logger.info(f"Clipping to remove all features in polygons {polygon_paths}")
             mask = clip_mask(
                 arr=self._dem.z, 
