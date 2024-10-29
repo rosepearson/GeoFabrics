@@ -356,24 +356,11 @@ class DemBase(abc.ABC):
             self._write_netcdf_conventions_in_place(dem, self.catchment_geometry.crs)
             if filename.suffix.lower() == ".nc":
                 if compression is not None:
-                    encoding_keys = (
-                        "_FillValue",
-                        "dtype",
-                        "scale_factor",
-                        "add_offset",
-                        "grid_mapping",
-                    )
+                    compression["grid_mapping"] = dem.encoding["grid_mapping"]
                     encoding = {}
                     for key in dem.data_vars:
-                        dem[key] = dem[key].astype(geometry.RASTER_TYPE)
-                        encoding[key] = {
-                            encoding_key: value
-                            for encoding_key, value in dem[key].encoding.items()
-                            if encoding_key in encoding_keys
-                        }
-                        if "dtype" not in encoding[key]:
-                            encoding[key]["dtype"] = dem[key].dtype
-                        encoding[key] = {**encoding[key], **compression}
+                        compression["dtype"] = dem[key].dtype
+                        encoding[key] = compression
                     dem.to_netcdf(
                         filename, format="NETCDF4", engine="netcdf4", encoding=encoding
                     )
