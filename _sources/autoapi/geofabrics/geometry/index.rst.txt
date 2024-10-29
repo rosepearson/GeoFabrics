@@ -53,30 +53,37 @@ Module Contents
 
 
    .. py:property:: catchment
+
       Return the catchment region
 
 
    .. py:property:: land
+
       Return the catchment land region
 
 
    .. py:property:: full_land
+
       Return the full land region
 
 
    .. py:property:: foreshore
+
       Return the catchment foreshore region
 
 
    .. py:property:: land_and_foreshore
+
       Return the catchment land and foreshore region
 
 
    .. py:property:: foreshore_and_offshore
+
       Return the catchment foreshore and offshore region
 
 
    .. py:property:: offshore
+
       Return the catchment offshore region
 
 
@@ -125,22 +132,27 @@ Module Contents
 
 
    .. py:property:: boundary
+
       Return the bounding box containing data
 
 
    .. py:property:: points
+
       Return the points
 
 
    .. py:property:: x
+
       The x values
 
 
    .. py:property:: y
+
       The y values
 
 
    .. py:property:: z
+
       The z values
 
 
@@ -160,16 +172,19 @@ Module Contents
    .. py:property:: polygons
       :type: geopandas.GeoDataFrame
 
+
       Return the polygons.
 
 
    .. py:property:: points_array
       :type: numpy.ndarray
 
+
       Return the points as a single array.
 
 
    .. py:property:: points
+
       Return the points
 
 
@@ -186,14 +201,17 @@ Module Contents
 
 
    .. py:property:: x
+
       The x values
 
 
    .. py:property:: y
+
       The y values
 
 
    .. py:property:: z
+
       The z values
 
 
@@ -203,6 +221,7 @@ Module Contents
 
 
    .. py:property:: tile_names
+
       Return the names of all tiles within the catchment
 
 

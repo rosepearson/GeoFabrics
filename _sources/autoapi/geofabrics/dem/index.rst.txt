@@ -75,17 +75,20 @@ Module Contents
    .. py:property:: dem
       :type: xarray.Dataset
 
+
       Return the DEM over the catchment region
 
 
    .. py:property:: resolution
       :type: float
 
+
       Return the largest dimension of the coarse DEM resolution
 
 
    .. py:property:: points
       :type: numpy.ndarray
+
 
       The coarse DEM points after any extent or foreshore value
       filtering.
@@ -94,11 +97,13 @@ Module Contents
    .. py:property:: extents
       :type: geopandas.GeoDataFrame
 
+
       The extents for the coarse DEM
 
 
    .. py:property:: empty
       :type: bool
+
 
       True if the DEM is empty
 
@@ -133,6 +138,7 @@ Module Contents
       :type: xarray.Dataset
 
       :abstractmethod:
+
 
       Return the DEM over the catchment region
 
@@ -174,10 +180,12 @@ Module Contents
 
 
    .. py:property:: raw_extents
+
       Return the combined DEM from tiles and any interpolated offshore values
 
 
    .. py:property:: dem
+
       Return the combined DEM from tiles and any interpolated offshore values
 
 
@@ -192,6 +200,12 @@ Module Contents
 
       Performs interpolation offshore outside LiDAR extents using the SciPy RBF
       function.
+
+
+
+   .. py:method:: clip_within_polygon(polygon_paths, label)
+
+      Clip existing DEM to remove areas within the polygons
 
 
 
@@ -229,6 +243,7 @@ Module Contents
 
 
    .. py:property:: dem
+
       Return the positivly indexed DEM from tiles
 
 
@@ -320,6 +335,7 @@ Module Contents
 
 
    .. py:property:: no_values_mask
+
       No values mask from DEM within land and foreshore region
 
 

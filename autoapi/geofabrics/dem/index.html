@@ -357,16 +357,14 @@ to have an offshore DEM associated with it.</p>
 <dl class="py property">
 <dt class="sig sig-object py" id="geofabrics.dem.HydrologicallyConditionedDem.raw_extents">
 <em class="property"><span class="pre">property</span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">raw_extents</span></span><a class="headerlink" href="#geofabrics.dem.HydrologicallyConditionedDem.raw_extents" title="Link to this definition"></a></dt>
-<dt class="sig sig-object py">
-<span class="sig-name descname"><span class="pre">Return</span> <span class="pre">the</span> <span class="pre">combined</span> <span class="pre">DEM</span> <span class="pre">from</span> <span class="pre">tiles</span> <span class="pre">and</span> <span class="pre">any</span> <span class="pre">interpolated</span> <span class="pre">offshore</span> <span class="pre">values</span></span></dt>
-<dd></dd></dl>
+<dd><p>Return the combined DEM from tiles and any interpolated offshore values</p>
+</dd></dl>
 
 <dl class="py property">
 <dt class="sig sig-object py" id="geofabrics.dem.HydrologicallyConditionedDem.dem">
 <em class="property"><span class="pre">property</span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">dem</span></span><a class="headerlink" href="#geofabrics.dem.HydrologicallyConditionedDem.dem" title="Link to this definition"></a></dt>
-<dt class="sig sig-object py">
-<span class="sig-name descname"><span class="pre">Return</span> <span class="pre">the</span> <span class="pre">combined</span> <span class="pre">DEM</span> <span class="pre">from</span> <span class="pre">tiles</span> <span class="pre">and</span> <span class="pre">any</span> <span class="pre">interpolated</span> <span class="pre">offshore</span> <span class="pre">values</span></span></dt>
-<dd></dd></dl>
+<dd><p>Return the combined DEM from tiles and any interpolated offshore values</p>
+</dd></dl>
 
 <dl class="py method">
 <dt class="sig sig-object py" id="geofabrics.dem.HydrologicallyConditionedDem.interpolate_ocean_chunked">
@@ -394,6 +392,20 @@ non-overlapping chunks and then combine</p>
 <span class="sig-name descname"><span class="pre">interpolate_ocean_bathymetry</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">bathy_contours</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">method</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">'linear'</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#geofabrics.dem.HydrologicallyConditionedDem.interpolate_ocean_bathymetry" title="Link to this definition"></a></dt>
 <dd><p>Performs interpolation offshore outside LiDAR extents using the SciPy RBF
 function.</p>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="geofabrics.dem.HydrologicallyConditionedDem.clip_within_polygon">
+<span class="sig-name descname"><span class="pre">clip_within_polygon</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">polygon_paths</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">label</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#geofabrics.dem.HydrologicallyConditionedDem.clip_within_polygon" title="Link to this definition"></a></dt>
+<dd><p>Clip existing DEM to remove areas within the polygons</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>polygon_paths</strong> (<em>list</em>)</p></li>
+<li><p><strong>label</strong> (<em>str</em>)</p></li>
+</ul>
+</dd>
+</dl>
 </dd></dl>
 
 <dl class="py method">
@@ -464,9 +476,8 @@ on the type label. The type_label also determines the source classification.</p>
 <dl class="py property">
 <dt class="sig sig-object py" id="geofabrics.dem.LidarBase.dem">
 <em class="property"><span class="pre">property</span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">dem</span></span><a class="headerlink" href="#geofabrics.dem.LidarBase.dem" title="Link to this definition"></a></dt>
-<dt class="sig sig-object py">
-<span class="sig-name descname"><span class="pre">Return</span> <span class="pre">the</span> <span class="pre">positivly</span> <span class="pre">indexed</span> <span class="pre">DEM</span> <span class="pre">from</span> <span class="pre">tiles</span></span></dt>
-<dd></dd></dl>
+<dd><p>Return the positivly indexed DEM from tiles</p>
+</dd></dl>
 
 <dl class="py method">
 <dt class="sig sig-object py" id="geofabrics.dem.LidarBase.add_lidar">
@@ -589,9 +600,8 @@ in the ocean.</p>
 <dl class="py property">
 <dt class="sig sig-object py" id="geofabrics.dem.PatchDem.no_values_mask">
 <em class="property"><span class="pre">property</span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">no_values_mask</span></span><a class="headerlink" href="#geofabrics.dem.PatchDem.no_values_mask" title="Link to this definition"></a></dt>
-<dt class="sig sig-object py">
-<span class="sig-name descname"><span class="pre">No</span> <span class="pre">values</span> <span class="pre">mask</span> <span class="pre">from</span> <span class="pre">DEM</span> <span class="pre">within</span> <span class="pre">land</span> <span class="pre">and</span> <span class="pre">foreshore</span> <span class="pre">region</span></span></dt>
-<dd></dd></dl>
+<dd><p>No values mask from DEM within land and foreshore region</p>
+</dd></dl>
 
 </dd></dl>
 

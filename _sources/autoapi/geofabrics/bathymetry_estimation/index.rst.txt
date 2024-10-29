@@ -200,6 +200,7 @@ Module Contents
    .. py:property:: number_of_samples
       :type: int
 
+
       Return the number of samples to take along cross_sections. This should
       be an odd number. Subtract 1 instead of adding to ensure within the
       generated DEM.
@@ -225,6 +226,7 @@ Module Contents
 
    .. py:property:: centre_index
       :type: int
+
 
       Return the centre index for samples taken along a transect.
 
