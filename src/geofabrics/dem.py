@@ -356,11 +356,21 @@ class DemBase(abc.ABC):
             self._write_netcdf_conventions_in_place(dem, self.catchment_geometry.crs)
             if filename.suffix.lower() == ".nc":
                 if compression is not None:
-                    encoding_keys = ("_FillValue", "dtype", "scale_factor", "add_offset", "grid_mapping") 
+                    encoding_keys = (
+                        "_FillValue",
+                        "dtype",
+                        "scale_factor",
+                        "add_offset",
+                        "grid_mapping",
+                    )
                     encoding = {}
                     for key in dem.data_vars:
                         dem[key] = dem[key].astype(geometry.RASTER_TYPE)
-                        encoding[key] = {encoding_key: value for encoding_key, value in dem[key].encoding.items() if encoding_key in encoding_keys}
+                        encoding[key] = {
+                            encoding_key: value
+                            for encoding_key, value in dem[key].encoding.items()
+                            if encoding_key in encoding_keys
+                        }
                         if "dtype" not in encoding[key]:
                             encoding[key]["dtype"] = dem[key].dtype
                         encoding[key] = {**encoding[key], **compression}
@@ -1064,9 +1074,7 @@ class HydrologicallyConditionedDem(DemBase):
         )
         clip_polygon = []
         for path in polygon_paths:
-            clip_polygon.append(
-                geopandas.read_file(path).to_crs(crs["horizontal"])
-            )
+            clip_polygon.append(geopandas.read_file(path).to_crs(crs["horizontal"]))
         clip_polygon = pandas.concat(clip_polygon).dissolve()
         clip_polygon = clip_polygon.clip(dem_bounds)
         if clip_polygon.area.sum() > self.catchment_geometry.resolution**2:

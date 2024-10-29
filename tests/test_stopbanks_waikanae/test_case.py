@@ -93,7 +93,7 @@ class Test(base_test.Test):
             err_msg="The generated test has significantly different elevation from the "
             f"benchmark.",
         )
-        
+
         numpy.testing.assert_array_almost_equal(
             test.data_source.data,
             benchmark.data_source.data,
