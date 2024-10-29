@@ -3542,7 +3542,7 @@ class WaterwayBedElevationEstimator(BaseProcessor):
 
             # Construct query
             query = OSMPythonTools.overpass.overpassQueryBuilder(
-                bbox=list(bbox_lat_long.total_bounds[[1,0,3,2]]),
+                bbox=list(bbox_lat_long.total_bounds[[1, 0, 3, 2]]),
                 elementType="way",
                 selector="waterway",
                 out="body",
@@ -3936,7 +3936,7 @@ class StopbankCrestElevationEstimator(BaseProcessor):
         elif "osm" == source:
             # Download from OSM and save
             bbox_lat_long = self.catchment_geometry.catchment.to_crs(self.OSM_CRS)
-            bbox = list(bbox_lat_long.total_bounds[[1,0,3,2]])
+            bbox = list(bbox_lat_long.total_bounds[[1, 0, 3, 2]])
             element_dict = {
                 "geometry": [],
                 "OSM_id": [],
