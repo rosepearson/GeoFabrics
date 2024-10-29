@@ -356,11 +356,14 @@ class DemBase(abc.ABC):
             self._write_netcdf_conventions_in_place(dem, self.catchment_geometry.crs)
             if filename.suffix.lower() == ".nc":
                 if compression is not None:
-                    compression["grid_mapping"] = dem.encoding["grid_mapping"]
+                    encoding_keys = ("_FillValue", "dtype", "scale_factor", "add_offset", "grid_mapping") 
                     encoding = {}
                     for key in dem.data_vars:
-                        compression["dtype"] = dem[key].dtype
-                        encoding[key] = compression
+                        dem[key] = dem[key].astype(geometry.RASTER_TYPE)
+                        encoding[key] = {encoding_key: value for encoding_key, value in dem[key].encoding.items() if encoding_key in encoding_keys}
+                        if "dtype" not in encoding[key]:
+                            encoding[key]["dtype"] = dem[key].dtype
+                        encoding[key] = {**encoding[key], **compression}
                     dem.to_netcdf(
                         filename, format="NETCDF4", engine="netcdf4", encoding=encoding
                     )
@@ -1054,14 +1057,15 @@ class HydrologicallyConditionedDem(DemBase):
 
     def clip_within_polygon(self, polygon_paths: list, label: str):
         """Clip existing DEM to remove areas within the polygons"""
+        crs = self.catchment_geometry.crs
         dem_bounds = geopandas.GeoDataFrame(
             geometry=[shapely.geometry.box(*self._dem.rio.bounds())],
-            crs=self.catchment_geometry.crs,
+            crs=crs["horizontal"],
         )
         clip_polygon = []
         for path in polygon_paths:
             clip_polygon.append(
-                geopandas.read_file(path).to_crs(self.catchment_geometry.crs)
+                geopandas.read_file(path).to_crs(crs["horizontal"])
             )
         clip_polygon = pandas.concat(clip_polygon).dissolve()
         clip_polygon = clip_polygon.clip(dem_bounds)

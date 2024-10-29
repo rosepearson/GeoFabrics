@@ -1391,7 +1391,7 @@ class HydrologicDemGenerator(BaseProcessor):
 
             if len(file_names) > 0:
                 hydrologic_dem.clip_within_polygon(
-                    polygons=file_names,
+                    polygon_paths=file_names,
                     label="masked feature",
                 )
                 temp_file = temp_folder / "dem_feature_masking.nc"
