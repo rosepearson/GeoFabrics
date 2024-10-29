@@ -358,11 +358,20 @@ class DemBase(abc.ABC):
             self._write_netcdf_conventions_in_place(dem, self.catchment_geometry.crs)
             if filename.suffix.lower() == ".nc":
                 if compression is not None:
-                    encoding_keys = ("_FillValue", "dtype", "scale_factor", "add_offset", "grid_mapping")    
+                    encoding_keys = (
+                        "_FillValue",
+                        "dtype",
+                        "scale_factor",
+                        "add_offset",
+                        "grid_mapping",
+                    )
                     encoding = {}
                     for key in dem.data_vars:
-                        encoding[key] = {encoding_key: value for encoding_key, value 
-                                         in dem[key].encoding.items() if encoding_key in encoding_keys}
+                        encoding[key] = {
+                            encoding_key: value
+                            for encoding_key, value in dem[key].encoding.items()
+                            if encoding_key in encoding_keys
+                        }
                         if "dtype" not in encoding[key]:
                             encoding[key]["dtype"] = dem[key].dtype
                         encoding[key] = {**encoding[key], **compression}
