@@ -58,6 +58,7 @@
 			"extents": "catchment.geojson",
 			"raw_dem": "raw_dem.nc",
 			"stopbanks": [{"extents": "stopbanks/stopbank_polygon.geojson", "elevations": "stopbanks/stopbank_elevation.geojson"}],
+            "feature_masking": ["stopbank_masking_polygon.geojson"],
 			"result_dem": "test_dem.nc",
             "benchmark": "benchmark.nc"
 		},
@@ -71,7 +72,8 @@
 		"general": {
 			"z_labels": {"stopbanks": "z"},
 			"lidar_classifications_to_keep": [2, 9],
-			"interpolation": {"no_data": "linear"}
+			"interpolation": {"no_data": "linear"},
+            "compression": 7
 		}
 	}
 }

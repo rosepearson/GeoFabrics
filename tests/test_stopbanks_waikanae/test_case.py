@@ -45,19 +45,26 @@ class Test(base_test.Test):
             "datasets": {"vector": {"linz": {"key": linz_key}}}
         }
 
-        # create fake catchment boundary
+        crs = cls.instructions["dem"]["output"]["crs"]["horizontal"]
+
+        # create and save fake catchment boundary
         x0 = 1771850
         y0 = 5472250
         x1 = 1772150
         y1 = 5472600
         catchment = shapely.geometry.Polygon([(x0, y0), (x1, y0), (x1, y1), (x0, y1)])
-        catchment = geopandas.GeoSeries([catchment])
-        catchment = catchment.set_crs(
-            cls.instructions["dem"]["output"]["crs"]["horizontal"]
-        )
-
-        # save faked catchment boundary - used as land boundary as well
+        catchment = geopandas.GeoDataFrame(geometry=[catchment], crs=crs)
         catchment_file = cls.results_dir / "catchment.geojson"
+        catchment.to_file(catchment_file)
+
+        # create and save stopbank masking polygon
+        x0 = 1771866
+        y0 = 5472488
+        x1 = 1771882
+        y1 = 5472568
+        catchment = shapely.geometry.Polygon([(x0, y0), (x1, y0), (x1, y1), (x0, y1)])
+        catchment = geopandas.GeoDataFrame(geometry=[catchment], crs=crs)
+        catchment_file = cls.results_dir / "stopbank_masking_polygon.geojson"
         catchment.to_file(catchment_file)
 
         # Run pipeline - download files and generated DEM
@@ -77,17 +84,21 @@ class Test(base_test.Test):
         )
         with rioxarray.rioxarray.open_rasterio(file_path, masked=True) as test:
             test.load()
-        # Compare the generated and benchmark elevations
-        diff_array = (
-            test.z.data[~numpy.isnan(test.z.data)]
-            - benchmark.z.data[~numpy.isnan(benchmark.z.data)]
-        )
-        logging.info(f"DEM elevation diff is: {diff_array[diff_array != 0]}")
+
+        # Comparisons
         numpy.testing.assert_array_almost_equal(
             test.z.data,
             benchmark.z.data,
-            err_msg="The generated result_geofabric has different elevation data from "
-            "the benchmark_dem",
+            decimal=1,
+            err_msg="The generated test has significantly different elevation from the "
+            f"benchmark.",
+        )
+
+        numpy.testing.assert_array_almost_equal(
+            test.data_source.data,
+            benchmark.data_source.data,
+            err_msg="The generated test data_source layer differs from the "
+            f"benchmark.",
         )
 
         # explicitly free memory as xarray seems to be hanging onto memory
@@ -110,32 +121,20 @@ class Test(base_test.Test):
         )
         with rioxarray.rioxarray.open_rasterio(file_path, masked=True) as test:
             test.load()
-        # Get data generated from LiDAR
-        lidar_mask = (test.data_source.data == 1) & (benchmark.data_source.data == 1)
 
-        # Compare the generated and benchmark elevations
-        lidar_diff = test.z.data[lidar_mask] - benchmark.z.data[lidar_mask]
+        # Comparisons
         numpy.testing.assert_array_almost_equal(
-            test.z.data[lidar_mask],
-            benchmark.z.data[lidar_mask],
-            decimal=6,
+            test.z.data,
+            benchmark.z.data,
+            decimal=1,
             err_msg="The generated test has significantly different elevation from the "
-            f"benchmark where there is LiDAR: {lidar_diff}",
+            f"benchmark.",
         )
-
-        diff_array = (
-            test.z.data[~numpy.isnan(test.z.data)]
-            - benchmark.z.data[~numpy.isnan(test.z.data)]
-        )
-        logging.info(f"DEM array diff is: {diff_array[diff_array != 0]}")
-        threshold = 10e-6
-        percent = 2.5
-        number_above_threshold = len(diff_array[numpy.abs(diff_array) > threshold])
-        self.assertTrue(
-            number_above_threshold < len(diff_array) * percent / 100,
-            f"More than {percent}% of DEM values differ by more than {threshold} on Linux test"
-            f" run: {diff_array[numpy.abs(diff_array) > threshold]} or "
-            f"{number_above_threshold / len(diff_array.flatten()) * 100}%",
+        numpy.testing.assert_array_almost_equal(
+            test.data_source.data,
+            benchmark.data_source.data,
+            err_msg="The generated test data_source layer differs from the "
+            f"benchmark.",
         )
 
         # explicitly free memory as xarray seems to be hanging onto memory

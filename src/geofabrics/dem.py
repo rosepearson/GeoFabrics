@@ -12,6 +12,7 @@ import math
 import typing
 import pathlib
 import geopandas
+import pandas
 import shapely
 import dask
 import dask.array
@@ -42,11 +43,11 @@ def chunk_mask(mask, chunk_size):
     return mask
 
 
-def clip_mask(arr, geometry, chunk_size):
+def clip_mask(arr, geometry, chunk_size, invert=False):
     mask = (
         xarray.ones_like(arr, dtype=numpy.float16)
         .compute()
-        .rio.clip(geometry, drop=False)
+        .rio.clip(geometry, drop=False, invert=invert)
         .notnull()
     )
     if chunk_size is not None:
@@ -298,6 +299,7 @@ class DemBase(abc.ABC):
         "coarse DEM": 5,
         "patch": 6,
         "stopbanks": 7,
+        "masked feature": 8,
         "interpolated": 0,
         "no data": -1,
     }
@@ -351,14 +353,28 @@ class DemBase(abc.ABC):
         ), "all DataArray variables of a xarray.Dataset must have a CRS"
 
         try:
+            for key in dem.data_vars:
+                dem[key] = dem[key].astype(geometry.RASTER_TYPE)
             self._write_netcdf_conventions_in_place(dem, self.catchment_geometry.crs)
             if filename.suffix.lower() == ".nc":
                 if compression is not None:
-                    compression["grid_mapping"] = dem.encoding["grid_mapping"]
+                    encoding_keys = (
+                        "_FillValue",
+                        "dtype",
+                        "scale_factor",
+                        "add_offset",
+                        "grid_mapping",
+                    )
                     encoding = {}
                     for key in dem.data_vars:
-                        compression["dtype"] = dem[key].dtype
-                        encoding[key] = compression
+                        encoding[key] = {
+                            encoding_key: value
+                            for encoding_key, value in dem[key].encoding.items()
+                            if encoding_key in encoding_keys
+                        }
+                        if "dtype" not in encoding[key]:
+                            encoding[key]["dtype"] = dem[key].dtype
+                        encoding[key] = {**encoding[key], **compression}
                     dem.to_netcdf(
                         filename, format="NETCDF4", engine="netcdf4", encoding=encoding
                     )
@@ -401,7 +417,7 @@ class DemBase(abc.ABC):
         )
         self.save_dem(filename=filename, dem=self._dem)
         del self._dem
-        gc.collect() 
+        gc.collect()
         self._dem = self._load_dem(filename=filename)
 
     @staticmethod
@@ -437,7 +453,6 @@ class DemBase(abc.ABC):
         crs_dict
             A dict with horizontal and vertical CRS information.
         """
-        
 
         dem.rio.write_crs(crs_dict["horizontal"], inplace=True)
         dem.rio.write_transform(inplace=True)
@@ -1050,6 +1065,46 @@ class HydrologicallyConditionedDem(DemBase):
             [self._raw_dem, offshore_dem],
             method="first",
         )
+
+    def clip_within_polygon(self, polygon_paths: list, label: str):
+        """Clip existing DEM to remove areas within the polygons"""
+        crs = self.catchment_geometry.crs
+        dem_bounds = geopandas.GeoDataFrame(
+            geometry=[shapely.geometry.box(*self._dem.rio.bounds())],
+            crs=crs["horizontal"],
+        )
+        clip_polygon = []
+        for path in polygon_paths:
+            clip_polygon.append(geopandas.read_file(path).to_crs(crs["horizontal"]))
+        clip_polygon = pandas.concat(clip_polygon).dissolve()
+        clip_polygon = clip_polygon.clip(dem_bounds)
+        if clip_polygon.area.sum() > self.catchment_geometry.resolution**2:
+            self.logger.info(
+                f"Clipping to remove all features in polygons {polygon_paths}"
+            )
+            mask = clip_mask(
+                arr=self._dem.z,
+                geometry=clip_polygon.geometry,
+                chunk_size=self.chunk_size,
+            )
+            self._dem["z"] = self._dem.z.where(
+                ~mask,
+                numpy.nan,
+            )
+            self._dem["data_source"] = self._dem.data_source.where(
+                ~mask,
+                self.SOURCE_CLASSIFICATION[label],
+            )
+            self._dem["lidar_source"] = self._dem.lidar_source.where(
+                ~mask, self.SOURCE_CLASSIFICATION["no data"]
+            )
+            self._write_netcdf_conventions_in_place(
+                self._dem, self.catchment_geometry.crs
+            )
+        else:
+            self.logger.warning(
+                f"No clipping. Polygons {polygon_paths} do not overlap DEM."
+            )
 
     def interpolate_elevations_within_polygon(
         self,
@@ -2716,27 +2771,30 @@ class RoughnessDem(LidarBase):
         self._write_netcdf_conventions_in_place(self._dem, self.catchment_geometry.crs)
 
     def add_roads(self, roads_polygon: dict):
-            """Set roads to paved and unpaved roughness values.
+        """Set roads to paved and unpaved roughness values.
 
-            Parameters
-            ----------
+        Parameters
+        ----------
 
-            roads_polygon
-                Dataframe with polygon and associated roughness values
-            """
+        roads_polygon
+            Dataframe with polygon and associated roughness values
+        """
 
- 
-            # Set unpaved roads
-            mask = clip_mask(
-                self._dem.z, roads_polygon[roads_polygon["surface"]=="unpaved"].geometry, self.chunk_size
-            )
-            self._dem["zo"] = self._dem.zo.where(~mask, self.default_values["unpaved"])
-            # Then set paved roads
-            mask = clip_mask(
-                self._dem.z, roads_polygon[roads_polygon["surface"]=="paved"].geometry, self.chunk_size
-            )
-            self._dem["zo"] = self._dem.zo.where(~mask, self.default_values["paved"])
-            self._write_netcdf_conventions_in_place(self._dem, self.catchment_geometry.crs)
+        # Set unpaved roads
+        mask = clip_mask(
+            self._dem.z,
+            roads_polygon[roads_polygon["surface"] == "unpaved"].geometry,
+            self.chunk_size,
+        )
+        self._dem["zo"] = self._dem.zo.where(~mask, self.default_values["unpaved"])
+        # Then set paved roads
+        mask = clip_mask(
+            self._dem.z,
+            roads_polygon[roads_polygon["surface"] == "paved"].geometry,
+            self.chunk_size,
+        )
+        self._dem["zo"] = self._dem.zo.where(~mask, self.default_values["paved"])
+        self._write_netcdf_conventions_in_place(self._dem, self.catchment_geometry.crs)
 
     def _add_tiled_lidar_chunked(
         self,
