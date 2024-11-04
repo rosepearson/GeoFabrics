@@ -854,7 +854,7 @@ class RiverMouthFan:
 
         # Get the river alignment and clip to the river polygon
         aligned_channel = geopandas.read_file(self.aligned_channel_file)
-        river_polygon = geopandas.read_file(self.river_polygon_file)
+        river_polygon = geopandas.read_file(self.river_polygon_file).make_valid()
         aligned_channel = aligned_channel.clip(river_polygon)
         # Explode incase the aligned channel is clipped into a MultiPolyLine
         (x, y) = aligned_channel.explode().iloc[0].geometry.xy

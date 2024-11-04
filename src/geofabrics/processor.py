@@ -2641,8 +2641,8 @@ class RiverBathymetryGenerator(BaseProcessor):
         # Note projection function is limited between [0, osm_channel.length]
         end_split_length = float(osm_channel.project(network_end))
         start_split_length = float(osm_channel.project(network_start))
-        # Ensure the OSM line is defined upstream
-        if start_split_length > end_split_length:
+        # Ensure the OSM line is defined mouth to upstream
+        if start_split_length > end_split_length or start_split_length >= float(osm_channel.length)/2:
             # Reverse direction of the geometry
             osm_channel.loc[0, "geometry"] = shapely.geometry.LineString(
                 list(osm_channel.iloc[0].geometry.coords)[::-1]
@@ -2658,20 +2658,19 @@ class RiverBathymetryGenerator(BaseProcessor):
                 osm_channel.loc[0].geometry, split_point.loc[0], tolerance=0.1
             )
             osm_channel = geopandas.GeoDataFrame(
-                {
-                    "geometry": [
+                geometry = [
                         list(shapely.ops.split(osm_channel, split_point.loc[0]).geoms)[
                             1
                         ]
-                    ]
-                },
+                    ],
                 crs=crs,
             )
-        else:
+        elif start_split_length == 0 and not self.get_bathymetry_instruction(
+            "keep_downstream_osm"
+        ):
             self.logger.warning(
-                "The OSM reference line starts upstream of the"
-                "network line. The bottom of the network will be"
-                "ignored over a stright line distance of "
+                "The OSM reference line starts upstream of the network line. The bottom "
+                "of the network will be ignored over a stright line distance of "
                 f"{osm_channel.distance(network_start)}"
             )
         # Clip end if needed - recacluate clip position incase front clipped.
@@ -2682,21 +2681,37 @@ class RiverBathymetryGenerator(BaseProcessor):
                 osm_channel.loc[0].geometry, split_point.loc[0], tolerance=0.1
             )
             osm_channel = geopandas.GeoDataFrame(
-                {
-                    "geometry": [
+                geometry = [
                         list(shapely.ops.split(osm_channel, split_point.loc[0]).geoms)[
                             0
                         ]
-                    ]
-                },
+                    ],
                 crs=crs,
             )
         else:
             self.logger.warning(
-                "The OSM reference line ends downstream of the"
-                "network line. The top of the network will be"
-                "ignored over a stright line distance of "
+                "The OSM reference line ends upstream of the network line. The top of "
+                "the network will be ignored over a stright line distance of "
                 f"{osm_channel.distance(network_end)}"
+            )
+        # In case of both network points at far end ensure only short end is returned
+        if start_split_length == 0 and end_split_length == 0:
+            split_point = osm_channel.interpolate(channel.length)
+            osm_channel = shapely.ops.snap(
+                osm_channel.loc[0].geometry, split_point.loc[0], tolerance=0.1
+            )
+            osm_channel = geopandas.GeoDataFrame(
+                geometry = [
+                        list(shapely.ops.split(osm_channel, split_point.loc[0]).geoms)[
+                            0
+                        ]
+                    ],
+                crs=crs,
+            )
+            self.logger.warning(
+                "The OSM reference line ends upstream of both ends of the network line. It "
+                "will be clipped to the total length of the network line "
+                f"{channel.length}. Please review if unexpected."
             )
 
         if self.debug:
@@ -3789,7 +3804,7 @@ class StopbankCrestElevationEstimator(BaseProcessor):
             if dem.x[-1] - dem.x[0] > 0
             else slice(bbox[2], bbox[0])
         )
-        # breakpoint()
+
         small_z = dem.z.sel(x=x_slice, y=y_slice)
 
         # clip to polygon and return minimum elevation
@@ -3847,7 +3862,7 @@ class StopbankCrestElevationEstimator(BaseProcessor):
         for index, rows in points.groupby(level=0):
             dem_file = self.get_result_file_path(key="raw_dem", index=index)
             dem = self.load_dem(filename=dem_file)
-            # breakpoint()
+
             zs = rows["polygons"].apply(
                 lambda geometry: self.maximum_elevation_in_polygon(
                     geometry=geometry, dem=dem
