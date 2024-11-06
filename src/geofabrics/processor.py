@@ -2642,7 +2642,10 @@ class RiverBathymetryGenerator(BaseProcessor):
         end_split_length = float(osm_channel.project(network_end))
         start_split_length = float(osm_channel.project(network_start))
         # Ensure the OSM line is defined mouth to upstream
-        if start_split_length > end_split_length or start_split_length >= float(osm_channel.length)/2:
+        if (
+            start_split_length > end_split_length
+            or start_split_length >= float(osm_channel.length) / 2
+        ):
             # Reverse direction of the geometry
             osm_channel.loc[0, "geometry"] = shapely.geometry.LineString(
                 list(osm_channel.iloc[0].geometry.coords)[::-1]
@@ -2658,11 +2661,9 @@ class RiverBathymetryGenerator(BaseProcessor):
                 osm_channel.loc[0].geometry, split_point.loc[0], tolerance=0.1
             )
             osm_channel = geopandas.GeoDataFrame(
-                geometry = [
-                        list(shapely.ops.split(osm_channel, split_point.loc[0]).geoms)[
-                            1
-                        ]
-                    ],
+                geometry=[
+                    list(shapely.ops.split(osm_channel, split_point.loc[0]).geoms)[1]
+                ],
                 crs=crs,
             )
         elif start_split_length == 0 and not self.get_bathymetry_instruction(
@@ -2681,11 +2682,9 @@ class RiverBathymetryGenerator(BaseProcessor):
                 osm_channel.loc[0].geometry, split_point.loc[0], tolerance=0.1
             )
             osm_channel = geopandas.GeoDataFrame(
-                geometry = [
-                        list(shapely.ops.split(osm_channel, split_point.loc[0]).geoms)[
-                            0
-                        ]
-                    ],
+                geometry=[
+                    list(shapely.ops.split(osm_channel, split_point.loc[0]).geoms)[0]
+                ],
                 crs=crs,
             )
         else:
@@ -2701,11 +2700,9 @@ class RiverBathymetryGenerator(BaseProcessor):
                 osm_channel.loc[0].geometry, split_point.loc[0], tolerance=0.1
             )
             osm_channel = geopandas.GeoDataFrame(
-                geometry = [
-                        list(shapely.ops.split(osm_channel, split_point.loc[0]).geoms)[
-                            0
-                        ]
-                    ],
+                geometry=[
+                    list(shapely.ops.split(osm_channel, split_point.loc[0]).geoms)[0]
+                ],
                 crs=crs,
             )
             self.logger.warning(
