@@ -1286,9 +1286,7 @@ class HydrologicallyConditionedDem(DemBase):
                 "compression": "laszip",
             }
         ]
-        pdal_pipeline = pdal.Pipeline(
-            json.dumps(pdal_pipeline_instructions), [points]
-        )
+        pdal_pipeline = pdal.Pipeline(json.dumps(pdal_pipeline_instructions), [points])
         pdal_pipeline.execute()
 
         # Tempoarily save the adjacent points from the DEM
@@ -1340,9 +1338,7 @@ class HydrologicallyConditionedDem(DemBase):
             mask_z_edge = mask_z.copy()
             mask_z_edge[:] = False
             mask_z_edge[mask_z] = flat_z[mask_z] > mask_z_edge
-            flat_z[mask_z_edge] = mask_z_edge[
-                flat_z[mask_z] > mask_z_edge
-            ]
+            flat_z[mask_z_edge] = mask_z_edge[flat_z[mask_z] > mask_z_edge]
 
         # Use the flat_x/y/z to define edge points and heights
         edge_points = numpy.empty(
@@ -1398,7 +1394,9 @@ class HydrologicallyConditionedDem(DemBase):
         self.logger.info(f"Preparing {[len(chunked_dim_x), len(chunked_dim_y)]} chunks")
 
         # cycle through index chunks - and collect in a delayed array
-        self.logger.info("Running over points chunked - nearest of points & edge points")
+        self.logger.info(
+            "Running over points chunked - nearest of points & edge points"
+        )
         delayed_chunked_matrix = []
         for i, dim_y in enumerate(chunked_dim_y):
             delayed_chunked_x = []
