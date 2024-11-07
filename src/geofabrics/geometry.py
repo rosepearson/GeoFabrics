@@ -757,8 +757,9 @@ class ElevationPoints:
             self._z = self._points.apply(lambda row: row.geometry.z, axis=1).to_list()
         return self._z
 
+
 class ElevationContours(ElevationPoints):
-    """ Resample at spatial resolution at points """
+    """Resample at spatial resolution at points"""
 
     def __init__(
         self,
@@ -772,16 +773,16 @@ class ElevationContours(ElevationPoints):
             polygon_files=polygon_files,
             catchment_geometry=catchment_geometry,
             filter_osm_ids=[],
-            z_labels=z_labels, 
+            z_labels=z_labels,
         )
         self.logger = logging.getLogger(f"{__name__}.{self.__class__.__name__}")
-        
+
         # convert contoursto samples points at resolution
         self.sample_contours(self.catchment_geometry.resolution)
 
     def sample_contours(self, resolution: float) -> numpy.ndarray:
         """Sample the contours at the specified resolution."""
-        
+
         # convert contours to multipoints
         self._points.loc[:, "geometry"] = self._points.geometry.apply(
             lambda row: shapely.geometry.MultiPoint(
@@ -792,7 +793,6 @@ class ElevationContours(ElevationPoints):
             )
         )
         self._points = self._points.explode(index_parts=True, ignore_index=True)
-        
 
 
 class TileInfo:
