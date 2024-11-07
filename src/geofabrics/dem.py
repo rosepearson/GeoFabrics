@@ -3221,7 +3221,11 @@ def elevation_from_nearest_points(
             f"> points {len(point_cloud)} or edge points {len(edge_point_cloud)}."
             " Updating k to the avaliable number of points."
         )
-        k = min(len(point_cloud), len(edge_point_cloud)) if options["use_edge"] else len(point_cloud)
+        k = (
+            min(len(point_cloud), len(edge_point_cloud))
+            if options["use_edge"]
+            else len(point_cloud)
+        )
     xy_in = numpy.empty((len(point_cloud), 2))
     xy_in[:, 0] = point_cloud["X"]
     xy_in[:, 1] = point_cloud["Y"]
