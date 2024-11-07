@@ -1250,7 +1250,7 @@ class HydrologicDemGenerator(BaseProcessor):
             # Call interpolate river on the DEM - the class checks to see if any pixels
             # actually fall inside the polygon
             if len(estimated_elevations.polygons) > 0:  # Skip if no waterways
-                hydrologic_dem.interpolate_elevations_within_polygon(
+                hydrologic_dem.add_points_within_polygon_chunked(
                     elevations=estimated_elevations,
                     method=self.get_instruction_general(
                         key="interpolation", subkey="waterways"
@@ -1309,7 +1309,7 @@ class HydrologicDemGenerator(BaseProcessor):
                     continue
 
                 # Add lake to DEM
-                hydrologic_dem.interpolate_rivers(
+                hydrologic_dem.add_points_within_polygon_nearest_chunked(
                     elevations=elevations,
                     method=self.get_instruction_general(
                         key="interpolation", subkey="lakes"
@@ -1370,7 +1370,7 @@ class HydrologicDemGenerator(BaseProcessor):
 
                 # Call interpolate river on the DEM - the class checks to see if any pixels
                 # actually fall inside the polygon
-                hydrologic_dem.interpolate_rivers(
+                hydrologic_dem.add_points_within_polygon_nearest_chunked(
                     elevations=estimated_elevations,
                     method=self.get_instruction_general(
                         key="interpolation", subkey="rivers"
@@ -1420,7 +1420,7 @@ class HydrologicDemGenerator(BaseProcessor):
             # Call interpolate river on the DEM - the class checks to see if any pixels
             # actually fall inside the polygon
             if len(estimated_elevations.polygons) > 0:  # Skip if no stopbanks
-                hydrologic_dem.interpolate_elevations_within_polygon(
+                hydrologic_dem.add_points_within_polygon_chunked(
                     elevations=estimated_elevations,
                     method=self.get_instruction_general(
                         key="interpolation", subkey="stopbanks"

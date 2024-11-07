@@ -1107,7 +1107,7 @@ class HydrologicallyConditionedDem(DemBase):
                 f"No clipping. Polygons {polygon_paths} do not overlap DEM."
             )
 
-    def interpolate_elevations_within_polygon(
+    def add_points_within_polygon_chunked(
         self,
         elevations: geometry.ElevationPoints,
         method: str,
@@ -1247,7 +1247,7 @@ class HydrologicallyConditionedDem(DemBase):
         )
         self._write_netcdf_conventions_in_place(self._dem, self.catchment_geometry.crs)
 
-    def interpolate_rivers(
+    def add_points_within_polygon_nearest_chunked(
         self,
         elevations: geometry.ElevationPoints,
         method: str,
@@ -1275,23 +1275,23 @@ class HydrologicallyConditionedDem(DemBase):
         # Define the region to rasterise
         region_to_rasterise = elevations.polygons
 
-        # Extract and saveriver elevations
-        river_points = elevations.points_array
-        river_points_file = cache_path / f"{label}_points.laz"
+        # Tempoarily save the points to add
+        points = elevations.points_array
+        points_file = cache_path / f"{label}_points.laz"
         pdal_pipeline_instructions = [
             {
                 "type": "writers.las",
                 "a_srs": f"EPSG:" f"{crs['horizontal']}+" f"{crs['vertical']}",
-                "filename": str(river_points_file),
+                "filename": str(points_file),
                 "compression": "laszip",
             }
         ]
         pdal_pipeline = pdal.Pipeline(
-            json.dumps(pdal_pipeline_instructions), [river_points]
+            json.dumps(pdal_pipeline_instructions), [points]
         )
         pdal_pipeline.execute()
 
-        # Extract and save river/fan adjacent elevations from DEM
+        # Tempoarily save the adjacent points from the DEM
         edge_dem = self._dem.rio.clip(
             region_to_rasterise.dissolve().buffer(self.catchment_geometry.resolution),
             drop=True,
@@ -1308,19 +1308,19 @@ class HydrologicallyConditionedDem(DemBase):
             drop=True,
         )
 
-        # Define the river and mouth edge points
+        # Save provided points
         grid_x, grid_y = numpy.meshgrid(edge_dem.x, edge_dem.y)
         flat_x = grid_x.flatten()
         flat_y = grid_y.flatten()
         flat_z = edge_dem.z.values.flatten()
         mask_z = ~numpy.isnan(flat_z)
 
-        # Interpolate the estimated river bank heights along only the river
+        # Interpolate the estimated bank heights around the polygon if they exist
         if elevations.bank_heights_exist():
-            # Get the estimated river bank heights and define a mask where nan
-            river_bank_points = elevations.bank_height_points()
-            river_bank_nan_mask = numpy.logical_not(numpy.isnan(river_bank_points["Z"]))
-            # Interpolate from the estimated river bank heights
+            # Get the estimated  bank heights and define a mask where nan
+            bank_points = elevations.bank_height_points()
+            bank_nan_mask = numpy.logical_not(numpy.isnan(bank_points["Z"]))
+            # Interpolate from the estimated bank heights
             xy_out = numpy.concatenate(
                 [[flat_x[mask_z]], [flat_y[mask_z]]], axis=0
             ).transpose()
@@ -1330,18 +1330,18 @@ class HydrologicallyConditionedDem(DemBase):
                 "method": "linear",
                 "strict": False,
             }
-            estimated_river_edge_z = elevation_from_points(
-                point_cloud=river_bank_points[river_bank_nan_mask],
+            estimated_edge_z = elevation_from_points(
+                point_cloud=bank_points[bank_nan_mask],
                 xy_out=xy_out,
                 options=options,
             )
 
             # Use the estimated bank heights where lower than the DEM edge values
-            mask_z_river_edge = mask_z.copy()
-            mask_z_river_edge[:] = False
-            mask_z_river_edge[mask_z] = flat_z[mask_z] > estimated_river_edge_z
-            flat_z[mask_z_river_edge] = estimated_river_edge_z[
-                flat_z[mask_z] > estimated_river_edge_z
+            mask_z_edge = mask_z.copy()
+            mask_z_edge[:] = False
+            mask_z_edge[mask_z] = flat_z[mask_z] > mask_z_edge
+            flat_z[mask_z_edge] = mask_z_edge[
+                flat_z[mask_z] > mask_z_edge
             ]
 
         # Use the flat_x/y/z to define edge points and heights
@@ -1357,12 +1357,12 @@ class HydrologicallyConditionedDem(DemBase):
         edge_points["Y"] = flat_y[mask_z]
         edge_points["Z"] = flat_z[mask_z]
 
-        river_edge_file = cache_path / f"{label}_edge_points.laz"
+        edge_file = cache_path / f"{label}_edge_points.laz"
         pdal_pipeline_instructions = [
             {
                 "type": "writers.las",
                 "a_srs": f"EPSG:" f"{crs['horizontal']}+" f"{crs['vertical']}",
-                "filename": str(river_edge_file),
+                "filename": str(edge_file),
                 "compression": "laszip",
             }
         ]
@@ -1372,18 +1372,18 @@ class HydrologicallyConditionedDem(DemBase):
         pdal_pipeline.execute()
 
         if (
-            len(river_points) < k_nearest_neighbours
-            or len(edge_points) < k_nearest_neighbours
+            len(points) < raster_options["k_nearest_neighbours"]
+            or len(edge_points) < raster_options["k_nearest_neighbours"]
         ):
             logging.info(
-                f"Fewer river or edge points than the default expected {k_nearest_neighbours}. "
-                f"Updating k_nearest_neighbours to {min(len(river_points), len(edge_points))}."
+                f"Fewer points or edge points than the default expected {raster_options['k_nearest_neighbours']}. "
+                f"Updating k_nearest_neighbours to {min(len(points), len(edge_points))}."
             )
-            k_nearest_neighbours = min(len(river_points), len(edge_points))
-        if k_nearest_neighbours < 3:
+            raster_options["k_nearest_neighbours"] = min(len(points), len(edge_points))
+        if raster_options["k_nearest_neighbours"] < 3:
             logging.warning(
-                f"Not enough river or edge points to meaningfully include {k_nearest_neighbours}. "
-                f"Exiting without including the river and edge points."
+                f"Not enough points or edge points to meaningfully include {raster_options['k_nearest_neighbours']}. "
+                f"Exiting without including the points and edge points."
             )
             return
 
@@ -1398,22 +1398,22 @@ class HydrologicallyConditionedDem(DemBase):
         self.logger.info(f"Preparing {[len(chunked_dim_x), len(chunked_dim_y)]} chunks")
 
         # cycle through index chunks - and collect in a delayed array
-        self.logger.info("Running over river chunked")
+        self.logger.info("Running over points chunked - nearest of points & edge points")
         delayed_chunked_matrix = []
         for i, dim_y in enumerate(chunked_dim_y):
             delayed_chunked_x = []
             for j, dim_x in enumerate(chunked_dim_x):
                 self.logger.debug(f"\tLiDAR chunk {[i, j]}")
                 # Load in points
-                river_points = delayed_load_tiles_in_chunk(
-                    lidar_files=[river_points_file],
+                points = delayed_load_tiles_in_chunk(
+                    lidar_files=[points_file],
                     source_crs=raster_options["crs"],
                     chunk_region_to_tile=None,
                     crs=raster_options["crs"],
                 )
 
-                river_edge_points = delayed_load_tiles_in_chunk(
-                    lidar_files=[river_edge_file],
+                edge_points = delayed_load_tiles_in_chunk(
+                    lidar_files=[edge_file],
                     source_crs=raster_options["crs"],
                     chunk_region_to_tile=None,
                     crs=raster_options["crs"],
@@ -1425,8 +1425,8 @@ class HydrologicallyConditionedDem(DemBase):
                         delayed_elevation_over_chunk_from_nearest(
                             dim_x=dim_x,
                             dim_y=dim_y,
-                            points=river_points,
-                            edge_points=river_edge_points,
+                            points=points,
+                            edge_points=edge_points,
                             options=raster_options,
                         ),
                         shape=(len(dim_y), len(dim_x)),
@@ -1439,14 +1439,14 @@ class HydrologicallyConditionedDem(DemBase):
         elevations = dask.array.block(delayed_chunked_matrix)
 
         # Update DEM layers - copy everyhere within the region to rasterise
-        rivers_mask = clip_mask(
+        polygon_mask = clip_mask(
             self._dem.z,
             region_to_rasterise.geometry,
             self.chunk_size,
         )
-        rivers_mask.load()
-        self._dem["z"] = self._dem.z.where(~rivers_mask, elevations)
-        mask = ~(rivers_mask & self._dem.z.notnull())
+        polygon_mask.load()
+        self._dem["z"] = self._dem.z.where(~polygon_mask, elevations)
+        mask = ~(polygon_mask & self._dem.z.notnull())
         self._dem["data_source"] = self._dem.data_source.where(
             mask,
             self.SOURCE_CLASSIFICATION[label],
@@ -3218,10 +3218,11 @@ def elevation_from_nearest_points(
     if k > len(point_cloud) or (options["use_edge"] and k > len(edge_point_cloud)):
         logger.warning(
             f"Fewer points than the nearest k to search for provided: k = {k} "
-            f"> points {len(point_cloud)} or edge points {len(edge_point_cloud)}."
-            " Updating k to the avaliable number of points."
+            f"> points {len(point_cloud)} or edge points "
+            f"{len(edge_point_cloud)}. Returning NaN array."
         )
-        k = min(len(point_cloud), len(edge_point_cloud)) if options["use_edge"] else len(point_cloud)
+        z_out = numpy.ones(len(xy_out), dtype=options["raster_type"]) * numpy.nan
+        return z_out
     xy_in = numpy.empty((len(point_cloud), 2))
     xy_in[:, 0] = point_cloud["X"]
     xy_in[:, 1] = point_cloud["Y"]
