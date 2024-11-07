@@ -300,6 +300,7 @@ class DemBase(abc.ABC):
         "patch": 6,
         "stopbanks": 7,
         "masked feature": 8,
+        "lakes": 9,
         "interpolated": 0,
         "no data": -1,
     }
@@ -1108,7 +1109,7 @@ class HydrologicallyConditionedDem(DemBase):
 
     def interpolate_elevations_within_polygon(
         self,
-        elevations: geometry.EstimatedElevationPoints,
+        elevations: geometry.ElevationPoints,
         method: str,
         cache_path: pathlib.Path,
         label: str,
@@ -1171,7 +1172,7 @@ class HydrologicallyConditionedDem(DemBase):
             point_cloud = numpy.concatenate([edge_points, point_cloud])
 
         # Save river points in a temporary laz file
-        lidar_file = cache_path / "waterways_points.laz"
+        lidar_file = cache_path / f"{label}_points.laz"
         pdal_pipeline_instructions = [
             {
                 "type": "writers.las",
@@ -1196,7 +1197,7 @@ class HydrologicallyConditionedDem(DemBase):
         self.logger.info(f"Preparing {[len(chunked_dim_x), len(chunked_dim_y)]} chunks")
 
         # cycle through index chunks - and collect in a delayed array
-        self.logger.info("Running over ocean chunked")
+        self.logger.info(f"Running over {label} chunked")
         delayed_chunked_matrix = []
         for i, dim_y in enumerate(chunked_dim_y):
             delayed_chunked_x = []
@@ -1248,9 +1249,10 @@ class HydrologicallyConditionedDem(DemBase):
 
     def interpolate_rivers(
         self,
-        elevations: geometry.EstimatedElevationPoints,
+        elevations: geometry.ElevationPoints,
         method: str,
         cache_path: pathlib.Path,
+        label: str,
         k_nearest_neighbours: int = 100,
     ) -> xarray.Dataset:
         """Performs interpolation from estimated bathymetry points within a polygon
@@ -1275,7 +1277,7 @@ class HydrologicallyConditionedDem(DemBase):
 
         # Extract and saveriver elevations
         river_points = elevations.points_array
-        river_points_file = cache_path / "river_points.laz"
+        river_points_file = cache_path / f"{label}_points.laz"
         pdal_pipeline_instructions = [
             {
                 "type": "writers.las",
@@ -1355,7 +1357,7 @@ class HydrologicallyConditionedDem(DemBase):
         edge_points["Y"] = flat_y[mask_z]
         edge_points["Z"] = flat_z[mask_z]
 
-        river_edge_file = cache_path / "river_edge_points.laz"
+        river_edge_file = cache_path / f"{label}_edge_points.laz"
         pdal_pipeline_instructions = [
             {
                 "type": "writers.las",
@@ -1396,7 +1398,7 @@ class HydrologicallyConditionedDem(DemBase):
         self.logger.info(f"Preparing {[len(chunked_dim_x), len(chunked_dim_y)]} chunks")
 
         # cycle through index chunks - and collect in a delayed array
-        self.logger.info("Running over ocean chunked")
+        self.logger.info("Running over river chunked")
         delayed_chunked_matrix = []
         for i, dim_y in enumerate(chunked_dim_y):
             delayed_chunked_x = []
@@ -1447,7 +1449,7 @@ class HydrologicallyConditionedDem(DemBase):
         mask = ~(rivers_mask & self._dem.z.notnull())
         self._dem["data_source"] = self._dem.data_source.where(
             mask,
-            self.SOURCE_CLASSIFICATION["rivers and fans"],
+            self.SOURCE_CLASSIFICATION[label],
         )
         self._dem["lidar_source"] = self._dem.lidar_source.where(
             mask, self.SOURCE_CLASSIFICATION["no data"]
@@ -3216,11 +3218,10 @@ def elevation_from_nearest_points(
     if k > len(point_cloud) or (options["use_edge"] and k > len(edge_point_cloud)):
         logger.warning(
             f"Fewer points than the nearest k to search for provided: k = {k} "
-            f"> points {len(point_cloud)} or edge points "
-            f"{len(edge_point_cloud)}. Returning NaN array."
+            f"> points {len(point_cloud)} or edge points {len(edge_point_cloud)}."
+            " Updating k to the avaliable number of points."
         )
-        z_out = numpy.ones(len(xy_out), dtype=options["raster_type"]) * numpy.nan
-        return z_out
+        k = min(len(point_cloud), len(edge_point_cloud)) if options["use_edge"] else len(point_cloud)
     xy_in = numpy.empty((len(point_cloud), 2))
     xy_in[:, 0] = point_cloud["X"]
     xy_in[:, 1] = point_cloud["Y"]

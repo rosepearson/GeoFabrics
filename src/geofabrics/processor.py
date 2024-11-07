@@ -290,6 +290,7 @@ class BaseProcessor(abc.ABC):
             "interpolation": {
                 "rivers": "rbf",
                 "waterways": "cubic",
+                "lakes": "linear",
                 "stopbanks": "nearest",
                 "ocean": "rbf",
                 "lidar": "idw",
@@ -297,6 +298,7 @@ class BaseProcessor(abc.ABC):
             },
             "z_labels": {
                 "waterways": "z",
+                "lakes": "z",
                 "stopbanks": "z",
                 "rivers": "z",
                 "ocean": None,
@@ -1233,7 +1235,7 @@ class HydrologicDemGenerator(BaseProcessor):
             self.logger.info(f"Incorporating waterways: {elevations}")
 
             # Load in bathymetry
-            estimated_elevations = geometry.EstimatedElevationPoints(
+            estimated_elevations = geometry.ElevationPoints(
                 points_files=elevations,
                 polygon_files=polygons,
                 filter_osm_ids=self.get_instruction_general(
@@ -1265,6 +1267,65 @@ class HydrologicDemGenerator(BaseProcessor):
                 if cached_file is not None:
                     self.clean_cached_file(cached_file)
                 cached_file = temp_file
+        # Check for lakes
+        if "lakes" in self.instructions["data_paths"]:
+            # Loop through each lake in turn adding individually
+            subfolder = self.get_instruction_path(key="subfolder")
+            z_labels = self.get_instruction_general(key="z_labels", subkey="lakes")
+            lakes = self.instructions["data_paths"]["lakes"]
+            if isinstance(z_labels, str):
+                z_labels = [z_labels for i in range(len(lakes))]
+            elif not isinstance(z_labels, list) or len(z_labels) != len(lakes):
+                raise ValueError(
+                    "There is a mismatch in length between the provided z_labels "
+                    f"and the lakes: {z_labels} {lakes}"
+                )
+            for index, lake_dict in enumerate(lakes):
+                elevation = pathlib.Path(lake_dict["elevations"])
+                polygon = pathlib.Path(lake_dict["extents"])
+                if not elevation.is_absolute():
+                    elevation = subfolder / elevation
+                if not polygon.is_absolute():
+                    polygon = subfolder / polygon
+
+                self.logger.info(f"Incorporating lake: {elevation}")
+                # Load in elevations
+                elevations = geometry.ElevationContours(
+                    points_files=[elevation],
+                    polygon_files=[polygon],
+                    catchment_geometry=self.catchment_geometry,
+                    z_labels=z_labels[index],
+                )
+
+                if (
+                    len(elevations.points_array) == 0
+                    or elevations.polygons.area.sum()
+                    < self.catchment_geometry.resolution**2
+                ):
+                    self.logger.warning(
+                        "No points or an area less than one grid cell in "
+                        f"lake {elevation}. Ignoring."
+                    )
+                    continue
+
+                # Add lake to DEM
+                hydrologic_dem.interpolate_rivers(
+                    elevations=elevations,
+                    method=self.get_instruction_general(
+                        key="interpolation", subkey="lakes"
+                    ),
+                    cache_path=temp_folder,
+                    label="lakes",
+                )
+                temp_file = temp_folder / f"dem_added_{index + 1}_lake.nc"
+                self.logger.info(
+                    f"Save temp DEM with lake {index + 1} added to netCDF: {temp_file}"
+                )
+                hydrologic_dem.save_and_load_dem(temp_file)
+                # Remove previous cached file and replace with new one
+                if cached_file is not None:
+                    self.clean_cached_file(cached_file)
+                cached_file = temp_file
         # Load in river bathymetry and incorporate where discernable at the resolution
         if "rivers" in self.instructions["data_paths"]:
             # Loop through each river in turn adding individually
@@ -1289,7 +1350,7 @@ class HydrologicDemGenerator(BaseProcessor):
                 self.logger.info(f"Incorporating river: {elevation}")
 
                 # Load in bathymetry
-                estimated_elevations = geometry.EstimatedElevationPoints(
+                estimated_elevations = geometry.ElevationPoints(
                     points_files=[elevation],
                     polygon_files=[polygon],
                     catchment_geometry=self.catchment_geometry,
@@ -1315,6 +1376,7 @@ class HydrologicDemGenerator(BaseProcessor):
                         key="interpolation", subkey="rivers"
                     ),
                     cache_path=temp_folder,
+                    label="rivers and fans",
                 )
                 temp_file = temp_folder / f"dem_added_{index + 1}_rivers.nc"
                 self.logger.info(
@@ -1346,7 +1408,7 @@ class HydrologicDemGenerator(BaseProcessor):
             self.logger.info(f"Incorporating stopbanks: {elevations}")
 
             # Load in bathymetry
-            estimated_elevations = geometry.EstimatedElevationPoints(
+            estimated_elevations = geometry.ElevationPoints(
                 points_files=elevations,
                 polygon_files=polygons,
                 catchment_geometry=self.catchment_geometry,
