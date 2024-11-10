@@ -1632,7 +1632,7 @@ class PatchDemGenerator(BaseProcessor):
                 elevation_range=None,
             )
             patch_paths = self.get_vector_or_raster_paths(
-                key="patchs", data_type="raster"
+                key="patches", data_type="raster"
             )
             if self.get_patch_instruction("patch_on_top"):
                 patch_paths = patch_paths[::-1]  # Reverse so first ends up on top
