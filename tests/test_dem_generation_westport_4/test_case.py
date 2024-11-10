@@ -47,7 +47,7 @@ class Test(base_test.Test):
         "CL2_BR21_2020_1000_4704.laz": 20851153,
         "CL2_BR21_2020_1000_4705.laz": 19749374,
         "CL2_BR21_2020_1000_4804.laz": 18379794,
-        DATASET + "_TileIndex.zip": 1125874,
+        DATASET + "_TileIndex.zip": 1848391,
     }
 
     @classmethod
