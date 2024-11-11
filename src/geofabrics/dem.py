@@ -1337,8 +1337,8 @@ class HydrologicallyConditionedDem(DemBase):
             # Use the estimated bank heights where lower than the DEM edge values
             mask_z_edge = mask_z.copy()
             mask_z_edge[:] = False
-            mask_z_edge[mask_z] = flat_z[mask_z] > mask_z_edge
-            flat_z[mask_z_edge] = mask_z_edge[flat_z[mask_z] > mask_z_edge]
+            mask_z_edge[mask_z] = flat_z[mask_z] > estimated_edge_z
+            flat_z[mask_z_edge] = estimated_edge_z[flat_z[mask_z] > estimated_edge_z]
 
         # Use the flat_x/y/z to define edge points and heights
         edge_points = numpy.empty(
