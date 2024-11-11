@@ -1925,6 +1925,7 @@ class ChannelCharacteristics:
         start_xy = geopandas.GeoDataFrame(
             geometry=[shapely.geometry.LineString(start_xy)], crs=cross_sections.crs
         )
+
         start_xy = Channel(start_xy, resolution=self.cross_section_spacing)
         start_xy_spline = start_xy.get_parametric_spline_fit_points()
 
@@ -2296,7 +2297,6 @@ class ChannelCharacteristics:
             maximum_threshold=max_threshold,
             min_channel_width=min_channel_width,
         )
-
         # generate a flat water polygon
         river_polygon = self._create_flat_water_polygon(
             cross_sections=cross_sections,

@@ -290,6 +290,7 @@ class BaseProcessor(abc.ABC):
             "interpolation": {
                 "rivers": "rbf",
                 "waterways": "cubic",
+                "lakes": "linear",
                 "stopbanks": "nearest",
                 "ocean": "rbf",
                 "lidar": "idw",
@@ -297,6 +298,7 @@ class BaseProcessor(abc.ABC):
             },
             "z_labels": {
                 "waterways": "z",
+                "lakes": "z",
                 "stopbanks": "z",
                 "rivers": "z",
                 "ocean": None,
@@ -1233,7 +1235,7 @@ class HydrologicDemGenerator(BaseProcessor):
             self.logger.info(f"Incorporating waterways: {elevations}")
 
             # Load in bathymetry
-            estimated_elevations = geometry.EstimatedElevationPoints(
+            estimated_elevations = geometry.ElevationPoints(
                 points_files=elevations,
                 polygon_files=polygons,
                 filter_osm_ids=self.get_instruction_general(
@@ -1248,7 +1250,7 @@ class HydrologicDemGenerator(BaseProcessor):
             # Call interpolate river on the DEM - the class checks to see if any pixels
             # actually fall inside the polygon
             if len(estimated_elevations.polygons) > 0:  # Skip if no waterways
-                hydrologic_dem.interpolate_elevations_within_polygon(
+                hydrologic_dem.add_points_within_polygon_chunked(
                     elevations=estimated_elevations,
                     method=self.get_instruction_general(
                         key="interpolation", subkey="waterways"
@@ -1259,6 +1261,65 @@ class HydrologicDemGenerator(BaseProcessor):
                 temp_file = temp_folder / "dem_added_waterways.nc"
                 self.logger.info(
                     f"Save temp DEM with waterways added to netCDF: {temp_file}"
+                )
+                hydrologic_dem.save_and_load_dem(temp_file)
+                # Remove previous cached file and replace with new one
+                if cached_file is not None:
+                    self.clean_cached_file(cached_file)
+                cached_file = temp_file
+        # Check for lakes
+        if "lakes" in self.instructions["data_paths"]:
+            # Loop through each lake in turn adding individually
+            subfolder = self.get_instruction_path(key="subfolder")
+            z_labels = self.get_instruction_general(key="z_labels", subkey="lakes")
+            lakes = self.instructions["data_paths"]["lakes"]
+            if isinstance(z_labels, str):
+                z_labels = [z_labels for i in range(len(lakes))]
+            elif not isinstance(z_labels, list) or len(z_labels) != len(lakes):
+                raise ValueError(
+                    "There is a mismatch in length between the provided z_labels "
+                    f"and the lakes: {z_labels} {lakes}"
+                )
+            for index, lake_dict in enumerate(lakes):
+                elevation = pathlib.Path(lake_dict["elevations"])
+                polygon = pathlib.Path(lake_dict["extents"])
+                if not elevation.is_absolute():
+                    elevation = subfolder / elevation
+                if not polygon.is_absolute():
+                    polygon = subfolder / polygon
+
+                self.logger.info(f"Incorporating lake: {elevation}")
+                # Load in elevations
+                elevations = geometry.ElevationContours(
+                    points_files=[elevation],
+                    polygon_files=[polygon],
+                    catchment_geometry=self.catchment_geometry,
+                    z_labels=z_labels[index],
+                )
+
+                if (
+                    len(elevations.points_array) == 0
+                    or elevations.polygons.area.sum()
+                    < self.catchment_geometry.resolution**2
+                ):
+                    self.logger.warning(
+                        "No points or an area less than one grid cell in "
+                        f"lake {elevation}. Ignoring."
+                    )
+                    continue
+
+                # Add lake to DEM
+                hydrologic_dem.add_points_within_polygon_nearest_chunked(
+                    elevations=elevations,
+                    method=self.get_instruction_general(
+                        key="interpolation", subkey="lakes"
+                    ),
+                    cache_path=temp_folder,
+                    label="lakes",
+                )
+                temp_file = temp_folder / f"dem_added_{index + 1}_lake.nc"
+                self.logger.info(
+                    f"Save temp DEM with lake {index + 1} added to netCDF: {temp_file}"
                 )
                 hydrologic_dem.save_and_load_dem(temp_file)
                 # Remove previous cached file and replace with new one
@@ -1289,7 +1350,7 @@ class HydrologicDemGenerator(BaseProcessor):
                 self.logger.info(f"Incorporating river: {elevation}")
 
                 # Load in bathymetry
-                estimated_elevations = geometry.EstimatedElevationPoints(
+                estimated_elevations = geometry.ElevationPoints(
                     points_files=[elevation],
                     polygon_files=[polygon],
                     catchment_geometry=self.catchment_geometry,
@@ -1309,12 +1370,13 @@ class HydrologicDemGenerator(BaseProcessor):
 
                 # Call interpolate river on the DEM - the class checks to see if any pixels
                 # actually fall inside the polygon
-                hydrologic_dem.interpolate_rivers(
+                hydrologic_dem.add_points_within_polygon_nearest_chunked(
                     elevations=estimated_elevations,
                     method=self.get_instruction_general(
                         key="interpolation", subkey="rivers"
                     ),
                     cache_path=temp_folder,
+                    label="rivers and fans",
                 )
                 temp_file = temp_folder / f"dem_added_{index + 1}_rivers.nc"
                 self.logger.info(
@@ -1346,7 +1408,7 @@ class HydrologicDemGenerator(BaseProcessor):
             self.logger.info(f"Incorporating stopbanks: {elevations}")
 
             # Load in bathymetry
-            estimated_elevations = geometry.EstimatedElevationPoints(
+            estimated_elevations = geometry.ElevationPoints(
                 points_files=elevations,
                 polygon_files=polygons,
                 catchment_geometry=self.catchment_geometry,
@@ -1358,7 +1420,7 @@ class HydrologicDemGenerator(BaseProcessor):
             # Call interpolate river on the DEM - the class checks to see if any pixels
             # actually fall inside the polygon
             if len(estimated_elevations.polygons) > 0:  # Skip if no stopbanks
-                hydrologic_dem.interpolate_elevations_within_polygon(
+                hydrologic_dem.add_points_within_polygon_chunked(
                     elevations=estimated_elevations,
                     method=self.get_instruction_general(
                         key="interpolation", subkey="stopbanks"
@@ -1570,7 +1632,7 @@ class PatchDemGenerator(BaseProcessor):
                 elevation_range=None,
             )
             patch_paths = self.get_vector_or_raster_paths(
-                key="patchs", data_type="raster"
+                key="patches", data_type="raster"
             )
             if self.get_patch_instruction("patch_on_top"):
                 patch_paths = patch_paths[::-1]  # Reverse so first ends up on top
@@ -2641,8 +2703,11 @@ class RiverBathymetryGenerator(BaseProcessor):
         # Note projection function is limited between [0, osm_channel.length]
         end_split_length = float(osm_channel.project(network_end))
         start_split_length = float(osm_channel.project(network_start))
-        # Ensure the OSM line is defined upstream
-        if start_split_length > end_split_length:
+        # Ensure the OSM line is defined mouth to upstream
+        if (
+            start_split_length > end_split_length
+            or start_split_length >= float(osm_channel.length) / 2
+        ):
             # Reverse direction of the geometry
             osm_channel.loc[0, "geometry"] = shapely.geometry.LineString(
                 list(osm_channel.iloc[0].geometry.coords)[::-1]
@@ -2658,20 +2723,17 @@ class RiverBathymetryGenerator(BaseProcessor):
                 osm_channel.loc[0].geometry, split_point.loc[0], tolerance=0.1
             )
             osm_channel = geopandas.GeoDataFrame(
-                {
-                    "geometry": [
-                        list(shapely.ops.split(osm_channel, split_point.loc[0]).geoms)[
-                            1
-                        ]
-                    ]
-                },
+                geometry=[
+                    list(shapely.ops.split(osm_channel, split_point.loc[0]).geoms)[1]
+                ],
                 crs=crs,
             )
-        else:
+        elif start_split_length == 0 and not self.get_bathymetry_instruction(
+            "keep_downstream_osm"
+        ):
             self.logger.warning(
-                "The OSM reference line starts upstream of the"
-                "network line. The bottom of the network will be"
-                "ignored over a stright line distance of "
+                "The OSM reference line starts upstream of the network line. The bottom "
+                "of the network will be ignored over a stright line distance of "
                 f"{osm_channel.distance(network_start)}"
             )
         # Clip end if needed - recacluate clip position incase front clipped.
@@ -2682,21 +2744,33 @@ class RiverBathymetryGenerator(BaseProcessor):
                 osm_channel.loc[0].geometry, split_point.loc[0], tolerance=0.1
             )
             osm_channel = geopandas.GeoDataFrame(
-                {
-                    "geometry": [
-                        list(shapely.ops.split(osm_channel, split_point.loc[0]).geoms)[
-                            0
-                        ]
-                    ]
-                },
+                geometry=[
+                    list(shapely.ops.split(osm_channel, split_point.loc[0]).geoms)[0]
+                ],
                 crs=crs,
             )
         else:
             self.logger.warning(
-                "The OSM reference line ends downstream of the"
-                "network line. The top of the network will be"
-                "ignored over a stright line distance of "
+                "The OSM reference line ends upstream of the network line. The top of "
+                "the network will be ignored over a stright line distance of "
                 f"{osm_channel.distance(network_end)}"
+            )
+        # In case of both network points at far end ensure only short end is returned
+        if start_split_length == 0 and end_split_length == 0:
+            split_point = osm_channel.interpolate(channel.length)
+            osm_channel = shapely.ops.snap(
+                osm_channel.loc[0].geometry, split_point.loc[0], tolerance=0.1
+            )
+            osm_channel = geopandas.GeoDataFrame(
+                geometry=[
+                    list(shapely.ops.split(osm_channel, split_point.loc[0]).geoms)[0]
+                ],
+                crs=crs,
+            )
+            self.logger.warning(
+                "The OSM reference line ends upstream of both ends of the network line. It "
+                "will be clipped to the total length of the network line "
+                f"{channel.length}. Please review if unexpected."
             )
 
         if self.debug:
@@ -3789,7 +3863,7 @@ class StopbankCrestElevationEstimator(BaseProcessor):
             if dem.x[-1] - dem.x[0] > 0
             else slice(bbox[2], bbox[0])
         )
-        # breakpoint()
+
         small_z = dem.z.sel(x=x_slice, y=y_slice)
 
         # clip to polygon and return minimum elevation
@@ -3847,7 +3921,7 @@ class StopbankCrestElevationEstimator(BaseProcessor):
         for index, rows in points.groupby(level=0):
             dem_file = self.get_result_file_path(key="raw_dem", index=index)
             dem = self.load_dem(filename=dem_file)
-            # breakpoint()
+
             zs = rows["polygons"].apply(
                 lambda geometry: self.maximum_elevation_in_polygon(
                     geometry=geometry, dem=dem

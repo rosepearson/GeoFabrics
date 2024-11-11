@@ -41,7 +41,7 @@ class Test(base_test.Test):
     FILE_SIZES = {
         "CL2_BR20_2020_1000_4012.laz": 2636961,
         "CL2_BR20_2020_1000_4013.laz": 3653378,
-        DATASET + "_TileIndex.zip": 1125874,
+        DATASET + "_TileIndex.zip": 1848391,
     }
 
     @classmethod

@@ -135,6 +135,7 @@
 			"rivers": [{"extents": "rivers/river_polygon.geojson", "elevations": "rivers/river_bathymetry.geojson"}],
 			"waterways": [{"extents": "waterways/closed_waterways_polygon.geojson", "elevations": "waterways/closed_waterways_elevation.geojson"},
 			              {"extents": "waterways/open_waterways_polygon.geojson", "elevations": "waterways/open_waterways_elevation.geojson"}],
+            "lakes": [{"extents": "../lake_outline.gpkg", "elevations": "../lake_contours.gpkg"}],
 			"result_dem": "test_dem.nc"
 		},
 		"datasets": {

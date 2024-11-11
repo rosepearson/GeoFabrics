@@ -553,7 +553,7 @@ class OceanPoints:
         return points
 
 
-class EstimatedElevationPoints:
+class ElevationPoints:
     """A class for accessing estimated or measured river, mouth and waterway
     elevations as points. Paired elevation and polygon files are expected.
     The elevations are used to interpolate elevations within the polygons.
@@ -630,7 +630,7 @@ class EstimatedElevationPoints:
                 polygon_list.append(polygon_i)
         # Set CRS, clip to size and reset index
         if len(points_list) == 0:
-            self.logger.warning("No waterways elevations. Ignoring.")
+            self.logger.warning("No elevations. Ignoring.")
             self._points = []
             self._polygon = []
             return
@@ -758,6 +758,43 @@ class EstimatedElevationPoints:
         return self._z
 
 
+class ElevationContours(ElevationPoints):
+    """Resample at spatial resolution at points"""
+
+    def __init__(
+        self,
+        points_files: list,
+        polygon_files: list,
+        catchment_geometry: CatchmentGeometry,
+        z_labels: list = None,
+    ):
+        super(ElevationContours, self).__init__(
+            points_files=points_files,
+            polygon_files=polygon_files,
+            catchment_geometry=catchment_geometry,
+            filter_osm_ids=[],
+            z_labels=z_labels,
+        )
+        self.logger = logging.getLogger(f"{__name__}.{self.__class__.__name__}")
+
+        # convert contoursto samples points at resolution
+        self.sample_contours(self.catchment_geometry.resolution)
+
+    def sample_contours(self, resolution: float) -> numpy.ndarray:
+        """Sample the contours at the specified resolution."""
+
+        # convert contours to multipoints
+        self._points.loc[:, "geometry"] = self._points.geometry.apply(
+            lambda row: shapely.geometry.MultiPoint(
+                [
+                    row.interpolate(i * resolution)
+                    for i in range(int(numpy.ceil(row.length / resolution)))
+                ]
+            )
+        )
+        self._points = self._points.explode(index_parts=True, ignore_index=True)
+
+
 class TileInfo:
     """A class for working with tiling information."""
 
@@ -854,7 +891,7 @@ class RiverMouthFan:
 
         # Get the river alignment and clip to the river polygon
         aligned_channel = geopandas.read_file(self.aligned_channel_file)
-        river_polygon = geopandas.read_file(self.river_polygon_file)
+        river_polygon = geopandas.read_file(self.river_polygon_file).make_valid()
         aligned_channel = aligned_channel.clip(river_polygon)
         # Explode incase the aligned channel is clipped into a MultiPolyLine
         (x, y) = aligned_channel.explode().iloc[0].geometry.xy
