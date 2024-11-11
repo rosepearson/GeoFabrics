@@ -17,7 +17,8 @@ Classes
    geofabrics.geometry.CatchmentGeometry
    geofabrics.geometry.BathymetryContours
    geofabrics.geometry.OceanPoints
-   geofabrics.geometry.EstimatedElevationPoints
+   geofabrics.geometry.ElevationPoints
+   geofabrics.geometry.ElevationContours
    geofabrics.geometry.TileInfo
    geofabrics.geometry.RiverMouthFan
 
@@ -162,7 +163,7 @@ Module Contents
 
 
 
-.. py:class:: EstimatedElevationPoints(points_files, polygon_files, catchment_geometry, filter_osm_ids = [], z_labels = None)
+.. py:class:: ElevationPoints(points_files, polygon_files, catchment_geometry, filter_osm_ids = [], z_labels = None)
 
    A class for accessing estimated or measured river, mouth and waterway
    elevations as points. Paired elevation and polygon files are expected.
@@ -213,6 +214,20 @@ Module Contents
    .. py:property:: z
 
       The z values
+
+
+.. py:class:: ElevationContours(points_files, polygon_files, catchment_geometry, z_labels = None)
+
+   Bases: :py:obj:`ElevationPoints`
+
+
+   Resample at spatial resolution at points
+
+
+   .. py:method:: sample_contours(resolution)
+
+      Sample the contours at the specified resolution.
+
 
 
 .. py:class:: TileInfo(tile_file, catchment_geometry)
