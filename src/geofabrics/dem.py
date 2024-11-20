@@ -884,6 +884,22 @@ class HydrologicallyConditionedDem(DemBase):
             delayed_chunked_x = []
             for j, dim_x in enumerate(chunked_dim_x):
                 self.logger.debug(f"\tLiDAR chunk {[i, j]}")
+                # Check ROI to tile
+                chunk_region_to_tile = self._define_chunk_region(
+                    region_to_rasterise=region_to_rasterise,
+                    dim_x=dim_x,
+                    dim_y=dim_y,
+                    radius=0,
+                )
+                if chunk_region_to_tile.area.sum() == 0:
+                    self.logger.debug(f"\t\tReturning empty tile as out of RIO")
+                    delayed_chunked_x.append(
+                        dask.array.empty(
+                            shape=(len(dim_y), len(dim_x)),
+                            dtype=raster_options["raster_type"],
+                        )
+                    )
+                    continue
                 # Load in points
                 chunk_offshore_points = delayed_load_tiles_in_chunk(
                     lidar_files=[offshore_file],
@@ -1203,6 +1219,23 @@ class HydrologicallyConditionedDem(DemBase):
             delayed_chunked_x = []
             for j, dim_x in enumerate(chunked_dim_x):
                 self.logger.debug(f"\tLiDAR chunk {[i, j]}")
+                # Check ROI to tile
+                chunk_region_to_tile = self._define_chunk_region(
+                    region_to_rasterise=region_to_rasterise,
+                    dim_x=dim_x,
+                    dim_y=dim_y,
+                    radius=0,
+                )
+                if chunk_region_to_tile.area.sum() == 0:
+                    self.logger.debug(f"\t\tReturning empty tile as out of RIO")
+                    delayed_chunked_x.append(
+                        dask.array.empty(
+                            shape=(len(dim_y), len(dim_x)),
+                            dtype=raster_options["raster_type"],
+                        )
+                    )
+                    continue
+
                 # Load in points
                 river_points = delayed_load_tiles_in_chunk(
                     lidar_files=[lidar_file],
@@ -1414,6 +1447,23 @@ class HydrologicallyConditionedDem(DemBase):
             delayed_chunked_x = []
             for j, dim_x in enumerate(chunked_dim_x):
                 self.logger.debug(f"\tLiDAR chunk {[i, j]}")
+                # Check ROI to tile
+                chunk_region_to_tile = self._define_chunk_region(
+                    region_to_rasterise=region_to_rasterise,
+                    dim_x=dim_x,
+                    dim_y=dim_y,
+                    radius=0,
+                )
+                if chunk_region_to_tile.area.sum() == 0:
+                    self.logger.debug(f"\t\tReturning empty tile as out of RIO")
+                    delayed_chunked_x.append(
+                        dask.array.empty(
+                            shape=(len(dim_y), len(dim_x)),
+                            dtype=raster_options["raster_type"],
+                        )
+                    )
+                    continue
+                
                 # Load in points
                 points = delayed_load_tiles_in_chunk(
                     lidar_files=[points_file],
