@@ -304,10 +304,18 @@ class BaseProcessor(abc.ABC):
                 "ocean": None,
             },
             "ignore_clipping": False,
-            "ocean": {
-                "nearest_k_for_interpolation": 40,
-                "use_edge": False,
-                "is_depth": False,
+            "nearest_k_for_interpolation": {
+                "ocean": 40,
+                "lake": 500,
+                "rivers": 100,
+            },
+            "use_edge": {
+                "ocean": False,
+                "lake": False,
+            },
+            "is_depth": {
+                "ocean": False,
+                "lake": False,
             },
             "filter_waterways_by_osm_ids": [],
             "compression": 1,
@@ -1178,7 +1186,7 @@ class HydrologicDemGenerator(BaseProcessor):
                         key="z_labels", subkey="ocean"
                     ),
                     is_depth=self.get_instruction_general(
-                        key="ocean", subkey="is_depth"
+                        key="is_depth", subkey="ocean"
                     ),
                 )
                 # Interpolate
@@ -1186,10 +1194,10 @@ class HydrologicDemGenerator(BaseProcessor):
                     ocean_points=ocean_points,
                     cache_path=temp_folder,
                     use_edge=self.get_instruction_general(
-                        key="ocean", subkey="use_edge"
+                        key="use_edge", subkey="ocean"
                     ),
                     k_nearest_neighbours=self.get_instruction_general(
-                        key="ocean", subkey="nearest_k_for_interpolation"
+                        key="nearest_k_for_interpolation", subkey="ocean"
                     ),
                     buffer=self.get_instruction_general(key="lidar_buffer"),
                     method=self.get_instruction_general(
@@ -1295,6 +1303,9 @@ class HydrologicDemGenerator(BaseProcessor):
                     polygon_files=[polygon],
                     catchment_geometry=self.catchment_geometry,
                     z_labels=z_labels[index],
+                    is_depth=self.get_instruction_general(
+                        key="is_depth", subkey="lakes"
+                    ),
                 )
 
                 if (
@@ -1316,6 +1327,12 @@ class HydrologicDemGenerator(BaseProcessor):
                     ),
                     cache_path=temp_folder,
                     label="lakes",
+                    include_edges=self.get_instruction_general(
+                        key="use_edge", subkey="lakes"
+                    ),
+                    k_nearest_neighbours=self.get_instruction_general(
+                        key="nearest_k_for_interpolation", subkey="lakes"
+                    ),
                 )
                 temp_file = temp_folder / f"dem_added_{index + 1}_lake.nc"
                 self.logger.info(
@@ -1377,6 +1394,9 @@ class HydrologicDemGenerator(BaseProcessor):
                     ),
                     cache_path=temp_folder,
                     label="rivers and fans",
+                    k_nearest_neighbours=self.get_instruction_general(
+                        key="nearest_k_for_interpolation", subkey="rivers"
+                    ),
                 )
                 temp_file = temp_folder / f"dem_added_{index + 1}_rivers.nc"
                 self.logger.info(
