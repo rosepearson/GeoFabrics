@@ -2033,6 +2033,21 @@ class RawDem(LidarBase):
                         chunk_region_to_tile=chunk_region_to_tile,
                         lidar_files_map=lidar_files_map,
                     )
+
+                    # Return empty if no files
+                    if len(chunk_lidar_files) == 0:
+                        self.logger.debug(
+                            f"\t\tReturning empty tile as no LiDAR or out of ROI"
+                        )
+                        delayed_chunked_x.append(
+                            dask.array.empty(
+                                shape=(len(dim_y), len(dim_x)),
+                                dtype=raster_options["raster_type"],
+                            )
+                        )
+                        continue
+
+                    # Get point cloud
                     chunk_points = delayed_load_tiles_in_chunk(
                         lidar_files=chunk_lidar_files,
                         source_crs=source_crs,
@@ -2925,6 +2940,20 @@ class RoughnessDem(LidarBase):
                         chunk_region_to_tile=chunk_region_to_tile,
                         lidar_files_map=lidar_files_map,
                     )
+
+                    # Return empty if no files
+                    if len(chunk_lidar_files) == 0:
+                        self.logger.debug(
+                            f"\t\tReturning empty tile as no LiDAR or out of ROI"
+                        )
+                        delayed_chunked_x.append(
+                            dask.array.empty(
+                                shape=(len(dim_y), len(dim_x)),
+                                dtype=raster_options["raster_type"],
+                            )
+                        )
+                        continue
+
                     chunk_points = delayed_load_tiles_in_chunk(
                         lidar_files=chunk_lidar_files,
                         source_crs=source_crs,

@@ -306,16 +306,16 @@ class BaseProcessor(abc.ABC):
             "ignore_clipping": False,
             "nearest_k_for_interpolation": {
                 "ocean": 40,
-                "lake": 500,
+                "lakes": 500,
                 "rivers": 100,
             },
             "use_edge": {
                 "ocean": False,
-                "lake": False,
+                "lakes": False,
             },
             "is_depth": {
                 "ocean": False,
-                "lake": False,
+                "lakes": False,
             },
             "filter_waterways_by_osm_ids": [],
             "compression": 1,
