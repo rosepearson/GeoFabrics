@@ -1293,13 +1293,19 @@ class HydrologicallyConditionedDem(DemBase):
         # Tempoarily save the adjacent points from the DEM
         if include_edges:
             edge_dem = self._dem.rio.clip(
-                region_to_rasterise.dissolve().buffer(self.catchment_geometry.resolution),
+                region_to_rasterise.dissolve().buffer(
+                    self.catchment_geometry.resolution
+                ),
                 drop=True,
             )
-            self._write_netcdf_conventions_in_place(edge_dem, self.catchment_geometry.crs)
+            self._write_netcdf_conventions_in_place(
+                edge_dem, self.catchment_geometry.crs
+            )
             edge_dem["z"] = edge_dem.z.rio.interpolate_na(method="nearest")
             edge_dem = self._dem.rio.clip(
-                region_to_rasterise.dissolve().buffer(self.catchment_geometry.resolution),
+                region_to_rasterise.dissolve().buffer(
+                    self.catchment_geometry.resolution
+                ),
                 drop=True,
             )
             edge_dem = edge_dem.rio.clip(
@@ -1340,7 +1346,9 @@ class HydrologicallyConditionedDem(DemBase):
                 mask_z_edge = mask_z.copy()
                 mask_z_edge[:] = False
                 mask_z_edge[mask_z] = flat_z[mask_z] > estimated_edge_z
-                flat_z[mask_z_edge] = estimated_edge_z[flat_z[mask_z] > estimated_edge_z]
+                flat_z[mask_z_edge] = estimated_edge_z[
+                    flat_z[mask_z] > estimated_edge_z
+                ]
 
             # Use the flat_x/y/z to define edge points and heights
             edge_points = numpy.empty(
@@ -1369,11 +1377,12 @@ class HydrologicallyConditionedDem(DemBase):
             )
             pdal_pipeline.execute()
 
-        if (
-            len(points) < raster_options["k_nearest_neighbours"]
-            or (include_edges and len(edge_points) < raster_options["k_nearest_neighbours"])
+        if len(points) < raster_options["k_nearest_neighbours"] or (
+            include_edges and len(edge_points) < raster_options["k_nearest_neighbours"]
         ):
-            k_nearest_neighbours = min(len(points), len(edge_points)) if include_edges else len(points)
+            k_nearest_neighbours = (
+                min(len(points), len(edge_points)) if include_edges else len(points)
+            )
             logging.info(
                 f"Fewer points or edge points than the default expected {raster_options['k_nearest_neighbours']}. "
                 f"Updating k_nearest_neighbours to {k_nearest_neighbours}."
@@ -1419,7 +1428,7 @@ class HydrologicallyConditionedDem(DemBase):
                         chunk_region_to_tile=None,
                         crs=raster_options["crs"],
                     )
-                else: 
+                else:
                     edge_points = None
 
                 # Rasterise tiles
