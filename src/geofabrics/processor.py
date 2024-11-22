@@ -315,7 +315,6 @@ class BaseProcessor(abc.ABC):
             },
             "is_depth": {
                 "ocean": False,
-                "lakes": False,
             },
             "filter_waterways_by_osm_ids": [],
             "compression": 1,
@@ -1303,9 +1302,6 @@ class HydrologicDemGenerator(BaseProcessor):
                     polygon_files=[polygon],
                     catchment_geometry=self.catchment_geometry,
                     z_labels=z_labels[index],
-                    is_depth=self.get_instruction_general(
-                        key="is_depth", subkey="lakes"
-                    ),
                 )
 
                 if (
