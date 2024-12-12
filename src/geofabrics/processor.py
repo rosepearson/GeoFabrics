@@ -2119,11 +2119,13 @@ class MeasuredRiverGenerator(BaseProcessor):
         elevations_clean.to_file(river_bathymetry_file)
 
         # Create fan object
+        ocean_points_file = self.get_instruction_path("ocean_points", defaults={"ocean_points": None})
         fan = geometry.RiverMouthFan(
             aligned_channel_file=river_centreline_file,
             river_bathymetry_file=river_bathymetry_file,
             river_polygon_file=river_polygon_file,
             ocean_contour_file=ocean_contour_file,
+            ocean_points_file=ocean_points_file,
             crs=crs,
             cross_section_spacing=cross_section_spacing,
             elevation_labels=["z"],
@@ -3154,11 +3156,13 @@ class RiverBathymetryGenerator(BaseProcessor):
         )
 
         # Create fan object
+        ocean_points_file = self.get_instruction_path("ocean_points", defaults={"ocean_points": None})
         fan = geometry.RiverMouthFan(
             aligned_channel_file=aligned_channel_file,
             river_bathymetry_file=river_bathymetry_file,
             river_polygon_file=river_polygon_file,
             ocean_contour_file=ocean_contour_file,
+            ocean_points_file=ocean_points_file,
             crs=crs,
             cross_section_spacing=cross_section_spacing,
             elevation_labels=[
