@@ -894,8 +894,9 @@ class HydrologicallyConditionedDem(DemBase):
                 if chunk_region_to_tile.area.sum() == 0:
                     self.logger.debug(f"\t\tReturning empty tile as out of RIO")
                     delayed_chunked_x.append(
-                        dask.array.empty(
+                        dask.array.full(
                             shape=(len(dim_y), len(dim_x)),
+                            fill_value=numpy.nan,
                             dtype=raster_options["raster_type"],
                         )
                     )
@@ -1229,8 +1230,9 @@ class HydrologicallyConditionedDem(DemBase):
                 if chunk_region_to_tile.area.sum() == 0:
                     self.logger.debug(f"\t\tReturning empty tile as out of RIO")
                     delayed_chunked_x.append(
-                        dask.array.empty(
+                        dask.array.full(
                             shape=(len(dim_y), len(dim_x)),
+                            fill_value=numpy.nan,
                             dtype=raster_options["raster_type"],
                         )
                     )
@@ -1457,8 +1459,9 @@ class HydrologicallyConditionedDem(DemBase):
                 if chunk_region_to_tile.area.sum() == 0:
                     self.logger.debug(f"\t\tReturning empty tile as out of RIO")
                     delayed_chunked_x.append(
-                        dask.array.empty(
+                        dask.array.full(
                             shape=(len(dim_y), len(dim_x)),
+                            fill_value=numpy.nan,
                             dtype=raster_options["raster_type"],
                         )
                     )
@@ -2040,8 +2043,9 @@ class RawDem(LidarBase):
                             f"\t\tReturning empty tile as no LiDAR or out of ROI"
                         )
                         delayed_chunked_x.append(
-                            dask.array.empty(
+                            dask.array.full(
                                 shape=(len(dim_y), len(dim_x)),
+                                fill_value=numpy.nan,
                                 dtype=raster_options["raster_type"],
                             )
                         )
