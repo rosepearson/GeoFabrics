@@ -3694,7 +3694,7 @@ class WaterwayBedElevationEstimator(BaseProcessor):
             # Clip to land
             waterways = waterways.clip(self.catchment_geometry.land).sort_index(
                 ascending=True
-            )
+            ).reset_index()
 
             # Save file
             waterways.to_file(waterways_path)
