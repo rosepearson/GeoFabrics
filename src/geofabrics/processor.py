@@ -2119,7 +2119,10 @@ class MeasuredRiverGenerator(BaseProcessor):
         elevations_clean.to_file(river_bathymetry_file)
 
         # Create fan object
-        ocean_points_file = self.get_instruction_path("ocean_points", defaults={"ocean_points": None})
+        if self.check_vector_or_raster(key="ocean_points", api_type="vector"):
+            ocean_points_file = self.get_instruction_path("ocean_points")
+        else:
+            ocean_points_file = None
         fan = geometry.RiverMouthFan(
             aligned_channel_file=river_centreline_file,
             river_bathymetry_file=river_bathymetry_file,
@@ -3156,7 +3159,10 @@ class RiverBathymetryGenerator(BaseProcessor):
         )
 
         # Create fan object
-        ocean_points_file = self.get_instruction_path("ocean_points", defaults={"ocean_points": None})
+        if self.check_vector_or_raster(key="ocean_points", api_type="vector"):
+            ocean_points_file = self.get_instruction_path("ocean_points")
+        else:
+            ocean_points_file = None
         fan = geometry.RiverMouthFan(
             aligned_channel_file=aligned_channel_file,
             river_bathymetry_file=river_bathymetry_file,
@@ -3703,7 +3709,7 @@ class WaterwayBedElevationEstimator(BaseProcessor):
             )
 
             # Save file
-            waterways.to_file(waterways_path);
+            waterways.to_file(waterways_path)
         return waterways
 
     def run(self):
@@ -3757,7 +3763,6 @@ class WaterwayBedElevationEstimator(BaseProcessor):
             elevations.to_file(self.get_result_file_path(key="open_elevation"))
             elevations.to_file(self.get_result_file_path(key="closed_elevation"))
             return
-
         # Create a DEM where the waterways and tunnels are
         self.create_dem(waterways=waterways)
 

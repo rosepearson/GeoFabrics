@@ -631,7 +631,10 @@ class HydrologicallyConditionedDem(DemBase):
         self._write_netcdf_conventions_in_place(raw_dem, catchment_geometry.crs)
 
         # Clip to catchment and set the data_source layer to NaN where there is no data
-        raw_dem = raw_dem.rio.clip(catchment_geometry.catchment.geometry, drop=True)
+        raw_dem = raw_dem.rio.clip_box(*tuple(catchment_geometry.catchment.total_bounds))
+        raw_dem = raw_dem.where(
+            clip_mask(raw_dem.z, catchment_geometry.catchment.geometry, self.chunk_size)
+        )
         raw_dem["data_source"] = raw_dem.data_source.where(
             raw_dem.data_source != self.SOURCE_CLASSIFICATION["no data"],
             numpy.nan,
@@ -1158,16 +1161,12 @@ class HydrologicallyConditionedDem(DemBase):
 
         if include_edges:
             # Get edge points - from DEM
-            edge_dem = self._dem.rio.clip(
-                region_to_rasterise.dissolve().buffer(
-                    self.catchment_geometry.resolution
-                ),
-                drop=True,
-            )
+            edge_roi = region_to_rasterise.dissolve().buffer(self.catchment_geometry.resolution)
+            edge_dem = self._dem.rio.clip_box(*tuple(edge_roi.total_bounds))
+            edge_dem = edge_dem.rio.clip(edge_roi)
             edge_dem = edge_dem.rio.clip(
                 region_to_rasterise.dissolve().geometry,
                 invert=True,
-                drop=True,
             )
             # Define the edge points
             grid_x, grid_y = numpy.meshgrid(edge_dem.x, edge_dem.y)
@@ -1325,24 +1324,18 @@ class HydrologicallyConditionedDem(DemBase):
         pdal_pipeline = pdal.Pipeline(json.dumps(pdal_pipeline_instructions), [points])
         pdal_pipeline.execute()
 
-        # Tempoarily save the adjacent points from the DEM
+        # Tempoarily save the adjacent points from the DEM - ensure no NaN through NN interpolation
         if include_edges:
-            edge_dem = self._dem.rio.clip(
-                region_to_rasterise.dissolve().buffer(
+            edge_roi = region_to_rasterise.dissolve().buffer(
                     self.catchment_geometry.resolution
-                ),
-                drop=True,
-            )
+                )
+            edge_dem = self._dem.rio.clip_box(*tuple(edge_roi.total_bounds))
+            #edge_dem = edge_dem.rio.clip(edge_roi)
             self._write_netcdf_conventions_in_place(
                 edge_dem, self.catchment_geometry.crs
             )
             edge_dem["z"] = edge_dem.z.rio.interpolate_na(method="nearest")
-            edge_dem = self._dem.rio.clip(
-                region_to_rasterise.dissolve().buffer(
-                    self.catchment_geometry.resolution
-                ),
-                drop=True,
-            )
+            edge_dem = edge_dem.rio.clip(edge_roi, drop=True, )
             edge_dem = edge_dem.rio.clip(
                 region_to_rasterise.dissolve().geometry,
                 invert=True,
@@ -1923,7 +1916,7 @@ class RawDem(LidarBase):
 
         # Clip DEM to Catchment and ensure NaN outside region to rasterise
         catchment = self.catchment_geometry.catchment
-        self._dem = self._dem.rio.clip_box(**catchment.bounds.iloc[0])
+        self._dem = self._dem.rio.clip_box(*tuple(catchment.total_bounds))
         self._dem = self._dem.where(
             clip_mask(self._dem.z, catchment.geometry, self.chunk_size)
         )
@@ -2493,19 +2486,21 @@ class PatchDem(LidarBase):
         patch = rioxarray.rioxarray.open_rasterio(
             patch_path,
             masked=True,
+            chunks=True,
         ).squeeze("band", drop=True)
         patch.rio.write_crs(self.catchment_geometry.crs["horizontal"], inplace=True)
         patch_resolution = patch.rio.resolution()
         patch_resolution = max(abs(patch_resolution[0]), abs(patch_resolution[1]))
+
         # Define region to patch within
         if self.drop_patch_offshore:
             roi = self.catchment_geometry.land_and_foreshore
         else:
             roi = self.catchment_geometry.catchment
         try:  # Use try catch as otherwise crash if patch does not overlap roi
-            patch = patch.rio.clip(
-                roi.buffer(patch_resolution).geometry,
-                drop=True,
+            patch = patch.rio.clip_box(*tuple(roi.buffer(patch_resolution).total_bounds))
+            patch = patch.where(
+                clip_mask(patch, roi.buffer(patch_resolution).geometry, self.chunk_size)
             )
         except (  # If exception skip and proceed to the next patch
             rioxarray.exceptions.NoDataInBounds,
@@ -2720,7 +2715,7 @@ class RoughnessDem(LidarBase):
 
         # Clip to the catchment extents to ensure performance
         catchment = self.catchment_geometry.catchment
-        hydrological_dem = hydrological_dem.rio.clip_box(**catchment.bounds.iloc[0])
+        hydrological_dem = hydrological_dem.rio.clip_box(*tuple(catchment.total_bounds))
         mask = clip_mask(hydrological_dem.z, catchment.geometry, self.chunk_size)
         hydrological_dem = hydrological_dem.where(mask)
         # Rerun as otherwise the no data as NaN seems to be lost for the data_source layer
