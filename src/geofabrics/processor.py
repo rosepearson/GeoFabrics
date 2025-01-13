@@ -1784,12 +1784,13 @@ class RoughnessLengthGenerator(BaseProcessor):
 
         if roads_polygon_path.is_file():
             roads_polygon = geopandas.read_file(roads_path)
-            if roads_polygon.area.sum():
+            if roads_polygon.area.sum() == 0:
                 message = (
                     "Warning zero area roads polygon provided. Will ignore. "
                     f"Please check {roads_polygon_path} if unexpected."
                 )
                 self.logger.warning(message)
+                return roads_polygon
             if "roughness" not in roads_polygon.columns:
                 message = (
                     "No roughnesses defined in the road polygon file. This is "
@@ -1961,7 +1962,7 @@ class RoughnessLengthGenerator(BaseProcessor):
             )  # Note must be called after all others if it is to be complete
 
             # If roads save temp then add in the roads
-            if roads is not None:
+            if roads is not None and roads.area.sum() > 0:
                 # Cache roughness before adding roads
                 temp_file = temp_folder / "zo_clipped.nc"
                 self.logger.info(f"Save clipped geofabric to netCDF: {temp_file}")
