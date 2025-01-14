@@ -304,10 +304,17 @@ class BaseProcessor(abc.ABC):
                 "ocean": None,
             },
             "ignore_clipping": False,
-            "ocean": {
-                "nearest_k_for_interpolation": 40,
-                "use_edge": False,
-                "is_depth": False,
+            "nearest_k_for_interpolation": {
+                "ocean": 40,
+                "lakes": 500,
+                "rivers": 100,
+            },
+            "use_edge": {
+                "ocean": False,
+                "lakes": False,
+            },
+            "is_depth": {
+                "ocean": False,
             },
             "filter_waterways_by_osm_ids": [],
             "compression": 1,
@@ -1178,7 +1185,7 @@ class HydrologicDemGenerator(BaseProcessor):
                         key="z_labels", subkey="ocean"
                     ),
                     is_depth=self.get_instruction_general(
-                        key="ocean", subkey="is_depth"
+                        key="is_depth", subkey="ocean"
                     ),
                 )
                 # Interpolate
@@ -1186,10 +1193,10 @@ class HydrologicDemGenerator(BaseProcessor):
                     ocean_points=ocean_points,
                     cache_path=temp_folder,
                     use_edge=self.get_instruction_general(
-                        key="ocean", subkey="use_edge"
+                        key="use_edge", subkey="ocean"
                     ),
                     k_nearest_neighbours=self.get_instruction_general(
-                        key="ocean", subkey="nearest_k_for_interpolation"
+                        key="nearest_k_for_interpolation", subkey="ocean"
                     ),
                     buffer=self.get_instruction_general(key="lidar_buffer"),
                     method=self.get_instruction_general(
@@ -1316,6 +1323,12 @@ class HydrologicDemGenerator(BaseProcessor):
                     ),
                     cache_path=temp_folder,
                     label="lakes",
+                    include_edges=self.get_instruction_general(
+                        key="use_edge", subkey="lakes"
+                    ),
+                    k_nearest_neighbours=self.get_instruction_general(
+                        key="nearest_k_for_interpolation", subkey="lakes"
+                    ),
                 )
                 temp_file = temp_folder / f"dem_added_{index + 1}_lake.nc"
                 self.logger.info(
@@ -1377,6 +1390,9 @@ class HydrologicDemGenerator(BaseProcessor):
                     ),
                     cache_path=temp_folder,
                     label="rivers and fans",
+                    k_nearest_neighbours=self.get_instruction_general(
+                        key="nearest_k_for_interpolation", subkey="rivers"
+                    ),
                 )
                 temp_file = temp_folder / f"dem_added_{index + 1}_rivers.nc"
                 self.logger.info(
@@ -1768,12 +1784,13 @@ class RoughnessLengthGenerator(BaseProcessor):
 
         if roads_polygon_path.is_file():
             roads_polygon = geopandas.read_file(roads_path)
-            if roads_polygon.area.sum():
+            if roads_polygon.area.sum() == 0:
                 message = (
                     "Warning zero area roads polygon provided. Will ignore. "
                     f"Please check {roads_polygon_path} if unexpected."
                 )
                 self.logger.warning(message)
+                return roads_polygon
             if "roughness" not in roads_polygon.columns:
                 message = (
                     "No roughnesses defined in the road polygon file. This is "
@@ -1945,7 +1962,7 @@ class RoughnessLengthGenerator(BaseProcessor):
             )  # Note must be called after all others if it is to be complete
 
             # If roads save temp then add in the roads
-            if roads is not None:
+            if roads is not None and roads.area.sum() > 0:
                 # Cache roughness before adding roads
                 temp_file = temp_folder / "zo_clipped.nc"
                 self.logger.info(f"Save clipped geofabric to netCDF: {temp_file}")
@@ -2103,11 +2120,16 @@ class MeasuredRiverGenerator(BaseProcessor):
         elevations_clean.to_file(river_bathymetry_file)
 
         # Create fan object
+        if self.check_vector_or_raster(key="ocean_points", api_type="vector"):
+            ocean_points_file = self.get_instruction_path("ocean_points")
+        else:
+            ocean_points_file = None
         fan = geometry.RiverMouthFan(
             aligned_channel_file=river_centreline_file,
             river_bathymetry_file=river_bathymetry_file,
             river_polygon_file=river_polygon_file,
             ocean_contour_file=ocean_contour_file,
+            ocean_points_file=ocean_points_file,
             crs=crs,
             cross_section_spacing=cross_section_spacing,
             elevation_labels=["z"],
@@ -3138,11 +3160,16 @@ class RiverBathymetryGenerator(BaseProcessor):
         )
 
         # Create fan object
+        if self.check_vector_or_raster(key="ocean_points", api_type="vector"):
+            ocean_points_file = self.get_instruction_path("ocean_points")
+        else:
+            ocean_points_file = None
         fan = geometry.RiverMouthFan(
             aligned_channel_file=aligned_channel_file,
             river_bathymetry_file=river_bathymetry_file,
             river_polygon_file=river_polygon_file,
             ocean_contour_file=ocean_contour_file,
+            ocean_points_file=ocean_points_file,
             crs=crs,
             cross_section_spacing=cross_section_spacing,
             elevation_labels=[
@@ -3587,6 +3614,8 @@ class WaterwayBedElevationEstimator(BaseProcessor):
 
         if waterways_path.is_file():
             waterways = geopandas.read_file(waterways_path)
+            if source == "osm":
+                waterways = waterways.set_index("OSM_id", drop=True)
             if "width" not in waterways.columns and source == "osm":
                 message = (
                     "For an 'osm' source, the waterways file is generated by "
@@ -3735,7 +3764,6 @@ class WaterwayBedElevationEstimator(BaseProcessor):
             elevations.to_file(self.get_result_file_path(key="open_elevation"))
             elevations.to_file(self.get_result_file_path(key="closed_elevation"))
             return
-
         # Create a DEM where the waterways and tunnels are
         self.create_dem(waterways=waterways)
 

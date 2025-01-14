@@ -315,6 +315,14 @@ class DemBase(abc.ABC):
     def dem(self) -> xarray.Dataset:
         """Return the DEM over the catchment region"""
         raise NotImplementedError("dem must be instantiated in the child class")
+    
+    def _check_resolution(self, dem: xarray.Dataset):
+        """ Check the DEM resolution matches the specified resolution. """
+        dem_resolution = dem.rio.resolution()
+        dem_resolution =  max(abs(dem_resolution[0]), abs(dem_resolution[1]))
+
+        return self.catchment_geometry.resolution == dem_resolution
+
 
     def _load_dem(self, filename: pathlib.Path) -> xarray.Dataset:
         """Load in and replace the DEM with a previously cached version."""
@@ -337,6 +345,9 @@ class DemBase(abc.ABC):
         if "zo" in dem.keys():
             dem["zo"] = dem.zo.astype(geometry.RASTER_TYPE)
 
+        if not self._check_resolution(dem):
+            raise ValueError("The specified resolution does not match the "
+                             f"{filename} resolution.")
         return dem
 
     def save_dem(
@@ -511,7 +522,7 @@ class DemBase(abc.ABC):
 
         return dense_extents
 
-    def _chunks_from_dem(self, chunk_size, dem: xarray.Dataset) -> (list, list):
+    def _chunks_from_dem(self, chunk_size, dem: xarray.Dataset) -> tuple[list, list]:
         """Define the chunks to break the catchment into when reading in and
         downsampling LiDAR.
 
@@ -631,13 +642,20 @@ class HydrologicallyConditionedDem(DemBase):
         self._write_netcdf_conventions_in_place(raw_dem, catchment_geometry.crs)
 
         # Clip to catchment and set the data_source layer to NaN where there is no data
-        raw_dem = raw_dem.rio.clip(catchment_geometry.catchment.geometry, drop=True)
+        raw_dem = raw_dem.rio.clip_box(*tuple(catchment_geometry.catchment.total_bounds))
+        raw_dem = raw_dem.where(
+            clip_mask(raw_dem.z, catchment_geometry.catchment.geometry, self.chunk_size)
+        )
         raw_dem["data_source"] = raw_dem.data_source.where(
             raw_dem.data_source != self.SOURCE_CLASSIFICATION["no data"],
             numpy.nan,
         )
         # Rerun as otherwise the no data as NaN seems to be lost for the data_source layer
         self._write_netcdf_conventions_in_place(raw_dem, catchment_geometry.crs)
+
+        if not self._check_resolution(raw_dem):
+            raise ValueError("The specified resolution does not match the "
+                             f"{raw_dem_path} resolution.")
 
         # Set attributes
         self._raw_dem = raw_dem
@@ -884,6 +902,23 @@ class HydrologicallyConditionedDem(DemBase):
             delayed_chunked_x = []
             for j, dim_x in enumerate(chunked_dim_x):
                 self.logger.debug(f"\tLiDAR chunk {[i, j]}")
+                # Check ROI to tile
+                chunk_region_to_tile = self._define_chunk_region(
+                    region_to_rasterise=region_to_rasterise,
+                    dim_x=dim_x,
+                    dim_y=dim_y,
+                    radius=0,
+                )
+                if chunk_region_to_tile.area.sum() == 0:
+                    self.logger.debug(f"\t\tReturning empty tile as out of RIO")
+                    delayed_chunked_x.append(
+                        dask.array.full(
+                            shape=(len(dim_y), len(dim_x)),
+                            fill_value=numpy.nan,
+                            dtype=raster_options["raster_type"],
+                        )
+                    )
+                    continue
                 # Load in points
                 chunk_offshore_points = delayed_load_tiles_in_chunk(
                     lidar_files=[offshore_file],
@@ -1141,16 +1176,12 @@ class HydrologicallyConditionedDem(DemBase):
 
         if include_edges:
             # Get edge points - from DEM
-            edge_dem = self._dem.rio.clip(
-                region_to_rasterise.dissolve().buffer(
-                    self.catchment_geometry.resolution
-                ),
-                drop=True,
-            )
+            edge_roi = region_to_rasterise.dissolve().buffer(self.catchment_geometry.resolution)
+            edge_dem = self._dem.rio.clip_box(*tuple(edge_roi.total_bounds))
+            edge_dem = edge_dem.rio.clip(edge_roi)
             edge_dem = edge_dem.rio.clip(
                 region_to_rasterise.dissolve().geometry,
                 invert=True,
-                drop=True,
             )
             # Define the edge points
             grid_x, grid_y = numpy.meshgrid(edge_dem.x, edge_dem.y)
@@ -1203,6 +1234,24 @@ class HydrologicallyConditionedDem(DemBase):
             delayed_chunked_x = []
             for j, dim_x in enumerate(chunked_dim_x):
                 self.logger.debug(f"\tLiDAR chunk {[i, j]}")
+                # Check ROI to tile
+                chunk_region_to_tile = self._define_chunk_region(
+                    region_to_rasterise=region_to_rasterise,
+                    dim_x=dim_x,
+                    dim_y=dim_y,
+                    radius=0,
+                )
+                if chunk_region_to_tile.area.sum() == 0:
+                    self.logger.debug(f"\t\tReturning empty tile as out of RIO")
+                    delayed_chunked_x.append(
+                        dask.array.full(
+                            shape=(len(dim_y), len(dim_x)),
+                            fill_value=numpy.nan,
+                            dtype=raster_options["raster_type"],
+                        )
+                    )
+                    continue
+
                 # Load in points
                 river_points = delayed_load_tiles_in_chunk(
                     lidar_files=[lidar_file],
@@ -1253,7 +1302,8 @@ class HydrologicallyConditionedDem(DemBase):
         method: str,
         cache_path: pathlib.Path,
         label: str,
-        k_nearest_neighbours: int = 100,
+        k_nearest_neighbours: int,
+        include_edges: bool = True,
     ) -> xarray.Dataset:
         """Performs interpolation from estimated bathymetry points within a polygon
         using the specified interpolation approach after filtering the points based
@@ -1267,7 +1317,7 @@ class HydrologicallyConditionedDem(DemBase):
             "method": method,
             "crs": crs,
             "k_nearest_neighbours": k_nearest_neighbours,
-            "use_edge": True,
+            "use_edge": include_edges,
             "strict": False,
         }
         if method == "rbf":
@@ -1289,93 +1339,98 @@ class HydrologicallyConditionedDem(DemBase):
         pdal_pipeline = pdal.Pipeline(json.dumps(pdal_pipeline_instructions), [points])
         pdal_pipeline.execute()
 
-        # Tempoarily save the adjacent points from the DEM
-        edge_dem = self._dem.rio.clip(
-            region_to_rasterise.dissolve().buffer(self.catchment_geometry.resolution),
-            drop=True,
-        )
-        self._write_netcdf_conventions_in_place(edge_dem, self.catchment_geometry.crs)
-        edge_dem["z"] = edge_dem.z.rio.interpolate_na(method="nearest")
-        edge_dem = self._dem.rio.clip(
-            region_to_rasterise.dissolve().buffer(self.catchment_geometry.resolution),
-            drop=True,
-        )
-        edge_dem = edge_dem.rio.clip(
-            region_to_rasterise.dissolve().geometry,
-            invert=True,
-            drop=True,
-        )
-
-        # Save provided points
-        grid_x, grid_y = numpy.meshgrid(edge_dem.x, edge_dem.y)
-        flat_x = grid_x.flatten()
-        flat_y = grid_y.flatten()
-        flat_z = edge_dem.z.values.flatten()
-        mask_z = ~numpy.isnan(flat_z)
-
-        # Interpolate the estimated bank heights around the polygon if they exist
-        if elevations.bank_heights_exist():
-            # Get the estimated  bank heights and define a mask where nan
-            bank_points = elevations.bank_height_points()
-            bank_nan_mask = numpy.logical_not(numpy.isnan(bank_points["Z"]))
-            # Interpolate from the estimated bank heights
-            xy_out = numpy.concatenate(
-                [[flat_x[mask_z]], [flat_y[mask_z]]], axis=0
-            ).transpose()
-            options = {
-                "radius": elevations.points["width"].max(),
-                "raster_type": geometry.RASTER_TYPE,
-                "method": "linear",
-                "strict": False,
-            }
-            estimated_edge_z = elevation_from_points(
-                point_cloud=bank_points[bank_nan_mask],
-                xy_out=xy_out,
-                options=options,
+        # Tempoarily save the adjacent points from the DEM - ensure no NaN through NN interpolation
+        if include_edges:
+            edge_roi = region_to_rasterise.dissolve().buffer(
+                    self.catchment_geometry.resolution
+                )
+            edge_dem = self._dem.rio.clip_box(*tuple(edge_roi.total_bounds))
+            #edge_dem = edge_dem.rio.clip(edge_roi)
+            self._write_netcdf_conventions_in_place(
+                edge_dem, self.catchment_geometry.crs
+            )
+            edge_dem["z"] = edge_dem.z.rio.interpolate_na(method="nearest")
+            edge_dem = edge_dem.rio.clip(edge_roi, drop=True, )
+            edge_dem = edge_dem.rio.clip(
+                region_to_rasterise.dissolve().geometry,
+                invert=True,
+                drop=True,
             )
 
-            # Use the estimated bank heights where lower than the DEM edge values
-            mask_z_edge = mask_z.copy()
-            mask_z_edge[:] = False
-            mask_z_edge[mask_z] = flat_z[mask_z] > estimated_edge_z
-            flat_z[mask_z_edge] = estimated_edge_z[flat_z[mask_z] > estimated_edge_z]
+            # Save provided points
+            grid_x, grid_y = numpy.meshgrid(edge_dem.x, edge_dem.y)
+            flat_x = grid_x.flatten()
+            flat_y = grid_y.flatten()
+            flat_z = edge_dem.z.values.flatten()
+            mask_z = ~numpy.isnan(flat_z)
 
-        # Use the flat_x/y/z to define edge points and heights
-        edge_points = numpy.empty(
-            [mask_z.sum().sum()],
-            dtype=[
-                ("X", geometry.RASTER_TYPE),
-                ("Y", geometry.RASTER_TYPE),
-                ("Z", geometry.RASTER_TYPE),
-            ],
-        )
-        edge_points["X"] = flat_x[mask_z]
-        edge_points["Y"] = flat_y[mask_z]
-        edge_points["Z"] = flat_z[mask_z]
+            # Interpolate the estimated bank heights around the polygon if they exist
+            if elevations.bank_heights_exist():
+                # Get the estimated  bank heights and define a mask where nan
+                bank_points = elevations.bank_height_points()
+                bank_nan_mask = numpy.logical_not(numpy.isnan(bank_points["Z"]))
+                # Interpolate from the estimated bank heights
+                xy_out = numpy.concatenate(
+                    [[flat_x[mask_z]], [flat_y[mask_z]]], axis=0
+                ).transpose()
+                options = {
+                    "radius": elevations.points["width"].max(),
+                    "raster_type": geometry.RASTER_TYPE,
+                    "method": "linear",
+                    "strict": False,
+                }
+                estimated_edge_z = elevation_from_points(
+                    point_cloud=bank_points[bank_nan_mask],
+                    xy_out=xy_out,
+                    options=options,
+                )
 
-        edge_file = cache_path / f"{label}_edge_points.laz"
-        pdal_pipeline_instructions = [
-            {
-                "type": "writers.las",
-                "a_srs": f"EPSG:" f"{crs['horizontal']}+" f"{crs['vertical']}",
-                "filename": str(edge_file),
-                "compression": "laszip",
-            }
-        ]
-        pdal_pipeline = pdal.Pipeline(
-            json.dumps(pdal_pipeline_instructions), [edge_points]
-        )
-        pdal_pipeline.execute()
+                # Use the estimated bank heights where lower than the DEM edge values
+                mask_z_edge = mask_z.copy()
+                mask_z_edge[:] = False
+                mask_z_edge[mask_z] = flat_z[mask_z] > estimated_edge_z
+                flat_z[mask_z_edge] = estimated_edge_z[
+                    flat_z[mask_z] > estimated_edge_z
+                ]
 
-        if (
-            len(points) < raster_options["k_nearest_neighbours"]
-            or len(edge_points) < raster_options["k_nearest_neighbours"]
+            # Use the flat_x/y/z to define edge points and heights
+            edge_points = numpy.empty(
+                [mask_z.sum().sum()],
+                dtype=[
+                    ("X", geometry.RASTER_TYPE),
+                    ("Y", geometry.RASTER_TYPE),
+                    ("Z", geometry.RASTER_TYPE),
+                ],
+            )
+            edge_points["X"] = flat_x[mask_z]
+            edge_points["Y"] = flat_y[mask_z]
+            edge_points["Z"] = flat_z[mask_z]
+
+            edge_file = cache_path / f"{label}_edge_points.laz"
+            pdal_pipeline_instructions = [
+                {
+                    "type": "writers.las",
+                    "a_srs": f"EPSG:" f"{crs['horizontal']}+" f"{crs['vertical']}",
+                    "filename": str(edge_file),
+                    "compression": "laszip",
+                }
+            ]
+            pdal_pipeline = pdal.Pipeline(
+                json.dumps(pdal_pipeline_instructions), [edge_points]
+            )
+            pdal_pipeline.execute()
+
+        if len(points) < raster_options["k_nearest_neighbours"] or (
+            include_edges and len(edge_points) < raster_options["k_nearest_neighbours"]
         ):
+            k_nearest_neighbours = (
+                min(len(points), len(edge_points)) if include_edges else len(points)
+            )
             logging.info(
                 f"Fewer points or edge points than the default expected {raster_options['k_nearest_neighbours']}. "
-                f"Updating k_nearest_neighbours to {min(len(points), len(edge_points))}."
+                f"Updating k_nearest_neighbours to {k_nearest_neighbours}."
             )
-            raster_options["k_nearest_neighbours"] = min(len(points), len(edge_points))
+            raster_options["k_nearest_neighbours"] = k_nearest_neighbours
         if raster_options["k_nearest_neighbours"] < 3:
             logging.warning(
                 f"Not enough points or edge points to meaningfully include {raster_options['k_nearest_neighbours']}. "
@@ -1402,6 +1457,24 @@ class HydrologicallyConditionedDem(DemBase):
             delayed_chunked_x = []
             for j, dim_x in enumerate(chunked_dim_x):
                 self.logger.debug(f"\tLiDAR chunk {[i, j]}")
+                # Check ROI to tile
+                chunk_region_to_tile = self._define_chunk_region(
+                    region_to_rasterise=region_to_rasterise,
+                    dim_x=dim_x,
+                    dim_y=dim_y,
+                    radius=0,
+                )
+                if chunk_region_to_tile.area.sum() == 0:
+                    self.logger.debug(f"\t\tReturning empty tile as out of RIO")
+                    delayed_chunked_x.append(
+                        dask.array.full(
+                            shape=(len(dim_y), len(dim_x)),
+                            fill_value=numpy.nan,
+                            dtype=raster_options["raster_type"],
+                        )
+                    )
+                    continue
+
                 # Load in points
                 points = delayed_load_tiles_in_chunk(
                     lidar_files=[points_file],
@@ -1409,13 +1482,15 @@ class HydrologicallyConditionedDem(DemBase):
                     chunk_region_to_tile=None,
                     crs=raster_options["crs"],
                 )
-
-                edge_points = delayed_load_tiles_in_chunk(
-                    lidar_files=[edge_file],
-                    source_crs=raster_options["crs"],
-                    chunk_region_to_tile=None,
-                    crs=raster_options["crs"],
-                )
+                if include_edges:
+                    edge_points = delayed_load_tiles_in_chunk(
+                        lidar_files=[edge_file],
+                        source_crs=raster_options["crs"],
+                        chunk_region_to_tile=None,
+                        crs=raster_options["crs"],
+                    )
+                else:
+                    edge_points = None
 
                 # Rasterise tiles
                 delayed_chunked_x.append(
@@ -1704,7 +1779,7 @@ class RawDem(LidarBase):
         self.buffer_cells = buffer_cells
         self._dem = None
 
-    def _set_up_chunks(self) -> (list, list):
+    def _set_up_chunks(self) -> tuple[list, list]:
         """Define the chunks to break the catchment into when reading in and
         downsampling LiDAR.
         """
@@ -1856,7 +1931,7 @@ class RawDem(LidarBase):
 
         # Clip DEM to Catchment and ensure NaN outside region to rasterise
         catchment = self.catchment_geometry.catchment
-        self._dem = self._dem.rio.clip_box(**catchment.bounds.iloc[0])
+        self._dem = self._dem.rio.clip_box(*tuple(catchment.total_bounds))
         self._dem = self._dem.where(
             clip_mask(self._dem.z, catchment.geometry, self.chunk_size)
         )
@@ -1969,6 +2044,22 @@ class RawDem(LidarBase):
                         chunk_region_to_tile=chunk_region_to_tile,
                         lidar_files_map=lidar_files_map,
                     )
+
+                    # Return empty if no files
+                    if len(chunk_lidar_files) == 0:
+                        self.logger.debug(
+                            f"\t\tReturning empty tile as no LiDAR or out of ROI"
+                        )
+                        delayed_chunked_x.append(
+                            dask.array.full(
+                                shape=(len(dim_y), len(dim_x)),
+                                fill_value=numpy.nan,
+                                dtype=raster_options["raster_type"],
+                            )
+                        )
+                        continue
+
+                    # Get point cloud
                     chunk_points = delayed_load_tiles_in_chunk(
                         lidar_files=chunk_lidar_files,
                         source_crs=source_crs,
@@ -2381,6 +2472,9 @@ class PatchDem(LidarBase):
             "band", drop=True
         )  # remove band coordinate added by rasterio.open()
         self._write_netcdf_conventions_in_place(initial_dem, catchment_geometry.crs)
+        if not self._check_resolution(initial_dem):
+            raise ValueError("The specified resolution does not match the "
+                             f"{initial_dem_path} resolution.")
         self._dem = initial_dem
 
     def add_patch(self, patch_path: pathlib.Path, label: str, layer: str):
@@ -2410,19 +2504,21 @@ class PatchDem(LidarBase):
         patch = rioxarray.rioxarray.open_rasterio(
             patch_path,
             masked=True,
+            chunks=True,
         ).squeeze("band", drop=True)
         patch.rio.write_crs(self.catchment_geometry.crs["horizontal"], inplace=True)
         patch_resolution = patch.rio.resolution()
         patch_resolution = max(abs(patch_resolution[0]), abs(patch_resolution[1]))
+
         # Define region to patch within
         if self.drop_patch_offshore:
             roi = self.catchment_geometry.land_and_foreshore
         else:
             roi = self.catchment_geometry.catchment
         try:  # Use try catch as otherwise crash if patch does not overlap roi
-            patch = patch.rio.clip(
-                roi.buffer(patch_resolution).geometry,
-                drop=True,
+            patch = patch.rio.clip_box(*tuple(roi.buffer(patch_resolution).total_bounds))
+            patch = patch.where(
+                clip_mask(patch, roi.buffer(patch_resolution).geometry, self.chunk_size)
             )
         except (  # If exception skip and proceed to the next patch
             rioxarray.exceptions.NoDataInBounds,
@@ -2450,14 +2546,14 @@ class PatchDem(LidarBase):
         self.logger.info(f"\t\tAdd data from coarse DEM: {patch_path.name}")
 
         # Check if same resolution
-        if all(patch.x.isin(self._dem.x)) and all(patch.y.isin(self._dem.y)):
-            # Do a stright replacement if grid aligned
+        if all(patch.x.isin(self._dem.x)) and all(patch.y.isin(self._dem.y)) and patch_resolution == self.catchment_geometry.resolution:
+            self.logger.info(f"\t\t\tGrid aligned so do a straight reindex")
             patch = patch.reindex_like(self._dem, fill_value=numpy.nan)
         elif (
             self.chunk_size is not None
             and max(len(self._dem.x), len(self._dem.y)) > self.chunk_size
-        ):  # Ensure parallelisation if chunks specified
-            # Expect xarray dims (y, x), not (x, y) as default for rioxarray
+        ):  # Expect xarray dims (y, x), not (x, y) as default for rioxarray
+            self.logger.info(f"\t\t\tInterpolate with dask parallelisation at chunk size")
             interpolator = scipy.interpolate.RegularGridInterpolator(
                 (patch.y.values, patch.x.values),
                 patch.values,
@@ -2483,6 +2579,7 @@ class PatchDem(LidarBase):
             )
             patch.rio.write_transform(inplace=True)
         else:  # No chunking use built in method
+            self.logger.info(f"\t\t\tInterpolate using built-in method")
             patch = patch.interp(x=self._dem.x, y=self._dem.y, method="linear")
         patch.rio.write_crs(self.catchment_geometry.crs["horizontal"], inplace=True)
         patch.rio.write_nodata(numpy.nan, encoded=True, inplace=True)
@@ -2625,7 +2722,9 @@ class RoughnessDem(LidarBase):
         self._write_netcdf_conventions_in_place(
             hydrological_dem, catchment_geometry.crs
         )
-
+        if not self._check_resolution(hydrological_dem):
+            raise ValueError("The specified resolution does not match the "
+                             f"{hydrological_dem_path} resolution.")
         # Ensure the resolution of the hydrological DEM matches the input DEM
         assert (
             abs(float(hydrological_dem.x[1] - hydrological_dem.x[0]))
@@ -2637,7 +2736,7 @@ class RoughnessDem(LidarBase):
 
         # Clip to the catchment extents to ensure performance
         catchment = self.catchment_geometry.catchment
-        hydrological_dem = hydrological_dem.rio.clip_box(**catchment.bounds.iloc[0])
+        hydrological_dem = hydrological_dem.rio.clip_box(*tuple(catchment.total_bounds))
         mask = clip_mask(hydrological_dem.z, catchment.geometry, self.chunk_size)
         hydrological_dem = hydrological_dem.where(mask)
         # Rerun as otherwise the no data as NaN seems to be lost for the data_source layer
@@ -2861,6 +2960,21 @@ class RoughnessDem(LidarBase):
                         chunk_region_to_tile=chunk_region_to_tile,
                         lidar_files_map=lidar_files_map,
                     )
+
+                    # Return empty if no files
+                    if len(chunk_lidar_files) == 0:
+                        self.logger.debug(
+                            f"\t\tReturning empty tile as no LiDAR or out of ROI"
+                        )
+                        delayed_chunked_x.append(
+                            dask.array.full(
+                                shape=(len(dim_y), len(dim_x)),
+                                fill_value=numpy.nan,
+                                dtype=raster_options["raster_type"],
+                            )
+                        )
+                        continue
+
                     chunk_points = delayed_load_tiles_in_chunk(
                         lidar_files=chunk_lidar_files,
                         source_crs=source_crs,
