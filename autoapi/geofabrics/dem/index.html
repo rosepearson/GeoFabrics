@@ -7,7 +7,7 @@
 
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>geofabrics.dem &mdash; Geofabrics 0.7.6 documentation</title>
-      <link rel="stylesheet" type="text/css" href="../../../_static/pygments.css?v=80d5e7a1" />
+      <link rel="stylesheet" type="text/css" href="../../../_static/pygments.css?v=b86133f3" />
       <link rel="stylesheet" type="text/css" href="../../../_static/css/theme.css?v=e59714d7" />
       <link rel="stylesheet" type="text/css" href="../../../_static/graphviz.css?v=4ae1632d" />
 
@@ -432,7 +432,7 @@ on the type label. The type_label also determines the source classification.</p>
 
 <dl class="py method">
 <dt class="sig sig-object py" id="geofabrics.dem.HydrologicallyConditionedDem.add_points_within_polygon_nearest_chunked">
-<span class="sig-name descname"><span class="pre">add_points_within_polygon_nearest_chunked</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">elevations</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">method</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">cache_path</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">label</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">k_nearest_neighbours</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">100</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#geofabrics.dem.HydrologicallyConditionedDem.add_points_within_polygon_nearest_chunked" title="Link to this definition"></a></dt>
+<span class="sig-name descname"><span class="pre">add_points_within_polygon_nearest_chunked</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">elevations</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">method</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">cache_path</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">label</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">k_nearest_neighbours</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">include_edges</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">True</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#geofabrics.dem.HydrologicallyConditionedDem.add_points_within_polygon_nearest_chunked" title="Link to this definition"></a></dt>
 <dd><p>Performs interpolation from estimated bathymetry points within a polygon
 using the specified interpolation approach after filtering the points based
 on the type label. The type_label also determines the source classification.</p>
@@ -444,6 +444,7 @@ on the type label. The type_label also determines the source classification.</p>
 <li><p><strong>cache_path</strong> (<em>pathlib.Path</em>)</p></li>
 <li><p><strong>label</strong> (<em>str</em>)</p></li>
 <li><p><strong>k_nearest_neighbours</strong> (<em>int</em>)</p></li>
+<li><p><strong>include_edges</strong> (<em>bool</em>)</p></li>
 </ul>
 </dd>
 <dt class="field-even">Return type<span class="colon">:</span></dt>

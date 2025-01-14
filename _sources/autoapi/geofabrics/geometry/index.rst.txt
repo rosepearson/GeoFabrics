@@ -240,7 +240,7 @@ Module Contents
       Return the names of all tiles within the catchment
 
 
-.. py:class:: RiverMouthFan(aligned_channel_file, river_bathymetry_file, river_polygon_file, ocean_contour_file, crs, cross_section_spacing, elevation_labels, ocean_contour_depth_label = None)
+.. py:class:: RiverMouthFan(aligned_channel_file, river_bathymetry_file, river_polygon_file, ocean_contour_file, ocean_points_file, crs, cross_section_spacing, elevation_labels, ocean_contour_depth_label = None)
 
    A class for creating an appropiate river mouth fan to transition from
    river depth estimates to the ocean bathymetry values. This fan region defines a

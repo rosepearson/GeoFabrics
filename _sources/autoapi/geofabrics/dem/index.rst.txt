@@ -217,7 +217,7 @@ Module Contents
 
 
 
-   .. py:method:: add_points_within_polygon_nearest_chunked(elevations, method, cache_path, label, k_nearest_neighbours = 100)
+   .. py:method:: add_points_within_polygon_nearest_chunked(elevations, method, cache_path, label, k_nearest_neighbours, include_edges = True)
 
       Performs interpolation from estimated bathymetry points within a polygon
       using the specified interpolation approach after filtering the points based

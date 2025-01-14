@@ -7,7 +7,7 @@
 
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>geofabrics.geometry &mdash; Geofabrics 0.7.6 documentation</title>
-      <link rel="stylesheet" type="text/css" href="../../../_static/pygments.css?v=80d5e7a1" />
+      <link rel="stylesheet" type="text/css" href="../../../_static/pygments.css?v=b86133f3" />
       <link rel="stylesheet" type="text/css" href="../../../_static/css/theme.css?v=e59714d7" />
       <link rel="stylesheet" type="text/css" href="../../../_static/graphviz.css?v=4ae1632d" />
 
@@ -464,7 +464,7 @@ The elevations are used to interpolate elevations within the polygons.</p>
 
 <dl class="py class">
 <dt class="sig sig-object py" id="geofabrics.geometry.RiverMouthFan">
-<em class="property"><span class="pre">class</span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">geofabrics.geometry.</span></span><span class="sig-name descname"><span class="pre">RiverMouthFan</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">aligned_channel_file</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">river_bathymetry_file</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">river_polygon_file</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">ocean_contour_file</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">crs</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">cross_section_spacing</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">elevation_labels</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">ocean_contour_depth_label</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#geofabrics.geometry.RiverMouthFan" title="Link to this definition"></a></dt>
+<em class="property"><span class="pre">class</span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">geofabrics.geometry.</span></span><span class="sig-name descname"><span class="pre">RiverMouthFan</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">aligned_channel_file</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">river_bathymetry_file</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">river_polygon_file</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">ocean_contour_file</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">ocean_points_file</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">crs</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">cross_section_spacing</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">elevation_labels</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">ocean_contour_depth_label</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#geofabrics.geometry.RiverMouthFan" title="Link to this definition"></a></dt>
 <dd><p>A class for creating an appropiate river mouth fan to transition from
 river depth estimates to the ocean bathymetry values. This fan region defines a
 transition from river to coast within a fan shaped polygon (15 degrees on each</p>
@@ -484,6 +484,7 @@ If no width at mouth - move back to where there is a valid width</p>
 <li><p><strong>river_bathymetry_file</strong> (<em>str</em>)</p></li>
 <li><p><strong>river_polygon_file</strong> (<em>str</em>)</p></li>
 <li><p><strong>ocean_contour_file</strong> (<em>str</em>)</p></li>
+<li><p><strong>ocean_points_file</strong> (<em>str</em>)</p></li>
 <li><p><strong>crs</strong> (<em>int</em>)</p></li>
 <li><p><strong>cross_section_spacing</strong> (<em>float</em>)</p></li>
 <li><p><strong>elevation_labels</strong> (<em>list</em>)</p></li>
