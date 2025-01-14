@@ -315,6 +315,14 @@ class DemBase(abc.ABC):
     def dem(self) -> xarray.Dataset:
         """Return the DEM over the catchment region"""
         raise NotImplementedError("dem must be instantiated in the child class")
+    
+    def _check_resolution(self, dem: xarray.Dataset):
+        """ Check the DEM resolution matches the specified resolution. """
+        dem_resolution = dem.rio.resolution()
+        dem_resolution =  max(abs(dem_resolution[0]), abs(dem_resolution[1]))
+
+        return self.catchment_geometry.resolution == dem_resolution
+
 
     def _load_dem(self, filename: pathlib.Path) -> xarray.Dataset:
         """Load in and replace the DEM with a previously cached version."""
@@ -337,6 +345,9 @@ class DemBase(abc.ABC):
         if "zo" in dem.keys():
             dem["zo"] = dem.zo.astype(geometry.RASTER_TYPE)
 
+        if not self._check_resolution(dem):
+            raise ValueError("The specified resolution does not match the "
+                             f"{filename} resolution.")
         return dem
 
     def save_dem(
@@ -641,6 +652,10 @@ class HydrologicallyConditionedDem(DemBase):
         )
         # Rerun as otherwise the no data as NaN seems to be lost for the data_source layer
         self._write_netcdf_conventions_in_place(raw_dem, catchment_geometry.crs)
+
+        if not self._check_resolution(raw_dem):
+            raise ValueError("The specified resolution does not match the "
+                             f"{raw_dem_path} resolution.")
 
         # Set attributes
         self._raw_dem = raw_dem
@@ -2457,6 +2472,9 @@ class PatchDem(LidarBase):
             "band", drop=True
         )  # remove band coordinate added by rasterio.open()
         self._write_netcdf_conventions_in_place(initial_dem, catchment_geometry.crs)
+        if not self._check_resolution(initial_dem):
+            raise ValueError("The specified resolution does not match the "
+                             f"{initial_dem_path} resolution.")
         self._dem = initial_dem
 
     def add_patch(self, patch_path: pathlib.Path, label: str, layer: str):
@@ -2704,7 +2722,9 @@ class RoughnessDem(LidarBase):
         self._write_netcdf_conventions_in_place(
             hydrological_dem, catchment_geometry.crs
         )
-
+        if not self._check_resolution(hydrological_dem):
+            raise ValueError("The specified resolution does not match the "
+                             f"{hydrological_dem_path} resolution.")
         # Ensure the resolution of the hydrological DEM matches the input DEM
         assert (
             abs(float(hydrological_dem.x[1] - hydrological_dem.x[0]))
