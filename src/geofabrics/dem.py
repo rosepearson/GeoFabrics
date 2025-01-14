@@ -511,7 +511,7 @@ class DemBase(abc.ABC):
 
         return dense_extents
 
-    def _chunks_from_dem(self, chunk_size, dem: xarray.Dataset) -> (list, list):
+    def _chunks_from_dem(self, chunk_size, dem: xarray.Dataset) -> tuple[list, list]:
         """Define the chunks to break the catchment into when reading in and
         downsampling LiDAR.
 
@@ -1764,7 +1764,7 @@ class RawDem(LidarBase):
         self.buffer_cells = buffer_cells
         self._dem = None
 
-    def _set_up_chunks(self) -> (list, list):
+    def _set_up_chunks(self) -> tuple[list, list]:
         """Define the chunks to break the catchment into when reading in and
         downsampling LiDAR.
         """
@@ -2528,14 +2528,14 @@ class PatchDem(LidarBase):
         self.logger.info(f"\t\tAdd data from coarse DEM: {patch_path.name}")
 
         # Check if same resolution
-        if all(patch.x.isin(self._dem.x)) and all(patch.y.isin(self._dem.y)):
-            # Do a stright replacement if grid aligned
+        if all(patch.x.isin(self._dem.x)) and all(patch.y.isin(self._dem.y)) and patch_resolution == self.catchment_geometry.resolution:
+            self.logger.info(f"\t\t\tGrid aligned so do a straight reindex")
             patch = patch.reindex_like(self._dem, fill_value=numpy.nan)
         elif (
             self.chunk_size is not None
             and max(len(self._dem.x), len(self._dem.y)) > self.chunk_size
-        ):  # Ensure parallelisation if chunks specified
-            # Expect xarray dims (y, x), not (x, y) as default for rioxarray
+        ):  # Expect xarray dims (y, x), not (x, y) as default for rioxarray
+            self.logger.info(f"\t\t\tInterpolate with dask parallelisation at chunk size")
             interpolator = scipy.interpolate.RegularGridInterpolator(
                 (patch.y.values, patch.x.values),
                 patch.values,
@@ -2561,6 +2561,7 @@ class PatchDem(LidarBase):
             )
             patch.rio.write_transform(inplace=True)
         else:  # No chunking use built in method
+            self.logger.info(f"\t\t\tInterpolate using built-in method")
             patch = patch.interp(x=self._dem.x, y=self._dem.y, method="linear")
         patch.rio.write_crs(self.catchment_geometry.crs["horizontal"], inplace=True)
         patch.rio.write_nodata(numpy.nan, encoded=True, inplace=True)
@@ -2946,8 +2947,9 @@ class RoughnessDem(LidarBase):
                             f"\t\tReturning empty tile as no LiDAR or out of ROI"
                         )
                         delayed_chunked_x.append(
-                            dask.array.empty(
+                            dask.array.full(
                                 shape=(len(dim_y), len(dim_x)),
+                                fill_value=numpy.nan,
                                 dtype=raster_options["raster_type"],
                             )
                         )
