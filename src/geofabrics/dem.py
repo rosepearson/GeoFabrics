@@ -2863,6 +2863,18 @@ class RoughnessDem(LidarBase):
             if numpy.isnan(self._dem.zo.data).any():
                 self._dem["zo"] = self._dem.zo.rio.interpolate_na(method="nearest")
 
+        # Ensure roughness values are bounded by the defaults
+        if self.default_values["minimum"] is not None:
+            self._dem["zo"] = self._dem.zo.where(
+                self._dem.zo > self.default_values["minimum"],
+                self.default_values["minimum"],
+            )
+        if self.default_values["maximum"] is not None:
+            self._dem["zo"] = self._dem.zo.where(
+                self._dem.zo < self.default_values["maximum"],
+                self.default_values["maximum"],
+            )
+
         mask = clip_mask(
             self._dem.z, self.catchment_geometry.catchment.geometry, self.chunk_size
         )
@@ -3156,17 +3168,6 @@ class RoughnessDem(LidarBase):
             zo = rioxarray.merge.merge_arrays(zos, method="first")
         # Resize zo to share the same dimensions at the DEM
         self._dem["zo"] = zo.sel(x=self._dem.x, y=self._dem.y, method="nearest")
-        # Ensure roughness values are bounded by the defaults
-        if self.default_values["minimum"] is not None:
-            self._dem["zo"] = self._dem.zo.where(
-                self._dem.zo > self.default_values["minimum"],
-                self.default_values["minimum"],
-            )
-        if self.default_values["maximum"] is not None:
-            self._dem["zo"] = self._dem.zo.where(
-                self._dem.zo < self.default_values["maximum"],
-                self.default_values["maximum"],
-            )
 
         # update metadata
         history = self._dem.attrs["history"]
