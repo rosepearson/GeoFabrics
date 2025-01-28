@@ -859,7 +859,8 @@ class RiverMouthFan:
         cross_section_spacing  The spacing in (m) of the sampled cross sections.
         aligned_channel_file  Thefile name for the aligned river channel file.
         river_bathymetry_file  The file name for the river bathymetry values.
-        ocean_contour_file  The file name for the ocean contours.
+        ocean_contour_file  The file name for the ocean contours. Depths are positive
+        ocean_points_file The file name for the ocean points. Elevations are negative.
         ocean_contour_depth_label  The column label for the depth values.
     """
 
@@ -1151,12 +1152,13 @@ class RiverMouthFan:
         )
 
         if self.ocean_points_file is not None:
-            length, end_depth = self._get_distance_to_nearest_ocean_point_in_fan(
+            length, end_elevation = self._get_distance_to_nearest_ocean_point_in_fan(
                 river_mouth_z=max(river_mouth_elevations),
                 fan=fan_polygon,
                 mouth_point=mouth_point,
                 depth_multiplier=2
             )
+            end_depth = -1 * end_elevation
             fan_polygon = self._fixed_length_fan_polygon(
                 river_mouth_width=river_mouth_width,
                 mouth_point=mouth_point,
