@@ -271,7 +271,11 @@ Module Contents
 
       
 
-   .. attribute:: ocean_contour_file  The file name for the ocean contours.
+   .. attribute:: ocean_contour_file  The file name for the ocean contours. Depths are positive
+
+      
+
+   .. attribute:: ocean_points_file The file name for the ocean points. Elevations are negative.
 
       
 
