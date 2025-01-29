@@ -3943,7 +3943,7 @@ class StopbankCrestElevationEstimator(BaseProcessor):
         points = points.sort_index(ascending=True).explode(
             ignore_index=False, index_parts=True, column="geometry"
         )
-        points["polygons"] = points.buffer(points["width"].to_numpy())
+        points["polygons"] = points.buffer(points["width"].to_numpy() / 2)
         # Sample maximum elevation in polygon around each point
         points["z"] = numpy.nan
         for index, rows in points.groupby(level=0):
@@ -3965,7 +3965,7 @@ class StopbankCrestElevationEstimator(BaseProcessor):
                 "estimate their creast elevations."
             )
         # Create, filter to remove NaN areas and save overall polygon
-        stopbanks["polygon"] = stopbanks.buffer(stopbanks["width"].to_numpy())
+        stopbanks["polygon"] = stopbanks.buffer(stopbanks["width"].to_numpy() / 2)
         stopbanks = stopbanks.sort_index(ascending=True)
         stopbanks = stopbanks[nan_filter]
         stopbanks.set_geometry("polygon", drop=True)[["geometry"]].to_file(polygon_file)
@@ -3985,7 +3985,7 @@ class StopbankCrestElevationEstimator(BaseProcessor):
                     key="stopbank_polygon", index=index
                 )
                 stopbank_polygon = geopandas.GeoDataFrame(
-                    geometry=[row.geometry.buffer(row.width)], crs=stopbanks.crs
+                    geometry=[row.geometry.buffer(row.width / 2)], crs=stopbanks.crs
                 )
                 stopbank_polygon.to_file(stopbank_polygon_file)
 

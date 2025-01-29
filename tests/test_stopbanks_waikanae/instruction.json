@@ -32,7 +32,7 @@
 			"lidar_classifications_to_keep": [2, 9]
 		},
 		"stopbanks": {
-			"width": 6,
+			"width": 12,
 		"source": "file"
 		}
 	},
