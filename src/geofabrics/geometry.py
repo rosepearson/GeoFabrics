@@ -643,8 +643,8 @@ class ElevationPoints:
             pandas.concat(polygon_list, ignore_index=True),
             crs=polygon_list[0].crs,
         )
-        polygon = geopandas.GeoDataFrame(
-            geometry=polygon.to_crs(self.catchment_geometry.crs["horizontal"]).buffer(0))
+        polygon = polygon.to_crs(self.catchment_geometry.crs["horizontal"])
+        polygon.set_geometry(polygon.buffer(0), inplace=True)
         polygon = polygon.clip(self.catchment_geometry.catchment, keep_geom_type=True)
         points = points.clip(polygon.buffer(0), keep_geom_type=True)
         points = points.clip(self.catchment_geometry.catchment, keep_geom_type=True)
