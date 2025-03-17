@@ -1615,6 +1615,53 @@ class LidarBase(DemBase):
         ][0]
         return tile_index_extents, tile_index_name_column
 
+    def _check_valid_input_new(self, lidar_dataset_info):
+        """Check the combination of inputs for adding LiDAR is valid.
+
+        Parameters
+        ----------
+
+        lidar_datasets_info
+            A dictionary of dictionaties of LiDAR dataset information. The CRS, list of
+            LAS files, and tile index file are included for each dataset.
+        """
+        dataset_name = lidar_dataset_info["name"]
+        # Check the source_crs is valid
+        source_crs = lidar_dataset_info["crs"]
+        if source_crs is not None:
+            assert "horizontal" in source_crs, (
+                "The horizontal component of the source CRS is not specified. Both "
+                "horizontal and vertical CRS need to be defined. The source_crs "
+                f"specified is: {source_crs} for {dataset_name}"
+            )
+            assert "vertical" in source_crs, (
+                "The vertical component of the source CRS is not specified. Both "
+                "horizontal and vertical CRS need to be defined. The source_crs "
+                f"specified is: {self.source_crs} for {dataset_name}"
+            )
+        # Check some LiDAR files are specified
+        lidar_files = lidar_dataset_info["file_paths"]
+        if len(lidar_files) == 0:
+            self.logger.warning(
+                f"Ignoring LiDAR dataset {dataset_name} as there are no LiDAR files within the ROI."
+            )
+            return
+        # Check for valid combination of chunk_size, lidar_files and tile_index_file
+        if self.chunk_size is None:
+            assert len(lidar_files) == 1, (
+                "If there is no chunking there must be only one LiDAR file. This "
+                f"isn't the case in dataset {dataset_name}"
+            )
+        else:
+            assert (
+                self.chunk_size > 0 and type(self.chunk_size) is int
+            ), "chunk_size must be a positive integer"
+            tile_index_file = lidar_dataset_info["tile_index_file"]
+            assert tile_index_file is not None, (
+                "A tile index file must be provided if chunking is "
+                f"defined for {dataset_name}"
+            )
+
     def _check_valid_inputs(self, lidar_datasets_info):
         """Check the combination of inputs for adding LiDAR is valid.
 
@@ -1761,6 +1808,7 @@ class RawDem(LidarBase):
         drop_offshore_lidar: dict,
         zero_positive_foreshore: bool,
         buffer_cells: int,
+        metadata: dict,
         elevation_range: list | None = None,
         chunk_size: int | None = None,
     ):
@@ -1777,7 +1825,30 @@ class RawDem(LidarBase):
         self.zero_positive_foreshore = zero_positive_foreshore
         self.lidar_interpolation_method = lidar_interpolation_method
         self.buffer_cells = buffer_cells
-        self._dem = None
+        self.metadata = metadata
+
+        # Initialise an empty dataset with no LiDAR
+        self.logger.warning("No LiDAR dataset. Creating an empty raw DEM dataset.")
+        bounds = self.catchment_geometry.catchment.geometry.bounds
+        resolution = self.catchment_geometry.resolution
+        x = numpy.arange(
+            numpy.ceil(bounds.minx.min() / resolution) * resolution,
+            numpy.ceil(bounds.maxx.max() / resolution) * resolution + resolution,
+            resolution,
+            dtype=geometry.RASTER_TYPE,
+        )
+        y = numpy.arange(
+            numpy.ceil(bounds.maxy.max() / resolution) * resolution,
+            numpy.ceil(bounds.miny.min() / resolution) * resolution - resolution,
+            -resolution,
+            dtype=geometry.RASTER_TYPE,
+        )
+        self._dem = self._create_empty_data_set(
+            x=x,
+            y=y,
+            raster_type=geometry.RASTER_TYPE,
+            metadata=self.metadata,
+        )
 
     def _set_up_chunks(self) -> tuple[list, list]:
         """Define the chunks to break the catchment into when reading in and
@@ -1793,10 +1864,10 @@ class RawDem(LidarBase):
         miny = bounds.miny.min()
         maxy = bounds.maxy.max()
         n_chunks_x = int(
-            numpy.ceil((bounds.maxx.max() - minx) / (self.chunk_size * resolution))
+            numpy.ceil((maxx - minx) / (self.chunk_size * resolution))
         )
         n_chunks_y = int(
-            numpy.ceil((maxy - bounds.miny.min()) / (self.chunk_size * resolution))
+            numpy.ceil((maxy - miny) / (self.chunk_size * resolution))
         )
 
         # x coordinates rounded up to the nearest chunk - resolution aligned
@@ -1846,6 +1917,62 @@ class RawDem(LidarBase):
         )
         return extents
 
+    def add_lidar_new(
+        self,
+        lidar_dataset_info: dict,
+        lidar_classifications_to_keep: list,
+    ):
+        """Read in all LiDAR files and use to create a 'raw' DEM.
+
+        Parameters
+        ----------
+
+        lidar_datasets_info
+            A dictionary of information for each specified LIDAR dataset - For
+            each this includes: a list of LAS files, CRS, and tile index file.
+        lidar_classifications_to_keep
+            A list of LiDAR classifications to keep - '2' for ground, '9' for water.
+            See https://www.asprs.org/wp-content/uploads/2010/12/LAS_1_4_r13.pdf for
+            standard list
+        meta_data
+            Information to include in the created DEM - must include
+            `dataset_mapping` key if datasets (not a single LAZ file) included.
+        """
+
+        # Check valid inputs
+        self._check_valid_input_new(lidar_dataset_info=lidar_dataset_info)
+
+        if len(lidar_dataset_info["file_paths"]) == 0:
+            self.logger.warning(
+                f"Ignoring LiDAR dataset {lidar_dataset_info['name']} as there are no LiDAR files within the ROI."
+            )
+            return
+
+        # create dictionary defining raster options
+        raster_options = {
+            "lidar_classifications_to_keep": lidar_classifications_to_keep,
+            "raster_type": geometry.RASTER_TYPE,
+            "elevation_range": self.elevation_range,
+            "radius": self.catchment_geometry.resolution / numpy.sqrt(2),
+            "method": self.lidar_interpolation_method,
+            "crs": self.catchment_geometry.crs,
+            "strict": True,
+        }
+        if self.lidar_interpolation_method == "rbf":
+            raster_options["kernel"] = "linear"
+
+        if self.chunk_size is None:
+            self._add_lidar_no_chunking_new(
+                lidar_dataset_info=lidar_dataset_info,
+                options=raster_options,
+            )
+        else:
+            self._add_tiled_lidar_chunked_new(
+                lidar_dataset_info=lidar_dataset_info,
+                raster_options=raster_options,
+            )
+
+        
     def add_lidar(
         self,
         lidar_datasets_info: dict,
@@ -1910,7 +2037,7 @@ class RawDem(LidarBase):
                 metadata=metadata,
             )
         elif self.chunk_size is None:
-            dem = self._add_lidar_no_chunking(
+            dem = self._add_lidar_no_chunking_new(
                 lidar_datasets_info=lidar_datasets_info,
                 options=raster_options,
                 metadata=metadata,
@@ -2092,6 +2219,129 @@ class RawDem(LidarBase):
 
         return chunked_dem
 
+    def _add_tiled_lidar_chunked_new(
+        self,
+        lidar_dataset_info: dict,
+        raster_options: dict,
+    ) -> xarray.Dataset:
+        """Create a 'raw'' DEM from a set of tiled LiDAR files. Read these in over
+        non-overlapping chunks and then combine"""
+
+        assert self.chunk_size is not None, "chunk_size must be defined"
+
+        # get chunking information
+        chunked_dim_x, chunked_dim_y = self._set_up_chunks()
+
+        self.logger.info(f"Preparing {[len(chunked_dim_x), len(chunked_dim_y)]} chunks")
+        # Pull out the dataset information
+        lidar_name = lidar_dataset_info["name"]
+        lidar_files = lidar_dataset_info["file_paths"]
+        tile_index_file = lidar_dataset_info["tile_index_file"]
+        source_crs = lidar_dataset_info["crs"]
+
+        # Define the region to rasterise
+        region_to_rasterise = (
+            self.catchment_geometry.land_and_foreshore
+            if self.drop_offshore_lidar[lidar_name]
+            else self.catchment_geometry.catchment
+        )
+
+        roi_mask = clip_mask(self._dem.z, region_to_rasterise.geometry, chunk_size=self.chunk_size)
+        no_values_mask = self._dem.z.isnull()
+        if region_to_rasterise.area.sum() == 0:
+            self.logger.info(f"No area to the region to rasterise, so do not try add {lidar_name}")
+            return
+        if not (no_values_mask & roi_mask).any():
+            self.logger.info(f"No missing values within the region to rasterise, so skip {lidar_name}")
+            return
+
+        # create a map from tile name to tile file name
+        lidar_files_map = {
+            lidar_file.name: lidar_file for lidar_file in lidar_files
+        }
+
+        # remove all tiles entirely outside the region to raserise
+        (
+            tile_index_extents,
+            tile_index_name_column,
+        ) = self._tile_index_column_name(
+            tile_index_file=tile_index_file,
+            region_to_rasterise=self.catchment_geometry.catchment,
+        )
+
+        # cycle through index chunks - and collect in a delayed array
+        self.logger.info(f"Running over dataset {lidar_name}")
+        delayed_chunked_matrix = []
+        for i, dim_y in enumerate(chunked_dim_y):
+            delayed_chunked_x = []
+            for j, dim_x in enumerate(chunked_dim_x):
+                self.logger.debug(f"\tLiDAR chunk {[i, j]}")
+
+                # Define the region to tile
+                chunk_region_to_tile = self._define_chunk_region(
+                    region_to_rasterise=region_to_rasterise,
+                    dim_x=dim_x,
+                    dim_y=dim_y,
+                    radius=raster_options["radius"],
+                )
+
+                # Load in files into tiles
+                chunk_lidar_files = select_lidar_files(
+                    tile_index_extents=tile_index_extents,
+                    tile_index_name_column=tile_index_name_column,
+                    chunk_region_to_tile=chunk_region_to_tile,
+                    lidar_files_map=lidar_files_map,
+                )
+
+                # Return empty if no files
+                if len(chunk_lidar_files) == 0 or not no_values_mask.sel(x=dim_x, y=dim_y).any():
+                    self.logger.debug(
+                        f"\t\tReturning empty tile as no LiDAR or out of ROI"
+                    )
+                    delayed_chunked_x.append(
+                        dask.array.full(
+                            shape=(len(dim_y), len(dim_x)),
+                            fill_value=numpy.nan,
+                            dtype=raster_options["raster_type"],
+                        )
+                    )
+                    continue
+
+                # Get point cloud
+                chunk_points = delayed_load_tiles_in_chunk(
+                    lidar_files=chunk_lidar_files,
+                    source_crs=source_crs,
+                    chunk_region_to_tile=chunk_region_to_tile,
+                    crs=raster_options["crs"],
+                )
+                # Rasterise tiles
+                delayed_chunked_x.append(
+                    dask.array.from_delayed(
+                        delayed_elevation_over_chunk(
+                            dim_x=dim_x,
+                            dim_y=dim_y,
+                            tile_points=chunk_points,
+                            options=raster_options,
+                        ),
+                        shape=(len(dim_y), len(dim_x)),
+                        dtype=raster_options["raster_type"],
+                    )
+                )
+            delayed_chunked_matrix.append(delayed_chunked_x)
+
+        # Combine chunks into a dataset
+        elevation = dask.array.block(delayed_chunked_matrix)
+        mask = ~(no_values_mask & roi_mask)
+        self._dem["z"] = self._dem.z.where(mask, elevation)
+
+        dataset_mapping = self.metadata["instructions"]["dataset_mapping"]["lidar"]
+        mask = ~(no_values_mask & roi_mask & self._dem.z.notnull())
+        self._dem["lidar_source"] = self._dem.lidar_source.where(mask, dataset_mapping[lidar_name])
+        self._dem["data_source"] = self._dem.data_source.where(
+            mask,
+            self.SOURCE_CLASSIFICATION["LiDAR"],
+        )
+
     def _add_lidar_no_chunking(
         self,
         lidar_datasets_info: dict,
@@ -2157,6 +2407,82 @@ class RawDem(LidarBase):
         )
 
         return dem
+
+    def _add_lidar_no_chunking_new(
+        self,
+        lidar_dataset_info: dict,
+        options: dict,
+    ) -> xarray.Dataset:
+        """Create a 'raw' DEM from a single LiDAR file with no chunking."""
+
+        assert self.chunk_size is None, "chunk_size should not be defined"
+
+        # Note only support for a single LiDAR file without tile information
+        lidar_name = lidar_dataset_info["name"]
+        lidar_file = lidar_dataset_info["file_paths"][0]
+        source_crs = lidar_dataset_info["crs"]
+        self.logger.info(f"On LiDAR tile 1 of 1: {lidar_file}")
+
+        # Define the region to rasterise
+        region_to_rasterise = (
+            self.catchment_geometry.land_and_foreshore
+            if self.drop_offshore_lidar[lidar_name]
+            else self.catchment_geometry.catchment
+        )
+
+        roi_mask = clip_mask(self._dem.z, region_to_rasterise.geometry, chunk_size=None)
+        no_values_mask = self._dem.z.isnull()
+        if region_to_rasterise.area.sum() == 0:
+            self.logger.info(f"No area to the region to rasterise, so do not try add {lidar_name}")
+            return
+        if not (no_values_mask & roi_mask).any():
+            self.logger.info(f"No missing values within the region to rasterise, so skip {lidar_name}")
+            return
+
+        # Use PDAL to load in file
+        pdal_pipeline = read_file_with_pdal(
+            lidar_file,
+            source_crs=source_crs,
+            region_to_tile=region_to_rasterise,
+            crs=options["crs"],
+        )
+
+        # Load LiDAR points from pipeline
+        tile_points = pdal_pipeline.arrays[0]
+
+        # Define the raster/DEM dimensions - Align resolution (not BBox)
+        bounds = self.catchment_geometry.catchment.geometry.bounds
+        resolution = self.catchment_geometry.resolution
+        dim_x = numpy.arange(
+            numpy.floor(bounds.minx.min() / resolution) * resolution,
+            numpy.ceil(bounds.maxx.max() / resolution) * resolution + resolution,
+            resolution,
+            dtype=options["raster_type"],
+        )
+        dim_y = numpy.arange(
+            numpy.ceil(bounds.maxy.max() / resolution) * resolution,
+            numpy.ceil(bounds.miny.min() / resolution) * resolution - resolution,
+            -resolution,
+            dtype=options["raster_type"],
+        )
+
+        # Create elevation raster
+        raster_values = self._elevation_over_tile(
+            dim_x=dim_x, dim_y=dim_y, tile_points=tile_points, options=options
+        )
+        elevation = raster_values.reshape((len(dim_y), len(dim_x)))
+
+        # Add data to existing DEM
+        mask = ~(no_values_mask & roi_mask)
+        self._dem["z"] = self._dem.z.where(mask, elevation)
+
+        dataset_mapping = self.metadata["instructions"]["dataset_mapping"]["lidar"]
+        mask = ~(no_values_mask & roi_mask & self._dem.z.notnull())
+        self._dem["lidar_source"] = self._dem.lidar_source.where(mask, dataset_mapping[lidar_name])
+        self._dem["data_source"] = self._dem.data_source.where(
+            mask,
+            self.SOURCE_CLASSIFICATION["LiDAR"],
+        )
 
     def _elevation_over_tile(
         self,
@@ -2642,8 +2968,12 @@ class PatchDem(LidarBase):
     @property
     def no_values_mask(self):
         """No values mask from DEM within land and foreshore region"""
+        if self.drop_patch_offshore:
+            roi = self.catchment_geometry.land_and_foreshore
+        else:
+            roi = self.catchment_geometry.catchment
 
-        if self.catchment_geometry.land_and_foreshore.area.sum() > 0:
+        if roi.area.sum() > 0:
             no_values_mask = (
                 self._dem.z.rolling(
                     dim={
@@ -2658,7 +2988,7 @@ class PatchDem(LidarBase):
             )
             no_values_mask &= clip_mask(
                 self._dem.z,
-                self.catchment_geometry.land_and_foreshore.geometry,
+                roi.geometry,
                 self.chunk_size,
             )
         else:

@@ -997,6 +997,7 @@ class RawLidarDemGenerator(BaseProcessor):
             lidar_interpolation_method=self.get_instruction_general(
                 key="interpolation", subkey="lidar"
             ),
+            metadata=self.create_metadata(),
             elevation_range=self.get_instruction_general("elevation_range"),
             chunk_size=self.get_processing_instructions("chunk_size"),
             buffer_cells=self.get_instruction_general("lidar_buffer"),
@@ -1017,18 +1018,20 @@ class RawLidarDemGenerator(BaseProcessor):
             self.logger.info(f"Dask dashboard: {client.dashboard_link}")
 
             # Load in LiDAR tiles
-            raw_dem.add_lidar(
-                lidar_datasets_info=lidar_datasets_info,
-                lidar_classifications_to_keep=self.get_instruction_general(
-                    "lidar_classifications_to_keep"
-                ),
-                metadata=self.create_metadata(),
-            )
+            for dataset_name, dataset_info in lidar_datasets_info.items():
 
-            # Save a cached copy of DEM to temporary memory cache
-            cached_file = temp_folder / "raw_lidar.nc"
-            self.logger.info(f"Save temp raw DEM to netCDF: {cached_file}")
-            raw_dem.save_and_load_dem(cached_file)
+                dataset_info["name"] = dataset_name
+                raw_dem.add_lidar_new(
+                    lidar_dataset_info=dataset_info,
+                    lidar_classifications_to_keep=self.get_instruction_general(
+                        "lidar_classifications_to_keep"
+                    )
+                )
+
+                # Save a cached copy of DEM to temporary memory cache
+                cached_file = temp_folder / "raw_lidar_{dataset_name}.nc"
+                self.logger.info(f"Save temp raw DEM to netCDF: {cached_file}")
+                raw_dem.save_and_load_dem(cached_file)
 
             # Clip LiDAR - ensure within bounds/foreshore
             if not self.get_instruction_general("ignore_clipping"):
