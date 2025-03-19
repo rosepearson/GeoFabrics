@@ -11,7 +11,7 @@
 	"data_paths": {
 		"local_cache": "tests/test_dem_generation_local_3/data",
 		"subfolder": "results",
-		"extents": "catchment_boundary.geojson",
+		"extents": "catchment.geojson",
 		"land": "land.geojson",
 		"lidar_files": ["lidar.laz"],
 		"coarse_dems": ["coarse_dem.nc"],
@@ -19,7 +19,7 @@
 		"raw_dem_extents": "initial_extents.geojson",
 		"raw_dem": "initial_dem.nc",
 		"result_dem": "test_dem.nc",
-		"benchmark_dem": "benchmark_dem.nc"
+		"benchmark_dem": "benchmark.nc"
 	},
 	"general": {
 		"drop_offshore_lidar": false,

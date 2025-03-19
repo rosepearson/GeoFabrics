@@ -42,7 +42,7 @@ class Test(base_test.Test):
         super(Test, cls).setUpClass()
 
         # Generate catchment data
-        catchment_file = cls.results_dir / "catchment_boundary.geojson"
+        catchment_file = cls.results_dir / "catchment.geojson"
         x0 = 0
         x1 = 3000
         y0 = -5

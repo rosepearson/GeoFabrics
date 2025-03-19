@@ -19,7 +19,7 @@
 		"ocean_contours": ["bathymetry.geojson"],
 		"result_dem": "test_dem.nc",
 		"result_geofabric": "test_geofabric.nc",
-		"benchmark_dem": "benchmark_geofabric.nc"
+		"benchmark_dem": "benchmark.nc"
 	},
 	"general": {
 		"interpolation": {"no_data": "linear"}

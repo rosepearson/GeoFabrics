@@ -220,8 +220,8 @@ class Test(base_test.Test):
         diff_array = test_dem.zo.data - benchmark_dem.zo.data
         logging.info(f"DEM zo array diff is: {diff_array[diff_array != 0]}")
         numpy.testing.assert_array_almost_equal(
-            test_dem.data_source.data,
-            benchmark_dem.data_source.data,
+            test_dem.zo.data,
+            benchmark_dem.zo.data,
             err_msg="The generated result_dem zo has different data "
             "from the benchmark_dem",
         )

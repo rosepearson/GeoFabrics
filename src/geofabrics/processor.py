@@ -674,11 +674,12 @@ class BaseProcessor(abc.ABC):
         # to look first
         data_service = "open_topography"
         if self.check_datasets(data_service, data_type="lidar"):
-            assert self.check_instruction_path("local_cache"), (
-                "A 'local_cache' must be specified under the 'file_paths' in the "
-                "instruction file if you are going to use an API - like "
-                "'open_topography'"
-            )
+            if not self.check_instruction_path("local_cache"):
+                raise ValueError(
+                    "A 'local_cache' must be specified under the 'file_paths' in the "
+                    "instruction file if you are going to use an API - like "
+                    "'open_topography'"
+                )
 
             # download the specified datasets from the data service - then get the
             # local file path
@@ -701,20 +702,12 @@ class BaseProcessor(abc.ABC):
             ].keys():
                 self.logger.info(f"Fetching dataset: {dataset_name}")
                 self.lidar_fetcher.run(dataset_name)
-                lidar_datasets_info[dataset_name] = {}
-                lidar_datasets_info[dataset_name]["file_paths"] = sorted(
-                    pathlib.Path(self.lidar_fetcher.cache_path / dataset_name).rglob(
-                        "*.la[zs]"
-                    )
-                )
-                lidar_datasets_info[dataset_name]["crs"] = self.get_lidar_dataset_crs(
-                    data_service, dataset_name
-                )
-                lidar_datasets_info[dataset_name]["tile_index_file"] = (
-                    self.lidar_fetcher.cache_path
-                    / dataset_name
-                    / f"{dataset_name}_TileIndex.zip"
-                )
+                dataset_path = self.lidar_fetcher.cache_path / dataset_name
+                lidar_datasets_info[dataset_name] = {
+                    "file_paths": sorted(dataset_path.rglob("*.la[zs]")),
+                    "crs": self.get_lidar_dataset_crs(data_service, dataset_name),
+                    "tile_index_file": dataset_path / f"{dataset_name}_TileIndex.zip"
+                }
         # Next check for any additional local LiDAR datasets.
         # for multiple local lidar datasets - must be in separate folders
         data_service = "local"
@@ -751,8 +744,9 @@ class BaseProcessor(abc.ABC):
                         )
                 elif "tile_index_file" not in dataset and "folder_path" not in dataset:
                     raise Exception(
-                        "Local datasets must have either a `folder_path` or "
-                        "file_paths specified. Both are missing for dataset:"
+                        "Local datasets must have either a `folder_path` containing a "
+                        f"{dataset_name}_TileIndex.zip file or a `tile_index_file` "
+                        f"specified. Both are missing for the dataset {dataset_name}:"
                         f"{dataset_name}."
                     )
             # Check no overlap between local and remote (API) keys
@@ -760,7 +754,7 @@ class BaseProcessor(abc.ABC):
                 raise Exception(
                     "The local and API (remote) LiDAR dataset names must be "
                     "unique. Both contain the dataset name(s): "
-                    "{lidar_datasets_info.keys() & local_datasets.keys()}."
+                    f"{lidar_datasets_info.keys() & local_datasets.keys()}."
                 )
             # Add the local datasets to any remote (API) datasets
             lidar_datasets_info.update(local_datasets)
@@ -768,19 +762,15 @@ class BaseProcessor(abc.ABC):
         # files have been specified.
         if len(lidar_datasets_info) == 0 and self.check_instruction_path("lidar_files"):
             # get the specified file paths from the instructions,
-            lidar_datasets_info["local_files"] = {}
-            lidar_datasets_info["local_files"][
-                "file_paths"
-            ] = self.get_instruction_path("lidar_files")
-            lidar_datasets_info["local_files"]["crs"] = None
-            lidar_datasets_info["local_files"]["tile_index_file"] = None
+            lidar_datasets_info["local_files"] = {
+                "file_paths": self.get_instruction_path("lidar_files"),
+                "crs": None,
+                "tile_index_file": None
+            }
             # Ensure this is added to the LiDAR mapping - add if missing
-            if (
-                "dataset_mapping" not in self.instructions
-                or "lidar" not in self.instructions["dataset_mapping"]
-            ):
-                if "dataset_mapping" not in self.instructions:
-                    self.instructions["dataset_mapping"] = {}
+            if "dataset_mapping" not in self.instructions:
+                self.instructions["dataset_mapping"] = {}
+            if "lidar" not in self.instructions["dataset_mapping"]:
                 self.instructions["dataset_mapping"]["lidar"] = {"local_files": 1}
         elif len(lidar_datasets_info) == 0 and not self.check_instruction_path(
             "lidar_files"
@@ -792,9 +782,8 @@ class BaseProcessor(abc.ABC):
             )
         elif self.check_instruction_path("lidar_files"):
             self.logger.warning(
-                "Full LiDAR datasets have been specified (either "
-                "through the APIs or locally) as well as "
-                "`lidar_files`. These will be ignored."
+                "Full LiDAR datasets have been specified as well as "
+                "`lidar_files`. The `lidar_files` will be ignored."
             )
         # Ensure the data_mapping exists and matches the datasets
         if len(lidar_datasets_info) > 0:
@@ -806,53 +795,46 @@ class BaseProcessor(abc.ABC):
                 if len(lidar_datasets_info) == 1:
                     # only one dataset so can unabiguously create a dataset mapping
                     if "dataset_mapping" not in self.instructions:
-                        self.instructions["dataset_mapping"] = {}
-                    self.instructions["dataset_mapping"]["lidar"] = {
-                        list(lidar_datasets_info.keys())[0]: 1
-                    }
+                        self.instructions["dataset_mapping"] = {
+                            "lidar": {list(lidar_datasets_info.keys())[0]: 1}
+                        }
                 else:
                     raise Exception(
                         "A lidar dataset mapping mut be specified in "
                         "the instructions if there are mutliple LiDAR "
                         "datasets. See the GitHub wiki."
                     )
-            else:
-                # Ensure all lidar dataset names are included in the mapping
-                lidar_dataset_mapping = self.instructions["dataset_mapping"]["lidar"]
-                if len(lidar_datasets_info) < len(
-                    lidar_datasets_info.keys() & lidar_dataset_mapping.keys()
-                ):
-                    raise Exception(
-                        "One of the LiDAR dataset names is missing"
-                        "from the LiDAR dataset mapping. Dataset "
-                        f"name are: {lidar_datasets_info.keys()}, "
-                        "and the mappings are: "
-                        f"{lidar_dataset_mapping.keys()}"
-                    )
-            # Check the reserved '-1' code for 'no LiDAR' isn't already used
+
+            # Ensure all lidar dataset names are included in the mapping
             lidar_dataset_mapping = self.instructions["dataset_mapping"]["lidar"]
-            if -1 in lidar_dataset_mapping.values():
+            if len(lidar_datasets_info) < len(
+                lidar_datasets_info.keys() & lidar_dataset_mapping.keys()
+            ):
                 raise Exception(
-                    "The mapping value of -1 is reserved for "
+                    "One of the LiDAR dataset names is missingfrom the LiDAR "
+                    f"dataset mapping. Dataset name are: "
+                    f"{lidar_datasets_info.keys()}, and the mappings are: "
+                    f"{lidar_dataset_mapping.keys()}"
+                )
+            # Check the reserved '-1' code for 'no LiDAR' isn't already used
+            no_lidar = dem.DemBase.SOURCE_CLASSIFICATION["no data"]
+            if no_lidar in lidar_dataset_mapping.values():
+                raise Exception(
+                    f"The mapping value of {no_lidar} is reserved for "
                     "no lidar data. Please select a different "
                     f"mapping value. {lidar_dataset_mapping}"
                 )
-            # Add a no LiDAR mapping value
-            self.instructions["dataset_mapping"]["lidar"][
-                "no LiDAR"
-            ] = dem.DemBase.SOURCE_CLASSIFICATION["no data"]
-            # Sort the lidar_dataset_info order by lidar_dataset_mapping values
-            # First sort the lidar_dataset_mapping by value
-            lidar_dataset_mapping = self.instructions["dataset_mapping"]["lidar"]
-            lidar_dataset_mapping = dict(
+            
+            # Sort the lidar_dataset_mapping by value and drop any extra datasets names
+            lidar_dataset_order = [
+                name for (name, value) in 
                 sorted(lidar_dataset_mapping.items(), key=lambda item: item[1])
-            )
-            # Next sort the lidar_datasets_info by the lidar_dataset_mapping value
-            lidar_datasets_info = {
-                key: lidar_datasets_info[key]
-                for key in lidar_dataset_mapping.keys()
-                if key in lidar_datasets_info.keys()
-            }
+                ]
+            lidar_dataset_order = [name for name in lidar_dataset_order if name in lidar_datasets_info.keys()]
+            # Add the no LiDAR label to the mapping
+            lidar_dataset_mapping["no LiDAR"] = no_lidar
+            # Add the sorted list to the dataset info
+            lidar_datasets_info["lidar_dataset_order"] = lidar_dataset_order
 
         return lidar_datasets_info
 
@@ -1018,10 +1000,10 @@ class RawLidarDemGenerator(BaseProcessor):
             self.logger.info(f"Dask dashboard: {client.dashboard_link}")
 
             # Load in LiDAR tiles
-            for dataset_name, dataset_info in lidar_datasets_info.items():
-
+            for dataset_name in lidar_datasets_info["lidar_dataset_order"]:
+                dataset_info = lidar_datasets_info[dataset_name]
                 dataset_info["name"] = dataset_name
-                raw_dem.add_lidar_new(
+                raw_dem.add_lidar(
                     lidar_dataset_info=dataset_info,
                     lidar_classifications_to_keep=self.get_instruction_general(
                         "lidar_classifications_to_keep"
@@ -1029,7 +1011,7 @@ class RawLidarDemGenerator(BaseProcessor):
                 )
 
                 # Save a cached copy of DEM to temporary memory cache
-                cached_file = temp_folder / "raw_lidar_{dataset_name}.nc"
+                cached_file = temp_folder / f"raw_lidar_{dataset_name}.nc"
                 self.logger.info(f"Save temp raw DEM to netCDF: {cached_file}")
                 raw_dem.save_and_load_dem(cached_file)
 
@@ -1950,19 +1932,27 @@ class RoughnessLengthGenerator(BaseProcessor):
                 interpolation_method=self.get_instruction_general(
                     key="interpolation", subkey="no_data"
                 ),
+                metadata=self.create_metadata(),
                 default_values=default_values,
                 drop_offshore_lidar=drop_offshore_lidar,
             )
 
             # Load in LiDAR tiles
-            roughness_dem.add_lidar(
-                lidar_datasets_info=lidar_datasets_info,
-                lidar_classifications_to_keep=self.get_instruction_general(
-                    "lidar_classifications_to_keep"
-                ),
-                metadata=self.create_metadata(),
-                parameters=roughness_parameters,
-            )  # Note must be called after all others if it is to be complete
+            for dataset_name in lidar_datasets_info["lidar_dataset_order"]:
+                dataset_info = lidar_datasets_info[dataset_name]
+                dataset_info["name"] = dataset_name
+                roughness_dem.add_lidar(
+                    lidar_dataset_info=dataset_info,
+                    lidar_classifications_to_keep=self.get_instruction_general(
+                        "lidar_classifications_to_keep"
+                    ),
+                    parameters=roughness_parameters,
+                ) # Note must be called after all others if it is to be complete
+
+                # Save a cached copy of DEM to temporary memory cache
+                cached_file = temp_folder / f"raw_lidar_zo{dataset_name}.nc"
+                self.logger.info(f"Save temp raw DEM to netCDF: {cached_file}")
+                roughness_dem.save_and_load_dem(cached_file)
 
             # If roads save temp then add in the roads
             if roads is not None and roads.area.sum() > 0:

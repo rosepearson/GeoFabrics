@@ -150,7 +150,7 @@ class Test(base_test.Test):
         )
         self.assertTrue(
             len(diff_array[numpy.abs(diff_array) > threshold]) < len(diff_array) / 250,
-            "More than 0.4% of DEM values differ by more than {threshold} on Linux test"
+            f"More than 0.4% of DEM values differ by more than {threshold} on Linux test"
             f" run: {diff_array[numpy.abs(diff_array) > threshold]} or "
             f"{len(diff_array[numpy.abs(diff_array) > threshold]) / len(diff_array.flatten()) * 100}%",
         )
