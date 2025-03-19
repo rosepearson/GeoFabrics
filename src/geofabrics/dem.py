@@ -3085,19 +3085,15 @@ class RoughnessDem(LidarBase):
         # Load LiDAR points from pipeline
         tile_array = pdal_pipeline.arrays[0]
 
-        # Get the locations to rasterise
-        dim_x = self._dem.x.data
-        dim_y = self._dem.y.data
-
         # Estimate roughness over the region
         raster_values = self._roughness_over_tile(
-            dim_x=dim_x,
-            dim_y=dim_y,
+            dim_x=self._dem.x.data,
+            dim_y=self._dem.y.data,
             tile_points=tile_array,
             xy_ground=self._dem.z.data.flatten(),
             options=options,
         )
-        roughness = raster_values.reshape((len(dim_y), len(dim_x)))
+        roughness = raster_values.reshape((len(self._dem.y.data), len(self._dem.x.data)))
 
         # Add to dataset
         mask = ~(no_values_mask & roi_mask)
