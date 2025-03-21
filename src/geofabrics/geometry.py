@@ -878,7 +878,7 @@ class RiverMouthFan:
         crs: int,
         cross_section_spacing: float,
         elevation_labels: list,
-        ocean_contour_depth_label: str = None,
+        ocean_elevation_label: str = None,
     ):
         self.logger = logging.getLogger(f"{__name__}.{self.__class__.__name__}")
         self.crs = crs
@@ -887,7 +887,7 @@ class RiverMouthFan:
         self.river_polygon_file = river_polygon_file
         self.river_bathymetry_file = river_bathymetry_file
         self.ocean_contour_file = ocean_contour_file
-        self.ocean_contour_depth_label = ocean_contour_depth_label
+        self.ocean_elevation_label = ocean_elevation_label
         self.elevation_labels = elevation_labels
         self.ocean_points_file = ocean_points_file
 
@@ -952,18 +952,13 @@ class RiverMouthFan:
                 than the river mouth
         """
 
-        assert (
-            self.ocean_contour_depth_label is not None
-        ), "Ocean z-values must currently be stored a separate column currently."
-
         # Load in the ocean contours and find the contours to terminate against
         ocean_contours = geopandas.read_file(self.ocean_contour_file).to_crs(self.crs)
-        depth_label = self.ocean_contour_depth_label
+        elevations = self._get_elevations(ocean_contours)
 
         # Determine the end depth and filter the contours to include only these contours
         ocean_contours = ocean_contours[
-            ocean_contours[depth_label]
-            > depth_multiplier * river_mouth_depth * depth_sign
+            elevations > depth_multiplier * river_mouth_depth * depth_sign
         ].reset_index(drop=True)
 
         assert (
@@ -972,6 +967,14 @@ class RiverMouthFan:
 
         return ocean_contours
     
+    def _get_elevations(self, ocean_geometry: geopandas.GeoDataFrame):
+        """ Return the an array of depths using either the geometry or a column"""
+        if self.ocean_elevation_label is None:
+            elevations =  ocean_geometry.apply(lambda row: row.geometry.z, axis=1)
+        else:
+            elevations = ocean_geometry[self.ocean_elevation_label]
+        return elevations
+
     def _get_distance_to_nearest_ocean_point_in_fan(
         self,
         river_mouth_z,
@@ -996,14 +999,14 @@ class RiverMouthFan:
         if river_mouth_z > 0:
             river_mouth_z = 0
         ocean_points = ocean_points[
-            ocean_points["Z"] < depth_multiplier * river_mouth_z
+            self._get_elevations(ocean_points) < depth_multiplier * river_mouth_z
         ].reset_index(drop=True)
 
         if len(ocean_points) == 0:
             raise ValueError(f"No points exist within fan at a depth {depth_multiplier}x the river mouth depth. ")
         
         distance = ocean_points.distance(mouth_point).min()
-        elevation = ocean_points.iloc[ocean_points.distance(mouth_point).idxmin()]["Z"]
+        elevation = self._get_elevations(ocean_points).iloc[ocean_points.distance(mouth_point).idxmin()]
 
         return distance, elevation
 
@@ -1192,7 +1195,7 @@ class RiverMouthFan:
         else:
             # Load in ocean depth contours and keep only those intersecting the fan centre
             ocean_contours = self._get_ocean_contours(max(river_mouth_elevations))
-            end_depth = ocean_contours[self.ocean_contour_depth_label].min()
+            end_depth =  self._get_elevations(ocean_contours).min()
             ocean_contours = ocean_contours.explode(ignore_index=True)
             ocean_contours = ocean_contours[
                 ~ocean_contours.intersection(fan_centre).is_empty
@@ -1203,7 +1206,8 @@ class RiverMouthFan:
                 ocean_contours = ocean_contours.clip(fan_polygon).explode(ignore_index=True)
                 min_index = ocean_contours.distance(mouth_point).idxmin()
                 intersection_line = ocean_contours.loc[min_index].geometry
-                end_depth = ocean_contours.loc[min_index][self.ocean_contour_depth_label]
+                elevations =  self._get_elevations(ocean_contours)
+                end_depth = elevations.loc[min_index]
             else:
                 self.logger.warning(
                     "No ocean contour intersected. Instaed assumed fan geoemtry"

@@ -835,6 +835,8 @@ class BaseProcessor(abc.ABC):
             lidar_dataset_mapping["no LiDAR"] = no_lidar
             # Add the sorted list to the dataset info
             lidar_datasets_info["lidar_dataset_order"] = lidar_dataset_order
+        else:
+            lidar_datasets_info["lidar_dataset_order"] = []
 
         return lidar_datasets_info
 
@@ -960,7 +962,7 @@ class RawLidarDemGenerator(BaseProcessor):
         if isinstance(drop_offshore_lidar, bool):
             drop_offshore_lidar_bool = drop_offshore_lidar
             drop_offshore_lidar = {}
-            for dataset_name in lidar_datasets_info.keys():
+            for dataset_name in lidar_datasets_info["lidar_dataset_order"]:
                 drop_offshore_lidar[dataset_name] = drop_offshore_lidar_bool
         elif not isinstance(drop_offshore_lidar, dict):
             raise TypeError(
@@ -970,6 +972,7 @@ class RawLidarDemGenerator(BaseProcessor):
 
         # Create folder for caching raw DEM files during DEM generation
         temp_folder = self.setup_temp_folder()
+        cached_file = temp_folder / "not_yet_created_file"
 
         # setup the raw DEM generator
         raw_dem = dem.RawDem(
@@ -1011,22 +1014,26 @@ class RawLidarDemGenerator(BaseProcessor):
                 )
 
                 # Save a cached copy of DEM to temporary memory cache
-                cached_file = temp_folder / f"raw_lidar_{dataset_name}.nc"
-                self.logger.info(f"Save temp raw DEM to netCDF: {cached_file}")
-                raw_dem.save_and_load_dem(cached_file)
+                temp_file = temp_folder / f"raw_lidar_{dataset_name}.nc"
+                self.logger.info(f"Save temp raw DEM to netCDF: {temp_file}")
+                raw_dem.save_and_load_dem(temp_file)
+                if cached_file.exists():
+                    self.clean_cached_file(cached_file)
+                cached_file = temp_file
 
             # Clip LiDAR - ensure within bounds/foreshore
             if not self.get_instruction_general("ignore_clipping"):
                 raw_dem.clip_lidar()
-
-                # Save a cached copy of DEM to temporary memory cache
                 temp_file = temp_folder / "raw_lidar_clipped.nc"
-                self.logger.info(f"Save temp raw DEM to netCDF: {temp_file}")
+                self.logger.info(f"Save temp raw DEM to netCDF: {cached_file}")
                 raw_dem.save_and_load_dem(temp_file)
-
-                # Remove previous cached file and replace with new one
-                self.clean_cached_file(cached_file)
+                if cached_file.exists():
+                    self.clean_cached_file(cached_file)
                 cached_file = temp_file
+            elif not cached_file.exists(): # Ensure saved even if empty
+                cached_file = temp_folder / "raw_lidar_empty.nc"
+                self.logger.info(f"Save temp raw DEM to netCDF: {cached_file}")
+                raw_dem.save_and_load_dem(cached_file)
 
             # Add a coarse DEM if significant area without LiDAR and a coarse DEM
             coarse_dem_paths = self.get_vector_or_raster_paths(
@@ -1908,6 +1915,7 @@ class RoughnessLengthGenerator(BaseProcessor):
 
         # Create folder for caching raw DEM files during DEM generation
         temp_folder = self.setup_temp_folder()
+        cached_file = temp_folder / "not_yet_created_file"
 
         # Setup Dask cluster and client
         cluster_kwargs = {
@@ -1950,18 +1958,20 @@ class RoughnessLengthGenerator(BaseProcessor):
                 ) # Note must be called after all others if it is to be complete
 
                 # Save a cached copy of DEM to temporary memory cache
-                cached_file = temp_folder / f"raw_lidar_zo{dataset_name}.nc"
+                temp_file = temp_folder / f"raw_lidar_zo{dataset_name}.nc"
+                self.logger.info(f"Save temp raw DEM to netCDF: {temp_file}")
+                roughness_dem.save_and_load_dem(temp_file)
+                if cached_file.exists():
+                     self.clean_cached_file(cached_file)
+                cached_file = temp_file
+            
+            if not cached_file.exists(): # Ensure saved even if empty
+                cached_file = temp_folder / "raw_lidar_empty.nc"
                 self.logger.info(f"Save temp raw DEM to netCDF: {cached_file}")
                 roughness_dem.save_and_load_dem(cached_file)
 
             # If roads save temp then add in the roads
             if roads is not None and roads.area.sum() > 0:
-                # Cache roughness before adding roads
-                temp_file = temp_folder / "zo_clipped.nc"
-                self.logger.info(f"Save clipped geofabric to netCDF: {temp_file}")
-                roughness_dem.save_and_load_dem(temp_file)
-                self.clean_cached_file(temp_folder / "raw_lidar_zo.nc")
-                cached_file = temp_file
 
                 # Add roads to roughness
                 roughness_dem.add_roads(roads_polygon=roads)
@@ -2043,7 +2053,7 @@ class MeasuredRiverGenerator(BaseProcessor):
         ocean_contour_file = self.get_vector_or_raster_paths(
             key="ocean_contours", data_type="vector"
         )[0]
-        ocean_contour_depth_label = self.get_instruction_general(
+        ocean_elevation_label = self.get_instruction_general(
             key="z_labels", subkey="ocean"
         )
         # Create the required river centreline and bathymtries that don't exist
@@ -2126,7 +2136,7 @@ class MeasuredRiverGenerator(BaseProcessor):
             crs=crs,
             cross_section_spacing=cross_section_spacing,
             elevation_labels=["z"],
-            ocean_contour_depth_label=ocean_contour_depth_label,
+            ocean_elevation_label=ocean_elevation_label,
         )
 
         # Estimate the fan extents and bathymetry
@@ -3144,19 +3154,28 @@ class RiverBathymetryGenerator(BaseProcessor):
         cross_section_spacing = self.get_bathymetry_instruction("cross_section_spacing")
         river_bathymetry_file = self.get_result_file_path(key="river_bathymetry")
         river_polygon_file = self.get_result_file_path(key="river_polygon")
-        ocean_contour_file = self.get_vector_or_raster_paths(
-            key="ocean_contours", data_type="vector"
-        )[0]
         aligned_channel_file = self.get_result_file_path(key="aligned")
-        ocean_contour_depth_label = self.get_instruction_general(
+        ocean_elevation_label = self.get_instruction_general(
             key="z_labels", subkey="ocean"
         )
 
         # Create fan object
+        if self.check_vector_or_raster(key="ocean_contours", api_type="vector"):
+            ocean_contour_file = self.get_vector_or_raster_paths(
+            key="ocean_contours", data_type="vector"
+        )[0]
+        else:
+            ocean_contour_file = None
         if self.check_vector_or_raster(key="ocean_points", api_type="vector"):
-            ocean_points_file = self.get_instruction_path("ocean_points")
+            ocean_points_file = self.get_vector_or_raster_paths(
+                "ocean_points", data_type="vector")[0]
         else:
             ocean_points_file = None
+        if ocean_points_file is None and ocean_contour_file is None:
+            raise ValueError(
+                "Need either 'ocean_points' or 'ocean_contours' specified "
+                "if a river mouth fan is to be estimated. Neither provided."
+                )
         fan = geometry.RiverMouthFan(
             aligned_channel_file=aligned_channel_file,
             river_bathymetry_file=river_bathymetry_file,
@@ -3169,7 +3188,7 @@ class RiverBathymetryGenerator(BaseProcessor):
                 "bed_elevation_Neal_et_al",
                 "bed_elevation_Rupp_and_Smart",
             ],
-            ocean_contour_depth_label=ocean_contour_depth_label,
+            ocean_elevation_label=ocean_elevation_label,
         )
 
         # Estimate the fan extents and bathymetry
