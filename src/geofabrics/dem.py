@@ -1768,7 +1768,7 @@ class RawDem(LidarBase):
         self.metadata = metadata
 
         # Initialise an empty dataset with no LiDAR
-        self.logger.warning("No LiDAR dataset. Creating an empty raw DEM dataset.")
+        self.logger.info("Initialising an empty raw DEM dataset.")
         bounds = self.catchment_geometry.catchment.geometry.bounds
         resolution = self.catchment_geometry.resolution
         round_precision = int(2 - numpy.floor(numpy.log10(resolution)))

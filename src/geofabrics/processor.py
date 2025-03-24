@@ -188,7 +188,6 @@ class BaseProcessor(abc.ABC):
         generator
             The dem.DemBase object with a 'save_dem' function.
         """
-
         if filename.suffix.lower() == ".nc":
             self.logger.info(
                 "In processor.DemGenerator - write out the raw DEM to "
@@ -2359,6 +2358,7 @@ class RiverBathymetryGenerator(BaseProcessor):
             "keep_downstream_osm": False,
             "estimate_fan": False,
             "upstream_smoothing_factor": 25,  # i.e. 25 x cross_section_spacing
+            "clip_to_land": False,
         }
 
         assert key in defaults or key in self.instructions["rivers"], (
@@ -2621,7 +2621,7 @@ class RiverBathymetryGenerator(BaseProcessor):
         self.logger.info("The channel hasn't been characerised. Charactreising now.")
 
         # Decide if aligning from river network alone, or OSM and river network
-        if "osm_id" in self.instructions["rivers"]:
+        if "osm" in self.instructions["rivers"]:
             channel_width, aligned_channel = self.align_channel_from_osm()
         else:
             channel_width, aligned_channel = self.align_channel_from_rec()
@@ -2692,13 +2692,13 @@ class RiverBathymetryGenerator(BaseProcessor):
         crs = self.get_crs()["horizontal"]
 
         # Create OSM defined channel
-        osm_id = self.get_bathymetry_instruction("osm_id")
-        query = f"(way[waterway]({osm_id});); out body geom;"
+        osm = self.get_bathymetry_instruction("osm")
+        query = f"({osm['type']}[waterway]({osm['id']});); out body geom;"
         overpass = OSMPythonTools.overpass.Overpass()
-        if "osm_date" in self.instructions["rivers"]:
+        if "date" in osm:
             osm_channel = overpass.query(
                 query,
-                date=self.get_bathymetry_instruction("osm_date"),
+                date=osm["date"],
                 timeout=60,
             )
         else:
@@ -2718,6 +2718,7 @@ class RiverBathymetryGenerator(BaseProcessor):
             )
         # Cut the OSM to size - give warning if OSM line shorter than network
         # Get the start and end point of the smoothed network line
+        #breakpoint()
         channel = channel.get_parametric_spline_fit()
         network_extents = channel.boundary.explode(index_parts=False)
         network_start, network_end = (
