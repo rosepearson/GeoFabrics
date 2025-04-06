@@ -705,7 +705,7 @@ class BaseProcessor(abc.ABC):
                 lidar_datasets_info[dataset_name] = {
                     "file_paths": sorted(dataset_path.rglob("*.la[zs]")),
                     "crs": self.get_lidar_dataset_crs(data_service, dataset_name),
-                    "tile_index_file": dataset_path / f"{dataset_name}_TileIndex.zip"
+                    "tile_index_file": dataset_path / f"{dataset_name}_TileIndex.zip",
                 }
         # Next check for any additional local LiDAR datasets.
         # for multiple local lidar datasets - must be in separate folders
@@ -764,7 +764,7 @@ class BaseProcessor(abc.ABC):
             lidar_datasets_info["local_files"] = {
                 "file_paths": self.get_instruction_path("lidar_files"),
                 "crs": None,
-                "tile_index_file": None
+                "tile_index_file": None,
             }
             # Ensure this is added to the LiDAR mapping - add if missing
             if "dataset_mapping" not in self.instructions:
@@ -823,13 +823,19 @@ class BaseProcessor(abc.ABC):
                     "no lidar data. Please select a different "
                     f"mapping value. {lidar_dataset_mapping}"
                 )
-            
+
             # Sort the lidar_dataset_mapping by value and drop any extra datasets names
             lidar_dataset_order = [
-                name for (name, value) in 
-                sorted(lidar_dataset_mapping.items(), key=lambda item: item[1])
-                ]
-            lidar_dataset_order = [name for name in lidar_dataset_order if name in lidar_datasets_info.keys()]
+                name
+                for (name, value) in sorted(
+                    lidar_dataset_mapping.items(), key=lambda item: item[1]
+                )
+            ]
+            lidar_dataset_order = [
+                name
+                for name in lidar_dataset_order
+                if name in lidar_datasets_info.keys()
+            ]
             # Add the no LiDAR label to the mapping
             lidar_dataset_mapping["no LiDAR"] = no_lidar
             # Add the sorted list to the dataset info
@@ -1009,7 +1015,7 @@ class RawLidarDemGenerator(BaseProcessor):
                     lidar_dataset_info=dataset_info,
                     lidar_classifications_to_keep=self.get_instruction_general(
                         "lidar_classifications_to_keep"
-                    )
+                    ),
                 )
 
                 # Save a cached copy of DEM to temporary memory cache
@@ -1029,7 +1035,7 @@ class RawLidarDemGenerator(BaseProcessor):
                 if cached_file.exists():
                     self.clean_cached_file(cached_file)
                 cached_file = temp_file
-            elif not cached_file.exists(): # Ensure saved even if empty
+            elif not cached_file.exists():  # Ensure saved even if empty
                 cached_file = temp_folder / "raw_lidar_empty.nc"
                 self.logger.info(f"Save temp raw DEM to netCDF: {cached_file}")
                 raw_dem.save_and_load_dem(cached_file)
@@ -1955,17 +1961,17 @@ class RoughnessLengthGenerator(BaseProcessor):
                         "lidar_classifications_to_keep"
                     ),
                     parameters=roughness_parameters,
-                ) # Note must be called after all others if it is to be complete
+                )  # Note must be called after all others if it is to be complete
 
                 # Save a cached copy of DEM to temporary memory cache
                 temp_file = temp_folder / f"raw_lidar_zo{dataset_name}.nc"
                 self.logger.info(f"Save temp raw DEM to netCDF: {temp_file}")
                 roughness_dem.save_and_load_dem(temp_file)
                 if cached_file.exists():
-                     self.clean_cached_file(cached_file)
+                    self.clean_cached_file(cached_file)
                 cached_file = temp_file
-            
-            if not cached_file.exists(): # Ensure saved even if empty
+
+            if not cached_file.exists():  # Ensure saved even if empty
                 cached_file = temp_folder / "raw_lidar_empty.nc"
                 self.logger.info(f"Save temp raw DEM to netCDF: {cached_file}")
                 roughness_dem.save_and_load_dem(cached_file)
@@ -2471,9 +2477,9 @@ class RiverBathymetryGenerator(BaseProcessor):
         if not veg_file.is_file():
             # Create the catchment file if this has not be created yet!
             self.logger.info("Generating vegetation DEM.")
-            self.instructions["general"][
-                "lidar_classifications_to_keep"
-            ] = self.get_bathymetry_instruction("veg_lidar_classifications_to_keep")
+            self.instructions["general"]["lidar_classifications_to_keep"] = (
+                self.get_bathymetry_instruction("veg_lidar_classifications_to_keep")
+            )
             instruction_paths["raw_dem"] = str(self.get_result_file_name(key="veg_dem"))
             runner = RawLidarDemGenerator(self.instructions)
             runner.run()
@@ -2719,7 +2725,7 @@ class RiverBathymetryGenerator(BaseProcessor):
             )
         # Cut the OSM to size - give warning if OSM line shorter than network
         # Get the start and end point of the smoothed network line
-        #breakpoint()
+        # breakpoint()
         channel = channel.get_parametric_spline_fit()
         network_extents = channel.boundary.explode(index_parts=False)
         network_start, network_end = (
@@ -2946,9 +2952,9 @@ class RiverBathymetryGenerator(BaseProcessor):
         # Enfore a minimum slope - as specified in the instructions
         minimum_slope = self.get_bathymetry_instruction("minimum_slope")
         self.logger.info(f"Enforcing a minimum slope of {minimum_slope}")
-        width_values.loc[
-            width_values[slope_name] < minimum_slope, slope_name
-        ] = minimum_slope
+        width_values.loc[width_values[slope_name] < minimum_slope, slope_name] = (
+            minimum_slope
+        )
 
         # Calculate depths and bed elevation using the Neal et al approach (Uniform flow
         # theory)
@@ -3022,9 +3028,9 @@ class RiverBathymetryGenerator(BaseProcessor):
         )
         if self.debug:
             # Optionally write out additional depth information
-            width_values[
-                "area_adjusted_depth_Rupp_and_Smart"
-            ] = active_channel_bank_depth
+            width_values["area_adjusted_depth_Rupp_and_Smart"] = (
+                active_channel_bank_depth
+            )
             width_values["depth_Rupp_and_Smart"] = full_bank_depth
         # Save the bed elevations
         values_to_save = [
@@ -3164,20 +3170,21 @@ class RiverBathymetryGenerator(BaseProcessor):
         # Create fan object
         if self.check_vector_or_raster(key="ocean_contours", api_type="vector"):
             ocean_contour_file = self.get_vector_or_raster_paths(
-            key="ocean_contours", data_type="vector"
-        )[0]
+                key="ocean_contours", data_type="vector"
+            )[0]
         else:
             ocean_contour_file = None
         if self.check_vector_or_raster(key="ocean_points", api_type="vector"):
             ocean_points_file = self.get_vector_or_raster_paths(
-                "ocean_points", data_type="vector")[0]
+                "ocean_points", data_type="vector"
+            )[0]
         else:
             ocean_points_file = None
         if ocean_points_file is None and ocean_contour_file is None:
             raise ValueError(
                 "Need either 'ocean_points' or 'ocean_contours' specified "
                 "if a river mouth fan is to be estimated. Neither provided."
-                )
+            )
         fan = geometry.RiverMouthFan(
             aligned_channel_file=aligned_channel_file,
             river_bathymetry_file=river_bathymetry_file,

@@ -966,11 +966,11 @@ class RiverMouthFan:
         ), f"No contours exist with a depth {depth_multiplier}x the river mouth depth. "
 
         return ocean_contours
-    
+
     def _get_elevations(self, ocean_geometry: geopandas.GeoDataFrame):
-        """ Return the an array of depths using either the geometry or a column"""
+        """Return the an array of depths using either the geometry or a column"""
         if self.ocean_elevation_label is None:
-            elevations =  ocean_geometry.apply(lambda row: row.geometry.z, axis=1)
+            elevations = ocean_geometry.apply(lambda row: row.geometry.z, axis=1)
         else:
             elevations = ocean_geometry[self.ocean_elevation_label]
         return elevations
@@ -1003,10 +1003,14 @@ class RiverMouthFan:
         ].reset_index(drop=True)
 
         if len(ocean_points) == 0:
-            raise ValueError(f"No points exist within fan at a depth {depth_multiplier}x the river mouth depth. ")
-        
+            raise ValueError(
+                f"No points exist within fan at a depth {depth_multiplier}x the river mouth depth. "
+            )
+
         distance = ocean_points.distance(mouth_point).min()
-        elevation = self._get_elevations(ocean_points).iloc[ocean_points.distance(mouth_point).idxmin()]
+        elevation = self._get_elevations(ocean_points).iloc[
+            ocean_points.distance(mouth_point).idxmin()
+        ]
 
         return distance, elevation
 
@@ -1079,7 +1083,7 @@ class RiverMouthFan:
         mouth_point: float,
         mouth_tangent: float,
         mouth_normal: float,
-        length: float
+        length: float,
     ):
         """Return the fan polygon of maximum length. This will be used to
         produce data to the first contour at least 2x the depth of the river
@@ -1160,7 +1164,7 @@ class RiverMouthFan:
                 river_mouth_z=max(river_mouth_elevations),
                 fan=fan_polygon,
                 mouth_point=mouth_point,
-                depth_multiplier=2
+                depth_multiplier=2,
             )
             end_depth = -1 * end_elevation
             fan_polygon = self._fixed_length_fan_polygon(
@@ -1191,11 +1195,11 @@ class RiverMouthFan:
                     ],
                 ]
             )
-            
+
         else:
             # Load in ocean depth contours and keep only those intersecting the fan centre
             ocean_contours = self._get_ocean_contours(max(river_mouth_elevations))
-            end_depth =  self._get_elevations(ocean_contours).min()
+            end_depth = self._get_elevations(ocean_contours).min()
             ocean_contours = ocean_contours.explode(ignore_index=True)
             ocean_contours = ocean_contours[
                 ~ocean_contours.intersection(fan_centre).is_empty
@@ -1203,10 +1207,12 @@ class RiverMouthFan:
 
             # Keep the closest contour intersecting
             if len(ocean_contours) > 0:
-                ocean_contours = ocean_contours.clip(fan_polygon).explode(ignore_index=True)
+                ocean_contours = ocean_contours.clip(fan_polygon).explode(
+                    ignore_index=True
+                )
                 min_index = ocean_contours.distance(mouth_point).idxmin()
                 intersection_line = ocean_contours.loc[min_index].geometry
-                elevations =  self._get_elevations(ocean_contours)
+                elevations = self._get_elevations(ocean_contours)
                 end_depth = elevations.loc[min_index]
             else:
                 self.logger.warning(

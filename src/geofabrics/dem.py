@@ -315,14 +315,13 @@ class DemBase(abc.ABC):
     def dem(self) -> xarray.Dataset:
         """Return the DEM over the catchment region"""
         raise NotImplementedError("dem must be instantiated in the child class")
-    
+
     def _check_resolution(self, dem: xarray.Dataset):
-        """ Check the DEM resolution matches the specified resolution. """
+        """Check the DEM resolution matches the specified resolution."""
         dem_resolution = dem.rio.resolution()
-        dem_resolution =  max(abs(dem_resolution[0]), abs(dem_resolution[1]))
+        dem_resolution = max(abs(dem_resolution[0]), abs(dem_resolution[1]))
 
         return self.catchment_geometry.resolution == dem_resolution
-
 
     def _load_dem(self, filename: pathlib.Path) -> xarray.Dataset:
         """Load in and replace the DEM with a previously cached version."""
@@ -346,8 +345,9 @@ class DemBase(abc.ABC):
             dem["zo"] = dem.zo.astype(geometry.RASTER_TYPE)
 
         if not self._check_resolution(dem):
-            raise ValueError("The specified resolution does not match the "
-                             f"{filename} resolution.")
+            raise ValueError(
+                "The specified resolution does not match the " f"{filename} resolution."
+            )
         return dem
 
     def save_dem(
@@ -642,7 +642,9 @@ class HydrologicallyConditionedDem(DemBase):
         self._write_netcdf_conventions_in_place(raw_dem, catchment_geometry.crs)
 
         # Clip to catchment and set the data_source layer to NaN where there is no data
-        raw_dem = raw_dem.rio.clip_box(*tuple(catchment_geometry.catchment.total_bounds))
+        raw_dem = raw_dem.rio.clip_box(
+            *tuple(catchment_geometry.catchment.total_bounds)
+        )
         raw_dem = raw_dem.where(
             clip_mask(raw_dem.z, catchment_geometry.catchment.geometry, self.chunk_size)
         )
@@ -654,8 +656,10 @@ class HydrologicallyConditionedDem(DemBase):
         self._write_netcdf_conventions_in_place(raw_dem, catchment_geometry.crs)
 
         if not self._check_resolution(raw_dem):
-            raise ValueError("The specified resolution does not match the "
-                             f"{raw_dem_path} resolution.")
+            raise ValueError(
+                "The specified resolution does not match the "
+                f"{raw_dem_path} resolution."
+            )
 
         # Set attributes
         self._raw_dem = raw_dem
@@ -1176,7 +1180,9 @@ class HydrologicallyConditionedDem(DemBase):
 
         if include_edges:
             # Get edge points - from DEM
-            edge_roi = region_to_rasterise.dissolve().buffer(self.catchment_geometry.resolution)
+            edge_roi = region_to_rasterise.dissolve().buffer(
+                self.catchment_geometry.resolution
+            )
             edge_dem = self._dem.rio.clip_box(*tuple(edge_roi.total_bounds))
             edge_dem = edge_dem.rio.clip(edge_roi)
             edge_dem = edge_dem.rio.clip(
@@ -1342,15 +1348,18 @@ class HydrologicallyConditionedDem(DemBase):
         # Tempoarily save the adjacent points from the DEM - ensure no NaN through NN interpolation
         if include_edges:
             edge_roi = region_to_rasterise.dissolve().buffer(
-                    self.catchment_geometry.resolution
-                )
+                self.catchment_geometry.resolution
+            )
             edge_dem = self._dem.rio.clip_box(*tuple(edge_roi.total_bounds))
-            #edge_dem = edge_dem.rio.clip(edge_roi)
+            # edge_dem = edge_dem.rio.clip(edge_roi)
             self._write_netcdf_conventions_in_place(
                 edge_dem, self.catchment_geometry.crs
             )
             edge_dem["z"] = edge_dem.z.rio.interpolate_na(method="nearest")
-            edge_dem = edge_dem.rio.clip(edge_roi, drop=True, )
+            edge_dem = edge_dem.rio.clip(
+                edge_roi,
+                drop=True,
+            )
             edge_dem = edge_dem.rio.clip(
                 region_to_rasterise.dissolve().geometry,
                 invert=True,
@@ -1773,14 +1782,18 @@ class RawDem(LidarBase):
         resolution = self.catchment_geometry.resolution
         round_precision = int(2 - numpy.floor(numpy.log10(resolution)))
         x = numpy.arange(
-            round(bounds.minx.min() / resolution, round_precision) * resolution + 0.5 * resolution,
-            round(bounds.maxx.max() / resolution, round_precision) * resolution + 0.5 * resolution,
+            round(bounds.minx.min() / resolution, round_precision) * resolution
+            + 0.5 * resolution,
+            round(bounds.maxx.max() / resolution, round_precision) * resolution
+            + 0.5 * resolution,
             resolution,
             dtype=geometry.RASTER_TYPE,
         )
         y = numpy.arange(
-            round(bounds.maxy.max() / resolution, round_precision) * resolution - 0.5 * resolution,
-            round(bounds.miny.min() / resolution, round_precision) * resolution - 0.5 * resolution,
+            round(bounds.maxy.max() / resolution, round_precision) * resolution
+            - 0.5 * resolution,
+            round(bounds.miny.min() / resolution, round_precision) * resolution
+            - 0.5 * resolution,
             -resolution,
             dtype=geometry.RASTER_TYPE,
         )
@@ -1804,23 +1817,24 @@ class RawDem(LidarBase):
         maxx = bounds.maxx.max()
         miny = bounds.miny.min()
         maxy = bounds.maxy.max()
-        n_chunks_x = int(
-            numpy.ceil((maxx - minx) / (self.chunk_size * resolution))
-        )
-        n_chunks_y = int(
-            numpy.ceil((maxy - miny) / (self.chunk_size * resolution))
-        )
+        n_chunks_x = int(numpy.ceil((maxx - minx) / (self.chunk_size * resolution)))
+        n_chunks_y = int(numpy.ceil((maxy - miny) / (self.chunk_size * resolution)))
         round_precision = int(2 - numpy.floor(numpy.log10(resolution)))
 
         # x coordinates rounded up to the nearest chunk - resolution aligned
         dim_x = []
-        aligned_min_x = round(minx / resolution, round_precision) * resolution  + 0.5 * resolution
+        aligned_min_x = (
+            round(minx / resolution, round_precision) * resolution + 0.5 * resolution
+        )
         for i in range(n_chunks_x):
             chunk_min_x = aligned_min_x + i * self.chunk_size * resolution
             if i + 1 < n_chunks_x:
                 chunk_max_x = aligned_min_x + (i + 1) * self.chunk_size * resolution
             else:
-                chunk_max_x = round(maxx / resolution, round_precision) * resolution + 0.5 * resolution
+                chunk_max_x = (
+                    round(maxx / resolution, round_precision) * resolution
+                    + 0.5 * resolution
+                )
             dim_x.append(
                 numpy.arange(
                     chunk_min_x,
@@ -1831,13 +1845,18 @@ class RawDem(LidarBase):
             )
         # y coordinates rounded up to the nearest chunk - resolution aligned
         dim_y = []
-        aligned_max_y = round(maxy / resolution, round_precision) * resolution - 0.5 * resolution
+        aligned_max_y = (
+            round(maxy / resolution, round_precision) * resolution - 0.5 * resolution
+        )
         for i in range(n_chunks_y):
             chunk_max_y = aligned_max_y - i * self.chunk_size * resolution
             if i + 1 < n_chunks_y:
                 chunk_min_y = aligned_max_y - (i + 1) * self.chunk_size * resolution
             else:
-                chunk_min_y = round(miny / resolution, round_precision) * resolution - 0.5 * resolution
+                chunk_min_y = (
+                    round(miny / resolution, round_precision) * resolution
+                    - 0.5 * resolution
+                )
             dim_y.append(
                 numpy.arange(
                     chunk_max_y,
@@ -1995,19 +2014,23 @@ class RawDem(LidarBase):
             else self.catchment_geometry.catchment
         )
 
-        roi_mask = clip_mask(self._dem.z, region_to_rasterise.geometry, chunk_size=self.chunk_size)
+        roi_mask = clip_mask(
+            self._dem.z, region_to_rasterise.geometry, chunk_size=self.chunk_size
+        )
         no_values_mask = self._dem.z.isnull()
         if region_to_rasterise.area.sum() == 0:
-            self.logger.info(f"No area to the region to rasterise, so do not try add {lidar_name}")
+            self.logger.info(
+                f"No area to the region to rasterise, so do not try add {lidar_name}"
+            )
             return
         if not (no_values_mask & roi_mask).any():
-            self.logger.info(f"No missing values within the region to rasterise, so skip {lidar_name}")
+            self.logger.info(
+                f"No missing values within the region to rasterise, so skip {lidar_name}"
+            )
             return
 
         # create a map from tile name to tile file name
-        lidar_files_map = {
-            lidar_file.name: lidar_file for lidar_file in lidar_files
-        }
+        lidar_files_map = {lidar_file.name: lidar_file for lidar_file in lidar_files}
 
         # remove all tiles entirely outside the region to raserise
         (
@@ -2043,7 +2066,10 @@ class RawDem(LidarBase):
                 )
 
                 # Return empty if no files
-                if len(chunk_lidar_files) == 0 or not no_values_mask.sel(x=dim_x, y=dim_y).any():
+                if (
+                    len(chunk_lidar_files) == 0
+                    or not no_values_mask.sel(x=dim_x, y=dim_y).any()
+                ):
                     self.logger.debug(
                         f"\t\tReturning empty tile as no LiDAR or out of ROI"
                     )
@@ -2085,7 +2111,9 @@ class RawDem(LidarBase):
 
         dataset_mapping = self.metadata["instructions"]["dataset_mapping"]["lidar"]
         mask = ~(no_values_mask & roi_mask & self._dem.z.notnull())
-        self._dem["lidar_source"] = self._dem.lidar_source.where(mask, dataset_mapping[lidar_name])
+        self._dem["lidar_source"] = self._dem.lidar_source.where(
+            mask, dataset_mapping[lidar_name]
+        )
         self._dem["data_source"] = self._dem.data_source.where(
             mask,
             self.SOURCE_CLASSIFICATION["LiDAR"],
@@ -2117,10 +2145,14 @@ class RawDem(LidarBase):
         roi_mask = clip_mask(self._dem.z, region_to_rasterise.geometry, chunk_size=None)
         no_values_mask = self._dem.z.isnull()
         if region_to_rasterise.area.sum() == 0:
-            self.logger.info(f"No area to the region to rasterise, so do not try add {lidar_name}")
+            self.logger.info(
+                f"No area to the region to rasterise, so do not try add {lidar_name}"
+            )
             return
         if not (no_values_mask & roi_mask).any():
-            self.logger.info(f"No missing values within the region to rasterise, so skip {lidar_name}")
+            self.logger.info(
+                f"No missing values within the region to rasterise, so skip {lidar_name}"
+            )
             return
 
         # Use PDAL to load in file
@@ -2136,7 +2168,10 @@ class RawDem(LidarBase):
 
         # Create elevation raster
         raster_values = self._elevation_over_tile(
-            dim_x=self._dem.x, dim_y=self._dem.y, tile_points=tile_points, options=options
+            dim_x=self._dem.x,
+            dim_y=self._dem.y,
+            tile_points=tile_points,
+            options=options,
         )
         elevation = raster_values.reshape((len(self._dem.y), len(self._dem.x)))
 
@@ -2146,7 +2181,9 @@ class RawDem(LidarBase):
 
         dataset_mapping = self.metadata["instructions"]["dataset_mapping"]["lidar"]
         mask = ~(no_values_mask & roi_mask & self._dem.z.notnull())
-        self._dem["lidar_source"] = self._dem.lidar_source.where(mask, dataset_mapping[lidar_name])
+        self._dem["lidar_source"] = self._dem.lidar_source.where(
+            mask, dataset_mapping[lidar_name]
+        )
         self._dem["data_source"] = self._dem.data_source.where(
             mask,
             self.SOURCE_CLASSIFICATION["LiDAR"],
@@ -2468,8 +2505,10 @@ class PatchDem(LidarBase):
         )  # remove band coordinate added by rasterio.open()
         self._write_netcdf_conventions_in_place(initial_dem, catchment_geometry.crs)
         if not self._check_resolution(initial_dem):
-            raise ValueError("The specified resolution does not match the "
-                             f"{initial_dem_path} resolution.")
+            raise ValueError(
+                "The specified resolution does not match the "
+                f"{initial_dem_path} resolution."
+            )
         self._dem = initial_dem
 
     def add_patch(self, patch_path: pathlib.Path, label: str, layer: str):
@@ -2511,7 +2550,9 @@ class PatchDem(LidarBase):
         else:
             roi = self.catchment_geometry.catchment
         try:  # Use try catch as otherwise crash if patch does not overlap roi
-            patch = patch.rio.clip_box(*tuple(roi.buffer(patch_resolution).total_bounds))
+            patch = patch.rio.clip_box(
+                *tuple(roi.buffer(patch_resolution).total_bounds)
+            )
             patch = patch.where(
                 clip_mask(patch, roi.buffer(patch_resolution).geometry, self.chunk_size)
             )
@@ -2541,14 +2582,20 @@ class PatchDem(LidarBase):
         self.logger.info(f"\t\tAdd data from coarse DEM: {patch_path.name}")
 
         # Check if same resolution
-        if all(patch.x.isin(self._dem.x)) and all(patch.y.isin(self._dem.y)) and patch_resolution == self.catchment_geometry.resolution:
+        if (
+            all(patch.x.isin(self._dem.x))
+            and all(patch.y.isin(self._dem.y))
+            and patch_resolution == self.catchment_geometry.resolution
+        ):
             self.logger.info(f"\t\t\tGrid aligned so do a straight reindex")
             patch = patch.reindex_like(self._dem, fill_value=numpy.nan)
         elif (
             self.chunk_size is not None
             and max(len(self._dem.x), len(self._dem.y)) > self.chunk_size
         ):  # Expect xarray dims (y, x), not (x, y) as default for rioxarray
-            self.logger.info(f"\t\t\tInterpolate with dask parallelisation at chunk size")
+            self.logger.info(
+                f"\t\t\tInterpolate with dask parallelisation at chunk size"
+            )
             interpolator = scipy.interpolate.RegularGridInterpolator(
                 (patch.y.values, patch.x.values),
                 patch.values,
@@ -2723,8 +2770,10 @@ class RoughnessDem(LidarBase):
             hydrological_dem, catchment_geometry.crs
         )
         if not self._check_resolution(hydrological_dem):
-            raise ValueError("The specified resolution does not match the "
-                             f"{hydrological_dem_path} resolution.")
+            raise ValueError(
+                "The specified resolution does not match the "
+                f"{hydrological_dem_path} resolution."
+            )
         # Ensure the resolution of the hydrological DEM matches the input DEM
         assert (
             abs(float(hydrological_dem.x[1] - hydrological_dem.x[0]))
@@ -2759,9 +2808,7 @@ class RoughnessDem(LidarBase):
         zo.rio.write_nodata(numpy.nan, encoded=True, inplace=True)
         self._dem["zo"] = zo
         # ensure the expected CF conventions are followed
-        self._write_netcdf_conventions_in_place(
-            self._dem, self.catchment_geometry.crs
-        )
+        self._write_netcdf_conventions_in_place(self._dem, self.catchment_geometry.crs)
         # update DEM metadata
         history = self._dem.attrs["history"]
         self._dem.attrs["history"] = (
@@ -2769,9 +2816,9 @@ class RoughnessDem(LidarBase):
             f":{metadata['class_name']} version {metadata['library_version']} "
             f" resolution {self.catchment_geometry.resolution}; {history}"
         )
-        self._dem.attrs[
-            "source"
-        ] = f"{metadata['library_name']} version {metadata['library_version']}"
+        self._dem.attrs["source"] = (
+            f"{metadata['library_name']} version {metadata['library_version']}"
+        )
         self._dem.attrs["description"] = (
             f"{metadata['library_name']}:{metadata['class_name']} resolution "
             f"{self.catchment_geometry.resolution}"
@@ -2844,7 +2891,7 @@ class RoughnessDem(LidarBase):
         self._write_netcdf_conventions_in_place(self._dem, self.catchment_geometry.crs)
 
         return self._dem
-    
+
     def _calculate_lidar_extents(self):
         """Calculate the extents of the LiDAR data."""
 
@@ -2907,8 +2954,6 @@ class RoughnessDem(LidarBase):
                 raster_options=raster_options,
             )
 
-        
-
     def add_roads(self, roads_polygon: dict):
         """Set roads to paved and unpaved roughness values.
 
@@ -2955,9 +3000,7 @@ class RoughnessDem(LidarBase):
         source_crs = lidar_dataset_info["crs"]
 
         # create a map from tile name to tile file name
-        lidar_files_map = {
-            lidar_file.name: lidar_file for lidar_file in lidar_files
-        }
+        lidar_files_map = {lidar_file.name: lidar_file for lidar_file in lidar_files}
 
         # Define the region to rasterise
         region_to_rasterise = (
@@ -2966,15 +3009,21 @@ class RoughnessDem(LidarBase):
             else self.catchment_geometry.catchment
         )
 
-        roi_mask = clip_mask(self._dem.z, region_to_rasterise.geometry, chunk_size=self.chunk_size)
+        roi_mask = clip_mask(
+            self._dem.z, region_to_rasterise.geometry, chunk_size=self.chunk_size
+        )
         no_values_mask = self._dem.zo.isnull()
         if region_to_rasterise.area.sum() == 0:
-            self.logger.info(f"No area to the region to rasterise, so do not try add {dataset_name}")
+            self.logger.info(
+                f"No area to the region to rasterise, so do not try add {dataset_name}"
+            )
             return
         if not (no_values_mask & roi_mask).any():
-            self.logger.info(f"No missing values within the region to rasterise, so skip {dataset_name}")
+            self.logger.info(
+                f"No missing values within the region to rasterise, so skip {dataset_name}"
+            )
             return
-        
+
         # Remove all tiles entirely outside the region to raserise
         (
             tile_index_extents,
@@ -3009,7 +3058,10 @@ class RoughnessDem(LidarBase):
                 )
 
                 # Return empty if no files
-                if len(chunk_lidar_files) == 0 or not no_values_mask.sel(x=dim_x, y=dim_y).any():
+                if (
+                    len(chunk_lidar_files) == 0
+                    or not no_values_mask.sel(x=dim_x, y=dim_y).any()
+                ):
                     self.logger.debug(
                         f"\t\tReturning empty tile as no LiDAR or out of ROI"
                     )
@@ -3076,10 +3128,14 @@ class RoughnessDem(LidarBase):
         roi_mask = clip_mask(self._dem.z, region_to_rasterise.geometry, chunk_size=None)
         no_values_mask = self._dem.zo.isnull()
         if region_to_rasterise.area.sum() == 0:
-            self.logger.info(f"No area to the region to rasterise, so do not try add {lidar_name}")
+            self.logger.info(
+                f"No area to the region to rasterise, so do not try add {lidar_name}"
+            )
             return
         if not (no_values_mask & roi_mask).any():
-            self.logger.info(f"No missing values within the region to rasterise, so skip {lidar_name}")
+            self.logger.info(
+                f"No missing values within the region to rasterise, so skip {lidar_name}"
+            )
             return
 
         # Use PDAL to load in file
@@ -3101,7 +3157,9 @@ class RoughnessDem(LidarBase):
             xy_ground=self._dem.z.data.flatten(),
             options=options,
         )
-        roughness = raster_values.reshape((len(self._dem.y.data), len(self._dem.x.data)))
+        roughness = raster_values.reshape(
+            (len(self._dem.y.data), len(self._dem.x.data))
+        )
 
         # Add to dataset
         mask = ~(no_values_mask & roi_mask)
@@ -3205,9 +3263,9 @@ class RoughnessDem(LidarBase):
             f":{metadata['class_name']} version {metadata['library_version']} "
             f" resolution {self.catchment_geometry.resolution}; {history}"
         )
-        self._dem.attrs[
-            "source"
-        ] = f"{metadata['library_name']} version {metadata['library_version']}"
+        self._dem.attrs["source"] = (
+            f"{metadata['library_name']} version {metadata['library_version']}"
+        )
         self._dem.attrs["description"] = (
             f"{metadata['library_name']}:{metadata['class_name']} resolution "
             f"{self.catchment_geometry.resolution}"
@@ -3473,9 +3531,7 @@ def calculate_idw(
 
     # Near points will be ordered by proximinty. Close to far.
     distance_vectors = point - near_points
-    smoothed_distances = numpy.sqrt(
-        ((distance_vectors**2).sum(axis=1) + smoothing**2)
-    )
+    smoothed_distances = numpy.sqrt(((distance_vectors**2).sum(axis=1) + smoothing**2))
     if smoothed_distances.min() == 0:  # in the case of an exact match
         idw = near_z[smoothed_distances.argmin()]
     else:
