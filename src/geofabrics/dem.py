@@ -2786,20 +2786,28 @@ class RoughnessDem(LidarBase):
         """Return interpolaed roughness layer with min and max bounds enforced"""
 
         # Set roughness where water
-        self._dem["zo"] = self._dem.zo.where(
-            self._dem.data_source != self.SOURCE_CLASSIFICATION["ocean bathymetry"],
-            self.default_values["ocean"],
-        )
-        self._dem["zo"] = self._dem.zo.where(
-            self._dem.data_source != self.SOURCE_CLASSIFICATION["rivers and fans"],
-            self.default_values["rivers"],
-        )
-
+        if self.default_values["ocean"] is not None:
+            self._dem["zo"] = self._dem.zo.where(
+                self._dem.data_source != self.SOURCE_CLASSIFICATION["ocean bathymetry"],
+                self.default_values["ocean"],
+            )
+        if self.default_values["rivers"] is not None:
+            self._dem["zo"] = self._dem.zo.where(
+                self._dem.data_source != self.SOURCE_CLASSIFICATION["rivers and fans"],
+                self.default_values["rivers"],
+            )
         if self.default_values["waterways"] is not None:
             self._dem["zo"] = self._dem.zo.where(
                 self._dem.data_source != self.SOURCE_CLASSIFICATION["waterways"],
                 self.default_values["waterways"],
             )
+        print(self.default_values)
+        if self.default_values["lakes"] is not None:
+            self._dem["zo"] = self._dem.zo.where(
+                self._dem.data_source != self.SOURCE_CLASSIFICATION["lakes"],
+                self.default_values["lakes"],
+            )
+
         # Set roughness where land and no LiDAR
         self._dem["zo"] = self._dem.zo.where(
             self._dem.data_source != self.SOURCE_CLASSIFICATION["coarse DEM"],

@@ -1715,6 +1715,7 @@ class RoughnessLengthGenerator(BaseProcessor):
             "default_values": {
                 "land": 0.014,
                 "ocean": 0.004,
+                "lakes": 0.004,
                 "waterways": 0.004,
                 "rivers": 0.004,
                 "minimum": 0.00001,
