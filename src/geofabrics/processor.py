@@ -3862,8 +3862,9 @@ class StopbankCrestElevationEstimator(BaseProcessor):
         # key to output name mapping
         name_dictionary = {
             "raw_dem": f"stopbank_raw_dem_{index}.nc",
-            "stopbank_polygon": "stopbank_polygon.geojson",
-            "stopbank_elevation": "stopbank_elevation.geojson",
+            "stopbank_polygon": f"stopbank_polygon_{index}.geojson",
+            "stopbanks_polygon": f"stopbank_polygon.geojson",
+            "stopbanks_elevation": "stopbank_elevation.geojson",
         }
         return name_dictionary[key]
 
@@ -3884,8 +3885,8 @@ class StopbankCrestElevationEstimator(BaseProcessor):
         """Check to see if the waterway and culvert bathymeties have already been
         estimated."""
 
-        stopbank_polygon_file = self.get_result_file_path(key="stopbank_polygon")
-        stopbank_elevation_file = self.get_result_file_path(key="stopbank_elevation")
+        stopbank_polygon_file = self.get_result_file_path(key="stopbanks_polygon")
+        stopbank_elevation_file = self.get_result_file_path(key="stopbanks_elevation")
         if stopbank_polygon_file.is_file() and stopbank_elevation_file.is_file():
             return True
         else:
@@ -3922,8 +3923,8 @@ class StopbankCrestElevationEstimator(BaseProcessor):
         """Sample the DEM around the tunnels to estimate the bed elevation."""
 
         # Check if already generated
-        polygon_file = self.get_result_file_path(key="stopbank_polygon")
-        elevation_file = self.get_result_file_path(key="stopbank_elevation")
+        polygon_file = self.get_result_file_path(key="stopbanks_polygon")
+        elevation_file = self.get_result_file_path(key="stopbanks_elevation")
         if polygon_file.is_file() and elevation_file.is_file():
             self.logger.info("Stopbank crests already recorded. ")
             return
@@ -4169,8 +4170,8 @@ class StopbankCrestElevationEstimator(BaseProcessor):
             elevations = geopandas.GeoDataFrame(
                 {"geometry": [], "width": [], "z": []}, crs=crs
             )
-            polygons.to_file(self.get_result_file_path(key="stopbank_polygon"))
-            elevations.to_file(self.get_result_file_path(key="stopbank_elevation"))
+            polygons.to_file(self.get_result_file_path(key="stopbanks_polygon"))
+            elevations.to_file(self.get_result_file_path(key="stopbanks_elevation"))
             return
 
         # Create a DEM where the waterways and tunnels are
