@@ -2427,7 +2427,8 @@ class RiverBathymetryGenerator(BaseProcessor):
             instructions  The json instructions defining the behaviour
         """
 
-        instruction_paths = self.instructions["data_paths"]
+        dem_instructions = copy.deepcopy(self.instructions)
+        instruction_paths = dem_instructions["data_paths"]
 
         # Extract instructions from JSON
         river_corridor_width = self.get_bathymetry_instruction("river_corridor_width")
@@ -2439,23 +2440,21 @@ class RiverBathymetryGenerator(BaseProcessor):
         # Ensure channel catchment exists and is up to date if needed
         if not gnd_file.is_file() or not veg_file.is_file():
             catchment_file = self.get_result_file_path(key="catchment")
-            instruction_paths["extents"] = str(
-                self.get_result_file_name(key="catchment")
-            )
+            instruction_paths["extents"] = self.get_result_file_name(key="catchment")
             channel_catchment = channel.get_channel_catchment(
                 corridor_radius=river_corridor_width / 2
             )
             channel_catchment.to_file(catchment_file)
-        # Remove bathymetry contour information if it exists while creating DEMs
-        bathy_data_paths = None
-        bathy_apis = None
+
+        # Remove bathymetry contour information if it exists while creating river DEMs
         if "ocean_contours" in instruction_paths:
-            bathy_data_paths = instruction_paths.pop("ocean_contours")
+            instruction_paths.pop("ocean_contours")
         if (
-            "vector" in self.instructions["datasets"]
-            and "ocean_contours" in self.instructions["datasets"]["vector"]["linz"]
+            "vector" in dem_instructions["datasets"] 
+            and "linz" in dem_instructions["datasets"]["vector"]
+            and "ocean_contours" in dem_instructions["datasets"]["vector"]["linz"]
         ):
-            bathy_apis = self.instructions["datasets"]["vector"]["linz"].pop(
+            dem_instructions["datasets"]["vector"]["linz"].pop(
                 "ocean_contours"
             )
         # Get the ground DEM
@@ -2463,11 +2462,10 @@ class RiverBathymetryGenerator(BaseProcessor):
             # Create the ground DEM file if this has not be created yet!
             self.logger.info("Generating ground DEM.")
             instruction_paths["raw_dem"] = str(self.get_result_file_name(key="gnd_dem"))
-            runner = RawLidarDemGenerator(self.instructions)
+            runner = RawLidarDemGenerator(dem_instructions)
             runner.run()
             del runner
             gc.collect()
-            instruction_paths.pop("raw_dem")
         # Load the Ground DEM
         self.logger.info("Loading ground DEM.")  # drop band added by rasterio.open()
         gnd_dem = rioxarray.rioxarray.open_rasterio(gnd_file, masked=True).squeeze(
@@ -2477,27 +2475,19 @@ class RiverBathymetryGenerator(BaseProcessor):
         if not veg_file.is_file():
             # Create the catchment file if this has not be created yet!
             self.logger.info("Generating vegetation DEM.")
-            self.instructions["general"]["lidar_classifications_to_keep"] = (
+            dem_instructions["general"]["lidar_classifications_to_keep"] = (
                 self.get_bathymetry_instruction("veg_lidar_classifications_to_keep")
             )
             instruction_paths["raw_dem"] = str(self.get_result_file_name(key="veg_dem"))
-            runner = RawLidarDemGenerator(self.instructions)
+            runner = RawLidarDemGenerator(dem_instructions)
             runner.run()
             del runner
             gc.collect()
-            instruction_paths.pop("raw_dem")
         # Load the Veg DEM - drop band added by rasterio.open()
         self.logger.info("Loading the vegetation DEM.")
         veg_dem = dem.rioxarray.rioxarray.open_rasterio(veg_file, masked=True).squeeze(
             "band", drop=True
         )
-        # Replace bathymetry contour information if it exists
-        if bathy_data_paths is not None:
-            instruction_paths["ocean_contours"] = bathy_data_paths
-        if bathy_apis is not None:
-            self.instructions["datasets"]["vector"]["linz"][
-                "ocean_contours"
-            ] = bathy_apis
         return gnd_dem, veg_dem
 
     def align_channel(
