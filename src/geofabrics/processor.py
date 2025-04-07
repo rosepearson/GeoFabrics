@@ -2450,13 +2450,11 @@ class RiverBathymetryGenerator(BaseProcessor):
         if "ocean_contours" in instruction_paths:
             instruction_paths.pop("ocean_contours")
         if (
-            "vector" in dem_instructions["datasets"] 
+            "vector" in dem_instructions["datasets"]
             and "linz" in dem_instructions["datasets"]["vector"]
             and "ocean_contours" in dem_instructions["datasets"]["vector"]["linz"]
         ):
-            dem_instructions["datasets"]["vector"]["linz"].pop(
-                "ocean_contours"
-            )
+            dem_instructions["datasets"]["vector"]["linz"].pop("ocean_contours")
         # Get the ground DEM
         if not gnd_file.is_file():
             # Create the ground DEM file if this has not be created yet!
