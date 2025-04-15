@@ -1930,7 +1930,7 @@ class RawDem(LidarBase):
                 lidar_dataset_info=lidar_dataset_info,
                 raster_options=raster_options,
             )
-        return status # True is data added, False if skipped
+        return status  # True is data added, False if skipped
 
     def clip_lidar(
         self,

@@ -1963,7 +1963,7 @@ class RoughnessLengthGenerator(BaseProcessor):
                     ),
                     parameters=roughness_parameters,
                 )  # Note must be called after all others if it is to be complete
-                if status: # Save a cached copy of DEM to temporary memory cache
+                if status:  # Save a cached copy of DEM to temporary memory cache
                     temp_file = temp_folder / f"raw_lidar_zo{dataset_name}.nc"
                     self.logger.info(f"Save temp raw DEM to netCDF: {temp_file}")
                     roughness_dem.save_and_load_dem(temp_file)
