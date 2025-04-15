@@ -1673,11 +1673,9 @@ class LidarBase(DemBase):
 
     def add_lidar(
         self,
-        lidar_datasets_info: dict,
-        chunk_size: int,
+        lidar_dataset_info: dict,
         lidar_classifications_to_keep: list,
-        metadata: dict,
-    ):
+    ) -> bool:
         """Read in all LiDAR files and use to create a 'raw' DEM.
 
         Parameters
@@ -1882,7 +1880,7 @@ class RawDem(LidarBase):
         self,
         lidar_dataset_info: dict,
         lidar_classifications_to_keep: list,
-    ):
+    ) -> bool:
         """Read in all LiDAR files and use to create a 'raw' DEM.
 
         Parameters
@@ -1923,15 +1921,16 @@ class RawDem(LidarBase):
             raster_options["kernel"] = "linear"
 
         if self.chunk_size is None:
-            self._add_lidar_no_chunking(
+            status = self._add_lidar_no_chunking(
                 lidar_dataset_info=lidar_dataset_info,
                 options=raster_options,
             )
         else:
-            self._add_tiled_lidar_chunked(
+            status = self._add_tiled_lidar_chunked(
                 lidar_dataset_info=lidar_dataset_info,
                 raster_options=raster_options,
             )
+        return status # True is data added, False if skipped
 
     def clip_lidar(
         self,
@@ -2014,20 +2013,20 @@ class RawDem(LidarBase):
             else self.catchment_geometry.catchment
         )
 
-        roi_mask = clip_mask(
-            self._dem.z, region_to_rasterise.geometry, chunk_size=self.chunk_size
-        )
-        no_values_mask = self._dem.z.isnull()
         if region_to_rasterise.area.sum() == 0:
             self.logger.info(
                 f"No area to the region to rasterise, so do not try add {lidar_name}"
             )
-            return
+            return False
+        roi_mask = clip_mask(
+            self._dem.z, region_to_rasterise.geometry, chunk_size=self.chunk_size
+        )
+        no_values_mask = self._dem.z.isnull()
         if not (no_values_mask & roi_mask).any():
             self.logger.info(
                 f"No missing values within the region to rasterise, so skip {lidar_name}"
             )
-            return
+            return False
 
         # create a map from tile name to tile file name
         lidar_files_map = {lidar_file.name: lidar_file for lidar_file in lidar_files}
@@ -2119,6 +2118,7 @@ class RawDem(LidarBase):
             self.SOURCE_CLASSIFICATION["LiDAR"],
         )
         self._write_netcdf_conventions_in_place(self._dem, self.catchment_geometry.crs)
+        return True
 
     def _add_lidar_no_chunking(
         self,
@@ -2142,18 +2142,18 @@ class RawDem(LidarBase):
             else self.catchment_geometry.catchment
         )
 
-        roi_mask = clip_mask(self._dem.z, region_to_rasterise.geometry, chunk_size=None)
-        no_values_mask = self._dem.z.isnull()
         if region_to_rasterise.area.sum() == 0:
             self.logger.info(
                 f"No area to the region to rasterise, so do not try add {lidar_name}"
             )
-            return
+            return False
+        roi_mask = clip_mask(self._dem.z, region_to_rasterise.geometry, chunk_size=None)
+        no_values_mask = self._dem.z.isnull()
         if not (no_values_mask & roi_mask).any():
             self.logger.info(
                 f"No missing values within the region to rasterise, so skip {lidar_name}"
             )
-            return
+            return False
 
         # Use PDAL to load in file
         pdal_pipeline = read_file_with_pdal(
@@ -2189,6 +2189,7 @@ class RawDem(LidarBase):
             self.SOURCE_CLASSIFICATION["LiDAR"],
         )
         self._write_netcdf_conventions_in_place(self._dem, self.catchment_geometry.crs)
+        return True
 
     def _elevation_over_tile(
         self,
@@ -2907,7 +2908,7 @@ class RoughnessDem(LidarBase):
         lidar_dataset_info: dict,
         lidar_classifications_to_keep: list,
         parameters: dict,
-    ):
+    ) -> bool:
         """Read in all LiDAR files and use the point cloud distribution,
         data_source layer, and hydrologiaclly conditioned elevations to
         estimate the roughness across the DEM.
@@ -2944,15 +2945,16 @@ class RoughnessDem(LidarBase):
 
         # Calculate roughness from LiDAR
         if self.chunk_size is None:  # If one file it's ok if there is no tile_index
-            self._add_lidar_no_chunking(
+            status = self._add_lidar_no_chunking(
                 lidar_dataset_info=lidar_dataset_info,
                 options=raster_options,
             )
         else:
-            self._add_tiled_lidar_chunked(
+            status = self._add_tiled_lidar_chunked(
                 lidar_dataset_info=lidar_dataset_info,
                 raster_options=raster_options,
             )
+        return status
 
     def add_roads(self, roads_polygon: dict):
         """Set roads to paved and unpaved roughness values.
@@ -2984,7 +2986,7 @@ class RoughnessDem(LidarBase):
         self,
         lidar_dataset_info: dict,
         raster_options: dict,
-    ) -> xarray.Dataset:
+    ) -> bool:
         """Create a roughness layer with estimates where there is LiDAR from a set of
         tiled LiDAR files. Read these in over non-overlapping chunks and then combine.
         """
@@ -3008,21 +3010,21 @@ class RoughnessDem(LidarBase):
             if self.drop_offshore_lidar[dataset_name]
             else self.catchment_geometry.catchment
         )
+        if region_to_rasterise.area.sum() == 0:
+            self.logger.info(
+                f"No area to the region to rasterise, so do not try add {dataset_name}"
+            )
+            return False
 
         roi_mask = clip_mask(
             self._dem.z, region_to_rasterise.geometry, chunk_size=self.chunk_size
         )
         no_values_mask = self._dem.zo.isnull()
-        if region_to_rasterise.area.sum() == 0:
-            self.logger.info(
-                f"No area to the region to rasterise, so do not try add {dataset_name}"
-            )
-            return
         if not (no_values_mask & roi_mask).any():
             self.logger.info(
                 f"No missing values within the region to rasterise, so skip {dataset_name}"
             )
-            return
+            return False
 
         # Remove all tiles entirely outside the region to raserise
         (
@@ -3103,12 +3105,13 @@ class RoughnessDem(LidarBase):
         mask = ~(no_values_mask & roi_mask)
         self._dem["zo"] = self._dem.zo.where(mask, roughness)
         self._write_netcdf_conventions_in_place(self._dem, self.catchment_geometry.crs)
+        return True
 
     def _add_lidar_no_chunking(
         self,
         lidar_dataset_info: dict,
         options: dict,
-    ) -> xarray.Dataset:
+    ) -> bool:
         """Create a roughness layer with estimates where there is LiDAR from a single
         LiDAR file with no chunking."""
 
@@ -3131,12 +3134,12 @@ class RoughnessDem(LidarBase):
             self.logger.info(
                 f"No area to the region to rasterise, so do not try add {lidar_name}"
             )
-            return
+            return False
         if not (no_values_mask & roi_mask).any():
             self.logger.info(
                 f"No missing values within the region to rasterise, so skip {lidar_name}"
             )
-            return
+            return False
 
         # Use PDAL to load in file
         pdal_pipeline = read_file_with_pdal(
@@ -3165,6 +3168,7 @@ class RoughnessDem(LidarBase):
         mask = ~(no_values_mask & roi_mask)
         self._dem["zo"] = self._dem.zo.where(mask, roughness)
         self._write_netcdf_conventions_in_place(self._dem, self.catchment_geometry.crs)
+        return True
 
     def _roughness_over_tile(
         self,

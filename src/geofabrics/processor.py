@@ -1011,7 +1011,7 @@ class RawLidarDemGenerator(BaseProcessor):
             for dataset_name in lidar_datasets_info["lidar_dataset_order"]:
                 dataset_info = lidar_datasets_info[dataset_name]
                 dataset_info["name"] = dataset_name
-                raw_dem.add_lidar(
+                status = raw_dem.add_lidar(
                     lidar_dataset_info=dataset_info,
                     lidar_classifications_to_keep=self.get_instruction_general(
                         "lidar_classifications_to_keep"
@@ -1019,12 +1019,13 @@ class RawLidarDemGenerator(BaseProcessor):
                 )
 
                 # Save a cached copy of DEM to temporary memory cache
-                temp_file = temp_folder / f"raw_lidar_{dataset_name}.nc"
-                self.logger.info(f"Save temp raw DEM to netCDF: {temp_file}")
-                raw_dem.save_and_load_dem(temp_file)
-                if cached_file.exists():
-                    self.clean_cached_file(cached_file)
-                cached_file = temp_file
+                if status:
+                    temp_file = temp_folder / f"raw_lidar_{dataset_name}.nc"
+                    self.logger.info(f"Save temp raw DEM to netCDF: {temp_file}")
+                    raw_dem.save_and_load_dem(temp_file)
+                    if cached_file.exists():
+                        self.clean_cached_file(cached_file)
+                    cached_file = temp_file
 
             # Clip LiDAR - ensure within bounds/foreshore
             if not self.get_instruction_general("ignore_clipping"):
@@ -1955,21 +1956,20 @@ class RoughnessLengthGenerator(BaseProcessor):
             for dataset_name in lidar_datasets_info["lidar_dataset_order"]:
                 dataset_info = lidar_datasets_info[dataset_name]
                 dataset_info["name"] = dataset_name
-                roughness_dem.add_lidar(
+                status = roughness_dem.add_lidar(
                     lidar_dataset_info=dataset_info,
                     lidar_classifications_to_keep=self.get_instruction_general(
                         "lidar_classifications_to_keep"
                     ),
                     parameters=roughness_parameters,
                 )  # Note must be called after all others if it is to be complete
-
-                # Save a cached copy of DEM to temporary memory cache
-                temp_file = temp_folder / f"raw_lidar_zo{dataset_name}.nc"
-                self.logger.info(f"Save temp raw DEM to netCDF: {temp_file}")
-                roughness_dem.save_and_load_dem(temp_file)
-                if cached_file.exists():
-                    self.clean_cached_file(cached_file)
-                cached_file = temp_file
+                if status: # Save a cached copy of DEM to temporary memory cache
+                    temp_file = temp_folder / f"raw_lidar_zo{dataset_name}.nc"
+                    self.logger.info(f"Save temp raw DEM to netCDF: {temp_file}")
+                    roughness_dem.save_and_load_dem(temp_file)
+                    if cached_file.exists():
+                        self.clean_cached_file(cached_file)
+                    cached_file = temp_file
 
             if not cached_file.exists():  # Ensure saved even if empty
                 cached_file = temp_folder / "raw_lidar_empty.nc"
