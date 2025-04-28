@@ -3720,6 +3720,13 @@ class WaterwayBedElevationEstimator(BaseProcessor):
 
             # Save file
             waterways.to_file(waterways_path)
+        # Remove any empty results
+        if waterways.is_empty.any():
+            self.logger.warning(
+                f"Some waterways are empty: {waterways[~waterways.is_empty]}. Removing."
+            )
+        waterways = waterways[~waterways.is_empty]
+
         return waterways
 
     def run(self):
