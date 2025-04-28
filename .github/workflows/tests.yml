@@ -20,7 +20,7 @@ jobs:
     steps:
 
     - name: Checkout
-      uses: actions/checkout@v3
+      uses: actions/checkout@v4
 
     - name: Create LFS file list
       run: git lfs ls-files --long | cut -d ' ' -f1 | sort > .lfs-assets-id
@@ -37,16 +37,15 @@ jobs:
       run: git lfs pull
 
     - name: Setup miniconda
-      uses: conda-incubator/setup-miniconda@v2
+      uses: conda-incubator/setup-miniconda@v3
       with:
         auto-update-conda: true # false
         miniforge-version: latest
-        channels: conda-forge # defaults automatically added
+        channels: conda-forge
         python-version: ${{ matrix.python-version }}
         activate-environment: geofabrics_CI
         environment-file: environment_CI.yml
         auto-activate-base: false
-        # use-only-tar-bz2: true
         
 
     - name: Conda list
