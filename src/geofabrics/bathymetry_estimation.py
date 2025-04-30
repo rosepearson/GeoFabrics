@@ -2149,6 +2149,45 @@ class ChannelCharacteristics:
                 mid_y + (mid_i - self.centre_index) * ny * self.resolution,
             ]
         )
+    
+    def _apply_river_polygon_midpoint(
+        self,
+        row: pandas.core.series.Series,
+        river_polygon: geopandas.geodataframe.GeoDataFrame,
+    ):
+        """Generate a line for each width for visualisation.
+
+        Parameters
+        ----------
+
+        mid_x
+            The x centre of the transect.
+        mid_x
+            The y centre of the transect.
+        nx
+            Transect normal x-component.
+        ny
+            Transect normal y-component.
+        first_bank_i
+            The index of the first bank along the transect.
+        last_bank_i
+            The index of the last bank along the transect.
+        """
+        intersections = row.geometry.intersection(river_polygon.buffer(self.resolution / 10).iloc[0])
+        if type(intersections) == shapely.geometry.multilinestring.MultiLineString:
+            intersections = list(row.geometry.intersection(river_polygon.buffer(self.resolution / 10).iloc[0]).geoms)
+            min_distance_index = -1
+            min_distance = row.geometry.length
+            for index, intersection in enumerate(intersections):
+                if intersection.distance(row.midpoint) < min_distance:
+                    min_distance = intersection.distance(row.midpoint)
+                    min_distance_index = index
+            return intersections[min_distance_index].centroid
+        else:
+            if intersections.distance(row.midpoint) > self.cross_section_spacing:
+                return shapely.empty(1, geom_type=shapely.GeometryType.POINT)[0]
+            else:
+                return intersections.centroid
 
     def align_channel(
         self,
@@ -2315,18 +2354,30 @@ class ChannelCharacteristics:
             cross_sections=cross_sections,
         )
 
-        # Midpoints of the river polygon - buffer slightly to ensure intersection at the
-        # start and end
-        cross_sections["river_polygon_midpoint"] = cross_sections.apply(
-            lambda row: row.geometry.intersection(
-                river_polygon.buffer(self.resolution / 10).iloc[0]
-            ).centroid,
-            axis=1,
-        )
-
         # Width and threshod smoothing - rolling mean
         self._smooth_widths_and_thresholds(cross_sections=cross_sections)
 
+        cross_sections["midpoint"] = cross_sections.apply(
+                lambda row: self._apply_midpoint(
+                    row["mid_x"],
+                    row["mid_y"],
+                    row["nx"],
+                    row["ny"],
+                    row["first_bank_i"],
+                    row["last_bank_i"],
+                ),
+                axis=1,
+            )
+
+        # Midpoints of the river polygon - buffer slightly to ensure intersection at the
+        # start and end
+        cross_sections["river_polygon_midpoint"] = cross_sections.apply(
+                lambda row: self._apply_river_polygon_midpoint(
+                    row, 
+                    river_polygon
+                ),
+                axis=1,
+        )
         # Optional outputs
         if self.debug:
             # A line defining the extents of the bankfull width at that cross section
