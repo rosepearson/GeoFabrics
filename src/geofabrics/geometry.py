@@ -899,7 +899,7 @@ class RiverMouthFan:
         river_polygon = geopandas.read_file(self.river_polygon_file).make_valid()
         aligned_channel = aligned_channel.clip(river_polygon)
         # Explode incase the aligned channel is clipped into a MultiPolyLine
-        (x, y) = aligned_channel.explode().iloc[0].geometry.xy
+        (x, y) = aligned_channel.explode(index_parts=True).iloc[0].geometry.xy
 
         # Calculate the normal and tangent to the channel segment at the mouth
         segment_dx = x[0] - x[1]
@@ -1158,7 +1158,6 @@ class RiverMouthFan:
                 ],
             ]
         )
-
         if self.ocean_points_file is not None:
             length, end_elevation = self._get_distance_to_nearest_ocean_point_in_fan(
                 river_mouth_z=max(river_mouth_elevations),

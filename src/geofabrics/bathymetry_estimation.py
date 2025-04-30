@@ -1952,6 +1952,19 @@ class ChannelCharacteristics:
         stop_xy = Channel(stop_xy, resolution=self.cross_section_spacing)
         stop_xy_spline = stop_xy.get_parametric_spline_fit_points()
 
+        # messy code to offset out lines by half the cross section spacing
+        normal_x, normal_y, length = self._segment_slope(start_xy_spline[0], start_xy_spline[1], 0)
+        start_xy_spline = numpy.insert(start_xy_spline, 0, start_xy_spline[:,0] - self.cross_section_spacing/2 * numpy.array([normal_x, normal_y]), axis=1)
+
+        normal_x, normal_y, length = self._segment_slope(start_xy_spline[0], start_xy_spline[1], -2)
+        start_xy_spline = numpy.append(start_xy_spline, numpy.vstack(start_xy_spline[:,-1] + self.cross_section_spacing/2 * numpy.array([normal_x, normal_y])), axis=1)
+        
+        normal_x, normal_y, length = self._segment_slope(stop_xy_spline[0], stop_xy_spline[1], 0)
+        stop_xy_spline = numpy.insert(stop_xy_spline, 0, stop_xy_spline[:,0] - self.cross_section_spacing/2 * numpy.array([normal_x, normal_y]), axis=1)
+
+        normal_x, normal_y, length = self._segment_slope(stop_xy_spline[0], stop_xy_spline[1], -2)
+        stop_xy_spline = numpy.append(stop_xy_spline, numpy.vstack(stop_xy_spline[:,-1] + self.cross_section_spacing/2 * numpy.array([normal_x, normal_y])), axis=1)
+
         flat_water_polygon = shapely.geometry.Polygon(
             numpy.concatenate((start_xy_spline, stop_xy_spline[:, ::-1]), axis=1).T
         )
