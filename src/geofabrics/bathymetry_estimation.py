@@ -2005,6 +2005,20 @@ class ChannelCharacteristics:
         flat_water_polygon = geopandas.GeoDataFrame(
             geometry=[flat_water_polygon], crs=cross_sections.crs
         )
+
+        
+        # Ensure no holes and is a valid geometry
+        flat_water_polygon = flat_water_polygon.make_valid().explode()
+        if flat_water_polygon.interiors.explode().notnull().any():
+            logging.info("Filling holes in the flat water polygon")
+            polygons = []
+            for index, linering in flat_water_polygon.exterior.items():
+                polygons.append(shapely.geometry.Polygon(linering))
+            flat_water_polygon = geopandas.GeoDataFrame(geometry=polygons, crs=flat_water_polygon.crs)
+        # Only keep polygon areas greater than 1% of total area
+        flat_water_polygon = flat_water_polygon[flat_water_polygon.area / flat_water_polygon.area.sum() > 0.01]
+        breakpoint()
+
         return flat_water_polygon
 
     def _centreline_from_width_spline(
