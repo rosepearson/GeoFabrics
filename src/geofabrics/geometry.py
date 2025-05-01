@@ -902,7 +902,9 @@ class RiverMouthFan:
             river_polygon.buffer(self.cross_section_spacing / 2)
         ).sort_index(ascending=True)
         # Ensure the river alignment is taken from the most downstream bathymetry point
-        start_split_length = float(aligned_channel.project(river_bathymetry.iloc[0].geometry))
+        start_split_length = float(
+            aligned_channel.project(river_bathymetry.iloc[0].geometry)
+        )
         if start_split_length > 0.1:
             split_point = aligned_channel.interpolate(start_split_length)
             aligned_channel = shapely.ops.snap(
@@ -916,7 +918,7 @@ class RiverMouthFan:
             )
             if len(aligned_channel) > 1:
                 aligned_channel = aligned_channel.iloc[[1]]
-        
+
         # Explode incase the aligned channel is clipped into a MultiPolyLine
         (x, y) = aligned_channel.explode(index_parts=True).iloc[0].geometry.xy
 
