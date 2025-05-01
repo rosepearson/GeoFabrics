@@ -2017,7 +2017,6 @@ class ChannelCharacteristics:
             flat_water_polygon = geopandas.GeoDataFrame(geometry=polygons, crs=flat_water_polygon.crs)
         # Only keep polygon areas greater than 1% of total area
         flat_water_polygon = flat_water_polygon[flat_water_polygon.area / flat_water_polygon.area.sum() > 0.01]
-        breakpoint()
 
         return flat_water_polygon
 
