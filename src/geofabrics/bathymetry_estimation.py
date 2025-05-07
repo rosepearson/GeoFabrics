@@ -2020,7 +2020,9 @@ class ChannelCharacteristics:
         flat_water_polygon = flat_water_polygon[
             flat_water_polygon.area / flat_water_polygon.area.sum() > 0.01
         ]
-        flat_water_polygon = geopandas.GeoDataFrame(geometry=flat_water_polygon).dissolve()
+        flat_water_polygon = geopandas.GeoDataFrame(
+            geometry=flat_water_polygon
+        ).dissolve()
         return flat_water_polygon
 
     def _centreline_from_width_spline(
