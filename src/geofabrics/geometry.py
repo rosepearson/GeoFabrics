@@ -898,14 +898,11 @@ class RiverMouthFan:
         aligned_channel = geopandas.read_file(self.aligned_channel_file)
         river_bathymetry = geopandas.read_file(self.river_bathymetry_file)
         river_polygon = geopandas.read_file(self.river_polygon_file).make_valid()
-        river_bathymetry = river_bathymetry.clip(
-            river_polygon.buffer(self.cross_section_spacing / 2)
-        ).sort_index(ascending=True)
+        
         # Ensure the river alignment is taken from the most downstream bathymetry point
-        start_split_length = float(
-            aligned_channel.project(river_bathymetry.iloc[0].geometry)
-        )
-        if start_split_length > 0.1:
+        start_split_length = river_bathymetry[river_bathymetry.geometry.isna()==False].index.min() * self.cross_section_spacing
+        
+        if start_split_length > self.cross_section_spacing:
             split_point = aligned_channel.interpolate(start_split_length)
             aligned_channel = shapely.ops.snap(
                 aligned_channel.loc[0].geometry, split_point.loc[0], tolerance=0.1
@@ -932,6 +929,7 @@ class RiverMouthFan:
         mouth_normal = shapely.geometry.Point([-mouth_tangent.y, mouth_tangent.x])
 
         # Get the midpoint of the river mouth from the river bathymetry
+        river_bathymetry = river_bathymetry.clip(river_polygon).sort_index(ascending=True)
         mouth_point = river_bathymetry.iloc[0].geometry
 
         return mouth_point, mouth_tangent, mouth_normal
