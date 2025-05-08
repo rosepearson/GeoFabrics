@@ -73,6 +73,7 @@ jobs:
       uses: py-actions/flake8@v2
       with:
           max-line-length: "127"
+          plugins: "flake8-black"
 
 
     - name: Run tests with pytest
