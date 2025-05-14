@@ -2394,7 +2394,7 @@ class RawDem(LidarBase):
             dtype=raster_type,
             chunks={"x": self.chunk_size, "y": self.chunk_size},
         )
-        lidar_mapping_dict = {'no LiDAR': self.SOURCE_CLASSIFICATION['no data']}
+        lidar_mapping_dict = {"no LiDAR": self.SOURCE_CLASSIFICATION["no data"]}
         dem = xarray.Dataset(
             data_vars=dict(
                 z=(
