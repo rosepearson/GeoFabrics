@@ -72,7 +72,7 @@ jobs:
     - name: Run lint with flake8
       uses: py-actions/flake8@v2
       with:
-          ignore: "E203"
+          ignore: E203,W503,E712
           max-line-length: "127"
           plugins: "flake8-black"
 
