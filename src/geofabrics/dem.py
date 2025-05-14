@@ -914,7 +914,7 @@ class HydrologicallyConditionedDem(DemBase):
                     radius=0,
                 )
                 if chunk_region_to_tile.area.sum() == 0:
-                    self.logger.debug(f"\t\tReturning empty tile as out of RIO")
+                    self.logger.debug("\t\tReturning empty tile as out of RIO")
                     delayed_chunked_x.append(
                         dask.array.full(
                             shape=(len(dim_y), len(dim_x)),
@@ -1248,7 +1248,7 @@ class HydrologicallyConditionedDem(DemBase):
                     radius=0,
                 )
                 if chunk_region_to_tile.area.sum() == 0:
-                    self.logger.debug(f"\t\tReturning empty tile as out of RIO")
+                    self.logger.debug("\t\tReturning empty tile as out of RIO")
                     delayed_chunked_x.append(
                         dask.array.full(
                             shape=(len(dim_y), len(dim_x)),
@@ -1474,7 +1474,7 @@ class HydrologicallyConditionedDem(DemBase):
                     radius=0,
                 )
                 if chunk_region_to_tile.area.sum() == 0:
-                    self.logger.debug(f"\t\tReturning empty tile as out of RIO")
+                    self.logger.debug("\t\tReturning empty tile as out of RIO")
                     delayed_chunked_x.append(
                         dask.array.full(
                             shape=(len(dim_y), len(dim_x)),
@@ -2070,7 +2070,7 @@ class RawDem(LidarBase):
                     or not no_values_mask.sel(x=dim_x, y=dim_y).any()
                 ):
                     self.logger.debug(
-                        f"\t\tReturning empty tile as no LiDAR or out of ROI"
+                        "\t\tReturning empty tile as no LiDAR or out of ROI"
                     )
                     delayed_chunked_x.append(
                         dask.array.full(
@@ -2394,7 +2394,7 @@ class RawDem(LidarBase):
             dtype=raster_type,
             chunks={"x": self.chunk_size, "y": self.chunk_size},
         )
-
+        lidar_mapping_dict = {'no LiDAR': self.SOURCE_CLASSIFICATION['no data']}
         dem = xarray.Dataset(
             data_vars=dict(
                 z=(
@@ -2422,7 +2422,7 @@ class RawDem(LidarBase):
                     {
                         "units": "",
                         "long_name": "source lidar ID",
-                        "mapping": f"{{'no LiDAR': self.SOURCE_CLASSIFICATION['no data']}}",
+                        "mapping": f"{lidar_mapping_dict}",
                     },
                 ),
             ),
@@ -2588,14 +2588,14 @@ class PatchDem(LidarBase):
             and all(patch.y.isin(self._dem.y))
             and patch_resolution == self.catchment_geometry.resolution
         ):
-            self.logger.info(f"\t\t\tGrid aligned so do a straight reindex")
+            self.logger.info("\t\t\tGrid aligned so do a straight reindex")
             patch = patch.reindex_like(self._dem, fill_value=numpy.nan)
         elif (
             self.chunk_size is not None
             and max(len(self._dem.x), len(self._dem.y)) > self.chunk_size
         ):  # Expect xarray dims (y, x), not (x, y) as default for rioxarray
             self.logger.info(
-                f"\t\t\tInterpolate with dask parallelisation at chunk size"
+                "\t\t\tInterpolate with dask parallelisation at chunk size"
             )
             interpolator = scipy.interpolate.RegularGridInterpolator(
                 (patch.y.values, patch.x.values),
@@ -2622,7 +2622,7 @@ class PatchDem(LidarBase):
             )
             patch.rio.write_transform(inplace=True)
         else:  # No chunking use built in method
-            self.logger.info(f"\t\t\tInterpolate using built-in method")
+            self.logger.info("\t\t\tInterpolate using built-in method")
             patch = patch.interp(x=self._dem.x, y=self._dem.y, method="linear")
         patch.rio.write_crs(self.catchment_geometry.crs["horizontal"], inplace=True)
         patch.rio.write_nodata(numpy.nan, encoded=True, inplace=True)
@@ -3065,7 +3065,7 @@ class RoughnessDem(LidarBase):
                     or not no_values_mask.sel(x=dim_x, y=dim_y).any()
                 ):
                     self.logger.debug(
-                        f"\t\tReturning empty tile as no LiDAR or out of ROI"
+                        "\t\tReturning empty tile as no LiDAR or out of ROI"
                     )
                     delayed_chunked_x.append(
                         dask.array.full(

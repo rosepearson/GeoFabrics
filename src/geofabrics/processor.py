@@ -1858,7 +1858,8 @@ class RoughnessLengthGenerator(BaseProcessor):
             for paving in ["asphalt", "concrete"]:
                 roads.loc[roads["surface"] == paving, "surface"] = "paved"
             logging.info(
-                f"Surfaces of {roads[roads['surface']!='paved']['surface'].unique()} all assumed to be unpaved."
+                f"Surfaces of {roads[roads['surface'] != 'paved']['surface'].unique()} "
+                "all assumed to be unpaved."
             )
             roads.loc[roads["surface"] != "paved", "surface"] = "unpaved"
 
@@ -3858,7 +3859,7 @@ class StopbankCrestElevationEstimator(BaseProcessor):
         name_dictionary = {
             "raw_dem": f"stopbank_raw_dem_{index}.nc",
             "stopbank_polygon": f"stopbank_polygon_{index}.geojson",
-            "stopbanks_polygon": f"stopbank_polygon.geojson",
+            "stopbanks_polygon": "stopbank_polygon.geojson",
             "stopbanks_elevation": "stopbank_elevation.geojson",
         }
         return name_dictionary[key]

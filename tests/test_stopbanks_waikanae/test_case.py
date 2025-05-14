@@ -14,7 +14,6 @@ import dotenv
 import os
 import sys
 import pytest
-import logging
 import numpy
 
 from geofabrics import runner
@@ -91,14 +90,14 @@ class Test(base_test.Test):
             benchmark.z.data,
             decimal=1,
             err_msg="The generated test has significantly different elevation from the "
-            f"benchmark.",
+            "benchmark.",
         )
 
         numpy.testing.assert_array_almost_equal(
             test.data_source.data,
             benchmark.data_source.data,
             err_msg="The generated test data_source layer differs from the "
-            f"benchmark.",
+            "benchmark.",
         )
 
         # explicitly free memory as xarray seems to be hanging onto memory
@@ -128,13 +127,13 @@ class Test(base_test.Test):
             benchmark.z.data,
             decimal=1,
             err_msg="The generated test has significantly different elevation from the "
-            f"benchmark.",
+            "benchmark.",
         )
         numpy.testing.assert_array_almost_equal(
             test.data_source.data,
             benchmark.data_source.data,
             err_msg="The generated test data_source layer differs from the "
-            f"benchmark.",
+            "benchmark.",
         )
 
         # explicitly free memory as xarray seems to be hanging onto memory

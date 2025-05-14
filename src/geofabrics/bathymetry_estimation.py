@@ -2015,7 +2015,7 @@ class ChannelCharacteristics:
                 polygons.append(shapely.geometry.Polygon(linering))
             flat_water_polygon = geopandas.GeoDataFrame(
                 geometry=polygons, crs=flat_water_polygon.crs
-            )
+            ).make_valid()
         # Only keep polygon areas greater than 1% of total area
         flat_water_polygon = flat_water_polygon[
             flat_water_polygon.area / flat_water_polygon.area.sum() > 0.01
