@@ -2228,7 +2228,7 @@ class ChannelCharacteristics:
         intersections = row.geometry.intersection(
             river_polygon.buffer(self.resolution / 10).iloc[0]
         )
-        if type(intersections) == shapely.geometry.multilinestring.MultiLineString:
+        if isinstance(intersections, shapely.geometry.multilinestring.MultiLineString):
             intersections = list(
                 row.geometry.intersection(
                     river_polygon.buffer(self.resolution / 10).iloc[0]

@@ -1008,7 +1008,7 @@ class HydrologicallyConditionedDem(DemBase):
             number_offshore_tiles = math.ceil(len(flat_x_array) / RBF_CACHE_SIZE)
             for i in range(number_offshore_tiles):
                 self.logger.info(
-                    f"Offshore intepolant tile {i+1} of {number_offshore_tiles}"
+                    f"Offshore intepolant tile {i + 1} of {number_offshore_tiles}"
                 )
                 start_index = int(i * RBF_CACHE_SIZE)
                 end_index = (

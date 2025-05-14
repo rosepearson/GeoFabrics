@@ -2859,7 +2859,7 @@ class RiverBathymetryGenerator(BaseProcessor):
         )
         cross_section_spacing = self.get_bathymetry_instruction("cross_section_spacing")
         # Cycle through and caluclate the rolling mean
-        label = f"{cross_section_spacing*upstream_smoothing_factor/1000}km"
+        label = f"{cross_section_spacing * upstream_smoothing_factor / 1000}km"
 
         # Apply smoothing via '_rolling_mean_with_padding' to each measurement
         # Slope
