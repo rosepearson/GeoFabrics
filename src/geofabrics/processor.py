@@ -4025,7 +4025,7 @@ class StopbankCrestElevationEstimator(BaseProcessor):
         return
 
     def load_stopbanks(self) -> bool:
-        """Download OpenStreetMap waterways and tunnels within the catchment BBox."""
+        """Load or download (OpenStreetMap) stopbanks within the catchment BBox."""
 
         source = self.get_stopbanks_instruction("source")
         defaults = {"stopbanks": "osm_stopbanks.geojson"} if source == "osm" else {}

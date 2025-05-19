@@ -196,6 +196,7 @@ class CoarseDem:
             except (
                 rioxarray.exceptions.NoDataInBounds,
                 ValueError,
+                rioxarray.exceptions.OneDimensionalRaster,
             ) as caught_exception:
                 self.logger.warning(
                     f"{caught_exception} in CoarseDEM. Will set to empty."
@@ -2560,6 +2561,7 @@ class PatchDem(LidarBase):
         except (  # If exception skip and proceed to the next patch
             rioxarray.exceptions.NoDataInBounds,
             ValueError,
+            rioxarray.exceptions.OneDimensionalRaster,
         ) as caught_exception:
             self.logger.warning(
                 f"NoDataInDounds in PatchDem.add_patchs. Will skip {patch_path}."
