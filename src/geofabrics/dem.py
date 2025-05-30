@@ -483,7 +483,7 @@ class DemBase(abc.ABC):
 
         Remove holes as these can cause self intersection warnings.
         """
-        
+
         dense_extents = [
             shapely.geometry.shape(polygon[0])
             for polygon in rasterio.features.shapes(numpy.uint8(mask))
