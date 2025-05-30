@@ -4135,10 +4135,10 @@ class StopbankCrestElevationEstimator(BaseProcessor):
 
         # Don't reprocess if already estimated
         if self.stopbanks_elevations_exists():
-            self.logger.info("Waterway and tunnel bed elevations already estimated.")
+            self.logger.info("Stopbanks elevations already estimated.")
             return
         self.logger.info(
-            "Estimating waterway and tunnel bed elevation from OpenStreetMap."
+            "Estimating stopbanks crest elevation from source stopbank network."
         )
 
         # Ensure the results folder has been created

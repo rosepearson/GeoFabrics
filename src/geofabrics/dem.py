@@ -481,8 +481,9 @@ class DemBase(abc.ABC):
 
         transform -> data_array.rio.transform()
 
-         Remove holes as these can cause self intersection warnings."""
-
+        Remove holes as these can cause self intersection warnings.
+        """
+        
         dense_extents = [
             shapely.geometry.shape(polygon[0])
             for polygon in rasterio.features.shapes(numpy.uint8(mask))
@@ -1866,17 +1867,6 @@ class RawDem(LidarBase):
             )
         return dim_x, dim_y
 
-    def _calculate_raw_extents(self):
-        """Define the extents of the DEM with values (i.e. what are the spatial extents
-        of pixels in the DEM that are defined from LiDAR or a coarse DEM)."""
-
-        # Defines extents where raw DEM values exist
-        mask = numpy.logical_not(numpy.isnan(self._dem.z.data))
-        extents = self._extents_from_mask(
-            mask=mask, transform=self._dem.rio.transform()
-        )
-        return extents
-
     def add_lidar(
         self,
         lidar_dataset_info: dict,
@@ -2894,16 +2884,6 @@ class RoughnessDem(LidarBase):
         self._write_netcdf_conventions_in_place(self._dem, self.catchment_geometry.crs)
 
         return self._dem
-
-    def _calculate_lidar_extents(self):
-        """Calculate the extents of the LiDAR data."""
-
-        # Defines extents where raw DEM values exist
-        mask = self._dem.data_source.data == self.SOURCE_CLASSIFICATION["LiDAR"]
-        extents = self._extents_from_mask(
-            mask=mask, transform=self._dem.rio.transform()
-        )
-        return extents
 
     def add_lidar(
         self,
