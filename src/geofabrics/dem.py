@@ -481,7 +481,7 @@ class DemBase(abc.ABC):
 
         transform -> data_array.rio.transform()
 
-        Remove holes as these can cause self intersection warnings.
+        Remove all holes as these can cause self intersection warnings.
         """
 
         dense_extents = [
