@@ -44,6 +44,7 @@ def chunk_mask(mask, chunk_size):
 
 
 def clip_mask(arr, geometry, chunk_size, invert=False):
+    """Create a mask the size of the arr clipped by the geometry."""
     mask = (
         xarray.ones_like(arr, dtype=numpy.float16)
         .compute()
@@ -693,6 +694,31 @@ class HydrologicallyConditionedDem(DemBase):
         """Return the combined DEM from tiles and any interpolated offshore values"""
         return self._raw_extents
 
+    def calculate_offshore_no_data(self) -> geopandas.GeoDataFrame:
+        """Calculate the offshore region with no dense data."""
+
+        # Check if any offshore region
+        if self.catchment_geometry.offshore.area.sum() == 0:
+            return geopandas.GeoDataFrame(
+                geometry=[],
+                crs=self.catchment_geometry.crs["horizontal"],
+            )
+
+        # Drop on land. True is no data offshore, true on land too
+        mask = self._dem.z.rio.clip(
+            self.catchment_geometry.offshore.geometry,
+            drop=True,
+        ).isnull()
+
+        offshore_no_data = self._extents_from_mask(
+            mask=mask.values,
+            transform=mask.rio.transform(),
+        )
+        # Remove true values on land
+        offshore_no_data = offshore_no_data.clip(self.catchment_geometry.offshore)
+
+        return offshore_no_data
+
     @property
     def dem(self):
         """Return the combined DEM from tiles and any interpolated offshore values"""
@@ -801,6 +827,50 @@ class HydrologicallyConditionedDem(DemBase):
 
         return offshore_edge
 
+    def _sample_foreshore(self) -> numpy.ndarray:
+        """Return the pixel values of the offshore edge to be used for offshore
+        interpolation"""
+
+        offshore_dense_data_edge_mask = clip_mask(
+            self._raw_dem.z,
+            self.catchment_geometry.foreshore.geometry,
+            self.chunk_size,
+        )
+        offshore_dense_data_edge_mask = offshore_dense_data_edge_mask.where(
+            self._raw_dem.z.notnull().values
+        )
+        if not offshore_dense_data_edge_mask.any():
+            # No offshore edge. Return an empty array.
+            offshore_edge = numpy.empty(
+                [0],
+                dtype=[
+                    ("X", geometry.RASTER_TYPE),
+                    ("Y", geometry.RASTER_TYPE),
+                    ("Z", geometry.RASTER_TYPE),
+                ],
+            )
+            return offshore_edge
+        # Otherwise proceed as normal
+        offshore_edge_dem = self._raw_dem.where(offshore_dense_data_edge_mask)
+
+        mask = offshore_edge_dem.z.notnull().values
+
+        offshore_edge = numpy.empty(
+            [mask.sum().sum()],
+            dtype=[
+                ("X", geometry.RASTER_TYPE),
+                ("Y", geometry.RASTER_TYPE),
+                ("Z", geometry.RASTER_TYPE),
+            ],
+        )
+
+        grid_x, grid_y = numpy.meshgrid(offshore_edge_dem.x, offshore_edge_dem.y)
+        offshore_edge["X"] = grid_x[mask]
+        offshore_edge["Y"] = grid_y[mask]
+        offshore_edge["Z"] = offshore_edge_dem.z.values[mask]
+
+        return offshore_edge
+
     def interpolate_ocean_chunked(
         self,
         ocean_points,
@@ -827,9 +897,7 @@ class HydrologicallyConditionedDem(DemBase):
             raster_options["kernel"] = "thin_plate_spline"
         if use_edge:
             # Save point cloud as LAZ file
-            offshore_edge_points = self._sample_offshore_edge(
-                self.catchment_geometry.resolution
-            )
+            offshore_edge_points = self._sample_foreshore()
             # Remove any ocean points on land and within the buffered distance
             # of the foreshore to avoid any sharp changes that may cause jumps
             offshore_region = ocean_points.boundary
@@ -897,9 +965,7 @@ class HydrologicallyConditionedDem(DemBase):
         self.logger.info(f"Preparing {[len(chunked_dim_x), len(chunked_dim_y)]} chunks")
 
         # Define the region to rasterise
-        region_to_rasterise = self.catchment_geometry.offshore_no_dense_data(
-            self._raw_extents
-        )
+        region_to_rasterise = self.calculate_offshore_no_data()
 
         # cycle through index chunks - and collect in a delayed array
         self.logger.info("Running over ocean chunked")
@@ -1041,9 +1107,7 @@ class HydrologicallyConditionedDem(DemBase):
 
         # Reset the offshore DEM
 
-        offshore_edge_points = self._sample_offshore_edge(
-            self.catchment_geometry.resolution
-        )
+        offshore_edge_points = self._sample_foreshore()
         bathy_points = bathy_contours.sample_contours(
             self.catchment_geometry.resolution
         )
@@ -1074,9 +1138,7 @@ class HydrologicallyConditionedDem(DemBase):
                     [offshore_edge_points, bathy_points]
                 )
         # Setup the empty offshore area ready for interpolation
-        offshore_no_dense_data = self.catchment_geometry.offshore_no_dense_data(
-            self._raw_extents
-        )
+        offshore_no_dense_data = self.calculate_offshore_no_data()
         offshore_dem = self._raw_dem.rio.clip(self.catchment_geometry.offshore.geometry)
 
         # set all zero (or to ocean bathy classification) then clip out dense region
