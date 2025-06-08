@@ -694,6 +694,23 @@ class HydrologicallyConditionedDem(DemBase):
         """Return the combined DEM from tiles and any interpolated offshore values"""
         return self._raw_extents
 
+    def offshore_area_with_no_data(self) -> float:
+        """Calculate the area of the offshore region with no dense data."""
+
+        if self.catchment_geometry.offshore.area.sum() == 0:
+            return 0
+
+        area = (
+            self._dem.z.isnull()
+            .rio.clip(
+                self.catchment_geometry.offshore.geometry,
+                drop=True,
+            )
+            .sum()
+            .compute()
+        )
+        return area * self.catchment_geometry.resolution**2
+
     def calculate_offshore_no_data(self) -> geopandas.GeoDataFrame:
         """Calculate the offshore region with no dense data."""
 

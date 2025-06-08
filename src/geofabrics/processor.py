@@ -1136,10 +1136,6 @@ class HydrologicDemGenerator(BaseProcessor):
 
         # Check for ocean bathymetry. Interpolate offshore if significant
         # offshore area is not covered by LiDAR
-        offshore_area_without_lidar = self.catchment_geometry.offshore_without_lidar(
-            hydrologic_dem.raw_extents
-        ).geometry.area.sum()
-        offshore_area = self.catchment_geometry.offshore.area.sum()
         if self.check_vector_or_raster(
             key="ocean_contours", api_type="vector"
         ) and self.check_vector_or_raster(key="ocean_points", api_type="vector"):
@@ -1155,6 +1151,8 @@ class HydrologicDemGenerator(BaseProcessor):
         else:
             ocean_data_key = None
 
+        offshore_area_without_lidar = hydrologic_dem.offshore_area_with_no_data()
+        offshore_area = self.catchment_geometry.offshore.area.sum()
         if (
             ocean_data_key is not None
             and offshore_area_without_lidar > offshore_area * area_threshold
