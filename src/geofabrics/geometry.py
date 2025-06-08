@@ -317,7 +317,7 @@ class BathymetryContours:
         contour_file: str,
         catchment_geometry: CatchmentGeometry,
         z_label=None,
-        exclusion_extent=None,
+        region_of_interest=None,
     ):
         self.logger = logging.getLogger(f"{__name__}.{self.__class__.__name__}")
         self._contour = geopandas.read_file(contour_file)
@@ -326,33 +326,26 @@ class BathymetryContours:
 
         self._extent = None
 
-        self._set_up(exclusion_extent)
+        self._set_up(region_of_interest)
 
-    def _set_up(self, exclusion_extent):
+    def _set_up(self, region_of_interest):
         """Set CRS and clip to catchment"""
 
         self._contour = self._contour.to_crs(self.catchment_geometry.crs["horizontal"])
 
         # Define a large offshore area to keep ocean contours in - to ensure correct
         # interpolation behaviour near the edges
-        offshore = self.catchment_geometry.offshore
-        offshore = geopandas.GeoDataFrame(
-            geometry=offshore.buffer(numpy.sqrt(offshore.area.sum()))
+        if region_of_interest is None:
+            region_of_interest = self.catchment_geometry.offshore
+        region_of_interest = geopandas.GeoDataFrame(
+            geometry=region_of_interest.buffer(
+                numpy.sqrt(self.catchment_geometry.catchment.area.sum())
+            )
         )
-        offshore = offshore.overlay(self.catchment_geometry.land, how="difference")
-
-        if exclusion_extent is not None:
-            # Remove areas already covered by LiDAR - drop any polygons less than a
-            # pixel in area
-            exclusion_extent = exclusion_extent.clip(offshore, keep_geom_type=True)
-            exclusion_extent = exclusion_extent[
-                exclusion_extent.area > self.catchment_geometry.resolution**2
-            ]
-            self._extent = offshore.overlay(exclusion_extent, how="difference")
-        else:
-            self._extent = offshore
-        # Keep only contours in the 'extents' i.e. inside the catchment and outside any
-        # exclusion_extent
+        self._extent = region_of_interest.overlay(
+            self.catchment_geometry.land, how="difference"
+        )
+        # Keep only contours in the 'extents' i.e. inside the catchment region of interest
         self._contour = self._contour.clip(self._extent, keep_geom_type=True)
         self._contour = self._contour.reset_index(drop=True)
 

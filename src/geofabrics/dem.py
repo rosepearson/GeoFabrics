@@ -668,12 +668,6 @@ class HydrologicallyConditionedDem(DemBase):
         self._raw_dem = raw_dem
         self.interpolation_method = interpolation_method
 
-        # Calculate extents of pre-hydrological conditioning DEM
-        self._raw_extents = self._extents_from_mask(
-            mask=self._raw_dem.z.notnull().values,
-            transform=self._raw_dem.z.rio.transform(),
-        )
-
         # The not yet created hydrologically conditioned DEM.
         self._dem = self._raw_dem
 
@@ -688,11 +682,6 @@ class HydrologicallyConditionedDem(DemBase):
         if self._dem is not None:
             self._dem.close()
             del self._dem
-
-    @property
-    def raw_extents(self):
-        """Return the combined DEM from tiles and any interpolated offshore values"""
-        return self._raw_extents
 
     def offshore_area_with_no_data(self) -> float:
         """Calculate the area of the offshore region with no dense data."""
@@ -792,8 +781,12 @@ class HydrologicallyConditionedDem(DemBase):
             f" {self.catchment_geometry.resolution}"
         )
 
+        extents = self._extents_from_mask(
+            mask=self._dem.z.notnull().values,
+            transform=self._dem.z.rio.transform(),
+        )
         offshore_dense_data_edge = self.catchment_geometry.offshore_dense_data_edge(
-            self._raw_extents
+            extents
         )
         if offshore_dense_data_edge.area.sum() == 0:
             # No offshore edge. Return an empty array.

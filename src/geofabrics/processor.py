@@ -1210,7 +1210,7 @@ class HydrologicDemGenerator(BaseProcessor):
                     z_label=self.get_instruction_general(
                         key="z_labels", subkey="ocean"
                     ),
-                    exclusion_extent=hydrologic_dem.raw_extents,
+                    region_of_interest=hydrologic_dem.calculate_offshore_no_data(),
                 )
                 # Interpolate
                 hydrologic_dem.interpolate_ocean_bathymetry(ocean_data)
