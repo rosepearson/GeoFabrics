@@ -710,18 +710,16 @@ class HydrologicallyConditionedDem(DemBase):
                 crs=self.catchment_geometry.crs["horizontal"],
             )
 
-        # Drop on land. True is no data offshore, true on land too
-        mask = self._dem.z.rio.clip(
+        # Drop on land. True is no data offshore.
+        mask = self._dem.z.isnull().rio.clip(
             self.catchment_geometry.offshore.geometry,
             drop=True,
-        ).isnull()
+        )
 
         offshore_no_data = self._extents_from_mask(
             mask=mask.values,
             transform=mask.rio.transform(),
         )
-        # Remove true values on land
-        offshore_no_data = offshore_no_data.clip(self.catchment_geometry.offshore)
 
         return offshore_no_data
 
@@ -781,9 +779,13 @@ class HydrologicallyConditionedDem(DemBase):
             f" {self.catchment_geometry.resolution}"
         )
 
+        mask = self._dem.z.notnull().rio.clip(
+            self.catchment_geometry.foreshore_and_offshore.geometry,
+            drop=True,
+        )
         extents = self._extents_from_mask(
-            mask=self._dem.z.notnull().values,
-            transform=self._dem.z.rio.transform(),
+            mask=mask.values,
+            transform=mask.rio.transform(),
         )
         offshore_dense_data_edge = self.catchment_geometry.offshore_dense_data_edge(
             extents
@@ -843,7 +845,7 @@ class HydrologicallyConditionedDem(DemBase):
 
         offshore_dense_data_edge_mask = clip_mask(
             self._raw_dem.z,
-            self.catchment_geometry.foreshore.geometry,
+            self.catchment_geometry.foreshore_and_offshore.geometry,
             self.chunk_size,
         )
         offshore_dense_data_edge_mask = offshore_dense_data_edge_mask.where(

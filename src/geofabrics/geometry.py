@@ -225,8 +225,7 @@ class CatchmentGeometry:
         return offshore_without_lidar
 
     def offshore_dense_data_edge(self, dense_extents: geopandas.GeoDataFrame):
-        """Return the offshore edge of where there is 'dense data' i.e. LiDAR or
-        reference DEM"""
+        """Return the offshore & foreshore edge of where there is 'dense_extents'"""
 
         self._assert_land_set()
 
@@ -240,19 +239,9 @@ class CatchmentGeometry:
             # If no offshore and foreshore just return the emptry geometry
             return self.foreshore
 
-        # the foreshore and whatever lidar extents are offshore
-        offshore_foreshore_dense_data_extents = geopandas.GeoDataFrame(
-            {
-                "geometry": [
-                    shapely.ops.unary_union(
-                        [
-                            self.foreshore.loc[0].geometry,
-                            dense_extents.loc[0].geometry,
-                        ]
-                    )
-                ]
-            },
-            crs=self.crs["horizontal"],
+        # all foreshore and whatever lidar extents are offshore
+        offshore_foreshore_dense_data_extents = dense_extents.overlay(
+            self.foreshore, how="union"
         )
         offshore_foreshore_dense_data_extents = (
             offshore_foreshore_dense_data_extents.clip(
@@ -278,9 +267,6 @@ class CatchmentGeometry:
             )
         else:
             offshore_dense_data_edge = offshore_foreshore_dense_data_extents
-        offshore_dense_data_edge = offshore_dense_data_edge.clip(
-            self.foreshore_and_offshore, keep_geom_type=True
-        )
         return offshore_dense_data_edge
 
     def offshore_no_dense_data(self, lidar_extents):
@@ -342,9 +328,12 @@ class BathymetryContours:
                 numpy.sqrt(self.catchment_geometry.catchment.area.sum())
             )
         )
-        self._extent = region_of_interest.overlay(
+        region_of_interest = region_of_interest.overlay(
             self.catchment_geometry.land, how="difference"
         )
+        self._extent = region_of_interest[
+            region_of_interest.area > self.catchment_geometry.resolution**2
+        ]
         # Keep only contours in the 'extents' i.e. inside the catchment region of interest
         self._contour = self._contour.clip(self._extent, keep_geom_type=True)
         self._contour = self._contour.reset_index(drop=True)
