@@ -849,9 +849,14 @@ class HydrologicallyConditionedDem(DemBase):
             self.chunk_size,
         )
         offshore_dense_data_edge_mask = offshore_dense_data_edge_mask.where(
-            self._raw_dem.z.notnull().values
+            self._raw_dem.z.notnull().values, False
         )
-        if not offshore_dense_data_edge_mask.any():
+        # keep only the edges
+        eroded = scipy.ndimage.binary_erosion(
+            offshore_dense_data_edge_mask.data, structure=numpy.ones((3, 3), dtype=bool)
+        )
+        border = offshore_dense_data_edge_mask & ~eroded
+        if not border.any():
             # No offshore edge. Return an empty array.
             offshore_edge = numpy.empty(
                 [0],
@@ -863,7 +868,7 @@ class HydrologicallyConditionedDem(DemBase):
             )
             return offshore_edge
         # Otherwise proceed as normal
-        offshore_edge_dem = self._raw_dem.where(offshore_dense_data_edge_mask)
+        offshore_edge_dem = self._raw_dem.where(border)
 
         mask = offshore_edge_dem.z.notnull().values
 
