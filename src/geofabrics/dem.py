@@ -779,16 +779,23 @@ class HydrologicallyConditionedDem(DemBase):
             f" {self.catchment_geometry.resolution}"
         )
 
-        mask = self._dem.z.notnull().rio.clip(
+        # Define the border / edge of the offshore/foreshore region with data
+        offshore_dense_data_edge_mask = clip_mask(
+            self._raw_dem.z,
             self.catchment_geometry.foreshore_and_offshore.geometry,
-            drop=True,
+            self.chunk_size,
         )
-        extents = self._extents_from_mask(
-            mask=mask.values,
-            transform=mask.rio.transform(),
+        offshore_dense_data_edge_mask = offshore_dense_data_edge_mask.where(
+            self._raw_dem.z.notnull().values, False
         )
-        offshore_dense_data_edge = self.catchment_geometry.offshore_dense_data_edge(
-            extents
+        # keep only the edges
+        eroded = scipy.ndimage.binary_erosion(
+            offshore_dense_data_edge_mask.data, structure=numpy.ones((3, 3), dtype=bool)
+        )
+        border = offshore_dense_data_edge_mask & ~eroded
+        offshore_dense_data_edge = self._extents_from_mask(
+            mask=border.values,
+            transform=border.rio.transform(),
         )
         if offshore_dense_data_edge.area.sum() == 0:
             # No offshore edge. Return an empty array.
