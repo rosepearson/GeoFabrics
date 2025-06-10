@@ -768,12 +768,12 @@ class HydrologicallyConditionedDem(DemBase):
         self._dem = self._ensure_positive_indexing(self._dem)
         return self._dem
 
-    def _sample_offshore_edge(self, resolution) -> numpy.ndarray:
+    def _resample_foreshore_offshore_edge(self, resolution) -> numpy.ndarray:
         """Return the pixel values of the offshore edge to be used for offshore
         interpolation"""
 
         assert resolution >= self.catchment_geometry.resolution, (
-            "_sample_offshore_edge only supports downsampling"
+            "_resample_foreshore_offshore_edge only supports downsampling"
             f" and not  up-samping. The requested sampling resolution of {resolution} "
             "must be equal to or larger than the catchment resolution of "
             f" {self.catchment_geometry.resolution}"
@@ -846,24 +846,22 @@ class HydrologicallyConditionedDem(DemBase):
 
         return offshore_edge
 
-    def _sample_foreshore(self) -> numpy.ndarray:
+    def _sample_foreshore_offshore_edge(self) -> numpy.ndarray:
         """Return the pixel values of the offshore edge to be used for offshore
         interpolation"""
 
-        offshore_dense_data_edge_mask = clip_mask(
+        mask = clip_mask(
             self._raw_dem.z,
             self.catchment_geometry.foreshore_and_offshore.geometry,
             self.chunk_size,
         )
-        offshore_dense_data_edge_mask = offshore_dense_data_edge_mask.where(
-            self._raw_dem.z.notnull().values, False
-        )
+        mask = mask.where(self._raw_dem.z.notnull().values, False)
         # keep only the edges
         eroded = scipy.ndimage.binary_erosion(
-            offshore_dense_data_edge_mask.data, structure=numpy.ones((3, 3), dtype=bool)
+            mask.data, structure=numpy.ones((3, 3), dtype=bool)
         )
-        border = offshore_dense_data_edge_mask & ~eroded
-        if not border.any():
+        mask = mask & ~eroded
+        if not mask.any():
             # No offshore edge. Return an empty array.
             offshore_edge = numpy.empty(
                 [0],
@@ -875,7 +873,7 @@ class HydrologicallyConditionedDem(DemBase):
             )
             return offshore_edge
         # Otherwise proceed as normal
-        offshore_edge_dem = self._raw_dem.where(border)
+        offshore_edge_dem = self._raw_dem.where(mask)
 
         mask = offshore_edge_dem.z.notnull().values
 
@@ -921,7 +919,7 @@ class HydrologicallyConditionedDem(DemBase):
             raster_options["kernel"] = "thin_plate_spline"
         if use_edge:
             # Save point cloud as LAZ file
-            offshore_edge_points = self._sample_foreshore()
+            offshore_edge_points = self._sample_foreshore_offshore_edge()
             # Remove any ocean points on land and within the buffered distance
             # of the foreshore to avoid any sharp changes that may cause jumps
             offshore_region = ocean_points.boundary
@@ -1131,7 +1129,7 @@ class HydrologicallyConditionedDem(DemBase):
 
         # Reset the offshore DEM
 
-        offshore_edge_points = self._sample_foreshore()
+        offshore_edge_points = self._sample_foreshore_offshore_edge()
         bathy_points = bathy_contours.sample_contours(
             self.catchment_geometry.resolution
         )
@@ -1153,7 +1151,9 @@ class HydrologicallyConditionedDem(DemBase):
                 "function by increasing the resolution from "
                 f" {self.catchment_geometry.resolution} to {reduced_resolution}"
             )
-            offshore_edge_points = self._sample_offshore_edge(reduced_resolution)
+            offshore_edge_points = self._resample_foreshore_offshore_edge(
+                reduced_resolution
+            )
             bathy_points = bathy_contours.sample_contours(reduced_resolution)
             if len(bathy_points) == 0:
                 offshore_points = offshore_edge_points
