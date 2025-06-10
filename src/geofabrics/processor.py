@@ -581,15 +581,23 @@ class BaseProcessor(abc.ABC):
                         f" the {data_service} data service"
                     )
 
-                    # Cycle through all layers specified - save each & add to the path
-                    # list
+                    # Cycle through all layers specified & add to the path list
                     for layer in api_instruction["layers"]:
-                        # Use the run method to download each layer in turn
-                        raster_paths = fetcher.run(layer)
-
-                        # Add the downloaded to paths
-                        for raster_path in raster_paths:
-                            paths.append(raster_path)
+                        # Check for cached output and otherwise download
+                        if len((raster_dir / layer).glob("*.tif")) > 0:
+                            logging.info(
+                                f"Using cached raster layer {layer} from {raster_dir}"
+                            )
+                            for raster_path in (raster_dir / layer).glob("*.tif"):
+                                paths.append(raster_path)
+                        else:
+                            logging.info(
+                                f"Downloading raster layer {layer} from {data_service}"
+                            )
+                            # Download each layer in turn & add to paths list
+                            raster_paths = fetcher.run(layer)
+                            for raster_path in raster_paths:
+                                paths.append(raster_path)
 
         if required and len(paths) == 0:
             raise Exception(
