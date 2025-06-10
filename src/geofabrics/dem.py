@@ -779,77 +779,7 @@ class HydrologicallyConditionedDem(DemBase):
             f" {self.catchment_geometry.resolution}"
         )
 
-        # Define the border / edge of the offshore/foreshore region with data
-        offshore_dense_data_edge_mask = clip_mask(
-            self._raw_dem.z,
-            self.catchment_geometry.foreshore_and_offshore.geometry,
-            self.chunk_size,
-        )
-        offshore_dense_data_edge_mask = offshore_dense_data_edge_mask.where(
-            self._raw_dem.z.notnull().values, False
-        )
-        # keep only the edges
-        eroded = scipy.ndimage.binary_erosion(
-            offshore_dense_data_edge_mask.data, structure=numpy.ones((3, 3), dtype=bool)
-        )
-        border = offshore_dense_data_edge_mask & ~eroded
-        offshore_dense_data_edge = self._extents_from_mask(
-            mask=border.values,
-            transform=border.rio.transform(),
-        )
-        if offshore_dense_data_edge.area.sum() == 0:
-            # No offshore edge. Return an empty array.
-            offshore_edge = numpy.empty(
-                [0],
-                dtype=[
-                    ("X", geometry.RASTER_TYPE),
-                    ("Y", geometry.RASTER_TYPE),
-                    ("Z", geometry.RASTER_TYPE),
-                ],
-            )
-            return offshore_edge
-        # Otherwise proceed as normal
-        offshore_edge_dem = self._raw_dem.rio.clip(offshore_dense_data_edge.geometry)
-
-        # If the sampling resolution is coaser than the catchment_geometry resolution
-        # resample the DEM - Align to the resolution (not the BBox).
-        if resolution > self.catchment_geometry.resolution:
-            x = numpy.arange(
-                numpy.ceil(offshore_edge_dem.x.min() / resolution) * resolution,
-                numpy.ceil(offshore_edge_dem.x.max() / resolution) * resolution,
-                resolution,
-            )
-            y = numpy.arange(
-                numpy.ceil(offshore_edge_dem.y.max() / resolution) * resolution,
-                numpy.ceil(offshore_edge_dem.y.min() / resolution) * resolution,
-                -resolution,
-            )
-            offshore_edge_dem = offshore_edge_dem.interp(x=x, y=y, method="nearest")
-            offshore_edge_dem = offshore_edge_dem.rio.clip(
-                offshore_dense_data_edge.geometry
-            )  # Reclip to inbounds
-        grid_x, grid_y = numpy.meshgrid(offshore_edge_dem.x, offshore_edge_dem.y)
-        mask = offshore_edge_dem.z.notnull().values
-
-        offshore_edge = numpy.empty(
-            [mask.sum().sum()],
-            dtype=[
-                ("X", geometry.RASTER_TYPE),
-                ("Y", geometry.RASTER_TYPE),
-                ("Z", geometry.RASTER_TYPE),
-            ],
-        )
-
-        offshore_edge["X"] = grid_x[mask]
-        offshore_edge["Y"] = grid_y[mask]
-        offshore_edge["Z"] = offshore_edge_dem.z.values[mask]
-
-        return offshore_edge
-
-    def _sample_foreshore_offshore_edge(self) -> numpy.ndarray:
-        """Return the pixel values of the offshore edge to be used for offshore
-        interpolation"""
-
+        # Create mask defining the offshore & foreshore data edge
         mask = clip_mask(
             self._raw_dem.z,
             self.catchment_geometry.foreshore_and_offshore.geometry,
@@ -863,7 +793,7 @@ class HydrologicallyConditionedDem(DemBase):
         mask = mask & ~eroded
         if not mask.any():
             # No offshore edge. Return an empty array.
-            offshore_edge = numpy.empty(
+            edge_points = numpy.empty(
                 [0],
                 dtype=[
                     ("X", geometry.RASTER_TYPE),
@@ -871,13 +801,33 @@ class HydrologicallyConditionedDem(DemBase):
                     ("Z", geometry.RASTER_TYPE),
                 ],
             )
-            return offshore_edge
-        # Otherwise proceed as normal
-        offshore_edge_dem = self._raw_dem.where(mask)
+            return edge_points
 
-        mask = offshore_edge_dem.z.notnull().values
+        # Otherwise clip to mask and extract non-nan values
+        edge_dem = self._raw_dem.z.where(mask)
 
-        offshore_edge = numpy.empty(
+        # In case of downsampling - Align to the resolution (not the BBox).
+        if resolution > self.catchment_geometry.resolution:
+            x = numpy.arange(
+                numpy.ceil(edge_dem.x.min() / resolution) * resolution,
+                numpy.ceil(edge_dem.x.max() / resolution) * resolution,
+                resolution,
+            )
+            y = numpy.arange(
+                numpy.ceil(edge_dem.y.max() / resolution) * resolution,
+                numpy.ceil(edge_dem.y.min() / resolution) * resolution,
+                -resolution,
+            )
+            edge_dem = edge_dem.interp(x=x, y=y, method="nearest")
+            edge_geometry = self._extents_from_mask(
+                mask=mask.values,
+                transform=mask.rio.transform(),
+            )
+            edge_dem = edge_dem.rio.clip(edge_geometry.geometry)  # Reclip to inbounds
+        grid_x, grid_y = numpy.meshgrid(edge_dem.x, edge_dem.y)
+        mask = edge_dem.notnull().values
+
+        edge_points = numpy.empty(
             [mask.sum().sum()],
             dtype=[
                 ("X", geometry.RASTER_TYPE),
@@ -886,12 +836,57 @@ class HydrologicallyConditionedDem(DemBase):
             ],
         )
 
-        grid_x, grid_y = numpy.meshgrid(offshore_edge_dem.x, offshore_edge_dem.y)
-        offshore_edge["X"] = grid_x[mask]
-        offshore_edge["Y"] = grid_y[mask]
-        offshore_edge["Z"] = offshore_edge_dem.z.values[mask]
+        edge_points["X"] = grid_x[mask]
+        edge_points["Y"] = grid_y[mask]
+        edge_points["Z"] = edge_dem.values[mask]
 
-        return offshore_edge
+        return edge_points
+
+    def _sample_foreshore_offshore_edge(self) -> numpy.ndarray:
+        """Return the pixel values of the offshore edge to be used for offshore
+        interpolation"""
+        # Create mask defining the offshore & foreshore data edge
+        mask = clip_mask(
+            self._raw_dem.z,
+            self.catchment_geometry.foreshore_and_offshore.geometry,
+            self.chunk_size,
+        )
+        mask = mask.where(self._raw_dem.z.notnull().values, False)
+        # keep only the edges
+        eroded = scipy.ndimage.binary_erosion(
+            mask.data, structure=numpy.ones((3, 3), dtype=bool)
+        )
+        mask = mask & ~eroded
+        if not mask.any():
+            # No offshore edge. Return an empty array.
+            edge_points = numpy.empty(
+                [0],
+                dtype=[
+                    ("X", geometry.RASTER_TYPE),
+                    ("Y", geometry.RASTER_TYPE),
+                    ("Z", geometry.RASTER_TYPE),
+                ],
+            )
+            return edge_points
+        # Otherwise clip to mask and extract non-nan values
+        edge_dem = self._raw_dem.z.where(mask)
+        mask = edge_dem.notnull().values
+
+        edge_points = numpy.empty(
+            [mask.sum().sum()],
+            dtype=[
+                ("X", geometry.RASTER_TYPE),
+                ("Y", geometry.RASTER_TYPE),
+                ("Z", geometry.RASTER_TYPE),
+            ],
+        )
+
+        grid_x, grid_y = numpy.meshgrid(edge_dem.x, edge_dem.y)
+        edge_points["X"] = grid_x[mask]
+        edge_points["Y"] = grid_y[mask]
+        edge_points["Z"] = edge_dem.values[mask]
+
+        return edge_points
 
     def interpolate_ocean_chunked(
         self,
