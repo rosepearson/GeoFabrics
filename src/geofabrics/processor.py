@@ -588,7 +588,7 @@ class BaseProcessor(abc.ABC):
                             logging.info(
                                 f"Using cached raster layer {layer} from {raster_dir}"
                             )
-                            for raster_path in (raster_dir / layer).glob("*.tif"):
+                            for raster_path in (raster_dir / str(layer)).glob("*.tif"):
                                 paths.append(raster_path)
                         else:
                             logging.info(
