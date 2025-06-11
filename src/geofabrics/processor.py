@@ -584,7 +584,7 @@ class BaseProcessor(abc.ABC):
                     # Cycle through all layers specified & add to the path list
                     for layer in api_instruction["layers"]:
                         # Check for cached output and otherwise download
-                        if len((raster_dir / layer).glob("*.tif")) > 0:
+                        if len((raster_dir / str(layer)).glob("*.tif")) > 0:
                             logging.info(
                                 f"Using cached raster layer {layer} from {raster_dir}"
                             )
