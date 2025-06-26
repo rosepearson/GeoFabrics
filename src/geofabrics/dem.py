@@ -689,16 +689,8 @@ class HydrologicallyConditionedDem(DemBase):
         if self.catchment_geometry.offshore.area.sum() == 0:
             return 0
 
-        area = (
-            self._dem.z.isnull()
-            .rio.clip(
-                self.catchment_geometry.offshore.geometry,
-                drop=True,
-            )
-            .sum()
-            .compute()
-        )
-        return area * self.catchment_geometry.resolution**2
+        area = self.calculate_offshore_no_data().area.sum()
+        return area
 
     def calculate_offshore_no_data(self) -> geopandas.GeoDataFrame:
         """Calculate the offshore region with no dense data."""
@@ -710,16 +702,19 @@ class HydrologicallyConditionedDem(DemBase):
                 crs=self.catchment_geometry.crs["horizontal"],
             )
 
-        # Drop on land. True is no data offshore.
-        mask = self._dem.z.isnull().rio.clip(
+        # Clip to offshore and True where no data
+        mask = self._dem.z.rio.clip(
             self.catchment_geometry.offshore.geometry,
             drop=True,
-        )
+        ).isnull()  # need this order as clip doesn't like bool
 
         offshore_no_data = self._extents_from_mask(
             mask=mask.values,
             transform=mask.rio.transform(),
         )
+        offshore_no_data = offshore_no_data.clip(
+            self.catchment_geometry.offshore.geometry
+        )  # Clip to remove on land true areas
 
         return offshore_no_data
 
