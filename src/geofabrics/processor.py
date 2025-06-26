@@ -3590,6 +3590,24 @@ class WaterwayBedElevationEstimator(BaseProcessor):
     def create_dem(self, waterways: geopandas.GeoDataFrame) -> xarray.Dataset:
         """Create and return a DEM at a resolution 1.5x the waterway width."""
 
+        # Download all rasters before creating individual DEMs to avoid overlap
+        self.logger.info(
+            "Download any missing rasters over the waterways region prior to "
+            "DEM generation for all waterway regions."
+        )
+        catchment_geometry = self.catchment_geometry
+        self.catchment_geometry = geometry.CatchmentGeometry(
+            self.get_result_file_path(key="waterways"),
+            self.get_crs(),
+            self.get_resolution(),
+            foreshore_buffer=2,
+        )
+        catchment_geometry.land = self.get_result_file_path(key="waterways")
+        self.get_vector_or_raster_paths(
+            key="coarse_dems", data_type="raster", required=False
+        )
+        self.catchment_geometry = catchment_geometry
+
         # Check if all DEMs are already made
         for index, row in waterways.iterrows():
             dem_file = self.get_result_file_path(key="raw_dem", index=index)
