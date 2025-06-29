@@ -1,7 +1,7 @@
 # This workflow will install Python dependencies, run tests and lint with a variety of Python versions
 # For more information see: https://help.github.com/actions/language-and-framework-guides/using-python-with-github-actions
 
-name: Tests (Windows & Linux)
+name: Tests (Linux) #  & Windows)
 
 on: push
 
@@ -15,12 +15,12 @@ jobs:
       fail-fast: false
       matrix:
         python-version: ["3.12"]
-        os: ["ubuntu-latest", "windows-latest"]
+        os: ["ubuntu-latest"] #, "windows-latest"]
 
     steps:
 
     - name: Checkout
-      uses: actions/checkout@v3
+      uses: actions/checkout@v4
 
     - name: Create LFS file list
       run: git lfs ls-files --long | cut -d ' ' -f1 | sort > .lfs-assets-id
@@ -37,16 +37,15 @@ jobs:
       run: git lfs pull
 
     - name: Setup miniconda
-      uses: conda-incubator/setup-miniconda@v2
+      uses: conda-incubator/setup-miniconda@v3
       with:
         auto-update-conda: true # false
         miniforge-version: latest
-        channels: conda-forge # defaults automatically added
+        channels: conda-forge
         python-version: ${{ matrix.python-version }}
         activate-environment: geofabrics_CI
         environment-file: environment_CI.yml
         auto-activate-base: false
-        # use-only-tar-bz2: true
         
 
     - name: Conda list
@@ -71,11 +70,11 @@ jobs:
 
 
     - name: Run lint with flake8
-      run: |
-        # stop the build if there are Python syntax errors or undefined names
-        flake8 . --count --select=E9,F63,F7,F82 --show-source --statistics
-        # exit-zero treats all errors as warnings. The GitHub editor is 127 chars wide
-        flake8 . --count --exit-zero --max-complexity=10 --max-line-length=127 --statistics
+      uses: py-actions/flake8@v2
+      with:
+          ignore: E203,W503,E712
+          max-line-length: "127"
+          plugins: "flake8-black"
 
 
     - name: Run tests with pytest

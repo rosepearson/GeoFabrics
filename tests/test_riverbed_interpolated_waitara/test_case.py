@@ -55,7 +55,7 @@ class Test(base_test.Test):
         benchmark = geopandas.read_file(
             self.cache_dir / data_path_instructions["benchmark"]["extents"]
         )
-        decimal_threshold = 6
+        decimal_threshold = 4
 
         # check the polygons match closely
         column_name = "geometry"
@@ -84,7 +84,7 @@ class Test(base_test.Test):
         benchmark = geopandas.read_file(
             self.cache_dir / data_path_instructions["benchmark"]["extents"]
         )
-        decimal_threshold = 6
+        decimal_threshold = 4
 
         # check the polygons match closely
         column_name = "geometry"

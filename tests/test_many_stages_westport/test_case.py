@@ -75,7 +75,7 @@ class Test(base_test.Test):
             - benchmark_dem.z.data[~numpy.isnan(benchmark_dem.z.data)]
         )
         logging.info(f"DEM array diff is: {diff_array[diff_array != 0]}")
-        
+
         threshold = 10e-2
         allowable_number_above = 10
         self.assertTrue(

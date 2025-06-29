@@ -1952,12 +1952,77 @@ class ChannelCharacteristics:
         stop_xy = Channel(stop_xy, resolution=self.cross_section_spacing)
         stop_xy_spline = stop_xy.get_parametric_spline_fit_points()
 
+        # messy code to offset out lines by half the cross section spacing
+        normal_x, normal_y, length = self._segment_slope(
+            start_xy_spline[0], start_xy_spline[1], 0
+        )
+        start_xy_spline = numpy.insert(
+            start_xy_spline,
+            0,
+            start_xy_spline[:, 0]
+            - self.cross_section_spacing / 2 * numpy.array([normal_x, normal_y]),
+            axis=1,
+        )
+
+        normal_x, normal_y, length = self._segment_slope(
+            start_xy_spline[0], start_xy_spline[1], -2
+        )
+        start_xy_spline = numpy.append(
+            start_xy_spline,
+            numpy.vstack(
+                start_xy_spline[:, -1]
+                + self.cross_section_spacing / 2 * numpy.array([normal_x, normal_y])
+            ),
+            axis=1,
+        )
+
+        normal_x, normal_y, length = self._segment_slope(
+            stop_xy_spline[0], stop_xy_spline[1], 0
+        )
+        stop_xy_spline = numpy.insert(
+            stop_xy_spline,
+            0,
+            stop_xy_spline[:, 0]
+            - self.cross_section_spacing / 2 * numpy.array([normal_x, normal_y]),
+            axis=1,
+        )
+
+        normal_x, normal_y, length = self._segment_slope(
+            stop_xy_spline[0], stop_xy_spline[1], -2
+        )
+        stop_xy_spline = numpy.append(
+            stop_xy_spline,
+            numpy.vstack(
+                stop_xy_spline[:, -1]
+                + self.cross_section_spacing / 2 * numpy.array([normal_x, normal_y])
+            ),
+            axis=1,
+        )
+
         flat_water_polygon = shapely.geometry.Polygon(
             numpy.concatenate((start_xy_spline, stop_xy_spline[:, ::-1]), axis=1).T
         )
         flat_water_polygon = geopandas.GeoDataFrame(
             geometry=[flat_water_polygon], crs=cross_sections.crs
         )
+
+        # Ensure no holes and is a valid geometry
+        flat_water_polygon = flat_water_polygon.make_valid().explode()
+        if flat_water_polygon.interiors.explode().notnull().any():
+            logging.info("Filling holes in the flat water polygon")
+            polygons = []
+            for index, linering in flat_water_polygon.exterior.items():
+                polygons.append(shapely.geometry.Polygon(linering))
+            flat_water_polygon = geopandas.GeoDataFrame(
+                geometry=polygons, crs=flat_water_polygon.crs
+            ).make_valid()
+        # Only keep polygon areas greater than 1% of total area
+        flat_water_polygon = flat_water_polygon[
+            flat_water_polygon.area / flat_water_polygon.area.sum() > 0.01
+        ]
+        flat_water_polygon = geopandas.GeoDataFrame(
+            geometry=flat_water_polygon
+        ).dissolve()
         return flat_water_polygon
 
     def _centreline_from_width_spline(
@@ -2137,6 +2202,51 @@ class ChannelCharacteristics:
             ]
         )
 
+    def _apply_river_polygon_midpoint(
+        self,
+        row: pandas.core.series.Series,
+        river_polygon: geopandas.geodataframe.GeoDataFrame,
+    ):
+        """Generate a line for each width for visualisation.
+
+        Parameters
+        ----------
+
+        mid_x
+            The x centre of the transect.
+        mid_x
+            The y centre of the transect.
+        nx
+            Transect normal x-component.
+        ny
+            Transect normal y-component.
+        first_bank_i
+            The index of the first bank along the transect.
+        last_bank_i
+            The index of the last bank along the transect.
+        """
+        intersections = row.geometry.intersection(
+            river_polygon.buffer(self.resolution / 10).iloc[0]
+        )
+        if isinstance(intersections, shapely.geometry.multilinestring.MultiLineString):
+            intersections = list(
+                row.geometry.intersection(
+                    river_polygon.buffer(self.resolution / 10).iloc[0]
+                ).geoms
+            )
+            min_distance_index = -1
+            min_distance = row.geometry.length
+            for index, intersection in enumerate(intersections):
+                if intersection.distance(row.midpoint) < min_distance:
+                    min_distance = intersection.distance(row.midpoint)
+                    min_distance_index = index
+            return intersections[min_distance_index].centroid
+        else:
+            if intersections.distance(row.midpoint) > self.cross_section_spacing:
+                return shapely.empty(1, geom_type=shapely.GeometryType.POINT)[0]
+            else:
+                return intersections.centroid
+
     def align_channel(
         self,
         threshold: float,
@@ -2302,18 +2412,27 @@ class ChannelCharacteristics:
             cross_sections=cross_sections,
         )
 
-        # Midpoints of the river polygon - buffer slightly to ensure intersection at the
-        # start and end
-        cross_sections["river_polygon_midpoint"] = cross_sections.apply(
-            lambda row: row.geometry.intersection(
-                river_polygon.buffer(self.resolution / 10).iloc[0]
-            ).centroid,
-            axis=1,
-        )
-
         # Width and threshod smoothing - rolling mean
         self._smooth_widths_and_thresholds(cross_sections=cross_sections)
 
+        cross_sections["midpoint"] = cross_sections.apply(
+            lambda row: self._apply_midpoint(
+                row["mid_x"],
+                row["mid_y"],
+                row["nx"],
+                row["ny"],
+                row["first_bank_i"],
+                row["last_bank_i"],
+            ),
+            axis=1,
+        )
+
+        # Midpoints of the river polygon - buffer slightly to ensure intersection at the
+        # start and end
+        cross_sections["river_polygon_midpoint"] = cross_sections.apply(
+            lambda row: self._apply_river_polygon_midpoint(row, river_polygon),
+            axis=1,
+        )
         # Optional outputs
         if self.debug:
             # A line defining the extents of the bankfull width at that cross section

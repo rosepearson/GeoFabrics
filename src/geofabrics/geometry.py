@@ -169,143 +169,6 @@ class CatchmentGeometry:
         self._assert_land_set()
         return self._offshore
 
-    def land_and_foreshore_without_lidar(self, dense_extents: geopandas.GeoDataFrame):
-        """Return the land and foreshore region without LiDAR"""
-
-        self._assert_land_set()
-
-        if dense_extents is None or dense_extents.is_empty.all():
-            self.logger.warning(
-                "In CatchmentGeometry dense extents are `None` so "
-                " `land_and_foreshore_without_lidar` is returning `land_and_foreshore`"
-            )
-            return self.land_and_foreshore
-        elif self.land_and_foreshore.area.sum() == 0:
-            # There is no land and foreshore region - return an empty dataframe
-            return self.land_and_foreshore
-        # Clip to remove any offshore regions before doing a difference overlay. Drop
-        # any sub-pixel polygons.
-        land_and_foreshore_with_lidar = dense_extents.clip(
-            self.land_and_foreshore, keep_geom_type=True
-        )
-        land_and_foreshore_with_lidar = land_and_foreshore_with_lidar[
-            land_and_foreshore_with_lidar.area > self.resolution * self.resolution
-        ]
-        land_and_foreshore_without_lidar = self.land_and_foreshore.overlay(
-            land_and_foreshore_with_lidar, how="difference"
-        )
-
-        return land_and_foreshore_without_lidar
-
-    def offshore_without_lidar(self, dense_extents: geopandas.GeoDataFrame):
-        """Return the offshore region without LiDAR"""
-
-        self._assert_land_set()
-
-        if dense_extents is None or dense_extents.is_empty.all():
-            self.logger.warning(
-                "In CatchmentGeometry dense extents are `None` so "
-                "`offshore_without_lidar` is returning `offshore`"
-            )
-            return self.offshore
-        elif (
-            self.offshore.area.sum() == 0
-        ):  # There is no offshore region - return an empty dataframe
-            return self.offshore
-        # Clip to remove any offshore regions before doing a difference overlay. Drop
-        # any sub-pixel polygons.
-        offshore_with_lidar = dense_extents.clip(self.offshore, keep_geom_type=True)
-        offshore_with_lidar = offshore_with_lidar[
-            offshore_with_lidar.area > self.resolution**2
-        ]
-        offshore_without_lidar = geopandas.overlay(
-            self.offshore, offshore_with_lidar, how="difference"
-        )
-
-        return offshore_without_lidar
-
-    def offshore_dense_data_edge(self, dense_extents: geopandas.GeoDataFrame):
-        """Return the offshore edge of where there is 'dense data' i.e. LiDAR or
-        reference DEM"""
-
-        self._assert_land_set()
-
-        if dense_extents is None or dense_extents.is_empty.all():
-            self.logger.warning(
-                "In CatchmentGeometry dense extents are `None` so "
-                "`offshore_dense_data_edge` is returning `None`"
-            )
-            return dense_extents
-        elif self.foreshore_and_offshore.area.sum() == 0:
-            # If no offshore and foreshore just return the emptry geometry
-            return self.foreshore
-
-        # the foreshore and whatever lidar extents are offshore
-        offshore_foreshore_dense_data_extents = geopandas.GeoDataFrame(
-            {
-                "geometry": [
-                    shapely.ops.unary_union(
-                        [
-                            self.foreshore.loc[0].geometry,
-                            dense_extents.loc[0].geometry,
-                        ]
-                    )
-                ]
-            },
-            crs=self.crs["horizontal"],
-        )
-        offshore_foreshore_dense_data_extents = (
-            offshore_foreshore_dense_data_extents.clip(
-                self.foreshore_and_offshore, keep_geom_type=True
-            )
-        )
-
-        # deflate this - this will be taken away from the
-        # offshore_foreshore_dense_data_extents to give the edge
-        deflated_dense_data_extents = geopandas.GeoDataFrame(
-            {
-                "geometry": offshore_foreshore_dense_data_extents.buffer(
-                    self.resolution * -self.foreshore_buffer
-                )
-            },
-            crs=self.crs["horizontal"],
-        )
-
-        # get the difference between them
-        if deflated_dense_data_extents.area.sum() > 0:
-            offshore_dense_data_edge = offshore_foreshore_dense_data_extents.overlay(
-                deflated_dense_data_extents, how="difference"
-            )
-        else:
-            offshore_dense_data_edge = offshore_foreshore_dense_data_extents
-        offshore_dense_data_edge = offshore_dense_data_edge.clip(
-            self.foreshore_and_offshore, keep_geom_type=True
-        )
-        return offshore_dense_data_edge
-
-    def offshore_no_dense_data(self, lidar_extents):
-        """Return the offshore area where there is no 'dense data' i.e. LiDAR"""
-
-        assert len(lidar_extents) == 1, "LiDAR extents has a length greater than 1"
-
-        assert self._land is not None, (
-            "Land has not been set yet. This must be set before anything other than the"
-            + " `catchment` can be returned from a `CatchmentGeometry` object"
-        )
-
-        # lidar extents are offshore - drop any sub pixel areas
-        offshore_dense_data = lidar_extents.clip(self.offshore, keep_geom_type=True)
-        offshore_dense_data = offshore_dense_data[
-            offshore_dense_data.area > self.resolution * self.resolution
-        ]
-
-        # get the difference between them
-        offshore_no_dense_data = self.offshore.overlay(
-            offshore_dense_data, how="difference"
-        )
-
-        return offshore_no_dense_data
-
 
 class BathymetryContours:
     """A class for sampling from bathymetry contours.
@@ -317,7 +180,7 @@ class BathymetryContours:
         contour_file: str,
         catchment_geometry: CatchmentGeometry,
         z_label=None,
-        exclusion_extent=None,
+        region_of_interest=None,
     ):
         self.logger = logging.getLogger(f"{__name__}.{self.__class__.__name__}")
         self._contour = geopandas.read_file(contour_file)
@@ -326,33 +189,29 @@ class BathymetryContours:
 
         self._extent = None
 
-        self._set_up(exclusion_extent)
+        self._set_up(region_of_interest)
 
-    def _set_up(self, exclusion_extent):
+    def _set_up(self, region_of_interest):
         """Set CRS and clip to catchment"""
 
         self._contour = self._contour.to_crs(self.catchment_geometry.crs["horizontal"])
 
         # Define a large offshore area to keep ocean contours in - to ensure correct
         # interpolation behaviour near the edges
-        offshore = self.catchment_geometry.offshore
-        offshore = geopandas.GeoDataFrame(
-            geometry=offshore.buffer(numpy.sqrt(offshore.area.sum()))
+        if region_of_interest is None:
+            region_of_interest = self.catchment_geometry.offshore
+        region_of_interest = geopandas.GeoDataFrame(
+            geometry=region_of_interest.buffer(
+                numpy.sqrt(self.catchment_geometry.catchment.area.sum())
+            )
         )
-        offshore = offshore.overlay(self.catchment_geometry.land, how="difference")
-
-        if exclusion_extent is not None:
-            # Remove areas already covered by LiDAR - drop any polygons less than a
-            # pixel in area
-            exclusion_extent = exclusion_extent.clip(offshore, keep_geom_type=True)
-            exclusion_extent = exclusion_extent[
-                exclusion_extent.area > self.catchment_geometry.resolution**2
-            ]
-            self._extent = offshore.overlay(exclusion_extent, how="difference")
-        else:
-            self._extent = offshore
-        # Keep only contours in the 'extents' i.e. inside the catchment and outside any
-        # exclusion_extent
+        region_of_interest = region_of_interest.overlay(
+            self.catchment_geometry.land, how="difference"
+        )
+        self._extent = region_of_interest[
+            region_of_interest.area > self.catchment_geometry.resolution**2
+        ]
+        # Keep only contours in the 'extents' i.e. inside the catchment region of interest
         self._contour = self._contour.clip(self._extent, keep_geom_type=True)
         self._contour = self._contour.reset_index(drop=True)
 
@@ -644,6 +503,7 @@ class ElevationPoints:
             crs=polygon_list[0].crs,
         )
         polygon = polygon.to_crs(self.catchment_geometry.crs["horizontal"])
+        polygon.set_geometry(polygon.buffer(0), inplace=True)
         polygon = polygon.clip(self.catchment_geometry.catchment, keep_geom_type=True)
         points = points.clip(polygon.buffer(0), keep_geom_type=True)
         points = points.clip(self.catchment_geometry.catchment, keep_geom_type=True)
@@ -877,7 +737,7 @@ class RiverMouthFan:
         crs: int,
         cross_section_spacing: float,
         elevation_labels: list,
-        ocean_contour_depth_label: str = None,
+        ocean_elevation_label: str = None,
     ):
         self.logger = logging.getLogger(f"{__name__}.{self.__class__.__name__}")
         self.crs = crs
@@ -886,19 +746,40 @@ class RiverMouthFan:
         self.river_polygon_file = river_polygon_file
         self.river_bathymetry_file = river_bathymetry_file
         self.ocean_contour_file = ocean_contour_file
-        self.ocean_contour_depth_label = ocean_contour_depth_label
+        self.ocean_elevation_label = ocean_elevation_label
         self.elevation_labels = elevation_labels
         self.ocean_points_file = ocean_points_file
 
     def _get_mouth_alignment(self):
         """Get the location and alignment of the river mouth."""
 
-        # Get the river alignment and clip to the river polygon
+        # Get the river alignment and keep from the most bathymetry point
         aligned_channel = geopandas.read_file(self.aligned_channel_file)
+        river_bathymetry = geopandas.read_file(self.river_bathymetry_file)
         river_polygon = geopandas.read_file(self.river_polygon_file).make_valid()
-        aligned_channel = aligned_channel.clip(river_polygon)
+
+        # Ensure the river alignment is taken from the most downstream bathymetry point
+        start_split_length = (
+            river_bathymetry[river_bathymetry.geometry.isna() == False].index.min()
+            * self.cross_section_spacing
+        )
+
+        if start_split_length > self.cross_section_spacing:
+            split_point = aligned_channel.interpolate(start_split_length)
+            aligned_channel = shapely.ops.snap(
+                aligned_channel.loc[0].geometry, split_point.loc[0], tolerance=0.1
+            )
+            aligned_channel = geopandas.GeoDataFrame(
+                geometry=(
+                    list(shapely.ops.split(aligned_channel, split_point.loc[0]).geoms)
+                ),
+                crs=river_polygon.crs,
+            )
+            if len(aligned_channel) > 1:
+                aligned_channel = aligned_channel.iloc[[1]]
+
         # Explode incase the aligned channel is clipped into a MultiPolyLine
-        (x, y) = aligned_channel.explode().iloc[0].geometry.xy
+        (x, y) = aligned_channel.explode(index_parts=True).iloc[0].geometry.xy
 
         # Calculate the normal and tangent to the channel segment at the mouth
         segment_dx = x[0] - x[1]
@@ -910,10 +791,9 @@ class RiverMouthFan:
         mouth_normal = shapely.geometry.Point([-mouth_tangent.y, mouth_tangent.x])
 
         # Get the midpoint of the river mouth from the river bathymetry
-        river_bathymetry = geopandas.read_file(self.river_bathymetry_file)
-        river_bathymetry = river_bathymetry.clip(
-            river_polygon.buffer(self.cross_section_spacing / 2)
-        ).sort_index(ascending=True)
+        river_bathymetry = river_bathymetry.clip(river_polygon).sort_index(
+            ascending=True
+        )
         mouth_point = river_bathymetry.iloc[0].geometry
 
         return mouth_point, mouth_tangent, mouth_normal
@@ -951,18 +831,13 @@ class RiverMouthFan:
                 than the river mouth
         """
 
-        assert (
-            self.ocean_contour_depth_label is not None
-        ), "Ocean z-values must currently be stored a separate column currently."
-
         # Load in the ocean contours and find the contours to terminate against
         ocean_contours = geopandas.read_file(self.ocean_contour_file).to_crs(self.crs)
-        depth_label = self.ocean_contour_depth_label
+        elevations = self._get_elevations(ocean_contours)
 
         # Determine the end depth and filter the contours to include only these contours
         ocean_contours = ocean_contours[
-            ocean_contours[depth_label]
-            > depth_multiplier * river_mouth_depth * depth_sign
+            elevations > depth_multiplier * river_mouth_depth * depth_sign
         ].reset_index(drop=True)
 
         assert (
@@ -970,7 +845,15 @@ class RiverMouthFan:
         ), f"No contours exist with a depth {depth_multiplier}x the river mouth depth. "
 
         return ocean_contours
-    
+
+    def _get_elevations(self, ocean_geometry: geopandas.GeoDataFrame):
+        """Return the an array of depths using either the geometry or a column"""
+        if self.ocean_elevation_label is None:
+            elevations = ocean_geometry.apply(lambda row: row.geometry.z, axis=1)
+        else:
+            elevations = ocean_geometry[self.ocean_elevation_label]
+        return elevations
+
     def _get_distance_to_nearest_ocean_point_in_fan(
         self,
         river_mouth_z,
@@ -995,14 +878,18 @@ class RiverMouthFan:
         if river_mouth_z > 0:
             river_mouth_z = 0
         ocean_points = ocean_points[
-            ocean_points["Z"] < depth_multiplier * river_mouth_z
+            self._get_elevations(ocean_points) < depth_multiplier * river_mouth_z
         ].reset_index(drop=True)
 
         if len(ocean_points) == 0:
-            raise ValueError(f"No points exist within fan at a depth {depth_multiplier}x the river mouth depth. ")
-        
+            raise ValueError(
+                f"No points exist within fan at a depth {depth_multiplier}x the river mouth depth. "
+            )
+
         distance = ocean_points.distance(mouth_point).min()
-        elevation = ocean_points.iloc[ocean_points.distance(mouth_point).idxmin()]["Z"]
+        elevation = self._get_elevations(ocean_points).iloc[
+            ocean_points.distance(mouth_point).idxmin()
+        ]
 
         return distance, elevation
 
@@ -1075,7 +962,7 @@ class RiverMouthFan:
         mouth_point: float,
         mouth_tangent: float,
         mouth_normal: float,
-        length: float
+        length: float,
     ):
         """Return the fan polygon of maximum length. This will be used to
         produce data to the first contour at least 2x the depth of the river
@@ -1150,13 +1037,12 @@ class RiverMouthFan:
                 ],
             ]
         )
-
         if self.ocean_points_file is not None:
             length, end_elevation = self._get_distance_to_nearest_ocean_point_in_fan(
                 river_mouth_z=max(river_mouth_elevations),
                 fan=fan_polygon,
                 mouth_point=mouth_point,
-                depth_multiplier=2
+                depth_multiplier=2,
             )
             end_depth = -1 * end_elevation
             fan_polygon = self._fixed_length_fan_polygon(
@@ -1187,11 +1073,11 @@ class RiverMouthFan:
                     ],
                 ]
             )
-            
+
         else:
             # Load in ocean depth contours and keep only those intersecting the fan centre
             ocean_contours = self._get_ocean_contours(max(river_mouth_elevations))
-            end_depth = ocean_contours[self.ocean_contour_depth_label].min()
+            end_depth = self._get_elevations(ocean_contours).min()
             ocean_contours = ocean_contours.explode(ignore_index=True)
             ocean_contours = ocean_contours[
                 ~ocean_contours.intersection(fan_centre).is_empty
@@ -1199,10 +1085,13 @@ class RiverMouthFan:
 
             # Keep the closest contour intersecting
             if len(ocean_contours) > 0:
-                ocean_contours = ocean_contours.clip(fan_polygon).explode(ignore_index=True)
+                ocean_contours = ocean_contours.clip(fan_polygon).explode(
+                    ignore_index=True
+                )
                 min_index = ocean_contours.distance(mouth_point).idxmin()
                 intersection_line = ocean_contours.loc[min_index].geometry
-                end_depth = ocean_contours.loc[min_index][self.ocean_contour_depth_label]
+                elevations = self._get_elevations(ocean_contours)
+                end_depth = elevations.loc[min_index]
             else:
                 self.logger.warning(
                     "No ocean contour intersected. Instaed assumed fan geoemtry"

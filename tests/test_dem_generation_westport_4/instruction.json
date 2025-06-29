@@ -18,7 +18,7 @@
 		"subfolder": "results",
 		"extents": "catchment.geojson",
 		"result_dem": "test_dem.nc",
-		"benchmark_dem": "benchmark_dem.nc"
+		"benchmark_dem": "benchmark.nc"
 	},
 	"datasets": {
 		"lidar": {
