@@ -671,7 +671,7 @@ Module Contents
 
    .. py:method:: load_stopbanks()
 
-      Download OpenStreetMap waterways and tunnels within the catchment BBox.
+      Load or download (OpenStreetMap) stopbanks within the catchment BBox.
 
 
 

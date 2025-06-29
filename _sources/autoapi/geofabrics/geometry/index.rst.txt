@@ -88,32 +88,7 @@ Module Contents
       Return the catchment offshore region
 
 
-   .. py:method:: land_and_foreshore_without_lidar(dense_extents)
-
-      Return the land and foreshore region without LiDAR
-
-
-
-   .. py:method:: offshore_without_lidar(dense_extents)
-
-      Return the offshore region without LiDAR
-
-
-
-   .. py:method:: offshore_dense_data_edge(dense_extents)
-
-      Return the offshore edge of where there is 'dense data' i.e. LiDAR or
-      reference DEM
-
-
-
-   .. py:method:: offshore_no_dense_data(lidar_extents)
-
-      Return the offshore area where there is no 'dense data' i.e. LiDAR
-
-
-
-.. py:class:: BathymetryContours(contour_file, catchment_geometry, z_label=None, exclusion_extent=None)
+.. py:class:: BathymetryContours(contour_file, catchment_geometry, z_label=None, region_of_interest=None)
 
    A class for sampling from bathymetry contours.
 
@@ -240,7 +215,7 @@ Module Contents
       Return the names of all tiles within the catchment
 
 
-.. py:class:: RiverMouthFan(aligned_channel_file, river_bathymetry_file, river_polygon_file, ocean_contour_file, ocean_points_file, crs, cross_section_spacing, elevation_labels, ocean_contour_depth_label = None)
+.. py:class:: RiverMouthFan(aligned_channel_file, river_bathymetry_file, river_polygon_file, ocean_contour_file, ocean_points_file, crs, cross_section_spacing, elevation_labels, ocean_elevation_label = None)
 
    A class for creating an appropiate river mouth fan to transition from
    river depth estimates to the ocean bathymetry values. This fan region defines a

@@ -191,6 +191,8 @@
 </li>
       <li><a href="autoapi/geofabrics/bathymetry_estimation/index.html#geofabrics.bathymetry_estimation.ChannelCharacteristics.calculate_min_z_stop_i">calculate_min_z_stop_i() (geofabrics.bathymetry_estimation.ChannelCharacteristics method)</a>
 </li>
+      <li><a href="autoapi/geofabrics/dem/index.html#geofabrics.dem.HydrologicallyConditionedDem.calculate_offshore_no_data">calculate_offshore_no_data() (geofabrics.dem.HydrologicallyConditionedDem method)</a>
+</li>
       <li><a href="autoapi/geofabrics/processor/index.html#geofabrics.processor.RiverBathymetryGenerator.calculate_river_bed_elevations">calculate_river_bed_elevations() (geofabrics.processor.RiverBathymetryGenerator method)</a>
 </li>
       <li><a href="autoapi/geofabrics/geometry/index.html#geofabrics.geometry.CatchmentGeometry.catchment">catchment (geofabrics.geometry.CatchmentGeometry property)</a>
@@ -224,6 +226,8 @@
       <li><a href="autoapi/geofabrics/__main__/index.html#geofabrics.__main__.cli_run_from_file">cli_run_from_file() (in module geofabrics.__main__)</a>
 </li>
       <li><a href="autoapi/geofabrics/dem/index.html#geofabrics.dem.RawDem.clip_lidar">clip_lidar() (geofabrics.dem.RawDem method)</a>
+</li>
+      <li><a href="autoapi/geofabrics/dem/index.html#geofabrics.dem.clip_mask">clip_mask() (in module geofabrics.dem)</a>
 </li>
       <li><a href="autoapi/geofabrics/dem/index.html#geofabrics.dem.HydrologicallyConditionedDem.clip_within_polygon">clip_within_polygon() (geofabrics.dem.HydrologicallyConditionedDem method)</a>
 </li>
@@ -261,6 +265,8 @@
         <li><a href="autoapi/geofabrics/dem/index.html#geofabrics.dem.HydrologicallyConditionedDem.dem">(geofabrics.dem.HydrologicallyConditionedDem property)</a>
 </li>
         <li><a href="autoapi/geofabrics/dem/index.html#geofabrics.dem.LidarBase.dem">(geofabrics.dem.LidarBase property)</a>
+</li>
+        <li><a href="autoapi/geofabrics/dem/index.html#geofabrics.dem.RoughnessDem.dem">(geofabrics.dem.RoughnessDem property)</a>
 </li>
       </ul></li>
   </ul></td>
@@ -499,8 +505,6 @@
 </li>
       <li><a href="autoapi/geofabrics/geometry/index.html#geofabrics.geometry.CatchmentGeometry.land_and_foreshore">land_and_foreshore (geofabrics.geometry.CatchmentGeometry property)</a>
 </li>
-      <li><a href="autoapi/geofabrics/geometry/index.html#geofabrics.geometry.CatchmentGeometry.land_and_foreshore_without_lidar">land_and_foreshore_without_lidar() (geofabrics.geometry.CatchmentGeometry method)</a>
-</li>
       <li><a href="autoapi/geofabrics/dem/index.html#geofabrics.dem.LidarBase">LidarBase (class in geofabrics.dem)</a>
 </li>
       <li><a href="autoapi/geofabrics/processor/index.html#geofabrics.processor.StopbankCrestElevationEstimator.load_dem">load_dem() (geofabrics.processor.StopbankCrestElevationEstimator method)</a>
@@ -580,15 +584,11 @@
   <td style="width: 33%; vertical-align: top;"><ul>
       <li><a href="autoapi/geofabrics/geometry/index.html#geofabrics.geometry.OceanPoints">OceanPoints (class in geofabrics.geometry)</a>
 </li>
-      <li><a href="autoapi/geofabrics/geometry/index.html#geofabrics.geometry.CatchmentGeometry.offshore">offshore (geofabrics.geometry.CatchmentGeometry property)</a>
-</li>
   </ul></td>
   <td style="width: 33%; vertical-align: top;"><ul>
-      <li><a href="autoapi/geofabrics/geometry/index.html#geofabrics.geometry.CatchmentGeometry.offshore_dense_data_edge">offshore_dense_data_edge() (geofabrics.geometry.CatchmentGeometry method)</a>
+      <li><a href="autoapi/geofabrics/geometry/index.html#geofabrics.geometry.CatchmentGeometry.offshore">offshore (geofabrics.geometry.CatchmentGeometry property)</a>
 </li>
-      <li><a href="autoapi/geofabrics/geometry/index.html#geofabrics.geometry.CatchmentGeometry.offshore_no_dense_data">offshore_no_dense_data() (geofabrics.geometry.CatchmentGeometry method)</a>
-</li>
-      <li><a href="autoapi/geofabrics/geometry/index.html#geofabrics.geometry.CatchmentGeometry.offshore_without_lidar">offshore_without_lidar() (geofabrics.geometry.CatchmentGeometry method)</a>
+      <li><a href="autoapi/geofabrics/dem/index.html#geofabrics.dem.HydrologicallyConditionedDem.offshore_area_with_no_data">offshore_area_with_no_data() (geofabrics.dem.HydrologicallyConditionedDem method)</a>
 </li>
   </ul></td>
 </tr></table>
@@ -630,8 +630,6 @@
 <h2 id="R">R</h2>
 <table style="width: 100%" class="indextable genindextable"><tr>
   <td style="width: 33%; vertical-align: top;"><ul>
-      <li><a href="autoapi/geofabrics/dem/index.html#geofabrics.dem.HydrologicallyConditionedDem.raw_extents">raw_extents (geofabrics.dem.HydrologicallyConditionedDem property)</a>
-</li>
       <li><a href="autoapi/geofabrics/dem/index.html#geofabrics.dem.RawDem">RawDem (class in geofabrics.dem)</a>
 </li>
       <li><a href="autoapi/geofabrics/processor/index.html#geofabrics.processor.RawLidarDemGenerator">RawLidarDemGenerator (class in geofabrics.processor)</a>
@@ -650,10 +648,10 @@
 </li>
       <li><a href="autoapi/geofabrics/dem/index.html#geofabrics.dem.RoughnessDem">RoughnessDem (class in geofabrics.dem)</a>
 </li>
-  </ul></td>
-  <td style="width: 33%; vertical-align: top;"><ul>
       <li><a href="autoapi/geofabrics/processor/index.html#geofabrics.processor.RoughnessLengthGenerator">RoughnessLengthGenerator (class in geofabrics.processor)</a>
 </li>
+  </ul></td>
+  <td style="width: 33%; vertical-align: top;"><ul>
       <li><a href="autoapi/geofabrics/processor/index.html#geofabrics.processor.BaseProcessor.run">run() (geofabrics.processor.BaseProcessor method)</a>
 
       <ul>

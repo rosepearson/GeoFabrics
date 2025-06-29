@@ -39,6 +39,7 @@ Functions
 
 .. autoapisummary::
 
+   geofabrics.dem.clip_mask
    geofabrics.dem.read_file_with_pdal
    geofabrics.dem.roughness_from_points
    geofabrics.dem.elevation_from_points
@@ -54,6 +55,11 @@ Functions
 
 Module Contents
 ---------------
+
+.. py:function:: clip_mask(arr, geometry, chunk_size, invert=False)
+
+   Create a mask the size of the arr clipped by the geometry.
+
 
 .. py:class:: CoarseDem(dem_file, extents, set_foreshore = True)
 
@@ -179,9 +185,16 @@ Module Contents
 
 
 
-   .. py:property:: raw_extents
+   .. py:method:: offshore_area_with_no_data()
 
-      Return the combined DEM from tiles and any interpolated offshore values
+      Calculate the area of the offshore region with no dense data.
+
+
+
+   .. py:method:: calculate_offshore_no_data()
+
+      Calculate the offshore region with no dense data.
+
 
 
    .. py:property:: dem
@@ -247,7 +260,7 @@ Module Contents
       Return the positivly indexed DEM from tiles
 
 
-   .. py:method:: add_lidar(lidar_datasets_info, chunk_size, lidar_classifications_to_keep, metadata)
+   .. py:method:: add_lidar(lidar_dataset_info, lidar_classifications_to_keep)
       :abstractmethod:
 
 
@@ -264,7 +277,7 @@ Module Contents
 
 
 
-.. py:class:: RawDem(catchment_geometry, lidar_interpolation_method, drop_offshore_lidar, zero_positive_foreshore, buffer_cells, elevation_range = None, chunk_size = None)
+.. py:class:: RawDem(catchment_geometry, lidar_interpolation_method, drop_offshore_lidar, zero_positive_foreshore, buffer_cells, metadata, elevation_range = None, chunk_size = None)
 
    Bases: :py:obj:`LidarBase`
 
@@ -282,7 +295,7 @@ Module Contents
    :param chunk_size: The chunk size in pixels for parallel/staged processing
 
 
-   .. py:method:: add_lidar(lidar_datasets_info, lidar_classifications_to_keep, metadata)
+   .. py:method:: add_lidar(lidar_dataset_info, lidar_classifications_to_keep)
 
       Read in all LiDAR files and use to create a 'raw' DEM.
 
@@ -339,7 +352,7 @@ Module Contents
       No values mask from DEM within land and foreshore region
 
 
-.. py:class:: RoughnessDem(catchment_geometry, hydrological_dem_path, temp_folder, interpolation_method, default_values, drop_offshore_lidar, chunk_size = None, elevation_range = None)
+.. py:class:: RoughnessDem(catchment_geometry, hydrological_dem_path, temp_folder, interpolation_method, default_values, drop_offshore_lidar, metadata, chunk_size = None, elevation_range = None)
 
    Bases: :py:obj:`LidarBase`
 
@@ -359,7 +372,12 @@ Module Contents
    :param lidar_interpolation_method: The interpolation method to apply to LiDAR. Options are: mean, median, IDW.
 
 
-   .. py:method:: add_lidar(lidar_datasets_info, lidar_classifications_to_keep, metadata, parameters)
+   .. py:property:: dem
+
+      Return interpolaed roughness layer with min and max bounds enforced
+
+
+   .. py:method:: add_lidar(lidar_dataset_info, lidar_classifications_to_keep, parameters)
 
       Read in all LiDAR files and use the point cloud distribution,
       data_source layer, and hydrologiaclly conditioned elevations to
