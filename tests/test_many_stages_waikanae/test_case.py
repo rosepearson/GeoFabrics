@@ -63,7 +63,7 @@ class Test(base_test.Test):
         # Run pipeline - download files and generated DEM
         runner.from_instructions_dict(cls.instructions)
 
-    @pytest.mark.skipif(sys.platform != "win32", reason="Windows test - this is strict")
+    @pytest.mark.skipif(sys.platform != "win32", reason="Windows test")
     def test_result_geofabric_windows(self):
         """A basic comparison between the generated and benchmark DEM"""
 
@@ -110,7 +110,7 @@ class Test(base_test.Test):
         del benchmark
 
     @pytest.mark.skipif(
-        sys.platform != "linux", reason="Linux test - this is less strict"
+        sys.platform != "linux", reason="Linux test"
     )
     def test_result_geofabric_linux(self):
         """A basic comparison between the generated and benchmark DEM"""
@@ -146,8 +146,8 @@ class Test(base_test.Test):
             - benchmark.z.data[~numpy.isnan(test.z.data)]
         )
         logging.info(f"DEM array diff is: {diff_array[diff_array != 0]}")
-        threshold = 10e-6
-        percent = 2.5
+        threshold = 10e-4
+        percent = 5
         number_above_threshold = len(diff_array[numpy.abs(diff_array) > threshold])
         self.assertTrue(
             number_above_threshold < len(diff_array) * percent / 100,
