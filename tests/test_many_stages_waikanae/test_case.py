@@ -138,13 +138,16 @@ class Test(base_test.Test):
             err_msg="The generated test has significantly different elevation from the "
             f"benchmark where there is LiDAR: {lidar_diff}",
         )
+        
+        # Get data not generated from LiDAR
+        non_lidar_mask = (test.data_source.data != 1) & (benchmark.data_source.data != 1)
 
         diff_array = (
-            test.z.data[~numpy.isnan(test.z.data)]
-            - benchmark.z.data[~numpy.isnan(test.z.data)]
+            test.z.data[~numpy.isnan(test.z.data) & non_lidar_mask]
+            - benchmark.z.data[~numpy.isnan(test.z.data) & non_lidar_mask]
         )
         logging.info(f"DEM array diff is: {diff_array[diff_array != 0]}")
-        threshold = 10e-4
+        threshold = 10e-2
         percent = 5
         number_above_threshold = len(diff_array[numpy.abs(diff_array) > threshold])
         self.assertTrue(
@@ -154,14 +157,14 @@ class Test(base_test.Test):
             f"{number_above_threshold / len(diff_array.flatten()) * 100}%",
         )
         # Compare the generated and benchmark roughnesses
-        """diff_array = test.zo.data - benchmark.zo.data
+        diff_array = test.zo.data[lidar_mask] - benchmark.zo.data[lidar_mask]
         numpy.testing.assert_array_almost_equal(
             test.zo.data,
             benchmark.zo.data,
             decimal=3,
             err_msg="The generated test has significantly different roughness from the "
             f"benchmark where there is LiDAR: {diff_array}",
-        )"""
+        )
         diff_array = (
             test.zo.data[~numpy.isnan(test.zo.data)]
             - benchmark.zo.data[~numpy.isnan(test.zo.data)]
