@@ -140,7 +140,9 @@ class Test(base_test.Test):
         )
 
         # Get data not generated from LiDAR
-        non_lidar_mask = (test.data_source.data != 1) & (benchmark.data_source.data != 1)
+        non_lidar_mask = (test.data_source.data != 1) & (
+            benchmark.data_source.data != 1
+        )
 
         diff_array = (
             test.z.data[~numpy.isnan(test.z.data) & non_lidar_mask]
