@@ -109,9 +109,7 @@ class Test(base_test.Test):
         del test
         del benchmark
 
-    @pytest.mark.skipif(
-        sys.platform != "linux", reason="Linux test"
-    )
+    @pytest.mark.skipif(sys.platform != "linux", reason="Linux test")
     def test_result_geofabric_linux(self):
         """A basic comparison between the generated and benchmark DEM"""
 
