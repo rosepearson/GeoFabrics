@@ -79,5 +79,6 @@ jobs:
 
     - name: Run tests with pytest
       run: |
+        conda activate geofabrics_CI
         pip install .
         pytest
