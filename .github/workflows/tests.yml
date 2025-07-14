@@ -58,7 +58,7 @@ jobs:
 
     - name: Install test dependencies
       run: |
-        mamba install flake8 pytest
+        pip install flake8 pytest
 
 
     - name: Create .env file with API keys
@@ -79,6 +79,5 @@ jobs:
 
     - name: Run tests with pytest
       run: |
-        conda activate geofabrics_CI
         pip install .
         pytest
