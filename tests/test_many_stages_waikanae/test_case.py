@@ -138,7 +138,7 @@ class Test(base_test.Test):
             err_msg="The generated test has significantly different elevation from the "
             f"benchmark where there is LiDAR: {lidar_diff}",
         )
-        
+
         # Get data not generated from LiDAR
         non_lidar_mask = (test.data_source.data != 1) & (benchmark.data_source.data != 1)
 
