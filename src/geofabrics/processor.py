@@ -501,7 +501,7 @@ class BaseProcessor(abc.ABC):
                     + f" download vector data from the vector APIs: {data_services}"
                 )
 
-                # Get the API key for the data_serive being checked
+                # Get the API key for the data_service being checked
                 assert (
                     "key" in self.instructions["datasets"][data_type][data_service]
                 ), (
@@ -535,20 +535,23 @@ class BaseProcessor(abc.ABC):
                         f" the {data_service} data service"
                     )
 
-                    # Cycle through all layers specified - save each & add to the path
-                    # list
+                    # Check all layers specified - save missing & add to the path list
                     for layer in api_instruction["layers"]:
-                        # Use the run method to download each layer in turn
-                        vector = fetcher.run(layer, geometry_type)
-                        if vector is not None:
-                            # Write out file if not already recorded
-                            layer_file = (
-                                cache_dir / "vector" / subfolder / f"{layer}.geojson"
+                        layer_file = cache_dir / "vector" / subfolder / f"{layer}.geojson"
+                        if layer_file.exists():
+                            logging.info(
+                                f"Using cached vector layer {layer} from {layer_file}"
                             )
-                            if not layer_file.exists():
+                            paths.append(layer_file)
+                        else:
+                            logging.info(
+                                f"Downloading vector layer {layer} from {data_service}"
+                            )
+                            vector = fetcher.run(layer, geometry_type)
+                            if vector is not None:
                                 layer_file.parent.mkdir(parents=True, exist_ok=True)
                                 vector.to_file(layer_file)
-                            paths.append(layer_file)
+                                paths.append(layer_file)
                 elif data_type == "raster":
                     # simplify the bounding_polygon geometry
                     if bounding_polygon is not None:
