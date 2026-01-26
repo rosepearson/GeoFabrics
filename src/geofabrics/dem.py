@@ -3,6 +3,7 @@
 This module contains classes associated with loading, generating, and combining
 DEMs.
 """
+
 import rioxarray
 import rioxarray.merge
 import rasterio
@@ -24,7 +25,6 @@ import logging
 import scipy.interpolate
 import scipy.spatial
 from . import geometry
-
 
 RBF_CACHE_SIZE = 1000
 
@@ -3487,14 +3487,14 @@ def elevation_from_nearest_points(
     xy_in[:, 0] = point_cloud["X"]
     xy_in[:, 1] = point_cloud["Y"]
     tree = scipy.spatial.KDTree(xy_in, leafsize=leaf_size)  # build the tree
-    (tree_distance_list, tree_index_list) = tree.query(xy_out, k=k, eps=eps)
+    tree_distance_list, tree_index_list = tree.query(xy_out, k=k, eps=eps)
 
     if options["use_edge"]:
         xy_in = numpy.empty((len(edge_point_cloud), 2))
         xy_in[:, 0] = edge_point_cloud["X"]
         xy_in[:, 1] = edge_point_cloud["Y"]
         edge_tree = scipy.spatial.KDTree(xy_in, leafsize=leaf_size)  # build the tree
-        (edge_tree_distance_list, edge_tree_index_list) = edge_tree.query(
+        edge_tree_distance_list, edge_tree_index_list = edge_tree.query(
             xy_out, k=k, eps=eps
         )
 

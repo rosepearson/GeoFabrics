@@ -67,7 +67,7 @@ def node_centred_reach_cross_section(
         f"geometry per channel. Instead got {len(sampled_channel)}"
     )
 
-    (x_array, y_array) = sampled_channel.iloc[0].geometry.xy
+    x_array, y_array = sampled_channel.iloc[0].geometry.xy
     for i in range(len(x_array)):
         # calculate slope along segment
         if i == 0:

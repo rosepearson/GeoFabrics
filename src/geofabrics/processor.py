@@ -5,6 +5,7 @@ LiDAR and bathymetry contours based on the instructions contained in a JSON file
 
 GeoFabric layers include hydrologically conditioned DEMs.
 """
+
 import numpy
 import json
 import pathlib
@@ -537,7 +538,9 @@ class BaseProcessor(abc.ABC):
 
                     # Check all layers specified - save missing & add to the path list
                     for layer in api_instruction["layers"]:
-                        layer_file = cache_dir / "vector" / subfolder / f"{layer}.geojson"
+                        layer_file = (
+                            cache_dir / "vector" / subfolder / f"{layer}.geojson"
+                        )
                         if layer_file.exists():
                             logging.info(
                                 f"Using cached vector layer {layer} from {layer_file}"
@@ -3496,7 +3499,7 @@ class WaterwayBedElevationEstimator(BaseProcessor):
             )
             if start_elevation < end_elevation:
                 waterway = waterway.reverse()
-                (start_elevation, end_elevation) = (end_elevation, start_elevation)
+                start_elevation, end_elevation = (end_elevation, start_elevation)
             open_waterways.loc[index, "start_elevation"] = start_elevation
             open_waterways.loc[index, "end_elevation"] = end_elevation
             open_waterways.loc[index, "geometry"] = waterway
