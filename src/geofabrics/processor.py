@@ -2735,8 +2735,8 @@ class RiverBathymetryGenerator(BaseProcessor):
         )
         # Get the distance along the OSM that the start/end points are.
         # Note projection function is limited between [0, osm_channel.length]
-        end_split_length = float(osm_channel.project(network_end))
-        start_split_length = float(osm_channel.project(network_start))
+        end_split_length = float(osm_channel.geometry.project(network_end)[0])
+        start_split_length = float(osm_channel.geometry.project(network_start)[0])
         # Ensure the OSM line is defined mouth to upstream
         if (
             start_split_length > end_split_length
@@ -2748,7 +2748,7 @@ class RiverBathymetryGenerator(BaseProcessor):
             )
 
         # Cut the OSM to the length of the network. Give warning if shorter.
-        start_split_length = float(osm_channel.project(network_start))
+        start_split_length = float(osm_channel.geometry.project(network_start)[0])
         if start_split_length > 0 and not self.get_bathymetry_instruction(
             "keep_downstream_osm"
         ):
@@ -2771,7 +2771,7 @@ class RiverBathymetryGenerator(BaseProcessor):
                 f"{osm_channel.distance(network_start)}"
             )
         # Clip end if needed - recacluate clip position incase front clipped.
-        end_split_length = float(osm_channel.project(network_end))
+        end_split_length = float(osm_channel.geometry.project(network_end)[0]])
         if end_split_length < float(osm_channel.length):
             split_point = osm_channel.interpolate(end_split_length)
             osm_channel = shapely.ops.snap(
