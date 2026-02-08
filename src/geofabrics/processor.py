@@ -2772,7 +2772,7 @@ class RiverBathymetryGenerator(BaseProcessor):
             )
         # Clip end if needed - recacluate clip position incase front clipped.
         end_split_length = float(osm_channel.geometry.project(network_end)[0])
-        if end_split_length < float(osm_channel.length):
+        if end_split_length < float(osm_channel.length[0]):
             split_point = osm_channel.interpolate(end_split_length)
             osm_channel = shapely.ops.snap(
                 osm_channel.loc[0].geometry, split_point.loc[0], tolerance=0.1
