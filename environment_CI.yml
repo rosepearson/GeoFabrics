@@ -13,4 +13,3 @@ dependencies:
     - osmpythontools==0.3.5
     - distributed==2024.8.2
     - scipy==1.14.1
-    - geopandas==1.0.1 # added to see if tests pass with this version as getting errors when later related to OSM
