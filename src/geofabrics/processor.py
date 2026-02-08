@@ -713,8 +713,14 @@ class BaseProcessor(abc.ABC):
             for dataset_name in self.instructions["datasets"][data_type][
                 data_service
             ].keys():
-                self.logger.info(f"Fetching dataset: {dataset_name}")
-                self.lidar_fetcher.run(dataset_name)
+                dataset_instructions = (
+                    self.instructions["datasets"][data_type][data_service][dataset_name]
+                )
+                if "precached" in dataset_instructions and dataset_instructions["precached"]:
+                    self.logger.info(f"Precached dataset: {dataset_name}")
+                else:
+                    self.logger.info(f"Fetching dataset: {dataset_name}")
+                    self.lidar_fetcher.run(dataset_name)
                 dataset_path = self.lidar_fetcher.cache_path / dataset_name
                 lidar_datasets_info[dataset_name] = {
                     "file_paths": sorted(dataset_path.rglob("*.la[zs]")),
