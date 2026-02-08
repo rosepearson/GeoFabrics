@@ -713,10 +713,13 @@ class BaseProcessor(abc.ABC):
             for dataset_name in self.instructions["datasets"][data_type][
                 data_service
             ].keys():
-                dataset_instructions = (
-                    self.instructions["datasets"][data_type][data_service][dataset_name]
-                )
-                if "precached" in dataset_instructions and dataset_instructions["precached"]:
+                dataset_instructions = self.instructions["datasets"][data_type][
+                    data_service
+                ][dataset_name]
+                if (
+                    "precached" in dataset_instructions
+                    and dataset_instructions["precached"]
+                ):
                     self.logger.info(f"Precached dataset: {dataset_name}")
                 else:
                     self.logger.info(f"Fetching dataset: {dataset_name}")
