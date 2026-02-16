@@ -2691,7 +2691,7 @@ class RiverBathymetryGenerator(BaseProcessor):
         return channel_width, aligned_channel
 
     def download_osm(self):
-        """ Download the osm file if it doesn't already exist """
+        """Download the osm file if it doesn't already exist"""
 
         crs = self.get_crs()["horizontal"]
 
@@ -2722,9 +2722,10 @@ class RiverBathymetryGenerator(BaseProcessor):
                 crs=self.OSM_CRS,
             ).to_crs(crs)
             osm_channel.to_file(
-                    self.get_result_file_path(name="osm_channel_full.geojson")
+                self.get_result_file_path(name="osm_channel_full.geojson")
             )
         return osm_channel
+
     def align_channel_from_osm(
         self,
     ) -> bathymetry_estimation.ChannelCharacteristics:
