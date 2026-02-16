@@ -717,8 +717,9 @@ class BaseProcessor(abc.ABC):
                     data_service
                 ][dataset_name]
                 if (
-                    "precached" in dataset_instructions
-                    and dataset_instructions["precached"]
+                    isinstance(dataset_instructions, dict)
+                    and "precached" in dataset_instructions
+                    and dataset_instructions["precached"] == True
                 ):
                     self.logger.info(f"Precached dataset: {dataset_name}")
                 else:
@@ -2689,6 +2690,41 @@ class RiverBathymetryGenerator(BaseProcessor):
             aligned_channel = geopandas.read_file(aligned_channel_file)
         return channel_width, aligned_channel
 
+    def download_osm(self):
+        """ Download the osm file if it doesn't already exist """
+
+        crs = self.get_crs()["horizontal"]
+
+        if self.get_result_file_path(name="osm_channel_full.geojson").exists():
+            osm_channel = geopandas.read_file(
+                self.get_result_file_path(name="osm_channel_full.geojson")
+            )
+        else:
+            # Create OSM defined channel
+            osm = self.get_bathymetry_instruction("osm")
+            query = f"({osm['type']}[waterway]({osm['id']});); out body geom;"
+            overpass = OSMPythonTools.overpass.Overpass()
+            if "date" in osm:
+                osm_channel = overpass.query(
+                    query,
+                    date=osm["date"],
+                    timeout=60,
+                )
+            else:
+                osm_channel = overpass.query(query, timeout=60)
+            osm_channel = osm_channel.elements()[0]
+            osm_channel = geopandas.GeoDataFrame(
+                {
+                    "geometry": [osm_channel.geometry()],
+                    "OSM_id": [osm_channel.id()],
+                    "waterway": [osm_channel.tags()["waterway"]],
+                },
+                crs=self.OSM_CRS,
+            ).to_crs(crs)
+            osm_channel.to_file(
+                    self.get_result_file_path(name="osm_channel_full.geojson")
+            )
+        return osm_channel
     def align_channel_from_osm(
         self,
     ) -> bathymetry_estimation.ChannelCharacteristics:
@@ -2708,31 +2744,9 @@ class RiverBathymetryGenerator(BaseProcessor):
         channel = self.get_network_channel()
         crs = self.get_crs()["horizontal"]
 
-        # Create OSM defined channel
-        osm = self.get_bathymetry_instruction("osm")
-        query = f"({osm['type']}[waterway]({osm['id']});); out body geom;"
-        overpass = OSMPythonTools.overpass.Overpass()
-        if "date" in osm:
-            osm_channel = overpass.query(
-                query,
-                date=osm["date"],
-                timeout=60,
-            )
-        else:
-            osm_channel = overpass.query(query, timeout=60)
-        osm_channel = osm_channel.elements()[0]
-        osm_channel = geopandas.GeoDataFrame(
-            {
-                "geometry": [osm_channel.geometry()],
-                "OSM_id": [osm_channel.id()],
-                "waterway": [osm_channel.tags()["waterway"]],
-            },
-            crs=self.OSM_CRS,
-        ).to_crs(crs)
-        if self.debug:
-            osm_channel.to_file(
-                self.get_result_file_path(name="osm_channel_full.geojson")
-            )
+        # Load or download the OSM channel
+        osm_channel = self.download_osm()
+
         # Cut the OSM to size - give warning if OSM line shorter than network
         # Get the start and end point of the smoothed network line
         # breakpoint()
