@@ -3678,7 +3678,7 @@ class WaterwayBedElevationEstimator(BaseProcessor):
 
         if waterways_path.is_file():
             waterways = geopandas.read_file(waterways_path)
-            if len(waterways) == 0: # return if empty instead of further checks
+            if len(waterways) == 0:  # return if empty instead of further checks
                 self.logger.warning(
                     "No waterways. Delete if unexpected & either regenerate if "
                     "source is file or rerun if source is OSM."
