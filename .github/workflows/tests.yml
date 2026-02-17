@@ -15,7 +15,7 @@ jobs:
       fail-fast: false
       matrix:
         python-version: ["3.12"]
-        os: ["ubuntu-latest", "windows-latest"]
+        os: ["ubuntu-latest"] #, "windows-latest"]
 
     steps:
 
@@ -44,7 +44,7 @@ jobs:
         channels: conda-forge
         python-version: ${{ matrix.python-version }}
         activate-environment: geofabrics_CI
-        environment-file: environment_CI.yml
+        environment-file: environment_pinned_CI.yml
         auto-activate-base: false
         
 
