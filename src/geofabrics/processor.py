@@ -3709,7 +3709,24 @@ class WaterwayBedElevationEstimator(BaseProcessor):
                     )
                 else:  # Assume in int / float
                     waterways["width"] = widths
-        else:  # Download from OSM
+        elif source == "file":
+            waterways = geopandas.read_file(self.get_instruction_path("waterways"))
+            if "width" not in waterways.columns:
+                message = (
+                    "No waterways width defined either as a entry in the "
+                    "instruction file, or as a column in the waterways "
+                    f"file: {waterways_path}"
+                )
+                self.logger.error(message)
+                raise ValueError(message)
+            # Clip to land
+            waterways = waterways.clip(self.catchment_geometry.land).sort_index(
+                ascending=True
+            )
+            # Save clipped file in waterways folder
+            waterways.to_file(waterways_path)
+
+        elif source == "osm": # Download from OSM
             # Create area to query within
             bbox_lat_long = self.catchment_geometry.catchment.to_crs(self.OSM_CRS)
 
@@ -3781,6 +3798,13 @@ class WaterwayBedElevationEstimator(BaseProcessor):
 
             # Save file
             waterways.to_file(waterways_path)
+        else:
+            message = (
+                f"waterways source of {source} is not supported. Only 'osm' and 'file' "
+                "supported currently."
+            )
+            logging.error(message)
+            raise ValueError(message)
         # Remove any empty results
         if waterways.is_empty.any():
             self.logger.warning(
