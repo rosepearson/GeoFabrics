@@ -772,6 +772,9 @@ class BaseProcessor(abc.ABC):
                         f"specified. Both are missing for the dataset {dataset_name}:"
                         f"{dataset_name}."
                     )
+                # Ensure the CRS is specified for the local dataset - if not set to None to be read from the LAZ files
+                if "crs" not in dataset:
+                    dataset["crs"] = None
             # Check no overlap between local and remote (API) keys
             if len(lidar_datasets_info.keys() & local_datasets.keys()) > 0:
                 raise Exception(
@@ -1223,7 +1226,7 @@ class HydrologicDemGenerator(BaseProcessor):
                         key="interpolation", subkey="ocean"
                     ),
                 )
-                temp_file = temp_folder / "dem_added_ocean.nc"
+                temp_file = temp_folder / "dem_added_ocean_points.nc"
                 self.logger.info(f"Save DEM with ocean to netCDF: {temp_file}")
                 hydrologic_dem.save_and_load_dem(temp_file)
                 cached_file = temp_file
@@ -1238,7 +1241,7 @@ class HydrologicDemGenerator(BaseProcessor):
                 )
                 # Interpolate
                 hydrologic_dem.interpolate_ocean_bathymetry(ocean_data)
-                temp_file = temp_folder / "dem_added_ocean.nc"
+                temp_file = temp_folder / "dem_added_ocean_contours.nc"
                 self.logger.info(f"Save DEM with ocean to netCDF: {temp_file}")
                 hydrologic_dem.save_and_load_dem(temp_file)
                 cached_file = temp_file
@@ -1350,7 +1353,7 @@ class HydrologicDemGenerator(BaseProcessor):
                         key="nearest_k_for_interpolation", subkey="lakes"
                     ),
                 )
-                temp_file = temp_folder / f"dem_added_{index + 1}_lake.nc"
+                temp_file = temp_folder / f"dem_added_lake_{index + 1}.nc"
                 self.logger.info(
                     f"Save temp DEM with lake {index + 1} added to netCDF: {temp_file}"
                 )
@@ -1414,7 +1417,7 @@ class HydrologicDemGenerator(BaseProcessor):
                         key="nearest_k_for_interpolation", subkey="rivers"
                     ),
                 )
-                temp_file = temp_folder / f"dem_added_{index + 1}_rivers.nc"
+                temp_file = temp_folder / f"dem_added_rivers_{index + 1}.nc"
                 self.logger.info(
                     f"Save temp DEM with rivers added to netCDF: {temp_file}"
                 )
@@ -1675,7 +1678,7 @@ class PatchDemGenerator(BaseProcessor):
             for patch_path in patch_paths:
                 patch_dem.add_patch(patch_path=patch_path, label="patch", layer=layer)
 
-                temp_file = temp_folder / f"raw_dem_{patch_path.stem}.nc"
+                temp_file = temp_folder / f"dem_patch_{patch_path.stem}.nc"
                 self.logger.info(f"Save patched DEM to netCDF: {temp_file}")
                 patch_dem.save_and_load_dem(temp_file)
                 # Remove previous cached file and replace with new one
@@ -1987,7 +1990,7 @@ class RoughnessLengthGenerator(BaseProcessor):
                     parameters=roughness_parameters,
                 )  # Note must be called after all others if it is to be complete
                 if status:  # Save a cached copy of DEM to temporary memory cache
-                    temp_file = temp_folder / f"raw_lidar_zo{dataset_name}.nc"
+                    temp_file = temp_folder / f"geofabric_zo_{dataset_name}.nc"
                     self.logger.info(f"Save temp raw DEM to netCDF: {temp_file}")
                     roughness_dem.save_and_load_dem(temp_file)
                     if cached_file.exists():
@@ -1995,7 +1998,7 @@ class RoughnessLengthGenerator(BaseProcessor):
                     cached_file = temp_file
 
             if not cached_file.exists():  # Ensure saved even if empty
-                cached_file = temp_folder / "raw_lidar_empty.nc"
+                cached_file = temp_folder / "geofabric_empty.nc"
                 self.logger.info(f"Save temp raw DEM to netCDF: {cached_file}")
                 roughness_dem.save_and_load_dem(cached_file)
 
