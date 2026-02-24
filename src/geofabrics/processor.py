@@ -2947,8 +2947,8 @@ class RiverBathymetryGenerator(BaseProcessor):
             numpy.ones(len(width_values["widths"]), dtype=float) * numpy.nan
         )
         # Add the friction and flow values to the widths and slopes
-        width_values["mannings_n"] = numpy.zeros(len(width_values["id"]), dtype=int)
-        width_values["flow"] = numpy.zeros(len(width_values["id"]), dtype=int)
+        width_values["mannings_n"] = numpy.zeros(len(width_values["id"]), dtype=float)
+        width_values["flow"] = numpy.zeros(len(width_values["id"]), dtype=float)
         for i, row in width_values.iterrows():
             if row.geometry is not None and not row.geometry.is_empty:
                 distances = channel.channel.distance(width_values.loc[i].geometry)
