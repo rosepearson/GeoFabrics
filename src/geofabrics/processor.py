@@ -3729,7 +3729,7 @@ class WaterwayBedElevationEstimator(BaseProcessor):
             # Save clipped file in waterways folder
             waterways.to_file(waterways_path)
 
-        elif source == "osm":  # Download from OSM
+        elif source == "osm":
             # Create area to query within
             bbox_lat_long = self.catchment_geometry.catchment.to_crs(self.OSM_CRS)
 
