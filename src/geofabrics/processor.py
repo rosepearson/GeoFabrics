@@ -2950,7 +2950,9 @@ class RiverBathymetryGenerator(BaseProcessor):
                     distances == distances.min()
                 ][["id", "flow", "mannings_n"]].min()
         # Fill in any missing values
-        width_values[["id", "flow", "mannings_n"]] = width_values[["id", "flow", "mannings_n"]].ffill().bfill()
+        width_values[["id", "flow", "mannings_n"]] = (
+            width_values[["id", "flow", "mannings_n"]].ffill().bfill()
+        )
         width_values["id"] = width_values["id"].astype("int")
 
         # Get the level of upstream smoothing to apply
