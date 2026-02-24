@@ -2753,7 +2753,6 @@ class RiverBathymetryGenerator(BaseProcessor):
 
         # Cut the OSM to size - give warning if OSM line shorter than network
         # Get the start and end point of the smoothed network line
-        # breakpoint()
         channel = channel.get_parametric_spline_fit()
         network_extents = channel.boundary.explode(index_parts=False)
         network_start, network_end = (
@@ -2942,13 +2941,8 @@ class RiverBathymetryGenerator(BaseProcessor):
         width_values["source"] = "river"  # Specify as coming form river estimation
         channel = self.get_network_channel()
 
-        # Match each channel midpoint to a reach ID - based on what reach is closest
-        width_values["id"] = (
-            numpy.ones(len(width_values["widths"]), dtype=float) * numpy.nan
-        )
-        # Add the friction and flow values to the widths and slopes
-        width_values["mannings_n"] = numpy.zeros(len(width_values["id"]), dtype=float)
-        width_values["flow"] = numpy.zeros(len(width_values["id"]), dtype=float)
+        # Define the ID, flow and mannings_n from the nearest reach (defined by channel)
+        width_values[["id", "flow", "mannings_n"]] = numpy.nan
         for i, row in width_values.iterrows():
             if row.geometry is not None and not row.geometry.is_empty:
                 distances = channel.channel.distance(width_values.loc[i].geometry)
@@ -2956,16 +2950,8 @@ class RiverBathymetryGenerator(BaseProcessor):
                     distances == distances.min()
                 ][["id", "flow", "mannings_n"]].min()
         # Fill in any missing values
-        width_values["id"] = (
-            width_values["id"].fillna(method="ffill").fillna(method="bfill")
-        )
+        width_values[["id", "flow", "mannings_n"]] = width_values[["id", "flow", "mannings_n"]].ffill().bfill()
         width_values["id"] = width_values["id"].astype("int")
-        width_values["flow"] = (
-            width_values["flow"].fillna(method="ffill").fillna(method="bfill")
-        )
-        width_values["mannings_n"] = (
-            width_values["mannings_n"].fillna(method="ffill").fillna(method="bfill")
-        )
 
         # Get the level of upstream smoothing to apply
         label = self._apply_upstream_smoothing(width_values)
