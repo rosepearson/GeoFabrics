@@ -3710,6 +3710,13 @@ class WaterwayBedElevationEstimator(BaseProcessor):
                 )
                 self.logger.error(message)
                 raise ValueError(message)
+            if "tunnel" not in waterways.columns:
+                message = (
+                    "No tunnel label defined as a column in the waterways "
+                    f"file: {waterways_path}. Assuming all are not tunnels."
+                )
+                self.logger.info(message)
+                waterways["tunnel"] = False
             # Clip to land
             waterways = waterways.clip(self.catchment_geometry.land).sort_index(
                 ascending=True
