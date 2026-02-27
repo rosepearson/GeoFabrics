@@ -2729,7 +2729,8 @@ class RiverBathymetryGenerator(BaseProcessor):
                         )
                     else:
                         osm_channel = overpass.query(query, timeout=60)
-            except Exception as e:
+                    break
+                except Exception as e:
                     print(f"An unexpected error occurred: {e}")
             else:
                 raise ConnectionError(
@@ -3771,6 +3772,7 @@ class WaterwayBedElevationEstimator(BaseProcessor):
                         )
                     else:
                         waterways = overpass.query(query, timeout=60)
+                    break
                 except Exception as e:except Exception as e:
                     print(f"An unexpected error occurred: {e}")
             else:
@@ -4197,7 +4199,8 @@ class StopbankCrestElevationEstimator(BaseProcessor):
                         )
                     else:
                         stopbanks = overpass.query(query, timeout=60)
-            except Exception as e:
+                    break
+                except Exception as e:
                     print(f"An unexpected error occurred: {e}")
             else:
                 raise ConnectionError(
