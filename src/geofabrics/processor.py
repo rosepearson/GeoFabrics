@@ -1842,17 +1842,27 @@ class RoughnessLengthGenerator(BaseProcessor):
                 includeGeometry=True,
             )
 
-            # Perform query
-            overpass = OSMPythonTools.overpass.Overpass()
-            if "osm_date" in self.instructions["roughness"]:
-                roads = overpass.query(
-                    query,
-                    date=self.get_roughness_instruction("osm_date"),
-                    timeout=60,
-                )
+            # Perform query - try mutliple times as intermitten connective issues
+            max_download_retries = 3
+            for i in range(max_download_retries):
+                try:
+                    overpass = OSMPythonTools.overpass.Overpass()
+                    if "osm_date" in self.instructions["roughness"]:
+                        roads = overpass.query(
+                            query,
+                            date=self.get_roughness_instruction("osm_date"),
+                            timeout=60,
+                        )
+                    else:
+                        roads = overpass.query(query, timeout=60)
+                    break
+                except Exception as e:
+                    print(f"An unexpected error occurred: {e}")
             else:
-                roads = overpass.query(query, timeout=60)
-
+                raise ConnectionError(
+                    "Did not successfully download the OSM data in "
+                    f"{max_download_retries} attempts."
+                    )
             # Extract information
             element_dict = {
                 "geometry": [],
@@ -2706,15 +2716,26 @@ class RiverBathymetryGenerator(BaseProcessor):
             # Create OSM defined channel
             osm = self.get_bathymetry_instruction("osm")
             query = f"({osm['type']}[waterway]({osm['id']});); out body geom;"
-            overpass = OSMPythonTools.overpass.Overpass()
-            if "date" in osm:
-                osm_channel = overpass.query(
-                    query,
-                    date=osm["date"],
-                    timeout=60,
-                )
+            # Perform query - try mutliple times as intermitten connective issues
+            max_download_retries = 3
+            for i in range(max_download_retries):
+                try:
+                    overpass = OSMPythonTools.overpass.Overpass()
+                    if "date" in osm:
+                        osm_channel = overpass.query(
+                            query,
+                            date=osm["date"],
+                            timeout=60,
+                        )
+                    else:
+                        osm_channel = overpass.query(query, timeout=60)
+            except Exception as e:
+                    print(f"An unexpected error occurred: {e}")
             else:
-                osm_channel = overpass.query(query, timeout=60)
+                raise ConnectionError(
+                    "Did not successfully download the OSM data in "
+                    f"{max_download_retries} attempts."
+                    )
             osm_channel = osm_channel.elements()[0]
             osm_channel = geopandas.GeoDataFrame(
                 {
@@ -3737,17 +3758,26 @@ class WaterwayBedElevationEstimator(BaseProcessor):
                 includeGeometry=True,
             )
 
-            # Perform query
-            overpass = OSMPythonTools.overpass.Overpass()
-            if "osm_date" in self.instructions["waterways"]:
-                waterways = overpass.query(
-                    query,
-                    date=self.get_waterways_instruction("osm_date"),
-                    timeout=60,
-                )
+            # Perform query - try mutliple times as intermitten connective issues
+            max_download_retries = 3
+            for i in range(max_download_retries):
+                try:
+                    overpass = OSMPythonTools.overpass.Overpass()
+                    if "osm_date" in self.instructions["waterways"]:
+                        waterways = overpass.query(
+                            query,
+                            date=self.get_waterways_instruction("osm_date"),
+                            timeout=60,
+                        )
+                    else:
+                        waterways = overpass.query(query, timeout=60)
+                except Exception as e:except Exception as e:
+                    print(f"An unexpected error occurred: {e}")
             else:
-                waterways = overpass.query(query, timeout=60)
-
+                raise ConnectionError(
+                    "Did not successfully download the OSM data in "
+                    f"{max_download_retries} attempts."
+                    )
             # Extract information
             element_dict = {
                 "geometry": [],
@@ -4154,17 +4184,26 @@ class StopbankCrestElevationEstimator(BaseProcessor):
                 includeGeometry=True,
             )
 
-            # Perform query
-            overpass = OSMPythonTools.overpass.Overpass()
-            if "osm_date" in self.instructions["stopbanks"]:
-                stopbanks = overpass.query(
-                    query,
-                    date=self.get_stopbanks_instruction("osm_date"),
-                    timeout=60,
-                )
+            # Perform query - try mutliple times as intermitten connective issues
+            max_download_retries = 3
+            for i in range(max_download_retries):
+                try:
+                    overpass = OSMPythonTools.overpass.Overpass()
+                    if "osm_date" in self.instructions["stopbanks"]:
+                        stopbanks = overpass.query(
+                            query,
+                            date=self.get_stopbanks_instruction("osm_date"),
+                            timeout=60,
+                        )
+                    else:
+                        stopbanks = overpass.query(query, timeout=60)
+            except Exception as e:
+                    print(f"An unexpected error occurred: {e}")
             else:
-                stopbanks = overpass.query(query, timeout=60)
-
+                raise ConnectionError(
+                    "Did not successfully download the OSM data in "
+                    f"{max_download_retries} attempts."
+                    )
             # Extract information
             for element in stopbanks.elements():
                 element_dict["geometry"].append(element.geometry())
