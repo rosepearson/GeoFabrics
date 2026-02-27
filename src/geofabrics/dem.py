@@ -440,7 +440,8 @@ class DemBase(abc.ABC):
     ) -> xarray.core.dataarray.DataArray:
         """A routine to check an xarray has positive dimension indexing and to reindex
         if needed. This is required for some programs (e.g. TauDEM) that require positive
-        indexing. Currently not used. Will either remove or make optional in the future."""
+        indexing. Currently not used. Will either remove or make optional in the future.
+        """
 
         x = dem.x
         y = dem.y

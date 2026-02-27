@@ -1862,7 +1862,7 @@ class RoughnessLengthGenerator(BaseProcessor):
                 raise ConnectionError(
                     "Did not successfully download the OSM data in "
                     f"{max_download_retries} attempts."
-                    )
+                )
             # Extract information
             element_dict = {
                 "geometry": [],
@@ -2736,7 +2736,7 @@ class RiverBathymetryGenerator(BaseProcessor):
                 raise ConnectionError(
                     "Did not successfully download the OSM data in "
                     f"{max_download_retries} attempts."
-                    )
+                )
             osm_channel = osm_channel.elements()[0]
             osm_channel = geopandas.GeoDataFrame(
                 {
@@ -3779,7 +3779,7 @@ class WaterwayBedElevationEstimator(BaseProcessor):
                 raise ConnectionError(
                     "Did not successfully download the OSM data in "
                     f"{max_download_retries} attempts."
-                    )
+                )
             # Extract information
             element_dict = {
                 "geometry": [],
@@ -4206,7 +4206,7 @@ class StopbankCrestElevationEstimator(BaseProcessor):
                 raise ConnectionError(
                     "Did not successfully download the OSM data in "
                     f"{max_download_retries} attempts."
-                    )
+                )
             # Extract information
             for element in stopbanks.elements():
                 element_dict["geometry"].append(element.geometry())
