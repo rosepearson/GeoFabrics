@@ -443,11 +443,10 @@ class DemBase(abc.ABC):
 
         x = dem.x
         y = dem.y
-        if x[0] > x[-1]:
-            x = x[::-1]
-        if y[0] > y[-1]:
-            y = y[::-1]
-        dem = dem.reindex({"x": x, "y": y})
+        if dem.x[0] > dem.x[-1]:
+            dem = dem.sel(x=slice(None, None, -1))
+        if dem.y[0] > dem.y[-1]:
+            dem = dem.sel(y=slice(None, None, -1))
         dem.rio.write_transform(inplace=True)
         return dem
 
@@ -760,7 +759,6 @@ class HydrologicallyConditionedDem(DemBase):
         )
         # Some programs require positively increasing indices
         # Last as otherwise errors when merging (clipping resets defaults)
-        self._dem = self._ensure_positive_indexing(self._dem)
         return self._dem
 
     def _resample_foreshore_offshore_edge(self, resolution) -> numpy.ndarray:
@@ -1662,8 +1660,6 @@ class LidarBase(DemBase):
     def dem(self):
         """Return the positivly indexed DEM from tiles"""
 
-        # Ensure positively increasing indices as required by some programs
-        self._dem = self._ensure_positive_indexing(self._dem)
         return self._dem
 
     def _tile_index_column_name(
@@ -2956,7 +2952,6 @@ class RoughnessDem(LidarBase):
             self._dem.z, self.catchment_geometry.catchment.geometry, self.chunk_size
         )
         self._dem = self._dem.where(mask)
-        self._dem = self._ensure_positive_indexing(self._dem)
         self._write_netcdf_conventions_in_place(self._dem, self.catchment_geometry.crs)
 
         return self._dem
