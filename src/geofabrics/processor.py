@@ -3773,7 +3773,7 @@ class WaterwayBedElevationEstimator(BaseProcessor):
                     else:
                         waterways = overpass.query(query, timeout=60)
                     break
-                except Exception as e:except Exception as e:
+                except Exception as e:
                     print(f"An unexpected error occurred: {e}")
             else:
                 raise ConnectionError(
