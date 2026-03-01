@@ -3,6 +3,7 @@
 This module contains classes associated with loading, generating, and combining
 DEMs.
 """
+
 import rioxarray
 import rioxarray.merge
 import rasterio
@@ -24,7 +25,6 @@ import logging
 import scipy.interpolate
 import scipy.spatial
 from . import geometry
-
 
 RBF_CACHE_SIZE = 1000
 
@@ -439,15 +439,16 @@ class DemBase(abc.ABC):
         dem: xarray.core.dataarray.DataArray,
     ) -> xarray.core.dataarray.DataArray:
         """A routine to check an xarray has positive dimension indexing and to reindex
-        if needed."""
+        if needed. This is required for some programs (e.g. TauDEM) that require positive
+        indexing. Currently not used. Will either remove or make optional in the future.
+        """
 
         x = dem.x
         y = dem.y
-        if x[0] > x[-1]:
-            x = x[::-1]
-        if y[0] > y[-1]:
-            y = y[::-1]
-        dem = dem.reindex({"x": x, "y": y})
+        if dem.x[0] > dem.x[-1]:
+            dem = dem.sel(x=slice(None, None, -1))
+        if dem.y[0] > dem.y[-1]:
+            dem = dem.sel(y=slice(None, None, -1))
         dem.rio.write_transform(inplace=True)
         return dem
 
@@ -760,7 +761,6 @@ class HydrologicallyConditionedDem(DemBase):
         )
         # Some programs require positively increasing indices
         # Last as otherwise errors when merging (clipping resets defaults)
-        self._dem = self._ensure_positive_indexing(self._dem)
         return self._dem
 
     def _resample_foreshore_offshore_edge(self, resolution) -> numpy.ndarray:
@@ -1662,8 +1662,6 @@ class LidarBase(DemBase):
     def dem(self):
         """Return the positivly indexed DEM from tiles"""
 
-        # Ensure positively increasing indices as required by some programs
-        self._dem = self._ensure_positive_indexing(self._dem)
         return self._dem
 
     def _tile_index_column_name(
@@ -2956,7 +2954,6 @@ class RoughnessDem(LidarBase):
             self._dem.z, self.catchment_geometry.catchment.geometry, self.chunk_size
         )
         self._dem = self._dem.where(mask)
-        self._dem = self._ensure_positive_indexing(self._dem)
         self._write_netcdf_conventions_in_place(self._dem, self.catchment_geometry.crs)
 
         return self._dem
@@ -3487,14 +3484,14 @@ def elevation_from_nearest_points(
     xy_in[:, 0] = point_cloud["X"]
     xy_in[:, 1] = point_cloud["Y"]
     tree = scipy.spatial.KDTree(xy_in, leafsize=leaf_size)  # build the tree
-    (tree_distance_list, tree_index_list) = tree.query(xy_out, k=k, eps=eps)
+    tree_distance_list, tree_index_list = tree.query(xy_out, k=k, eps=eps)
 
     if options["use_edge"]:
         xy_in = numpy.empty((len(edge_point_cloud), 2))
         xy_in[:, 0] = edge_point_cloud["X"]
         xy_in[:, 1] = edge_point_cloud["Y"]
         edge_tree = scipy.spatial.KDTree(xy_in, leafsize=leaf_size)  # build the tree
-        (edge_tree_distance_list, edge_tree_index_list) = edge_tree.query(
+        edge_tree_distance_list, edge_tree_index_list = edge_tree.query(
             xy_out, k=k, eps=eps
         )
 

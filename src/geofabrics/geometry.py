@@ -2,6 +2,7 @@
 """
 This module contains classes associated with manipulating vector data.
 """
+
 import geopandas
 import pandas
 import shapely
@@ -779,7 +780,7 @@ class RiverMouthFan:
                 aligned_channel = aligned_channel.iloc[[1]]
 
         # Explode incase the aligned channel is clipped into a MultiPolyLine
-        (x, y) = aligned_channel.explode(index_parts=True).iloc[0].geometry.xy
+        x, y = aligned_channel.explode(index_parts=True).iloc[0].geometry.xy
 
         # Calculate the normal and tangent to the channel segment at the mouth
         segment_dx = x[0] - x[1]
@@ -1105,7 +1106,7 @@ class RiverMouthFan:
                 end_depth = max(river_mouth_elevations) * 10
 
             # Construct a fan ending at the contour
-            (x, y) = intersection_line.xy
+            x, y = intersection_line.xy
             polygon_points = [[xi, yi] for (xi, yi) in zip(x, y)]
 
             # Check if the intersected contour and mouth normal are roughtly parallel or

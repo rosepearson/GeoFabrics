@@ -5,6 +5,7 @@ LiDAR and bathymetry contours based on the instructions contained in a JSON file
 
 GeoFabric layers include hydrologically conditioned DEMs.
 """
+
 import numpy
 import json
 import pathlib
@@ -501,7 +502,7 @@ class BaseProcessor(abc.ABC):
                     + f" download vector data from the vector APIs: {data_services}"
                 )
 
-                # Get the API key for the data_serive being checked
+                # Get the API key for the data_service being checked
                 assert (
                     "key" in self.instructions["datasets"][data_type][data_service]
                 ), (
@@ -535,20 +536,25 @@ class BaseProcessor(abc.ABC):
                         f" the {data_service} data service"
                     )
 
-                    # Cycle through all layers specified - save each & add to the path
-                    # list
+                    # Check all layers specified - save missing & add to the path list
                     for layer in api_instruction["layers"]:
-                        # Use the run method to download each layer in turn
-                        vector = fetcher.run(layer, geometry_type)
-                        if vector is not None:
-                            # Write out file if not already recorded
-                            layer_file = (
-                                cache_dir / "vector" / subfolder / f"{layer}.geojson"
+                        layer_file = (
+                            cache_dir / "vector" / subfolder / f"{layer}.geojson"
+                        )
+                        if layer_file.exists():
+                            logging.info(
+                                f"Using cached vector layer {layer} from {layer_file}"
                             )
-                            if not layer_file.exists():
+                            paths.append(layer_file)
+                        else:
+                            logging.info(
+                                f"Downloading vector layer {layer} from {data_service}"
+                            )
+                            vector = fetcher.run(layer, geometry_type)
+                            if vector is not None:
                                 layer_file.parent.mkdir(parents=True, exist_ok=True)
                                 vector.to_file(layer_file)
-                            paths.append(layer_file)
+                                paths.append(layer_file)
                 elif data_type == "raster":
                     # simplify the bounding_polygon geometry
                     if bounding_polygon is not None:
@@ -707,8 +713,18 @@ class BaseProcessor(abc.ABC):
             for dataset_name in self.instructions["datasets"][data_type][
                 data_service
             ].keys():
-                self.logger.info(f"Fetching dataset: {dataset_name}")
-                self.lidar_fetcher.run(dataset_name)
+                dataset_instructions = self.instructions["datasets"][data_type][
+                    data_service
+                ][dataset_name]
+                if (
+                    isinstance(dataset_instructions, dict)
+                    and "precached" in dataset_instructions
+                    and dataset_instructions["precached"] == True
+                ):
+                    self.logger.info(f"Precached dataset: {dataset_name}")
+                else:
+                    self.logger.info(f"Fetching dataset: {dataset_name}")
+                    self.lidar_fetcher.run(dataset_name)
                 dataset_path = self.lidar_fetcher.cache_path / dataset_name
                 lidar_datasets_info[dataset_name] = {
                     "file_paths": sorted(dataset_path.rglob("*.la[zs]")),
@@ -756,6 +772,9 @@ class BaseProcessor(abc.ABC):
                         f"specified. Both are missing for the dataset {dataset_name}:"
                         f"{dataset_name}."
                     )
+                # Ensure the CRS is specified for the local dataset - if not set to None to be read from the LAZ files
+                if "crs" not in dataset:
+                    dataset["crs"] = None
             # Check no overlap between local and remote (API) keys
             if len(lidar_datasets_info.keys() & local_datasets.keys()) > 0:
                 raise Exception(
@@ -1207,7 +1226,7 @@ class HydrologicDemGenerator(BaseProcessor):
                         key="interpolation", subkey="ocean"
                     ),
                 )
-                temp_file = temp_folder / "dem_added_ocean.nc"
+                temp_file = temp_folder / "dem_added_ocean_points.nc"
                 self.logger.info(f"Save DEM with ocean to netCDF: {temp_file}")
                 hydrologic_dem.save_and_load_dem(temp_file)
                 cached_file = temp_file
@@ -1222,7 +1241,7 @@ class HydrologicDemGenerator(BaseProcessor):
                 )
                 # Interpolate
                 hydrologic_dem.interpolate_ocean_bathymetry(ocean_data)
-                temp_file = temp_folder / "dem_added_ocean.nc"
+                temp_file = temp_folder / "dem_added_ocean_contours.nc"
                 self.logger.info(f"Save DEM with ocean to netCDF: {temp_file}")
                 hydrologic_dem.save_and_load_dem(temp_file)
                 cached_file = temp_file
@@ -1334,7 +1353,7 @@ class HydrologicDemGenerator(BaseProcessor):
                         key="nearest_k_for_interpolation", subkey="lakes"
                     ),
                 )
-                temp_file = temp_folder / f"dem_added_{index + 1}_lake.nc"
+                temp_file = temp_folder / f"dem_added_lake_{index + 1}.nc"
                 self.logger.info(
                     f"Save temp DEM with lake {index + 1} added to netCDF: {temp_file}"
                 )
@@ -1398,7 +1417,7 @@ class HydrologicDemGenerator(BaseProcessor):
                         key="nearest_k_for_interpolation", subkey="rivers"
                     ),
                 )
-                temp_file = temp_folder / f"dem_added_{index + 1}_rivers.nc"
+                temp_file = temp_folder / f"dem_added_rivers_{index + 1}.nc"
                 self.logger.info(
                     f"Save temp DEM with rivers added to netCDF: {temp_file}"
                 )
@@ -1659,7 +1678,7 @@ class PatchDemGenerator(BaseProcessor):
             for patch_path in patch_paths:
                 patch_dem.add_patch(patch_path=patch_path, label="patch", layer=layer)
 
-                temp_file = temp_folder / f"raw_dem_{patch_path.stem}.nc"
+                temp_file = temp_folder / f"dem_patch_{patch_path.stem}.nc"
                 self.logger.info(f"Save patched DEM to netCDF: {temp_file}")
                 patch_dem.save_and_load_dem(temp_file)
                 # Remove previous cached file and replace with new one
@@ -1823,17 +1842,27 @@ class RoughnessLengthGenerator(BaseProcessor):
                 includeGeometry=True,
             )
 
-            # Perform query
-            overpass = OSMPythonTools.overpass.Overpass()
-            if "osm_date" in self.instructions["roughness"]:
-                roads = overpass.query(
-                    query,
-                    date=self.get_roughness_instruction("osm_date"),
-                    timeout=60,
-                )
+            # Perform query - try mutliple times as intermitten connective issues
+            max_download_retries = 3
+            for i in range(max_download_retries):
+                try:
+                    overpass = OSMPythonTools.overpass.Overpass()
+                    if "osm_date" in self.instructions["roughness"]:
+                        roads = overpass.query(
+                            query,
+                            date=self.get_roughness_instruction("osm_date"),
+                            timeout=60,
+                        )
+                    else:
+                        roads = overpass.query(query, timeout=60)
+                    break
+                except Exception as e:
+                    print(f"An unexpected error occurred: {e}")
             else:
-                roads = overpass.query(query, timeout=60)
-
+                raise ConnectionError(
+                    "Did not successfully download the OSM data in "
+                    f"{max_download_retries} attempts."
+                )
             # Extract information
             element_dict = {
                 "geometry": [],
@@ -1971,7 +2000,7 @@ class RoughnessLengthGenerator(BaseProcessor):
                     parameters=roughness_parameters,
                 )  # Note must be called after all others if it is to be complete
                 if status:  # Save a cached copy of DEM to temporary memory cache
-                    temp_file = temp_folder / f"raw_lidar_zo{dataset_name}.nc"
+                    temp_file = temp_folder / f"geofabric_zo_{dataset_name}.nc"
                     self.logger.info(f"Save temp raw DEM to netCDF: {temp_file}")
                     roughness_dem.save_and_load_dem(temp_file)
                     if cached_file.exists():
@@ -1979,7 +2008,7 @@ class RoughnessLengthGenerator(BaseProcessor):
                     cached_file = temp_file
 
             if not cached_file.exists():  # Ensure saved even if empty
-                cached_file = temp_folder / "raw_lidar_empty.nc"
+                cached_file = temp_folder / "geofabric_empty.nc"
                 self.logger.info(f"Save temp raw DEM to netCDF: {cached_file}")
                 roughness_dem.save_and_load_dem(cached_file)
 
@@ -2674,6 +2703,54 @@ class RiverBathymetryGenerator(BaseProcessor):
             aligned_channel = geopandas.read_file(aligned_channel_file)
         return channel_width, aligned_channel
 
+    def download_osm(self):
+        """Download the osm file if it doesn't already exist"""
+
+        crs = self.get_crs()["horizontal"]
+
+        if self.get_result_file_path(name="osm_channel_full.geojson").exists():
+            osm_channel = geopandas.read_file(
+                self.get_result_file_path(name="osm_channel_full.geojson")
+            )
+        else:
+            # Create OSM defined channel
+            osm = self.get_bathymetry_instruction("osm")
+            query = f"({osm['type']}[waterway]({osm['id']});); out body geom;"
+            # Perform query - try mutliple times as intermitten connective issues
+            max_download_retries = 3
+            for i in range(max_download_retries):
+                try:
+                    overpass = OSMPythonTools.overpass.Overpass()
+                    if "date" in osm:
+                        osm_channel = overpass.query(
+                            query,
+                            date=osm["date"],
+                            timeout=60,
+                        )
+                    else:
+                        osm_channel = overpass.query(query, timeout=60)
+                    break
+                except Exception as e:
+                    print(f"An unexpected error occurred: {e}")
+            else:
+                raise ConnectionError(
+                    "Did not successfully download the OSM data in "
+                    f"{max_download_retries} attempts."
+                )
+            osm_channel = osm_channel.elements()[0]
+            osm_channel = geopandas.GeoDataFrame(
+                {
+                    "geometry": [osm_channel.geometry()],
+                    "OSM_id": [osm_channel.id()],
+                    "waterway": [osm_channel.tags()["waterway"]],
+                },
+                crs=self.OSM_CRS,
+            ).to_crs(crs)
+            osm_channel.to_file(
+                self.get_result_file_path(name="osm_channel_full.geojson")
+            )
+        return osm_channel
+
     def align_channel_from_osm(
         self,
     ) -> bathymetry_estimation.ChannelCharacteristics:
@@ -2693,34 +2770,11 @@ class RiverBathymetryGenerator(BaseProcessor):
         channel = self.get_network_channel()
         crs = self.get_crs()["horizontal"]
 
-        # Create OSM defined channel
-        osm = self.get_bathymetry_instruction("osm")
-        query = f"({osm['type']}[waterway]({osm['id']});); out body geom;"
-        overpass = OSMPythonTools.overpass.Overpass()
-        if "date" in osm:
-            osm_channel = overpass.query(
-                query,
-                date=osm["date"],
-                timeout=60,
-            )
-        else:
-            osm_channel = overpass.query(query, timeout=60)
-        osm_channel = osm_channel.elements()[0]
-        osm_channel = geopandas.GeoDataFrame(
-            {
-                "geometry": [osm_channel.geometry()],
-                "OSM_id": [osm_channel.id()],
-                "waterway": [osm_channel.tags()["waterway"]],
-            },
-            crs=self.OSM_CRS,
-        ).to_crs(crs)
-        if self.debug:
-            osm_channel.to_file(
-                self.get_result_file_path(name="osm_channel_full.geojson")
-            )
+        # Load or download the OSM channel
+        osm_channel = self.download_osm()
+
         # Cut the OSM to size - give warning if OSM line shorter than network
         # Get the start and end point of the smoothed network line
-        # breakpoint()
         channel = channel.get_parametric_spline_fit()
         network_extents = channel.boundary.explode(index_parts=False)
         network_start, network_end = (
@@ -2729,8 +2783,8 @@ class RiverBathymetryGenerator(BaseProcessor):
         )
         # Get the distance along the OSM that the start/end points are.
         # Note projection function is limited between [0, osm_channel.length]
-        end_split_length = float(osm_channel.project(network_end))
-        start_split_length = float(osm_channel.project(network_start))
+        end_split_length = float(osm_channel.geometry.project(network_end)[0])
+        start_split_length = float(osm_channel.geometry.project(network_start)[0])
         # Ensure the OSM line is defined mouth to upstream
         if (
             start_split_length > end_split_length
@@ -2742,7 +2796,7 @@ class RiverBathymetryGenerator(BaseProcessor):
             )
 
         # Cut the OSM to the length of the network. Give warning if shorter.
-        start_split_length = float(osm_channel.project(network_start))
+        start_split_length = float(osm_channel.geometry.project(network_start)[0])
         if start_split_length > 0 and not self.get_bathymetry_instruction(
             "keep_downstream_osm"
         ):
@@ -2765,8 +2819,8 @@ class RiverBathymetryGenerator(BaseProcessor):
                 f"{osm_channel.distance(network_start)}"
             )
         # Clip end if needed - recacluate clip position incase front clipped.
-        end_split_length = float(osm_channel.project(network_end))
-        if end_split_length < float(osm_channel.length):
+        end_split_length = float(osm_channel.geometry.project(network_end)[0])
+        if end_split_length < float(osm_channel.length[0]):
             split_point = osm_channel.interpolate(end_split_length)
             osm_channel = shapely.ops.snap(
                 osm_channel.loc[0].geometry, split_point.loc[0], tolerance=0.1
@@ -2909,13 +2963,8 @@ class RiverBathymetryGenerator(BaseProcessor):
         width_values["source"] = "river"  # Specify as coming form river estimation
         channel = self.get_network_channel()
 
-        # Match each channel midpoint to a reach ID - based on what reach is closest
-        width_values["id"] = (
-            numpy.ones(len(width_values["widths"]), dtype=float) * numpy.nan
-        )
-        # Add the friction and flow values to the widths and slopes
-        width_values["mannings_n"] = numpy.zeros(len(width_values["id"]), dtype=int)
-        width_values["flow"] = numpy.zeros(len(width_values["id"]), dtype=int)
+        # Define the ID, flow and mannings_n from the nearest reach (defined by channel)
+        width_values[["id", "flow", "mannings_n"]] = numpy.nan
         for i, row in width_values.iterrows():
             if row.geometry is not None and not row.geometry.is_empty:
                 distances = channel.channel.distance(width_values.loc[i].geometry)
@@ -2923,16 +2972,10 @@ class RiverBathymetryGenerator(BaseProcessor):
                     distances == distances.min()
                 ][["id", "flow", "mannings_n"]].min()
         # Fill in any missing values
-        width_values["id"] = (
-            width_values["id"].fillna(method="ffill").fillna(method="bfill")
+        width_values[["id", "flow", "mannings_n"]] = (
+            width_values[["id", "flow", "mannings_n"]].ffill().bfill()
         )
         width_values["id"] = width_values["id"].astype("int")
-        width_values["flow"] = (
-            width_values["flow"].fillna(method="ffill").fillna(method="bfill")
-        )
-        width_values["mannings_n"] = (
-            width_values["mannings_n"].fillna(method="ffill").fillna(method="bfill")
-        )
 
         # Get the level of upstream smoothing to apply
         label = self._apply_upstream_smoothing(width_values)
@@ -3493,7 +3536,7 @@ class WaterwayBedElevationEstimator(BaseProcessor):
             )
             if start_elevation < end_elevation:
                 waterway = waterway.reverse()
-                (start_elevation, end_elevation) = (end_elevation, start_elevation)
+                start_elevation, end_elevation = (end_elevation, start_elevation)
             open_waterways.loc[index, "start_elevation"] = start_elevation
             open_waterways.loc[index, "end_elevation"] = end_elevation
             open_waterways.loc[index, "geometry"] = waterway
@@ -3648,6 +3691,12 @@ class WaterwayBedElevationEstimator(BaseProcessor):
 
         if waterways_path.is_file():
             waterways = geopandas.read_file(waterways_path)
+            if len(waterways) == 0:  # return if empty instead of further checks
+                self.logger.warning(
+                    "No waterways. Delete if unexpected & either regenerate if "
+                    "source is file or rerun if source is OSM."
+                )
+                return waterways
             if source == "osm":
                 waterways = waterways.set_index("OSM_id", drop=True)
             if "width" not in waterways.columns and source == "osm":
@@ -3673,7 +3722,31 @@ class WaterwayBedElevationEstimator(BaseProcessor):
                     )
                 else:  # Assume in int / float
                     waterways["width"] = widths
-        else:  # Download from OSM
+        elif source == "file":
+            waterways = geopandas.read_file(self.get_instruction_path("waterways"))
+            if "width" not in waterways.columns:
+                message = (
+                    "No waterways width defined either as a entry in the "
+                    "instruction file, or as a column in the waterways "
+                    f"file: {waterways_path}"
+                )
+                self.logger.error(message)
+                raise ValueError(message)
+            if "tunnel" not in waterways.columns:
+                message = (
+                    "No tunnel label defined as a column in the waterways "
+                    f"file: {waterways_path}. Assuming all are not tunnels."
+                )
+                self.logger.info(message)
+                waterways["tunnel"] = False
+            # Clip to land
+            waterways = waterways.clip(self.catchment_geometry.land).sort_index(
+                ascending=True
+            )
+            # Save clipped file in waterways folder
+            waterways.to_file(waterways_path)
+
+        elif source == "osm":
             # Create area to query within
             bbox_lat_long = self.catchment_geometry.catchment.to_crs(self.OSM_CRS)
 
@@ -3686,17 +3759,27 @@ class WaterwayBedElevationEstimator(BaseProcessor):
                 includeGeometry=True,
             )
 
-            # Perform query
-            overpass = OSMPythonTools.overpass.Overpass()
-            if "osm_date" in self.instructions["waterways"]:
-                waterways = overpass.query(
-                    query,
-                    date=self.get_waterways_instruction("osm_date"),
-                    timeout=60,
-                )
+            # Perform query - try mutliple times as intermitten connective issues
+            max_download_retries = 3
+            for i in range(max_download_retries):
+                try:
+                    overpass = OSMPythonTools.overpass.Overpass()
+                    if "osm_date" in self.instructions["waterways"]:
+                        waterways = overpass.query(
+                            query,
+                            date=self.get_waterways_instruction("osm_date"),
+                            timeout=60,
+                        )
+                    else:
+                        waterways = overpass.query(query, timeout=60)
+                    break
+                except Exception as e:
+                    print(f"An unexpected error occurred: {e}")
             else:
-                waterways = overpass.query(query, timeout=60)
-
+                raise ConnectionError(
+                    "Did not successfully download the OSM data in "
+                    f"{max_download_retries} attempts."
+                )
             # Extract information
             element_dict = {
                 "geometry": [],
@@ -3745,6 +3828,13 @@ class WaterwayBedElevationEstimator(BaseProcessor):
 
             # Save file
             waterways.to_file(waterways_path)
+        else:
+            message = (
+                f"waterways source of {source} is not supported. Only 'osm' and 'file' "
+                "supported currently."
+            )
+            logging.error(message)
+            raise ValueError(message)
         # Remove any empty results
         if waterways.is_empty.any():
             self.logger.warning(
@@ -4096,17 +4186,27 @@ class StopbankCrestElevationEstimator(BaseProcessor):
                 includeGeometry=True,
             )
 
-            # Perform query
-            overpass = OSMPythonTools.overpass.Overpass()
-            if "osm_date" in self.instructions["stopbanks"]:
-                stopbanks = overpass.query(
-                    query,
-                    date=self.get_stopbanks_instruction("osm_date"),
-                    timeout=60,
-                )
+            # Perform query - try mutliple times as intermitten connective issues
+            max_download_retries = 3
+            for i in range(max_download_retries):
+                try:
+                    overpass = OSMPythonTools.overpass.Overpass()
+                    if "osm_date" in self.instructions["stopbanks"]:
+                        stopbanks = overpass.query(
+                            query,
+                            date=self.get_stopbanks_instruction("osm_date"),
+                            timeout=60,
+                        )
+                    else:
+                        stopbanks = overpass.query(query, timeout=60)
+                    break
+                except Exception as e:
+                    print(f"An unexpected error occurred: {e}")
             else:
-                stopbanks = overpass.query(query, timeout=60)
-
+                raise ConnectionError(
+                    "Did not successfully download the OSM data in "
+                    f"{max_download_retries} attempts."
+                )
             # Extract information
             for element in stopbanks.elements():
                 element_dict["geometry"].append(element.geometry())

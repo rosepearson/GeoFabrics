@@ -8,6 +8,7 @@ dependencies:
   - python-pdal==3.4.5
   - pip
   - pip:
+    - pandas==2.3.3
     - rioxarray==0.17.0
     - geoapis==0.3.4
     - osmpythontools==0.3.5
