@@ -8,15 +8,15 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>geofabrics.geometry &mdash; Geofabrics 0.7.6 documentation</title>
       <link rel="stylesheet" type="text/css" href="../../../_static/pygments.css?v=b86133f3" />
-      <link rel="stylesheet" type="text/css" href="../../../_static/css/theme.css?v=e59714d7" />
+      <link rel="stylesheet" type="text/css" href="../../../_static/css/theme.css?v=9edc463e" />
       <link rel="stylesheet" type="text/css" href="../../../_static/graphviz.css?v=4ae1632d" />
 
   
       <script src="../../../_static/jquery.js?v=5d32c60e"></script>
       <script src="../../../_static/_sphinx_javascript_frameworks_compat.js?v=2cd50e6c"></script>
       <script src="../../../_static/documentation_options.js?v=918ced64"></script>
-      <script src="../../../_static/doctools.js?v=9bcbadda"></script>
-      <script src="../../../_static/sphinx_highlight.js?v=dc90522c"></script>
+      <script src="../../../_static/doctools.js?v=fd6eb6e6"></script>
+      <script src="../../../_static/sphinx_highlight.js?v=6ffebe34"></script>
     <script src="../../../_static/js/theme.js"></script>
     <link rel="index" title="Index" href="../../../genindex.html" />
     <link rel="search" title="Search" href="../../../search.html" />
@@ -124,7 +124,7 @@
 <h2>Module Contents<a class="headerlink" href="#module-contents" title="Link to this heading"></a></h2>
 <dl class="py class">
 <dt class="sig sig-object py" id="geofabrics.geometry.CatchmentGeometry">
-<em class="property"><span class="k"><span class="pre">class</span></span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">geofabrics.geometry.</span></span><span class="sig-name descname"><span class="pre">CatchmentGeometry</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">catchment_file</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">crs</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">resolution</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">foreshore_buffer</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">2</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#geofabrics.geometry.CatchmentGeometry" title="Link to this definition"></a></dt>
+<span class="property"><span class="k"><span class="pre">class</span></span><span class="w"> </span></span><span class="sig-prename descclassname"><span class="pre">geofabrics.geometry.</span></span><span class="sig-name descname"><span class="pre">CatchmentGeometry</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">catchment_file</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">crs</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">resolution</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">foreshore_buffer</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">2</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#geofabrics.geometry.CatchmentGeometry" title="Link to this definition"></a></dt>
 <dd><p>A class defining revelant catchment regions by polygons.</p>
 <p>The CRS is a dictionary containing the EPSG code for a ‘horizontal’ and
 ‘vertical’ datum.</p>
@@ -155,43 +155,43 @@ foreshore, etc) can be accessed.</p>
 </dl>
 <dl class="py property">
 <dt class="sig sig-object py" id="geofabrics.geometry.CatchmentGeometry.catchment">
-<em class="property"><span class="k"><span class="pre">property</span></span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">catchment</span></span><a class="headerlink" href="#geofabrics.geometry.CatchmentGeometry.catchment" title="Link to this definition"></a></dt>
+<span class="property"><span class="k"><span class="pre">property</span></span><span class="w"> </span></span><span class="sig-name descname"><span class="pre">catchment</span></span><a class="headerlink" href="#geofabrics.geometry.CatchmentGeometry.catchment" title="Link to this definition"></a></dt>
 <dd><p>Return the catchment region</p>
 </dd></dl>
 
 <dl class="py property">
 <dt class="sig sig-object py" id="geofabrics.geometry.CatchmentGeometry.land">
-<em class="property"><span class="k"><span class="pre">property</span></span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">land</span></span><a class="headerlink" href="#geofabrics.geometry.CatchmentGeometry.land" title="Link to this definition"></a></dt>
+<span class="property"><span class="k"><span class="pre">property</span></span><span class="w"> </span></span><span class="sig-name descname"><span class="pre">land</span></span><a class="headerlink" href="#geofabrics.geometry.CatchmentGeometry.land" title="Link to this definition"></a></dt>
 <dd><p>Return the catchment land region</p>
 </dd></dl>
 
 <dl class="py property">
 <dt class="sig sig-object py" id="geofabrics.geometry.CatchmentGeometry.full_land">
-<em class="property"><span class="k"><span class="pre">property</span></span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">full_land</span></span><a class="headerlink" href="#geofabrics.geometry.CatchmentGeometry.full_land" title="Link to this definition"></a></dt>
+<span class="property"><span class="k"><span class="pre">property</span></span><span class="w"> </span></span><span class="sig-name descname"><span class="pre">full_land</span></span><a class="headerlink" href="#geofabrics.geometry.CatchmentGeometry.full_land" title="Link to this definition"></a></dt>
 <dd><p>Return the full land region</p>
 </dd></dl>
 
 <dl class="py property">
 <dt class="sig sig-object py" id="geofabrics.geometry.CatchmentGeometry.foreshore">
-<em class="property"><span class="k"><span class="pre">property</span></span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">foreshore</span></span><a class="headerlink" href="#geofabrics.geometry.CatchmentGeometry.foreshore" title="Link to this definition"></a></dt>
+<span class="property"><span class="k"><span class="pre">property</span></span><span class="w"> </span></span><span class="sig-name descname"><span class="pre">foreshore</span></span><a class="headerlink" href="#geofabrics.geometry.CatchmentGeometry.foreshore" title="Link to this definition"></a></dt>
 <dd><p>Return the catchment foreshore region</p>
 </dd></dl>
 
 <dl class="py property">
 <dt class="sig sig-object py" id="geofabrics.geometry.CatchmentGeometry.land_and_foreshore">
-<em class="property"><span class="k"><span class="pre">property</span></span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">land_and_foreshore</span></span><a class="headerlink" href="#geofabrics.geometry.CatchmentGeometry.land_and_foreshore" title="Link to this definition"></a></dt>
+<span class="property"><span class="k"><span class="pre">property</span></span><span class="w"> </span></span><span class="sig-name descname"><span class="pre">land_and_foreshore</span></span><a class="headerlink" href="#geofabrics.geometry.CatchmentGeometry.land_and_foreshore" title="Link to this definition"></a></dt>
 <dd><p>Return the catchment land and foreshore region</p>
 </dd></dl>
 
 <dl class="py property">
 <dt class="sig sig-object py" id="geofabrics.geometry.CatchmentGeometry.foreshore_and_offshore">
-<em class="property"><span class="k"><span class="pre">property</span></span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">foreshore_and_offshore</span></span><a class="headerlink" href="#geofabrics.geometry.CatchmentGeometry.foreshore_and_offshore" title="Link to this definition"></a></dt>
+<span class="property"><span class="k"><span class="pre">property</span></span><span class="w"> </span></span><span class="sig-name descname"><span class="pre">foreshore_and_offshore</span></span><a class="headerlink" href="#geofabrics.geometry.CatchmentGeometry.foreshore_and_offshore" title="Link to this definition"></a></dt>
 <dd><p>Return the catchment foreshore and offshore region</p>
 </dd></dl>
 
 <dl class="py property">
 <dt class="sig sig-object py" id="geofabrics.geometry.CatchmentGeometry.offshore">
-<em class="property"><span class="k"><span class="pre">property</span></span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">offshore</span></span><a class="headerlink" href="#geofabrics.geometry.CatchmentGeometry.offshore" title="Link to this definition"></a></dt>
+<span class="property"><span class="k"><span class="pre">property</span></span><span class="w"> </span></span><span class="sig-name descname"><span class="pre">offshore</span></span><a class="headerlink" href="#geofabrics.geometry.CatchmentGeometry.offshore" title="Link to this definition"></a></dt>
 <dd><p>Return the catchment offshore region</p>
 </dd></dl>
 
@@ -199,7 +199,7 @@ foreshore, etc) can be accessed.</p>
 
 <dl class="py class">
 <dt class="sig sig-object py" id="geofabrics.geometry.BathymetryContours">
-<em class="property"><span class="k"><span class="pre">class</span></span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">geofabrics.geometry.</span></span><span class="sig-name descname"><span class="pre">BathymetryContours</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">contour_file</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">catchment_geometry</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">z_label</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">region_of_interest</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#geofabrics.geometry.BathymetryContours" title="Link to this definition"></a></dt>
+<span class="property"><span class="k"><span class="pre">class</span></span><span class="w"> </span></span><span class="sig-prename descclassname"><span class="pre">geofabrics.geometry.</span></span><span class="sig-name descname"><span class="pre">BathymetryContours</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">contour_file</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">catchment_geometry</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">z_label</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">region_of_interest</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#geofabrics.geometry.BathymetryContours" title="Link to this definition"></a></dt>
 <dd><p>A class for sampling from bathymetry contours.</p>
 <p>Assumes contours to be sampled to the catchment_geometry resolution</p>
 <dl class="field-list simple">
@@ -228,7 +228,7 @@ foreshore, etc) can be accessed.</p>
 
 <dl class="py class">
 <dt class="sig sig-object py" id="geofabrics.geometry.OceanPoints">
-<em class="property"><span class="k"><span class="pre">class</span></span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">geofabrics.geometry.</span></span><span class="sig-name descname"><span class="pre">OceanPoints</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">points_file</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">catchment_geometry</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">is_depth</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">False</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">z_label</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#geofabrics.geometry.OceanPoints" title="Link to this definition"></a></dt>
+<span class="property"><span class="k"><span class="pre">class</span></span><span class="w"> </span></span><span class="sig-prename descclassname"><span class="pre">geofabrics.geometry.</span></span><span class="sig-name descname"><span class="pre">OceanPoints</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">points_file</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">catchment_geometry</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">is_depth</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">False</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">z_label</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#geofabrics.geometry.OceanPoints" title="Link to this definition"></a></dt>
 <dd><p>A class for accesing marine bathymetry points. These can be used as
 depths to interpolate elevations offshore.</p>
 <dl class="field-list simple">
@@ -243,31 +243,31 @@ depths to interpolate elevations offshore.</p>
 </dl>
 <dl class="py property">
 <dt class="sig sig-object py" id="geofabrics.geometry.OceanPoints.boundary">
-<em class="property"><span class="k"><span class="pre">property</span></span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">boundary</span></span><a class="headerlink" href="#geofabrics.geometry.OceanPoints.boundary" title="Link to this definition"></a></dt>
+<span class="property"><span class="k"><span class="pre">property</span></span><span class="w"> </span></span><span class="sig-name descname"><span class="pre">boundary</span></span><a class="headerlink" href="#geofabrics.geometry.OceanPoints.boundary" title="Link to this definition"></a></dt>
 <dd><p>Return the bounding box containing data</p>
 </dd></dl>
 
 <dl class="py property">
 <dt class="sig sig-object py" id="geofabrics.geometry.OceanPoints.points">
-<em class="property"><span class="k"><span class="pre">property</span></span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">points</span></span><a class="headerlink" href="#geofabrics.geometry.OceanPoints.points" title="Link to this definition"></a></dt>
+<span class="property"><span class="k"><span class="pre">property</span></span><span class="w"> </span></span><span class="sig-name descname"><span class="pre">points</span></span><a class="headerlink" href="#geofabrics.geometry.OceanPoints.points" title="Link to this definition"></a></dt>
 <dd><p>Return the points</p>
 </dd></dl>
 
 <dl class="py property">
 <dt class="sig sig-object py" id="geofabrics.geometry.OceanPoints.x">
-<em class="property"><span class="k"><span class="pre">property</span></span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">x</span></span><a class="headerlink" href="#geofabrics.geometry.OceanPoints.x" title="Link to this definition"></a></dt>
+<span class="property"><span class="k"><span class="pre">property</span></span><span class="w"> </span></span><span class="sig-name descname"><span class="pre">x</span></span><a class="headerlink" href="#geofabrics.geometry.OceanPoints.x" title="Link to this definition"></a></dt>
 <dd><p>The x values</p>
 </dd></dl>
 
 <dl class="py property">
 <dt class="sig sig-object py" id="geofabrics.geometry.OceanPoints.y">
-<em class="property"><span class="k"><span class="pre">property</span></span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">y</span></span><a class="headerlink" href="#geofabrics.geometry.OceanPoints.y" title="Link to this definition"></a></dt>
+<span class="property"><span class="k"><span class="pre">property</span></span><span class="w"> </span></span><span class="sig-name descname"><span class="pre">y</span></span><a class="headerlink" href="#geofabrics.geometry.OceanPoints.y" title="Link to this definition"></a></dt>
 <dd><p>The y values</p>
 </dd></dl>
 
 <dl class="py property">
 <dt class="sig sig-object py" id="geofabrics.geometry.OceanPoints.z">
-<em class="property"><span class="k"><span class="pre">property</span></span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">z</span></span><a class="headerlink" href="#geofabrics.geometry.OceanPoints.z" title="Link to this definition"></a></dt>
+<span class="property"><span class="k"><span class="pre">property</span></span><span class="w"> </span></span><span class="sig-name descname"><span class="pre">z</span></span><a class="headerlink" href="#geofabrics.geometry.OceanPoints.z" title="Link to this definition"></a></dt>
 <dd><p>The z values</p>
 </dd></dl>
 
@@ -286,7 +286,7 @@ depths to interpolate elevations offshore.</p>
 
 <dl class="py class">
 <dt class="sig sig-object py" id="geofabrics.geometry.ElevationPoints">
-<em class="property"><span class="k"><span class="pre">class</span></span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">geofabrics.geometry.</span></span><span class="sig-name descname"><span class="pre">ElevationPoints</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">points_files</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">polygon_files</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">catchment_geometry</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">filter_osm_ids</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">[]</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">z_labels</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#geofabrics.geometry.ElevationPoints" title="Link to this definition"></a></dt>
+<span class="property"><span class="k"><span class="pre">class</span></span><span class="w"> </span></span><span class="sig-prename descclassname"><span class="pre">geofabrics.geometry.</span></span><span class="sig-name descname"><span class="pre">ElevationPoints</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">points_files</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">polygon_files</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">catchment_geometry</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">filter_osm_ids</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">[]</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">z_labels</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#geofabrics.geometry.ElevationPoints" title="Link to this definition"></a></dt>
 <dd><p>A class for accessing estimated or measured river, mouth and waterway
 elevations as points. Paired elevation and polygon files are expected.
 The elevations are used to interpolate elevations within the polygons.</p>
@@ -303,7 +303,7 @@ The elevations are used to interpolate elevations within the polygons.</p>
 </dl>
 <dl class="py property">
 <dt class="sig sig-object py" id="geofabrics.geometry.ElevationPoints.polygons">
-<em class="property"><span class="k"><span class="pre">property</span></span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">polygons</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="pre">geopandas.GeoDataFrame</span></em><a class="headerlink" href="#geofabrics.geometry.ElevationPoints.polygons" title="Link to this definition"></a></dt>
+<span class="property"><span class="k"><span class="pre">property</span></span><span class="w"> </span></span><span class="sig-name descname"><span class="pre">polygons</span></span><span class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="pre">geopandas.GeoDataFrame</span></span><a class="headerlink" href="#geofabrics.geometry.ElevationPoints.polygons" title="Link to this definition"></a></dt>
 <dd><p>Return the polygons.</p>
 <dl class="field-list simple">
 <dt class="field-odd">Return type<span class="colon">:</span></dt>
@@ -314,7 +314,7 @@ The elevations are used to interpolate elevations within the polygons.</p>
 
 <dl class="py property">
 <dt class="sig sig-object py" id="geofabrics.geometry.ElevationPoints.points_array">
-<em class="property"><span class="k"><span class="pre">property</span></span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">points_array</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="pre">numpy.ndarray</span></em><a class="headerlink" href="#geofabrics.geometry.ElevationPoints.points_array" title="Link to this definition"></a></dt>
+<span class="property"><span class="k"><span class="pre">property</span></span><span class="w"> </span></span><span class="sig-name descname"><span class="pre">points_array</span></span><span class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="pre">numpy.ndarray</span></span><a class="headerlink" href="#geofabrics.geometry.ElevationPoints.points_array" title="Link to this definition"></a></dt>
 <dd><p>Return the points as a single array.</p>
 <dl class="field-list simple">
 <dt class="field-odd">Return type<span class="colon">:</span></dt>
@@ -325,7 +325,7 @@ The elevations are used to interpolate elevations within the polygons.</p>
 
 <dl class="py property">
 <dt class="sig sig-object py" id="geofabrics.geometry.ElevationPoints.points">
-<em class="property"><span class="k"><span class="pre">property</span></span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">points</span></span><a class="headerlink" href="#geofabrics.geometry.ElevationPoints.points" title="Link to this definition"></a></dt>
+<span class="property"><span class="k"><span class="pre">property</span></span><span class="w"> </span></span><span class="sig-name descname"><span class="pre">points</span></span><a class="headerlink" href="#geofabrics.geometry.ElevationPoints.points" title="Link to this definition"></a></dt>
 <dd><p>Return the points</p>
 </dd></dl>
 
@@ -353,19 +353,19 @@ The elevations are used to interpolate elevations within the polygons.</p>
 
 <dl class="py property">
 <dt class="sig sig-object py" id="geofabrics.geometry.ElevationPoints.x">
-<em class="property"><span class="k"><span class="pre">property</span></span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">x</span></span><a class="headerlink" href="#geofabrics.geometry.ElevationPoints.x" title="Link to this definition"></a></dt>
+<span class="property"><span class="k"><span class="pre">property</span></span><span class="w"> </span></span><span class="sig-name descname"><span class="pre">x</span></span><a class="headerlink" href="#geofabrics.geometry.ElevationPoints.x" title="Link to this definition"></a></dt>
 <dd><p>The x values</p>
 </dd></dl>
 
 <dl class="py property">
 <dt class="sig sig-object py" id="geofabrics.geometry.ElevationPoints.y">
-<em class="property"><span class="k"><span class="pre">property</span></span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">y</span></span><a class="headerlink" href="#geofabrics.geometry.ElevationPoints.y" title="Link to this definition"></a></dt>
+<span class="property"><span class="k"><span class="pre">property</span></span><span class="w"> </span></span><span class="sig-name descname"><span class="pre">y</span></span><a class="headerlink" href="#geofabrics.geometry.ElevationPoints.y" title="Link to this definition"></a></dt>
 <dd><p>The y values</p>
 </dd></dl>
 
 <dl class="py property">
 <dt class="sig sig-object py" id="geofabrics.geometry.ElevationPoints.z">
-<em class="property"><span class="k"><span class="pre">property</span></span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">z</span></span><a class="headerlink" href="#geofabrics.geometry.ElevationPoints.z" title="Link to this definition"></a></dt>
+<span class="property"><span class="k"><span class="pre">property</span></span><span class="w"> </span></span><span class="sig-name descname"><span class="pre">z</span></span><a class="headerlink" href="#geofabrics.geometry.ElevationPoints.z" title="Link to this definition"></a></dt>
 <dd><p>The z values</p>
 </dd></dl>
 
@@ -373,7 +373,7 @@ The elevations are used to interpolate elevations within the polygons.</p>
 
 <dl class="py class">
 <dt class="sig sig-object py" id="geofabrics.geometry.ElevationContours">
-<em class="property"><span class="k"><span class="pre">class</span></span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">geofabrics.geometry.</span></span><span class="sig-name descname"><span class="pre">ElevationContours</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">points_files</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">polygon_files</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">catchment_geometry</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">z_labels</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#geofabrics.geometry.ElevationContours" title="Link to this definition"></a></dt>
+<span class="property"><span class="k"><span class="pre">class</span></span><span class="w"> </span></span><span class="sig-prename descclassname"><span class="pre">geofabrics.geometry.</span></span><span class="sig-name descname"><span class="pre">ElevationContours</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">points_files</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">polygon_files</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">catchment_geometry</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">z_labels</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#geofabrics.geometry.ElevationContours" title="Link to this definition"></a></dt>
 <dd><p>Bases: <a class="reference internal" href="#geofabrics.geometry.ElevationPoints" title="geofabrics.geometry.ElevationPoints"><code class="xref py py-obj docutils literal notranslate"><span class="pre">ElevationPoints</span></code></a></p>
 <p>Resample at spatial resolution at points</p>
 <dl class="field-list simple">
@@ -404,7 +404,7 @@ The elevations are used to interpolate elevations within the polygons.</p>
 
 <dl class="py class">
 <dt class="sig sig-object py" id="geofabrics.geometry.TileInfo">
-<em class="property"><span class="k"><span class="pre">class</span></span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">geofabrics.geometry.</span></span><span class="sig-name descname"><span class="pre">TileInfo</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">tile_file</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">catchment_geometry</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#geofabrics.geometry.TileInfo" title="Link to this definition"></a></dt>
+<span class="property"><span class="k"><span class="pre">class</span></span><span class="w"> </span></span><span class="sig-prename descclassname"><span class="pre">geofabrics.geometry.</span></span><span class="sig-name descname"><span class="pre">TileInfo</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">tile_file</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">catchment_geometry</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#geofabrics.geometry.TileInfo" title="Link to this definition"></a></dt>
 <dd><p>A class for working with tiling information.</p>
 <dl class="field-list simple">
 <dt class="field-odd">Parameters<span class="colon">:</span></dt>
@@ -416,7 +416,7 @@ The elevations are used to interpolate elevations within the polygons.</p>
 </dl>
 <dl class="py property">
 <dt class="sig sig-object py" id="geofabrics.geometry.TileInfo.tile_names">
-<em class="property"><span class="k"><span class="pre">property</span></span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">tile_names</span></span><a class="headerlink" href="#geofabrics.geometry.TileInfo.tile_names" title="Link to this definition"></a></dt>
+<span class="property"><span class="k"><span class="pre">property</span></span><span class="w"> </span></span><span class="sig-name descname"><span class="pre">tile_names</span></span><a class="headerlink" href="#geofabrics.geometry.TileInfo.tile_names" title="Link to this definition"></a></dt>
 <dd><p>Return the names of all tiles within the catchment</p>
 </dd></dl>
 
@@ -424,7 +424,7 @@ The elevations are used to interpolate elevations within the polygons.</p>
 
 <dl class="py class">
 <dt class="sig sig-object py" id="geofabrics.geometry.RiverMouthFan">
-<em class="property"><span class="k"><span class="pre">class</span></span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">geofabrics.geometry.</span></span><span class="sig-name descname"><span class="pre">RiverMouthFan</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">aligned_channel_file</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">river_bathymetry_file</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">river_polygon_file</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">ocean_contour_file</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">ocean_points_file</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">crs</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">cross_section_spacing</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">elevation_labels</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">ocean_elevation_label</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#geofabrics.geometry.RiverMouthFan" title="Link to this definition"></a></dt>
+<span class="property"><span class="k"><span class="pre">class</span></span><span class="w"> </span></span><span class="sig-prename descclassname"><span class="pre">geofabrics.geometry.</span></span><span class="sig-name descname"><span class="pre">RiverMouthFan</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">aligned_channel_file</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">river_bathymetry_file</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">river_polygon_file</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">ocean_contour_file</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">ocean_points_file</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">crs</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">cross_section_spacing</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">elevation_labels</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">ocean_elevation_label</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#geofabrics.geometry.RiverMouthFan" title="Link to this definition"></a></dt>
 <dd><p>A class for creating an appropiate river mouth fan to transition from
 river depth estimates to the ocean bathymetry values. This fan region defines a
 transition from river to coast within a fan shaped polygon (15 degrees on each</p>

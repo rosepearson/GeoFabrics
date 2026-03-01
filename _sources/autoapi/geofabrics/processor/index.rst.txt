@@ -480,6 +480,12 @@ Module Contents
 
 
 
+   .. py:method:: download_osm()
+
+      Download the osm file if it doesn't already exist
+
+
+
    .. py:method:: align_channel_from_osm()
 
       Calculate the channel width, slope and other characteristics. This requires a
