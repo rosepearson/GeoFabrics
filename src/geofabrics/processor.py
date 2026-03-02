@@ -1773,10 +1773,7 @@ class RoughnessLengthGenerator(BaseProcessor):
                     "motorway": 12,
                 },
             },
-            "landuse": {
-                "source": None,
-                "drop_offshore": True
-            },
+            "landuse": {"source": None, "drop_offshore": True},
         }
 
         if "roughness" in self.instructions and key in self.instructions["roughness"]:
@@ -1832,7 +1829,9 @@ class RoughnessLengthGenerator(BaseProcessor):
                 )
                 self.logger.error(message)
                 raise ValueError(message)
-            landuse = self.get_vector_or_raster_paths("landuse", "vector", required=True)
+            landuse = self.get_vector_or_raster_paths(
+                "landuse", "vector", required=True
+            )
 
             # Standardise columns and add rougness values
             landuse_instructions = self.get_roughness_instruction("landuse")
@@ -1857,13 +1856,15 @@ class RoughnessLengthGenerator(BaseProcessor):
                 .fillna(landuse_instructions["default_value"])
             )
 
-            if self.get_roughness_instruction("drop_offshore"): # Clip to land
-                landuse = landuse.clip(self.catchment_geometry.land).sort_index(ascending=True)
+            if self.get_roughness_instruction("drop_offshore"):  # Clip to land
+                landuse = landuse.clip(self.catchment_geometry.land).sort_index(
+                    ascending=True
+                )
 
             landuse.rename(
                 columns={landuse_instructions["column_name"]: "landcover"}, inplace=True
             )
-            landuse = landuse[["geometry", 'roughness', "landcover"]]
+            landuse = landuse[["geometry", "roughness", "landcover"]]
 
             # Save files
             landuse.to_file(landuse_path)

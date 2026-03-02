@@ -3031,13 +3031,13 @@ class RoughnessDem(LidarBase):
                 self.chunk_size,
             )
             mask &= self._dem.zo.isnull()  # Only set roughness where not set by LiDAR
-            roughness_value = (
-                landuse_polygon[landuse_polygon["landcover"] == land_category][
-                    "roughness"
-                ].values[0]
-            )
+            roughness_value = landuse_polygon[
+                landuse_polygon["landcover"] == land_category
+            ]["roughness"].values[0]
             self._dem["zo"] = self._dem.zo.where(~mask, roughness_value)
-            self._write_netcdf_conventions_in_place(self._dem, self.catchment_geometry.crs)
+            self._write_netcdf_conventions_in_place(
+                self._dem, self.catchment_geometry.crs
+            )
 
     def add_roads(self, roads_polygon: geopandas.GeoDataFrame):
         """Set roads to paved and unpaved roughness values.
