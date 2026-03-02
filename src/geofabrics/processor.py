@@ -1773,6 +1773,10 @@ class RoughnessLengthGenerator(BaseProcessor):
                     "motorway": 12,
                 },
             },
+            "landuse": {
+                "source": None,
+                "drop_offshore": True
+            },
         }
 
         if "roughness" in self.instructions and key in self.instructions["roughness"]:
@@ -1793,6 +1797,77 @@ class RoughnessLengthGenerator(BaseProcessor):
                 f"The key: {key} is missing from the measured instructions, and"
                 " does not have a default value."
             )
+
+    def load_landuse_lris(self) -> bool:
+        """Download a Landuse map from LRISwithin the catchment BBox."""
+
+        defaults = {
+            "landuse": "landuse_to_roughness.geojson",
+        }
+        landuse_path = self.get_instruction_path("landuse", defaults=defaults)
+
+        if landuse_path.is_file():
+            landuse_polygon = geopandas.read_file(landuse_path)
+            if landuse_polygon.area.sum() == 0:
+                message = (
+                    "Warning zero area landuse polygon provided. Will ignore. "
+                    f"Please check {landuse_path} if unexpected."
+                )
+                self.logger.warning(message)
+                return landuse_polygon
+            if "roughness" not in landuse_polygon.columns:
+                message = (
+                    "No roughnesses defined in the landuse polygon file. This is "
+                    f"required. Please check {landuse_path} and add."
+                )
+                self.logger.error(message)
+                raise ValueError(message)
+            return landuse_polygon
+
+        else:  # Download from LRIS
+            if not self.check_vector_or_raster("landuse", "vector"):
+                message = (
+                    "No roughnesses landuse dataset specified. This is required"
+                    f" if using `landuse`. Please as in the instruction file."
+                )
+                self.logger.error(message)
+                raise ValueError(message)
+            landuse = self.get_vector_or_raster_paths("landuse", "vector", required=True)
+
+            # Standardise columns and add rougness values
+            landuse_instructions = self.get_roughness_instruction("landuse")
+            if landuse_instructions["column_name"] not in landuse.columns:
+                message = (
+                    f"Column name {landuse_instructions['column_name']} not in "
+                    f"landuse dataset. Please check the instruction file and the "
+                    f"dataset. Dataset columns names are: {landuse.columns}."
+                )
+                self.logger.error(message)
+                raise ValueError(message)
+            # Remove any landuse classes to ignore and map the roughness values
+            if "ignore" in landuse_instructions:
+                landuse = landuse[
+                    ~landuse[landuse_instructions["column_name"]].isin(
+                        landuse_instructions["ignore"]
+                    )
+                ]
+            landuse["roughness"] = (
+                landuse[landuse_instructions["column_name"]]
+                .map(landuse_instructions["classes_to_roughness"])
+                .fillna(landuse_instructions["default_value"])
+            )
+
+            if self.get_roughness_instruction("drop_offshore"): # Clip to land
+                landuse = landuse.clip(self.catchment_geometry.land).sort_index(ascending=True)
+
+            landuse.rename(
+                columns={landuse_instructions["column_name"]: "landcover"}, inplace=True
+            )
+            landuse = landuse[["geometry", 'roughness', "landcover"]]
+
+            # Save files
+            landuse.to_file(landuse_path)
+        return landuse
 
     def load_roads_osm(self) -> bool:
         """Download OpenStreetMap roads within the catchment BBox."""
@@ -1956,6 +2031,12 @@ class RoughnessLengthGenerator(BaseProcessor):
         else:
             roads = None
 
+        landuse = self.get_instruction_general("landuse")
+        if "source" in landuse and "lris" in landuse["source"]:
+            landuse = self.load_landuse_lris()
+        else:
+            landuse = None
+
         # Create folder for caching raw DEM files during DEM generation
         temp_folder = self.setup_temp_folder()
         cached_file = temp_folder / "not_yet_created_file"
@@ -2011,6 +2092,19 @@ class RoughnessLengthGenerator(BaseProcessor):
                 cached_file = temp_folder / "geofabric_empty.nc"
                 self.logger.info(f"Save temp raw DEM to netCDF: {cached_file}")
                 roughness_dem.save_and_load_dem(cached_file)
+
+            # If landuse save temp then add in the landuse
+            if landuse is not None and landuse.area.sum() > 0:
+
+                # Add landuse to roughness
+                roughness_dem.add_landuse(landuse_polygon=landuse)
+
+                # cache the results
+                temp_file = temp_folder / "geofabric_added_landuse.nc"
+                self.logger.info(f"Save geofabric with landuse to netCDF: {temp_file}")
+                roughness_dem.save_and_load_dem(temp_file)
+                self.clean_cached_file(cached_file)
+                cached_file = temp_file
 
             # If roads save temp then add in the roads
             if roads is not None and roads.area.sum() > 0:
