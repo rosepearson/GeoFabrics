@@ -41,8 +41,10 @@ class Test(base_test.Test):
         # Load in environment variables to get and set the private API keys
         dotenv.load_dotenv()
         linz_key = os.environ.get("LINZ_API", None)
+        lris_key = os.environ.get("LRIS_API", None)
         cls.instructions["default"] = {
-            "datasets": {"vector": {"linz": {"key": linz_key}}}
+            "datasets": {"vector": {"linz": {"key": linz_key},
+                                    "lris": {"key": lris_key}}}
         }
 
         # create fake catchment boundary

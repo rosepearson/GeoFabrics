@@ -1835,9 +1835,9 @@ class RoughnessLengthGenerator(BaseProcessor):
 
             # Standardise columns and add rougness values
             landuse_instructions = self.get_roughness_instruction("landuse")
-            if landuse_instructions["column_name"] not in landuse.columns:
+            if landuse_instructions["landcover"] not in landuse.columns:
                 message = (
-                    f"Column name {landuse_instructions['column_name']} not in "
+                    f"Column name {landuse_instructions['landcover']} not in "
                     f"landuse dataset. Please check the instruction file and the "
                     f"dataset. Dataset columns names are: {landuse.columns}."
                 )
@@ -1846,14 +1846,14 @@ class RoughnessLengthGenerator(BaseProcessor):
             # Remove any landuse classes to ignore and map the roughness values
             if "ignore" in landuse_instructions:
                 landuse = landuse[
-                    ~landuse[landuse_instructions["column_name"]].isin(
+                    ~landuse[landuse_instructions["landcover"]].isin(
                         landuse_instructions["ignore"]
                     )
                 ]
             landuse["roughness"] = (
-                landuse[landuse_instructions["column_name"]]
+                landuse[landuse_instructions["landcover"]]
                 .map(landuse_instructions["classes_to_roughness"])
-                .fillna(landuse_instructions["default_value"])
+                .fillna(self.get_roughness_instruction("default_values")["land"])
             )
 
             if self.get_roughness_instruction("drop_offshore"):  # Clip to land
@@ -1862,7 +1862,7 @@ class RoughnessLengthGenerator(BaseProcessor):
                 )
 
             landuse.rename(
-                columns={landuse_instructions["column_name"]: "landcover"}, inplace=True
+                columns={landuse_instructions["landcover"]: "landcover"}, inplace=True
             )
             landuse = landuse[["geometry", "roughness", "landcover"]]
 
