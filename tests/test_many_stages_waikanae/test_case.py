@@ -43,8 +43,9 @@ class Test(base_test.Test):
         linz_key = os.environ.get("LINZ_API", None)
         lris_key = os.environ.get("LRIS_API", None)
         cls.instructions["default"] = {
-            "datasets": {"vector": {"linz": {"key": linz_key},
-                                    "lris": {"key": lris_key}}}
+            "datasets": {
+                "vector": {"linz": {"key": linz_key}, "lris": {"key": lris_key}}
+            }
         }
 
         # create fake catchment boundary
