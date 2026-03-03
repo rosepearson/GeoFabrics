@@ -2032,7 +2032,7 @@ class RoughnessLengthGenerator(BaseProcessor):
         else:
             roads = None
 
-        landuse = self.get_instruction_general("landuse")
+        landuse = self.get_roughness_instruction("landuse")
         if "source" in landuse and "lris" in landuse["source"]:
             landuse = self.load_landuse_lris()
         else:
