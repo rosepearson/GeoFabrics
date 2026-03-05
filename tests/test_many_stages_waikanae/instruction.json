@@ -194,16 +194,6 @@
 			"benchmark": "benchmark.nc"
 		},
 		"datasets": {
-			"lidar": {
-				"open_topography": {
-					"Wellington_2013": {
-						"crs": {
-							"horizontal": 2193,
-							"vertical": 7839
-						}
-					}
-				}
-			},
 			"vector": {
 				"linz": {
 					"land": {
@@ -219,18 +209,18 @@
 		},
 		"general": {
 			
-			"lidar_classifications_to_keep": [1, 2, 4, 9],
+			"lidar_classifications_to_keep": [1, 2, 4, 6, 9],
 			"interpolation": {"no_data": "linear"}
 		},
-		"roughness": {
+		"roughness": { "default_values": {"rivers": 0.006, "lakes": null, "land": 0.1, "ocean": 0.004},
 			"roads": {"source": "osm", "ignore": ["pedestrian", "footway", "footpath", "track", "path", "cycleway"],
                       "widths": {"default": 10, "residential": 20, "tertiary": 20, "secondary": 20, "motorway": 20}},
 			"landuse": {"source": "lris", "landcover": "Name_2018",
-						"classes_to_roughness": {"Transport Infrastructure": 0.0005, "Exotic Forest": 0.6,	"Built-up Area (settlement)": 0.0005, "Low Producing Grassland": 0.09, "River": 0.006, 
-									"Herbaceous Freshwater Vegetation": 0.082, "Indigenous Forest": 0.85, "Broadleaved Indigenous Hardwoods": 0.85, "Lake or Pond": 0.006,
-									"Manuka and/or Kanuka": 0.6, "Gorse and/or Broom": 0.6, "High Producing Exotic Grassland": 0.09, "Deciduous Hardwoods": 0.85, "Sand or Gravel": 0.0016,
+						"classes_to_roughness": {"Transport Infrastructure": 0.001, "Exotic Forest": 0.6, "Low Producing Grassland": 0.09, "River": 0.006, "Built-up Area (settlement)": 0.05,
+									"Herbaceous Freshwater Vegetation": 0.082, "Indigenous Forest": 0.85, "Broadleaved Indigenous Hardwoods": 0.85, "Lake or Pond": 0.1,
+									"Manuka and/or Kanuka": 0.6, "Gorse and/or Broom": 0.4, "High Producing Exotic Grassland": 0.09, "Deciduous Hardwoods": 0.85, "Sand or Gravel": 0.008,
 									"Mixed Exotic Shrubland": 0.6, "Surface Mine or Dump": 0.004, "Orchard, Vineyard or Other Perennial Crop": 0.09, "Forest - Harvested": 0.004,
-									"Gravel or Rock": 0.0016, "Fernland": 0.6, "Matagouri or Grey Scrub": 0.6, "Urban Parkland/Open Space": 0.0005}
+									"Gravel or Rock": 0.0016, "Fernland": 0.6, "Matagouri or Grey Scrub": 0.6, "Urban Parkland/Open Space": 0.002}
             }
 		}
 	}

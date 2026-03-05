@@ -1799,23 +1799,23 @@ class RoughnessLengthGenerator(BaseProcessor):
         """Download a Landuse map from LRISwithin the catchment BBox."""
 
         defaults = {
-            "landuse": "landuse_to_roughness.geojson",
+            "landuse_to_roughness": "landuse_to_roughness.geojson",
         }
-        landuse_path = self.get_instruction_path("landuse", defaults=defaults)
+        landuse_to_roughness_path = self.get_instruction_path("landuse_to_roughness", defaults=defaults)
 
-        if landuse_path.is_file():
-            landuse_polygon = geopandas.read_file(landuse_path)
+        if landuse_to_roughness_path.is_file():
+            landuse_polygon = geopandas.read_file(landuse_to_roughness_path)
             if landuse_polygon.area.sum() == 0:
                 message = (
                     "Warning zero area landuse polygon provided. Will ignore. "
-                    f"Please check {landuse_path} if unexpected."
+                    f"Please check {landuse_to_roughness_path} if unexpected."
                 )
                 self.logger.warning(message)
                 return landuse_polygon
             if "roughness" not in landuse_polygon.columns:
                 message = (
                     "No roughnesses defined in the landuse polygon file. This is "
-                    f"required. Please check {landuse_path} and add."
+                    f"required. Please check {landuse_to_roughness_path} and add."
                 )
                 self.logger.error(message)
                 raise ValueError(message)
@@ -1829,9 +1829,16 @@ class RoughnessLengthGenerator(BaseProcessor):
                 )
                 self.logger.error(message)
                 raise ValueError(message)
-            landuse = self.get_vector_or_raster_paths(
+            landuse_paths = self.get_vector_or_raster_paths(
                 "landuse", "vector", required=True
             )
+            if len(landuse_paths) > 1:
+                self.logger.warning(
+                    f"{len(landuse_paths)} landuse datasets provided. "
+                    f"Specficially {landuse_paths}. Only consider the "
+                    "first if multiple."
+                )
+            landuse = geopandas.read_file(landuse_paths[0])
 
             # Standardise columns and add rougness values
             landuse_instructions = self.get_roughness_instruction("landuse")
@@ -1843,20 +1850,18 @@ class RoughnessLengthGenerator(BaseProcessor):
                 )
                 self.logger.error(message)
                 raise ValueError(message)
-            # Remove any landuse classes to ignore and map the roughness values
-            if "ignore" in landuse_instructions:
-                landuse = landuse[
-                    ~landuse[landuse_instructions["landcover"]].isin(
-                        landuse_instructions["ignore"]
-                    )
-                ]
+            # Remove any landuse classes without a specified roughness value
+            landuse = landuse[
+                landuse[landuse_instructions["landcover"]].isin(
+                    landuse_instructions["classes_to_roughness"].keys()
+                )
+            ]
             landuse["roughness"] = (
                 landuse[landuse_instructions["landcover"]]
                 .map(landuse_instructions["classes_to_roughness"])
-                .fillna(self.get_roughness_instruction("default_values")["land"])
             )
 
-            if self.get_roughness_instruction("drop_offshore"):  # Clip to land
+            if landuse_instructions.get("drop_offshore", False):  # Clip to land
                 landuse = landuse.clip(self.catchment_geometry.land).sort_index(
                     ascending=True
                 )
@@ -1867,7 +1872,7 @@ class RoughnessLengthGenerator(BaseProcessor):
             landuse = landuse[["geometry", "roughness", "landcover"]]
 
             # Save files
-            landuse.to_file(landuse_path)
+            landuse.to_file(landuse_to_roughness_path)
         return landuse
 
     def load_roads_osm(self) -> bool:
