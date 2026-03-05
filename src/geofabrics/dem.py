@@ -2915,22 +2915,25 @@ class RoughnessDem(LidarBase):
                 self._dem.data_source != self.SOURCE_CLASSIFICATION["waterways"],
                 self.default_values["waterways"],
             )
-        print(self.default_values)
         if self.default_values["lakes"] is not None:
             self._dem["zo"] = self._dem.zo.where(
                 self._dem.data_source != self.SOURCE_CLASSIFICATION["lakes"],
                 self.default_values["lakes"],
             )
-
         # Set roughness where land and no LiDAR or landuse data
-        mask = self._dem.data_source == self.SOURCE_CLASSIFICATION["coarse DEM"]
-        mask &= self._dem.zo.isnull()
-        self._dem["zo"] = self._dem.zo.where(
-            ~mask,
-            self.default_values["land"],
-        )  # or LiDAR with no roughness estimate
+        if self.default_values["land"] is not None:
+            mask = clip_mask(
+                self._dem.z, self.catchment_geometry.land.geometry, self.chunk_size
+            )
+            mask &= self._dem.zo.isnull()
+            self._dem["zo"] = self._dem.zo.where(
+                ~mask,
+                self.default_values["land"],
+            )
+
         # Ensure the defaults are re-added
         self._write_netcdf_conventions_in_place(self._dem, self.catchment_geometry.crs)
+
         # Interpolate any missing roughness values
         if self.interpolation_method is not None:
             self._dem["zo"] = self._dem.zo.rio.interpolate_na(
