@@ -1801,7 +1801,9 @@ class RoughnessLengthGenerator(BaseProcessor):
         defaults = {
             "landuse_to_roughness": "landuse_to_roughness.geojson",
         }
-        landuse_to_roughness_path = self.get_instruction_path("landuse_to_roughness", defaults=defaults)
+        landuse_to_roughness_path = self.get_instruction_path(
+            "landuse_to_roughness", defaults=defaults
+        )
 
         if landuse_to_roughness_path.is_file():
             landuse_polygon = geopandas.read_file(landuse_to_roughness_path)
@@ -1856,9 +1858,8 @@ class RoughnessLengthGenerator(BaseProcessor):
                     landuse_instructions["classes_to_roughness"].keys()
                 )
             ]
-            landuse["roughness"] = (
-                landuse[landuse_instructions["landcover"]]
-                .map(landuse_instructions["classes_to_roughness"])
+            landuse["roughness"] = landuse[landuse_instructions["landcover"]].map(
+                landuse_instructions["classes_to_roughness"]
             )
 
             if landuse_instructions.get("drop_offshore", False):  # Clip to land
