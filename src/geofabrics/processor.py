@@ -1773,13 +1773,13 @@ class RoughnessLengthGenerator(BaseProcessor):
                     "motorway": 12,
                 },
             },
-            "landuse": {"source": None, "drop_offshore": True},
+            "landuse": {"drop_offshore": True},
         }
 
         if "roughness" in self.instructions and key in self.instructions["roughness"]:
             roughness_instruction = self.instructions["roughness"][key]
             # ensure all default keys included if a dictionary
-            if key in ["default_values", "parameters"]:
+            if key in defaults.keys() and isinstance(roughness_instruction, dict):
                 for sub_key in defaults[key]:
                     if sub_key not in roughness_instruction:
                         roughness_instruction[sub_key] = defaults[key][sub_key]
@@ -1861,7 +1861,7 @@ class RoughnessLengthGenerator(BaseProcessor):
                 .map(landuse_instructions["classes_to_roughness"])
             )
 
-            if landuse_instructions.get("drop_offshore", False):  # Clip to land
+            if landuse_instructions["drop_offshore"]:  # Clip to land
                 landuse = landuse.clip(self.catchment_geometry.land).sort_index(
                     ascending=True
                 )
