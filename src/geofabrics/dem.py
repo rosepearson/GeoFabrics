@@ -2923,8 +2923,9 @@ class RoughnessDem(LidarBase):
         # Set roughness where land and no LiDAR or landuse data
         if self.default_values["land"] is not None:
             roi_mask = clip_mask(
-                self._dem.zo, self.catchment_geometry.land_and_foreshore.geometry,
-                self.chunk_size
+                self._dem.zo,
+                self.catchment_geometry.land_and_foreshore.geometry,
+                self.chunk_size,
             )
             notnull_mask = self._dem.zo.isnull()
             self._dem["zo"] = self._dem.zo.where(
