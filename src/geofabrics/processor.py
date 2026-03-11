@@ -696,11 +696,15 @@ class BaseProcessor(abc.ABC):
 
             # download the specified datasets from the data service - then get the
             # local file path
-            search_polygon = (
-                self.catchment_geometry.catchment
-                if self.catchment_geometry is not None
-                else None
-            )
+            if self.catchment_geometry is None:
+                search_polygon = None
+            else:
+                search_polygon = geopandas.GeoDataFrame(
+                    self.catchment_geometry.catchment.buffer(
+                        self.catchment_geometry.resolution / numpy.sqrt(2)
+                    ),
+                    columns=["geometry"],
+                )
             self.lidar_fetcher = geoapis.lidar.OpenTopography(
                 cache_path=self.get_instruction_path("downloads") / "lidar",
                 search_polygon=search_polygon,
