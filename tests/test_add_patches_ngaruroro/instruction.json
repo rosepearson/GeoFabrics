@@ -20,7 +20,7 @@
 		"patches": ["../patch_1.nc", "../patch_2.tif"],
         "raw_dem": "../initial_dem.nc",
 		"result_dem": "test_dem.nc",
-		"benchmark_dem": "benchmark_dem.nc"
+		"benchmark_dem": "benchmark.nc"
 	},
 	"patch": {
 		"layers": "z"
