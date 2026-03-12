@@ -297,6 +297,12 @@ Module Contents
 
 
 
+   .. py:method:: load_landuse_lris()
+
+      Download a Landuse map from LRISwithin the catchment BBox.
+
+
+
    .. py:method:: load_roads_osm()
 
       Download OpenStreetMap roads within the catchment BBox.

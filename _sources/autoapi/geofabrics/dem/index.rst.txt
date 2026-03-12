@@ -394,6 +394,14 @@ Module Contents
 
 
 
+   .. py:method:: add_landuse(landuse_polygon)
+
+      Set landuse to roughness values.
+
+      :param landuse_polygon: Dataframe with polygon and associated roughness values
+
+
+
    .. py:method:: add_roads(roads_polygon)
 
       Set roads to paved and unpaved roughness values.
