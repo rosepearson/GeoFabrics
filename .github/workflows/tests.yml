@@ -58,7 +58,7 @@ jobs:
 
     - name: Install test dependencies
       run: |
-        pip install flake8 pytest
+        pip install black flake8 pytest
 
 
     - name: Create .env file with API keys
@@ -68,6 +68,9 @@ jobs:
         echo import .env file from secrets and regenerate the file
         echo $ENV_BASE64 | base64 -d > .env
 
+
+    - name: Format Python code with Black
+      run: black .
 
     - name: Run lint with flake8
       uses: py-actions/flake8@v2
