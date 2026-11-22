@@ -118,7 +118,7 @@ def node_centred_reach_cross_section(
 
 
 class Channel:
-    """A class to define a channel centre line from a digital network."""
+    """Define a channel centreline from a digital network."""
 
     def __init__(
         self,
@@ -421,7 +421,7 @@ class Channel:
         ----------
 
         channel
-            A data frame with the geometry defining the channel centreline.
+            A GeoDataFrame containing the channel centreline geometry.
         sample_direction
             Are the reaches sampled in the same direction they are ordered.
             1 if in the same direction, -1 if in the opposite direction.
@@ -446,7 +446,7 @@ class Channel:
         ----------
 
         channel
-            A data frame with the geometry defining the channel centreline.
+            A GeoDataFrame containing the channel centreline geometry.
         spacing
             The spacing between sampled points along straight segments
         sample_direction
@@ -483,7 +483,7 @@ class Channel:
         ----------
 
         channel
-            A data frame with the geometry defining the channel centreline.
+            A GeoDataFrame containing the channel centreline geometry.
         spacing
             The spacing between sampled points along straight segments
         sample_direction
@@ -596,9 +596,11 @@ class Channel:
 
 
 class InterpolateMeasuredElevations:
-    """Interpolate measured river bed elevations. Requires LineStrings of
-    riverbed elevations, and the LineStrings defining the left and right
-    riverbank."""
+    """Interpolate measured river-bed elevations.
+
+    Requires LineStrings of river-bed elevations and LineStrings defining the
+    left and right riverbanks.
+    """
 
     def __init__(
         self,
@@ -608,7 +610,7 @@ class InterpolateMeasuredElevations:
         cross_section_spacing: int,
         crs: int,
     ):
-        """Setup for interpolating the measured riverbed elevations along
+        """Set up interpolation of measured river-bed elevations along
         equally spaced cross sections."""
         self.logger = logging.getLogger(f"{__name__}.{self.__class__.__name__}")
 
@@ -1539,7 +1541,7 @@ class ChannelCharacteristics:
             widths["widths"].append((stop_i - start_i) * resolution)
             widths["threshold"].append(dz_bankfull)
             widths["channel_count"].append(channel_count)
-        # Add threshold/width information as newcolumns to data frame
+        # Add threshold and width information as new columns to the GeoDataFrame.
         for key in widths.keys():
             cross_sections[key] = widths[key]
         # Check valid - one channel, start & end within section, non-NaN thres
@@ -2357,7 +2359,7 @@ class ChannelCharacteristics:
         ----------
 
         aligned_channel
-            The channel centre line. Should be in the channel bed.
+            The channel centreline, positioned in the channel bed.
         threshold
             The height height above the water level to detect as a bank.
         max_threshold

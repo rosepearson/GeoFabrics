@@ -1,9 +1,7 @@
 # -*- coding: utf-8 -*-
 """
-This module contains classes associated with generating GeoFabric layers from
-LiDAR and bathymetry contours based on the instructions contained in a JSON file.
-
-GeoFabric layers include hydrologically conditioned DEMs.
+This module contains processors that generate GeoFabrics products from LiDAR,
+bathymetry, and other data sources configured in a JSON instruction file.
 """
 
 import numpy
@@ -177,13 +175,13 @@ class BaseProcessor(abc.ABC):
         generator: dem.DemBase,
         compression: int,
     ):
-        """Save out the dem/geofabrics labelled array.
+        """Save a DEM or GeoFabrics output array to disk.
 
         Parameters
         ----------
 
         filename
-            The filename including extension to save the DEM/geofabric to.
+            Output path for the DEM or GeoFabrics layer.
         dataset
             The labelled array data to save.
         generator
@@ -1613,7 +1611,7 @@ class PatchDemGenerator(BaseProcessor):
             )
 
     def run(self):
-        """Generate a patched DEM or geofabric."""
+        """Generate a patched DEM or GeoFabrics layer."""
 
         # Ensure the results folder has been created
         self.create_results_folder()
@@ -2352,17 +2350,6 @@ class RiverBathymetryGenerator(BaseProcessor):
     later be incorporated into a hydrologically conditioned DEM by
     ``HydrologicDemGenerator``.
 
-    Attributes:
-        channel_polyline  The main channel along which to estimate depth. This
-            is a polyline.
-        gen_dem  The ground DEM generated along the main channel. This is a
-            raster.
-        veg_dem  The vegetation DEM generated along the main channel. This is a
-            raster.
-        aligned_channel_polyline  The main channel after its alignment has been
-            updated based on the DEM. Width and slope are estimated on this.
-        transects  Transect polylines perpendicular to the aligned channel, with
-            sampled DEM values.
     """
 
     def __init__(self, json_instructions: json, debug: bool = True):
@@ -2595,14 +2582,14 @@ class RiverBathymetryGenerator(BaseProcessor):
         channel_width: bathymetry_estimation.ChannelCharacteristics,
         channel: bathymetry_estimation.Channel,
     ) -> geopandas.GeoDataFrame:
-        """Align the river network defined channel based on LiDAR and save the aligned
-        channel.
+        """Align the river-network channel using LiDAR and save the result.
 
-
-        Parameters:
-            channel_width  The class for characterising channel width and other
-                properties
-            channel  The river network defined channel alignment
+        Parameters
+        ----------
+        channel_width
+            Channel-characteristics estimator used to align the network.
+        channel
+            Initial channel alignment from the river network.
         """
 
         # Get instruction parameters.
@@ -2648,14 +2635,14 @@ class RiverBathymetryGenerator(BaseProcessor):
         channel_width: bathymetry_estimation.ChannelCharacteristics,
         aligned_channel: geopandas.GeoDataFrame,
     ) -> tuple:
-        """Align the river network defined channel based on LiDAR and save the aligned
-        channel.
+        """Estimate channel width and slope from the aligned channel.
 
-
-        Parameters:
-            channel_width  The class for characterising channel width and other
-                properties
-            channel  The river network defined channel alignment
+        Parameters
+        ----------
+        channel_width
+            Channel-characteristics estimator used to sample cross sections.
+        aligned_channel
+            Channel alignment to characterize.
         """
 
         # Get instruction parameters.
@@ -3164,14 +3151,19 @@ class RiverBathymetryGenerator(BaseProcessor):
     def _calculate_neal_et_al_depth(
         self, width_values, width_name, slope_name, threshold_name
     ):
-        """Calculate the uniform flow theory depth estimate as laid out in Neal
-        et al.
+        """Estimate depth using the uniform-flow method described by Neal et al.
 
-        Parameters:
-            width_values  A dataframe of channel characteristics.
-            width_name  The name of the channel width column.
-            slope_name  The name of the down-river channel slope column.
-            threshold_name The name of the bank height threshold column."""
+        Parameters
+        ----------
+        width_values
+            Channel characteristics used in the estimate.
+        width_name
+            Column containing channel width values.
+        slope_name
+            Column containing downstream channel slope values.
+        threshold_name
+            Column containing bank-height thresholds.
+        """
 
         full_bank_depth = (
             width_values["mannings_n"]
@@ -3186,11 +3178,17 @@ class RiverBathymetryGenerator(BaseProcessor):
         """Calculate the hydraulic geometry depth estimate described by Rupp
         and Smart.
 
-        Parameters:
-            width_values  A dataframe of channel characteristics.
-            width_name  The name of the channel width column.
-            slope_name  The name of the down-river channel slope column.
-            threshold_name The name of the bank height threshold column."""
+        Parameters
+        ----------
+        width_values
+            Channel characteristics used in the estimate.
+        width_name
+            Column containing channel width values.
+        slope_name
+            Column containing downstream channel slope values.
+        threshold_name
+            Column containing bank-height thresholds.
+        """
 
         a = 0.745
         b = 0.305
@@ -3209,16 +3207,21 @@ class RiverBathymetryGenerator(BaseProcessor):
         full_bank_width_name,
         width_values,
     ):
-        """Calculate the depth of the channel as detected in the LiDAR derived
-        DEM. Remove the above water area, then calculate the depth for the
-        'flat water' width as derived in the LiDAR.
+        """Convert full-bank depth to channel depth using estimated channel geometry.
 
-        Parameters:
-            full_bank_depth  The flood depth from the flood water height
-            width_values  A dataframe of channel characteristics.
-            full_bank_width_name  The name of the full bank width column.
-            flat_width_name  The name of the down-river channel slope column.
-            threshold_name The name of the bank height threshold column."""
+        Parameters
+        ----------
+        full_bank_depth
+            Estimated depth at full-bank flow.
+        threshold_name
+            Column containing bank-height thresholds.
+        flat_width_name
+            Column containing the flat-water channel width.
+        full_bank_width_name
+            Column containing full-bank channel width.
+        width_values
+            Channel characteristics used in the conversion.
+        """
 
         # Calculate the estimated full bank flow area
         full_flood_area = full_bank_depth * width_values[full_bank_width_name]

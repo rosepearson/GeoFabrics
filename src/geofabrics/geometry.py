@@ -710,14 +710,22 @@ class RiverMouthFan:
 
     TODO: Consider defining the fan width as ten times the mouth width.
 
-    Attributes:
-        crs  The horizontal CRS to be used. i.e. EPSG:2193
-        cross_section_spacing  The spacing in (m) of the sampled cross sections.
-        aligned_channel_file  Path to the aligned river channel file.
-        river_bathymetry_file  Path to the river bathymetry values.
-        ocean_contour_file  Path to ocean contours; depths are positive.
-        ocean_points_file  Path to ocean points; elevations are negative.
-        ocean_contour_depth_label  Column containing depth values.
+    Attributes
+    ----------
+    crs
+        Horizontal CRS, such as EPSG:2193.
+    cross_section_spacing
+        Spacing between sampled cross sections, in metres.
+    aligned_channel_file
+        Path to the aligned river channel file.
+    river_bathymetry_file
+        Path to the river bathymetry values.
+    ocean_contour_file
+        Path to ocean contours; depths are positive.
+    ocean_points_file
+        Path to ocean points; elevations are negative.
+    ocean_contour_depth_label
+        Column containing ocean contour depths.
     """
 
     FAN_ANGLE = 30
@@ -817,14 +825,19 @@ class RiverMouthFan:
         depth_sign: int = -1,
         depth_multiplier: int = 2,
     ) -> geopandas.GeoDataFrame:
-        """Load in the ocean contours and remove those that are too close to the
-        shoreline to consider as the slope change would be too great.
+        """Load ocean contours and select those suitable for the fan boundary.
 
-        Parameters:
-            river_mouth_depth  The depth in m of the river mouth
-            depth_sign  The sign of the depths (-1 means depths are positive)
-            depth_multiplier  Number of times deeped the end contour should be
-                than the river mouth
+        Contours close to shore are excluded because they would create an
+        excessively steep transition.
+
+        Parameters
+        ----------
+        river_mouth_depth
+            River-mouth depth, in metres.
+        depth_sign
+            Sign convention used for the depth values.
+        depth_multiplier
+            Multiple of the river-mouth depth used to select the end contour.
         """
 
         # Load in the ocean contours and find the contours to terminate against
@@ -857,13 +870,18 @@ class RiverMouthFan:
         mouth_point,
         depth_multiplier,
     ) -> geopandas.GeoDataFrame:
-        """Load in the ocean points and get the nearest one to the coast that is deeper than
-        the river.
+        """Find the nearest ocean point in the fan that is deeper than the river mouth.
 
-        Parameters:
-            river_mouth_depth  The depth in m of the river mouth
-            depth_multiplier  Number of times deeped the end contour should be
-                than the river mouth
+        Parameters
+        ----------
+        river_mouth_z
+            River-mouth elevation used for the depth comparison.
+        fan
+            Fan polygon in which to search for ocean points.
+        mouth_point
+            Point marking the centre of the river mouth.
+        depth_multiplier
+            Multiplier of the river-mouth depth used to define the minimum depth.
         """
 
         # Load in the ocean contours and find the contours to terminate against
@@ -897,15 +915,20 @@ class RiverMouthFan:
         mouth_point: shapely.geometry.Point,
         mouth_tangent: shapely.geometry.Point,
     ):
-        """Calculate and return the fan bathymetry values for both river bed
-        estimation approaches.
+        """Calculate fan bathymetry for both river-bed estimation approaches.
 
-        Parameters:
-            intersection_line  The contour line defining the end of the fan
-            river_mouth_depth  The depth in m of the river mouth
-            end_depth  The depth of the end contour of the fan in m
-            mouth_point  The location of the centre of the river mouth
-            mouth_tangent The tangent to the river mouth (along channel axis)
+        Parameters
+        ----------
+        intersection_line
+            Contour line defining the end of the fan.
+        river_mouth_elevations
+            River-mouth elevations used to define the fan's starting edge.
+        end_depth
+            Depth of the fan's end contour, in metres.
+        mouth_point
+            Centre point of the river mouth.
+        mouth_tangent
+            Tangent vector along the channel axis at the river mouth.
         """
 
         # Get the length of the fan centreline
@@ -960,15 +983,23 @@ class RiverMouthFan:
         mouth_normal: float,
         length: float,
     ):
-        """Return the fan polygon of maximum length. This will be used to
-        produce data to the first contour at least 2x the depth of the river
-        mouth.
+        """Return a maximum-length fan polygon.
 
-        Parameters:
-            river_mouth_depth  The depth in m of the river mouth
-            mouth_point  The location of the centre of the river mouth
-            mouth_tangent The tangent to the river mouth (along channel axis)
-            mouth_normal  The normal to the river mouth (cross channel axis)
+        The polygon provides coverage to the first contour at least twice as
+        deep as the river mouth.
+
+        Parameters
+        ----------
+        river_mouth_width
+            Width of the river mouth.
+        mouth_point
+            Centre point of the river mouth.
+        mouth_tangent
+            Tangent vector along the channel axis at the river mouth.
+        mouth_normal
+            Normal vector across the channel at the river mouth.
+        length
+            Maximum fan length, in metres.
         """
 
         end_width = river_mouth_width + 2 * length * numpy.tan(
@@ -1023,7 +1054,7 @@ class RiverMouthFan:
             length=self.FAN_MAX_LENGTH,
         )
 
-        # Define fan centre line
+        # Define the fan centreline.
         fan_centre = shapely.geometry.LineString(
             [
                 mouth_point,

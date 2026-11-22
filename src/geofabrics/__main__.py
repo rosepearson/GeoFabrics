@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 """
-Command-line entry point for running GeoFabrics from a JSON instruction file or dictionary.
+Command-line entry point for running GeoFabrics from a JSON instruction file.
 """
 
 from geofabrics import runner
@@ -29,7 +29,7 @@ def parse_args():
 
 
 def cli_run_from_dict():
-    """Pass the parsed ``--instructions`` value to the dictionary-based runner."""
+    """Pass the parsed ``--instructions`` value to the dictionary runner."""
 
     # Load the instructions
     args = parse_args()

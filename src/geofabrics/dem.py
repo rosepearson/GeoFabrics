@@ -273,7 +273,7 @@ class CoarseDem:
 
 
 class DemBase(abc.ABC):
-    """An abstract class to manage the different geofabric layers in a
+    """An abstract class for managing GeoFabrics data layers in a
     catchment context. The geofabruc has a z, and data_source layer and may
     sometimes also have a zo (roughness length) and lidar_source layer.
 
@@ -3027,7 +3027,7 @@ class RoughnessDem(LidarBase):
         ----------
 
         landuse_polygon
-            Dataframe with polygon and associated roughness values
+            GeoDataFrame containing polygons and their roughness values.
         """
 
         # Set unpaved roads
@@ -3053,7 +3053,7 @@ class RoughnessDem(LidarBase):
         ----------
 
         roads_polygon
-            Dataframe with polygon and associated roughness values
+            GeoDataFrame containing road polygons and their roughness values.
         """
 
         # Set unpaved roads
