@@ -234,8 +234,28 @@ class BathymetryContours:
                     )
             self._contour.set_geometry(geometry_list, inplace=True)
 
-    def sample_contours(self, resolution: float) -> numpy.ndarray:
-        """Sample the contours at the specified resolution."""
+    def sample_contours(self, resolution: float) -> numpy.ndarray | list:
+        """Sample contour lines at regular intervals.
+
+        Parameters
+        ----------
+        resolution
+            Positive spacing between samples, in the horizontal coordinate
+            units of the catchment CRS.
+
+        Returns
+        -------
+        numpy.ndarray or list
+            Structured array with ``X``, ``Y``, and ``Z`` fields. Returns an
+            empty list if there are no contours to sample. Sample locations
+            are in the catchment horizontal CRS.
+
+        Notes
+        -----
+        The stored ``Z`` values are multiplied by ``-1`` whether they come
+        from 3D contour coordinates or from ``z_label``. Returned values
+        define elevation in metres.
+        """
 
         assert (
             resolution > 0

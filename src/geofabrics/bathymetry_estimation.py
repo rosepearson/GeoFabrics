@@ -1216,18 +1216,39 @@ class ChannelCharacteristics:
     def sample_cross_sections(
         self, cross_sections: geopandas.GeoDataFrame, min_z_search_radius: float
     ):
-        """Return the elevations along the cross_section sampled at the
-        sampling resolution. Also add the measured 'min_z_centre' values to
-        the cross_sections.
+        """Sample ground and vegetation elevations along channel cross sections.
+
+        For each cross section, sample both DEMs at intervals of
+        ``self.resolution`` along a transect centered on its midpoint. The
+        nearest DEM cell is used for each sample, with no maximum search
+        distance. The minimum ground elevation within the central search
+        radius is added to ``cross_sections`` as ``min_z_centre``.
 
         Parameters
         ----------
-
         cross_sections
-            The cross_sections with geometry defined as polylines.
+            GeoDataFrame of cross sections. Each row must provide ``mid_x``,
+            ``mid_y``, ``nx``, and ``ny`` fields used to locate and orient its
+            transect. Coordinates must use the same horizontal CRS as the
+            ground and vegetation DEMs.
         min_z_search_radius
-            The distance to search from the centre.
+            Distance from the transect midpoint over which to find the
+            minimum ground elevation. Must use the same units as
+            ``self.resolution``.
 
+        Returns
+        -------
+        dict
+            Mapping with ``gnd_elevations`` and ``veg_elevations`` keys. Each
+            value is a list containing one NumPy array of sampled elevations
+            per cross section. The input ``cross_sections`` is also modified
+            in place by adding ``min_z_centre``.
+
+        Notes
+        -----
+        Missing DEM elevations are returned as NaN. If the central search
+        window contains no valid ground elevations, ``min_z_centre`` is NaN.
+        Elevations in metres.
         """
 
         # The number of transect samples - ensure odd - defined from the first

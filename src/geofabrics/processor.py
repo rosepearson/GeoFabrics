@@ -2634,15 +2634,23 @@ class RiverBathymetryGenerator(BaseProcessor):
         self,
         channel_width: bathymetry_estimation.ChannelCharacteristics,
         aligned_channel: geopandas.GeoDataFrame,
-    ) -> tuple:
+    ) -> None:
         """Estimate channel width and slope from the aligned channel.
 
         Parameters
         ----------
         channel_width
-            Channel-characteristics estimator used to sample cross sections.
+            Configured estimator that samples ground and vegetation DEMs and
+            calculates channel widths and slopes.
         aligned_channel
-            Channel alignment to characterize.
+            Channel alignment used when characterising the channel width, slope,
+            and footprint.
+
+        Returns
+        -------
+        None
+            Writes the river polygon and sampled channel characteristics to
+            their configured result files.
         """
 
         # Get instruction parameters.
@@ -3004,9 +3012,29 @@ class RiverBathymetryGenerator(BaseProcessor):
         return label
 
     def calculate_river_bed_elevations(self):
-        """Calculate and save depth estimates along the channel using various
-        approaches.
+        """Estimate and save river-bed elevations using two depth methods.
 
+        Reads the saved channel-characteristics layer, associates each row with
+        the nearest river-network reach, and estimates bed elevations using
+        the Neal et al. uniform-flow and Rupp and Smart hydraulic-geometry
+        methods. The resulting elevations and channel attributes are written
+        to the configured river-bathymetry result file. When debug output is
+        enabled, the full-bank and area-adjusted depths are included as well.
+
+        Returns
+        -------
+        None
+            Writes the estimates to disk; no result is returned.
+
+        Notes
+        -----
+        Missing reach IDs, flow, and Manning's n values are filled forward and
+        backward from neighboring rows. Other missing or invalid inputs are
+        not explicitly imputed and may propagate into the estimates. Negative
+        depth estimates are set to zero, and depths below the configured
+        threshold are raised to that threshold. Flow is in m^3 / s, width is
+        in meters, slope is dimensionless, Manning's n is dimensionless, and
+        elevations are in meters.
         """
 
         # Read in the flow file and calcaulate the depths - write out the results
@@ -3465,7 +3493,28 @@ class WaterwayBedElevationEstimator(BaseProcessor):
     def minimum_elevation_in_polygon(
         self, geometry: shapely.geometry.Polygon, dem: xarray.Dataset
     ):
-        """Return the minimum DEM elevation in the polygon's bounding box."""
+        """Return the minimum non-missing DEM elevation inside a polygon.
+
+        Parameters
+        ----------
+        geometry
+            Polygon to sample. Its coordinates must use the same CRS as
+            ``dem``; this method does not reproject it.
+        dem
+            DEM dataset containing a ``z`` variable and ``x``/``y``
+            coordinates.
+
+        Returns
+        -------
+        float
+            Minimum ``z`` value after clipping the bounding-box window to the
+            polygon. Returns NaN if the clipped raster contains no valid
+            elevations.
+
+        Notes
+        -----
+        CRS match those of the DEM also defined in the instruction JSON file.
+        """
 
         # Index in polygon bbox
         bbox = geometry.bounds
@@ -4075,7 +4124,29 @@ class StopbankCrestElevationEstimator(BaseProcessor):
     def maximum_elevation_in_polygon(
         self, geometry: shapely.geometry.Polygon, dem: xarray.Dataset
     ):
-        """Return the maximum DEM elevation in the polygon's bounding box."""
+        """Return the maximum DEM elevation in the polygon's bounding box.
+
+        Parameters
+        ----------
+        geometry
+            Polygon whose bounds define the raster window. Its coordinates
+            must use the same CRS as ``dem``; this method does not reproject it.
+        dem
+            DEM dataset containing a ``z`` variable and ``x``/``y``
+            coordinates.
+
+        Returns
+        -------
+        float
+            Maximum ``z`` value in the rectangular window. The values are not
+            clipped to the polygon itself. Returns NaN if the window contains
+            no valid elevations.
+
+        Notes
+        -----
+        Currently the maximum within the polygon bounding box, and not 
+        restricted to the polygon itself.
+        """
 
         # Index in polygon bbox
         bbox = geometry.bounds
@@ -4095,6 +4166,8 @@ class StopbankCrestElevationEstimator(BaseProcessor):
         small_z = dem.z.sel(x=x_slice, y=y_slice)
 
         # Return the maximum elevation in the polygon's bounding box.
+        # TODO: Consider whether to restrict the maximum elevation to cells inside the polygon itself.
+        # float(small_z.rio.clip([geometry]).max())
         return float(small_z.max())
 
     def estimate_elevations_simple(self, stopbanks: geopandas.GeoDataFrame):
