@@ -1660,7 +1660,7 @@ class LidarBase(DemBase):
 
     @property
     def dem(self):
-        """Return the positivly indexed DEM from tiles"""
+        """Return the DEM."""
 
         return self._dem
 
@@ -2783,9 +2783,9 @@ class PatchDem(LidarBase):
 class RoughnessDem(LidarBase):
     """A class to add a roughness (zo) layer to a hydrologically conditioned DEM.
 
-    They STD and mean height of ground cover classified points are calculated from the
-    LiDAR data and z (elevation) layer of the hydrologically conditioned DEM, and used
-    to estimate roughness emperically.
+    The standard deviation and mean height of classified ground-cover points
+    are calculated from the LiDAR data and the DEM elevation layer, then used
+    to estimate roughness empirically.
 
     RoughnessDem logic can be controlled by the constructor inputs.
 
@@ -2897,7 +2897,7 @@ class RoughnessDem(LidarBase):
 
     @property
     def dem(self):
-        """Return interpolaed roughness layer with min and max bounds enforced"""
+        """Return the interpolated roughness layer with minimum and maximum bounds."""
 
         # Set roughness where water
         if self.default_values["ocean"] is not None:
@@ -3448,7 +3448,7 @@ def roughness_from_points(
             parameters = options["parameters"]
 
             # if building/plantation - set value based on classification
-            # Emperical relationship between mean and std above the ground
+            # Empirical relationship between mean and standard deviation above ground.
             z_out[i] = max(std * parameters["std"], height * parameters["mean"])
     return z_out
 

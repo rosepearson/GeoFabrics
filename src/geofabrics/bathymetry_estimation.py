@@ -462,7 +462,7 @@ class Channel:
         number_segment_samples = max(numpy.round(line_string.length / spacing), 2)
         segment_resolution = line_string.length / (number_segment_samples - 1)
 
-        # Equally space points along the entire line string
+        # Space points evenly along the entire line string.
         xy_spaced = [
             line_string.interpolate(i * segment_resolution)
             for i in numpy.arange(0, number_segment_samples, 1)
@@ -1158,7 +1158,7 @@ class ChannelCharacteristics:
 
     def _estimate_water_level_and_slope(self, cross_sections: geopandas.GeoDataFrame):
         """Estimate the water level and slope from the minimum z heights along
-        the sampled cross_sections after applying appropiate smoothing and
+        the sampled cross_sections after applying appropriate smoothing and
         constraints to ensure it is monotonically increasing. Values are stored
         in the cross_sections.
 
@@ -1187,7 +1187,7 @@ class ChannelCharacteristics:
         )
 
     def _smooth_widths_and_thresholds(self, cross_sections: geopandas.GeoDataFrame):
-        """Record the valid and reolling mean of the calculated thresholds and widths
+        """Record valid widths and thresholds and calculate their rolling means.
 
         Parameters
         ----------
@@ -1296,10 +1296,10 @@ class ChannelCharacteristics:
         search_radius: float,
         min_channel_width: float,
     ):
-        """Estimate width based on a thresbold of bank height above water level.
-        Start in the centre and work out. Doesn't detect banks until a value
-        less than the threshold has been detected. Takes the widest channel within
-        the radius.'
+        """Estimate width using a bank-height threshold above the water level.
+
+        Search outward from the centre, detecting a bank after encountering a
+        value below the threshold. Select the widest channel within the radius.
 
         Parameters
         ----------
@@ -1371,10 +1371,10 @@ class ChannelCharacteristics:
         maximum_threshold: float,
         min_channel_width=float,
     ):
-        """Estimate width based on a thresbold of bank height above water level.
-        Start in the centre and work out. Doesn't detect banks until a value
-        less than the threshold has been detected. Takes the widest channel within
-        the radius.'
+        """Estimate width using a bank-height threshold above the water level.
+
+        Search outward from the centre, detecting a bank after encountering a
+        value below the threshold. Select the widest channel within the radius.
 
         Parameters
         ----------
@@ -2084,14 +2084,11 @@ class ChannelCharacteristics:
         return aligned_spline
 
     def _unimodal_smoothing(self, y: numpy.ndarray):
-        """Fit a monotonically increasing cublic spline to the data.
+        """Fit a monotonically increasing cubic spline to the data.
 
-        Monotonically increasing cublic splines
+        Monotonically increasing cubic splines
         - https://stats.stackexchange.com/questions/467126/monotonic-splines-in-python
         - https://analyticalsciencejournals.onlinelibrary.wiley.com/doi/epdf/10.1002/cem.935
-
-        At end could fit non-monotonic fit. unconstrained_polynomial_fit = numpy.linalg
-        .solve(E + la * D3.T @ D3, y)
 
         Parameters
         ----------

@@ -15,29 +15,25 @@ RASTER_TYPE = numpy.float32
 
 
 class CatchmentGeometry:
-    """A class defining revelant catchment regions by polygons.
+    """Define catchment regions as polygons.
 
     The CRS is a dictionary containing the EPSG code for a 'horizontal' and
     'vertical' datum.
 
-    Specifically, this defines polygon regions like 'land', 'foreshore',
-    'offshore', and ensures all regions are defined in the same CRS.
+    This class defines the ``land``, ``foreshore``, and ``offshore`` regions
+    and ensures that they use the same CRS.
 
-    The 'land', 'foreshore' and 'offshore' regions are clipped within the
-    'catchment', but do not overlap. The 'land' is polygon is defined by a
-    specified polygon which is clipped within the 'catchment'. The 'foreshore'
-    is defined as a 'foreshore_buffer' x 'resolution' outward buffer from the
-    'land' and within the 'catchment' extents. The 'offshore' region is any
-    remaining region within the 'catchment' and outside the 'land' and
-    'foreshore' polygons.
+    The regions are clipped to the catchment and do not overlap. The land
+    region is defined by a supplied polygon. The foreshore is an outward buffer
+    from the land region, with width ``foreshore_buffer * resolution``. The
+    offshore region is the remaining area outside the land and foreshore.
 
-    It also supports functions for determining how much of a region is outside an
-    exclusion zone. I.E. is outside
-    `lidar_extents` see class method land_and_foreshore_without_lidar for an example.
+    The class also provides methods to exclude areas, such as LiDAR extents,
+    from a region; see ``land_and_foreshore_without_lidar`` for an example.
 
-    It is initalised with the catchment. The land must be added before the other regions
-    (i.e. land, offshore,
-    foreshore, etc) can be accessed."""
+    Initialize the class with the catchment, then set the land region before
+    accessing the other regions.
+    """
 
     def __init__(
         self,
@@ -108,10 +104,10 @@ class CatchmentGeometry:
         )
 
     def _assert_land_set(self):
-        """Check to make sure the 'land' has been set."""
+        """Ensure that the land region has been set."""
         assert self._land is not None, (
-            "Land has not been set yet. This must be set before anything other than the"
-            " `catchment` can be returned from a `CatchmentGeometry` object"
+            "The land region must be set before accessing any region other than "
+            "the catchment."
         )
 
     @property
@@ -294,8 +290,7 @@ class BathymetryContours:
 
 
 class OceanPoints:
-    """A class for accesing marine bathymetry points. These can be used as
-    depths to interpolate elevations offshore."""
+    """Access marine bathymetry points for interpolating offshore elevations."""
 
     def __init__(
         self,
@@ -448,7 +443,7 @@ class ElevationPoints:
         z_labels: list,
         filter_osm_ids: list,
     ):
-        """Load point and polygon files and concatentate and clip to the catchment."""
+        """Load, concatenate, and clip point and polygon files to the catchment."""
 
         if len(points_files) != len(polygon_files):
             raise ValueError(
@@ -704,25 +699,25 @@ class TileInfo:
 
 
 class RiverMouthFan:
-    """A class for creating an appropiate river mouth fan to transition from
-    river depth estimates to the ocean bathymetry values. This fan region defines a
-    transition from river to coast within a fan shaped polygon (15 degrees on each
-                                                                side).
-    The fan begins with the most downstream river width estimate, and ends with the
-    first contour of either more than 2x the depth of the mouth. This aims to ensure
-    their is a defined fan that is slightly deeper than the surrounding during
-    the transition. A fan is caculated for both river bed elevation approach.
-    TODO In future,it may move to defining the width as 10x the mouth width.
-    If no width at mouth - move back to where there is a valid width
+    """Create a fan-shaped transition from river-bed estimates or measurements
+    to ocean depths.
+
+    The fan extends from the downstream-most river-width values to the first
+    ocean contour deeper than twice the mouth depth. It provides a transition
+    region slightly deeper than the surrounding bathymetry. A fan is calculated
+    for each river-bed elevation approach. If the mouth width is unavailable,
+    use the nearest upstream location with a valid width.
+
+    TODO: Consider defining the fan width as ten times the mouth width.
 
     Attributes:
         crs  The horizontal CRS to be used. i.e. EPSG:2193
         cross_section_spacing  The spacing in (m) of the sampled cross sections.
-        aligned_channel_file  Thefile name for the aligned river channel file.
-        river_bathymetry_file  The file name for the river bathymetry values.
-        ocean_contour_file  The file name for the ocean contours. Depths are positive
-        ocean_points_file The file name for the ocean points. Elevations are negative.
-        ocean_contour_depth_label  The column label for the depth values.
+        aligned_channel_file  Path to the aligned river channel file.
+        river_bathymetry_file  Path to the river bathymetry values.
+        ocean_contour_file  Path to ocean contours; depths are positive.
+        ocean_points_file  Path to ocean points; elevations are negative.
+        ocean_contour_depth_label  Column containing depth values.
     """
 
     FAN_ANGLE = 30
@@ -779,7 +774,7 @@ class RiverMouthFan:
             if len(aligned_channel) > 1:
                 aligned_channel = aligned_channel.iloc[[1]]
 
-        # Explode incase the aligned channel is clipped into a MultiPolyLine
+        # Explode in case clipping produced a MultiLineString.
         x, y = aligned_channel.explode(index_parts=True).iloc[0].geometry.xy
 
         # Calculate the normal and tangent to the channel segment at the mouth

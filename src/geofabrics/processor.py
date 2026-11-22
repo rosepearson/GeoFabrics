@@ -34,8 +34,8 @@ from . import dem
 
 class BaseProcessor(abc.ABC):
     """An abstract class with general methods for accessing elements in
-    instruction files including populating default values. Also contains
-    functions for downloading remote data using geopais, and constructing data
+    instruction files, including populating default values. It also contains
+    functions for downloading remote data through geoapis and constructing data
     file lists.
 
     The `BaseProcessor` class contains several important class members:
@@ -54,9 +54,9 @@ class BaseProcessor(abc.ABC):
         self.catchment_geometry = None
 
     def create_metadata(self) -> dict:
-        """A clase to create metadata to be added as netCDF attributes."""
+        """Create metadata to add as netCDF attributes."""
 
-        # Ensure no senstive key information is printed out as part of the instructions
+        # Ensure no sensitive key information is included in the instructions.
         cleaned_instructions = copy.deepcopy(self.instructions)
         if "datasets" in cleaned_instructions:
             for data_type in cleaned_instructions["datasets"].keys():
@@ -229,11 +229,10 @@ class BaseProcessor(abc.ABC):
         return self.instructions["output"]["grid_params"]["resolution"]
 
     def get_crs(self) -> dict:
-        """Return the CRS projection information (horiztonal and vertical) from
-        the instruction file. Raise an error if 'output' is not in the instructions. If
-        no 'crs' or 'horizontal' or 'vertical' values are specified then use the default
-        value for each one missing from the instructions. If the default is used it is
-        added to the instructions.
+        """Return horizontal and vertical CRS information from the instructions.
+
+        Raise an error if ``output`` is missing. Use the default for any
+        unspecified CRS values and add those defaults to the instructions.
         """
 
         defaults = {"horizontal": 2193, "vertical": 7839}
@@ -269,7 +268,7 @@ class BaseProcessor(abc.ABC):
                 "will be used. If these are not as expected. Check both the "
                 "'horizontal' and 'vertical' values are specified."
             )
-            # Update the CRS just incase this includes any default values
+            # Update the CRS in case this includes any default values.
             self.instructions["output"]["crs"] = crs_dict
             return crs_dict
 
@@ -372,17 +371,15 @@ class BaseProcessor(abc.ABC):
             return defaults[key]
 
     def check_datasets(self, key: str, data_type: str) -> bool:
-        """Check to see if the dataset is included in the instructions:
-        key = dataservice (i.e. local, opentogaphy, linxz, lris)
+        """Return whether a data service is configured for a dataset type.
 
         Parameters
         ----------
 
         key
-            The string identifying how the data is accessed
-            (e.g. local, opentopography, linz, etc)
+            Name of the data service (e.g. local, OpenTopography, or LINZ).
         data_type
-            The string identifying the data type (e.g. raster, lidar, vector)
+            Dataset type (e.g. raster, LiDAR, or vector).
         """
 
         if (
@@ -395,23 +392,22 @@ class BaseProcessor(abc.ABC):
             return False
 
     def check_vector_or_raster(self, key: str, api_type: str) -> bool:
-        """Check to see if vector or raster key (i.e. land, ocean_contours, etc) is
-        included either as a file path, or within any of API's (i.e. LINZ or LRIS).
+        """Return whether a vector or raster input is configured (either locally or via API).
 
         Parameters
         ----------
 
         key
-            The string identifying the vector/raster
+            Name of the vector or raster input.
         api_type
-            The string identifying if the key is a vector or raster
+            Input type, either ``vector`` or ``raster``.
         """
 
         data_services = [
             "linz",
             "lris",
             "statsnz",
-        ]  # This list will increase as geopais is extended to support more vector APIs
+        ]  # This list will grow as geoapis supports more vector APIs.
 
         if "data_paths" in self.instructions and key in self.instructions["data_paths"]:
             # Key included in the data paths
@@ -659,24 +655,20 @@ class BaseProcessor(abc.ABC):
             return None
 
     def get_lidar_datasets_info(self) -> dict:
-        """Return a dictionary with three enties 'file_paths', 'crs' and
-        'tile_index_file'. The 'file_paths' contains a list of LiDAR tiles to
-        process.
+        """Return LiDAR file paths and their optional CRS and tile index as a
+        dictionary. Extract this information from the instruction file as well
+        as any API responses.
 
-        The 'crs' (or coordinate system of the LiDAR data as defined by an EPSG
-        code) is only optionally set (if unset the value is None). The 'crs'
-        should only be set if the CRS information is not correctly encoded in
-        this is only supported for OpenTopography LiDAR.
+        ``file_paths`` contains the LiDAR tiles to process. The optional
+        ``crs`` value is the EPSG code to use when the source files do not
+        contain valid CRS information; explicit CRS values are currently
+        supported only for OpenTopography LiDAR. The optional
+        ``tile_index_file`` describes tile extents and is currently supported
+        only for OpenTopography files.
 
-        The 'tile_index_file' is also optional (if unset the value is None).
-        The 'tile_index_file' should be given if a tile index file exists for
-        the LiDAR files specifying the extents of each tile. This is currently
-        only supported for OpenTopography files.
-
-        If a LiDAR dataset (either through an API or locally) is specified this
-        is checked and all files within the catchment area are downloaded and
-        used to construct the file list. If none is specified, the instruction
-        'data_paths' is checked for 'lidars' and these are returned.
+        When a LiDAR dataset is specified through an API or local source,
+        collect its files within the catchment. Otherwise, read the ``lidars``
+        entry from ``data_paths``.
         """
 
         # Store dataset information in a dictionary of dictionaries
@@ -916,7 +908,7 @@ class BaseProcessor(abc.ABC):
             except (Exception, PermissionError) as caught_exception:
                 logging.warning(
                     f"Caught error {caught_exception} during rmtree of "
-                    f"{temp_folder}. Supressing error. You will have to "
+                    f"{temp_folder}. Suppressing the error. You will need to "
                     f"manually delete {temp_folder}."
                 )
         temp_folder.mkdir(parents=True, exist_ok=True)
@@ -931,7 +923,7 @@ class BaseProcessor(abc.ABC):
         except (Exception, PermissionError) as caught_exception:
             logging.warning(
                 f"Caught error {caught_exception} during unlink of "
-                "cached_file. Supressing error. You will have to "
+                "cached_file. Suppressing the error. You will need to "
                 f"manually delete {cached_file}."
             )
             return False
@@ -945,22 +937,22 @@ class BaseProcessor(abc.ABC):
         except (Exception, PermissionError) as caught_exception:
             logging.warning(
                 f"Caught error {caught_exception} during rmtree of "
-                "temp_folder. Supressing error. You will have to "
+                "temp_folder. Suppressing the error. You will need to "
                 f"manually delete {temp_folder}."
             )
             return False
 
     @abc.abstractmethod
     def run(self):
-        """This method controls the processor execution and code-flow."""
+        """Run the processor workflow."""
 
         raise NotImplementedError("NETLOC_API must be instantiated in the child class")
 
 
 class RawLidarDemGenerator(BaseProcessor):
-    """RawLidarDemGenerator executes a pipeline for creating a DEM from LiDAR and
-    optionally a coarse DEM. The data sources and pipeline logic is defined in the
-    json_instructions file.
+    """Create a DEM from LiDAR and, optionally, a coarse DEM.
+
+    The data sources and pipeline are defined in the JSON instruction file.
 
     See the GitHub repository wiki or GeoFabrics/tests/ for usage examples and
     other documentation.
@@ -973,11 +965,11 @@ class RawLidarDemGenerator(BaseProcessor):
         self.debug = debug
 
     def run(self):
-        """This method executes the geofabrics generation pipeline to produce geofabric
-        derivatives.
+        """Generate a raw DEM from LiDAR.
 
-        Note it currently only considers one LiDAR dataset that can have many tiles.
-        See 'get_lidar_datasets_info' for where to change this."""
+        Multiple LiDAR datasets and tiles are supported. See
+        ``get_lidar_datasets_info`` for how their files are selected.
+        """
 
         self.logger.info("Create a raw DEM layer from LiDAR.")
 
@@ -1112,7 +1104,7 @@ class RawLidarDemGenerator(BaseProcessor):
                     status = raw_dem.add_patch(
                         patch_path=coarse_dem_path, label="coarse DEM", layer="z"
                     )
-                    if status:  # Only update if patch sucessfully added
+                    if status:  # Only update if the patch was added successfully.
                         temp_file = temp_folder / f"raw_dem_{coarse_dem_path.stem}.nc"
                         self.logger.info(f"Save temp raw DEM to netCDF: {temp_file}")
                         raw_dem.save_and_load_dem(temp_file)
@@ -1138,10 +1130,11 @@ class RawLidarDemGenerator(BaseProcessor):
 
 
 class HydrologicDemGenerator(BaseProcessor):
-    """HydrologicDemGenerator executes a pipeline for loading in a DEM then
-    incorporating hydrological features (e.g. ocean bathymetry, rivers,
-    waterways,stopbank creast heights) to produce a hydrologically conditioned
-    DEM. The data and pipeline logic is defined in the json_instructions file.
+    """Create a hydrologically conditioned DEM.
+
+    The generator combines an input DEM with hydrological features such as
+    ocean bathymetry, rivers, waterways, and stopbank crest elevations. The
+    data and pipeline are defined in the JSON instruction file.
 
     See the GitHub repository wiki or GeoFabrics/tests/ for usage examples and
     other documentation.
@@ -1509,8 +1502,7 @@ class HydrologicDemGenerator(BaseProcessor):
                 cached_file = temp_file
 
     def run(self):
-        """This method executes the geofabrics generation pipeline to produce geofabric
-        derivatives."""
+        """Generate a hydrologically conditioned DEM."""
 
         # Ensure the results folder has been created
         self.create_results_folder()
@@ -1587,11 +1579,10 @@ class HydrologicDemGenerator(BaseProcessor):
 
 
 class PatchDemGenerator(BaseProcessor):
-    """PatchDemGenerator executes a pipeline for loading in a DEM / roughness
-    GeoFabrics profuct before adding specified patches to it.
+    """Add specified patches to a GeoFabrics DEM or roughness product.
 
-    See the README.md for usage examples or GeoFabrics/tests/ for examples of usage and
-    an instruction file
+    See the README or ``GeoFabrics/tests/`` for usage examples and instruction
+    files.
     """
 
     def __init__(self, json_instructions: json, debug: bool = True):
@@ -1600,12 +1591,7 @@ class PatchDemGenerator(BaseProcessor):
         self.debug = debug
 
     def get_patch_instruction(self, key: str):
-        """Return true if the DEMs are required for later processing
-
-
-        Parameters:
-            instructions  The json instructions defining the behaviour
-        """
+        """Return the configured patch value for ``key`` or its default, if defined."""
         defaults = {
             "patch_on_top": True,
             "drop_patch_offshore": False,
@@ -1627,8 +1613,7 @@ class PatchDemGenerator(BaseProcessor):
             )
 
     def run(self):
-        """This method executes the geofabrics generation pipeline to produce geofabric
-        derivatives."""
+        """Generate a patched DEM or geofabric."""
 
         # Ensure the results folder has been created
         self.create_results_folder()
@@ -1720,10 +1705,10 @@ class PatchDemGenerator(BaseProcessor):
 
 
 class RoughnessLengthGenerator(BaseProcessor):
-    """RoughnessLengthGenerator executes a pipeline for loading in a hydrologically
-    conditioned DEM and LiDAR tiles to produce a roughness length layer that is added to
-    the Hydrologically conditioned DEM. The data and pipeline logic is defined in
-    the json_instructions file.
+    """Generate a roughness-length layer for a hydrologically conditioned DEM.
+
+    The generator uses the DEM and LiDAR tiles. Its data and pipeline are
+    defined in the JSON instruction file.
 
     The `RoughnessLengthGenerator` class contains several important class members:
      * catchment_geometry - Defines all relevant regions in a catchment required in the
@@ -1740,12 +1725,7 @@ class RoughnessLengthGenerator(BaseProcessor):
         self.debug = debug
 
     def get_roughness_instruction(self, key: str):
-        """Return true if the DEMs are required for later processing
-
-
-        Parameters:
-            instructions  The json instructions defining the behaviour
-        """
+        """Return the configured roughness value for ``key`` or its default, if defined."""
         defaults = {
             "parameters": {"std": 1 / 30, "mean": 1 / 60},
             "default_values": {
@@ -2004,8 +1984,7 @@ class RoughnessLengthGenerator(BaseProcessor):
         return roads
 
     def run(self):
-        """This method executes the geofabrics generation pipeline to produce geofabric
-        derivatives."""
+        """Generate a roughness layer for the hydrologically conditioned DEM."""
 
         self.logger.info("Adding a roughness layer to the geofabric.")
 
@@ -2150,9 +2129,9 @@ class RoughnessLengthGenerator(BaseProcessor):
 
 
 class MeasuredRiverGenerator(BaseProcessor):
-    """MeasuredRiverGenerator executes a pipeline to interpolate between
-    measured river cross section elevations. A json_instructions file defines
-    the pipeline logic and data.
+    """Interpolate river-bed elevations from measured cross sections.
+
+    The JSON instruction file defines the input data and pipeline.
 
     """
 
@@ -2164,12 +2143,7 @@ class MeasuredRiverGenerator(BaseProcessor):
         self.debug = debug
 
     def get_measured_instruction(self, key: str):
-        """Return true if the DEMs are required for later processing
-
-
-        Parameters:
-            instructions  The json instructions defining the behaviour
-        """
+        """Return the configured measured-river value or its default, if defined."""
         defaults = {
             "thalweg_centre": False,
             "estimate_fan": False,
@@ -2203,9 +2177,9 @@ class MeasuredRiverGenerator(BaseProcessor):
         ocean_elevation_label = self.get_instruction_general(
             key="z_labels", subkey="ocean"
         )
-        # Create the required river centreline and bathymtries that don't exist
+        # Create the required river centreline and bathymetry files if they do not exist.
         # Only create for the two closest points to the river mouth
-        # And ensure is perpindicular to the river mouth
+        # Ensure the transects are perpendicular to the river mouth.
         riverlines = geopandas.read_file(self.get_instruction_path("riverbanks"))
         elevations = geopandas.read_file(river_elevation_file)
         # Resample river edges at same spacing as used to interpolate
@@ -2303,9 +2277,7 @@ class MeasuredRiverGenerator(BaseProcessor):
         combined_polygon.to_file(river_polygon_file)
 
     def run(self):
-        """This method extracts a main channel then executes the DemGeneration
-        pipeline to produce a DEM before sampling this to extimate width, slope
-        and eventually depth."""
+        """Interpolate measured river sections and save elevation outputs."""
 
         self.logger.info(
             "Interpolating the measured river elevations if not" "already done."
@@ -2373,11 +2345,12 @@ class MeasuredRiverGenerator(BaseProcessor):
 
 
 class RiverBathymetryGenerator(BaseProcessor):
-    """RiverbathymetryGenerator executes a pipeline to estimate river
-    bathymetry depths from flows, slopes, friction and widths along a main
-    channel. This is dones by first creating a hydrologically conditioned DEM
-    of the channel. A json_instructions file defines the pipeline logic and
-    data.
+    """Estimate river-bed depths along a main channel.
+
+    The processor uses LiDAR-derived DEMs to characterize channel width and
+    slope, then estimates and saves river bathymetry. These saved estimates can
+    later be incorporated into a hydrologically conditioned DEM by
+    ``HydrologicDemGenerator``.
 
     Attributes:
         channel_polyline  The main channel along which to estimate depth. This
@@ -2388,8 +2361,8 @@ class RiverBathymetryGenerator(BaseProcessor):
             raster.
         aligned_channel_polyline  The main channel after its alignment has been
             updated based on the DEM. Width and slope are estimated on this.
-        transects  Transect polylines perpindicular to the aligned channel with
-            samples of the DEM values
+        transects  Transect polylines perpendicular to the aligned channel, with
+            sampled DEM values.
     """
 
     def __init__(self, json_instructions: json, debug: bool = True):
@@ -2400,7 +2373,7 @@ class RiverBathymetryGenerator(BaseProcessor):
         self.debug = debug
 
     def channel_characteristics_exist(self) -> bool:
-        """Return true if the DEMs are required for later processing"""
+        """Return whether channel characteristics and polygon files exist."""
 
         # Check if channel needs to be aligned or widths calculated
         river_characteristics_file = self.get_result_file_path(
@@ -2433,12 +2406,7 @@ class RiverBathymetryGenerator(BaseProcessor):
                 return (bathymetry["source"] == "fan").any()
 
     def alignment_exists(self) -> bool:
-        """Return true if the DEMs are required for later processing
-
-
-        Parameters:
-            instructions  The json instructions defining the behaviour
-        """
+        """Return whether the aligned channel file exists."""
 
         # Check if channel needs to be aligned or widths calculated
         aligned_channel_file = self.get_result_file_path(key="aligned")
@@ -2446,11 +2414,9 @@ class RiverBathymetryGenerator(BaseProcessor):
         return aligned_channel_file.is_file()
 
     def get_result_file_name(self, key: str = None, name: str = None) -> str:
-        """Return the file name of the file to save.
+        """Return the output filename for a result key or explicit name.
 
-
-        Parameters:
-            instructions  The json instructions defining the behaviour
+        Provide either ``key`` or ``name``.
         """
 
         if key is not None and name is not None:
@@ -2480,12 +2446,7 @@ class RiverBathymetryGenerator(BaseProcessor):
             return name
 
     def get_result_file_path(self, key: str = None, name: str = None) -> pathlib.Path:
-        """Return the file name of the file to save with the local cache path.
-
-
-        Parameters:
-            instructions  The json instructions defining the behaviour
-        """
+        """Return the output path for a result key or explicit name."""
 
         subfolder = self.get_instruction_path("subfolder")
 
@@ -2494,12 +2455,7 @@ class RiverBathymetryGenerator(BaseProcessor):
         return subfolder / name
 
     def get_bathymetry_instruction(self, key: str):
-        """Return true if the DEMs are required for later processing
-
-
-        Parameters:
-            instructions  The json instructions defining the behaviour
-        """
+        """Return the configured bathymetry value or its default, if defined."""
         defaults = {
             "sampling_direction": -1,
             "minimum_slope": 0.0001,  # 0.1m per 1km
@@ -2560,12 +2516,17 @@ class RiverBathymetryGenerator(BaseProcessor):
         return channel
 
     def get_dems(self, channel: geometry.CatchmentGeometry) -> tuple:
-        """Allow selection of the ground or vegetation DEM, and either create
-        or load it.
+        """Load or create the ground and vegetation DEMs for the channel.
 
+        Parameters
+        ----------
+        channel
+            Catchment geometry used to define the channel region.
 
-        Parameters:
-            instructions  The json instructions defining the behaviour
+        Returns
+        -------
+        tuple
+            Ground and vegetation DEM datasets.
         """
 
         dem_instructions = copy.deepcopy(self.instructions)
@@ -2598,7 +2559,7 @@ class RiverBathymetryGenerator(BaseProcessor):
             dem_instructions["datasets"]["vector"]["linz"].pop("ocean_contours")
         # Get the ground DEM
         if not gnd_file.is_file():
-            # Create the ground DEM file if this has not be created yet!
+            # Create the ground DEM file if it has not been created yet.
             self.logger.info("Generating ground DEM.")
             instruction_paths["raw_dem"] = str(self.get_result_file_name(key="gnd_dem"))
             runner = RawLidarDemGenerator(dem_instructions)
@@ -2612,7 +2573,7 @@ class RiverBathymetryGenerator(BaseProcessor):
         )
         # Get the vegetation DEM
         if not veg_file.is_file():
-            # Create the catchment file if this has not be created yet!
+            # Create the vegetation DEM file if it has not been created yet.
             self.logger.info("Generating vegetation DEM.")
             dem_instructions["general"]["lidar_classifications_to_keep"] = (
                 self.get_bathymetry_instruction("veg_lidar_classifications_to_keep")
@@ -2644,7 +2605,7 @@ class RiverBathymetryGenerator(BaseProcessor):
             channel  The river network defined channel alignment
         """
 
-        # Get instruciton parameters
+        # Get instruction parameters.
         min_channel_width = self.get_bathymetry_instruction("min_channel_width")
         network_alignment_tolerance = self.get_bathymetry_instruction(
             "network_alignment_tolerance"
@@ -2697,7 +2658,7 @@ class RiverBathymetryGenerator(BaseProcessor):
             channel  The river network defined channel alignment
         """
 
-        # Get instruciton parameters
+        # Get instruction parameters.
         max_channel_width = self.get_bathymetry_instruction("max_channel_width")
         min_channel_width = self.get_bathymetry_instruction("min_channel_width")
         bank_threshold = self.get_bathymetry_instruction("min_bank_height")
@@ -2920,10 +2881,10 @@ class RiverBathymetryGenerator(BaseProcessor):
         ):
             self.logger.warning(
                 "The OSM reference line starts upstream of the network line. The bottom "
-                "of the network will be ignored over a stright line distance of "
+                "of the network will be ignored over a straight-line distance of "
                 f"{osm_channel.distance(network_start)}"
             )
-        # Clip end if needed - recacluate clip position incase front clipped.
+        # Recalculate the end clipping position if the front was clipped.
         end_split_length = float(osm_channel.geometry.project(network_end)[0])
         if end_split_length < float(osm_channel.length[0]):
             split_point = osm_channel.interpolate(end_split_length)
@@ -2939,7 +2900,7 @@ class RiverBathymetryGenerator(BaseProcessor):
         else:
             self.logger.warning(
                 "The OSM reference line ends upstream of the network line. The top of "
-                "the network will be ignored over a stright line distance of "
+                "the network will be ignored over a straight-line distance of "
                 f"{osm_channel.distance(network_end)}"
             )
         # In case of both network points at far end ensure only short end is returned
@@ -3207,7 +3168,7 @@ class RiverBathymetryGenerator(BaseProcessor):
         et al.
 
         Parameters:
-            width_values  A dataframe of channel charateristics.
+            width_values  A dataframe of channel characteristics.
             width_name  The name of the channel width column.
             slope_name  The name of the down-river channel slope column.
             threshold_name The name of the bank height threshold column."""
@@ -3222,11 +3183,11 @@ class RiverBathymetryGenerator(BaseProcessor):
     def _calculate_rupp_and_smart_depth(
         self, width_values, width_name, slope_name, threshold_name
     ):
-        """Calculate the hydrolic geometry depth estimate as laid out in Rupp
+        """Calculate the hydraulic geometry depth estimate described by Rupp
         and Smart.
 
         Parameters:
-            width_values  A dataframe of channel charateristics.
+            width_values  A dataframe of channel characteristics.
             width_name  The name of the channel width column.
             slope_name  The name of the down-river channel slope column.
             threshold_name The name of the bank height threshold column."""
@@ -3254,7 +3215,7 @@ class RiverBathymetryGenerator(BaseProcessor):
 
         Parameters:
             full_bank_depth  The flood depth from the flood water height
-            width_values  A dataframe of channel charateristics.
+            width_values  A dataframe of channel characteristics.
             full_bank_width_name  The name of the full bank width column.
             flat_width_name  The name of the down-river channel slope column.
             threshold_name The name of the bank height threshold column."""
@@ -3369,9 +3330,7 @@ class RiverBathymetryGenerator(BaseProcessor):
         combined_polygon.to_file(river_polygon_file)
 
     def run(self):
-        """This method extracts a main channel then executes the DemGeneration
-        pipeline to produce a DEM before sampling this to extimate width, slope
-        and eventually depth."""
+        """Characterize the river channel and estimate channel and fan bathymetry."""
 
         self.logger.info("Adding river and fan bathymetry if it doesn't already exist.")
 
@@ -3401,10 +3360,10 @@ class RiverBathymetryGenerator(BaseProcessor):
 
 
 class WaterwayBedElevationEstimator(BaseProcessor):
-    """WaterwayBedElevationGenerator executes a pipeline to pull in OpenStreetMap waterway
-    and tunnel information. A DEM is generated of the surrounding area and this used to
-    unblock waterways and tunnels - by taking the lowest value in the area around a tunnel
-    to be the tunnel elevation, and ensuring opne waterways flow downhill.
+    """Estimate bed elevations for waterways and tunnels.
+
+    Sample a DEM around tunnels to estimate their bed elevations, and enforce
+    downhill elevations along open waterways.
 
     """
 
@@ -3475,11 +3434,7 @@ class WaterwayBedElevationEstimator(BaseProcessor):
         return name_dictionary[key]
 
     def get_result_file_path(self, key: str, index: int = None) -> pathlib.Path:
-        """Return the file name of the file to save with the local cache path.
-
-        Parameters:
-            instructions  The json instructions defining the behaviour
-        """
+        """Return the path for a waterway output file."""
 
         subfolder = self.get_instruction_path("subfolder")
 
@@ -3488,8 +3443,7 @@ class WaterwayBedElevationEstimator(BaseProcessor):
         return subfolder / name
 
     def waterway_elevations_exists(self):
-        """Check to see if the waterway and culvert bathymeties have already been
-        estimated."""
+        """Return whether outputs for open and closed waterways have been saved."""
 
         closed_polygon_file = self.get_result_file_path(key="closed_polygon")
         closed_elevation_file = self.get_result_file_path(key="closed_elevation")
@@ -3508,14 +3462,12 @@ class WaterwayBedElevationEstimator(BaseProcessor):
     def minimum_elevation_in_polygon(
         self, geometry: shapely.geometry.Polygon, dem: xarray.Dataset
     ):
-        """Determine the minimum value in each polygon. Select only coordinates
-        within the polygon bounding box before clipping to the bounding box and
-        then returning the minimum elevation."""
+        """Return the minimum DEM elevation in the polygon's bounding box."""
 
         # Index in polygon bbox
         bbox = geometry.bounds
 
-        # Select DEM within the bounding box - allow ascending or decending dimensions
+        # Select the bounding-box window, supporting ascending or descending axes.
         y_slice = (
             slice(bbox[1], bbox[3])
             if dem.y[-1] - dem.y[0] > 0
@@ -3677,7 +3629,7 @@ class WaterwayBedElevationEstimator(BaseProcessor):
 
         # Sample down-slope location along each line
         def sample(geometry):
-            """Sample evenly space poinst along polylines"""
+            """Sample evenly spaced points along a polyline."""
 
             resolution = self.get_resolution()
             number_of_samples = int(numpy.ceil(geometry.length / resolution))
@@ -3785,7 +3737,7 @@ class WaterwayBedElevationEstimator(BaseProcessor):
                     dem_instructions["general"] = {}
                 dem_instructions["general"]["ignore_clipping"] = True
 
-                # Create the ground DEM file if this has not be created yet!\
+                # Create the ground DEM file if it has not been created yet.
                 self.logger.info(f"Generating DEM for waterway {index}.")
                 runner = RawLidarDemGenerator(self.instructions)
                 runner.run()
@@ -3956,12 +3908,7 @@ class WaterwayBedElevationEstimator(BaseProcessor):
         return waterways
 
     def run(self):
-        """This method runs a pipeline that:
-        * downloads all tunnels and waterways within a catchment.
-        * creates and samples a DEM around each feature to estimate the bed
-          elevation.
-        * saves out extents and bed elevations of the waterway and tunnel network
-        """
+        """Estimate and save bed elevations for waterways and tunnels."""
 
         # Don't reprocess if already estimated
         if self.waterway_elevations_exists():
@@ -3983,18 +3930,18 @@ class WaterwayBedElevationEstimator(BaseProcessor):
             waterways = self.load_waterways()
         else:
             message = (
-                "'osm' standing for OpenStreetMaps and 'file' are the only "
+                "'osm' (OpenStreetMap) and 'file' are the only "
                 "'source' options currently supported. Please log an issue on "
                 "GitHub if you want another added."
             )
             self.logger.error(message)
             raise ValueError(message)
 
-        # There are no waterways to write out empty files and exit
+        # If there are no waterways, write empty output files and exit.
         if len(waterways) == 0:
             self.logger.warning(
-                "There are no waterways in the catchment. Writing empty"
-                "polygon and elevation files and returning."
+                "There are no waterways in the catchment. Writing empty "
+                "polygon and elevation files, then returning."
             )
             crs = self.catchment_geometry.crs["horizontal"]
             polygons = geopandas.GeoDataFrame({"geometry": []}, crs=crs)
@@ -4023,10 +3970,10 @@ class WaterwayBedElevationEstimator(BaseProcessor):
 
 
 class StopbankCrestElevationEstimator(BaseProcessor):
-    """StopbankCrestElevationEstimator executes a pipeline to estimate stopbank
-    crest elevations. A DEM is generated of the surrounding area and this used
-    to estimate crest elevations by taking the highest value in the area around
-    the stopbank.
+    """Estimate stopbank crest elevations from a DEM of the surrounding area.
+
+    Crest elevations are estimated from the highest values sampled along each
+    stopbank.
 
     """
 
@@ -4130,7 +4077,7 @@ class StopbankCrestElevationEstimator(BaseProcessor):
         # Index in polygon bbox
         bbox = geometry.bounds
 
-        # Select DEM within the bounding box - allow ascending or decending dimensions
+        # Select the bounding-box window, supporting ascending or descending axes.
         y_slice = (
             slice(bbox[1], bbox[3])
             if dem.y[-1] - dem.y[0] > 0
@@ -4212,7 +4159,7 @@ class StopbankCrestElevationEstimator(BaseProcessor):
         if not nan_filter.all():
             self.logger.warning(
                 "Some open stopbanks are being ignored as there is not enough data to "
-                "estimate their creast elevations."
+                "estimate their crest elevations."
             )
         # Create, filter to remove NaN areas and save overall polygon
         stopbanks["polygon"] = stopbanks.buffer(stopbanks["width"].to_numpy() / 2)
@@ -4368,12 +4315,7 @@ class StopbankCrestElevationEstimator(BaseProcessor):
         return stopbanks
 
     def run(self):
-        """This method runs a pipeline that:
-        * downloads all tunnels and waterways within a catchment.
-        * creates and samples a DEM around each feature to estimate the bed
-          elevation.
-        * saves out extents and bed elevations of the waterway and tunnel network
-        """
+        """Estimate and save crest elevations for stopbanks."""
 
         # Don't reprocess if already estimated
         if self.stopbanks_elevations_exists():
@@ -4397,11 +4339,11 @@ class StopbankCrestElevationEstimator(BaseProcessor):
             raise ValueError(message)
         stopbanks = self.load_stopbanks()
 
-        # There are no waterways to write out empty files and exit
+        # If there are no stopbanks, write empty output files and exit.
         if len(stopbanks) == 0:
             self.logger.warning(
-                "There are no stopbanks in the catchment. Writing empty"
-                "polygon and elevation files and returning."
+                "There are no stopbanks in the catchment. Writing empty "
+                "polygon and elevation files, then returning."
             )
             crs = self.catchment_geometry.crs["horizontal"]
             polygons = geopandas.GeoDataFrame({"geometry": []}, crs=crs)
