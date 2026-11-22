@@ -1,7 +1,6 @@
 # -*- coding: utf-8 -*-
 """
-A convenience script for running the DEM generation pipelines contained in the processor
- module of geofabrics.
+Orchestrate the GeoFabrics processing pipelines from an instruction dictionary.
 """
 
 from . import processor
@@ -14,7 +13,7 @@ import copy
 
 
 def config_logging(logging_filepath: pathlib):
-    """Configure the root logger inhereited by all othr loggers."""
+    """Configure the root logger inherited by other loggers."""
     log_dict = {
         "version": 1,
         "disable_existing_loggers": False,
@@ -103,16 +102,30 @@ def run_processor_class(processor_class, processor_label: str, instructions: dic
 
 
 def merge_dicts(dict_a: dict, dict_b: dict, logger: logging.Logger, replace_a: bool):
-    """Merge the contents of the dict_a and dict_b. Use recursion to merge
-    any nested dictionaries. replace_a determines if the dict_a values are
-    replaced or not if different values are in the dict_b.
+    """Recursively merge ``dict_b`` into a deep copy of ``dict_a``.
 
-    Adapted from https://stackoverflow.com/questions/7204805/how-to-merge-dictionaries-of-dictionaries
+    Nested dictionaries are merged recursively, and keys present only in
+    ``dict_b`` are added. For conflicting leaf values, ``replace_a`` controls
+    whether the value from ``dict_b`` replaces the value from ``dict_a``.
+    Conflicts are reported through ``logger``. Neither input dictionary is
+    modified.
 
-    Parameters:
-            dict_a  The dict to
-            dict_b  The location of the centre of the river mouth
-            replace_a If True any dict_a values are replaced if different values are in dict_b
+    Parameters
+    ----------
+    dict_a
+        Base dictionary to copy and update.
+    dict_b
+        Dictionary whose values are merged into the copy.
+    logger
+        Logger used to report conflicting values.
+    replace_a
+        If true, replace conflicting values from ``dict_a`` with values from
+        ``dict_b``; otherwise keep the values from ``dict_a``.
+
+    Returns
+    -------
+    dict
+        The merged dictionary.
     """
 
     def recursive_merge_dicts(
@@ -122,7 +135,7 @@ def merge_dicts(dict_a: dict, dict_b: dict, logger: logging.Logger, replace_a: b
         logger: logging.Logger,
         path: list = [],
     ):
-        """Recurively add the new_dict into the base_dict. dict_a is mutable."""
+        """Merge ``new_dict`` into ``base_dict`` in place."""
         for key in new_dict:
             if key in base_dict:
                 if isinstance(base_dict[key], dict) and isinstance(new_dict[key], dict):
@@ -157,8 +170,13 @@ def merge_dicts(dict_a: dict, dict_b: dict, logger: logging.Logger, replace_a: b
 
 
 def from_instructions_dict(instructions: dict):
-    """Run the DEM generation pipeline(s) given the specified instructions.
-    If a benchmark is specified compare the result to the benchmark"""
+    """Run the processing pipelines specified by an instruction dictionary.
+
+    If a ``default`` section is present, merge its values into each pipeline's
+    instructions. Requested processing stages run in pipeline order. DEM
+    generation steps are skipped when their configured output files already
+    exist.
+    """
 
     # Construct the full instructions by adding the default entries to each stage
     logger = setup_logging_for_run(instructions=instructions, label="runner")
@@ -211,7 +229,7 @@ def from_instructions_dict(instructions: dict):
             instructions=instructions,
         )
     if "stopbanks" in instructions:
-        # Estimate waterway elevations
+        # Estimate stopbank crest elevations
         run_processor_class(
             processor_class=processor.StopbankCrestElevationEstimator,
             processor_label="stopbanks",
@@ -274,8 +292,10 @@ def from_instructions_dict(instructions: dict):
 def from_instructions_file(
     instructions_path: typing.Union[str, pathlib.Path],
 ):
-    """Run the DEM generation pipeline(s) given the specified instructions.
-    If a benchmark is specified compare the result to the benchmark"""
+    """Load a JSON instruction file and run its requested processing pipelines.
+
+    This function delegates pipeline execution to :func:`from_instructions_dict`.
+    """
 
     # Load the instructions
     with open(instructions_path, "r") as file_pointer:

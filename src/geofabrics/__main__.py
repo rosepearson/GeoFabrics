@@ -1,7 +1,6 @@
 # -*- coding: utf-8 -*-
 """
-A convenience script for running the DEM generation pipelines contained in the processor
- module of geofabrics.
+Command-line entry point for running GeoFabrics from a JSON instruction file or dictionary.
 """
 
 from geofabrics import runner
@@ -14,8 +13,7 @@ warnings.simplefilter(action="ignore", category=FutureWarning)
 
 
 def parse_args():
-    """Expect a command line argument of the form:
-    '--instructions path/to/json/instruction/file'"""
+    """Parse command-line arguments; ``--instructions`` must name a JSON file."""
 
     parser = argparse.ArgumentParser()
 
@@ -24,16 +22,14 @@ def parse_args():
         metavar="path",
         required=True,
         action="store",
-        help="the instructions - either a path or dict - depending if running from file"
-        " or from dictionary. If running as a script must be a path",
+        help="path to a JSON instruction file",
     )
 
     return parser.parse_args()
 
 
 def cli_run_from_dict():
-    """Run the DEM generation pipeline(s) given the specified instructions as a
-    dictionary. If a benchmark is specified compare the result to the benchmark"""
+    """Pass the parsed ``--instructions`` value to the dictionary-based runner."""
 
     # Load the instructions
     args = parse_args()
@@ -42,8 +38,7 @@ def cli_run_from_dict():
 
 
 def cli_run_from_file():
-    """The standard script entry point to geofabrics & a CLI entry point to geofabrics.
-    Run standard workflow from an instruction file intput."""
+    """Run the standard workflow using the JSON instruction file from the CLI."""
     args = parse_args()
     runner.from_instructions_file(instructions_path=args.instructions)
 

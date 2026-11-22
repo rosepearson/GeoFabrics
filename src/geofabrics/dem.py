@@ -2972,24 +2972,26 @@ class RoughnessDem(LidarBase):
         parameters: dict,
     ) -> bool:
         """Read in all LiDAR files and use the point cloud distribution,
-        data_source layer, and hydrologiaclly conditioned elevations to
+        data_source layer, and hydrologically conditioned elevations to
         estimate the roughness across the DEM.
 
         Parameters
         ----------
 
-        lidar_datasets_info
-            A dictionary of information for each specified LIDAR dataset - For
-            each this includes: a list of LAS files, CRS, and tile index file.
+        lidar_dataset_info
+            Information for the specified LiDAR input, including its files,
+            CRS, and optional tile index.
         lidar_classifications_to_keep
             A list of LiDAR classifications to keep - '2' for ground, '9' for water.
             See https://www.asprs.org/wp-content/uploads/2010/12/LAS_1_4_r13.pdf for
             standard list
-        meta_data
-            Information to include in the created DEM - must include
-            `dataset_mapping` key if datasets (not a single LAZ file) included.
         parameters
             The roughness equation parameters.
+
+        Returns
+        -------
+        bool
+            Whether the LiDAR data was added successfully.
         """
 
         # Check valid inputs

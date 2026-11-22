@@ -3433,11 +3433,17 @@ class WaterwayBedElevationEstimator(BaseProcessor):
         return dem
 
     def get_waterways_instruction(self, key: str):
-        """Return true if the DEMs are required for later processing
+        """Return a waterways instruction value, using its default if defined.
 
+        Parameters
+        ----------
+        key
+            Name of the waterways instruction to retrieve.
 
-        Parameters:
-            instructions  The json instructions defining the behaviour
+        Returns
+        -------
+        object
+            Configured value or the default for ``key``.
         """
         defaults = {
             "source": "osm",
@@ -4020,7 +4026,7 @@ class StopbankCrestElevationEstimator(BaseProcessor):
     """StopbankCrestElevationEstimator executes a pipeline to estimate stopbank
     crest elevations. A DEM is generated of the surrounding area and this used
     to estimate crest elevations by taking the highest value in the area around
-    the stopebank.
+    the stopbank.
 
     """
 
@@ -4049,11 +4055,17 @@ class StopbankCrestElevationEstimator(BaseProcessor):
         return dem
 
     def get_stopbanks_instruction(self, key: str):
-        """Return true if the DEMs are required for later processing
+        """Return a stopbanks instruction value, using its default if defined.
 
+        Parameters
+        ----------
+        key
+            Name of the stopbanks instruction to retrieve.
 
-        Parameters:
-            instructions  The json instructions defining the behaviour
+        Returns
+        -------
+        object
+            Configured value or the default for ``key``.
         """
         defaults = {
             "features": ["dyke", "embankment"],
@@ -4084,10 +4096,14 @@ class StopbankCrestElevationEstimator(BaseProcessor):
         return name_dictionary[key]
 
     def get_result_file_path(self, key: str, index: int = None) -> pathlib.Path:
-        """Return the file name of the file to save with the local cache path.
+        """Return the path for a stopbank output file.
 
-        Parameters:
-            instructions  The json instructions defining the behaviour
+        Parameters
+        ----------
+        key
+            Output type used to select the filename.
+        index
+            Optional stopbank index used for per-stopbank outputs.
         """
 
         subfolder = self.get_instruction_path("subfolder")
@@ -4097,8 +4113,7 @@ class StopbankCrestElevationEstimator(BaseProcessor):
         return subfolder / name
 
     def stopbanks_elevations_exists(self):
-        """Check to see if the waterway and culvert bathymeties have already been
-        estimated."""
+        """Return whether stopbank polygons and crest elevations are saved."""
 
         stopbank_polygon_file = self.get_result_file_path(key="stopbanks_polygon")
         stopbank_elevation_file = self.get_result_file_path(key="stopbanks_elevation")
@@ -4110,9 +4125,7 @@ class StopbankCrestElevationEstimator(BaseProcessor):
     def maximum_elevation_in_polygon(
         self, geometry: shapely.geometry.Polygon, dem: xarray.Dataset
     ):
-        """Determine the minimum value in each polygon. Select only coordinates
-        within the polygon bounding box before clipping to the bounding box and
-        then returning the minimum elevation."""
+        """Return the maximum DEM elevation in the polygon's bounding box."""
 
         # Index in polygon bbox
         bbox = geometry.bounds
@@ -4131,11 +4144,11 @@ class StopbankCrestElevationEstimator(BaseProcessor):
 
         small_z = dem.z.sel(x=x_slice, y=y_slice)
 
-        # clip to polygon and return minimum elevation
+        # Return the maximum elevation in the polygon's bounding box.
         return float(small_z.max())
 
     def estimate_elevations_simple(self, stopbanks: geopandas.GeoDataFrame):
-        """Sample the DEM around the tunnels to estimate the bed elevation."""
+        """Sample the DEM along stopbanks to estimate their crest elevations."""
 
         # Check if already generated
         polygon_file = self.get_result_file_path(key="stopbanks_polygon")
@@ -4160,7 +4173,7 @@ class StopbankCrestElevationEstimator(BaseProcessor):
 
         # Sampled points along stopbanks to define crest elevation at
         def sample(geometry):
-            """Sample evenly space poinst along polylines"""
+            """Sample evenly spaced points along a polyline."""
             resolution = self.get_resolution()
             number_of_samples = int(numpy.ceil(geometry.length / resolution))
             normalised_sample_indices = (
@@ -4211,7 +4224,7 @@ class StopbankCrestElevationEstimator(BaseProcessor):
         points[["geometry", "width", "z"]].to_file(elevation_file)
 
     def create_dem(self, stopbanks: geopandas.GeoDataFrame) -> xarray.Dataset:
-        """Create and return a DEM at a resolution 1.5x the waterway width."""
+        """Generate a raw LiDAR DEM for each stopbank region that needs one."""
 
         # Check for DEM for each stopbank
         for index, row in stopbanks.iterrows():
