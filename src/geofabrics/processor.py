@@ -2181,26 +2181,30 @@ class MeasuredRiverGenerator(BaseProcessor):
         riverlines = geopandas.read_file(self.get_instruction_path("riverbanks"))
         elevations = geopandas.read_file(river_elevation_file)
         # Resample river edges at same spacing as used to interpolate
-        n = len(elevations.groupby("level_0"))
-        normalised_locations = numpy.arange(n) * 1 / n
-        points_0 = riverlines.geometry.iloc[0].interpolate(
+        number_of_cross_sections = len(elevations.groupby("level_0"))
+        normalised_locations = (
+            numpy.arange(number_of_cross_sections) * 1 / number_of_cross_sections
+        )
+        first_bank_points = riverlines.geometry.iloc[0].interpolate(
             normalised_locations, normalized=True
         )
-        points_1 = riverlines.geometry.iloc[1].interpolate(
+        second_bank_points = riverlines.geometry.iloc[1].interpolate(
             normalised_locations, normalized=True
         )
         # Calculate the mouth centre, normal and tangent
-        segment_dx = points_0[0].x - points_1[0].x
-        segment_dy = points_0[0].y - points_1[0].y
+        segment_dx = first_bank_points[0].x - second_bank_points[0].x
+        segment_dy = first_bank_points[0].y - second_bank_points[0].y
         segment_length = numpy.sqrt(segment_dx**2 + segment_dy**2)
         mouth_tangent = shapely.geometry.Point(
             [segment_dx / segment_length, segment_dy / segment_length]
         )
         mouth_normal = shapely.geometry.Point([-mouth_tangent.y, mouth_tangent.x])
-        mouth_centre = shapely.geometry.MultiPoint([points_0[0], points_1[0]]).centroid
+        mouth_centre = shapely.geometry.MultiPoint(
+            [first_bank_points[0], second_bank_points[0]]
+        ).centroid
         spacing = max(
-            points_0[0].distance(points_0[1]),
-            points_1[0].distance(points_1[1]),
+            first_bank_points[0].distance(first_bank_points[1]),
+            second_bank_points[0].distance(second_bank_points[1]),
         )
         # Generate and save out a river centreline file normal to the river mouth
         river_centreline = shapely.geometry.LineString(
@@ -2234,8 +2238,10 @@ class MeasuredRiverGenerator(BaseProcessor):
         elevations_clean = elevations_clean.iloc[[0, 1]]
         elevations_clean = elevations_clean.set_geometry("geometry").set_crs(crs)
         elevations_clean["width"] = [
-            point_0.distance(point_1)
-            for point_0, point_1 in zip(points_0[0:2], points_1[0:2])
+            first_bank_point.distance(second_bank_point)
+            for first_bank_point, second_bank_point in zip(
+                first_bank_points[0:2], second_bank_points[0:2]
+            )
         ]
         # Add signifiers of being zero offset at bank edge and source of data
         elevations_clean["source"] = "measured"
@@ -2380,17 +2386,13 @@ class RiverBathymetryGenerator(BaseProcessor):
         files_exist = river_bathymetry_file.is_file() and river_polygon_file.is_file()
 
         if not self.get_bathymetry_instruction("estimate_fan"):
-            # If no fan just check if the files exist
             return files_exist
-        else:
-            # Otherwise check if the fan has been added to the outputs
-            if not files_exist:
-                # False as files don't exist
-                return files_exist
-            else:
-                # True if fan source in bathymetry
-                bathymetry = geopandas.read_file(river_bathymetry_file)
-                return (bathymetry["source"] == "fan").any()
+        if not files_exist:
+            return files_exist
+
+        # A requested fan must also be present in the bathymetry output.
+        bathymetry = geopandas.read_file(river_bathymetry_file)
+        return (bathymetry["source"] == "fan").any()
 
     def alignment_exists(self) -> bool:
         """Return whether the aligned channel file exists."""
@@ -3715,12 +3717,12 @@ class WaterwayBedElevationEstimator(BaseProcessor):
         for index, rows in open_waterways.groupby(level=0):
             dem_file = self.get_result_file_path(key="raw_dem", index=index)
             dem = self.load_dem(filename=dem_file)
-            zs = rows["polygons"].apply(
+            sampled_elevations = rows["polygons"].apply(
                 lambda geometry: self.minimum_elevation_in_polygon(
                     geometry=geometry, dem=dem
                 )
             )
-            open_waterways.loc[index, "z"] = zs
+            open_waterways.loc[index, "z"] = sampled_elevations
 
         # Check open waterways take into account culvert bed elevations
         closed_polygons = geopandas.read_file(
