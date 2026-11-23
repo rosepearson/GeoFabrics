@@ -65,14 +65,14 @@ class CatchmentGeometry:
 
         self._full_land = self._full_land.to_crs(self.crs["horizontal"])
 
-        # Clip and remove any sub pixel regions
+        # Clip land to the catchment and remove sub-pixel regions.
         self._land = self._catchment.clip(self._full_land, keep_geom_type=True)
         self._land = self._land[self._land.area > self.resolution * self.resolution]
         if self._land.area.sum() > 0:
+            # Define the area outside land, then buffer land to create the shore.
             self._foreshore_and_offshore = self.catchment.overlay(
                 self.land, how="difference"
             )
-            # Buffer and clip and remove any sub pixel regions
             self._land_and_foreshore = geopandas.GeoDataFrame(
                 {"geometry": self.land.buffer(self.resolution * self.foreshore_buffer)},
                 crs=self.crs["horizontal"],
@@ -84,6 +84,8 @@ class CatchmentGeometry:
                 self._land_and_foreshore.area > self.resolution * self.resolution
             ]
 
+            # Subtract land to isolate the foreshore, then subtract both from the
+            # catchment to define offshore.
             self._foreshore = self._land_and_foreshore.overlay(
                 self.land, how="difference"
             )
@@ -465,6 +467,7 @@ class ElevationPoints:
     ):
         """Load, concatenate, and clip point and polygon files to the catchment."""
 
+        # Validate and normalize the parallel point, polygon, and Z-label inputs.
         if len(points_files) != len(polygon_files):
             raise ValueError(
                 "The polygon and point lists should all be the same length. Instead there "
@@ -481,29 +484,28 @@ class ElevationPoints:
                 f"and the point files: {z_labels} {points_files}"
             )
 
-        # Points - rename depth labels to standard if a non standard one is specified
+        # Read each point file and retain only the supported attributes.
         points_list = []
         polygon_list = []
         for i in range(0, len(points_files)):
-            # Points - rename depth labels to standard if  specified
-            points_i = geopandas.read_file(points_files[i])
+            point_frame = geopandas.read_file(points_files[i])
             if z_labels is not None and z_labels[i] != self.Z_LABEL:
-                points_i = points_i.rename(columns={z_labels[i]: self.Z_LABEL})
-            columns_i = [self.Z_LABEL, "geometry"]
-            if self.BANK_HEIGHT_LABEL in points_i.columns:
-                columns_i.append(self.BANK_HEIGHT_LABEL)
-            if self.WIDTH_LABEL in points_i.columns:
-                columns_i.append(self.WIDTH_LABEL)
-            if self.OSM_ID in points_i.columns:
-                columns_i.append(self.OSM_ID)
-            # Only add the points and polygons if their are points
-            if len(points_i) > 0:
-                points_i = points_i[columns_i]
-                points_list.append(points_i)
-                # Polygon where the points are relevent
-                polygon_i = geopandas.read_file(polygon_files[i])
-                polygon_list.append(polygon_i)
-        # Set CRS, clip to size and reset index
+                point_frame = point_frame.rename(columns={z_labels[i]: self.Z_LABEL})
+            point_columns = [self.Z_LABEL, "geometry"]
+            if self.BANK_HEIGHT_LABEL in point_frame.columns:
+                point_columns.append(self.BANK_HEIGHT_LABEL)
+            if self.WIDTH_LABEL in point_frame.columns:
+                point_columns.append(self.WIDTH_LABEL)
+            if self.OSM_ID in point_frame.columns:
+                point_columns.append(self.OSM_ID)
+            # Keep paired polygons only when their point file contains data.
+            if len(point_frame) > 0:
+                point_frame = point_frame[point_columns]
+                points_list.append(point_frame)
+                polygon_frame = geopandas.read_file(polygon_files[i])
+                polygon_list.append(polygon_frame)
+
+        # Combine files, align their CRS, and clip to the catchment.
         if len(points_list) == 0:
             self.logger.warning("No elevations. Ignoring.")
             self._points = []
@@ -783,13 +785,13 @@ class RiverMouthFan:
         river_polygon = geopandas.read_file(self.river_polygon_file).make_valid()
 
         # Ensure the river alignment is taken from the most downstream bathymetry point
-        start_split_length = (
+        first_bathymetry_index = (
             river_bathymetry[river_bathymetry.geometry.isna() == False].index.min()
-            * self.cross_section_spacing
         )
+        channel_split_distance = first_bathymetry_index * self.cross_section_spacing
 
-        if start_split_length > self.cross_section_spacing:
-            split_point = aligned_channel.interpolate(start_split_length)
+        if channel_split_distance > self.cross_section_spacing:
+            split_point = aligned_channel.interpolate(channel_split_distance)
             aligned_channel = shapely.ops.snap(
                 aligned_channel.loc[0].geometry, split_point.loc[0], tolerance=0.1
             )
@@ -803,11 +805,13 @@ class RiverMouthFan:
                 aligned_channel = aligned_channel.iloc[[1]]
 
         # Explode in case clipping produced a MultiLineString.
-        x, y = aligned_channel.explode(index_parts=True).iloc[0].geometry.xy
+        channel_x, channel_y = (
+            aligned_channel.explode(index_parts=True).iloc[0].geometry.xy
+        )
 
         # Calculate the normal and tangent to the channel segment at the mouth
-        segment_dx = x[0] - x[1]
-        segment_dy = y[0] - y[1]
+        segment_dx = channel_x[0] - channel_x[1]
+        segment_dy = channel_y[0] - channel_y[1]
         segment_length = numpy.sqrt(segment_dx**2 + segment_dy**2)
         mouth_tangent = shapely.geometry.Point(
             [segment_dx / segment_length, segment_dy / segment_length]
@@ -1053,9 +1057,139 @@ class RiverMouthFan:
         )
         return fan_polygon
 
+    def _fan_from_ocean_points(
+        self,
+        river_mouth_width,
+        river_mouth_elevations,
+        mouth_point,
+        mouth_tangent,
+        mouth_normal,
+        fan_polygon,
+    ):
+        """Return the fan boundary, end line, and depth using ocean points."""
+        length, end_elevation = self._get_distance_to_nearest_ocean_point_in_fan(
+            river_mouth_z=max(river_mouth_elevations),
+            fan=fan_polygon,
+            mouth_point=mouth_point,
+            depth_multiplier=2,
+        )
+        end_depth = -1 * end_elevation
+        fan_polygon = self._fixed_length_fan_polygon(
+            river_mouth_width=river_mouth_width,
+            mouth_point=mouth_point,
+            mouth_tangent=mouth_tangent,
+            mouth_normal=mouth_normal,
+            length=length,
+        )
+        end_width = river_mouth_width + 2 * length * numpy.tan(
+            numpy.pi / 180 * self.FAN_ANGLE / 2
+        )
+        fan_end_point = shapely.geometry.Point(
+            [
+                mouth_point.x + length * mouth_tangent.x,
+                mouth_point.y + length * mouth_tangent.y,
+            ]
+        )
+        intersection_line = shapely.geometry.LineString(
+            [
+                [
+                    fan_end_point.x + mouth_normal.x * end_width / 2,
+                    fan_end_point.y + mouth_normal.y * end_width / 2,
+                ],
+                [
+                    fan_end_point.x - mouth_normal.x * end_width / 2,
+                    fan_end_point.y - mouth_normal.y * end_width / 2,
+                ],
+            ]
+        )
+        return fan_polygon, intersection_line, end_depth
+
+    def _fan_from_ocean_contours(
+        self,
+        river_mouth_width,
+        river_mouth_elevations,
+        mouth_point,
+        mouth_normal,
+        fan_centre,
+        fan_polygon,
+    ):
+        """Return the fan boundary, end line, and depth using ocean contours."""
+        ocean_contours = self._get_ocean_contours(max(river_mouth_elevations))
+        end_depth = self._get_elevations(ocean_contours).min()
+        ocean_contours = ocean_contours.explode(ignore_index=True)
+        ocean_contours = ocean_contours[
+            ~ocean_contours.intersection(fan_centre).is_empty
+        ]
+
+        # Keep the closest contour intersecting the fan centreline.
+        if len(ocean_contours) > 0:
+            ocean_contours = ocean_contours.clip(fan_polygon).explode(
+                ignore_index=True
+            )
+            min_index = ocean_contours.distance(mouth_point).idxmin()
+            intersection_line = ocean_contours.loc[min_index].geometry
+            elevations = self._get_elevations(ocean_contours)
+            end_depth = elevations.loc[min_index]
+        else:
+            self.logger.warning(
+                "No ocean contour intersected. Instaed assumed fan geoemtry"
+            )
+            intersection_line = shapely.geometry.LineString(
+                [
+                    [fan_polygon.exterior.xy[0][2], fan_polygon.exterior.xy[1][2]],
+                    [fan_polygon.exterior.xy[0][3], fan_polygon.exterior.xy[1][3]],
+                ]
+            )
+            end_depth = max(river_mouth_elevations) * 10
+
+        # Construct a fan ending at the selected contour or fallback boundary.
+        contour_x, contour_y = intersection_line.xy
+        polygon_points = [
+            [x_coordinate, y_coordinate]
+            for x_coordinate, y_coordinate in zip(contour_x, contour_y)
+        ]
+
+        contour_direction = numpy.array(
+            [contour_x[-1] - contour_x[0], contour_y[-1] - contour_y[0]]
+        )
+        contour_direction = contour_direction / numpy.linalg.norm(contour_direction)
+        mouth_normal_direction = numpy.array([mouth_normal.x, mouth_normal.y])
+
+        if (
+            numpy.arccos(numpy.dot(contour_direction, mouth_normal_direction))
+            > numpy.pi / 2
+        ):
+            polygon_points.extend(
+                [
+                    [
+                        mouth_point.x - mouth_normal.x * river_mouth_width / 2,
+                        mouth_point.y - mouth_normal.y * river_mouth_width / 2,
+                    ],
+                    [
+                        mouth_point.x + mouth_normal.x * river_mouth_width / 2,
+                        mouth_point.y + mouth_normal.y * river_mouth_width / 2,
+                    ],
+                ]
+            )
+        else:
+            polygon_points.extend(
+                [
+                    [
+                        mouth_point.x + mouth_normal.x * river_mouth_width / 2,
+                        mouth_point.y + mouth_normal.y * river_mouth_width / 2,
+                    ],
+                    [
+                        mouth_point.x - mouth_normal.x * river_mouth_width / 2,
+                        mouth_point.y - mouth_normal.y * river_mouth_width / 2,
+                    ],
+                ]
+            )
+        fan_polygon = shapely.geometry.Polygon(polygon_points)
+        return fan_polygon, intersection_line, end_depth
+
     def polygon_and_bathymetry(self):
         """Calculate and return the fan polygon values. Perform calculations for both
-        rive bed estimation approaches, so both have a smooth transition to offshore
+        river bed estimation approaches, so both have a smooth transition to offshore
         bathyemtry."""
 
         # Load in river mouth alignment and bathymetry
@@ -1085,117 +1219,31 @@ class RiverMouthFan:
             ]
         )
         if self.ocean_points_file is not None:
-            length, end_elevation = self._get_distance_to_nearest_ocean_point_in_fan(
-                river_mouth_z=max(river_mouth_elevations),
-                fan=fan_polygon,
-                mouth_point=mouth_point,
-                depth_multiplier=2,
-            )
-            end_depth = -1 * end_elevation
-            fan_polygon = self._fixed_length_fan_polygon(
+            (
+                fan_polygon,
+                intersection_line,
+                end_depth,
+            ) = self._fan_from_ocean_points(
                 river_mouth_width=river_mouth_width,
+                river_mouth_elevations=river_mouth_elevations,
                 mouth_point=mouth_point,
                 mouth_tangent=mouth_tangent,
                 mouth_normal=mouth_normal,
-                length=length,
+                fan_polygon=fan_polygon,
             )
-            end_width = river_mouth_width + 2 * length * numpy.tan(
-                numpy.pi / 180 * self.FAN_ANGLE / 2
-            )
-            fan_end_point = shapely.geometry.Point(
-                [
-                    mouth_point.x + length * mouth_tangent.x,
-                    mouth_point.y + length * mouth_tangent.y,
-                ]
-            )
-            intersection_line = shapely.geometry.LineString(
-                [
-                    [
-                        fan_end_point.x + mouth_normal.x * end_width / 2,
-                        fan_end_point.y + mouth_normal.y * end_width / 2,
-                    ],
-                    [
-                        fan_end_point.x - mouth_normal.x * end_width / 2,
-                        fan_end_point.y - mouth_normal.y * end_width / 2,
-                    ],
-                ]
-            )
-
         else:
-            # Load in ocean depth contours and keep only those intersecting the fan centre
-            ocean_contours = self._get_ocean_contours(max(river_mouth_elevations))
-            end_depth = self._get_elevations(ocean_contours).min()
-            ocean_contours = ocean_contours.explode(ignore_index=True)
-            ocean_contours = ocean_contours[
-                ~ocean_contours.intersection(fan_centre).is_empty
-            ]
-
-            # Keep the closest contour intersecting
-            if len(ocean_contours) > 0:
-                ocean_contours = ocean_contours.clip(fan_polygon).explode(
-                    ignore_index=True
-                )
-                min_index = ocean_contours.distance(mouth_point).idxmin()
-                intersection_line = ocean_contours.loc[min_index].geometry
-                elevations = self._get_elevations(ocean_contours)
-                end_depth = elevations.loc[min_index]
-            else:
-                self.logger.warning(
-                    "No ocean contour intersected. Instaed assumed fan geoemtry"
-                )
-                intersection_line = shapely.geometry.LineString(
-                    [
-                        [fan_polygon.exterior.xy[0][2], fan_polygon.exterior.xy[1][2]],
-                        [fan_polygon.exterior.xy[0][3], fan_polygon.exterior.xy[1][3]],
-                    ]
-                )
-                end_depth = max(river_mouth_elevations) * 10
-
-            # Construct a fan ending at the contour
-            x, y = intersection_line.xy
-            polygon_points = [[xi, yi] for (xi, yi) in zip(x, y)]
-
-            # Check if the intersected contour and mouth normal are roughtly parallel or
-            # anti-parallel
-            unit_vector_contour = numpy.array([x[-1] - x[0], y[-1] - y[0]])
-            unit_vector_contour = unit_vector_contour / numpy.linalg.norm(
-                unit_vector_contour
+            (
+                fan_polygon,
+                intersection_line,
+                end_depth,
+            ) = self._fan_from_ocean_contours(
+                river_mouth_width=river_mouth_width,
+                river_mouth_elevations=river_mouth_elevations,
+                mouth_point=mouth_point,
+                mouth_normal=mouth_normal,
+                fan_centre=fan_centre,
+                fan_polygon=fan_polygon,
             )
-            unit_vector_mouth = numpy.array([mouth_normal.x, mouth_normal.y])
-
-            # they have the oposite direction
-            if (
-                numpy.arccos(numpy.dot(unit_vector_contour, unit_vector_mouth))
-                > numpy.pi / 2
-            ):
-                # keep line order
-                polygon_points.extend(
-                    [
-                        [
-                            mouth_point.x - mouth_normal.x * river_mouth_width / 2,
-                            mouth_point.y - mouth_normal.y * river_mouth_width / 2,
-                        ],
-                        [
-                            mouth_point.x + mouth_normal.x * river_mouth_width / 2,
-                            mouth_point.y + mouth_normal.y * river_mouth_width / 2,
-                        ],
-                    ]
-                )
-            else:  # The have the same direction, so reverse
-                # reverse fan order
-                polygon_points.extend(
-                    [
-                        [
-                            mouth_point.x + mouth_normal.x * river_mouth_width / 2,
-                            mouth_point.y + mouth_normal.y * river_mouth_width / 2,
-                        ],
-                        [
-                            mouth_point.x - mouth_normal.x * river_mouth_width / 2,
-                            mouth_point.y - mouth_normal.y * river_mouth_width / 2,
-                        ],
-                    ]
-                )
-            fan_polygon = shapely.geometry.Polygon(polygon_points)
         fan_polygon = geopandas.GeoDataFrame(geometry=[fan_polygon], crs=self.crs)
 
         # Get bathymetry values
