@@ -2383,14 +2383,16 @@ class RiverBathymetryGenerator(BaseProcessor):
         river_bathymetry_file = self.get_result_file_path(key="river_bathymetry")
         river_polygon_file = self.get_result_file_path(key="river_polygon")
 
+        # Check if the river bathymetry and polygon files exist
         files_exist = river_bathymetry_file.is_file() and river_polygon_file.is_file()
+
+        if not files_exist:
+            return False
 
         if not self.get_bathymetry_instruction("estimate_fan"):
             return files_exist
-        if not files_exist:
-            return files_exist
 
-        # A requested fan must also be present in the bathymetry output.
+        # Check if the fan is also present in the bathymetry output.
         bathymetry = geopandas.read_file(river_bathymetry_file)
         return (bathymetry["source"] == "fan").any()
 
