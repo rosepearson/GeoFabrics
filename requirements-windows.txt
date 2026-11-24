@@ -1,0 +1,34 @@
+# Windows development requirements
+# Install this AFTER creating the conda environment with environment_windows.yml
+# This ensures python-pdal from conda-forge is not overridden by pip
+
+# Core GeoFabrics dependencies (python-pdal is provided by conda-forge, NOT pip)
+dask
+distributed
+rioxarray
+geoapis
+osmpythontools>=0.3.5
+netcdf4
+
+# Additional dependencies for stability
+scipy
+numpy
+geopandas
+rasterio
+pyproj
+shapely
+pyogrio
+xarray
+requests
+pandas
+boto3
+python-dotenv
+
+# Dev dependencies (from pyproject.toml[dev])
+black
+check-manifest
+pip-tools
+
+# GeoFabrics itself in editable mode
+# This includes all dependencies from pyproject.toml except python-pdal
+# Install with: pip install -e /path/to/geofabrics --no-deps (after conda env created)

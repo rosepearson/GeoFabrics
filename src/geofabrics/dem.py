@@ -4,6 +4,11 @@ This module contains classes associated with loading, generating, and combining
 DEMs.
 """
 
+# IMPORTANT: Import pdal FIRST on Windows to avoid DLL loading conflicts
+# with GDAL-dependent libraries (rasterio, geopandas, etc.).
+# This is a known issue: https://github.com/PDAL/PDAL/issues/4408
+import pdal  # noqa: F401
+
 import rioxarray
 import rioxarray.merge
 import rasterio
@@ -17,7 +22,6 @@ import pandas
 import shapely
 import dask
 import dask.array
-import pdal
 import json
 import abc
 import gc

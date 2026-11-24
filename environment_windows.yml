@@ -1,0 +1,38 @@
+# Windows conda development environment for GeoFabrics
+# This environment is designed for local development and testing
+# Packages are sourced from conda-forge where possible for better Windows support
+# 
+# Key differences from Linux CI:
+# - Uses GDAL from conda-forge (compiled with proper Windows support)
+# - Uses python-pdal from conda-forge (not PyPI stub)
+# - Python 3.11 (best compatibility with conda-forge geospatial packages)
+# - Includes pytest and dev tools for local testing
+# - System libraries (geos, proj, geotiff, expat) installed via conda-forge
+#
+# To create: mamba env create -f environment_windows.yml
+# To activate: conda activate geofabrics-development
+
+name: geofabrics-development
+channels:
+  - conda-forge
+dependencies:
+  # Core Python
+  - python=3.11
+  
+  # System libraries for geospatial support
+  - geos
+  - proj
+  - geotiff
+  - gdal
+  - expat
+  - libxml2
+  
+  # PDAL geospatial library
+  # Use python-pdal 3.5.4 which has explicit Python 3.11 support
+  # Let conda-forge auto-resolve matching pdal version
+  - python-pdal=3.5.4
+  
+  # Testing and development tools
+  - pytest
+  - pip
+
