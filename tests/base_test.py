@@ -46,16 +46,9 @@ class Test(unittest.TestCase):
         # Remove any files from last test, then create a results directory
         cls.cache_dir = cls.test_path / "data"
         cls.results_dir = cls.cache_dir / "results"
-        cls.tearDownClass()
-        cls.results_dir.mkdir(exist_ok=True)
-
-    @classmethod
-    def tearDownClass(cls):
-        """Remove created files in the cache directory as part of the testing process at
-        the end of the test."""
-
         gc.collect()
         cls.clean_data_folder()
+        cls.results_dir.mkdir(exist_ok=True)
 
     @classmethod
     def clean_data_folder(cls):
