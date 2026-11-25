@@ -25,5 +25,5 @@
 		"interpolation": {"no_data": "linear"}
 		}
 	},
-"roughness": {"roughness": {"roads": {}}}
+"roughness": {"roughness": {"roads": {"source": "none"}}}
 }
