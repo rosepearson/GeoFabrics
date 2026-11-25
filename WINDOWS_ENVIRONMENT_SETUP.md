@@ -26,7 +26,7 @@ A fully functional conda development environment for GeoFabrics on Windows has b
    - `src/geofabrics/processor.py`: Added pdal import at the top with documentation
    - `src/geofabrics/dem.py`: Kept pdal import (it's still used directly in the module)
    - `tests/conftest.py`: New pytest configuration file to ensure pdal loads first
-   - `test_imports.py`: Updated to handle `OSMPythonTools` import (requires capital letters)
+   - `check_imports.py`: Updated to handle `OSMPythonTools` import (requires capital letters)
 
 4. **Created Environment Configuration Files**
    - `environment_windows.yml`: Clean conda environment definition
@@ -58,7 +58,7 @@ python -m geofabrics --help
 
 ### Quick Import Test
 ```bash
-conda run -n geofabrics-development python C:\Local\repos\GeoFabrics\test_imports.py
+conda run -n geofabrics-development python C:\Local\repos\GeoFabrics\check_imports.py
 ```
 
 ## Package Versions
@@ -119,7 +119,7 @@ This is a known Windows-specific issue. The fix (importing pdal first) must be m
 ### "No module named 'osmpythontools'"
 - The package is installed as `OSMPythonTools` (capital letters)
 - Import with capital letters: `from OSMPythonTools import ...`
-- The `test_imports.py` script handles this special case
+- The `check_imports.py` script handles this special case
 
 ### Environment Takes Long to Create
 - First creation is slower (downloads ~500MB of packages)
@@ -136,7 +136,7 @@ This is a known Windows-specific issue. The fix (importing pdal first) must be m
 - `tests/conftest.py` - pytest configuration for pdal import order
 - `environment_windows.yml` - Conda environment definition
 - `requirements-windows.txt` - Pip packages list
-- `test_imports.py` - Quick import validation script (updated)
+- `check_imports.py` - Quick import validation script (updated)
 - `constraints.txt` - (Optional) can be used for pip constraints
 
 ### Configuration Files (Already Existed)
@@ -155,4 +155,4 @@ If you encounter any import errors:
 1. Verify `conftest.py` exists in `tests/`
 2. Check that `processor.py` has `import pdal` at the top
 3. Ensure no other modules import GDAL libraries before pdal
-4. Run `python test_imports.py` to validate all core packages
+4. Run `python check_imports.py` to validate all core packages
