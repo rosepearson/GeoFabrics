@@ -13,6 +13,9 @@ A peer-reviewed journal article of the package and methodogy can be found at: [h
 
 ![DEM_generation_workflow](https://user-images.githubusercontent.com/22883860/161160412-eef14d39-ed92-4998-838a-15176052afb9.png)
 
+OpenStreetMap downloads retry transient Overpass failures up to three times, with
+short increasing delays. Persistent failures are reported with their underlying error.
+
 ## Documentation
 ### Wiki
 For detailed instructions on installation, usage, and testing please check out the repo [wiki](https://github.com/rosepearson/GeoFabrics/wiki).

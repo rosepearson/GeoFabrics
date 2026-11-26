@@ -23,7 +23,11 @@ import copy
 import geopandas
 import pandas
 import datetime
+import random
 import shapely
+import sys
+import time
+import urllib.error
 import xarray
 import OSMPythonTools.overpass
 from . import geometry
@@ -33,6 +37,82 @@ import geoapis.lidar
 import geoapis.vector
 import geoapis.raster
 from . import dem
+
+
+def _is_retryable_overpass_error(error):
+    """Recognise transport errors and OSMPythonTools' ambiguous status error."""
+    status_error = (
+        type(error) is Exception
+        and str(error) == "[overpass] could not fetch or interpret status of the endpoint"
+    )
+    cause = error.__context__ if status_error else error
+    if (
+        type(error) is Exception
+        and len(error.args) > 1
+        and str(error.args[0]).startswith("The requested data could not be downloaded.")
+    ):
+        cause = error.args[1]
+    if isinstance(cause, urllib.error.HTTPError):
+        return cause.code == 429 or 500 <= cause.code < 600
+    if status_error:
+        return cause is None or isinstance(cause, Exception)
+    return isinstance(cause, (urllib.error.URLError, TimeoutError, ConnectionError))
+
+
+def _query_overpass(query, logger, date=None):
+    """Query Overpass, retrying transient failures with bounded backoff."""
+    max_attempts = 3
+    for attempt in range(1, max_attempts + 1):
+        try:
+            overpass = OSMPythonTools.overpass.Overpass()
+            kwargs = {"timeout": 60}
+            if date is not None:
+                kwargs["date"] = date
+            return overpass.query(query, **kwargs)
+        except Exception as error:
+            if not _is_retryable_overpass_error(error):
+                raise
+            if attempt == max_attempts:
+                raise ConnectionError(
+                    f"Did not successfully download the OSM data in {max_attempts} attempts."
+                ) from error
+            delay = 2**attempt + random.uniform(0, 1)
+            logger.warning(
+                "Overpass request failed on attempt %s/%s; retrying in %.1f seconds.",
+                attempt,
+                max_attempts,
+                delay,
+                exc_info=True,
+            )
+            time.sleep(delay)
+
+
+def _create_local_cluster(**kwargs):
+    """Create a local cluster with PDAL loaded first in Windows workers."""
+    if sys.platform == "win32":
+        configured = dask.config.get("distributed.worker.preload")
+        preloads = [configured] if isinstance(configured, str) else list(configured or [])
+        argv = dask.config.get("distributed.worker.preload-argv")
+        per_preload_argv = bool(argv) and isinstance(argv[0], (list, tuple))
+        if per_preload_argv:
+            if len(argv) != len(preloads):
+                raise ValueError("Dask worker preload and preload-argv lengths do not match")
+            argv = list(argv)
+
+        if "pdal" in preloads:
+            index = preloads.index("pdal")
+            preloads.insert(0, preloads.pop(index))
+            if per_preload_argv:
+                argv.insert(0, argv.pop(index))
+        else:
+            preloads.insert(0, "pdal")
+            if per_preload_argv:
+                argv.insert(0, [])
+
+        kwargs["preload"] = preloads
+        if per_preload_argv:
+            kwargs["preload_argv"] = argv
+    return distributed.LocalCluster(**kwargs)
 
 
 class BaseProcessor(abc.ABC):
@@ -1027,7 +1107,7 @@ class RawLidarDemGenerator(BaseProcessor):
             "processes": True,
             "memory_limit": self.get_processing_instructions("memory_limit"),
         }
-        cluster = distributed.LocalCluster(**cluster_kwargs)
+        cluster = _create_local_cluster(**cluster_kwargs)
         with cluster, distributed.Client(cluster) as client:
             client.forward_logging()  # Ensure root logging configuration is used
             self.logger.info(f"Dask client: {client}")
@@ -1526,7 +1606,7 @@ class HydrologicDemGenerator(BaseProcessor):
             "processes": True,
             "memory_limit": self.get_processing_instructions("memory_limit"),
         }
-        cluster = distributed.LocalCluster(**cluster_kwargs)
+        cluster = _create_local_cluster(**cluster_kwargs)
         with cluster, distributed.Client(cluster) as client:
             self.logger.info(f"Dask client: {client}")
             self.logger.info(f"Dask dashboard: {client.dashboard_link}")
@@ -1635,7 +1715,7 @@ class PatchDemGenerator(BaseProcessor):
             "processes": True,
             "memory_limit": self.get_processing_instructions("memory_limit"),
         }
-        cluster = distributed.LocalCluster(**cluster_kwargs)
+        cluster = _create_local_cluster(**cluster_kwargs)
         with cluster, distributed.Client(cluster) as client:
             self.logger.info(f"Dask client: {client}")
             self.logger.info(f"Dask dashboard: {client.dashboard_link}")
@@ -1911,27 +1991,12 @@ class RoughnessLengthGenerator(BaseProcessor):
                 includeGeometry=True,
             )
 
-            # Perform query - try mutliple times as intermitten connective issues
-            max_download_retries = 3
-            for i in range(max_download_retries):
-                try:
-                    overpass = OSMPythonTools.overpass.Overpass()
-                    if "osm_date" in self.instructions["roughness"]:
-                        roads = overpass.query(
-                            query,
-                            date=self.get_roughness_instruction("osm_date"),
-                            timeout=60,
-                        )
-                    else:
-                        roads = overpass.query(query, timeout=60)
-                    break
-                except Exception as e:
-                    print(f"An unexpected error occurred: {e}")
-            else:
-                raise ConnectionError(
-                    "Did not successfully download the OSM data in "
-                    f"{max_download_retries} attempts."
-                )
+            date = (
+                self.get_roughness_instruction("osm_date")
+                if "osm_date" in self.instructions["roughness"]
+                else None
+            )
+            roads = _query_overpass(query, self.logger, date=date)
             # Extract information
             element_dict = {
                 "geometry": [],
@@ -2041,7 +2106,7 @@ class RoughnessLengthGenerator(BaseProcessor):
             "processes": True,
             "memory_limit": self.get_processing_instructions("memory_limit"),
         }
-        cluster = distributed.LocalCluster(**cluster_kwargs)
+        cluster = _create_local_cluster(**cluster_kwargs)
         with cluster, distributed.Client(cluster) as client:
             self.logger.info(f"Dask client: {client}")
             self.logger.info(f"Dask dashboard: {client.dashboard_link}")
@@ -2786,27 +2851,7 @@ class RiverBathymetryGenerator(BaseProcessor):
             # Create OSM defined channel
             osm = self.get_bathymetry_instruction("osm")
             query = f"({osm['type']}[waterway]({osm['id']});); out body geom;"
-            # Perform query - try mutliple times as intermitten connective issues
-            max_download_retries = 3
-            for i in range(max_download_retries):
-                try:
-                    overpass = OSMPythonTools.overpass.Overpass()
-                    if "date" in osm:
-                        osm_channel = overpass.query(
-                            query,
-                            date=osm["date"],
-                            timeout=60,
-                        )
-                    else:
-                        osm_channel = overpass.query(query, timeout=60)
-                    break
-                except Exception as e:
-                    print(f"An unexpected error occurred: {e}")
-            else:
-                raise ConnectionError(
-                    "Did not successfully download the OSM data in "
-                    f"{max_download_retries} attempts."
-                )
+            osm_channel = _query_overpass(query, self.logger, date=osm.get("date"))
             osm_channel = osm_channel.elements()[0]
             osm_channel = geopandas.GeoDataFrame(
                 {
@@ -3883,27 +3928,12 @@ class WaterwayBedElevationEstimator(BaseProcessor):
                 includeGeometry=True,
             )
 
-            # Perform query - try mutliple times as intermitten connective issues
-            max_download_retries = 3
-            for i in range(max_download_retries):
-                try:
-                    overpass = OSMPythonTools.overpass.Overpass()
-                    if "osm_date" in self.instructions["waterways"]:
-                        waterways = overpass.query(
-                            query,
-                            date=self.get_waterways_instruction("osm_date"),
-                            timeout=60,
-                        )
-                    else:
-                        waterways = overpass.query(query, timeout=60)
-                    break
-                except Exception as e:
-                    print(f"An unexpected error occurred: {e}")
-            else:
-                raise ConnectionError(
-                    "Did not successfully download the OSM data in "
-                    f"{max_download_retries} attempts."
-                )
+            date = (
+                self.get_waterways_instruction("osm_date")
+                if "osm_date" in self.instructions["waterways"]
+                else None
+            )
+            waterways = _query_overpass(query, self.logger, date=date)
             # Extract information
             element_dict = {
                 "geometry": [],
@@ -4336,27 +4366,12 @@ class StopbankCrestElevationEstimator(BaseProcessor):
                 includeGeometry=True,
             )
 
-            # Perform query - try mutliple times as intermitten connective issues
-            max_download_retries = 3
-            for i in range(max_download_retries):
-                try:
-                    overpass = OSMPythonTools.overpass.Overpass()
-                    if "osm_date" in self.instructions["stopbanks"]:
-                        stopbanks = overpass.query(
-                            query,
-                            date=self.get_stopbanks_instruction("osm_date"),
-                            timeout=60,
-                        )
-                    else:
-                        stopbanks = overpass.query(query, timeout=60)
-                    break
-                except Exception as e:
-                    print(f"An unexpected error occurred: {e}")
-            else:
-                raise ConnectionError(
-                    "Did not successfully download the OSM data in "
-                    f"{max_download_retries} attempts."
-                )
+            date = (
+                self.get_stopbanks_instruction("osm_date")
+                if "osm_date" in self.instructions["stopbanks"]
+                else None
+            )
+            stopbanks = _query_overpass(query, self.logger, date=date)
             # Extract information
             for element in stopbanks.elements():
                 element_dict["geometry"].append(element.geometry())
