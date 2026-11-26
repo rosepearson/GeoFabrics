@@ -91,12 +91,16 @@ def _create_local_cluster(**kwargs):
     """Create a local cluster with PDAL loaded first in Windows workers."""
     if sys.platform == "win32":
         configured = dask.config.get("distributed.worker.preload")
-        preloads = [configured] if isinstance(configured, str) else list(configured or [])
+        preloads = (
+            [configured] if isinstance(configured, str) else list(configured or [])
+        )
         argv = dask.config.get("distributed.worker.preload-argv")
         per_preload_argv = bool(argv) and isinstance(argv[0], (list, tuple))
         if per_preload_argv:
             if len(argv) != len(preloads):
-                raise ValueError("Dask worker preload and preload-argv lengths do not match")
+                raise ValueError(
+                    "Dask worker preload and preload-argv lengths do not match"
+                )
             argv = list(argv)
 
         if "pdal" in preloads:

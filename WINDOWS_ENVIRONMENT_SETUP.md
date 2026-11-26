@@ -92,6 +92,7 @@ pytest tests/ -k test_result_dem_windows    # filter by name
 This is a known Windows-specific issue. The fix (importing pdal first) must be maintained:
 - **Processor module** (`processor.py`) imports pdal at the module level as the first import
 - **Test configuration** (`conftest.py`) imports pdal before pytest loads any test modules
+- **Local Dask workers** preload pdal on Windows before other configured worker preloads
 - **Any new modules** that import GDAL libraries should import pdal first
 
 ### Why This Works
