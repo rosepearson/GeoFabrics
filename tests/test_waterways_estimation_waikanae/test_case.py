@@ -317,7 +317,7 @@ class Test(base_test.Test):
         print(
             f"Distances between the test and benchmark points {numpy.array(comparison)}"
         )
-        self.assertAlmostEqual(
+        self.assertTrue(
             numpy.allclose(comparison, numpy.zeros(len(test[column_name]))),
             f"The generated closed waterways geometry {column_name} does not match the"
             f"benchmark. They are separated by distances of {comparison}",
