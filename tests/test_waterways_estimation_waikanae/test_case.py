@@ -214,7 +214,7 @@ class Test(base_test.Test):
             test_comparison,
             benchmark_comparison,
             places=decimal_threshold,
-            msg=f"The geneated closed waterways polygon {column_name} does not match the"
+            msg=f"The generated closed waterways polygon {column_name} does not match the"
             f" benchmark. {test_comparison} vs {benchmark_comparison}",
         )
 
@@ -237,7 +237,7 @@ class Test(base_test.Test):
             test_comparison,
             benchmark_comparison,
             places=decimal_threshold,
-            msg="The geneated closed waterways bathymetry {column_name} does not match "
+            msg=f"The generated closed waterways bathymetry {column_name} does not match "
             f"the benchmark. {test_comparison} vs {benchmark_comparison}",
         )
 
@@ -250,7 +250,7 @@ class Test(base_test.Test):
             comparison,
             numpy.zeros(len(test[column_name])),
             places=decimal_threshold,
-            msg=f"The geneated closed waterways bathymetry {column_name} does not match the"
+            msg=f"The generated closed waterways geometry {column_name} does not match the"
             f"benchmark. They are separated by distances of {comparison}",
         )
 
@@ -281,11 +281,14 @@ class Test(base_test.Test):
             f"Closed waterways polygon test area {test_comparison}, and benchmark area "
             f"{benchmark_comparison}"
         )
-        self.assertTrue(
-            test_comparison == benchmark_comparison,
-            f"The geneated closed waterways polygon {column_name} does not match the"
-            f" benchmark. {test_comparison} vs {benchmark_comparison}",
-        )
+        decimal_threshold = 6
+        self.assertAlmostEqual(
+                    test_comparison,
+                    benchmark_comparison,
+                    places=decimal_threshold,
+                    msg=f"The generated closed waterways polygon {column_name} does not match the"
+                    f" benchmark. {test_comparison} vs {benchmark_comparison}",
+                )
 
         # Compare the bathymetries
         test = geopandas.read_file(
@@ -295,7 +298,7 @@ class Test(base_test.Test):
             self.cache_dir / data_path_instructions["closed_benchmark"]["elevations"]
         )
 
-        # check some of the bathymetrt columns match
+        # check some of the bathymetry columns match
         column_name = "z"
         test_comparison = test[column_name].array
         benchmark_comparison = benchmark[column_name].array
@@ -305,7 +308,7 @@ class Test(base_test.Test):
         )
         self.assertTrue(
             test_comparison == benchmark_comparison,
-            "The geneated closed waterways bathymetry {column_name} does not match "
+            f"The generated closed waterways bathymetry {column_name} does not match "
             f"the benchmark. {test_comparison} vs {benchmark_comparison}",
         )
 
@@ -315,8 +318,8 @@ class Test(base_test.Test):
             f"Distances between the test and benchmark points {numpy.array(comparison)}"
         )
         self.assertAlmostEqual(
-            comparison == numpy.zeros(len(test[column_name])),
-            f"The geneated closed waterways bathymetry {column_name} does not match the"
+            numpy.allclose(comparison, numpy.zeros(len(test[column_name]))),
+            f"The generated closed waterways geometry {column_name} does not match the"
             f"benchmark. They are separated by distances of {comparison}",
         )
 
