@@ -13,9 +13,18 @@ A peer-reviewed journal article of the package and methodogy can be found at: [h
 
 ![DEM_generation_workflow](https://user-images.githubusercontent.com/22883860/161160412-eef14d39-ed92-4998-838a-15176052afb9.png)
 
+OpenStreetMap downloads retry transient Overpass failures up to three times, with
+short increasing delays. Persistent failures are reported with their underlying error.
+
 ## Documentation
 ### Wiki
 For detailed instructions on installation, usage, and testing please check out the repo [wiki](https://github.com/rosepearson/GeoFabrics/wiki).
+
+Install the `dev` extras to enable integration-test retries with
+`pytest-rerunfailures`. Integration tests are rerun once, after a 10-second delay,
+only when transient OSM downloads exhaust the processor's three attempts.
+Assertion failures and unrelated errors are not rerun, and production retries
+are unchanged.
 
 ### API documentation
 For auto-generated API documentation, checkout the repo [pages](https://rosepearson.github.io/GeoFabrics).

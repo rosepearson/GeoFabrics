@@ -118,7 +118,7 @@ def node_centred_reach_cross_section(
 
 
 class Channel:
-    """A class to define a channel centre line from a digital network."""
+    """Define a channel centreline from a digital network."""
 
     def __init__(
         self,
@@ -421,7 +421,7 @@ class Channel:
         ----------
 
         channel
-            A data frame with the geometry defining the channel centreline.
+            A GeoDataFrame containing the channel centreline geometry.
         sample_direction
             Are the reaches sampled in the same direction they are ordered.
             1 if in the same direction, -1 if in the opposite direction.
@@ -446,7 +446,7 @@ class Channel:
         ----------
 
         channel
-            A data frame with the geometry defining the channel centreline.
+            A GeoDataFrame containing the channel centreline geometry.
         spacing
             The spacing between sampled points along straight segments
         sample_direction
@@ -462,7 +462,7 @@ class Channel:
         number_segment_samples = max(numpy.round(line_string.length / spacing), 2)
         segment_resolution = line_string.length / (number_segment_samples - 1)
 
-        # Equally space points along the entire line string
+        # Space points evenly along the entire line string.
         xy_spaced = [
             line_string.interpolate(i * segment_resolution)
             for i in numpy.arange(0, number_segment_samples, 1)
@@ -483,7 +483,7 @@ class Channel:
         ----------
 
         channel
-            A data frame with the geometry defining the channel centreline.
+            A GeoDataFrame containing the channel centreline geometry.
         spacing
             The spacing between sampled points along straight segments
         sample_direction
@@ -596,9 +596,11 @@ class Channel:
 
 
 class InterpolateMeasuredElevations:
-    """Interpolate measured river bed elevations. Requires LineStrings of
-    riverbed elevations, and the LineStrings defining the left and right
-    riverbank."""
+    """Interpolate measured river-bed elevations.
+
+    Requires LineStrings of river-bed elevations and LineStrings defining the
+    left and right riverbanks.
+    """
 
     def __init__(
         self,
@@ -608,7 +610,7 @@ class InterpolateMeasuredElevations:
         cross_section_spacing: int,
         crs: int,
     ):
-        """Setup for interpolating the measured riverbed elevations along
+        """Set up interpolation of measured river-bed elevations along
         equally spaced cross sections."""
         self.logger = logging.getLogger(f"{__name__}.{self.__class__.__name__}")
 
@@ -1158,7 +1160,7 @@ class ChannelCharacteristics:
 
     def _estimate_water_level_and_slope(self, cross_sections: geopandas.GeoDataFrame):
         """Estimate the water level and slope from the minimum z heights along
-        the sampled cross_sections after applying appropiate smoothing and
+        the sampled cross_sections after applying appropriate smoothing and
         constraints to ensure it is monotonically increasing. Values are stored
         in the cross_sections.
 
@@ -1187,7 +1189,7 @@ class ChannelCharacteristics:
         )
 
     def _smooth_widths_and_thresholds(self, cross_sections: geopandas.GeoDataFrame):
-        """Record the valid and reolling mean of the calculated thresholds and widths
+        """Record valid widths and thresholds and calculate their rolling means.
 
         Parameters
         ----------
@@ -1214,18 +1216,39 @@ class ChannelCharacteristics:
     def sample_cross_sections(
         self, cross_sections: geopandas.GeoDataFrame, min_z_search_radius: float
     ):
-        """Return the elevations along the cross_section sampled at the
-        sampling resolution. Also add the measured 'min_z_centre' values to
-        the cross_sections.
+        """Sample ground and vegetation elevations along channel cross sections.
+
+        For each cross section, sample both DEMs at intervals of
+        ``self.resolution`` along a transect centered on its midpoint. The
+        nearest DEM cell is used for each sample, with no maximum search
+        distance. The minimum ground elevation within the central search
+        radius is added to ``cross_sections`` as ``min_z_centre``.
 
         Parameters
         ----------
-
         cross_sections
-            The cross_sections with geometry defined as polylines.
+            GeoDataFrame of cross sections. Each row must provide ``mid_x``,
+            ``mid_y``, ``nx``, and ``ny`` fields used to locate and orient its
+            transect. Coordinates must use the same horizontal CRS as the
+            ground and vegetation DEMs.
         min_z_search_radius
-            The distance to search from the centre.
+            Distance from the transect midpoint over which to find the
+            minimum ground elevation. Must use the same units as
+            ``self.resolution``.
 
+        Returns
+        -------
+        dict
+            Mapping with ``gnd_elevations`` and ``veg_elevations`` keys. Each
+            value is a list containing one NumPy array of sampled elevations
+            per cross section. The input ``cross_sections`` is also modified
+            in place by adding ``min_z_centre``.
+
+        Notes
+        -----
+        Missing DEM elevations are returned as NaN. If the central search
+        window contains no valid ground elevations, ``min_z_centre`` is NaN.
+        Elevations in metres.
         """
 
         # The number of transect samples - ensure odd - defined from the first
@@ -1296,10 +1319,10 @@ class ChannelCharacteristics:
         search_radius: float,
         min_channel_width: float,
     ):
-        """Estimate width based on a thresbold of bank height above water level.
-        Start in the centre and work out. Doesn't detect banks until a value
-        less than the threshold has been detected. Takes the widest channel within
-        the radius.'
+        """Estimate width using a bank-height threshold above the water level.
+
+        Search outward from the centre, detecting a bank after encountering a
+        value below the threshold. Select the widest channel within the radius.
 
         Parameters
         ----------
@@ -1371,10 +1394,10 @@ class ChannelCharacteristics:
         maximum_threshold: float,
         min_channel_width=float,
     ):
-        """Estimate width based on a thresbold of bank height above water level.
-        Start in the centre and work out. Doesn't detect banks until a value
-        less than the threshold has been detected. Takes the widest channel within
-        the radius.'
+        """Estimate width using a bank-height threshold above the water level.
+
+        Search outward from the centre, detecting a bank after encountering a
+        value below the threshold. Select the widest channel within the radius.
 
         Parameters
         ----------
@@ -1539,7 +1562,7 @@ class ChannelCharacteristics:
             widths["widths"].append((stop_i - start_i) * resolution)
             widths["threshold"].append(dz_bankfull)
             widths["channel_count"].append(channel_count)
-        # Add threshold/width information as newcolumns to data frame
+        # Add threshold and width information as new columns to the GeoDataFrame.
         for key in widths.keys():
             cross_sections[key] = widths[key]
         # Check valid - one channel, start & end within section, non-NaN thres
@@ -2084,14 +2107,11 @@ class ChannelCharacteristics:
         return aligned_spline
 
     def _unimodal_smoothing(self, y: numpy.ndarray):
-        """Fit a monotonically increasing cublic spline to the data.
+        """Fit a monotonically increasing cubic spline to the data.
 
-        Monotonically increasing cublic splines
+        Monotonically increasing cubic splines
         - https://stats.stackexchange.com/questions/467126/monotonic-splines-in-python
         - https://analyticalsciencejournals.onlinelibrary.wiley.com/doi/epdf/10.1002/cem.935
-
-        At end could fit non-monotonic fit. unconstrained_polynomial_fit = numpy.linalg
-        .solve(E + la * D3.T @ D3, y)
 
         Parameters
         ----------
@@ -2360,7 +2380,7 @@ class ChannelCharacteristics:
         ----------
 
         aligned_channel
-            The channel centre line. Should be in the channel bed.
+            The channel centreline, positioned in the channel bed.
         threshold
             The height height above the water level to detect as a bank.
         max_threshold

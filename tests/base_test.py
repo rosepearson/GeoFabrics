@@ -11,7 +11,14 @@ import shutil
 import logging
 import gc
 
+import pytest
 
+
+@pytest.mark.flaky(
+    reruns=1,
+    reruns_delay=10,
+    only_rerun=r"ConnectionError: Did not successfully download the OSM data in \d+ attempts\.",
+)
 class Test(unittest.TestCase):
     """Test the PatchDemGenerator processor class for a simple example with
     two patches specified in the instruction.json
@@ -46,16 +53,9 @@ class Test(unittest.TestCase):
         # Remove any files from last test, then create a results directory
         cls.cache_dir = cls.test_path / "data"
         cls.results_dir = cls.cache_dir / "results"
-        cls.tearDownClass()
-        cls.results_dir.mkdir(exist_ok=True)
-
-    @classmethod
-    def tearDownClass(cls):
-        """Remove created files in the cache directory as part of the testing process at
-        the end of the test."""
-
         gc.collect()
         cls.clean_data_folder()
+        cls.results_dir.mkdir(exist_ok=True)
 
     @classmethod
     def clean_data_folder(cls):

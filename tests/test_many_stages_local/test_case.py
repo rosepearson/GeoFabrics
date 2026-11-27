@@ -6,6 +6,7 @@ Created on Wed Jun 30 11:11:25 2021
 """
 
 import unittest
+from unittest.mock import patch
 import json
 import pathlib
 import rioxarray
@@ -16,7 +17,7 @@ import geopandas
 import pdal
 import logging
 
-from geofabrics import runner
+from geofabrics import processor, runner
 from tests import base_test
 
 
@@ -166,7 +167,12 @@ class Test(base_test.Test):
         pdal_pipeline.execute()
 
         # Run pipeline
-        runner.from_instructions_dict(cls.instructions)
+        with patch.object(
+            processor.RoughnessLengthGenerator,
+            "load_roads_osm",
+            side_effect=AssertionError("Local test must not request OSM roads"),
+        ):
+            runner.from_instructions_dict(cls.instructions)
 
     def test_result_dem(self):
         """A basic comparison between the generated and benchmark DEM"""

@@ -1,13 +1,17 @@
 # -*- coding: utf-8 -*-
 """
-A package for generating hydrologically conditioned DEMs from LiDAR and bathymetry contours
-give the instructions contained in a JSON instruction file.
+Generate hydrologically conditioned DEMs from LiDAR and other information
+using instructions supplied in a JSON instruction file.
 
 Modules:
-    * processor - A module for running the overall DEM generation pipeline
-    * geometry - A module associated with manipulating vector data.
-    * dem - A module associated with reading, generating, and combining DEMs
-    * bathymetry_estimation - A module associated with estimating river characteristics
+    * processor - Defines processors for DEMs, bathymetry, roughness, waterways,
+      and stopbanks.
+    * geometry - Loads and processes catchment and vector data.
+    * dem - Reads, generates, and combines DEMs and roughness layers.
+    * bathymetry_estimation - Estimates channel geometry and bathymetry.
+    * runner - Merges instruction defaults and orchestrates processing stages.
+    * __main__ - Provides the command-line entry point.
+    * version - Defines the package version.
 """
 
 from . import version
