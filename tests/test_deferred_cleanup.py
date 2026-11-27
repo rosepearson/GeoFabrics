@@ -9,8 +9,7 @@ def test_cleanup_depends_on_class_outcomes(pytester):
         f"import sys\nsys.path.insert(0, {str(repo_root)!r})\n"
         "pytest_plugins = ['tests.conftest']\n"
     )
-    pytester.makepyfile(
-        """
+    pytester.makepyfile("""
         import json
         from pathlib import Path
         import pytest
@@ -62,8 +61,7 @@ def test_cleanup_depends_on_class_outcomes(pytester):
 
             def test_example(self):
                 (self.test_path / "cleanup.txt").unlink()
-        """
-    )
+        """)
 
     result = pytester.runpytest_subprocess("-q")
     result.assert_outcomes(passed=3, failed=1, skipped=1, errors=2)

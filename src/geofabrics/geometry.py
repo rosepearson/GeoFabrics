@@ -785,9 +785,9 @@ class RiverMouthFan:
         river_polygon = geopandas.read_file(self.river_polygon_file).make_valid()
 
         # Ensure the river alignment is taken from the most downstream bathymetry point
-        first_bathymetry_index = (
-            river_bathymetry[river_bathymetry.geometry.isna() == False].index.min()
-        )
+        first_bathymetry_index = river_bathymetry[
+            river_bathymetry.geometry.isna() == False
+        ].index.min()
         channel_split_distance = first_bathymetry_index * self.cross_section_spacing
 
         if channel_split_distance > self.cross_section_spacing:
@@ -1123,9 +1123,7 @@ class RiverMouthFan:
 
         # Keep the closest contour intersecting the fan centreline.
         if len(ocean_contours) > 0:
-            ocean_contours = ocean_contours.clip(fan_polygon).explode(
-                ignore_index=True
-            )
+            ocean_contours = ocean_contours.clip(fan_polygon).explode(ignore_index=True)
             min_index = ocean_contours.distance(mouth_point).idxmin()
             intersection_line = ocean_contours.loc[min_index].geometry
             elevations = self._get_elevations(ocean_contours)

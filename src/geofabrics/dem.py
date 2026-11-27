@@ -3873,7 +3873,7 @@ def point_elevation(
     X/Y coordinates must use the same planar units. Most methods return Z
     values in the input vertical units; ``std`` returns a Z spread and
     ``count`` is intended to return the number of neighbours.
-    ROSE TO DEFINE: Confirm handling of non-finite Z values, and whether 
+    ROSE TO DEFINE: Confirm handling of non-finite Z values, and whether
     ``count`` is a supported method.
     """
 

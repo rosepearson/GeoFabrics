@@ -16,7 +16,6 @@ import pytest
 
 from tests import base_test
 
-
 _reports_key = pytest.StashKey()
 
 

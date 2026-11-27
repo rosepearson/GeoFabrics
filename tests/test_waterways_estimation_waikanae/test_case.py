@@ -283,12 +283,12 @@ class Test(base_test.Test):
         )
         decimal_threshold = 6
         self.assertAlmostEqual(
-                    test_comparison,
-                    benchmark_comparison,
-                    places=decimal_threshold,
-                    msg=f"The generated closed waterways polygon {column_name} does not match the"
-                    f" benchmark. {test_comparison} vs {benchmark_comparison}",
-                )
+            test_comparison,
+            benchmark_comparison,
+            places=decimal_threshold,
+            msg=f"The generated closed waterways polygon {column_name} does not match the"
+            f" benchmark. {test_comparison} vs {benchmark_comparison}",
+        )
 
         # Compare the bathymetries
         test = geopandas.read_file(

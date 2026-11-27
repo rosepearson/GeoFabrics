@@ -43,7 +43,8 @@ def _is_retryable_overpass_error(error):
     """Recognise transport errors and OSMPythonTools' ambiguous status error."""
     status_error = (
         type(error) is Exception
-        and str(error) == "[overpass] could not fetch or interpret status of the endpoint"
+        and str(error)
+        == "[overpass] could not fetch or interpret status of the endpoint"
     )
     cause = error.__context__ if status_error else error
     if (
@@ -4187,7 +4188,7 @@ class StopbankCrestElevationEstimator(BaseProcessor):
 
         Notes
         -----
-        Currently the maximum within the polygon bounding box, and not 
+        Currently the maximum within the polygon bounding box, and not
         restricted to the polygon itself.
         """
 
