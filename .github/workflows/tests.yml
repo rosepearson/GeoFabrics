@@ -58,7 +58,7 @@ jobs:
 
     - name: Install test dependencies
       run: |
-        pip install black flake8 pytest
+        pip install black flake8 pytest pytest-rerunfailures
 
 
     - name: Create .env file with API keys

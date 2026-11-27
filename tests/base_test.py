@@ -11,7 +11,14 @@ import shutil
 import logging
 import gc
 
+import pytest
 
+
+@pytest.mark.flaky(
+    reruns=1,
+    reruns_delay=10,
+    only_rerun=r"ConnectionError: Did not successfully download the OSM data in \d+ attempts\.",
+)
 class Test(unittest.TestCase):
     """Test the PatchDemGenerator processor class for a simple example with
     two patches specified in the instruction.json
