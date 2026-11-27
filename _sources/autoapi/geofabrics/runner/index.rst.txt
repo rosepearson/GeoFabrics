@@ -5,8 +5,7 @@ geofabrics.runner
 
 .. autoapi-nested-parse::
 
-   A convenience script for running the DEM generation pipelines contained in the processor
-    module of geofabrics.
+   Orchestrate the GeoFabrics processing pipelines from an instruction dictionary.
 
 
 
@@ -28,7 +27,7 @@ Module Contents
 
 .. py:function:: config_logging(logging_filepath)
 
-   Configure the root logger inhereited by all othr loggers.
+   Configure the root logger inherited by other loggers.
 
 
 .. py:function:: setup_logging_for_run(instructions, label)
@@ -44,26 +43,38 @@ Module Contents
 
 .. py:function:: merge_dicts(dict_a, dict_b, logger, replace_a)
 
-   Merge the contents of the dict_a and dict_b. Use recursion to merge
-   any nested dictionaries. replace_a determines if the dict_a values are
-   replaced or not if different values are in the dict_b.
+   Recursively merge ``dict_b`` into a deep copy of ``dict_a``.
 
-   Adapted from https://stackoverflow.com/questions/7204805/how-to-merge-dictionaries-of-dictionaries
+   Nested dictionaries are merged recursively, and keys present only in
+   ``dict_b`` are added. For conflicting leaf values, ``replace_a`` controls
+   whether the value from ``dict_b`` replaces the value from ``dict_a``.
+   Conflicts are reported through ``logger``. Neither input dictionary is
+   modified.
 
-   :param dict_a  The dict to:
-   :param dict_b  The location of the centre of the river mouth:
-   :param replace_a If True any dict_a values are replaced if different values are in dict_b:
+   :param dict_a: Base dictionary to copy and update.
+   :param dict_b: Dictionary whose values are merged into the copy.
+   :param logger: Logger used to report conflicting values.
+   :param replace_a: If true, replace conflicting values from ``dict_a`` with values from
+                     ``dict_b``; otherwise keep the values from ``dict_a``.
+
+   :returns: The merged dictionary.
+   :rtype: dict
 
 
 .. py:function:: from_instructions_dict(instructions)
 
-   Run the DEM generation pipeline(s) given the specified instructions.
-   If a benchmark is specified compare the result to the benchmark
+   Run the processing pipelines specified by an instruction dictionary.
+
+   If a ``default`` section is present, merge its values into each pipeline's
+   instructions. Requested processing stages run in pipeline order. DEM
+   generation steps are skipped when their configured output files already
+   exist.
 
 
 .. py:function:: from_instructions_file(instructions_path)
 
-   Run the DEM generation pipeline(s) given the specified instructions.
-   If a benchmark is specified compare the result to the benchmark
+   Load a JSON instruction file and run its requested processing pipelines.
+
+   This function delegates pipeline execution to :func:`from_instructions_dict`.
 
 

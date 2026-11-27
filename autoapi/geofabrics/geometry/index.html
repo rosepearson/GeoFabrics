@@ -58,7 +58,6 @@
 </li>
 </ul>
 </li>
-<li class="toctree-l2"><a class="reference internal" href="../../benchmarking/index.html">benchmarking</a></li>
 </ul>
 </li>
 </ul>
@@ -97,13 +96,13 @@
 <table class="autosummary longtable docutils align-default">
 <tbody>
 <tr class="row-odd"><td><p><a class="reference internal" href="#geofabrics.geometry.CatchmentGeometry" title="geofabrics.geometry.CatchmentGeometry"><code class="xref py py-obj docutils literal notranslate"><span class="pre">CatchmentGeometry</span></code></a></p></td>
-<td><p>A class defining revelant catchment regions by polygons.</p></td>
+<td><p>Define catchment regions as polygons.</p></td>
 </tr>
 <tr class="row-even"><td><p><a class="reference internal" href="#geofabrics.geometry.BathymetryContours" title="geofabrics.geometry.BathymetryContours"><code class="xref py py-obj docutils literal notranslate"><span class="pre">BathymetryContours</span></code></a></p></td>
 <td><p>A class for sampling from bathymetry contours.</p></td>
 </tr>
 <tr class="row-odd"><td><p><a class="reference internal" href="#geofabrics.geometry.OceanPoints" title="geofabrics.geometry.OceanPoints"><code class="xref py py-obj docutils literal notranslate"><span class="pre">OceanPoints</span></code></a></p></td>
-<td><p>A class for accesing marine bathymetry points. These can be used as</p></td>
+<td><p>Access marine bathymetry points for interpolating offshore elevations.</p></td>
 </tr>
 <tr class="row-even"><td><p><a class="reference internal" href="#geofabrics.geometry.ElevationPoints" title="geofabrics.geometry.ElevationPoints"><code class="xref py py-obj docutils literal notranslate"><span class="pre">ElevationPoints</span></code></a></p></td>
 <td><p>A class for accessing estimated or measured river, mouth and waterway</p></td>
@@ -115,7 +114,7 @@
 <td><p>A class for working with tiling information.</p></td>
 </tr>
 <tr class="row-odd"><td><p><a class="reference internal" href="#geofabrics.geometry.RiverMouthFan" title="geofabrics.geometry.RiverMouthFan"><code class="xref py py-obj docutils literal notranslate"><span class="pre">RiverMouthFan</span></code></a></p></td>
-<td><p>A class for creating an appropiate river mouth fan to transition from</p></td>
+<td><p>Create a fan-shaped transition from river-bed estimates or measurements</p></td>
 </tr>
 </tbody>
 </table>
@@ -125,24 +124,19 @@
 <dl class="py class">
 <dt class="sig sig-object py" id="geofabrics.geometry.CatchmentGeometry">
 <span class="property"><span class="k"><span class="pre">class</span></span><span class="w"> </span></span><span class="sig-prename descclassname"><span class="pre">geofabrics.geometry.</span></span><span class="sig-name descname"><span class="pre">CatchmentGeometry</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">catchment_file</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">crs</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">resolution</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">foreshore_buffer</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">2</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#geofabrics.geometry.CatchmentGeometry" title="Link to this definition"></a></dt>
-<dd><p>A class defining revelant catchment regions by polygons.</p>
+<dd><p>Define catchment regions as polygons.</p>
 <p>The CRS is a dictionary containing the EPSG code for a ‘horizontal’ and
 ‘vertical’ datum.</p>
-<p>Specifically, this defines polygon regions like ‘land’, ‘foreshore’,
-‘offshore’, and ensures all regions are defined in the same CRS.</p>
-<p>The ‘land’, ‘foreshore’ and ‘offshore’ regions are clipped within the
-‘catchment’, but do not overlap. The ‘land’ is polygon is defined by a
-specified polygon which is clipped within the ‘catchment’. The ‘foreshore’
-is defined as a ‘foreshore_buffer’ x ‘resolution’ outward buffer from the
-‘land’ and within the ‘catchment’ extents. The ‘offshore’ region is any
-remaining region within the ‘catchment’ and outside the ‘land’ and
-‘foreshore’ polygons.</p>
-<p>It also supports functions for determining how much of a region is outside an
-exclusion zone. I.E. is outside
-<cite>lidar_extents</cite> see class method land_and_foreshore_without_lidar for an example.</p>
-<p>It is initalised with the catchment. The land must be added before the other regions
-(i.e. land, offshore,
-foreshore, etc) can be accessed.</p>
+<p>This class defines the <code class="docutils literal notranslate"><span class="pre">land</span></code>, <code class="docutils literal notranslate"><span class="pre">foreshore</span></code>, and <code class="docutils literal notranslate"><span class="pre">offshore</span></code> regions
+and ensures that they use the same CRS.</p>
+<p>The regions are clipped to the catchment and do not overlap. The land
+region is defined by a supplied polygon. The foreshore is an outward buffer
+from the land region, with width <code class="docutils literal notranslate"><span class="pre">foreshore_buffer</span> <span class="pre">*</span> <span class="pre">resolution</span></code>. The
+offshore region is the remaining area outside the land and foreshore.</p>
+<p>The class also provides methods to exclude areas, such as LiDAR extents,
+from a region; see <code class="docutils literal notranslate"><span class="pre">land_and_foreshore_without_lidar</span></code> for an example.</p>
+<p>Initialize the class with the catchment, then set the land region before
+accessing the other regions.</p>
 <dl class="field-list simple">
 <dt class="field-odd">Parameters<span class="colon">:</span></dt>
 <dd class="field-odd"><ul class="simple">
@@ -213,15 +207,25 @@ foreshore, etc) can be accessed.</p>
 <dl class="py method">
 <dt class="sig sig-object py" id="geofabrics.geometry.BathymetryContours.sample_contours">
 <span class="sig-name descname"><span class="pre">sample_contours</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">resolution</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#geofabrics.geometry.BathymetryContours.sample_contours" title="Link to this definition"></a></dt>
-<dd><p>Sample the contours at the specified resolution.</p>
+<dd><p>Sample contour lines at regular intervals.</p>
 <dl class="field-list simple">
 <dt class="field-odd">Parameters<span class="colon">:</span></dt>
-<dd class="field-odd"><p><strong>resolution</strong> (<em>float</em>)</p>
+<dd class="field-odd"><p><strong>resolution</strong> (<em>float</em>) – Positive spacing between samples, in the horizontal coordinate
+units of the catchment CRS.</p>
 </dd>
-<dt class="field-even">Return type<span class="colon">:</span></dt>
-<dd class="field-even"><p>numpy.ndarray</p>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><p>Structured array with <code class="docutils literal notranslate"><span class="pre">X</span></code>, <code class="docutils literal notranslate"><span class="pre">Y</span></code>, and <code class="docutils literal notranslate"><span class="pre">Z</span></code> fields. Returns an
+empty list if there are no contours to sample. Sample locations
+are in the catchment horizontal CRS.</p>
+</dd>
+<dt class="field-odd">Return type<span class="colon">:</span></dt>
+<dd class="field-odd"><p>numpy.ndarray or list</p>
 </dd>
 </dl>
+<p class="rubric">Notes</p>
+<p>The stored <code class="docutils literal notranslate"><span class="pre">Z</span></code> values are multiplied by <code class="docutils literal notranslate"><span class="pre">-1</span></code> whether they come
+from 3D contour coordinates or from <code class="docutils literal notranslate"><span class="pre">z_label</span></code>. Returned values
+define elevation in metres.</p>
 </dd></dl>
 
 </dd></dl>
@@ -229,8 +233,7 @@ foreshore, etc) can be accessed.</p>
 <dl class="py class">
 <dt class="sig sig-object py" id="geofabrics.geometry.OceanPoints">
 <span class="property"><span class="k"><span class="pre">class</span></span><span class="w"> </span></span><span class="sig-prename descclassname"><span class="pre">geofabrics.geometry.</span></span><span class="sig-name descname"><span class="pre">OceanPoints</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">points_file</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">catchment_geometry</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">is_depth</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">False</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">z_label</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#geofabrics.geometry.OceanPoints" title="Link to this definition"></a></dt>
-<dd><p>A class for accesing marine bathymetry points. These can be used as
-depths to interpolate elevations offshore.</p>
+<dd><p>Access marine bathymetry points for interpolating offshore elevations.</p>
 <dl class="field-list simple">
 <dt class="field-odd">Parameters<span class="colon">:</span></dt>
 <dd class="field-odd"><ul class="simple">
@@ -425,18 +428,14 @@ The elevations are used to interpolate elevations within the polygons.</p>
 <dl class="py class">
 <dt class="sig sig-object py" id="geofabrics.geometry.RiverMouthFan">
 <span class="property"><span class="k"><span class="pre">class</span></span><span class="w"> </span></span><span class="sig-prename descclassname"><span class="pre">geofabrics.geometry.</span></span><span class="sig-name descname"><span class="pre">RiverMouthFan</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">aligned_channel_file</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">river_bathymetry_file</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">river_polygon_file</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">ocean_contour_file</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">ocean_points_file</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">crs</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">cross_section_spacing</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">elevation_labels</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">ocean_elevation_label</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#geofabrics.geometry.RiverMouthFan" title="Link to this definition"></a></dt>
-<dd><p>A class for creating an appropiate river mouth fan to transition from
-river depth estimates to the ocean bathymetry values. This fan region defines a
-transition from river to coast within a fan shaped polygon (15 degrees on each</p>
-<blockquote>
-<div><p>side).</p>
-</div></blockquote>
-<p>The fan begins with the most downstream river width estimate, and ends with the
-first contour of either more than 2x the depth of the mouth. This aims to ensure
-their is a defined fan that is slightly deeper than the surrounding during
-the transition. A fan is caculated for both river bed elevation approach.
-TODO In future,it may move to defining the width as 10x the mouth width.
-If no width at mouth - move back to where there is a valid width</p>
+<dd><p>Create a fan-shaped transition from river-bed estimates or measurements
+to ocean depths.</p>
+<p>The fan extends from the downstream-most river-width values to the first
+ocean contour deeper than twice the mouth depth. It provides a transition
+region slightly deeper than the surrounding bathymetry. A fan is calculated
+for each river-bed elevation approach. If the mouth width is unavailable,
+use the nearest upstream location with a valid width.</p>
+<p>TODO: Consider defining the fan width as ten times the mouth width.</p>
 <dl class="field-list simple">
 <dt class="field-odd">Parameters<span class="colon">:</span></dt>
 <dd class="field-odd"><ul class="simple">
@@ -453,51 +452,52 @@ If no width at mouth - move back to where there is a valid width</p>
 </dd>
 </dl>
 <dl class="py attribute">
-<dt class="sig sig-object py">
-<span class="sig-name descname"><span class="pre">crs</span>&#160; <span class="pre">The</span> <span class="pre">horizontal</span> <span class="pre">CRS</span> <span class="pre">to</span> <span class="pre">be</span> <span class="pre">used.</span> <span class="pre">i.e.</span> <span class="pre">EPSG</span></span></dt>
-<dd><p>2193</p>
+<dt class="sig sig-object py" id="geofabrics.geometry.RiverMouthFan.crs">
+<span class="sig-name descname"><span class="pre">crs</span></span><a class="headerlink" href="#geofabrics.geometry.RiverMouthFan.crs" title="Link to this definition"></a></dt>
+<dd><p>Horizontal CRS, such as EPSG:2193.</p>
 </dd></dl>
 
 <dl class="py attribute">
-<dt class="sig sig-object py">
-<span class="sig-name descname"><span class="pre">cross_section_spacing</span>&#160; <span class="pre">The</span> <span class="pre">spacing</span> <span class="pre">in</span></span></dt>
-<dd><dl class="field-list simple">
-<dt class="field-odd">Type<span class="colon">:</span></dt>
-<dd class="field-odd"><p>m</p>
-</dd>
-</dl>
+<dt class="sig sig-object py" id="geofabrics.geometry.RiverMouthFan.cross_section_spacing">
+<span class="sig-name descname"><span class="pre">cross_section_spacing</span></span><a class="headerlink" href="#geofabrics.geometry.RiverMouthFan.cross_section_spacing" title="Link to this definition"></a></dt>
+<dd><p>Spacing between sampled cross sections, in metres.</p>
 </dd></dl>
 
 <dl class="py attribute">
-<dt class="sig sig-object py">
-<span class="sig-name descname"><span class="pre">aligned_channel_file</span>&#160; <span class="pre">Thefile</span> <span class="pre">name</span> <span class="pre">for</span> <span class="pre">the</span> <span class="pre">aligned</span> <span class="pre">river</span> <span class="pre">channel</span> <span class="pre">file.</span></span></dt>
-<dd></dd></dl>
+<dt class="sig sig-object py" id="geofabrics.geometry.RiverMouthFan.aligned_channel_file">
+<span class="sig-name descname"><span class="pre">aligned_channel_file</span></span><a class="headerlink" href="#geofabrics.geometry.RiverMouthFan.aligned_channel_file" title="Link to this definition"></a></dt>
+<dd><p>Path to the aligned river channel file.</p>
+</dd></dl>
 
 <dl class="py attribute">
-<dt class="sig sig-object py">
-<span class="sig-name descname"><span class="pre">river_bathymetry_file</span>&#160; <span class="pre">The</span> <span class="pre">file</span> <span class="pre">name</span> <span class="pre">for</span> <span class="pre">the</span> <span class="pre">river</span> <span class="pre">bathymetry</span> <span class="pre">values.</span></span></dt>
-<dd></dd></dl>
+<dt class="sig sig-object py" id="geofabrics.geometry.RiverMouthFan.river_bathymetry_file">
+<span class="sig-name descname"><span class="pre">river_bathymetry_file</span></span><a class="headerlink" href="#geofabrics.geometry.RiverMouthFan.river_bathymetry_file" title="Link to this definition"></a></dt>
+<dd><p>Path to the river bathymetry values.</p>
+</dd></dl>
 
 <dl class="py attribute">
-<dt class="sig sig-object py">
-<span class="sig-name descname"><span class="pre">ocean_contour_file</span>&#160; <span class="pre">The</span> <span class="pre">file</span> <span class="pre">name</span> <span class="pre">for</span> <span class="pre">the</span> <span class="pre">ocean</span> <span class="pre">contours.</span> <span class="pre">Depths</span> <span class="pre">are</span> <span class="pre">positive</span></span></dt>
-<dd></dd></dl>
+<dt class="sig sig-object py" id="geofabrics.geometry.RiverMouthFan.ocean_contour_file">
+<span class="sig-name descname"><span class="pre">ocean_contour_file</span></span><a class="headerlink" href="#geofabrics.geometry.RiverMouthFan.ocean_contour_file" title="Link to this definition"></a></dt>
+<dd><p>Path to ocean contours; depths are positive.</p>
+</dd></dl>
 
 <dl class="py attribute">
-<dt class="sig sig-object py">
-<span class="sig-name descname"><span class="pre">ocean_points_file</span> <span class="pre">The</span> <span class="pre">file</span> <span class="pre">name</span> <span class="pre">for</span> <span class="pre">the</span> <span class="pre">ocean</span> <span class="pre">points.</span> <span class="pre">Elevations</span> <span class="pre">are</span> <span class="pre">negative.</span></span></dt>
-<dd></dd></dl>
+<dt class="sig sig-object py" id="geofabrics.geometry.RiverMouthFan.ocean_points_file">
+<span class="sig-name descname"><span class="pre">ocean_points_file</span></span><a class="headerlink" href="#geofabrics.geometry.RiverMouthFan.ocean_points_file" title="Link to this definition"></a></dt>
+<dd><p>Path to ocean points; elevations are negative.</p>
+</dd></dl>
 
 <dl class="py attribute">
-<dt class="sig sig-object py">
-<span class="sig-name descname"><span class="pre">ocean_contour_depth_label</span>&#160; <span class="pre">The</span> <span class="pre">column</span> <span class="pre">label</span> <span class="pre">for</span> <span class="pre">the</span> <span class="pre">depth</span> <span class="pre">values.</span></span></dt>
-<dd></dd></dl>
+<dt class="sig sig-object py" id="geofabrics.geometry.RiverMouthFan.ocean_contour_depth_label">
+<span class="sig-name descname"><span class="pre">ocean_contour_depth_label</span></span><a class="headerlink" href="#geofabrics.geometry.RiverMouthFan.ocean_contour_depth_label" title="Link to this definition"></a></dt>
+<dd><p>Column containing ocean contour depths.</p>
+</dd></dl>
 
 <dl class="py method">
 <dt class="sig sig-object py" id="geofabrics.geometry.RiverMouthFan.polygon_and_bathymetry">
 <span class="sig-name descname"><span class="pre">polygon_and_bathymetry</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="headerlink" href="#geofabrics.geometry.RiverMouthFan.polygon_and_bathymetry" title="Link to this definition"></a></dt>
 <dd><p>Calculate and return the fan polygon values. Perform calculations for both
-rive bed estimation approaches, so both have a smooth transition to offshore
+river bed estimation approaches, so both have a smooth transition to offshore
 bathyemtry.</p>
 </dd></dl>
 

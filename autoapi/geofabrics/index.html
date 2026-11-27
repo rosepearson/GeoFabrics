@@ -58,7 +58,6 @@
 </li>
 </ul>
 </li>
-<li class="toctree-l2"><a class="reference internal" href="../benchmarking/index.html">benchmarking</a></li>
 </ul>
 </li>
 </ul>
@@ -90,14 +89,18 @@
              
   <section id="module-geofabrics">
 <span id="geofabrics"></span><h1>geofabrics<a class="headerlink" href="#module-geofabrics" title="Link to this heading"></a></h1>
-<p>A package for generating hydrologically conditioned DEMs from LiDAR and bathymetry contours
-give the instructions contained in a JSON instruction file.</p>
+<p>Generate hydrologically conditioned DEMs from LiDAR and other information
+using instructions supplied in a JSON instruction file.</p>
 <dl class="simple">
 <dt>Modules:</dt><dd><ul class="simple">
-<li><p>processor - A module for running the overall DEM generation pipeline</p></li>
-<li><p>geometry - A module associated with manipulating vector data.</p></li>
-<li><p>dem - A module associated with reading, generating, and combining DEMs</p></li>
-<li><p>bathymetry_estimation - A module associated with estimating river characteristics</p></li>
+<li><p>processor - Defines processors for DEMs, bathymetry, roughness, waterways,
+and stopbanks.</p></li>
+<li><p>geometry - Loads and processes catchment and vector data.</p></li>
+<li><p>dem - Reads, generates, and combines DEMs and roughness layers.</p></li>
+<li><p>bathymetry_estimation - Estimates channel geometry and bathymetry.</p></li>
+<li><p>runner - Merges instruction defaults and orchestrates processing stages.</p></li>
+<li><p>__main__ - Provides the command-line entry point.</p></li>
+<li><p>version - Defines the package version.</p></li>
 </ul>
 </dd>
 </dl>

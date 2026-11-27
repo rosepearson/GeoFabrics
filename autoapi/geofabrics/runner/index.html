@@ -58,7 +58,6 @@
 </li>
 </ul>
 </li>
-<li class="toctree-l2"><a class="reference internal" href="../../benchmarking/index.html">benchmarking</a></li>
 </ul>
 </li>
 </ul>
@@ -91,16 +90,13 @@
              
   <section id="module-geofabrics.runner">
 <span id="geofabrics-runner"></span><h1>geofabrics.runner<a class="headerlink" href="#module-geofabrics.runner" title="Link to this heading"></a></h1>
-<dl class="simple">
-<dt>A convenience script for running the DEM generation pipelines contained in the processor</dt><dd><p>module of geofabrics.</p>
-</dd>
-</dl>
+<p>Orchestrate the GeoFabrics processing pipelines from an instruction dictionary.</p>
 <section id="functions">
 <h2>Functions<a class="headerlink" href="#functions" title="Link to this heading"></a></h2>
 <table class="autosummary longtable docutils align-default">
 <tbody>
 <tr class="row-odd"><td><p><a class="reference internal" href="#geofabrics.runner.config_logging" title="geofabrics.runner.config_logging"><code class="xref py py-obj docutils literal notranslate"><span class="pre">config_logging</span></code></a>(logging_filepath)</p></td>
-<td><p>Configure the root logger inhereited by all othr loggers.</p></td>
+<td><p>Configure the root logger inherited by other loggers.</p></td>
 </tr>
 <tr class="row-even"><td><p><a class="reference internal" href="#geofabrics.runner.setup_logging_for_run" title="geofabrics.runner.setup_logging_for_run"><code class="xref py py-obj docutils literal notranslate"><span class="pre">setup_logging_for_run</span></code></a>(instructions, label)</p></td>
 <td><p>Setup logging for the current processor run</p></td>
@@ -109,13 +105,13 @@
 <td><p>Run a processor class recording outputs in a unique log file and timing the</p></td>
 </tr>
 <tr class="row-even"><td><p><a class="reference internal" href="#geofabrics.runner.merge_dicts" title="geofabrics.runner.merge_dicts"><code class="xref py py-obj docutils literal notranslate"><span class="pre">merge_dicts</span></code></a>(dict_a, dict_b, logger, replace_a)</p></td>
-<td><p>Merge the contents of the dict_a and dict_b. Use recursion to merge</p></td>
+<td><p>Recursively merge <code class="docutils literal notranslate"><span class="pre">dict_b</span></code> into a deep copy of <code class="docutils literal notranslate"><span class="pre">dict_a</span></code>.</p></td>
 </tr>
 <tr class="row-odd"><td><p><a class="reference internal" href="#geofabrics.runner.from_instructions_dict" title="geofabrics.runner.from_instructions_dict"><code class="xref py py-obj docutils literal notranslate"><span class="pre">from_instructions_dict</span></code></a>(instructions)</p></td>
-<td><p>Run the DEM generation pipeline(s) given the specified instructions.</p></td>
+<td><p>Run the processing pipelines specified by an instruction dictionary.</p></td>
 </tr>
 <tr class="row-even"><td><p><a class="reference internal" href="#geofabrics.runner.from_instructions_file" title="geofabrics.runner.from_instructions_file"><code class="xref py py-obj docutils literal notranslate"><span class="pre">from_instructions_file</span></code></a>(instructions_path)</p></td>
-<td><p>Run the DEM generation pipeline(s) given the specified instructions.</p></td>
+<td><p>Load a JSON instruction file and run its requested processing pipelines.</p></td>
 </tr>
 </tbody>
 </table>
@@ -125,7 +121,7 @@
 <dl class="py function">
 <dt class="sig sig-object py" id="geofabrics.runner.config_logging">
 <span class="sig-prename descclassname"><span class="pre">geofabrics.runner.</span></span><span class="sig-name descname"><span class="pre">config_logging</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">logging_filepath</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#geofabrics.runner.config_logging" title="Link to this definition"></a></dt>
-<dd><p>Configure the root logger inhereited by all othr loggers.</p>
+<dd><p>Configure the root logger inherited by other loggers.</p>
 <dl class="field-list simple">
 <dt class="field-odd">Parameters<span class="colon">:</span></dt>
 <dd class="field-odd"><p><strong>logging_filepath</strong> (<em>pathlib</em>)</p>
@@ -165,21 +161,27 @@ execution.</p>
 <dl class="py function">
 <dt class="sig sig-object py" id="geofabrics.runner.merge_dicts">
 <span class="sig-prename descclassname"><span class="pre">geofabrics.runner.</span></span><span class="sig-name descname"><span class="pre">merge_dicts</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">dict_a</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">dict_b</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">logger</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">replace_a</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#geofabrics.runner.merge_dicts" title="Link to this definition"></a></dt>
-<dd><p>Merge the contents of the dict_a and dict_b. Use recursion to merge
-any nested dictionaries. replace_a determines if the dict_a values are
-replaced or not if different values are in the dict_b.</p>
-<p>Adapted from <a class="reference external" href="https://stackoverflow.com/questions/7204805/how-to-merge-dictionaries-of-dictionaries">https://stackoverflow.com/questions/7204805/how-to-merge-dictionaries-of-dictionaries</a></p>
+<dd><p>Recursively merge <code class="docutils literal notranslate"><span class="pre">dict_b</span></code> into a deep copy of <code class="docutils literal notranslate"><span class="pre">dict_a</span></code>.</p>
+<p>Nested dictionaries are merged recursively, and keys present only in
+<code class="docutils literal notranslate"><span class="pre">dict_b</span></code> are added. For conflicting leaf values, <code class="docutils literal notranslate"><span class="pre">replace_a</span></code> controls
+whether the value from <code class="docutils literal notranslate"><span class="pre">dict_b</span></code> replaces the value from <code class="docutils literal notranslate"><span class="pre">dict_a</span></code>.
+Conflicts are reported through <code class="docutils literal notranslate"><span class="pre">logger</span></code>. Neither input dictionary is
+modified.</p>
 <dl class="field-list simple">
 <dt class="field-odd">Parameters<span class="colon">:</span></dt>
 <dd class="field-odd"><ul class="simple">
-<li><p><strong>to</strong> (<em>dict_a  The dict</em>)</p></li>
-<li><p><strong>mouth</strong> (<em>dict_b  The location</em><em> of </em><em>the centre</em><em> of </em><em>the river</em>)</p></li>
-<li><p><strong>dict_b</strong> (<em>dict</em>)</p></li>
-<li><p><strong>dict_a</strong> (<em>dict</em>)</p></li>
-<li><p><strong>dict_b</strong></p></li>
-<li><p><strong>logger</strong> (<em>logging.Logger</em>)</p></li>
-<li><p><strong>replace_a</strong> (<em>bool</em>)</p></li>
+<li><p><strong>dict_a</strong> (<em>dict</em>) – Base dictionary to copy and update.</p></li>
+<li><p><strong>dict_b</strong> (<em>dict</em>) – Dictionary whose values are merged into the copy.</p></li>
+<li><p><strong>logger</strong> (<em>logging.Logger</em>) – Logger used to report conflicting values.</p></li>
+<li><p><strong>replace_a</strong> (<em>bool</em>) – If true, replace conflicting values from <code class="docutils literal notranslate"><span class="pre">dict_a</span></code> with values from
+<code class="docutils literal notranslate"><span class="pre">dict_b</span></code>; otherwise keep the values from <code class="docutils literal notranslate"><span class="pre">dict_a</span></code>.</p></li>
 </ul>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><p>The merged dictionary.</p>
+</dd>
+<dt class="field-odd">Return type<span class="colon">:</span></dt>
+<dd class="field-odd"><p>dict</p>
 </dd>
 </dl>
 </dd></dl>
@@ -187,8 +189,11 @@ replaced or not if different values are in the dict_b.</p>
 <dl class="py function">
 <dt class="sig sig-object py" id="geofabrics.runner.from_instructions_dict">
 <span class="sig-prename descclassname"><span class="pre">geofabrics.runner.</span></span><span class="sig-name descname"><span class="pre">from_instructions_dict</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">instructions</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#geofabrics.runner.from_instructions_dict" title="Link to this definition"></a></dt>
-<dd><p>Run the DEM generation pipeline(s) given the specified instructions.
-If a benchmark is specified compare the result to the benchmark</p>
+<dd><p>Run the processing pipelines specified by an instruction dictionary.</p>
+<p>If a <code class="docutils literal notranslate"><span class="pre">default</span></code> section is present, merge its values into each pipeline’s
+instructions. Requested processing stages run in pipeline order. DEM
+generation steps are skipped when their configured output files already
+exist.</p>
 <dl class="field-list simple">
 <dt class="field-odd">Parameters<span class="colon">:</span></dt>
 <dd class="field-odd"><p><strong>instructions</strong> (<em>dict</em>)</p>
@@ -199,8 +204,8 @@ If a benchmark is specified compare the result to the benchmark</p>
 <dl class="py function">
 <dt class="sig sig-object py" id="geofabrics.runner.from_instructions_file">
 <span class="sig-prename descclassname"><span class="pre">geofabrics.runner.</span></span><span class="sig-name descname"><span class="pre">from_instructions_file</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">instructions_path</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#geofabrics.runner.from_instructions_file" title="Link to this definition"></a></dt>
-<dd><p>Run the DEM generation pipeline(s) given the specified instructions.
-If a benchmark is specified compare the result to the benchmark</p>
+<dd><p>Load a JSON instruction file and run its requested processing pipelines.</p>
+<p>This function delegates pipeline execution to <a class="reference internal" href="#geofabrics.runner.from_instructions_dict" title="geofabrics.runner.from_instructions_dict"><code class="xref py py-func docutils literal notranslate"><span class="pre">from_instructions_dict()</span></code></a>.</p>
 <dl class="field-list simple">
 <dt class="field-odd">Parameters<span class="colon">:</span></dt>
 <dd class="field-odd"><p><strong>instructions_path</strong> (<em>Union</em><em>[</em><em>str</em><em>, </em><em>pathlib.Path</em><em>]</em>)</p>

@@ -42,7 +42,7 @@ Module Contents
 
 .. py:class:: Channel(channel, resolution, sampling_direction = 1)
 
-   A class to define a channel centre line from a digital network.
+   Define a channel centreline from a digital network.
 
 
    .. py:method:: from_network(network_file, crs, starting_id, resolution, area_threshold, name_dict, sampling_direction = -1)
@@ -126,7 +126,7 @@ Module Contents
 
       Sample at the specified spacing along the entire line.
 
-      :param channel: A data frame with the geometry defining the channel centreline.
+      :param channel: A GeoDataFrame containing the channel centreline geometry.
       :param spacing: The spacing between sampled points along straight segments
       :param sample_direction: Are the reaches sampled in the same direction they are ordered.
                                1 if in the same direction, -1 if in the opposite direction.
@@ -137,7 +137,7 @@ Module Contents
 
       Sample at the specified spacing along each straight segment.
 
-      :param channel: A data frame with the geometry defining the channel centreline.
+      :param channel: A GeoDataFrame containing the channel centreline geometry.
       :param spacing: The spacing between sampled points along straight segments
       :param sample_direction: Are the reaches sampled in the same direction they are ordered.
                                1 if in the same direction, -1 if in the opposite direction.
@@ -146,9 +146,10 @@ Module Contents
 
 .. py:class:: InterpolateMeasuredElevations(riverbank_file, measured_sections_file, thalweg_file, cross_section_spacing, crs)
 
-   Interpolate measured river bed elevations. Requires LineStrings of
-   riverbed elevations, and the LineStrings defining the left and right
-   riverbank.
+   Interpolate measured river-bed elevations.
+
+   Requires LineStrings of river-bed elevations and LineStrings defining the
+   left and right riverbanks.
 
 
    .. py:method:: check_valid_inputs()
@@ -233,21 +234,42 @@ Module Contents
 
    .. py:method:: sample_cross_sections(cross_sections, min_z_search_radius)
 
-      Return the elevations along the cross_section sampled at the
-      sampling resolution. Also add the measured 'min_z_centre' values to
-      the cross_sections.
+      Sample ground and vegetation elevations along channel cross sections.
 
-      :param cross_sections: The cross_sections with geometry defined as polylines.
-      :param min_z_search_radius: The distance to search from the centre.
+      For each cross section, sample both DEMs at intervals of
+      ``self.resolution`` along a transect centered on its midpoint. The
+      nearest DEM cell is used for each sample, with no maximum search
+      distance. The minimum ground elevation within the central search
+      radius is added to ``cross_sections`` as ``min_z_centre``.
+
+      :param cross_sections: GeoDataFrame of cross sections. Each row must provide ``mid_x``,
+                             ``mid_y``, ``nx``, and ``ny`` fields used to locate and orient its
+                             transect. Coordinates must use the same horizontal CRS as the
+                             ground and vegetation DEMs.
+      :param min_z_search_radius: Distance from the transect midpoint over which to find the
+                                  minimum ground elevation. Must use the same units as
+                                  ``self.resolution``.
+
+      :returns: Mapping with ``gnd_elevations`` and ``veg_elevations`` keys. Each
+                value is a list containing one NumPy array of sampled elevations
+                per cross section. The input ``cross_sections`` is also modified
+                in place by adding ``min_z_centre``.
+      :rtype: dict
+
+      .. rubric:: Notes
+
+      Missing DEM elevations are returned as NaN. If the central search
+      window contains no valid ground elevations, ``min_z_centre`` is NaN.
+      Elevations in metres.
 
 
 
    .. py:method:: fixed_thresholded_widths_from_centre_within_radius(cross_sections, cross_section_elevations, threshold, resolution, search_radius, min_channel_width)
 
-      Estimate width based on a thresbold of bank height above water level.
-      Start in the centre and work out. Doesn't detect banks until a value
-      less than the threshold has been detected. Takes the widest channel within
-      the radius.'
+      Estimate width using a bank-height threshold above the water level.
+
+      Search outward from the centre, detecting a bank after encountering a
+      value below the threshold. Select the widest channel within the radius.
 
       :param cross_sections: The cross_sections with geometry defined as polylines.
       :param cross_section_elevations: The sampled elevations along the cross_sections.
@@ -260,10 +282,10 @@ Module Contents
 
    .. py:method:: variable_thresholded_widths_from_centre_within_radius(cross_sections, cross_section_elevations, threshold, resolution, search_radius, maximum_threshold, min_channel_width=float)
 
-      Estimate width based on a thresbold of bank height above water level.
-      Start in the centre and work out. Doesn't detect banks until a value
-      less than the threshold has been detected. Takes the widest channel within
-      the radius.'
+      Estimate width using a bank-height threshold above the water level.
+
+      Search outward from the centre, detecting a bank after encountering a
+      value below the threshold. Select the widest channel within the radius.
 
       :param cross_sections: The cross_sections with geometry defined as polylines.
       :param cross_section_elevations: The sampled elevations along the cross_sections.
@@ -350,7 +372,7 @@ Module Contents
 
       Estimate the channel centre from transect samples
 
-      :param aligned_channel: The channel centre line. Should be in the channel bed.
+      :param aligned_channel: The channel centreline, positioned in the channel bed.
       :param threshold: The height height above the water level to detect as a bank.
       :param max_threshold: The maximum height above water level to detect as a bank (i.e. not
                             a cliff)

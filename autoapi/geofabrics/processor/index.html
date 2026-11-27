@@ -58,7 +58,6 @@
 </li>
 </ul>
 </li>
-<li class="toctree-l2"><a class="reference internal" href="../../benchmarking/index.html">benchmarking</a></li>
 </ul>
 </li>
 </ul>
@@ -91,9 +90,8 @@
              
   <section id="module-geofabrics.processor">
 <span id="geofabrics-processor"></span><h1>geofabrics.processor<a class="headerlink" href="#module-geofabrics.processor" title="Link to this heading"></a></h1>
-<p>This module contains classes associated with generating GeoFabric layers from
-LiDAR and bathymetry contours based on the instructions contained in a JSON file.</p>
-<p>GeoFabric layers include hydrologically conditioned DEMs.</p>
+<p>This module contains processors that generate GeoFabrics products from LiDAR,
+bathymetry, and other data sources configured in a JSON instruction file.</p>
 <section id="classes">
 <h2>Classes<a class="headerlink" href="#classes" title="Link to this heading"></a></h2>
 <table class="autosummary longtable docutils align-default">
@@ -102,28 +100,28 @@ LiDAR and bathymetry contours based on the instructions contained in a JSON file
 <td><p>An abstract class with general methods for accessing elements in</p></td>
 </tr>
 <tr class="row-even"><td><p><a class="reference internal" href="#geofabrics.processor.RawLidarDemGenerator" title="geofabrics.processor.RawLidarDemGenerator"><code class="xref py py-obj docutils literal notranslate"><span class="pre">RawLidarDemGenerator</span></code></a></p></td>
-<td><p>RawLidarDemGenerator executes a pipeline for creating a DEM from LiDAR and</p></td>
+<td><p>Create a DEM from LiDAR and, optionally, a coarse DEM.</p></td>
 </tr>
 <tr class="row-odd"><td><p><a class="reference internal" href="#geofabrics.processor.HydrologicDemGenerator" title="geofabrics.processor.HydrologicDemGenerator"><code class="xref py py-obj docutils literal notranslate"><span class="pre">HydrologicDemGenerator</span></code></a></p></td>
-<td><p>HydrologicDemGenerator executes a pipeline for loading in a DEM then</p></td>
+<td><p>Create a hydrologically conditioned DEM.</p></td>
 </tr>
 <tr class="row-even"><td><p><a class="reference internal" href="#geofabrics.processor.PatchDemGenerator" title="geofabrics.processor.PatchDemGenerator"><code class="xref py py-obj docutils literal notranslate"><span class="pre">PatchDemGenerator</span></code></a></p></td>
-<td><p>PatchDemGenerator executes a pipeline for loading in a DEM / roughness</p></td>
+<td><p>Add specified patches to a GeoFabrics DEM or roughness product.</p></td>
 </tr>
 <tr class="row-odd"><td><p><a class="reference internal" href="#geofabrics.processor.RoughnessLengthGenerator" title="geofabrics.processor.RoughnessLengthGenerator"><code class="xref py py-obj docutils literal notranslate"><span class="pre">RoughnessLengthGenerator</span></code></a></p></td>
-<td><p>RoughnessLengthGenerator executes a pipeline for loading in a hydrologically</p></td>
+<td><p>Generate a roughness-length layer for a hydrologically conditioned DEM.</p></td>
 </tr>
 <tr class="row-even"><td><p><a class="reference internal" href="#geofabrics.processor.MeasuredRiverGenerator" title="geofabrics.processor.MeasuredRiverGenerator"><code class="xref py py-obj docutils literal notranslate"><span class="pre">MeasuredRiverGenerator</span></code></a></p></td>
-<td><p>MeasuredRiverGenerator executes a pipeline to interpolate between</p></td>
+<td><p>Interpolate river-bed elevations from measured cross sections.</p></td>
 </tr>
 <tr class="row-odd"><td><p><a class="reference internal" href="#geofabrics.processor.RiverBathymetryGenerator" title="geofabrics.processor.RiverBathymetryGenerator"><code class="xref py py-obj docutils literal notranslate"><span class="pre">RiverBathymetryGenerator</span></code></a></p></td>
-<td><p>RiverbathymetryGenerator executes a pipeline to estimate river</p></td>
+<td><p>Estimate river-bed depths along a main channel.</p></td>
 </tr>
 <tr class="row-even"><td><p><a class="reference internal" href="#geofabrics.processor.WaterwayBedElevationEstimator" title="geofabrics.processor.WaterwayBedElevationEstimator"><code class="xref py py-obj docutils literal notranslate"><span class="pre">WaterwayBedElevationEstimator</span></code></a></p></td>
-<td><p>WaterwayBedElevationGenerator executes a pipeline to pull in OpenStreetMap waterway</p></td>
+<td><p>Estimate bed elevations for waterways and tunnels.</p></td>
 </tr>
 <tr class="row-odd"><td><p><a class="reference internal" href="#geofabrics.processor.StopbankCrestElevationEstimator" title="geofabrics.processor.StopbankCrestElevationEstimator"><code class="xref py py-obj docutils literal notranslate"><span class="pre">StopbankCrestElevationEstimator</span></code></a></p></td>
-<td><p>StopbankCrestElevationEstimator executes a pipeline to estimate stopbank</p></td>
+<td><p>Estimate stopbank crest elevations from a DEM of the surrounding area.</p></td>
 </tr>
 </tbody>
 </table>
@@ -135,8 +133,8 @@ LiDAR and bathymetry contours based on the instructions contained in a JSON file
 <span class="property"><span class="k"><span class="pre">class</span></span><span class="w"> </span></span><span class="sig-prename descclassname"><span class="pre">geofabrics.processor.</span></span><span class="sig-name descname"><span class="pre">BaseProcessor</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">json_instructions</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#geofabrics.processor.BaseProcessor" title="Link to this definition"></a></dt>
 <dd><p>Bases: <code class="xref py py-obj docutils literal notranslate"><span class="pre">abc.ABC</span></code></p>
 <p>An abstract class with general methods for accessing elements in
-instruction files including populating default values. Also contains
-functions for downloading remote data using geopais, and constructing data
+instruction files, including populating default values. It also contains
+functions for downloading remote data through geoapis and constructing data
 file lists.</p>
 <dl class="simple">
 <dt>The <cite>BaseProcessor</cite> class contains several important class members:</dt><dd><ul class="simple">
@@ -155,7 +153,7 @@ generation of a DEM as polygons.</p></li>
 <dl class="py method">
 <dt class="sig sig-object py" id="geofabrics.processor.BaseProcessor.create_metadata">
 <span class="sig-name descname"><span class="pre">create_metadata</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="headerlink" href="#geofabrics.processor.BaseProcessor.create_metadata" title="Link to this definition"></a></dt>
-<dd><p>A clase to create metadata to be added as netCDF attributes.</p>
+<dd><p>Create metadata to add as netCDF attributes.</p>
 <dl class="field-list simple">
 <dt class="field-odd">Return type<span class="colon">:</span></dt>
 <dd class="field-odd"><p>dict</p>
@@ -206,11 +204,11 @@ if there is a default value and the local cache is specified.</p>
 <dl class="py method">
 <dt class="sig sig-object py" id="geofabrics.processor.BaseProcessor.save_dem">
 <span class="sig-name descname"><span class="pre">save_dem</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">filename</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">dataset</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">generator</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">compression</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#geofabrics.processor.BaseProcessor.save_dem" title="Link to this definition"></a></dt>
-<dd><p>Save out the dem/geofabrics labelled array.</p>
+<dd><p>Save a DEM or GeoFabrics output array to disk.</p>
 <dl class="field-list simple">
 <dt class="field-odd">Parameters<span class="colon">:</span></dt>
 <dd class="field-odd"><ul class="simple">
-<li><p><strong>filename</strong> (<em>pathlib.Path</em>) – The filename including extension to save the DEM/geofabric to.</p></li>
+<li><p><strong>filename</strong> (<em>pathlib.Path</em>) – Output path for the DEM or GeoFabrics layer.</p></li>
 <li><p><strong>dataset</strong> (<em>xarray.Dataset</em>) – The labelled array data to save.</p></li>
 <li><p><strong>generator</strong> (<a class="reference internal" href="../dem/index.html#geofabrics.dem.DemBase" title="geofabrics.dem.DemBase"><em>geofabrics.dem.DemBase</em></a>) – The dem.DemBase object with a ‘save_dem’ function.</p></li>
 <li><p><strong>compression</strong> (<em>int</em>)</p></li>
@@ -234,11 +232,9 @@ not in the instructions.</p>
 <dl class="py method">
 <dt class="sig sig-object py" id="geofabrics.processor.BaseProcessor.get_crs">
 <span class="sig-name descname"><span class="pre">get_crs</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="headerlink" href="#geofabrics.processor.BaseProcessor.get_crs" title="Link to this definition"></a></dt>
-<dd><p>Return the CRS projection information (horiztonal and vertical) from
-the instruction file. Raise an error if ‘output’ is not in the instructions. If
-no ‘crs’ or ‘horizontal’ or ‘vertical’ values are specified then use the default
-value for each one missing from the instructions. If the default is used it is
-added to the instructions.</p>
+<dd><p>Return horizontal and vertical CRS information from the instructions.</p>
+<p>Raise an error if <code class="docutils literal notranslate"><span class="pre">output</span></code> is missing. Use the default for any
+unspecified CRS values and add those defaults to the instructions.</p>
 <dl class="field-list simple">
 <dt class="field-odd">Return type<span class="colon">:</span></dt>
 <dd class="field-odd"><p>dict</p>
@@ -279,14 +275,12 @@ the default is used it is added to the instructions.</p>
 <dl class="py method">
 <dt class="sig sig-object py" id="geofabrics.processor.BaseProcessor.check_datasets">
 <span class="sig-name descname"><span class="pre">check_datasets</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">key</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">data_type</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#geofabrics.processor.BaseProcessor.check_datasets" title="Link to this definition"></a></dt>
-<dd><p>Check to see if the dataset is included in the instructions:
-key = dataservice (i.e. local, opentogaphy, linxz, lris)</p>
+<dd><p>Return whether a data service is configured for a dataset type.</p>
 <dl class="field-list simple">
 <dt class="field-odd">Parameters<span class="colon">:</span></dt>
 <dd class="field-odd"><ul class="simple">
-<li><p><strong>key</strong> (<em>str</em>) – The string identifying how the data is accessed
-(e.g. local, opentopography, linz, etc)</p></li>
-<li><p><strong>data_type</strong> (<em>str</em>) – The string identifying the data type (e.g. raster, lidar, vector)</p></li>
+<li><p><strong>key</strong> (<em>str</em>) – Name of the data service (e.g. local, OpenTopography, or LINZ).</p></li>
+<li><p><strong>data_type</strong> (<em>str</em>) – Dataset type (e.g. raster, LiDAR, or vector).</p></li>
 </ul>
 </dd>
 <dt class="field-even">Return type<span class="colon">:</span></dt>
@@ -298,13 +292,12 @@ key = dataservice (i.e. local, opentogaphy, linxz, lris)</p>
 <dl class="py method">
 <dt class="sig sig-object py" id="geofabrics.processor.BaseProcessor.check_vector_or_raster">
 <span class="sig-name descname"><span class="pre">check_vector_or_raster</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">key</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">api_type</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#geofabrics.processor.BaseProcessor.check_vector_or_raster" title="Link to this definition"></a></dt>
-<dd><p>Check to see if vector or raster key (i.e. land, ocean_contours, etc) is
-included either as a file path, or within any of API’s (i.e. LINZ or LRIS).</p>
+<dd><p>Return whether a vector or raster input is configured (either locally or via API).</p>
 <dl class="field-list simple">
 <dt class="field-odd">Parameters<span class="colon">:</span></dt>
 <dd class="field-odd"><ul class="simple">
-<li><p><strong>key</strong> (<em>str</em>) – The string identifying the vector/raster</p></li>
-<li><p><strong>api_type</strong> (<em>str</em>) – The string identifying if the key is a vector or raster</p></li>
+<li><p><strong>key</strong> (<em>str</em>) – Name of the vector or raster input.</p></li>
+<li><p><strong>api_type</strong> (<em>str</em>) – Input type, either <code class="docutils literal notranslate"><span class="pre">vector</span></code> or <code class="docutils literal notranslate"><span class="pre">raster</span></code>.</p></li>
 </ul>
 </dd>
 <dt class="field-even">Return type<span class="colon">:</span></dt>
@@ -349,21 +342,18 @@ will later be used to override the CRS encoded in the LAS files.</p>
 <dl class="py method">
 <dt class="sig sig-object py" id="geofabrics.processor.BaseProcessor.get_lidar_datasets_info">
 <span class="sig-name descname"><span class="pre">get_lidar_datasets_info</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="headerlink" href="#geofabrics.processor.BaseProcessor.get_lidar_datasets_info" title="Link to this definition"></a></dt>
-<dd><p>Return a dictionary with three enties ‘file_paths’, ‘crs’ and
-‘tile_index_file’. The ‘file_paths’ contains a list of LiDAR tiles to
-process.</p>
-<p>The ‘crs’ (or coordinate system of the LiDAR data as defined by an EPSG
-code) is only optionally set (if unset the value is None). The ‘crs’
-should only be set if the CRS information is not correctly encoded in
-this is only supported for OpenTopography LiDAR.</p>
-<p>The ‘tile_index_file’ is also optional (if unset the value is None).
-The ‘tile_index_file’ should be given if a tile index file exists for
-the LiDAR files specifying the extents of each tile. This is currently
-only supported for OpenTopography files.</p>
-<p>If a LiDAR dataset (either through an API or locally) is specified this
-is checked and all files within the catchment area are downloaded and
-used to construct the file list. If none is specified, the instruction
-‘data_paths’ is checked for ‘lidars’ and these are returned.</p>
+<dd><p>Return LiDAR file paths and their optional CRS and tile index as a
+dictionary. Extract this information from the instruction file as well
+as any API responses.</p>
+<p><code class="docutils literal notranslate"><span class="pre">file_paths</span></code> contains the LiDAR tiles to process. The optional
+<code class="docutils literal notranslate"><span class="pre">crs</span></code> value is the EPSG code to use when the source files do not
+contain valid CRS information; explicit CRS values are currently
+supported only for OpenTopography LiDAR. The optional
+<code class="docutils literal notranslate"><span class="pre">tile_index_file</span></code> describes tile extents and is currently supported
+only for OpenTopography files.</p>
+<p>When a LiDAR dataset is specified through an API or local source,
+collect its files within the catchment. Otherwise, read the <code class="docutils literal notranslate"><span class="pre">lidars</span></code>
+entry from <code class="docutils literal notranslate"><span class="pre">data_paths</span></code>.</p>
 <dl class="field-list simple">
 <dt class="field-odd">Return type<span class="colon">:</span></dt>
 <dd class="field-odd"><p>dict</p>
@@ -374,7 +364,7 @@ used to construct the file list. If none is specified, the instruction
 <dl class="py method">
 <dt class="sig sig-object py" id="geofabrics.processor.BaseProcessor.run">
 <span class="property"><span class="k"><span class="pre">abstractmethod</span></span><span class="w"> </span></span><span class="sig-name descname"><span class="pre">run</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="headerlink" href="#geofabrics.processor.BaseProcessor.run" title="Link to this definition"></a></dt>
-<dd><p>This method controls the processor execution and code-flow.</p>
+<dd><p>Run the processor workflow.</p>
 </dd></dl>
 
 </dd></dl>
@@ -383,9 +373,8 @@ used to construct the file list. If none is specified, the instruction
 <dt class="sig sig-object py" id="geofabrics.processor.RawLidarDemGenerator">
 <span class="property"><span class="k"><span class="pre">class</span></span><span class="w"> </span></span><span class="sig-prename descclassname"><span class="pre">geofabrics.processor.</span></span><span class="sig-name descname"><span class="pre">RawLidarDemGenerator</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">json_instructions</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">debug</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">True</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#geofabrics.processor.RawLidarDemGenerator" title="Link to this definition"></a></dt>
 <dd><p>Bases: <a class="reference internal" href="#geofabrics.processor.BaseProcessor" title="geofabrics.processor.BaseProcessor"><code class="xref py py-obj docutils literal notranslate"><span class="pre">BaseProcessor</span></code></a></p>
-<p>RawLidarDemGenerator executes a pipeline for creating a DEM from LiDAR and
-optionally a coarse DEM. The data sources and pipeline logic is defined in the
-json_instructions file.</p>
+<p>Create a DEM from LiDAR and, optionally, a coarse DEM.</p>
+<p>The data sources and pipeline are defined in the JSON instruction file.</p>
 <p>See the GitHub repository wiki or GeoFabrics/tests/ for usage examples and
 other documentation.</p>
 <dl class="field-list simple">
@@ -399,10 +388,9 @@ other documentation.</p>
 <dl class="py method">
 <dt class="sig sig-object py" id="geofabrics.processor.RawLidarDemGenerator.run">
 <span class="sig-name descname"><span class="pre">run</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="headerlink" href="#geofabrics.processor.RawLidarDemGenerator.run" title="Link to this definition"></a></dt>
-<dd><p>This method executes the geofabrics generation pipeline to produce geofabric
-derivatives.</p>
-<p>Note it currently only considers one LiDAR dataset that can have many tiles.
-See ‘get_lidar_datasets_info’ for where to change this.</p>
+<dd><p>Generate a raw DEM from LiDAR.</p>
+<p>Multiple LiDAR datasets and tiles are supported. See
+<code class="docutils literal notranslate"><span class="pre">get_lidar_datasets_info</span></code> for how their files are selected.</p>
 </dd></dl>
 
 </dd></dl>
@@ -411,10 +399,10 @@ See ‘get_lidar_datasets_info’ for where to change this.</p>
 <dt class="sig sig-object py" id="geofabrics.processor.HydrologicDemGenerator">
 <span class="property"><span class="k"><span class="pre">class</span></span><span class="w"> </span></span><span class="sig-prename descclassname"><span class="pre">geofabrics.processor.</span></span><span class="sig-name descname"><span class="pre">HydrologicDemGenerator</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">json_instructions</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">debug</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">True</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#geofabrics.processor.HydrologicDemGenerator" title="Link to this definition"></a></dt>
 <dd><p>Bases: <a class="reference internal" href="#geofabrics.processor.BaseProcessor" title="geofabrics.processor.BaseProcessor"><code class="xref py py-obj docutils literal notranslate"><span class="pre">BaseProcessor</span></code></a></p>
-<p>HydrologicDemGenerator executes a pipeline for loading in a DEM then
-incorporating hydrological features (e.g. ocean bathymetry, rivers,
-waterways,stopbank creast heights) to produce a hydrologically conditioned
-DEM. The data and pipeline logic is defined in the json_instructions file.</p>
+<p>Create a hydrologically conditioned DEM.</p>
+<p>The generator combines an input DEM with hydrological features such as
+ocean bathymetry, rivers, waterways, and stopbank crest elevations. The
+data and pipeline are defined in the JSON instruction file.</p>
 <p>See the GitHub repository wiki or GeoFabrics/tests/ for usage examples and
 other documentation.</p>
 <dl class="field-list simple">
@@ -444,8 +432,7 @@ other documentation.</p>
 <dl class="py method">
 <dt class="sig sig-object py" id="geofabrics.processor.HydrologicDemGenerator.run">
 <span class="sig-name descname"><span class="pre">run</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="headerlink" href="#geofabrics.processor.HydrologicDemGenerator.run" title="Link to this definition"></a></dt>
-<dd><p>This method executes the geofabrics generation pipeline to produce geofabric
-derivatives.</p>
+<dd><p>Generate a hydrologically conditioned DEM.</p>
 </dd></dl>
 
 </dd></dl>
@@ -454,10 +441,9 @@ derivatives.</p>
 <dt class="sig sig-object py" id="geofabrics.processor.PatchDemGenerator">
 <span class="property"><span class="k"><span class="pre">class</span></span><span class="w"> </span></span><span class="sig-prename descclassname"><span class="pre">geofabrics.processor.</span></span><span class="sig-name descname"><span class="pre">PatchDemGenerator</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">json_instructions</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">debug</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">True</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#geofabrics.processor.PatchDemGenerator" title="Link to this definition"></a></dt>
 <dd><p>Bases: <a class="reference internal" href="#geofabrics.processor.BaseProcessor" title="geofabrics.processor.BaseProcessor"><code class="xref py py-obj docutils literal notranslate"><span class="pre">BaseProcessor</span></code></a></p>
-<p>PatchDemGenerator executes a pipeline for loading in a DEM / roughness
-GeoFabrics profuct before adding specified patches to it.</p>
-<p>See the README.md for usage examples or GeoFabrics/tests/ for examples of usage and
-an instruction file</p>
+<p>Add specified patches to a GeoFabrics DEM or roughness product.</p>
+<p>See the README or <code class="docutils literal notranslate"><span class="pre">GeoFabrics/tests/</span></code> for usage examples and instruction
+files.</p>
 <dl class="field-list simple">
 <dt class="field-odd">Parameters<span class="colon">:</span></dt>
 <dd class="field-odd"><ul class="simple">
@@ -469,13 +455,10 @@ an instruction file</p>
 <dl class="py method">
 <dt class="sig sig-object py" id="geofabrics.processor.PatchDemGenerator.get_patch_instruction">
 <span class="sig-name descname"><span class="pre">get_patch_instruction</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">key</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#geofabrics.processor.PatchDemGenerator.get_patch_instruction" title="Link to this definition"></a></dt>
-<dd><p>Return true if the DEMs are required for later processing</p>
+<dd><p>Return the configured patch value for <code class="docutils literal notranslate"><span class="pre">key</span></code> or its default, if defined.</p>
 <dl class="field-list simple">
 <dt class="field-odd">Parameters<span class="colon">:</span></dt>
-<dd class="field-odd"><ul class="simple">
-<li><p><strong>behaviour</strong> (<em>instructions  The json instructions defining the</em>)</p></li>
-<li><p><strong>key</strong> (<em>str</em>)</p></li>
-</ul>
+<dd class="field-odd"><p><strong>key</strong> (<em>str</em>)</p>
 </dd>
 </dl>
 </dd></dl>
@@ -483,8 +466,7 @@ an instruction file</p>
 <dl class="py method">
 <dt class="sig sig-object py" id="geofabrics.processor.PatchDemGenerator.run">
 <span class="sig-name descname"><span class="pre">run</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="headerlink" href="#geofabrics.processor.PatchDemGenerator.run" title="Link to this definition"></a></dt>
-<dd><p>This method executes the geofabrics generation pipeline to produce geofabric
-derivatives.</p>
+<dd><p>Generate a patched DEM or GeoFabrics layer.</p>
 </dd></dl>
 
 </dd></dl>
@@ -493,10 +475,9 @@ derivatives.</p>
 <dt class="sig sig-object py" id="geofabrics.processor.RoughnessLengthGenerator">
 <span class="property"><span class="k"><span class="pre">class</span></span><span class="w"> </span></span><span class="sig-prename descclassname"><span class="pre">geofabrics.processor.</span></span><span class="sig-name descname"><span class="pre">RoughnessLengthGenerator</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">json_instructions</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">debug</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">True</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#geofabrics.processor.RoughnessLengthGenerator" title="Link to this definition"></a></dt>
 <dd><p>Bases: <a class="reference internal" href="#geofabrics.processor.BaseProcessor" title="geofabrics.processor.BaseProcessor"><code class="xref py py-obj docutils literal notranslate"><span class="pre">BaseProcessor</span></code></a></p>
-<p>RoughnessLengthGenerator executes a pipeline for loading in a hydrologically
-conditioned DEM and LiDAR tiles to produce a roughness length layer that is added to
-the Hydrologically conditioned DEM. The data and pipeline logic is defined in
-the json_instructions file.</p>
+<p>Generate a roughness-length layer for a hydrologically conditioned DEM.</p>
+<p>The generator uses the DEM and LiDAR tiles. Its data and pipeline are
+defined in the JSON instruction file.</p>
 <dl class="simple">
 <dt>The <cite>RoughnessLengthGenerator</cite> class contains several important class members:</dt><dd><ul class="simple">
 <li><p>catchment_geometry - Defines all relevant regions in a catchment required in the
@@ -516,13 +497,10 @@ generation of a DEM as polygons.</p></li>
 <dl class="py method">
 <dt class="sig sig-object py" id="geofabrics.processor.RoughnessLengthGenerator.get_roughness_instruction">
 <span class="sig-name descname"><span class="pre">get_roughness_instruction</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">key</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#geofabrics.processor.RoughnessLengthGenerator.get_roughness_instruction" title="Link to this definition"></a></dt>
-<dd><p>Return true if the DEMs are required for later processing</p>
+<dd><p>Return the configured roughness value for <code class="docutils literal notranslate"><span class="pre">key</span></code> or its default, if defined.</p>
 <dl class="field-list simple">
 <dt class="field-odd">Parameters<span class="colon">:</span></dt>
-<dd class="field-odd"><ul class="simple">
-<li><p><strong>behaviour</strong> (<em>instructions  The json instructions defining the</em>)</p></li>
-<li><p><strong>key</strong> (<em>str</em>)</p></li>
-</ul>
+<dd class="field-odd"><p><strong>key</strong> (<em>str</em>)</p>
 </dd>
 </dl>
 </dd></dl>
@@ -552,8 +530,7 @@ generation of a DEM as polygons.</p></li>
 <dl class="py method">
 <dt class="sig sig-object py" id="geofabrics.processor.RoughnessLengthGenerator.run">
 <span class="sig-name descname"><span class="pre">run</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="headerlink" href="#geofabrics.processor.RoughnessLengthGenerator.run" title="Link to this definition"></a></dt>
-<dd><p>This method executes the geofabrics generation pipeline to produce geofabric
-derivatives.</p>
+<dd><p>Generate a roughness layer for the hydrologically conditioned DEM.</p>
 </dd></dl>
 
 </dd></dl>
@@ -562,9 +539,8 @@ derivatives.</p>
 <dt class="sig sig-object py" id="geofabrics.processor.MeasuredRiverGenerator">
 <span class="property"><span class="k"><span class="pre">class</span></span><span class="w"> </span></span><span class="sig-prename descclassname"><span class="pre">geofabrics.processor.</span></span><span class="sig-name descname"><span class="pre">MeasuredRiverGenerator</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">json_instructions</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">debug</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">True</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#geofabrics.processor.MeasuredRiverGenerator" title="Link to this definition"></a></dt>
 <dd><p>Bases: <a class="reference internal" href="#geofabrics.processor.BaseProcessor" title="geofabrics.processor.BaseProcessor"><code class="xref py py-obj docutils literal notranslate"><span class="pre">BaseProcessor</span></code></a></p>
-<p>MeasuredRiverGenerator executes a pipeline to interpolate between
-measured river cross section elevations. A json_instructions file defines
-the pipeline logic and data.</p>
+<p>Interpolate river-bed elevations from measured cross sections.</p>
+<p>The JSON instruction file defines the input data and pipeline.</p>
 <dl class="field-list simple">
 <dt class="field-odd">Parameters<span class="colon">:</span></dt>
 <dd class="field-odd"><ul class="simple">
@@ -576,13 +552,10 @@ the pipeline logic and data.</p>
 <dl class="py method">
 <dt class="sig sig-object py" id="geofabrics.processor.MeasuredRiverGenerator.get_measured_instruction">
 <span class="sig-name descname"><span class="pre">get_measured_instruction</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">key</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#geofabrics.processor.MeasuredRiverGenerator.get_measured_instruction" title="Link to this definition"></a></dt>
-<dd><p>Return true if the DEMs are required for later processing</p>
+<dd><p>Return the configured measured-river value or its default, if defined.</p>
 <dl class="field-list simple">
 <dt class="field-odd">Parameters<span class="colon">:</span></dt>
-<dd class="field-odd"><ul class="simple">
-<li><p><strong>behaviour</strong> (<em>instructions  The json instructions defining the</em>)</p></li>
-<li><p><strong>key</strong> (<em>str</em>)</p></li>
-</ul>
+<dd class="field-odd"><p><strong>key</strong> (<em>str</em>)</p>
 </dd>
 </dl>
 </dd></dl>
@@ -601,9 +574,7 @@ the pipeline logic and data.</p>
 <dl class="py method">
 <dt class="sig sig-object py" id="geofabrics.processor.MeasuredRiverGenerator.run">
 <span class="sig-name descname"><span class="pre">run</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="headerlink" href="#geofabrics.processor.MeasuredRiverGenerator.run" title="Link to this definition"></a></dt>
-<dd><p>This method extracts a main channel then executes the DemGeneration
-pipeline to produce a DEM before sampling this to extimate width, slope
-and eventually depth.</p>
+<dd><p>Interpolate measured river sections and save elevation outputs.</p>
 </dd></dl>
 
 </dd></dl>
@@ -612,11 +583,11 @@ and eventually depth.</p>
 <dt class="sig sig-object py" id="geofabrics.processor.RiverBathymetryGenerator">
 <span class="property"><span class="k"><span class="pre">class</span></span><span class="w"> </span></span><span class="sig-prename descclassname"><span class="pre">geofabrics.processor.</span></span><span class="sig-name descname"><span class="pre">RiverBathymetryGenerator</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">json_instructions</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">debug</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">True</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#geofabrics.processor.RiverBathymetryGenerator" title="Link to this definition"></a></dt>
 <dd><p>Bases: <a class="reference internal" href="#geofabrics.processor.BaseProcessor" title="geofabrics.processor.BaseProcessor"><code class="xref py py-obj docutils literal notranslate"><span class="pre">BaseProcessor</span></code></a></p>
-<p>RiverbathymetryGenerator executes a pipeline to estimate river
-bathymetry depths from flows, slopes, friction and widths along a main
-channel. This is dones by first creating a hydrologically conditioned DEM
-of the channel. A json_instructions file defines the pipeline logic and
-data.</p>
+<p>Estimate river-bed depths along a main channel.</p>
+<p>The processor uses LiDAR-derived DEMs to characterize channel width and
+slope, then estimates and saves river bathymetry. These saved estimates can
+later be incorporated into a hydrologically conditioned DEM by
+<code class="docutils literal notranslate"><span class="pre">HydrologicDemGenerator</span></code>.</p>
 <dl class="field-list simple">
 <dt class="field-odd">Parameters<span class="colon">:</span></dt>
 <dd class="field-odd"><ul class="simple">
@@ -625,40 +596,10 @@ data.</p>
 </ul>
 </dd>
 </dl>
-<dl class="py attribute">
-<dt class="sig sig-object py">
-<span class="sig-name descname"><span class="pre">channel_polyline</span>&#160; <span class="pre">The</span> <span class="pre">main</span> <span class="pre">channel</span> <span class="pre">along</span> <span class="pre">which</span> <span class="pre">to</span> <span class="pre">estimate</span> <span class="pre">depth.</span> <span class="pre">This</span></span></dt>
-<dd><p>is a polyline.</p>
-</dd></dl>
-
-<dl class="py attribute">
-<dt class="sig sig-object py">
-<span class="sig-name descname"><span class="pre">gen_dem</span>&#160; <span class="pre">The</span> <span class="pre">ground</span> <span class="pre">DEM</span> <span class="pre">generated</span> <span class="pre">along</span> <span class="pre">the</span> <span class="pre">main</span> <span class="pre">channel.</span> <span class="pre">This</span> <span class="pre">is</span> <span class="pre">a</span></span></dt>
-<dd><p>raster.</p>
-</dd></dl>
-
-<dl class="py attribute">
-<dt class="sig sig-object py">
-<span class="sig-name descname"><span class="pre">veg_dem</span>&#160; <span class="pre">The</span> <span class="pre">vegetation</span> <span class="pre">DEM</span> <span class="pre">generated</span> <span class="pre">along</span> <span class="pre">the</span> <span class="pre">main</span> <span class="pre">channel.</span> <span class="pre">This</span> <span class="pre">is</span> <span class="pre">a</span></span></dt>
-<dd><p>raster.</p>
-</dd></dl>
-
-<dl class="py attribute">
-<dt class="sig sig-object py">
-<span class="sig-name descname"><span class="pre">aligned_channel_polyline</span>&#160; <span class="pre">The</span> <span class="pre">main</span> <span class="pre">channel</span> <span class="pre">after</span> <span class="pre">its</span> <span class="pre">alignment</span> <span class="pre">has</span> <span class="pre">been</span></span></dt>
-<dd><p>updated based on the DEM. Width and slope are estimated on this.</p>
-</dd></dl>
-
-<dl class="py attribute">
-<dt class="sig sig-object py">
-<span class="sig-name descname"><span class="pre">transects</span>&#160; <span class="pre">Transect</span> <span class="pre">polylines</span> <span class="pre">perpindicular</span> <span class="pre">to</span> <span class="pre">the</span> <span class="pre">aligned</span> <span class="pre">channel</span> <span class="pre">with</span></span></dt>
-<dd><p>samples of the DEM values</p>
-</dd></dl>
-
 <dl class="py method">
 <dt class="sig sig-object py" id="geofabrics.processor.RiverBathymetryGenerator.channel_characteristics_exist">
 <span class="sig-name descname"><span class="pre">channel_characteristics_exist</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="headerlink" href="#geofabrics.processor.RiverBathymetryGenerator.channel_characteristics_exist" title="Link to this definition"></a></dt>
-<dd><p>Return true if the DEMs are required for later processing</p>
+<dd><p>Return whether channel characteristics and polygon files exist.</p>
 <dl class="field-list simple">
 <dt class="field-odd">Return type<span class="colon">:</span></dt>
 <dd class="field-odd"><p>bool</p>
@@ -680,13 +621,10 @@ data.</p>
 <dl class="py method">
 <dt class="sig sig-object py" id="geofabrics.processor.RiverBathymetryGenerator.alignment_exists">
 <span class="sig-name descname"><span class="pre">alignment_exists</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="headerlink" href="#geofabrics.processor.RiverBathymetryGenerator.alignment_exists" title="Link to this definition"></a></dt>
-<dd><p>Return true if the DEMs are required for later processing</p>
+<dd><p>Return whether the aligned channel file exists.</p>
 <dl class="field-list simple">
-<dt class="field-odd">Parameters<span class="colon">:</span></dt>
-<dd class="field-odd"><p><strong>behaviour</strong> (<em>instructions  The json instructions defining the</em>)</p>
-</dd>
-<dt class="field-even">Return type<span class="colon">:</span></dt>
-<dd class="field-even"><p>bool</p>
+<dt class="field-odd">Return type<span class="colon">:</span></dt>
+<dd class="field-odd"><p>bool</p>
 </dd>
 </dl>
 </dd></dl>
@@ -694,11 +632,11 @@ data.</p>
 <dl class="py method">
 <dt class="sig sig-object py" id="geofabrics.processor.RiverBathymetryGenerator.get_result_file_name">
 <span class="sig-name descname"><span class="pre">get_result_file_name</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">key</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">name</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#geofabrics.processor.RiverBathymetryGenerator.get_result_file_name" title="Link to this definition"></a></dt>
-<dd><p>Return the file name of the file to save.</p>
+<dd><p>Return the output filename for a result key or explicit name.</p>
+<p>Provide either <code class="docutils literal notranslate"><span class="pre">key</span></code> or <code class="docutils literal notranslate"><span class="pre">name</span></code>.</p>
 <dl class="field-list simple">
 <dt class="field-odd">Parameters<span class="colon">:</span></dt>
 <dd class="field-odd"><ul class="simple">
-<li><p><strong>behaviour</strong> (<em>instructions  The json instructions defining the</em>)</p></li>
 <li><p><strong>key</strong> (<em>str</em>)</p></li>
 <li><p><strong>name</strong> (<em>str</em>)</p></li>
 </ul>
@@ -712,11 +650,10 @@ data.</p>
 <dl class="py method">
 <dt class="sig sig-object py" id="geofabrics.processor.RiverBathymetryGenerator.get_result_file_path">
 <span class="sig-name descname"><span class="pre">get_result_file_path</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">key</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">name</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#geofabrics.processor.RiverBathymetryGenerator.get_result_file_path" title="Link to this definition"></a></dt>
-<dd><p>Return the file name of the file to save with the local cache path.</p>
+<dd><p>Return the output path for a result key or explicit name.</p>
 <dl class="field-list simple">
 <dt class="field-odd">Parameters<span class="colon">:</span></dt>
 <dd class="field-odd"><ul class="simple">
-<li><p><strong>behaviour</strong> (<em>instructions  The json instructions defining the</em>)</p></li>
 <li><p><strong>key</strong> (<em>str</em>)</p></li>
 <li><p><strong>name</strong> (<em>str</em>)</p></li>
 </ul>
@@ -730,13 +667,10 @@ data.</p>
 <dl class="py method">
 <dt class="sig sig-object py" id="geofabrics.processor.RiverBathymetryGenerator.get_bathymetry_instruction">
 <span class="sig-name descname"><span class="pre">get_bathymetry_instruction</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">key</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#geofabrics.processor.RiverBathymetryGenerator.get_bathymetry_instruction" title="Link to this definition"></a></dt>
-<dd><p>Return true if the DEMs are required for later processing</p>
+<dd><p>Return the configured bathymetry value or its default, if defined.</p>
 <dl class="field-list simple">
 <dt class="field-odd">Parameters<span class="colon">:</span></dt>
-<dd class="field-odd"><ul class="simple">
-<li><p><strong>behaviour</strong> (<em>instructions  The json instructions defining the</em>)</p></li>
-<li><p><strong>key</strong> (<em>str</em>)</p></li>
-</ul>
+<dd class="field-odd"><p><strong>key</strong> (<em>str</em>)</p>
 </dd>
 </dl>
 </dd></dl>
@@ -755,17 +689,16 @@ data.</p>
 <dl class="py method">
 <dt class="sig sig-object py" id="geofabrics.processor.RiverBathymetryGenerator.get_dems">
 <span class="sig-name descname"><span class="pre">get_dems</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">channel</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#geofabrics.processor.RiverBathymetryGenerator.get_dems" title="Link to this definition"></a></dt>
-<dd><p>Allow selection of the ground or vegetation DEM, and either create
-or load it.</p>
+<dd><p>Load or create the ground and vegetation DEMs for the channel.</p>
 <dl class="field-list simple">
 <dt class="field-odd">Parameters<span class="colon">:</span></dt>
-<dd class="field-odd"><ul class="simple">
-<li><p><strong>behaviour</strong> (<em>instructions  The json instructions defining the</em>)</p></li>
-<li><p><strong>channel</strong> (<a class="reference internal" href="../geometry/index.html#geofabrics.geometry.CatchmentGeometry" title="geofabrics.geometry.CatchmentGeometry"><em>geofabrics.geometry.CatchmentGeometry</em></a>)</p></li>
-</ul>
+<dd class="field-odd"><p><strong>channel</strong> (<a class="reference internal" href="../geometry/index.html#geofabrics.geometry.CatchmentGeometry" title="geofabrics.geometry.CatchmentGeometry"><em>geofabrics.geometry.CatchmentGeometry</em></a>) – Catchment geometry used to define the channel region.</p>
 </dd>
-<dt class="field-even">Return type<span class="colon">:</span></dt>
-<dd class="field-even"><p>tuple</p>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><p>Ground and vegetation DEM datasets.</p>
+</dd>
+<dt class="field-odd">Return type<span class="colon">:</span></dt>
+<dd class="field-odd"><p>tuple</p>
 </dd>
 </dl>
 </dd></dl>
@@ -773,15 +706,12 @@ or load it.</p>
 <dl class="py method">
 <dt class="sig sig-object py" id="geofabrics.processor.RiverBathymetryGenerator.align_channel">
 <span class="sig-name descname"><span class="pre">align_channel</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">channel_width</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">channel</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#geofabrics.processor.RiverBathymetryGenerator.align_channel" title="Link to this definition"></a></dt>
-<dd><p>Align the river network defined channel based on LiDAR and save the aligned
-channel.</p>
+<dd><p>Align the river-network channel using LiDAR and save the result.</p>
 <dl class="field-list simple">
 <dt class="field-odd">Parameters<span class="colon">:</span></dt>
 <dd class="field-odd"><ul class="simple">
-<li><p><strong>other</strong> (<em>channel_width  The class for characterising channel width and</em>) – properties</p></li>
-<li><p><strong>alignment</strong> (<em>channel  The river network defined channel</em>)</p></li>
-<li><p><strong>channel_width</strong> (<a class="reference internal" href="../bathymetry_estimation/index.html#geofabrics.bathymetry_estimation.ChannelCharacteristics" title="geofabrics.bathymetry_estimation.ChannelCharacteristics"><em>geofabrics.bathymetry_estimation.ChannelCharacteristics</em></a>)</p></li>
-<li><p><strong>channel</strong> (<a class="reference internal" href="../bathymetry_estimation/index.html#geofabrics.bathymetry_estimation.Channel" title="geofabrics.bathymetry_estimation.Channel"><em>geofabrics.bathymetry_estimation.Channel</em></a>)</p></li>
+<li><p><strong>channel_width</strong> (<a class="reference internal" href="../bathymetry_estimation/index.html#geofabrics.bathymetry_estimation.ChannelCharacteristics" title="geofabrics.bathymetry_estimation.ChannelCharacteristics"><em>geofabrics.bathymetry_estimation.ChannelCharacteristics</em></a>) – Channel-characteristics estimator used to align the network.</p></li>
+<li><p><strong>channel</strong> (<a class="reference internal" href="../bathymetry_estimation/index.html#geofabrics.bathymetry_estimation.Channel" title="geofabrics.bathymetry_estimation.Channel"><em>geofabrics.bathymetry_estimation.Channel</em></a>) – Initial channel alignment from the river network.</p></li>
 </ul>
 </dd>
 <dt class="field-even">Return type<span class="colon">:</span></dt>
@@ -793,19 +723,22 @@ channel.</p>
 <dl class="py method">
 <dt class="sig sig-object py" id="geofabrics.processor.RiverBathymetryGenerator.calculate_channel_characteristics">
 <span class="sig-name descname"><span class="pre">calculate_channel_characteristics</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">channel_width</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">aligned_channel</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#geofabrics.processor.RiverBathymetryGenerator.calculate_channel_characteristics" title="Link to this definition"></a></dt>
-<dd><p>Align the river network defined channel based on LiDAR and save the aligned
-channel.</p>
+<dd><p>Estimate channel width and slope from the aligned channel.</p>
 <dl class="field-list simple">
 <dt class="field-odd">Parameters<span class="colon">:</span></dt>
 <dd class="field-odd"><ul class="simple">
-<li><p><strong>other</strong> (<em>channel_width  The class for characterising channel width and</em>) – properties</p></li>
-<li><p><strong>alignment</strong> (<em>channel  The river network defined channel</em>)</p></li>
-<li><p><strong>channel_width</strong> (<a class="reference internal" href="../bathymetry_estimation/index.html#geofabrics.bathymetry_estimation.ChannelCharacteristics" title="geofabrics.bathymetry_estimation.ChannelCharacteristics"><em>geofabrics.bathymetry_estimation.ChannelCharacteristics</em></a>)</p></li>
-<li><p><strong>aligned_channel</strong> (<em>geopandas.GeoDataFrame</em>)</p></li>
+<li><p><strong>channel_width</strong> (<a class="reference internal" href="../bathymetry_estimation/index.html#geofabrics.bathymetry_estimation.ChannelCharacteristics" title="geofabrics.bathymetry_estimation.ChannelCharacteristics"><em>geofabrics.bathymetry_estimation.ChannelCharacteristics</em></a>) – Configured estimator that samples ground and vegetation DEMs and
+calculates channel widths and slopes.</p></li>
+<li><p><strong>aligned_channel</strong> (<em>geopandas.GeoDataFrame</em>) – Channel alignment used when characterising the channel width, slope,
+and footprint.</p></li>
 </ul>
 </dd>
-<dt class="field-even">Return type<span class="colon">:</span></dt>
-<dd class="field-even"><p>tuple</p>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><p>Writes the river polygon and sampled channel characteristics to
+their configured result files.</p>
+</dd>
+<dt class="field-odd">Return type<span class="colon">:</span></dt>
+<dd class="field-odd"><p>None</p>
 </dd>
 </dl>
 </dd></dl>
@@ -853,8 +786,29 @@ centreline.</p>
 <dl class="py method">
 <dt class="sig sig-object py" id="geofabrics.processor.RiverBathymetryGenerator.calculate_river_bed_elevations">
 <span class="sig-name descname"><span class="pre">calculate_river_bed_elevations</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="headerlink" href="#geofabrics.processor.RiverBathymetryGenerator.calculate_river_bed_elevations" title="Link to this definition"></a></dt>
-<dd><p>Calculate and save depth estimates along the channel using various
-approaches.</p>
+<dd><p>Estimate and save river-bed elevations using two depth methods.</p>
+<p>Reads the saved channel-characteristics layer, associates each row with
+the nearest river-network reach, and estimates bed elevations using
+the Neal et al. uniform-flow and Rupp and Smart hydraulic-geometry
+methods. The resulting elevations and channel attributes are written
+to the configured river-bathymetry result file. When debug output is
+enabled, the full-bank and area-adjusted depths are included as well.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Returns<span class="colon">:</span></dt>
+<dd class="field-odd"><p>Writes the estimates to disk; no result is returned.</p>
+</dd>
+<dt class="field-even">Return type<span class="colon">:</span></dt>
+<dd class="field-even"><p>None</p>
+</dd>
+</dl>
+<p class="rubric">Notes</p>
+<p>Missing reach IDs, flow, and Manning’s n values are filled forward and
+backward from neighboring rows. Other missing or invalid inputs are
+not explicitly imputed and may propagate into the estimates. Negative
+depth estimates are set to zero, and depths below the configured
+threshold are raised to that threshold. Flow is in m^3 / s, width is
+in meters, slope is dimensionless, Manning’s n is dimensionless, and
+elevations are in meters.</p>
 </dd></dl>
 
 <dl class="py method">
@@ -866,9 +820,7 @@ approaches.</p>
 <dl class="py method">
 <dt class="sig sig-object py" id="geofabrics.processor.RiverBathymetryGenerator.run">
 <span class="sig-name descname"><span class="pre">run</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="headerlink" href="#geofabrics.processor.RiverBathymetryGenerator.run" title="Link to this definition"></a></dt>
-<dd><p>This method extracts a main channel then executes the DemGeneration
-pipeline to produce a DEM before sampling this to extimate width, slope
-and eventually depth.</p>
+<dd><p>Characterize the river channel and estimate channel and fan bathymetry.</p>
 </dd></dl>
 
 </dd></dl>
@@ -877,10 +829,9 @@ and eventually depth.</p>
 <dt class="sig sig-object py" id="geofabrics.processor.WaterwayBedElevationEstimator">
 <span class="property"><span class="k"><span class="pre">class</span></span><span class="w"> </span></span><span class="sig-prename descclassname"><span class="pre">geofabrics.processor.</span></span><span class="sig-name descname"><span class="pre">WaterwayBedElevationEstimator</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">json_instructions</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">debug</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">True</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#geofabrics.processor.WaterwayBedElevationEstimator" title="Link to this definition"></a></dt>
 <dd><p>Bases: <a class="reference internal" href="#geofabrics.processor.BaseProcessor" title="geofabrics.processor.BaseProcessor"><code class="xref py py-obj docutils literal notranslate"><span class="pre">BaseProcessor</span></code></a></p>
-<p>WaterwayBedElevationGenerator executes a pipeline to pull in OpenStreetMap waterway
-and tunnel information. A DEM is generated of the surrounding area and this used to
-unblock waterways and tunnels - by taking the lowest value in the area around a tunnel
-to be the tunnel elevation, and ensuring opne waterways flow downhill.</p>
+<p>Estimate bed elevations for waterways and tunnels.</p>
+<p>Sample a DEM around tunnels to estimate their bed elevations, and enforce
+downhill elevations along open waterways.</p>
 <dl class="field-list simple">
 <dt class="field-odd">Parameters<span class="colon">:</span></dt>
 <dd class="field-odd"><ul class="simple">
@@ -903,13 +854,16 @@ to be the tunnel elevation, and ensuring opne waterways flow downhill.</p>
 <dl class="py method">
 <dt class="sig sig-object py" id="geofabrics.processor.WaterwayBedElevationEstimator.get_waterways_instruction">
 <span class="sig-name descname"><span class="pre">get_waterways_instruction</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">key</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#geofabrics.processor.WaterwayBedElevationEstimator.get_waterways_instruction" title="Link to this definition"></a></dt>
-<dd><p>Return true if the DEMs are required for later processing</p>
+<dd><p>Return a waterways instruction value, using its default if defined.</p>
 <dl class="field-list simple">
 <dt class="field-odd">Parameters<span class="colon">:</span></dt>
-<dd class="field-odd"><ul class="simple">
-<li><p><strong>behaviour</strong> (<em>instructions  The json instructions defining the</em>)</p></li>
-<li><p><strong>key</strong> (<em>str</em>)</p></li>
-</ul>
+<dd class="field-odd"><p><strong>key</strong> (<em>str</em>) – Name of the waterways instruction to retrieve.</p>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><p>Configured value or the default for <code class="docutils literal notranslate"><span class="pre">key</span></code>.</p>
+</dd>
+<dt class="field-odd">Return type<span class="colon">:</span></dt>
+<dd class="field-odd"><p>object</p>
 </dd>
 </dl>
 </dd></dl>
@@ -934,11 +888,10 @@ to be the tunnel elevation, and ensuring opne waterways flow downhill.</p>
 <dl class="py method">
 <dt class="sig sig-object py" id="geofabrics.processor.WaterwayBedElevationEstimator.get_result_file_path">
 <span class="sig-name descname"><span class="pre">get_result_file_path</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">key</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">index</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#geofabrics.processor.WaterwayBedElevationEstimator.get_result_file_path" title="Link to this definition"></a></dt>
-<dd><p>Return the file name of the file to save with the local cache path.</p>
+<dd><p>Return the path for a waterway output file.</p>
 <dl class="field-list simple">
 <dt class="field-odd">Parameters<span class="colon">:</span></dt>
 <dd class="field-odd"><ul class="simple">
-<li><p><strong>behaviour</strong> (<em>instructions  The json instructions defining the</em>)</p></li>
 <li><p><strong>key</strong> (<em>str</em>)</p></li>
 <li><p><strong>index</strong> (<em>int</em>)</p></li>
 </ul>
@@ -952,24 +905,33 @@ to be the tunnel elevation, and ensuring opne waterways flow downhill.</p>
 <dl class="py method">
 <dt class="sig sig-object py" id="geofabrics.processor.WaterwayBedElevationEstimator.waterway_elevations_exists">
 <span class="sig-name descname"><span class="pre">waterway_elevations_exists</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="headerlink" href="#geofabrics.processor.WaterwayBedElevationEstimator.waterway_elevations_exists" title="Link to this definition"></a></dt>
-<dd><p>Check to see if the waterway and culvert bathymeties have already been
-estimated.</p>
+<dd><p>Return whether outputs for open and closed waterways have been saved.</p>
 </dd></dl>
 
 <dl class="py method">
 <dt class="sig sig-object py" id="geofabrics.processor.WaterwayBedElevationEstimator.minimum_elevation_in_polygon">
 <span class="sig-name descname"><span class="pre">minimum_elevation_in_polygon</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">geometry</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">dem</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#geofabrics.processor.WaterwayBedElevationEstimator.minimum_elevation_in_polygon" title="Link to this definition"></a></dt>
-<dd><p>Determine the minimum value in each polygon. Select only coordinates
-within the polygon bounding box before clipping to the bounding box and
-then returning the minimum elevation.</p>
+<dd><p>Return the minimum non-missing DEM elevation inside a polygon.</p>
 <dl class="field-list simple">
 <dt class="field-odd">Parameters<span class="colon">:</span></dt>
 <dd class="field-odd"><ul class="simple">
-<li><p><strong>geometry</strong> (<em>shapely.geometry.Polygon</em>)</p></li>
-<li><p><strong>dem</strong> (<em>xarray.Dataset</em>)</p></li>
+<li><p><strong>geometry</strong> (<em>shapely.geometry.Polygon</em>) – Polygon to sample. Its coordinates must use the same CRS as
+<code class="docutils literal notranslate"><span class="pre">dem</span></code>; this method does not reproject it.</p></li>
+<li><p><strong>dem</strong> (<em>xarray.Dataset</em>) – DEM dataset containing a <code class="docutils literal notranslate"><span class="pre">z</span></code> variable and <code class="docutils literal notranslate"><span class="pre">x</span></code>/<code class="docutils literal notranslate"><span class="pre">y</span></code>
+coordinates.</p></li>
 </ul>
 </dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><p>Minimum <code class="docutils literal notranslate"><span class="pre">z</span></code> value after clipping the bounding-box window to the
+polygon. Returns NaN if the clipped raster contains no valid
+elevations.</p>
+</dd>
+<dt class="field-odd">Return type<span class="colon">:</span></dt>
+<dd class="field-odd"><p>float</p>
+</dd>
 </dl>
+<p class="rubric">Notes</p>
+<p>CRS match those of the DEM also defined in the instruction JSON file.</p>
 </dd></dl>
 
 <dl class="py method">
@@ -1022,15 +984,7 @@ then returning the minimum elevation.</p>
 <dl class="py method">
 <dt class="sig sig-object py" id="geofabrics.processor.WaterwayBedElevationEstimator.run">
 <span class="sig-name descname"><span class="pre">run</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="headerlink" href="#geofabrics.processor.WaterwayBedElevationEstimator.run" title="Link to this definition"></a></dt>
-<dd><p>This method runs a pipeline that:
-* downloads all tunnels and waterways within a catchment.
-* creates and samples a DEM around each feature to estimate the bed</p>
-<blockquote>
-<div><p>elevation.</p>
-</div></blockquote>
-<ul class="simple">
-<li><p>saves out extents and bed elevations of the waterway and tunnel network</p></li>
-</ul>
+<dd><p>Estimate and save bed elevations for waterways and tunnels.</p>
 </dd></dl>
 
 </dd></dl>
@@ -1039,10 +993,9 @@ then returning the minimum elevation.</p>
 <dt class="sig sig-object py" id="geofabrics.processor.StopbankCrestElevationEstimator">
 <span class="property"><span class="k"><span class="pre">class</span></span><span class="w"> </span></span><span class="sig-prename descclassname"><span class="pre">geofabrics.processor.</span></span><span class="sig-name descname"><span class="pre">StopbankCrestElevationEstimator</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">json_instructions</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">debug</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">True</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#geofabrics.processor.StopbankCrestElevationEstimator" title="Link to this definition"></a></dt>
 <dd><p>Bases: <a class="reference internal" href="#geofabrics.processor.BaseProcessor" title="geofabrics.processor.BaseProcessor"><code class="xref py py-obj docutils literal notranslate"><span class="pre">BaseProcessor</span></code></a></p>
-<p>StopbankCrestElevationEstimator executes a pipeline to estimate stopbank
-crest elevations. A DEM is generated of the surrounding area and this used
-to estimate crest elevations by taking the highest value in the area around
-the stopebank.</p>
+<p>Estimate stopbank crest elevations from a DEM of the surrounding area.</p>
+<p>Crest elevations are estimated from the highest values sampled along each
+stopbank.</p>
 <dl class="field-list simple">
 <dt class="field-odd">Parameters<span class="colon">:</span></dt>
 <dd class="field-odd"><ul class="simple">
@@ -1065,13 +1018,16 @@ the stopebank.</p>
 <dl class="py method">
 <dt class="sig sig-object py" id="geofabrics.processor.StopbankCrestElevationEstimator.get_stopbanks_instruction">
 <span class="sig-name descname"><span class="pre">get_stopbanks_instruction</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">key</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#geofabrics.processor.StopbankCrestElevationEstimator.get_stopbanks_instruction" title="Link to this definition"></a></dt>
-<dd><p>Return true if the DEMs are required for later processing</p>
+<dd><p>Return a stopbanks instruction value, using its default if defined.</p>
 <dl class="field-list simple">
 <dt class="field-odd">Parameters<span class="colon">:</span></dt>
-<dd class="field-odd"><ul class="simple">
-<li><p><strong>behaviour</strong> (<em>instructions  The json instructions defining the</em>)</p></li>
-<li><p><strong>key</strong> (<em>str</em>)</p></li>
-</ul>
+<dd class="field-odd"><p><strong>key</strong> (<em>str</em>) – Name of the stopbanks instruction to retrieve.</p>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><p>Configured value or the default for <code class="docutils literal notranslate"><span class="pre">key</span></code>.</p>
+</dd>
+<dt class="field-odd">Return type<span class="colon">:</span></dt>
+<dd class="field-odd"><p>object</p>
 </dd>
 </dl>
 </dd></dl>
@@ -1096,13 +1052,12 @@ the stopebank.</p>
 <dl class="py method">
 <dt class="sig sig-object py" id="geofabrics.processor.StopbankCrestElevationEstimator.get_result_file_path">
 <span class="sig-name descname"><span class="pre">get_result_file_path</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">key</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">index</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#geofabrics.processor.StopbankCrestElevationEstimator.get_result_file_path" title="Link to this definition"></a></dt>
-<dd><p>Return the file name of the file to save with the local cache path.</p>
+<dd><p>Return the path for a stopbank output file.</p>
 <dl class="field-list simple">
 <dt class="field-odd">Parameters<span class="colon">:</span></dt>
 <dd class="field-odd"><ul class="simple">
-<li><p><strong>behaviour</strong> (<em>instructions  The json instructions defining the</em>)</p></li>
-<li><p><strong>key</strong> (<em>str</em>)</p></li>
-<li><p><strong>index</strong> (<em>int</em>)</p></li>
+<li><p><strong>key</strong> (<em>str</em>) – Output type used to select the filename.</p></li>
+<li><p><strong>index</strong> (<em>int</em>) – Optional stopbank index used for per-stopbank outputs.</p></li>
 </ul>
 </dd>
 <dt class="field-even">Return type<span class="colon">:</span></dt>
@@ -1114,30 +1069,40 @@ the stopebank.</p>
 <dl class="py method">
 <dt class="sig sig-object py" id="geofabrics.processor.StopbankCrestElevationEstimator.stopbanks_elevations_exists">
 <span class="sig-name descname"><span class="pre">stopbanks_elevations_exists</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="headerlink" href="#geofabrics.processor.StopbankCrestElevationEstimator.stopbanks_elevations_exists" title="Link to this definition"></a></dt>
-<dd><p>Check to see if the waterway and culvert bathymeties have already been
-estimated.</p>
+<dd><p>Return whether stopbank polygons and crest elevations are saved.</p>
 </dd></dl>
 
 <dl class="py method">
 <dt class="sig sig-object py" id="geofabrics.processor.StopbankCrestElevationEstimator.maximum_elevation_in_polygon">
 <span class="sig-name descname"><span class="pre">maximum_elevation_in_polygon</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">geometry</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">dem</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#geofabrics.processor.StopbankCrestElevationEstimator.maximum_elevation_in_polygon" title="Link to this definition"></a></dt>
-<dd><p>Determine the minimum value in each polygon. Select only coordinates
-within the polygon bounding box before clipping to the bounding box and
-then returning the minimum elevation.</p>
+<dd><p>Return the maximum DEM elevation in the polygon’s bounding box.</p>
 <dl class="field-list simple">
 <dt class="field-odd">Parameters<span class="colon">:</span></dt>
 <dd class="field-odd"><ul class="simple">
-<li><p><strong>geometry</strong> (<em>shapely.geometry.Polygon</em>)</p></li>
-<li><p><strong>dem</strong> (<em>xarray.Dataset</em>)</p></li>
+<li><p><strong>geometry</strong> (<em>shapely.geometry.Polygon</em>) – Polygon whose bounds define the raster window. Its coordinates
+must use the same CRS as <code class="docutils literal notranslate"><span class="pre">dem</span></code>; this method does not reproject it.</p></li>
+<li><p><strong>dem</strong> (<em>xarray.Dataset</em>) – DEM dataset containing a <code class="docutils literal notranslate"><span class="pre">z</span></code> variable and <code class="docutils literal notranslate"><span class="pre">x</span></code>/<code class="docutils literal notranslate"><span class="pre">y</span></code>
+coordinates.</p></li>
 </ul>
 </dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><p>Maximum <code class="docutils literal notranslate"><span class="pre">z</span></code> value in the rectangular window. The values are not
+clipped to the polygon itself. Returns NaN if the window contains
+no valid elevations.</p>
+</dd>
+<dt class="field-odd">Return type<span class="colon">:</span></dt>
+<dd class="field-odd"><p>float</p>
+</dd>
 </dl>
+<p class="rubric">Notes</p>
+<p>Currently the maximum within the polygon bounding box, and not
+restricted to the polygon itself.</p>
 </dd></dl>
 
 <dl class="py method">
 <dt class="sig sig-object py" id="geofabrics.processor.StopbankCrestElevationEstimator.estimate_elevations_simple">
 <span class="sig-name descname"><span class="pre">estimate_elevations_simple</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">stopbanks</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#geofabrics.processor.StopbankCrestElevationEstimator.estimate_elevations_simple" title="Link to this definition"></a></dt>
-<dd><p>Sample the DEM around the tunnels to estimate the bed elevation.</p>
+<dd><p>Sample the DEM along stopbanks to estimate their crest elevations.</p>
 <dl class="field-list simple">
 <dt class="field-odd">Parameters<span class="colon">:</span></dt>
 <dd class="field-odd"><p><strong>stopbanks</strong> (<em>geopandas.GeoDataFrame</em>)</p>
@@ -1148,7 +1113,7 @@ then returning the minimum elevation.</p>
 <dl class="py method">
 <dt class="sig sig-object py" id="geofabrics.processor.StopbankCrestElevationEstimator.create_dem">
 <span class="sig-name descname"><span class="pre">create_dem</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">stopbanks</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#geofabrics.processor.StopbankCrestElevationEstimator.create_dem" title="Link to this definition"></a></dt>
-<dd><p>Create and return a DEM at a resolution 1.5x the waterway width.</p>
+<dd><p>Generate a raw LiDAR DEM for each stopbank region that needs one.</p>
 <dl class="field-list simple">
 <dt class="field-odd">Parameters<span class="colon">:</span></dt>
 <dd class="field-odd"><p><strong>stopbanks</strong> (<em>geopandas.GeoDataFrame</em>)</p>
@@ -1173,15 +1138,7 @@ then returning the minimum elevation.</p>
 <dl class="py method">
 <dt class="sig sig-object py" id="geofabrics.processor.StopbankCrestElevationEstimator.run">
 <span class="sig-name descname"><span class="pre">run</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="headerlink" href="#geofabrics.processor.StopbankCrestElevationEstimator.run" title="Link to this definition"></a></dt>
-<dd><p>This method runs a pipeline that:
-* downloads all tunnels and waterways within a catchment.
-* creates and samples a DEM around each feature to estimate the bed</p>
-<blockquote>
-<div><p>elevation.</p>
-</div></blockquote>
-<ul class="simple">
-<li><p>saves out extents and bed elevations of the waterway and tunnel network</p></li>
-</ul>
+<dd><p>Estimate and save crest elevations for stopbanks.</p>
 </dd></dl>
 
 </dd></dl>

@@ -58,7 +58,6 @@
 </li>
 </ul>
 </li>
-<li class="toctree-l2"><a class="reference internal" href="../../benchmarking/index.html">benchmarking</a></li>
 </ul>
 </li>
 </ul>
@@ -117,7 +116,7 @@ DEMs.</p>
 <td><p>A class to manage coarse or background DEMs in the catchment context</p></td>
 </tr>
 <tr class="row-even"><td><p><a class="reference internal" href="#geofabrics.dem.DemBase" title="geofabrics.dem.DemBase"><code class="xref py py-obj docutils literal notranslate"><span class="pre">DemBase</span></code></a></p></td>
-<td><p>An abstract class to manage the different geofabric layers in a</p></td>
+<td><p>An abstract class for managing GeoFabrics data layers in a</p></td>
 </tr>
 <tr class="row-odd"><td><p><a class="reference internal" href="#geofabrics.dem.HydrologicallyConditionedDem" title="geofabrics.dem.HydrologicallyConditionedDem"><code class="xref py py-obj docutils literal notranslate"><span class="pre">HydrologicallyConditionedDem</span></code></a></p></td>
 <td><p>A class to manage loading in an already created and saved dense DEM that has yet</p></td>
@@ -141,41 +140,50 @@ DEMs.</p>
 <h2>Functions<a class="headerlink" href="#functions" title="Link to this heading"></a></h2>
 <table class="autosummary longtable docutils align-default">
 <tbody>
-<tr class="row-odd"><td><p><a class="reference internal" href="#geofabrics.dem.clip_mask" title="geofabrics.dem.clip_mask"><code class="xref py py-obj docutils literal notranslate"><span class="pre">clip_mask</span></code></a>(arr, geometry, chunk_size[, invert])</p></td>
-<td><p>Create a mask the size of the arr clipped by the geometry.</p></td>
+<tr class="row-odd"><td><p><a class="reference internal" href="#geofabrics.dem.chunk_mask" title="geofabrics.dem.chunk_mask"><code class="xref py py-obj docutils literal notranslate"><span class="pre">chunk_mask</span></code></a>(mask, chunk_size)</p></td>
+<td><p>Split a two-dimensional mask into Dask array chunks.</p></td>
 </tr>
-<tr class="row-even"><td><p><a class="reference internal" href="#geofabrics.dem.read_file_with_pdal" title="geofabrics.dem.read_file_with_pdal"><code class="xref py py-obj docutils literal notranslate"><span class="pre">read_file_with_pdal</span></code></a>(lidar_file, region_to_tile, crs[, ...])</p></td>
-<td><p>Read a tile file in using PDAL with input and output CRS specified.</p></td>
+<tr class="row-even"><td><p><a class="reference internal" href="#geofabrics.dem.clip_mask" title="geofabrics.dem.clip_mask"><code class="xref py py-obj docutils literal notranslate"><span class="pre">clip_mask</span></code></a>(arr, geometry, chunk_size[, invert])</p></td>
+<td><p>Create a boolean mask for a geometry on an xarray raster grid.</p></td>
 </tr>
-<tr class="row-odd"><td><p><a class="reference internal" href="#geofabrics.dem.roughness_from_points" title="geofabrics.dem.roughness_from_points"><code class="xref py py-obj docutils literal notranslate"><span class="pre">roughness_from_points</span></code></a>(point_cloud, xy_out, xy_ground, ...)</p></td>
-<td><p>Calculate DEM elevation values at the specified locations using the selected</p></td>
+<tr class="row-odd"><td><p><a class="reference internal" href="#geofabrics.dem.read_file_with_pdal" title="geofabrics.dem.read_file_with_pdal"><code class="xref py py-obj docutils literal notranslate"><span class="pre">read_file_with_pdal</span></code></a>(lidar_file, region_to_tile, crs[, ...])</p></td>
+<td><p>Read a LAS/LAZ tile, reproject it, and optionally crop it with PDAL.</p></td>
 </tr>
-<tr class="row-even"><td><p><a class="reference internal" href="#geofabrics.dem.elevation_from_points" title="geofabrics.dem.elevation_from_points"><code class="xref py py-obj docutils literal notranslate"><span class="pre">elevation_from_points</span></code></a>(point_cloud, xy_out, options[, ...])</p></td>
-<td><p>Calculate DEM elevation values at the specified locations using the selected</p></td>
+<tr class="row-even"><td><p><a class="reference internal" href="#geofabrics.dem.roughness_from_points" title="geofabrics.dem.roughness_from_points"><code class="xref py py-obj docutils literal notranslate"><span class="pre">roughness_from_points</span></code></a>(point_cloud, xy_out, xy_ground, ...)</p></td>
+<td><p>Estimate roughness values at query locations from nearby point heights.</p></td>
 </tr>
-<tr class="row-odd"><td><p><a class="reference internal" href="#geofabrics.dem.elevation_from_nearest_points" title="geofabrics.dem.elevation_from_nearest_points"><code class="xref py py-obj docutils literal notranslate"><span class="pre">elevation_from_nearest_points</span></code></a>(point_cloud, ...[, eps, ...])</p></td>
-<td><p>Calculate DEM elevation values at the specified locations using the selected</p></td>
+<tr class="row-odd"><td><p><a class="reference internal" href="#geofabrics.dem.elevation_from_points" title="geofabrics.dem.elevation_from_points"><code class="xref py py-obj docutils literal notranslate"><span class="pre">elevation_from_points</span></code></a>(point_cloud, xy_out, options[, ...])</p></td>
+<td><p>Estimate elevations from all points within a search radius.</p></td>
 </tr>
-<tr class="row-even"><td><p><a class="reference internal" href="#geofabrics.dem.point_elevation" title="geofabrics.dem.point_elevation"><code class="xref py py-obj docutils literal notranslate"><span class="pre">point_elevation</span></code></a>(near_z, near_points, point, options)</p></td>
-<td><p>Calculate DEM elevation values at the specified locations using the selected</p></td>
+<tr class="row-even"><td><p><a class="reference internal" href="#geofabrics.dem.elevation_from_nearest_points" title="geofabrics.dem.elevation_from_nearest_points"><code class="xref py py-obj docutils literal notranslate"><span class="pre">elevation_from_nearest_points</span></code></a>(point_cloud, ...[, eps, ...])</p></td>
+<td><p>Estimate elevations from the nearest points, optionally including edge points.</p></td>
 </tr>
-<tr class="row-odd"><td><p><a class="reference internal" href="#geofabrics.dem.calculate_idw" title="geofabrics.dem.calculate_idw"><code class="xref py py-obj docutils literal notranslate"><span class="pre">calculate_idw</span></code></a>(near_points, near_z, point[, smoothing, ...])</p></td>
-<td><p>Calculate the IDW mean of the 'near_indices' points. This implementation is based</p></td>
+<tr class="row-odd"><td><p><a class="reference internal" href="#geofabrics.dem.point_elevation" title="geofabrics.dem.point_elevation"><code class="xref py py-obj docutils literal notranslate"><span class="pre">point_elevation</span></code></a>(near_z, near_points, point, options)</p></td>
+<td><p>Estimate one value from a query point's neighbouring samples.</p></td>
 </tr>
-<tr class="row-even"><td><p><a class="reference internal" href="#geofabrics.dem.calculate_interpolate_griddata" title="geofabrics.dem.calculate_interpolate_griddata"><code class="xref py py-obj docutils literal notranslate"><span class="pre">calculate_interpolate_griddata</span></code></a>(near_points, near_z, ...)</p></td>
-<td><p>Calculate linear interpolation of the 'near_indices' points. Take the straight</p></td>
+<tr class="row-even"><td><p><a class="reference internal" href="#geofabrics.dem.calculate_idw" title="geofabrics.dem.calculate_idw"><code class="xref py py-obj docutils literal notranslate"><span class="pre">calculate_idw</span></code></a>(near_points, near_z, point[, smoothing, ...])</p></td>
+<td><p>Estimate a value using inverse-distance weighting.</p></td>
 </tr>
-<tr class="row-odd"><td><p><a class="reference internal" href="#geofabrics.dem.load_tiles_in_chunk" title="geofabrics.dem.load_tiles_in_chunk"><code class="xref py py-obj docutils literal notranslate"><span class="pre">load_tiles_in_chunk</span></code></a>(lidar_files, source_crs, ...)</p></td>
-<td><p>Read in all LiDAR files within the chunked region - clipped to within</p></td>
+<tr class="row-odd"><td><p><a class="reference internal" href="#geofabrics.dem.calculate_interpolate_griddata" title="geofabrics.dem.calculate_interpolate_griddata"><code class="xref py py-obj docutils literal notranslate"><span class="pre">calculate_interpolate_griddata</span></code></a>(near_points, near_z, ...)</p></td>
+<td><p>Interpolate a query value from nearby points using SciPy <code class="docutils literal notranslate"><span class="pre">griddata</span></code>.</p></td>
 </tr>
-<tr class="row-even"><td><p><a class="reference internal" href="#geofabrics.dem.roughness_over_chunk" title="geofabrics.dem.roughness_over_chunk"><code class="xref py py-obj docutils literal notranslate"><span class="pre">roughness_over_chunk</span></code></a>(dim_x, dim_y, tile_points, ...)</p></td>
-<td><p>Rasterise all points within a chunk.</p></td>
+<tr class="row-even"><td><p><a class="reference internal" href="#geofabrics.dem.calculate_rbf" title="geofabrics.dem.calculate_rbf"><code class="xref py py-obj docutils literal notranslate"><span class="pre">calculate_rbf</span></code></a>(near_points, near_z, point, kernel)</p></td>
+<td><p>Estimate a query value using SciPy's radial-basis-function interpolator.</p></td>
 </tr>
-<tr class="row-odd"><td><p><a class="reference internal" href="#geofabrics.dem.elevation_over_chunk" title="geofabrics.dem.elevation_over_chunk"><code class="xref py py-obj docutils literal notranslate"><span class="pre">elevation_over_chunk</span></code></a>(dim_x, dim_y, tile_points, options)</p></td>
-<td><p>Rasterise all points within a chunk.</p></td>
+<tr class="row-odd"><td><p><a class="reference internal" href="#geofabrics.dem.select_lidar_files" title="geofabrics.dem.select_lidar_files"><code class="xref py py-obj docutils literal notranslate"><span class="pre">select_lidar_files</span></code></a>(tile_index_extents, ...)</p></td>
+<td><p>Select LiDAR files whose indexed extents intersect a chunk.</p></td>
 </tr>
-<tr class="row-even"><td><p><a class="reference internal" href="#geofabrics.dem.elevation_over_chunk_from_nearest" title="geofabrics.dem.elevation_over_chunk_from_nearest"><code class="xref py py-obj docutils literal notranslate"><span class="pre">elevation_over_chunk_from_nearest</span></code></a>(dim_x, dim_y, ...)</p></td>
-<td><p>Rasterise all points within a chunk.</p></td>
+<tr class="row-even"><td><p><a class="reference internal" href="#geofabrics.dem.load_tiles_in_chunk" title="geofabrics.dem.load_tiles_in_chunk"><code class="xref py py-obj docutils literal notranslate"><span class="pre">load_tiles_in_chunk</span></code></a>(lidar_files, source_crs, ...)</p></td>
+<td><p>Read, reproject, and optionally crop LiDAR tiles for a raster chunk.</p></td>
+</tr>
+<tr class="row-odd"><td><p><a class="reference internal" href="#geofabrics.dem.roughness_over_chunk" title="geofabrics.dem.roughness_over_chunk"><code class="xref py py-obj docutils literal notranslate"><span class="pre">roughness_over_chunk</span></code></a>(dim_x, dim_y, tile_points, ...)</p></td>
+<td><p>Calculate a roughness raster for one chunk of LiDAR points.</p></td>
+</tr>
+<tr class="row-even"><td><p><a class="reference internal" href="#geofabrics.dem.elevation_over_chunk" title="geofabrics.dem.elevation_over_chunk"><code class="xref py py-obj docutils literal notranslate"><span class="pre">elevation_over_chunk</span></code></a>(dim_x, dim_y, tile_points, options)</p></td>
+<td><p>Interpolate LiDAR elevations onto one chunk's raster grid.</p></td>
+</tr>
+<tr class="row-odd"><td><p><a class="reference internal" href="#geofabrics.dem.elevation_over_chunk_from_nearest" title="geofabrics.dem.elevation_over_chunk_from_nearest"><code class="xref py py-obj docutils literal notranslate"><span class="pre">elevation_over_chunk_from_nearest</span></code></a>(dim_x, dim_y, ...)</p></td>
+<td><p>Interpolate nearest-point elevations onto one chunk's raster grid.</p></td>
 </tr>
 </tbody>
 </table>
@@ -183,9 +191,47 @@ DEMs.</p>
 <section id="module-contents">
 <h2>Module Contents<a class="headerlink" href="#module-contents" title="Link to this heading"></a></h2>
 <dl class="py function">
+<dt class="sig sig-object py" id="geofabrics.dem.chunk_mask">
+<span class="sig-prename descclassname"><span class="pre">geofabrics.dem.</span></span><span class="sig-name descname"><span class="pre">chunk_mask</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">mask</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">chunk_size</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#geofabrics.dem.chunk_mask" title="Link to this definition"></a></dt>
+<dd><p>Split a two-dimensional mask into Dask array chunks.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>mask</strong> – Two-dimensional NumPy array to chunk.</p></li>
+<li><p><strong>chunk_size</strong> – Maximum chunk width and height, in array cells. Must be positive.</p></li>
+</ul>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><p>Chunked mask with the same shape and values as <code class="docutils literal notranslate"><span class="pre">mask</span></code>.</p>
+</dd>
+<dt class="field-odd">Return type<span class="colon">:</span></dt>
+<dd class="field-odd"><p>dask.array.Array</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py function">
 <dt class="sig sig-object py" id="geofabrics.dem.clip_mask">
 <span class="sig-prename descclassname"><span class="pre">geofabrics.dem.</span></span><span class="sig-name descname"><span class="pre">clip_mask</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">arr</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">geometry</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">chunk_size</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">invert</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">False</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#geofabrics.dem.clip_mask" title="Link to this definition"></a></dt>
-<dd><p>Create a mask the size of the arr clipped by the geometry.</p>
+<dd><p>Create a boolean mask for a geometry on an xarray raster grid.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>arr</strong> – Raster DataArray whose coordinates define the output grid.</p></li>
+<li><p><strong>geometry</strong> – Geometry or collection of geometries to rasterize. Its CRS must match
+the raster CRS; this function does not reproject it.</p></li>
+<li><p><strong>chunk_size</strong> – Optional maximum chunk width and height, in raster cells.</p></li>
+<li><p><strong>invert</strong> – If true, select cells outside the geometry instead of inside it.</p></li>
+</ul>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><p>Boolean mask with the same grid as <code class="docutils literal notranslate"><span class="pre">arr</span></code>. The mask reflects the
+geometry, not missing values in <code class="docutils literal notranslate"><span class="pre">arr</span></code>.</p>
+</dd>
+<dt class="field-odd">Return type<span class="colon">:</span></dt>
+<dd class="field-odd"><p>xarray.DataArray</p>
+</dd>
+</dl>
 </dd></dl>
 
 <dl class="py class">
@@ -278,7 +324,7 @@ filtering.</p>
 <dt class="sig sig-object py" id="geofabrics.dem.DemBase">
 <span class="property"><span class="k"><span class="pre">class</span></span><span class="w"> </span></span><span class="sig-prename descclassname"><span class="pre">geofabrics.dem.</span></span><span class="sig-name descname"><span class="pre">DemBase</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">catchment_geometry</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">chunk_size</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#geofabrics.dem.DemBase" title="Link to this definition"></a></dt>
 <dd><p>Bases: <code class="xref py py-obj docutils literal notranslate"><span class="pre">abc.ABC</span></code></p>
-<p>An abstract class to manage the different geofabric layers in a
+<p>An abstract class for managing GeoFabrics data layers in a
 catchment context. The geofabruc has a z, and data_source layer and may
 sometimes also have a zo (roughness length) and lidar_source layer.</p>
 <p>It is represented by an XArray dataset and is expected to be saved as a
@@ -394,20 +440,33 @@ to have an offshore DEM associated with it.</p>
 <dl class="py method">
 <dt class="sig sig-object py" id="geofabrics.dem.HydrologicallyConditionedDem.interpolate_ocean_chunked">
 <span class="sig-name descname"><span class="pre">interpolate_ocean_chunked</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">ocean_points</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">cache_path</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">k_nearest_neighbours</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">use_edge</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">buffer</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">method</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#geofabrics.dem.HydrologicallyConditionedDem.interpolate_ocean_chunked" title="Link to this definition"></a></dt>
-<dd><p>Create a ‘raw’’ DEM from a set of tiled LiDAR files. Read these in over
-non-overlapping chunks and then combine</p>
+<dd><p>Interpolate offshore elevations into the current DEM in chunks.</p>
+<p>Point data are rasterized over areas without dense DEM data. When
+<code class="docutils literal notranslate"><span class="pre">use_edge</span></code> is true, samples from the foreshore/offshore boundary are
+included to constrain the interpolation. The DEM is updated in place.
+The point data should have the same vertical datum and units as the DEM.
+Typically if the point data is in MSL (mean sea level), it will be close
+enough.</p>
 <dl class="field-list simple">
 <dt class="field-odd">Parameters<span class="colon">:</span></dt>
 <dd class="field-odd"><ul class="simple">
-<li><p><strong>cache_path</strong> (<em>pathlib.Path</em>)</p></li>
-<li><p><strong>k_nearest_neighbours</strong> (<em>int</em>)</p></li>
-<li><p><strong>use_edge</strong> (<em>bool</em>)</p></li>
-<li><p><strong>buffer</strong> (<em>int</em>)</p></li>
-<li><p><strong>method</strong> (<em>str</em>)</p></li>
+<li><p><strong>ocean_points</strong> – Ocean bathymetry point collection to interpolate.</p></li>
+<li><p><strong>cache_path</strong> (<em>pathlib.Path</em>) – Directory for temporary point-cloud files.</p></li>
+<li><p><strong>k_nearest_neighbours</strong> (<em>int</em>) – Number of nearest samples used by the selected interpolation
+method. Offshore interpolation is skipped when there are too few
+ocean or edge points.</p></li>
+<li><p><strong>use_edge</strong> (<em>bool</em>) – Whether to include samples from the foreshore/offshore boundary.</p></li>
+<li><p><strong>buffer</strong> (<em>int</em>) – Width of the exclusion buffer around land and foreshore, in units
+of catchment grid cells.</p></li>
+<li><p><strong>method</strong> (<em>str</em>) – Method passed to <a class="reference internal" href="#geofabrics.dem.point_elevation" title="geofabrics.dem.point_elevation"><code class="xref py py-func docutils literal notranslate"><span class="pre">point_elevation()</span></code></a>, such as <code class="docutils literal notranslate"><span class="pre">mean</span></code>,
+<code class="docutils literal notranslate"><span class="pre">median</span></code>, <code class="docutils literal notranslate"><span class="pre">idw</span></code>, <code class="docutils literal notranslate"><span class="pre">linear</span></code>, <code class="docutils literal notranslate"><span class="pre">cubic</span></code>, <code class="docutils literal notranslate"><span class="pre">nearest</span></code>, or <code class="docutils literal notranslate"><span class="pre">rbf</span></code>.</p></li>
 </ul>
 </dd>
-<dt class="field-even">Return type<span class="colon">:</span></dt>
-<dd class="field-even"><p>xarray.Dataset</p>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><p>Updates the DEM in place.</p>
+</dd>
+<dt class="field-odd">Return type<span class="colon">:</span></dt>
+<dd class="field-odd"><p>None</p>
 </dd>
 </dl>
 </dd></dl>
@@ -415,20 +474,49 @@ non-overlapping chunks and then combine</p>
 <dl class="py method">
 <dt class="sig sig-object py" id="geofabrics.dem.HydrologicallyConditionedDem.interpolate_ocean_bathymetry">
 <span class="sig-name descname"><span class="pre">interpolate_ocean_bathymetry</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">bathy_contours</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">method</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">'linear'</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#geofabrics.dem.HydrologicallyConditionedDem.interpolate_ocean_bathymetry" title="Link to this definition"></a></dt>
-<dd><p>Performs interpolation offshore outside LiDAR extents using the SciPy RBF
-function.</p>
+<dd><p>Interpolate ocean bathymetry where dense DEM data are unavailable.</p>
+<p>Contours are sampled at the catchment resolution and combined with
+samples along the foreshore/offshore boundary. If no contour samples
+are available, boundary samples alone are used. The current DEM is
+updated in place. Assumes the DEM and bathymetry contours use the same
+horizontal and vertical datum, sign convention, and units.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>bathy_contours</strong> – Bathymetry contour collection with a <code class="docutils literal notranslate"><span class="pre">sample_contours</span></code> method.</p></li>
+<li><p><strong>method</strong> (<em>str</em>) – Interpolation method: <code class="docutils literal notranslate"><span class="pre">rbf</span></code>, <code class="docutils literal notranslate"><span class="pre">linear</span></code>, <code class="docutils literal notranslate"><span class="pre">cubic</span></code>, or
+<code class="docutils literal notranslate"><span class="pre">nearest</span></code>.</p></li>
+</ul>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><p>Updates the current DEM in place.</p>
+</dd>
+<dt class="field-odd">Return type<span class="colon">:</span></dt>
+<dd class="field-odd"><p>None</p>
+</dd>
+</dl>
 </dd></dl>
 
 <dl class="py method">
 <dt class="sig sig-object py" id="geofabrics.dem.HydrologicallyConditionedDem.clip_within_polygon">
 <span class="sig-name descname"><span class="pre">clip_within_polygon</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">polygon_paths</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">label</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#geofabrics.dem.HydrologicallyConditionedDem.clip_within_polygon" title="Link to this definition"></a></dt>
-<dd><p>Clip existing DEM to remove areas within the polygons</p>
+<dd><p>Set DEM elevations to missing within the supplied polygons.</p>
+<p>Polygon files are reprojected to the catchment’s horizontal CRS, clipped
+to the DEM extent, and combined before masking. The DEM and its source
+classification layers are updated in place. If the combined polygon
+area does not exceed one raster-cell area, no clipping is performed.</p>
 <dl class="field-list simple">
 <dt class="field-odd">Parameters<span class="colon">:</span></dt>
 <dd class="field-odd"><ul class="simple">
-<li><p><strong>polygon_paths</strong> (<em>list</em>)</p></li>
-<li><p><strong>label</strong> (<em>str</em>)</p></li>
+<li><p><strong>polygon_paths</strong> (<em>list</em>) – One or more paths to polygon files.</p></li>
+<li><p><strong>label</strong> (<em>str</em>) – Key in <code class="docutils literal notranslate"><span class="pre">SOURCE_CLASSIFICATION</span></code> used to label masked cells.</p></li>
 </ul>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><p>Updates the DEM in place.</p>
+</dd>
+<dt class="field-odd">Return type<span class="colon">:</span></dt>
+<dd class="field-odd"><p>None</p>
 </dd>
 </dl>
 </dd></dl>
@@ -436,44 +524,57 @@ function.</p>
 <dl class="py method">
 <dt class="sig sig-object py" id="geofabrics.dem.HydrologicallyConditionedDem.add_points_within_polygon_chunked">
 <span class="sig-name descname"><span class="pre">add_points_within_polygon_chunked</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">elevations</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">method</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">cache_path</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">label</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">include_edges</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">True</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#geofabrics.dem.HydrologicallyConditionedDem.add_points_within_polygon_chunked" title="Link to this definition"></a></dt>
-<dd><p>Performs interpolation from estimated bathymetry points within a polygon
-using the specified interpolation approach after filtering the points based
-on the type label. The type_label also determines the source classification.</p>
+<dd><p>Interpolate elevation points within polygons and update the DEM in place.
+DEM and elevation point should be the same CRS.</p>
+<p>When <code class="docutils literal notranslate"><span class="pre">include_edges</span></code> is true, existing DEM samples just outside the
+polygons are added to the interpolation input to constrain the edges.</p>
 <dl class="field-list simple">
 <dt class="field-odd">Parameters<span class="colon">:</span></dt>
 <dd class="field-odd"><ul class="simple">
-<li><p><strong>elevations</strong> (<a class="reference internal" href="../geometry/index.html#geofabrics.geometry.ElevationPoints" title="geofabrics.geometry.ElevationPoints"><em>geofabrics.geometry.ElevationPoints</em></a>)</p></li>
-<li><p><strong>method</strong> (<em>str</em>)</p></li>
-<li><p><strong>cache_path</strong> (<em>pathlib.Path</em>)</p></li>
-<li><p><strong>label</strong> (<em>str</em>)</p></li>
-<li><p><strong>include_edges</strong> (<em>bool</em>)</p></li>
+<li><p><strong>elevations</strong> (<a class="reference internal" href="../geometry/index.html#geofabrics.geometry.ElevationPoints" title="geofabrics.geometry.ElevationPoints"><em>geofabrics.geometry.ElevationPoints</em></a>) – Point and polygon data to interpolate, in the catchment CRS.</p></li>
+<li><p><strong>method</strong> (<em>str</em>) – Method passed to <a class="reference internal" href="#geofabrics.dem.point_elevation" title="geofabrics.dem.point_elevation"><code class="xref py py-func docutils literal notranslate"><span class="pre">point_elevation()</span></code></a>, such as <code class="docutils literal notranslate"><span class="pre">mean</span></code>,
+<code class="docutils literal notranslate"><span class="pre">median</span></code>, <code class="docutils literal notranslate"><span class="pre">idw</span></code>, <code class="docutils literal notranslate"><span class="pre">linear</span></code>, <code class="docutils literal notranslate"><span class="pre">cubic</span></code>, <code class="docutils literal notranslate"><span class="pre">nearest</span></code>, or <code class="docutils literal notranslate"><span class="pre">rbf</span></code>.</p></li>
+<li><p><strong>cache_path</strong> (<em>pathlib.Path</em>) – Directory for temporary point-cloud files.</p></li>
+<li><p><strong>label</strong> (<em>str</em>) – Source-classification key for the interpolated values.</p></li>
+<li><p><strong>include_edges</strong> (<em>bool</em>) – Whether to include nearby DEM samples outside the polygons.</p></li>
 </ul>
 </dd>
-<dt class="field-even">Return type<span class="colon">:</span></dt>
-<dd class="field-even"><p>xarray.Dataset</p>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><p>Updates the DEM and its source-classification layers in place.</p>
+</dd>
+<dt class="field-odd">Return type<span class="colon">:</span></dt>
+<dd class="field-odd"><p>None</p>
 </dd>
 </dl>
+<p class="rubric">Notes</p>
+<p>TO DEFINE: Confirm how non-finite point values should be handled.</p>
 </dd></dl>
 
 <dl class="py method">
 <dt class="sig sig-object py" id="geofabrics.dem.HydrologicallyConditionedDem.add_points_within_polygon_nearest_chunked">
 <span class="sig-name descname"><span class="pre">add_points_within_polygon_nearest_chunked</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">elevations</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">method</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">cache_path</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">label</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">k_nearest_neighbours</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">include_edges</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">True</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#geofabrics.dem.HydrologicallyConditionedDem.add_points_within_polygon_nearest_chunked" title="Link to this definition"></a></dt>
-<dd><p>Performs interpolation from estimated bathymetry points within a polygon
-using the specified interpolation approach after filtering the points based
-on the type label. The type_label also determines the source classification.</p>
+<dd><p>Interpolate polygon elevations from nearby points and update the DEM.</p>
+<p>The requested number of nearest points is selected separately from the
+supplied elevations and, when enabled, from edge samples in the current
+DEM. The current DEM is updated in place. All CRS should be the same.</p>
 <dl class="field-list simple">
 <dt class="field-odd">Parameters<span class="colon">:</span></dt>
 <dd class="field-odd"><ul class="simple">
-<li><p><strong>elevations</strong> (<a class="reference internal" href="../geometry/index.html#geofabrics.geometry.ElevationPoints" title="geofabrics.geometry.ElevationPoints"><em>geofabrics.geometry.ElevationPoints</em></a>)</p></li>
-<li><p><strong>method</strong> (<em>str</em>)</p></li>
-<li><p><strong>cache_path</strong> (<em>pathlib.Path</em>)</p></li>
-<li><p><strong>label</strong> (<em>str</em>)</p></li>
-<li><p><strong>k_nearest_neighbours</strong> (<em>int</em>)</p></li>
-<li><p><strong>include_edges</strong> (<em>bool</em>)</p></li>
+<li><p><strong>elevations</strong> (<a class="reference internal" href="../geometry/index.html#geofabrics.geometry.ElevationPoints" title="geofabrics.geometry.ElevationPoints"><em>geofabrics.geometry.ElevationPoints</em></a>) – Point and polygon data to interpolate, in the catchment CRS.</p></li>
+<li><p><strong>method</strong> (<em>str</em>) – Method passed to <a class="reference internal" href="#geofabrics.dem.point_elevation" title="geofabrics.dem.point_elevation"><code class="xref py py-func docutils literal notranslate"><span class="pre">point_elevation()</span></code></a>.</p></li>
+<li><p><strong>cache_path</strong> (<em>pathlib.Path</em>) – Directory for temporary point-cloud files.</p></li>
+<li><p><strong>label</strong> (<em>str</em>) – Source-classification key for the interpolated values.</p></li>
+<li><p><strong>k_nearest_neighbours</strong> (<em>int</em>) – Number of neighbours to query from each point set. If either
+enabled point set has fewer than this number, the rasterizer
+returns NaN values.</p></li>
+<li><p><strong>include_edges</strong> (<em>bool</em>) – Whether to include nearby DEM samples outside the polygons.</p></li>
 </ul>
 </dd>
-<dt class="field-even">Return type<span class="colon">:</span></dt>
-<dd class="field-even"><p>xarray.Dataset</p>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><p>Updates the DEM and its source-classification layers in place.</p>
+</dd>
+<dt class="field-odd">Return type<span class="colon">:</span></dt>
+<dd class="field-odd"><p>None</p>
 </dd>
 </dl>
 </dd></dl>
@@ -503,7 +604,7 @@ on the type label. The type_label also determines the source classification.</p>
 <dl class="py property">
 <dt class="sig sig-object py" id="geofabrics.dem.LidarBase.dem">
 <span class="property"><span class="k"><span class="pre">property</span></span><span class="w"> </span></span><span class="sig-name descname"><span class="pre">dem</span></span><a class="headerlink" href="#geofabrics.dem.LidarBase.dem" title="Link to this definition"></a></dt>
-<dd><p>Return the positivly indexed DEM from tiles</p>
+<dd><p>Return the DEM.</p>
 </dd></dl>
 
 <dl class="py method">
@@ -644,9 +745,9 @@ in the ocean.</p>
 <span class="property"><span class="k"><span class="pre">class</span></span><span class="w"> </span></span><span class="sig-prename descclassname"><span class="pre">geofabrics.dem.</span></span><span class="sig-name descname"><span class="pre">RoughnessDem</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">catchment_geometry</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">hydrological_dem_path</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">temp_folder</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">interpolation_method</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">default_values</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">drop_offshore_lidar</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">metadata</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">chunk_size</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">elevation_range</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#geofabrics.dem.RoughnessDem" title="Link to this definition"></a></dt>
 <dd><p>Bases: <a class="reference internal" href="#geofabrics.dem.LidarBase" title="geofabrics.dem.LidarBase"><code class="xref py py-obj docutils literal notranslate"><span class="pre">LidarBase</span></code></a></p>
 <p>A class to add a roughness (zo) layer to a hydrologically conditioned DEM.</p>
-<p>They STD and mean height of ground cover classified points are calculated from the
-LiDAR data and z (elevation) layer of the hydrologically conditioned DEM, and used
-to estimate roughness emperically.</p>
+<p>The standard deviation and mean height of classified ground-cover points
+are calculated from the LiDAR data and the DEM elevation layer, then used
+to estimate roughness empirically.</p>
 <p>RoughnessDem logic can be controlled by the constructor inputs.</p>
 <dl class="field-list simple">
 <dt class="field-odd">Parameters<span class="colon">:</span></dt>
@@ -668,31 +769,31 @@ to estimate roughness emperically.</p>
 <dl class="py property">
 <dt class="sig sig-object py" id="geofabrics.dem.RoughnessDem.dem">
 <span class="property"><span class="k"><span class="pre">property</span></span><span class="w"> </span></span><span class="sig-name descname"><span class="pre">dem</span></span><a class="headerlink" href="#geofabrics.dem.RoughnessDem.dem" title="Link to this definition"></a></dt>
-<dd><p>Return interpolaed roughness layer with min and max bounds enforced</p>
+<dd><p>Return the interpolated roughness layer with minimum and maximum bounds.</p>
 </dd></dl>
 
 <dl class="py method">
 <dt class="sig sig-object py" id="geofabrics.dem.RoughnessDem.add_lidar">
 <span class="sig-name descname"><span class="pre">add_lidar</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">lidar_dataset_info</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">lidar_classifications_to_keep</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">parameters</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#geofabrics.dem.RoughnessDem.add_lidar" title="Link to this definition"></a></dt>
 <dd><p>Read in all LiDAR files and use the point cloud distribution,
-data_source layer, and hydrologiaclly conditioned elevations to
+data_source layer, and hydrologically conditioned elevations to
 estimate the roughness across the DEM.</p>
 <dl class="field-list simple">
 <dt class="field-odd">Parameters<span class="colon">:</span></dt>
 <dd class="field-odd"><ul class="simple">
-<li><p><strong>lidar_datasets_info</strong> – A dictionary of information for each specified LIDAR dataset - For
-each this includes: a list of LAS files, CRS, and tile index file.</p></li>
+<li><p><strong>lidar_dataset_info</strong> (<em>dict</em>) – Information for the specified LiDAR input, including its files,
+CRS, and optional tile index.</p></li>
 <li><p><strong>lidar_classifications_to_keep</strong> (<em>list</em>) – A list of LiDAR classifications to keep - ‘2’ for ground, ‘9’ for water.
 See <a class="reference external" href="https://www.asprs.org/wp-content/uploads/2010/12/LAS_1_4_r13.pdf">https://www.asprs.org/wp-content/uploads/2010/12/LAS_1_4_r13.pdf</a> for
 standard list</p></li>
-<li><p><strong>meta_data</strong> – Information to include in the created DEM - must include
-<cite>dataset_mapping</cite> key if datasets (not a single LAZ file) included.</p></li>
 <li><p><strong>parameters</strong> (<em>dict</em>) – The roughness equation parameters.</p></li>
-<li><p><strong>lidar_dataset_info</strong> (<em>dict</em>)</p></li>
 </ul>
 </dd>
-<dt class="field-even">Return type<span class="colon">:</span></dt>
-<dd class="field-even"><p>bool</p>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><p>Whether the LiDAR data was added successfully.</p>
+</dd>
+<dt class="field-odd">Return type<span class="colon">:</span></dt>
+<dd class="field-odd"><p>bool</p>
 </dd>
 </dl>
 </dd></dl>
@@ -703,7 +804,7 @@ standard list</p></li>
 <dd><p>Set landuse to roughness values.</p>
 <dl class="field-list simple">
 <dt class="field-odd">Parameters<span class="colon">:</span></dt>
-<dd class="field-odd"><p><strong>landuse_polygon</strong> (<em>geopandas.GeoDataFrame</em>) – Dataframe with polygon and associated roughness values</p>
+<dd class="field-odd"><p><strong>landuse_polygon</strong> (<em>geopandas.GeoDataFrame</em>) – GeoDataFrame containing polygons and their roughness values.</p>
 </dd>
 </dl>
 </dd></dl>
@@ -714,7 +815,7 @@ standard list</p></li>
 <dd><p>Set roads to paved and unpaved roughness values.</p>
 <dl class="field-list simple">
 <dt class="field-odd">Parameters<span class="colon">:</span></dt>
-<dd class="field-odd"><p><strong>roads_polygon</strong> (<em>geopandas.GeoDataFrame</em>) – Dataframe with polygon and associated roughness values</p>
+<dd class="field-odd"><p><strong>roads_polygon</strong> (<em>geopandas.GeoDataFrame</em>) – GeoDataFrame containing road polygons and their roughness values.</p>
 </dd>
 </dl>
 </dd></dl>
@@ -724,15 +825,24 @@ standard list</p></li>
 <dl class="py function">
 <dt class="sig sig-object py" id="geofabrics.dem.read_file_with_pdal">
 <span class="sig-prename descclassname"><span class="pre">geofabrics.dem.</span></span><span class="sig-name descname"><span class="pre">read_file_with_pdal</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">lidar_file</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">region_to_tile</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">crs</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">source_crs</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#geofabrics.dem.read_file_with_pdal" title="Link to this definition"></a></dt>
-<dd><p>Read a tile file in using PDAL with input and output CRS specified.</p>
+<dd><p>Read a LAS/LAZ tile, reproject it, and optionally crop it with PDAL.</p>
 <dl class="field-list simple">
 <dt class="field-odd">Parameters<span class="colon">:</span></dt>
 <dd class="field-odd"><ul class="simple">
-<li><p><strong>lidar_file</strong> (<em>str</em><em> | </em><em>pathlib.Path</em>)</p></li>
-<li><p><strong>region_to_tile</strong> (<em>geopandas.GeoDataFrame</em>)</p></li>
-<li><p><strong>crs</strong> (<em>dict</em>)</p></li>
-<li><p><strong>source_crs</strong> (<em>dict</em>)</p></li>
+<li><p><strong>lidar_file</strong> (<em>str</em><em> | </em><em>pathlib.Path</em>) – Path to the LAS/LAZ file.</p></li>
+<li><p><strong>region_to_tile</strong> (<em>geopandas.GeoDataFrame</em>) – Optional GeoDataFrame containing the crop geometry. When provided, its
+first row (index <code class="docutils literal notranslate"><span class="pre">0</span></code>) is used and its CRS must match <code class="docutils literal notranslate"><span class="pre">crs</span></code>.</p></li>
+<li><p><strong>crs</strong> (<em>dict</em>) – Target CRS dictionary with <code class="docutils literal notranslate"><span class="pre">horizontal</span></code> and <code class="docutils literal notranslate"><span class="pre">vertical</span></code> EPSG codes.</p></li>
+<li><p><strong>source_crs</strong> (<em>dict</em>) – Optional source CRS dictionary with the same keys. If omitted, PDAL
+uses the CRS recorded in the file.</p></li>
 </ul>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><p>Executed PDAL pipeline. Point arrays are available on its <code class="docutils literal notranslate"><span class="pre">arrays</span></code>
+attribute.</p>
+</dd>
+<dt class="field-odd">Return type<span class="colon">:</span></dt>
+<dd class="field-odd"><p>pdal.Pipeline</p>
 </dd>
 </dl>
 </dd></dl>
@@ -740,139 +850,274 @@ standard list</p></li>
 <dl class="py function">
 <dt class="sig sig-object py" id="geofabrics.dem.roughness_from_points">
 <span class="sig-prename descclassname"><span class="pre">geofabrics.dem.</span></span><span class="sig-name descname"><span class="pre">roughness_from_points</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">point_cloud</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">xy_out</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">xy_ground</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">options</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">eps</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">0</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">leaf_size</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">10</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#geofabrics.dem.roughness_from_points" title="Link to this definition"></a></dt>
-<dd><p>Calculate DEM elevation values at the specified locations using the selected
-approach. Options include: mean, median, and inverse distance weighing (IDW). This
-implementation is based on the scipy.spatial.KDTree</p>
+<dd><p>Estimate roughness values at query locations from nearby point heights.</p>
+<p>For each query, calculate the mean height above ground and the point-height
+standard deviation within <code class="docutils literal notranslate"><span class="pre">options[&quot;radius&quot;]</span></code>. Return the greater of
+<code class="docutils literal notranslate"><span class="pre">std</span> <span class="pre">*</span> <span class="pre">options[&quot;parameters&quot;][&quot;std&quot;]</span></code> and
+<code class="docutils literal notranslate"><span class="pre">height</span> <span class="pre">*</span> <span class="pre">options[&quot;parameters&quot;][&quot;mean&quot;]</span></code>.</p>
 <dl class="field-list simple">
 <dt class="field-odd">Parameters<span class="colon">:</span></dt>
 <dd class="field-odd"><ul class="simple">
-<li><p><strong>point_cloud</strong> (<em>numpy.ndarray</em>)</p></li>
-<li><p><strong>xy_out</strong> (<em>numpy.ndarray</em>)</p></li>
-<li><p><strong>xy_ground</strong> (<em>numpy.ndarray</em>)</p></li>
-<li><p><strong>options</strong> (<em>dict</em>)</p></li>
-<li><p><strong>eps</strong> (<em>float</em>)</p></li>
-<li><p><strong>leaf_size</strong> (<em>int</em>)</p></li>
+<li><p><strong>point_cloud</strong> (<em>numpy.ndarray</em>) – Structured point array with <code class="docutils literal notranslate"><span class="pre">X</span></code>, <code class="docutils literal notranslate"><span class="pre">Y</span></code>, and <code class="docutils literal notranslate"><span class="pre">Z</span></code> fields.</p></li>
+<li><p><strong>xy_out</strong> (<em>numpy.ndarray</em>) – Query coordinates with shape <code class="docutils literal notranslate"><span class="pre">(n,</span> <span class="pre">2)</span></code>.</p></li>
+<li><p><strong>xy_ground</strong> (<em>numpy.ndarray</em>) – Ground elevations corresponding to <code class="docutils literal notranslate"><span class="pre">xy_out</span></code>; must have length <code class="docutils literal notranslate"><span class="pre">n</span></code>.</p></li>
+<li><p><strong>options</strong> (<em>dict</em>) – Must contain <code class="docutils literal notranslate"><span class="pre">radius</span></code>, <code class="docutils literal notranslate"><span class="pre">raster_type</span></code>, and <code class="docutils literal notranslate"><span class="pre">parameters</span></code> with
+<code class="docutils literal notranslate"><span class="pre">std</span></code> and <code class="docutils literal notranslate"><span class="pre">mean</span></code> scale factors.</p></li>
+<li><p><strong>eps</strong> (<em>float</em>) – Approximation tolerance passed to the KD-tree radius query.</p></li>
+<li><p><strong>leaf_size</strong> (<em>int</em>) – KD-tree leaf size; affects query performance, not results.</p></li>
 </ul>
 </dd>
-<dt class="field-even">Return type<span class="colon">:</span></dt>
-<dd class="field-even"><p>numpy.ndarray</p>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><p>Roughness estimates with one value per query. Queries with no nearby
+points are set to NaN.</p>
+</dd>
+<dt class="field-odd">Return type<span class="colon">:</span></dt>
+<dd class="field-odd"><p>numpy.ndarray</p>
 </dd>
 </dl>
+<p class="rubric">Notes</p>
+<p>X/Y coordinates and <code class="docutils literal notranslate"><span class="pre">options[&quot;radius&quot;]</span></code> must use the same planar
+coordinate units. Z and ground values must use the same vertical units.
+Non-finite point values are not filtered and may propagate to the result.</p>
 </dd></dl>
 
 <dl class="py function">
 <dt class="sig sig-object py" id="geofabrics.dem.elevation_from_points">
 <span class="sig-prename descclassname"><span class="pre">geofabrics.dem.</span></span><span class="sig-name descname"><span class="pre">elevation_from_points</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">point_cloud</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">xy_out</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">options</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">eps</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">0</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">leaf_size</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">10</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#geofabrics.dem.elevation_from_points" title="Link to this definition"></a></dt>
-<dd><p>Calculate DEM elevation values at the specified locations using the selected
-approach. Options include: mean, median, and inverse distance weighing (IDW). This
-implementation is based on the scipy.spatial.KDTree</p>
+<dd><p>Estimate elevations from all points within a search radius.</p>
 <dl class="field-list simple">
 <dt class="field-odd">Parameters<span class="colon">:</span></dt>
 <dd class="field-odd"><ul class="simple">
-<li><p><strong>point_cloud</strong> (<em>numpy.ndarray</em>)</p></li>
-<li><p><strong>options</strong> (<em>dict</em>)</p></li>
-<li><p><strong>eps</strong> (<em>float</em>)</p></li>
-<li><p><strong>leaf_size</strong> (<em>int</em>)</p></li>
+<li><p><strong>point_cloud</strong> (<em>numpy.ndarray</em>) – Structured point array with <code class="docutils literal notranslate"><span class="pre">X</span></code>, <code class="docutils literal notranslate"><span class="pre">Y</span></code>, and <code class="docutils literal notranslate"><span class="pre">Z</span></code> fields.</p></li>
+<li><p><strong>xy_out</strong> – Query coordinates with shape <code class="docutils literal notranslate"><span class="pre">(n,</span> <span class="pre">2)</span></code>.</p></li>
+<li><p><strong>options</strong> (<em>dict</em>) – Interpolation options. Must include <code class="docutils literal notranslate"><span class="pre">radius</span></code>, <code class="docutils literal notranslate"><span class="pre">raster_type</span></code>, and
+the keys required by the method selected in <code class="docutils literal notranslate"><span class="pre">options[&quot;method&quot;]</span></code>.</p></li>
+<li><p><strong>eps</strong> (<em>float</em>) – Approximation tolerance passed to the KD-tree radius query.</p></li>
+<li><p><strong>leaf_size</strong> (<em>int</em>) – KD-tree leaf size; affects query performance, not results.</p></li>
 </ul>
 </dd>
-<dt class="field-even">Return type<span class="colon">:</span></dt>
-<dd class="field-even"><p>numpy.ndarray</p>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><p>One interpolated elevation per query. A query with no points in its
+radius returns NaN.</p>
+</dd>
+<dt class="field-odd">Return type<span class="colon">:</span></dt>
+<dd class="field-odd"><p>numpy.ndarray</p>
 </dd>
 </dl>
+<p class="rubric">Notes</p>
+<p>X/Y coordinates and <code class="docutils literal notranslate"><span class="pre">options[&quot;radius&quot;]</span></code> must use the same planar
+coordinate units. Z values are returned in their input vertical units.
+Non-finite point values are not filtered and may propagate.</p>
 </dd></dl>
 
 <dl class="py function">
 <dt class="sig sig-object py" id="geofabrics.dem.elevation_from_nearest_points">
 <span class="sig-prename descclassname"><span class="pre">geofabrics.dem.</span></span><span class="sig-name descname"><span class="pre">elevation_from_nearest_points</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">point_cloud</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">edge_point_cloud</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">xy_out</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">options</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">eps</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">0</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">leaf_size</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">10</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#geofabrics.dem.elevation_from_nearest_points" title="Link to this definition"></a></dt>
-<dd><p>Calculate DEM elevation values at the specified locations using the selected
-approach. Options include: mean, median, and inverse distance weighing (IDW). This
-implementation is based on the scipy.spatial.KDTree</p>
+<dd><p>Estimate elevations from the nearest points, optionally including edge points.</p>
 <dl class="field-list simple">
 <dt class="field-odd">Parameters<span class="colon">:</span></dt>
 <dd class="field-odd"><ul class="simple">
-<li><p><strong>point_cloud</strong> (<em>numpy.ndarray</em>)</p></li>
-<li><p><strong>edge_point_cloud</strong> (<em>numpy.ndarray</em>)</p></li>
-<li><p><strong>options</strong> (<em>dict</em>)</p></li>
-<li><p><strong>eps</strong> (<em>float</em>)</p></li>
-<li><p><strong>leaf_size</strong> (<em>int</em>)</p></li>
+<li><p><strong>point_cloud</strong> (<em>numpy.ndarray</em>) – Structured array of interpolation points with <code class="docutils literal notranslate"><span class="pre">X</span></code>, <code class="docutils literal notranslate"><span class="pre">Y</span></code>, and <code class="docutils literal notranslate"><span class="pre">Z</span></code>
+fields.</p></li>
+<li><p><strong>edge_point_cloud</strong> (<em>numpy.ndarray</em>) – Structured array of nearby edge samples with the same fields.</p></li>
+<li><p><strong>xy_out</strong> – Query coordinates with shape <code class="docutils literal notranslate"><span class="pre">(n,</span> <span class="pre">2)</span></code>.</p></li>
+<li><p><strong>options</strong> (<em>dict</em>) – Must include <code class="docutils literal notranslate"><span class="pre">k_nearest_neighbours</span></code>, <code class="docutils literal notranslate"><span class="pre">use_edge</span></code>, <code class="docutils literal notranslate"><span class="pre">raster_type</span></code>,
+and the keys required by <code class="docutils literal notranslate"><span class="pre">options[&quot;method&quot;]</span></code>.</p></li>
+<li><p><strong>eps</strong> (<em>float</em>) – Approximation tolerance passed to each KD-tree query.</p></li>
+<li><p><strong>leaf_size</strong> (<em>int</em>) – KD-tree leaf size; affects query performance, not results.</p></li>
 </ul>
 </dd>
-<dt class="field-even">Return type<span class="colon">:</span></dt>
-<dd class="field-even"><p>numpy.ndarray</p>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><p>One elevation per query. Returns all NaNs when <code class="docutils literal notranslate"><span class="pre">point_cloud</span></code> has
+fewer than <code class="docutils literal notranslate"><span class="pre">k_nearest_neighbours</span></code> points, or when <code class="docutils literal notranslate"><span class="pre">use_edge</span></code> is
+true and <code class="docutils literal notranslate"><span class="pre">edge_point_cloud</span></code> has fewer than that number.</p>
+</dd>
+<dt class="field-odd">Return type<span class="colon">:</span></dt>
+<dd class="field-odd"><p>numpy.ndarray</p>
 </dd>
 </dl>
+<p class="rubric">Notes</p>
+<p>X/Y coordinates in both point sets and <code class="docutils literal notranslate"><span class="pre">xy_out</span></code> must use the same planar
+coordinate units. Z values are returned in their input vertical units.
+The primary <code class="docutils literal notranslate"><span class="pre">point_cloud</span></code> is always required; edge points supplement it
+only when <code class="docutils literal notranslate"><span class="pre">use_edge</span></code> is true. Thus, for positive
+<code class="docutils literal notranslate"><span class="pre">k_nearest_neighbours</span></code>, an empty <code class="docutils literal notranslate"><span class="pre">point_cloud</span></code> returns all NaNs even
+when edge points are available. Non-finite point values are not filtered.</p>
 </dd></dl>
 
 <dl class="py function">
 <dt class="sig sig-object py" id="geofabrics.dem.point_elevation">
 <span class="sig-prename descclassname"><span class="pre">geofabrics.dem.</span></span><span class="sig-name descname"><span class="pre">point_elevation</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">near_z</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">near_points</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">point</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">options</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#geofabrics.dem.point_elevation" title="Link to this definition"></a></dt>
-<dd><p>Calculate DEM elevation values at the specified locations using the selected
-approach. Options include: mean, median, and inverse distance weighing (IDW). This
-implementation is based on the scipy.spatial.KDTree</p>
+<dd><p>Estimate one value from a query point’s neighbouring samples.</p>
+<p><code class="docutils literal notranslate"><span class="pre">options[&quot;method&quot;]</span></code> selects mean, median, IDW, linear, cubic, nearest,
+RBF, minimum, maximum, standard deviation, or count. Interpolation methods
+require matching <code class="docutils literal notranslate"><span class="pre">near_points</span></code> and <code class="docutils literal notranslate"><span class="pre">near_z</span></code> entries.</p>
 <dl class="field-list simple">
 <dt class="field-odd">Parameters<span class="colon">:</span></dt>
 <dd class="field-odd"><ul class="simple">
-<li><p><strong>near_z</strong> (<em>numpy.ndarray</em>)</p></li>
-<li><p><strong>near_points</strong> (<em>numpy.ndarray</em>)</p></li>
-<li><p><strong>point</strong> (<em>numpy.ndarray</em>)</p></li>
-<li><p><strong>options</strong> (<em>dict</em>)</p></li>
+<li><p><strong>near_z</strong> (<em>numpy.ndarray</em>) – Z values of the neighbouring samples.</p></li>
+<li><p><strong>near_points</strong> (<em>numpy.ndarray</em>) – Neighbour coordinates with shape <code class="docutils literal notranslate"><span class="pre">(n,</span> <span class="pre">2)</span></code>.</p></li>
+<li><p><strong>point</strong> (<em>numpy.ndarray</em>) – Query coordinate with shape <code class="docutils literal notranslate"><span class="pre">(2,)</span></code>.</p></li>
+<li><p><strong>options</strong> (<em>dict</em>) – Method configuration. IDW uses the coordinates and values; griddata
+methods also use <code class="docutils literal notranslate"><span class="pre">strict</span></code>; RBF uses <code class="docutils literal notranslate"><span class="pre">kernel</span></code>.</p></li>
 </ul>
 </dd>
-<dt class="field-even">Return type<span class="colon">:</span></dt>
-<dd class="field-even"><p>float</p>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><p>Scalar estimated value, or NaN when there are no neighbours.</p>
+</dd>
+<dt class="field-odd">Return type<span class="colon">:</span></dt>
+<dd class="field-odd"><p>float</p>
 </dd>
 </dl>
+<p class="rubric">Notes</p>
+<p>X/Y coordinates must use the same planar units. Most methods return Z
+values in the input vertical units; <code class="docutils literal notranslate"><span class="pre">std</span></code> returns a Z spread and
+<code class="docutils literal notranslate"><span class="pre">count</span></code> is intended to return the number of neighbours.
+ROSE TO DEFINE: Confirm handling of non-finite Z values, and whether
+<code class="docutils literal notranslate"><span class="pre">count</span></code> is a supported method.</p>
 </dd></dl>
 
 <dl class="py function">
 <dt class="sig sig-object py" id="geofabrics.dem.calculate_idw">
 <span class="sig-prename descclassname"><span class="pre">geofabrics.dem.</span></span><span class="sig-name descname"><span class="pre">calculate_idw</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">near_points</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">near_z</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">point</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">smoothing</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">0</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">power</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">2</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#geofabrics.dem.calculate_idw" title="Link to this definition"></a></dt>
-<dd><p>Calculate the IDW mean of the ‘near_indices’ points. This implementation is based
-on the scipy.spatial.KDTree</p>
+<dd><p>Estimate a value using inverse-distance weighting.</p>
+<p>An exact coordinate match returns that sample’s value. Otherwise, each
+value is weighted by the inverse of its smoothed distance raised to
+<code class="docutils literal notranslate"><span class="pre">power</span></code>.</p>
 <dl class="field-list simple">
 <dt class="field-odd">Parameters<span class="colon">:</span></dt>
 <dd class="field-odd"><ul class="simple">
-<li><p><strong>near_points</strong> (<em>numpy.ndarray</em>)</p></li>
-<li><p><strong>near_z</strong> (<em>numpy.ndarray</em>)</p></li>
-<li><p><strong>point</strong> (<em>numpy.ndarray</em>)</p></li>
-<li><p><strong>smoothing</strong> (<em>float</em>)</p></li>
-<li><p><strong>power</strong> (<em>int</em>)</p></li>
+<li><p><strong>near_points</strong> (<em>numpy.ndarray</em>) – Neighbour coordinates with shape <code class="docutils literal notranslate"><span class="pre">(n,</span> <span class="pre">2)</span></code>.</p></li>
+<li><p><strong>near_z</strong> (<em>numpy.ndarray</em>) – Values at <code class="docutils literal notranslate"><span class="pre">near_points</span></code>; must have length <code class="docutils literal notranslate"><span class="pre">n</span></code>.</p></li>
+<li><p><strong>point</strong> (<em>numpy.ndarray</em>) – Query coordinate with shape <code class="docutils literal notranslate"><span class="pre">(2,)</span></code>.</p></li>
+<li><p><strong>smoothing</strong> (<em>float</em>) – Non-negative distance added in quadrature before weighting.</p></li>
+<li><p><strong>power</strong> (<em>int</em>) – Exponent applied to the distance weights.</p></li>
 </ul>
 </dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><p>Weighted estimate in the same units as <code class="docutils literal notranslate"><span class="pre">near_z</span></code>.</p>
+</dd>
+<dt class="field-odd">Return type<span class="colon">:</span></dt>
+<dd class="field-odd"><p>float</p>
+</dd>
 </dl>
+<p class="rubric">Notes</p>
+<p>Coordinates, <code class="docutils literal notranslate"><span class="pre">smoothing</span></code>, and distances must use the same units.
+TO DEFINE: Confirm the intended units and allowed range for
+<code class="docutils literal notranslate"><span class="pre">smoothing</span></code> and <code class="docutils literal notranslate"><span class="pre">power</span></code>. This function expects at least one finite
+sample; it does not filter non-finite inputs.</p>
 </dd></dl>
 
 <dl class="py function">
 <dt class="sig sig-object py" id="geofabrics.dem.calculate_interpolate_griddata">
 <span class="sig-prename descclassname"><span class="pre">geofabrics.dem.</span></span><span class="sig-name descname"><span class="pre">calculate_interpolate_griddata</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">near_points</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">near_z</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">point</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">strict</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">method</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#geofabrics.dem.calculate_interpolate_griddata" title="Link to this definition"></a></dt>
-<dd><p>Calculate linear interpolation of the ‘near_indices’ points. Take the straight
-mean if the points are co-linear or too few for linear interpolation.</p>
+<dd><p>Interpolate a query value from nearby points using SciPy <code class="docutils literal notranslate"><span class="pre">griddata</span></code>.</p>
+<p>With one sample, return its value. With two samples, use inverse-distance
+weighting. With three or more, use the requested <code class="docutils literal notranslate"><span class="pre">method</span></code>. If the
+interpolation produces NaN, <code class="docutils literal notranslate"><span class="pre">strict=False</span></code> falls back to
+inverse-distance weighting.</p>
 <dl class="field-list simple">
 <dt class="field-odd">Parameters<span class="colon">:</span></dt>
 <dd class="field-odd"><ul class="simple">
-<li><p><strong>near_points</strong> (<em>numpy.ndarray</em>)</p></li>
-<li><p><strong>near_z</strong> (<em>numpy.ndarray</em>)</p></li>
-<li><p><strong>point</strong> (<em>numpy.ndarray</em>)</p></li>
-<li><p><strong>strict</strong> (<em>bool</em>)</p></li>
-<li><p><strong>method</strong> (<em>str</em>)</p></li>
+<li><p><strong>near_points</strong> (<em>numpy.ndarray</em>) – Neighbour coordinates with shape <code class="docutils literal notranslate"><span class="pre">(n,</span> <span class="pre">2)</span></code>.</p></li>
+<li><p><strong>near_z</strong> (<em>numpy.ndarray</em>) – Values at <code class="docutils literal notranslate"><span class="pre">near_points</span></code>; must have length <code class="docutils literal notranslate"><span class="pre">n</span></code>.</p></li>
+<li><p><strong>point</strong> (<em>numpy.ndarray</em>) – Query coordinate with shape <code class="docutils literal notranslate"><span class="pre">(2,)</span></code>.</p></li>
+<li><p><strong>strict</strong> (<em>bool</em>) – If true, preserve a NaN result; otherwise use the distance-weighted
+fallback when possible.</p></li>
+<li><p><strong>method</strong> (<em>str</em>) – SciPy griddata method, typically <code class="docutils literal notranslate"><span class="pre">linear</span></code>, <code class="docutils literal notranslate"><span class="pre">nearest</span></code>, or <code class="docutils literal notranslate"><span class="pre">cubic</span></code>.</p></li>
 </ul>
 </dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><p>Interpolated value, or NaN if there are no samples or the strict
+interpolation fails.</p>
+</dd>
+<dt class="field-odd">Return type<span class="colon">:</span></dt>
+<dd class="field-odd"><p>float</p>
+</dd>
 </dl>
+<p class="rubric">Notes</p>
+<p>All coordinates must use the same planar units. NaN input values are not
+explicitly filtered.
+TO DEFINE: Confirm behavior for non-finite coordinates/values and
+whether the two-point fallback should handle a query exactly on a sample.</p>
+</dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py" id="geofabrics.dem.calculate_rbf">
+<span class="sig-prename descclassname"><span class="pre">geofabrics.dem.</span></span><span class="sig-name descname"><span class="pre">calculate_rbf</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">near_points</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">near_z</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">point</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">kernel</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#geofabrics.dem.calculate_rbf" title="Link to this definition"></a></dt>
+<dd><p>Estimate a query value using SciPy’s radial-basis-function interpolator.</p>
+<p>For three or more samples, fit an RBF interpolator using <code class="docutils literal notranslate"><span class="pre">kernel</span></code>. If
+fitting fails or there are fewer samples, fall back to cubic
+<code class="docutils literal notranslate"><span class="pre">griddata</span></code> interpolation (which uses the one- or two-sample behavior
+documented by <a class="reference internal" href="#geofabrics.dem.calculate_interpolate_griddata" title="geofabrics.dem.calculate_interpolate_griddata"><code class="xref py py-func docutils literal notranslate"><span class="pre">calculate_interpolate_griddata()</span></code></a>).</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>near_points</strong> (<em>numpy.ndarray</em>) – Neighbour coordinates with shape <code class="docutils literal notranslate"><span class="pre">(n,</span> <span class="pre">2)</span></code>.</p></li>
+<li><p><strong>near_z</strong> (<em>numpy.ndarray</em>) – Values at <code class="docutils literal notranslate"><span class="pre">near_points</span></code>; must have length <code class="docutils literal notranslate"><span class="pre">n</span></code>.</p></li>
+<li><p><strong>point</strong> (<em>numpy.ndarray</em>) – Query coordinate with shape <code class="docutils literal notranslate"><span class="pre">(2,)</span></code>.</p></li>
+<li><p><strong>kernel</strong> (<em>str</em>) – Kernel name accepted by SciPy’s <code class="docutils literal notranslate"><span class="pre">RBFInterpolator</span></code>.</p></li>
+</ul>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><p>Scalar estimated value in the units of <code class="docutils literal notranslate"><span class="pre">near_z</span></code>.</p>
+</dd>
+<dt class="field-odd">Return type<span class="colon">:</span></dt>
+<dd class="field-odd"><p>float</p>
+</dd>
+</dl>
+<p class="rubric">Notes</p>
+<p>Coordinates must use consistent planar units. Non-finite input values are
+not filtered.</p>
+</dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py" id="geofabrics.dem.select_lidar_files">
+<span class="sig-prename descclassname"><span class="pre">geofabrics.dem.</span></span><span class="sig-name descname"><span class="pre">select_lidar_files</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">tile_index_extents</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">tile_index_name_column</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">chunk_region_to_tile</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">lidar_files_map</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#geofabrics.dem.select_lidar_files" title="Link to this definition"></a></dt>
+<dd><p>Select LiDAR files whose indexed extents intersect a chunk.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>tile_index_extents</strong> (<em>geopandas.GeoDataFrame</em>) – GeoDataFrame of tile footprints, including the tile-name column.</p></li>
+<li><p><strong>tile_index_name_column</strong> (<em>str</em>) – Column in <code class="docutils literal notranslate"><span class="pre">tile_index_extents</span></code> containing each tile’s lookup key.</p></li>
+<li><p><strong>chunk_region_to_tile</strong> (<em>geopandas.GeoDataFrame</em>) – GeoDataFrame describing the chunk region.</p></li>
+<li><p><strong>lidar_files_map</strong> (<em>Dict</em><em>[</em><em>str</em><em>, </em><em>pathlib.Path</em><em>]</em>) – Mapping from tile-name keys to file paths.</p></li>
+</ul>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><p>Paths for intersecting tiles, or an empty list when the chunk region
+is empty.</p>
+</dd>
+<dt class="field-odd">Return type<span class="colon">:</span></dt>
+<dd class="field-odd"><p><em>List</em>[pathlib.Path]</p>
+</dd>
+</dl>
+<p class="rubric">Notes</p>
+<p>Both GeoDataFrames must use the same CRS. This function does not reproject
+either geometry set.</p>
 </dd></dl>
 
 <dl class="py function">
 <dt class="sig sig-object py" id="geofabrics.dem.load_tiles_in_chunk">
 <span class="sig-prename descclassname"><span class="pre">geofabrics.dem.</span></span><span class="sig-name descname"><span class="pre">load_tiles_in_chunk</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">lidar_files</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">source_crs</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">chunk_region_to_tile</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">crs</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#geofabrics.dem.load_tiles_in_chunk" title="Link to this definition"></a></dt>
-<dd><p>Read in all LiDAR files within the chunked region - clipped to within
-the region within which to rasterise.</p>
+<dd><p>Read, reproject, and optionally crop LiDAR tiles for a raster chunk.</p>
 <dl class="field-list simple">
 <dt class="field-odd">Parameters<span class="colon">:</span></dt>
 <dd class="field-odd"><ul class="simple">
-<li><p><strong>lidar_files</strong> (<em>List</em><em>[</em><em>pathlib.Path</em><em>]</em>)</p></li>
-<li><p><strong>source_crs</strong> (<em>dict</em>)</p></li>
-<li><p><strong>chunk_region_to_tile</strong> (<em>geopandas.GeoDataFrame</em>)</p></li>
-<li><p><strong>crs</strong> (<em>dict</em>)</p></li>
+<li><p><strong>lidar_files</strong> (<em>List</em><em>[</em><em>pathlib.Path</em><em>]</em>) – LAS/LAZ paths to read.</p></li>
+<li><p><strong>source_crs</strong> (<em>dict</em>) – Optional source CRS dictionary with <code class="docutils literal notranslate"><span class="pre">horizontal</span></code> and <code class="docutils literal notranslate"><span class="pre">vertical</span></code>
+EPSG codes. If omitted, each file’s embedded CRS is used.</p></li>
+<li><p><strong>chunk_region_to_tile</strong> (<em>geopandas.GeoDataFrame</em>) – Optional crop polygon in the target horizontal CRS. When supplied, it
+must contain a row with index <code class="docutils literal notranslate"><span class="pre">0</span></code>. An empty region reads no files.</p></li>
+<li><p><strong>crs</strong> (<em>dict</em>) – Target CRS dictionary with <code class="docutils literal notranslate"><span class="pre">horizontal</span></code> and <code class="docutils literal notranslate"><span class="pre">vertical</span></code> EPSG codes.</p></li>
 </ul>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><p>Concatenated structured point array, or an empty list if no file was
+read.</p>
+</dd>
+<dt class="field-odd">Return type<span class="colon">:</span></dt>
+<dd class="field-odd"><p>numpy.ndarray or list</p>
 </dd>
 </dl>
 </dd></dl>
@@ -880,60 +1125,98 @@ the region within which to rasterise.</p>
 <dl class="py function">
 <dt class="sig sig-object py" id="geofabrics.dem.roughness_over_chunk">
 <span class="sig-prename descclassname"><span class="pre">geofabrics.dem.</span></span><span class="sig-name descname"><span class="pre">roughness_over_chunk</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">dim_x</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">dim_y</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">tile_points</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">xy_ground</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">options</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#geofabrics.dem.roughness_over_chunk" title="Link to this definition"></a></dt>
-<dd><p>Rasterise all points within a chunk.</p>
+<dd><p>Calculate a roughness raster for one chunk of LiDAR points.</p>
 <dl class="field-list simple">
 <dt class="field-odd">Parameters<span class="colon">:</span></dt>
 <dd class="field-odd"><ul class="simple">
-<li><p><strong>dim_x</strong> (<em>numpy.ndarray</em>)</p></li>
-<li><p><strong>dim_y</strong> (<em>numpy.ndarray</em>)</p></li>
-<li><p><strong>tile_points</strong> (<em>numpy.ndarray</em>)</p></li>
-<li><p><strong>xy_ground</strong> (<em>numpy.ndarray</em>)</p></li>
-<li><p><strong>options</strong> (<em>dict</em>)</p></li>
+<li><p><strong>dim_x</strong> (<em>numpy.ndarray</em>) – One-dimensional raster coordinate arrays; output rows follow
+<code class="docutils literal notranslate"><span class="pre">dim_y</span></code> and columns follow <code class="docutils literal notranslate"><span class="pre">dim_x</span></code>.</p></li>
+<li><p><strong>dim_y</strong> (<em>numpy.ndarray</em>) – One-dimensional raster coordinate arrays; output rows follow
+<code class="docutils literal notranslate"><span class="pre">dim_y</span></code> and columns follow <code class="docutils literal notranslate"><span class="pre">dim_x</span></code>.</p></li>
+<li><p><strong>tile_points</strong> (<em>numpy.ndarray</em>) – Structured LiDAR points with <code class="docutils literal notranslate"><span class="pre">X</span></code>, <code class="docutils literal notranslate"><span class="pre">Y</span></code>, <code class="docutils literal notranslate"><span class="pre">Z</span></code>, and
+<code class="docutils literal notranslate"><span class="pre">Classification</span></code> fields.</p></li>
+<li><p><strong>xy_ground</strong> (<em>numpy.ndarray</em>) – Ground elevation for each output grid cell, flattened in the same
+order as the meshgrid of <code class="docutils literal notranslate"><span class="pre">dim_x</span></code> and <code class="docutils literal notranslate"><span class="pre">dim_y</span></code>.</p></li>
+<li><p><strong>options</strong> (<em>dict</em>) – Roughness options, including <code class="docutils literal notranslate"><span class="pre">lidar_classifications_to_keep</span></code>,
+optional <code class="docutils literal notranslate"><span class="pre">elevation_range</span></code>, and the options required by
+<a class="reference internal" href="#geofabrics.dem.roughness_from_points" title="geofabrics.dem.roughness_from_points"><code class="xref py py-func docutils literal notranslate"><span class="pre">roughness_from_points()</span></code></a>.</p></li>
 </ul>
 </dd>
-<dt class="field-even">Return type<span class="colon">:</span></dt>
-<dd class="field-even"><p>numpy.ndarray</p>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><p>Roughness grid with shape <code class="docutils literal notranslate"><span class="pre">(len(dim_y),</span> <span class="pre">len(dim_x))</span></code>. Returns an
+all-NaN grid when no points remain after filtering.</p>
+</dd>
+<dt class="field-odd">Return type<span class="colon">:</span></dt>
+<dd class="field-odd"><p>numpy.ndarray</p>
 </dd>
 </dl>
+<p class="rubric">Notes</p>
+<p>Coordinate values and search radii use the units of the horizontal CRS;
+output roughness uses the input elevation units.</p>
 </dd></dl>
 
 <dl class="py function">
 <dt class="sig sig-object py" id="geofabrics.dem.elevation_over_chunk">
 <span class="sig-prename descclassname"><span class="pre">geofabrics.dem.</span></span><span class="sig-name descname"><span class="pre">elevation_over_chunk</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">dim_x</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">dim_y</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">tile_points</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">options</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#geofabrics.dem.elevation_over_chunk" title="Link to this definition"></a></dt>
-<dd><p>Rasterise all points within a chunk.</p>
+<dd><p>Interpolate LiDAR elevations onto one chunk’s raster grid.</p>
 <dl class="field-list simple">
 <dt class="field-odd">Parameters<span class="colon">:</span></dt>
 <dd class="field-odd"><ul class="simple">
-<li><p><strong>dim_x</strong> (<em>numpy.ndarray</em>)</p></li>
-<li><p><strong>dim_y</strong> (<em>numpy.ndarray</em>)</p></li>
-<li><p><strong>tile_points</strong> (<em>numpy.ndarray</em>)</p></li>
-<li><p><strong>options</strong> (<em>dict</em>)</p></li>
+<li><p><strong>dim_x</strong> (<em>numpy.ndarray</em>) – One-dimensional raster coordinate arrays; output rows follow
+<code class="docutils literal notranslate"><span class="pre">dim_y</span></code> and columns follow <code class="docutils literal notranslate"><span class="pre">dim_x</span></code>.</p></li>
+<li><p><strong>dim_y</strong> (<em>numpy.ndarray</em>) – One-dimensional raster coordinate arrays; output rows follow
+<code class="docutils literal notranslate"><span class="pre">dim_y</span></code> and columns follow <code class="docutils literal notranslate"><span class="pre">dim_x</span></code>.</p></li>
+<li><p><strong>tile_points</strong> (<em>numpy.ndarray</em>) – Structured point array with <code class="docutils literal notranslate"><span class="pre">X</span></code>, <code class="docutils literal notranslate"><span class="pre">Y</span></code>, and <code class="docutils literal notranslate"><span class="pre">Z</span></code> fields. If
+configured, it must also contain <code class="docutils literal notranslate"><span class="pre">Classification</span></code>.</p></li>
+<li><p><strong>options</strong> (<em>dict</em>) – Interpolation options, including <code class="docutils literal notranslate"><span class="pre">radius</span></code> and <code class="docutils literal notranslate"><span class="pre">raster_type</span></code>;
+optional classification and elevation-range filters are also applied.</p></li>
 </ul>
 </dd>
-<dt class="field-even">Return type<span class="colon">:</span></dt>
-<dd class="field-even"><p>numpy.ndarray</p>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><p>Elevation grid with shape <code class="docutils literal notranslate"><span class="pre">(len(dim_y),</span> <span class="pre">len(dim_x))</span></code>. Cells with no
+in-radius samples, or no samples after filtering, are NaN.</p>
+</dd>
+<dt class="field-odd">Return type<span class="colon">:</span></dt>
+<dd class="field-odd"><p>numpy.ndarray</p>
 </dd>
 </dl>
+<p class="rubric">Notes</p>
+<p>Query coordinates and <code class="docutils literal notranslate"><span class="pre">options[&quot;radius&quot;]</span></code> use the horizontal CRS units;
+returned elevations use the input Z units. Non-finite points are not
+explicitly filtered.</p>
 </dd></dl>
 
 <dl class="py function">
 <dt class="sig sig-object py" id="geofabrics.dem.elevation_over_chunk_from_nearest">
 <span class="sig-prename descclassname"><span class="pre">geofabrics.dem.</span></span><span class="sig-name descname"><span class="pre">elevation_over_chunk_from_nearest</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">dim_x</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">dim_y</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">points</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">edge_points</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">options</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#geofabrics.dem.elevation_over_chunk_from_nearest" title="Link to this definition"></a></dt>
-<dd><p>Rasterise all points within a chunk.</p>
+<dd><p>Interpolate nearest-point elevations onto one chunk’s raster grid.</p>
 <dl class="field-list simple">
 <dt class="field-odd">Parameters<span class="colon">:</span></dt>
 <dd class="field-odd"><ul class="simple">
-<li><p><strong>dim_x</strong> (<em>numpy.ndarray</em>)</p></li>
-<li><p><strong>dim_y</strong> (<em>numpy.ndarray</em>)</p></li>
-<li><p><strong>points</strong> (<em>numpy.ndarray</em>)</p></li>
-<li><p><strong>edge_points</strong> (<em>numpy.ndarray</em>)</p></li>
-<li><p><strong>options</strong> (<em>dict</em>)</p></li>
+<li><p><strong>dim_x</strong> (<em>numpy.ndarray</em>) – One-dimensional raster coordinate arrays; output rows follow
+<code class="docutils literal notranslate"><span class="pre">dim_y</span></code> and columns follow <code class="docutils literal notranslate"><span class="pre">dim_x</span></code>.</p></li>
+<li><p><strong>dim_y</strong> (<em>numpy.ndarray</em>) – One-dimensional raster coordinate arrays; output rows follow
+<code class="docutils literal notranslate"><span class="pre">dim_y</span></code> and columns follow <code class="docutils literal notranslate"><span class="pre">dim_x</span></code>.</p></li>
+<li><p><strong>points</strong> (<em>numpy.ndarray</em>) – Structured interpolation points with <code class="docutils literal notranslate"><span class="pre">X</span></code>, <code class="docutils literal notranslate"><span class="pre">Y</span></code>, and <code class="docutils literal notranslate"><span class="pre">Z</span></code> fields.</p></li>
+<li><p><strong>edge_points</strong> (<em>numpy.ndarray</em>) – Structured edge samples with the same fields; used when
+<code class="docutils literal notranslate"><span class="pre">options[&quot;use_edge&quot;]</span></code> is true.</p></li>
+<li><p><strong>options</strong> (<em>dict</em>) – Nearest-point interpolation options, including
+<code class="docutils literal notranslate"><span class="pre">k_nearest_neighbours</span></code>, <code class="docutils literal notranslate"><span class="pre">use_edge</span></code>, and <code class="docutils literal notranslate"><span class="pre">raster_type</span></code>.</p></li>
 </ul>
 </dd>
-<dt class="field-even">Return type<span class="colon">:</span></dt>
-<dd class="field-even"><p>numpy.ndarray</p>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><p>Elevation grid with shape <code class="docutils literal notranslate"><span class="pre">(len(dim_y),</span> <span class="pre">len(dim_x))</span></code>. Returns an
+all-NaN grid when both point sets are empty arrays.</p>
+</dd>
+<dt class="field-odd">Return type<span class="colon">:</span></dt>
+<dd class="field-odd"><p>numpy.ndarray</p>
 </dd>
 </dl>
+<p class="rubric">Notes</p>
+<p>Coordinates in both point sets and the output grid must use the same
+horizontal CRS and units. Z values retain their input vertical units.
+Pass an empty structured array for <code class="docutils literal notranslate"><span class="pre">edge_points</span></code> when there are no edge
+samples; <code class="docutils literal notranslate"><span class="pre">None</span></code> is not supported when <code class="docutils literal notranslate"><span class="pre">points</span></code> is also empty.</p>
 </dd></dl>
 
 <dl class="py data">

@@ -5,10 +5,8 @@ geofabrics.processor
 
 .. autoapi-nested-parse::
 
-   This module contains classes associated with generating GeoFabric layers from
-   LiDAR and bathymetry contours based on the instructions contained in a JSON file.
-
-   GeoFabric layers include hydrologically conditioned DEMs.
+   This module contains processors that generate GeoFabrics products from LiDAR,
+   bathymetry, and other data sources configured in a JSON instruction file.
 
 
 
@@ -37,8 +35,8 @@ Module Contents
 
 
    An abstract class with general methods for accessing elements in
-   instruction files including populating default values. Also contains
-   functions for downloading remote data using geopais, and constructing data
+   instruction files, including populating default values. It also contains
+   functions for downloading remote data through geoapis and constructing data
    file lists.
 
    The `BaseProcessor` class contains several important class members:
@@ -50,7 +48,7 @@ Module Contents
 
    .. py:method:: create_metadata()
 
-      A clase to create metadata to be added as netCDF attributes.
+      Create metadata to add as netCDF attributes.
 
 
 
@@ -77,9 +75,9 @@ Module Contents
 
    .. py:method:: save_dem(filename, dataset, generator, compression)
 
-      Save out the dem/geofabrics labelled array.
+      Save a DEM or GeoFabrics output array to disk.
 
-      :param filename: The filename including extension to save the DEM/geofabric to.
+      :param filename: Output path for the DEM or GeoFabrics layer.
       :param dataset: The labelled array data to save.
       :param generator: The dem.DemBase object with a 'save_dem' function.
 
@@ -94,11 +92,10 @@ Module Contents
 
    .. py:method:: get_crs()
 
-      Return the CRS projection information (horiztonal and vertical) from
-      the instruction file. Raise an error if 'output' is not in the instructions. If
-      no 'crs' or 'horizontal' or 'vertical' values are specified then use the default
-      value for each one missing from the instructions. If the default is used it is
-      added to the instructions.
+      Return horizontal and vertical CRS information from the instructions.
+
+      Raise an error if ``output`` is missing. Use the default for any
+      unspecified CRS values and add those defaults to the instructions.
 
 
 
@@ -123,22 +120,19 @@ Module Contents
 
    .. py:method:: check_datasets(key, data_type)
 
-      Check to see if the dataset is included in the instructions:
-      key = dataservice (i.e. local, opentogaphy, linxz, lris)
+      Return whether a data service is configured for a dataset type.
 
-      :param key: The string identifying how the data is accessed
-                  (e.g. local, opentopography, linz, etc)
-      :param data_type: The string identifying the data type (e.g. raster, lidar, vector)
+      :param key: Name of the data service (e.g. local, OpenTopography, or LINZ).
+      :param data_type: Dataset type (e.g. raster, LiDAR, or vector).
 
 
 
    .. py:method:: check_vector_or_raster(key, api_type)
 
-      Check to see if vector or raster key (i.e. land, ocean_contours, etc) is
-      included either as a file path, or within any of API's (i.e. LINZ or LRIS).
+      Return whether a vector or raster input is configured (either locally or via API).
 
-      :param key: The string identifying the vector/raster
-      :param api_type: The string identifying if the key is a vector or raster
+      :param key: Name of the vector or raster input.
+      :param api_type: Input type, either ``vector`` or ``raster``.
 
 
 
@@ -164,24 +158,20 @@ Module Contents
 
    .. py:method:: get_lidar_datasets_info()
 
-      Return a dictionary with three enties 'file_paths', 'crs' and
-      'tile_index_file'. The 'file_paths' contains a list of LiDAR tiles to
-      process.
+      Return LiDAR file paths and their optional CRS and tile index as a
+      dictionary. Extract this information from the instruction file as well
+      as any API responses.
 
-      The 'crs' (or coordinate system of the LiDAR data as defined by an EPSG
-      code) is only optionally set (if unset the value is None). The 'crs'
-      should only be set if the CRS information is not correctly encoded in
-      this is only supported for OpenTopography LiDAR.
+      ``file_paths`` contains the LiDAR tiles to process. The optional
+      ``crs`` value is the EPSG code to use when the source files do not
+      contain valid CRS information; explicit CRS values are currently
+      supported only for OpenTopography LiDAR. The optional
+      ``tile_index_file`` describes tile extents and is currently supported
+      only for OpenTopography files.
 
-      The 'tile_index_file' is also optional (if unset the value is None).
-      The 'tile_index_file' should be given if a tile index file exists for
-      the LiDAR files specifying the extents of each tile. This is currently
-      only supported for OpenTopography files.
-
-      If a LiDAR dataset (either through an API or locally) is specified this
-      is checked and all files within the catchment area are downloaded and
-      used to construct the file list. If none is specified, the instruction
-      'data_paths' is checked for 'lidars' and these are returned.
+      When a LiDAR dataset is specified through an API or local source,
+      collect its files within the catchment. Otherwise, read the ``lidars``
+      entry from ``data_paths``.
 
 
 
@@ -189,7 +179,7 @@ Module Contents
       :abstractmethod:
 
 
-      This method controls the processor execution and code-flow.
+      Run the processor workflow.
 
 
 
@@ -198,9 +188,9 @@ Module Contents
    Bases: :py:obj:`BaseProcessor`
 
 
-   RawLidarDemGenerator executes a pipeline for creating a DEM from LiDAR and
-   optionally a coarse DEM. The data sources and pipeline logic is defined in the
-   json_instructions file.
+   Create a DEM from LiDAR and, optionally, a coarse DEM.
+
+   The data sources and pipeline are defined in the JSON instruction file.
 
    See the GitHub repository wiki or GeoFabrics/tests/ for usage examples and
    other documentation.
@@ -208,11 +198,10 @@ Module Contents
 
    .. py:method:: run()
 
-      This method executes the geofabrics generation pipeline to produce geofabric
-      derivatives.
+      Generate a raw DEM from LiDAR.
 
-      Note it currently only considers one LiDAR dataset that can have many tiles.
-      See 'get_lidar_datasets_info' for where to change this.
+      Multiple LiDAR datasets and tiles are supported. See
+      ``get_lidar_datasets_info`` for how their files are selected.
 
 
 
@@ -221,10 +210,11 @@ Module Contents
    Bases: :py:obj:`BaseProcessor`
 
 
-   HydrologicDemGenerator executes a pipeline for loading in a DEM then
-   incorporating hydrological features (e.g. ocean bathymetry, rivers,
-   waterways,stopbank creast heights) to produce a hydrologically conditioned
-   DEM. The data and pipeline logic is defined in the json_instructions file.
+   Create a hydrologically conditioned DEM.
+
+   The generator combines an input DEM with hydrological features such as
+   ocean bathymetry, rivers, waterways, and stopbank crest elevations. The
+   data and pipeline are defined in the JSON instruction file.
 
    See the GitHub repository wiki or GeoFabrics/tests/ for usage examples and
    other documentation.
@@ -238,8 +228,7 @@ Module Contents
 
    .. py:method:: run()
 
-      This method executes the geofabrics generation pipeline to produce geofabric
-      derivatives.
+      Generate a hydrologically conditioned DEM.
 
 
 
@@ -248,26 +237,21 @@ Module Contents
    Bases: :py:obj:`BaseProcessor`
 
 
-   PatchDemGenerator executes a pipeline for loading in a DEM / roughness
-   GeoFabrics profuct before adding specified patches to it.
+   Add specified patches to a GeoFabrics DEM or roughness product.
 
-   See the README.md for usage examples or GeoFabrics/tests/ for examples of usage and
-   an instruction file
+   See the README or ``GeoFabrics/tests/`` for usage examples and instruction
+   files.
 
 
    .. py:method:: get_patch_instruction(key)
 
-      Return true if the DEMs are required for later processing
-
-
-      :param instructions  The json instructions defining the behaviour:
+      Return the configured patch value for ``key`` or its default, if defined.
 
 
 
    .. py:method:: run()
 
-      This method executes the geofabrics generation pipeline to produce geofabric
-      derivatives.
+      Generate a patched DEM or GeoFabrics layer.
 
 
 
@@ -276,10 +260,10 @@ Module Contents
    Bases: :py:obj:`BaseProcessor`
 
 
-   RoughnessLengthGenerator executes a pipeline for loading in a hydrologically
-   conditioned DEM and LiDAR tiles to produce a roughness length layer that is added to
-   the Hydrologically conditioned DEM. The data and pipeline logic is defined in
-   the json_instructions file.
+   Generate a roughness-length layer for a hydrologically conditioned DEM.
+
+   The generator uses the DEM and LiDAR tiles. Its data and pipeline are
+   defined in the JSON instruction file.
 
    The `RoughnessLengthGenerator` class contains several important class members:
     * catchment_geometry - Defines all relevant regions in a catchment required in the
@@ -290,10 +274,7 @@ Module Contents
 
    .. py:method:: get_roughness_instruction(key)
 
-      Return true if the DEMs are required for later processing
-
-
-      :param instructions  The json instructions defining the behaviour:
+      Return the configured roughness value for ``key`` or its default, if defined.
 
 
 
@@ -311,8 +292,7 @@ Module Contents
 
    .. py:method:: run()
 
-      This method executes the geofabrics generation pipeline to produce geofabric
-      derivatives.
+      Generate a roughness layer for the hydrologically conditioned DEM.
 
 
 
@@ -321,18 +301,15 @@ Module Contents
    Bases: :py:obj:`BaseProcessor`
 
 
-   MeasuredRiverGenerator executes a pipeline to interpolate between
-   measured river cross section elevations. A json_instructions file defines
-   the pipeline logic and data.
+   Interpolate river-bed elevations from measured cross sections.
+
+   The JSON instruction file defines the input data and pipeline.
 
 
 
    .. py:method:: get_measured_instruction(key)
 
-      Return true if the DEMs are required for later processing
-
-
-      :param instructions  The json instructions defining the behaviour:
+      Return the configured measured-river value or its default, if defined.
 
 
 
@@ -344,9 +321,7 @@ Module Contents
 
    .. py:method:: run()
 
-      This method extracts a main channel then executes the DemGeneration
-      pipeline to produce a DEM before sampling this to extimate width, slope
-      and eventually depth.
+      Interpolate measured river sections and save elevation outputs.
 
 
 
@@ -355,36 +330,18 @@ Module Contents
    Bases: :py:obj:`BaseProcessor`
 
 
-   RiverbathymetryGenerator executes a pipeline to estimate river
-   bathymetry depths from flows, slopes, friction and widths along a main
-   channel. This is dones by first creating a hydrologically conditioned DEM
-   of the channel. A json_instructions file defines the pipeline logic and
-   data.
+   Estimate river-bed depths along a main channel.
 
-   .. attribute:: channel_polyline  The main channel along which to estimate depth. This
+   The processor uses LiDAR-derived DEMs to characterize channel width and
+   slope, then estimates and saves river bathymetry. These saved estimates can
+   later be incorporated into a hydrologically conditioned DEM by
+   ``HydrologicDemGenerator``.
 
-      is a polyline.
-
-   .. attribute:: gen_dem  The ground DEM generated along the main channel. This is a
-
-      raster.
-
-   .. attribute:: veg_dem  The vegetation DEM generated along the main channel. This is a
-
-      raster.
-
-   .. attribute:: aligned_channel_polyline  The main channel after its alignment has been
-
-      updated based on the DEM. Width and slope are estimated on this.
-
-   .. attribute:: transects  Transect polylines perpindicular to the aligned channel with
-
-      samples of the DEM values
 
 
    .. py:method:: channel_characteristics_exist()
 
-      Return true if the DEMs are required for later processing
+      Return whether channel characteristics and polygon files exist.
 
 
 
@@ -396,37 +353,27 @@ Module Contents
 
    .. py:method:: alignment_exists()
 
-      Return true if the DEMs are required for later processing
-
-
-      :param instructions  The json instructions defining the behaviour:
+      Return whether the aligned channel file exists.
 
 
 
    .. py:method:: get_result_file_name(key = None, name = None)
 
-      Return the file name of the file to save.
+      Return the output filename for a result key or explicit name.
 
-
-      :param instructions  The json instructions defining the behaviour:
+      Provide either ``key`` or ``name``.
 
 
 
    .. py:method:: get_result_file_path(key = None, name = None)
 
-      Return the file name of the file to save with the local cache path.
-
-
-      :param instructions  The json instructions defining the behaviour:
+      Return the output path for a result key or explicit name.
 
 
 
    .. py:method:: get_bathymetry_instruction(key)
 
-      Return true if the DEMs are required for later processing
-
-
-      :param instructions  The json instructions defining the behaviour:
+      Return the configured bathymetry value or its default, if defined.
 
 
 
@@ -438,33 +385,36 @@ Module Contents
 
    .. py:method:: get_dems(channel)
 
-      Allow selection of the ground or vegetation DEM, and either create
-      or load it.
+      Load or create the ground and vegetation DEMs for the channel.
 
+      :param channel: Catchment geometry used to define the channel region.
 
-      :param instructions  The json instructions defining the behaviour:
+      :returns: Ground and vegetation DEM datasets.
+      :rtype: tuple
 
 
 
    .. py:method:: align_channel(channel_width, channel)
 
-      Align the river network defined channel based on LiDAR and save the aligned
-      channel.
+      Align the river-network channel using LiDAR and save the result.
 
-
-      :param channel_width  The class for characterising channel width and other: properties
-      :param channel  The river network defined channel alignment:
+      :param channel_width: Channel-characteristics estimator used to align the network.
+      :param channel: Initial channel alignment from the river network.
 
 
 
    .. py:method:: calculate_channel_characteristics(channel_width, aligned_channel)
 
-      Align the river network defined channel based on LiDAR and save the aligned
-      channel.
+      Estimate channel width and slope from the aligned channel.
 
+      :param channel_width: Configured estimator that samples ground and vegetation DEMs and
+                            calculates channel widths and slopes.
+      :param aligned_channel: Channel alignment used when characterising the channel width, slope,
+                              and footprint.
 
-      :param channel_width  The class for characterising channel width and other: properties
-      :param channel  The river network defined channel alignment:
+      :returns: Writes the river polygon and sampled channel characteristics to
+                their configured result files.
+      :rtype: None
 
 
 
@@ -503,9 +453,27 @@ Module Contents
 
    .. py:method:: calculate_river_bed_elevations()
 
-      Calculate and save depth estimates along the channel using various
-      approaches.
+      Estimate and save river-bed elevations using two depth methods.
 
+      Reads the saved channel-characteristics layer, associates each row with
+      the nearest river-network reach, and estimates bed elevations using
+      the Neal et al. uniform-flow and Rupp and Smart hydraulic-geometry
+      methods. The resulting elevations and channel attributes are written
+      to the configured river-bathymetry result file. When debug output is
+      enabled, the full-bank and area-adjusted depths are included as well.
+
+      :returns: Writes the estimates to disk; no result is returned.
+      :rtype: None
+
+      .. rubric:: Notes
+
+      Missing reach IDs, flow, and Manning's n values are filled forward and
+      backward from neighboring rows. Other missing or invalid inputs are
+      not explicitly imputed and may propagate into the estimates. Negative
+      depth estimates are set to zero, and depths below the configured
+      threshold are raised to that threshold. Flow is in m^3 / s, width is
+      in meters, slope is dimensionless, Manning's n is dimensionless, and
+      elevations are in meters.
 
 
 
@@ -517,9 +485,7 @@ Module Contents
 
    .. py:method:: run()
 
-      This method extracts a main channel then executes the DemGeneration
-      pipeline to produce a DEM before sampling this to extimate width, slope
-      and eventually depth.
+      Characterize the river channel and estimate channel and fan bathymetry.
 
 
 
@@ -528,10 +494,10 @@ Module Contents
    Bases: :py:obj:`BaseProcessor`
 
 
-   WaterwayBedElevationGenerator executes a pipeline to pull in OpenStreetMap waterway
-   and tunnel information. A DEM is generated of the surrounding area and this used to
-   unblock waterways and tunnels - by taking the lowest value in the area around a tunnel
-   to be the tunnel elevation, and ensuring opne waterways flow downhill.
+   Estimate bed elevations for waterways and tunnels.
+
+   Sample a DEM around tunnels to estimate their bed elevations, and enforce
+   downhill elevations along open waterways.
 
 
 
@@ -543,10 +509,12 @@ Module Contents
 
    .. py:method:: get_waterways_instruction(key)
 
-      Return true if the DEMs are required for later processing
+      Return a waterways instruction value, using its default if defined.
 
+      :param key: Name of the waterways instruction to retrieve.
 
-      :param instructions  The json instructions defining the behaviour:
+      :returns: Configured value or the default for ``key``.
+      :rtype: object
 
 
 
@@ -558,24 +526,33 @@ Module Contents
 
    .. py:method:: get_result_file_path(key, index = None)
 
-      Return the file name of the file to save with the local cache path.
-
-      :param instructions  The json instructions defining the behaviour:
+      Return the path for a waterway output file.
 
 
 
    .. py:method:: waterway_elevations_exists()
 
-      Check to see if the waterway and culvert bathymeties have already been
-      estimated.
+      Return whether outputs for open and closed waterways have been saved.
 
 
 
    .. py:method:: minimum_elevation_in_polygon(geometry, dem)
 
-      Determine the minimum value in each polygon. Select only coordinates
-      within the polygon bounding box before clipping to the bounding box and
-      then returning the minimum elevation.
+      Return the minimum non-missing DEM elevation inside a polygon.
+
+      :param geometry: Polygon to sample. Its coordinates must use the same CRS as
+                       ``dem``; this method does not reproject it.
+      :param dem: DEM dataset containing a ``z`` variable and ``x``/``y``
+                  coordinates.
+
+      :returns: Minimum ``z`` value after clipping the bounding-box window to the
+                polygon. Returns NaN if the clipped raster contains no valid
+                elevations.
+      :rtype: float
+
+      .. rubric:: Notes
+
+      CRS match those of the DEM also defined in the instruction JSON file.
 
 
 
@@ -605,11 +582,7 @@ Module Contents
 
    .. py:method:: run()
 
-      This method runs a pipeline that:
-      * downloads all tunnels and waterways within a catchment.
-      * creates and samples a DEM around each feature to estimate the bed
-        elevation.
-      * saves out extents and bed elevations of the waterway and tunnel network
+      Estimate and save bed elevations for waterways and tunnels.
 
 
 
@@ -618,10 +591,10 @@ Module Contents
    Bases: :py:obj:`BaseProcessor`
 
 
-   StopbankCrestElevationEstimator executes a pipeline to estimate stopbank
-   crest elevations. A DEM is generated of the surrounding area and this used
-   to estimate crest elevations by taking the highest value in the area around
-   the stopebank.
+   Estimate stopbank crest elevations from a DEM of the surrounding area.
+
+   Crest elevations are estimated from the highest values sampled along each
+   stopbank.
 
 
 
@@ -633,10 +606,12 @@ Module Contents
 
    .. py:method:: get_stopbanks_instruction(key)
 
-      Return true if the DEMs are required for later processing
+      Return a stopbanks instruction value, using its default if defined.
 
+      :param key: Name of the stopbanks instruction to retrieve.
 
-      :param instructions  The json instructions defining the behaviour:
+      :returns: Configured value or the default for ``key``.
+      :rtype: object
 
 
 
@@ -648,36 +623,49 @@ Module Contents
 
    .. py:method:: get_result_file_path(key, index = None)
 
-      Return the file name of the file to save with the local cache path.
+      Return the path for a stopbank output file.
 
-      :param instructions  The json instructions defining the behaviour:
+      :param key: Output type used to select the filename.
+      :param index: Optional stopbank index used for per-stopbank outputs.
 
 
 
    .. py:method:: stopbanks_elevations_exists()
 
-      Check to see if the waterway and culvert bathymeties have already been
-      estimated.
+      Return whether stopbank polygons and crest elevations are saved.
 
 
 
    .. py:method:: maximum_elevation_in_polygon(geometry, dem)
 
-      Determine the minimum value in each polygon. Select only coordinates
-      within the polygon bounding box before clipping to the bounding box and
-      then returning the minimum elevation.
+      Return the maximum DEM elevation in the polygon's bounding box.
+
+      :param geometry: Polygon whose bounds define the raster window. Its coordinates
+                       must use the same CRS as ``dem``; this method does not reproject it.
+      :param dem: DEM dataset containing a ``z`` variable and ``x``/``y``
+                  coordinates.
+
+      :returns: Maximum ``z`` value in the rectangular window. The values are not
+                clipped to the polygon itself. Returns NaN if the window contains
+                no valid elevations.
+      :rtype: float
+
+      .. rubric:: Notes
+
+      Currently the maximum within the polygon bounding box, and not
+      restricted to the polygon itself.
 
 
 
    .. py:method:: estimate_elevations_simple(stopbanks)
 
-      Sample the DEM around the tunnels to estimate the bed elevation.
+      Sample the DEM along stopbanks to estimate their crest elevations.
 
 
 
    .. py:method:: create_dem(stopbanks)
 
-      Create and return a DEM at a resolution 1.5x the waterway width.
+      Generate a raw LiDAR DEM for each stopbank region that needs one.
 
 
 
@@ -689,11 +677,7 @@ Module Contents
 
    .. py:method:: run()
 
-      This method runs a pipeline that:
-      * downloads all tunnels and waterways within a catchment.
-      * creates and samples a DEM around each feature to estimate the bed
-        elevation.
-      * saves out extents and bed elevations of the waterway and tunnel network
+      Estimate and save crest elevations for stopbanks.
 
 
 

@@ -58,7 +58,6 @@
 </li>
 </ul>
 </li>
-<li class="toctree-l2"><a class="reference internal" href="../../benchmarking/index.html">benchmarking</a></li>
 </ul>
 </li>
 </ul>
@@ -98,10 +97,10 @@ information.</p>
 <table class="autosummary longtable docutils align-default">
 <tbody>
 <tr class="row-odd"><td><p><a class="reference internal" href="#geofabrics.bathymetry_estimation.Channel" title="geofabrics.bathymetry_estimation.Channel"><code class="xref py py-obj docutils literal notranslate"><span class="pre">Channel</span></code></a></p></td>
-<td><p>A class to define a channel centre line from a digital network.</p></td>
+<td><p>Define a channel centreline from a digital network.</p></td>
 </tr>
 <tr class="row-even"><td><p><a class="reference internal" href="#geofabrics.bathymetry_estimation.InterpolateMeasuredElevations" title="geofabrics.bathymetry_estimation.InterpolateMeasuredElevations"><code class="xref py py-obj docutils literal notranslate"><span class="pre">InterpolateMeasuredElevations</span></code></a></p></td>
-<td><p>Interpolate measured river bed elevations. Requires LineStrings of</p></td>
+<td><p>Interpolate measured river-bed elevations.</p></td>
 </tr>
 <tr class="row-odd"><td><p><a class="reference internal" href="#geofabrics.bathymetry_estimation.ChannelCharacteristics" title="geofabrics.bathymetry_estimation.ChannelCharacteristics"><code class="xref py py-obj docutils literal notranslate"><span class="pre">ChannelCharacteristics</span></code></a></p></td>
 <td><p>A class to estimate the width, slope and other characteristics of a</p></td>
@@ -140,7 +139,7 @@ separately.</p></li>
 <dl class="py class">
 <dt class="sig sig-object py" id="geofabrics.bathymetry_estimation.Channel">
 <span class="property"><span class="k"><span class="pre">class</span></span><span class="w"> </span></span><span class="sig-prename descclassname"><span class="pre">geofabrics.bathymetry_estimation.</span></span><span class="sig-name descname"><span class="pre">Channel</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">channel</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">resolution</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">sampling_direction</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">1</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#geofabrics.bathymetry_estimation.Channel" title="Link to this definition"></a></dt>
-<dd><p>A class to define a channel centre line from a digital network.</p>
+<dd><p>Define a channel centreline from a digital network.</p>
 <dl class="field-list simple">
 <dt class="field-odd">Parameters<span class="colon">:</span></dt>
 <dd class="field-odd"><ul class="simple">
@@ -271,7 +270,7 @@ the channel catchment.</p>
 <dl class="field-list simple">
 <dt class="field-odd">Parameters<span class="colon">:</span></dt>
 <dd class="field-odd"><ul class="simple">
-<li><p><strong>channel</strong> – A data frame with the geometry defining the channel centreline.</p></li>
+<li><p><strong>channel</strong> – A GeoDataFrame containing the channel centreline geometry.</p></li>
 <li><p><strong>spacing</strong> (<em>float</em>) – The spacing between sampled points along straight segments</p></li>
 <li><p><strong>sample_direction</strong> – Are the reaches sampled in the same direction they are ordered.
 1 if in the same direction, -1 if in the opposite direction.</p></li>
@@ -291,7 +290,7 @@ the channel catchment.</p>
 <dl class="field-list simple">
 <dt class="field-odd">Parameters<span class="colon">:</span></dt>
 <dd class="field-odd"><ul class="simple">
-<li><p><strong>channel</strong> – A data frame with the geometry defining the channel centreline.</p></li>
+<li><p><strong>channel</strong> – A GeoDataFrame containing the channel centreline geometry.</p></li>
 <li><p><strong>spacing</strong> (<em>float</em>) – The spacing between sampled points along straight segments</p></li>
 <li><p><strong>sample_direction</strong> – Are the reaches sampled in the same direction they are ordered.
 1 if in the same direction, -1 if in the opposite direction.</p></li>
@@ -309,9 +308,9 @@ the channel catchment.</p>
 <dl class="py class">
 <dt class="sig sig-object py" id="geofabrics.bathymetry_estimation.InterpolateMeasuredElevations">
 <span class="property"><span class="k"><span class="pre">class</span></span><span class="w"> </span></span><span class="sig-prename descclassname"><span class="pre">geofabrics.bathymetry_estimation.</span></span><span class="sig-name descname"><span class="pre">InterpolateMeasuredElevations</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">riverbank_file</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">measured_sections_file</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">thalweg_file</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">cross_section_spacing</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">crs</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#geofabrics.bathymetry_estimation.InterpolateMeasuredElevations" title="Link to this definition"></a></dt>
-<dd><p>Interpolate measured river bed elevations. Requires LineStrings of
-riverbed elevations, and the LineStrings defining the left and right
-riverbank.</p>
+<dd><p>Interpolate measured river-bed elevations.</p>
+<p>Requires LineStrings of river-bed elevations and LineStrings defining the
+left and right riverbanks.</p>
 <dl class="field-list simple">
 <dt class="field-odd">Parameters<span class="colon">:</span></dt>
 <dd class="field-odd"><ul class="simple">
@@ -466,26 +465,46 @@ looking for the minimum z.</p>
 <dl class="py method">
 <dt class="sig sig-object py" id="geofabrics.bathymetry_estimation.ChannelCharacteristics.sample_cross_sections">
 <span class="sig-name descname"><span class="pre">sample_cross_sections</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">cross_sections</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">min_z_search_radius</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#geofabrics.bathymetry_estimation.ChannelCharacteristics.sample_cross_sections" title="Link to this definition"></a></dt>
-<dd><p>Return the elevations along the cross_section sampled at the
-sampling resolution. Also add the measured ‘min_z_centre’ values to
-the cross_sections.</p>
+<dd><p>Sample ground and vegetation elevations along channel cross sections.</p>
+<p>For each cross section, sample both DEMs at intervals of
+<code class="docutils literal notranslate"><span class="pre">self.resolution</span></code> along a transect centered on its midpoint. The
+nearest DEM cell is used for each sample, with no maximum search
+distance. The minimum ground elevation within the central search
+radius is added to <code class="docutils literal notranslate"><span class="pre">cross_sections</span></code> as <code class="docutils literal notranslate"><span class="pre">min_z_centre</span></code>.</p>
 <dl class="field-list simple">
 <dt class="field-odd">Parameters<span class="colon">:</span></dt>
 <dd class="field-odd"><ul class="simple">
-<li><p><strong>cross_sections</strong> (<em>geopandas.GeoDataFrame</em>) – The cross_sections with geometry defined as polylines.</p></li>
-<li><p><strong>min_z_search_radius</strong> (<em>float</em>) – The distance to search from the centre.</p></li>
+<li><p><strong>cross_sections</strong> (<em>geopandas.GeoDataFrame</em>) – GeoDataFrame of cross sections. Each row must provide <code class="docutils literal notranslate"><span class="pre">mid_x</span></code>,
+<code class="docutils literal notranslate"><span class="pre">mid_y</span></code>, <code class="docutils literal notranslate"><span class="pre">nx</span></code>, and <code class="docutils literal notranslate"><span class="pre">ny</span></code> fields used to locate and orient its
+transect. Coordinates must use the same horizontal CRS as the
+ground and vegetation DEMs.</p></li>
+<li><p><strong>min_z_search_radius</strong> (<em>float</em>) – Distance from the transect midpoint over which to find the
+minimum ground elevation. Must use the same units as
+<code class="docutils literal notranslate"><span class="pre">self.resolution</span></code>.</p></li>
 </ul>
 </dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><p>Mapping with <code class="docutils literal notranslate"><span class="pre">gnd_elevations</span></code> and <code class="docutils literal notranslate"><span class="pre">veg_elevations</span></code> keys. Each
+value is a list containing one NumPy array of sampled elevations
+per cross section. The input <code class="docutils literal notranslate"><span class="pre">cross_sections</span></code> is also modified
+in place by adding <code class="docutils literal notranslate"><span class="pre">min_z_centre</span></code>.</p>
+</dd>
+<dt class="field-odd">Return type<span class="colon">:</span></dt>
+<dd class="field-odd"><p>dict</p>
+</dd>
 </dl>
+<p class="rubric">Notes</p>
+<p>Missing DEM elevations are returned as NaN. If the central search
+window contains no valid ground elevations, <code class="docutils literal notranslate"><span class="pre">min_z_centre</span></code> is NaN.
+Elevations in metres.</p>
 </dd></dl>
 
 <dl class="py method">
 <dt class="sig sig-object py" id="geofabrics.bathymetry_estimation.ChannelCharacteristics.fixed_thresholded_widths_from_centre_within_radius">
 <span class="sig-name descname"><span class="pre">fixed_thresholded_widths_from_centre_within_radius</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">cross_sections</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">cross_section_elevations</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">threshold</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">resolution</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">search_radius</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">min_channel_width</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#geofabrics.bathymetry_estimation.ChannelCharacteristics.fixed_thresholded_widths_from_centre_within_radius" title="Link to this definition"></a></dt>
-<dd><p>Estimate width based on a thresbold of bank height above water level.
-Start in the centre and work out. Doesn’t detect banks until a value
-less than the threshold has been detected. Takes the widest channel within
-the radius.’</p>
+<dd><p>Estimate width using a bank-height threshold above the water level.</p>
+<p>Search outward from the centre, detecting a bank after encountering a
+value below the threshold. Select the widest channel within the radius.</p>
 <dl class="field-list simple">
 <dt class="field-odd">Parameters<span class="colon">:</span></dt>
 <dd class="field-odd"><ul class="simple">
@@ -503,10 +522,9 @@ the radius.’</p>
 <dl class="py method">
 <dt class="sig sig-object py" id="geofabrics.bathymetry_estimation.ChannelCharacteristics.variable_thresholded_widths_from_centre_within_radius">
 <span class="sig-name descname"><span class="pre">variable_thresholded_widths_from_centre_within_radius</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">cross_sections</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">cross_section_elevations</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">threshold</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">resolution</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">search_radius</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">maximum_threshold</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">min_channel_width</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">float</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#geofabrics.bathymetry_estimation.ChannelCharacteristics.variable_thresholded_widths_from_centre_within_radius" title="Link to this definition"></a></dt>
-<dd><p>Estimate width based on a thresbold of bank height above water level.
-Start in the centre and work out. Doesn’t detect banks until a value
-less than the threshold has been detected. Takes the widest channel within
-the radius.’</p>
+<dd><p>Estimate width using a bank-height threshold above the water level.</p>
+<p>Search outward from the centre, detecting a bank after encountering a
+value below the threshold. Select the widest channel within the radius.</p>
 <dl class="field-list simple">
 <dt class="field-odd">Parameters<span class="colon">:</span></dt>
 <dd class="field-odd"><ul class="simple">
@@ -625,7 +643,7 @@ sample.</p></li>
 <dl class="field-list simple">
 <dt class="field-odd">Parameters<span class="colon">:</span></dt>
 <dd class="field-odd"><ul class="simple">
-<li><p><strong>aligned_channel</strong> (<em>geopandas.GeoDataFrame</em>) – The channel centre line. Should be in the channel bed.</p></li>
+<li><p><strong>aligned_channel</strong> (<em>geopandas.GeoDataFrame</em>) – The channel centreline, positioned in the channel bed.</p></li>
 <li><p><strong>threshold</strong> (<em>float</em>) – The height height above the water level to detect as a bank.</p></li>
 <li><p><strong>max_threshold</strong> (<em>float</em>) – The maximum height above water level to detect as a bank (i.e. not
 a cliff)</p></li>

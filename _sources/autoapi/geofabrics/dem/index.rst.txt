@@ -39,6 +39,7 @@ Functions
 
 .. autoapisummary::
 
+   geofabrics.dem.chunk_mask
    geofabrics.dem.clip_mask
    geofabrics.dem.read_file_with_pdal
    geofabrics.dem.roughness_from_points
@@ -47,6 +48,8 @@ Functions
    geofabrics.dem.point_elevation
    geofabrics.dem.calculate_idw
    geofabrics.dem.calculate_interpolate_griddata
+   geofabrics.dem.calculate_rbf
+   geofabrics.dem.select_lidar_files
    geofabrics.dem.load_tiles_in_chunk
    geofabrics.dem.roughness_over_chunk
    geofabrics.dem.elevation_over_chunk
@@ -56,9 +59,30 @@ Functions
 Module Contents
 ---------------
 
+.. py:function:: chunk_mask(mask, chunk_size)
+
+   Split a two-dimensional mask into Dask array chunks.
+
+   :param mask: Two-dimensional NumPy array to chunk.
+   :param chunk_size: Maximum chunk width and height, in array cells. Must be positive.
+
+   :returns: Chunked mask with the same shape and values as ``mask``.
+   :rtype: dask.array.Array
+
+
 .. py:function:: clip_mask(arr, geometry, chunk_size, invert=False)
 
-   Create a mask the size of the arr clipped by the geometry.
+   Create a boolean mask for a geometry on an xarray raster grid.
+
+   :param arr: Raster DataArray whose coordinates define the output grid.
+   :param geometry: Geometry or collection of geometries to rasterize. Its CRS must match
+                    the raster CRS; this function does not reproject it.
+   :param chunk_size: Optional maximum chunk width and height, in raster cells.
+   :param invert: If true, select cells outside the geometry instead of inside it.
+
+   :returns: Boolean mask with the same grid as ``arr``. The mask reflects the
+             geometry, not missing values in ``arr``.
+   :rtype: xarray.DataArray
 
 
 .. py:class:: CoarseDem(dem_file, extents, set_foreshore = True)
@@ -125,7 +149,7 @@ Module Contents
    Bases: :py:obj:`abc.ABC`
 
 
-   An abstract class to manage the different geofabric layers in a
+   An abstract class for managing GeoFabrics data layers in a
    catchment context. The geofabruc has a z, and data_source layer and may
    sometimes also have a zo (roughness length) and lidar_source layer.
 
@@ -204,37 +228,110 @@ Module Contents
 
    .. py:method:: interpolate_ocean_chunked(ocean_points, cache_path, k_nearest_neighbours, use_edge, buffer, method)
 
-      Create a 'raw'' DEM from a set of tiled LiDAR files. Read these in over
-      non-overlapping chunks and then combine
+      Interpolate offshore elevations into the current DEM in chunks.
+
+      Point data are rasterized over areas without dense DEM data. When
+      ``use_edge`` is true, samples from the foreshore/offshore boundary are
+      included to constrain the interpolation. The DEM is updated in place.
+      The point data should have the same vertical datum and units as the DEM.
+      Typically if the point data is in MSL (mean sea level), it will be close
+      enough.
+
+      :param ocean_points: Ocean bathymetry point collection to interpolate.
+      :param cache_path: Directory for temporary point-cloud files.
+      :param k_nearest_neighbours: Number of nearest samples used by the selected interpolation
+                                   method. Offshore interpolation is skipped when there are too few
+                                   ocean or edge points.
+      :param use_edge: Whether to include samples from the foreshore/offshore boundary.
+      :param buffer: Width of the exclusion buffer around land and foreshore, in units
+                     of catchment grid cells.
+      :param method: Method passed to :func:`point_elevation`, such as ``mean``,
+                     ``median``, ``idw``, ``linear``, ``cubic``, ``nearest``, or ``rbf``.
+
+      :returns: Updates the DEM in place.
+      :rtype: None
 
 
 
-   .. py:method:: interpolate_ocean_bathymetry(bathy_contours, method='linear')
+   .. py:method:: interpolate_ocean_bathymetry(bathy_contours, method = 'linear')
 
-      Performs interpolation offshore outside LiDAR extents using the SciPy RBF
-      function.
+      Interpolate ocean bathymetry where dense DEM data are unavailable.
+
+      Contours are sampled at the catchment resolution and combined with
+      samples along the foreshore/offshore boundary. If no contour samples
+      are available, boundary samples alone are used. The current DEM is
+      updated in place. Assumes the DEM and bathymetry contours use the same
+      horizontal and vertical datum, sign convention, and units.
+
+      :param bathy_contours: Bathymetry contour collection with a ``sample_contours`` method.
+      :param method: Interpolation method: ``rbf``, ``linear``, ``cubic``, or
+                     ``nearest``.
+
+      :returns: Updates the current DEM in place.
+      :rtype: None
 
 
 
    .. py:method:: clip_within_polygon(polygon_paths, label)
 
-      Clip existing DEM to remove areas within the polygons
+      Set DEM elevations to missing within the supplied polygons.
+
+      Polygon files are reprojected to the catchment's horizontal CRS, clipped
+      to the DEM extent, and combined before masking. The DEM and its source
+      classification layers are updated in place. If the combined polygon
+      area does not exceed one raster-cell area, no clipping is performed.
+
+      :param polygon_paths: One or more paths to polygon files.
+      :param label: Key in ``SOURCE_CLASSIFICATION`` used to label masked cells.
+
+      :returns: Updates the DEM in place.
+      :rtype: None
 
 
 
    .. py:method:: add_points_within_polygon_chunked(elevations, method, cache_path, label, include_edges = True)
 
-      Performs interpolation from estimated bathymetry points within a polygon
-      using the specified interpolation approach after filtering the points based
-      on the type label. The type_label also determines the source classification.
+      Interpolate elevation points within polygons and update the DEM in place.
+      DEM and elevation point should be the same CRS.
+
+      When ``include_edges`` is true, existing DEM samples just outside the
+      polygons are added to the interpolation input to constrain the edges.
+
+      :param elevations: Point and polygon data to interpolate, in the catchment CRS.
+      :param method: Method passed to :func:`point_elevation`, such as ``mean``,
+                     ``median``, ``idw``, ``linear``, ``cubic``, ``nearest``, or ``rbf``.
+      :param cache_path: Directory for temporary point-cloud files.
+      :param label: Source-classification key for the interpolated values.
+      :param include_edges: Whether to include nearby DEM samples outside the polygons.
+
+      :returns: Updates the DEM and its source-classification layers in place.
+      :rtype: None
+
+      .. rubric:: Notes
+
+      TO DEFINE: Confirm how non-finite point values should be handled.
 
 
 
    .. py:method:: add_points_within_polygon_nearest_chunked(elevations, method, cache_path, label, k_nearest_neighbours, include_edges = True)
 
-      Performs interpolation from estimated bathymetry points within a polygon
-      using the specified interpolation approach after filtering the points based
-      on the type label. The type_label also determines the source classification.
+      Interpolate polygon elevations from nearby points and update the DEM.
+
+      The requested number of nearest points is selected separately from the
+      supplied elevations and, when enabled, from edge samples in the current
+      DEM. The current DEM is updated in place. All CRS should be the same.
+
+      :param elevations: Point and polygon data to interpolate, in the catchment CRS.
+      :param method: Method passed to :func:`point_elevation`.
+      :param cache_path: Directory for temporary point-cloud files.
+      :param label: Source-classification key for the interpolated values.
+      :param k_nearest_neighbours: Number of neighbours to query from each point set. If either
+                                   enabled point set has fewer than this number, the rasterizer
+                                   returns NaN values.
+      :param include_edges: Whether to include nearby DEM samples outside the polygons.
+
+      :returns: Updates the DEM and its source-classification layers in place.
+      :rtype: None
 
 
 
@@ -257,7 +354,7 @@ Module Contents
 
    .. py:property:: dem
 
-      Return the positivly indexed DEM from tiles
+      Return the DEM.
 
 
    .. py:method:: add_lidar(lidar_dataset_info, lidar_classifications_to_keep)
@@ -359,9 +456,9 @@ Module Contents
 
    A class to add a roughness (zo) layer to a hydrologically conditioned DEM.
 
-   They STD and mean height of ground cover classified points are calculated from the
-   LiDAR data and z (elevation) layer of the hydrologically conditioned DEM, and used
-   to estimate roughness emperically.
+   The standard deviation and mean height of classified ground-cover points
+   are calculated from the LiDAR data and the DEM elevation layer, then used
+   to estimate roughness empirically.
 
    RoughnessDem logic can be controlled by the constructor inputs.
 
@@ -374,23 +471,24 @@ Module Contents
 
    .. py:property:: dem
 
-      Return interpolaed roughness layer with min and max bounds enforced
+      Return the interpolated roughness layer with minimum and maximum bounds.
 
 
    .. py:method:: add_lidar(lidar_dataset_info, lidar_classifications_to_keep, parameters)
 
       Read in all LiDAR files and use the point cloud distribution,
-      data_source layer, and hydrologiaclly conditioned elevations to
+      data_source layer, and hydrologically conditioned elevations to
       estimate the roughness across the DEM.
 
-      :param lidar_datasets_info: A dictionary of information for each specified LIDAR dataset - For
-                                  each this includes: a list of LAS files, CRS, and tile index file.
+      :param lidar_dataset_info: Information for the specified LiDAR input, including its files,
+                                 CRS, and optional tile index.
       :param lidar_classifications_to_keep: A list of LiDAR classifications to keep - '2' for ground, '9' for water.
                                             See https://www.asprs.org/wp-content/uploads/2010/12/LAS_1_4_r13.pdf for
                                             standard list
-      :param meta_data: Information to include in the created DEM - must include
-                        `dataset_mapping` key if datasets (not a single LAZ file) included.
       :param parameters: The roughness equation parameters.
+
+      :returns: Whether the LiDAR data was added successfully.
+      :rtype: bool
 
 
 
@@ -398,7 +496,7 @@ Module Contents
 
       Set landuse to roughness values.
 
-      :param landuse_polygon: Dataframe with polygon and associated roughness values
+      :param landuse_polygon: GeoDataFrame containing polygons and their roughness values.
 
 
 
@@ -406,74 +504,315 @@ Module Contents
 
       Set roads to paved and unpaved roughness values.
 
-      :param roads_polygon: Dataframe with polygon and associated roughness values
+      :param roads_polygon: GeoDataFrame containing road polygons and their roughness values.
 
 
 
 .. py:function:: read_file_with_pdal(lidar_file, region_to_tile, crs, source_crs = None)
 
-   Read a tile file in using PDAL with input and output CRS specified.
+   Read a LAS/LAZ tile, reproject it, and optionally crop it with PDAL.
+
+   :param lidar_file: Path to the LAS/LAZ file.
+   :param region_to_tile: Optional GeoDataFrame containing the crop geometry. When provided, its
+                          first row (index ``0``) is used and its CRS must match ``crs``.
+   :param crs: Target CRS dictionary with ``horizontal`` and ``vertical`` EPSG codes.
+   :param source_crs: Optional source CRS dictionary with the same keys. If omitted, PDAL
+                      uses the CRS recorded in the file.
+
+   :returns: Executed PDAL pipeline. Point arrays are available on its ``arrays``
+             attribute.
+   :rtype: pdal.Pipeline
 
 
 .. py:function:: roughness_from_points(point_cloud, xy_out, xy_ground, options, eps = 0, leaf_size = 10)
 
-   Calculate DEM elevation values at the specified locations using the selected
-   approach. Options include: mean, median, and inverse distance weighing (IDW). This
-   implementation is based on the scipy.spatial.KDTree
+   Estimate roughness values at query locations from nearby point heights.
+
+   For each query, calculate the mean height above ground and the point-height
+   standard deviation within ``options["radius"]``. Return the greater of
+   ``std * options["parameters"]["std"]`` and
+   ``height * options["parameters"]["mean"]``.
+
+   :param point_cloud: Structured point array with ``X``, ``Y``, and ``Z`` fields.
+   :param xy_out: Query coordinates with shape ``(n, 2)``.
+   :param xy_ground: Ground elevations corresponding to ``xy_out``; must have length ``n``.
+   :param options: Must contain ``radius``, ``raster_type``, and ``parameters`` with
+                   ``std`` and ``mean`` scale factors.
+   :param eps: Approximation tolerance passed to the KD-tree radius query.
+   :param leaf_size: KD-tree leaf size; affects query performance, not results.
+
+   :returns: Roughness estimates with one value per query. Queries with no nearby
+             points are set to NaN.
+   :rtype: numpy.ndarray
+
+   .. rubric:: Notes
+
+   X/Y coordinates and ``options["radius"]`` must use the same planar
+   coordinate units. Z and ground values must use the same vertical units.
+   Non-finite point values are not filtered and may propagate to the result.
 
 
 .. py:function:: elevation_from_points(point_cloud, xy_out, options, eps = 0, leaf_size = 10)
 
-   Calculate DEM elevation values at the specified locations using the selected
-   approach. Options include: mean, median, and inverse distance weighing (IDW). This
-   implementation is based on the scipy.spatial.KDTree
+   Estimate elevations from all points within a search radius.
+
+   :param point_cloud: Structured point array with ``X``, ``Y``, and ``Z`` fields.
+   :param xy_out: Query coordinates with shape ``(n, 2)``.
+   :param options: Interpolation options. Must include ``radius``, ``raster_type``, and
+                   the keys required by the method selected in ``options["method"]``.
+   :param eps: Approximation tolerance passed to the KD-tree radius query.
+   :param leaf_size: KD-tree leaf size; affects query performance, not results.
+
+   :returns: One interpolated elevation per query. A query with no points in its
+             radius returns NaN.
+   :rtype: numpy.ndarray
+
+   .. rubric:: Notes
+
+   X/Y coordinates and ``options["radius"]`` must use the same planar
+   coordinate units. Z values are returned in their input vertical units.
+   Non-finite point values are not filtered and may propagate.
 
 
 .. py:function:: elevation_from_nearest_points(point_cloud, edge_point_cloud, xy_out, options, eps = 0, leaf_size = 10)
 
-   Calculate DEM elevation values at the specified locations using the selected
-   approach. Options include: mean, median, and inverse distance weighing (IDW). This
-   implementation is based on the scipy.spatial.KDTree
+   Estimate elevations from the nearest points, optionally including edge points.
+
+   :param point_cloud: Structured array of interpolation points with ``X``, ``Y``, and ``Z``
+                       fields.
+   :param edge_point_cloud: Structured array of nearby edge samples with the same fields.
+   :param xy_out: Query coordinates with shape ``(n, 2)``.
+   :param options: Must include ``k_nearest_neighbours``, ``use_edge``, ``raster_type``,
+                   and the keys required by ``options["method"]``.
+   :param eps: Approximation tolerance passed to each KD-tree query.
+   :param leaf_size: KD-tree leaf size; affects query performance, not results.
+
+   :returns: One elevation per query. Returns all NaNs when ``point_cloud`` has
+             fewer than ``k_nearest_neighbours`` points, or when ``use_edge`` is
+             true and ``edge_point_cloud`` has fewer than that number.
+   :rtype: numpy.ndarray
+
+   .. rubric:: Notes
+
+   X/Y coordinates in both point sets and ``xy_out`` must use the same planar
+   coordinate units. Z values are returned in their input vertical units.
+   The primary ``point_cloud`` is always required; edge points supplement it
+   only when ``use_edge`` is true. Thus, for positive
+   ``k_nearest_neighbours``, an empty ``point_cloud`` returns all NaNs even
+   when edge points are available. Non-finite point values are not filtered.
 
 
 .. py:function:: point_elevation(near_z, near_points, point, options)
 
-   Calculate DEM elevation values at the specified locations using the selected
-   approach. Options include: mean, median, and inverse distance weighing (IDW). This
-   implementation is based on the scipy.spatial.KDTree
+   Estimate one value from a query point's neighbouring samples.
+
+   ``options["method"]`` selects mean, median, IDW, linear, cubic, nearest,
+   RBF, minimum, maximum, standard deviation, or count. Interpolation methods
+   require matching ``near_points`` and ``near_z`` entries.
+
+   :param near_z: Z values of the neighbouring samples.
+   :param near_points: Neighbour coordinates with shape ``(n, 2)``.
+   :param point: Query coordinate with shape ``(2,)``.
+   :param options: Method configuration. IDW uses the coordinates and values; griddata
+                   methods also use ``strict``; RBF uses ``kernel``.
+
+   :returns: Scalar estimated value, or NaN when there are no neighbours.
+   :rtype: float
+
+   .. rubric:: Notes
+
+   X/Y coordinates must use the same planar units. Most methods return Z
+   values in the input vertical units; ``std`` returns a Z spread and
+   ``count`` is intended to return the number of neighbours.
+   ROSE TO DEFINE: Confirm handling of non-finite Z values, and whether
+   ``count`` is a supported method.
 
 
 .. py:function:: calculate_idw(near_points, near_z, point, smoothing = 0, power = 2)
 
-   Calculate the IDW mean of the 'near_indices' points. This implementation is based
-   on the scipy.spatial.KDTree
+   Estimate a value using inverse-distance weighting.
+
+   An exact coordinate match returns that sample's value. Otherwise, each
+   value is weighted by the inverse of its smoothed distance raised to
+   ``power``.
+
+   :param near_points: Neighbour coordinates with shape ``(n, 2)``.
+   :param near_z: Values at ``near_points``; must have length ``n``.
+   :param point: Query coordinate with shape ``(2,)``.
+   :param smoothing: Non-negative distance added in quadrature before weighting.
+   :param power: Exponent applied to the distance weights.
+
+   :returns: Weighted estimate in the same units as ``near_z``.
+   :rtype: float
+
+   .. rubric:: Notes
+
+   Coordinates, ``smoothing``, and distances must use the same units.
+   TO DEFINE: Confirm the intended units and allowed range for
+   ``smoothing`` and ``power``. This function expects at least one finite
+   sample; it does not filter non-finite inputs.
 
 
 .. py:function:: calculate_interpolate_griddata(near_points, near_z, point, strict, method)
 
-   Calculate linear interpolation of the 'near_indices' points. Take the straight
-   mean if the points are co-linear or too few for linear interpolation.
+   Interpolate a query value from nearby points using SciPy ``griddata``.
+
+   With one sample, return its value. With two samples, use inverse-distance
+   weighting. With three or more, use the requested ``method``. If the
+   interpolation produces NaN, ``strict=False`` falls back to
+   inverse-distance weighting.
+
+   :param near_points: Neighbour coordinates with shape ``(n, 2)``.
+   :param near_z: Values at ``near_points``; must have length ``n``.
+   :param point: Query coordinate with shape ``(2,)``.
+   :param strict: If true, preserve a NaN result; otherwise use the distance-weighted
+                  fallback when possible.
+   :param method: SciPy griddata method, typically ``linear``, ``nearest``, or ``cubic``.
+
+   :returns: Interpolated value, or NaN if there are no samples or the strict
+             interpolation fails.
+   :rtype: float
+
+   .. rubric:: Notes
+
+   All coordinates must use the same planar units. NaN input values are not
+   explicitly filtered.
+   TO DEFINE: Confirm behavior for non-finite coordinates/values and
+   whether the two-point fallback should handle a query exactly on a sample.
+
+
+.. py:function:: calculate_rbf(near_points, near_z, point, kernel)
+
+   Estimate a query value using SciPy's radial-basis-function interpolator.
+
+   For three or more samples, fit an RBF interpolator using ``kernel``. If
+   fitting fails or there are fewer samples, fall back to cubic
+   ``griddata`` interpolation (which uses the one- or two-sample behavior
+   documented by :func:`calculate_interpolate_griddata`).
+
+   :param near_points: Neighbour coordinates with shape ``(n, 2)``.
+   :param near_z: Values at ``near_points``; must have length ``n``.
+   :param point: Query coordinate with shape ``(2,)``.
+   :param kernel: Kernel name accepted by SciPy's ``RBFInterpolator``.
+
+   :returns: Scalar estimated value in the units of ``near_z``.
+   :rtype: float
+
+   .. rubric:: Notes
+
+   Coordinates must use consistent planar units. Non-finite input values are
+   not filtered.
+
+
+.. py:function:: select_lidar_files(tile_index_extents, tile_index_name_column, chunk_region_to_tile, lidar_files_map)
+
+   Select LiDAR files whose indexed extents intersect a chunk.
+
+   :param tile_index_extents: GeoDataFrame of tile footprints, including the tile-name column.
+   :param tile_index_name_column: Column in ``tile_index_extents`` containing each tile's lookup key.
+   :param chunk_region_to_tile: GeoDataFrame describing the chunk region.
+   :param lidar_files_map: Mapping from tile-name keys to file paths.
+
+   :returns: Paths for intersecting tiles, or an empty list when the chunk region
+             is empty.
+   :rtype: typing.List[pathlib.Path]
+
+   .. rubric:: Notes
+
+   Both GeoDataFrames must use the same CRS. This function does not reproject
+   either geometry set.
 
 
 .. py:function:: load_tiles_in_chunk(lidar_files, source_crs, chunk_region_to_tile, crs)
 
-   Read in all LiDAR files within the chunked region - clipped to within
-   the region within which to rasterise.
+   Read, reproject, and optionally crop LiDAR tiles for a raster chunk.
+
+   :param lidar_files: LAS/LAZ paths to read.
+   :param source_crs: Optional source CRS dictionary with ``horizontal`` and ``vertical``
+                      EPSG codes. If omitted, each file's embedded CRS is used.
+   :param chunk_region_to_tile: Optional crop polygon in the target horizontal CRS. When supplied, it
+                                must contain a row with index ``0``. An empty region reads no files.
+   :param crs: Target CRS dictionary with ``horizontal`` and ``vertical`` EPSG codes.
+
+   :returns: Concatenated structured point array, or an empty list if no file was
+             read.
+   :rtype: numpy.ndarray or list
 
 
 .. py:function:: roughness_over_chunk(dim_x, dim_y, tile_points, xy_ground, options)
 
-   Rasterise all points within a chunk.
+   Calculate a roughness raster for one chunk of LiDAR points.
+
+   :param dim_x: One-dimensional raster coordinate arrays; output rows follow
+                 ``dim_y`` and columns follow ``dim_x``.
+   :param dim_y: One-dimensional raster coordinate arrays; output rows follow
+                 ``dim_y`` and columns follow ``dim_x``.
+   :param tile_points: Structured LiDAR points with ``X``, ``Y``, ``Z``, and
+                       ``Classification`` fields.
+   :param xy_ground: Ground elevation for each output grid cell, flattened in the same
+                     order as the meshgrid of ``dim_x`` and ``dim_y``.
+   :param options: Roughness options, including ``lidar_classifications_to_keep``,
+                   optional ``elevation_range``, and the options required by
+                   :func:`roughness_from_points`.
+
+   :returns: Roughness grid with shape ``(len(dim_y), len(dim_x))``. Returns an
+             all-NaN grid when no points remain after filtering.
+   :rtype: numpy.ndarray
+
+   .. rubric:: Notes
+
+   Coordinate values and search radii use the units of the horizontal CRS;
+   output roughness uses the input elevation units.
 
 
 .. py:function:: elevation_over_chunk(dim_x, dim_y, tile_points, options)
 
-   Rasterise all points within a chunk.
+   Interpolate LiDAR elevations onto one chunk's raster grid.
+
+   :param dim_x: One-dimensional raster coordinate arrays; output rows follow
+                 ``dim_y`` and columns follow ``dim_x``.
+   :param dim_y: One-dimensional raster coordinate arrays; output rows follow
+                 ``dim_y`` and columns follow ``dim_x``.
+   :param tile_points: Structured point array with ``X``, ``Y``, and ``Z`` fields. If
+                       configured, it must also contain ``Classification``.
+   :param options: Interpolation options, including ``radius`` and ``raster_type``;
+                   optional classification and elevation-range filters are also applied.
+
+   :returns: Elevation grid with shape ``(len(dim_y), len(dim_x))``. Cells with no
+             in-radius samples, or no samples after filtering, are NaN.
+   :rtype: numpy.ndarray
+
+   .. rubric:: Notes
+
+   Query coordinates and ``options["radius"]`` use the horizontal CRS units;
+   returned elevations use the input Z units. Non-finite points are not
+   explicitly filtered.
 
 
 .. py:function:: elevation_over_chunk_from_nearest(dim_x, dim_y, points, edge_points, options)
 
-   Rasterise all points within a chunk.
+   Interpolate nearest-point elevations onto one chunk's raster grid.
+
+   :param dim_x: One-dimensional raster coordinate arrays; output rows follow
+                 ``dim_y`` and columns follow ``dim_x``.
+   :param dim_y: One-dimensional raster coordinate arrays; output rows follow
+                 ``dim_y`` and columns follow ``dim_x``.
+   :param points: Structured interpolation points with ``X``, ``Y``, and ``Z`` fields.
+   :param edge_points: Structured edge samples with the same fields; used when
+                       ``options["use_edge"]`` is true.
+   :param options: Nearest-point interpolation options, including
+                   ``k_nearest_neighbours``, ``use_edge``, and ``raster_type``.
+
+   :returns: Elevation grid with shape ``(len(dim_y), len(dim_x))``. Returns an
+             all-NaN grid when both point sets are empty arrays.
+   :rtype: numpy.ndarray
+
+   .. rubric:: Notes
+
+   Coordinates in both point sets and the output grid must use the same
+   horizontal CRS and units. Z values retain their input vertical units.
+   Pass an empty structured array for ``edge_points`` when there are no edge
+   samples; ``None`` is not supported when ``points`` is also empty.
 
 
 .. py:data:: delayed_roughness_over_chunk
