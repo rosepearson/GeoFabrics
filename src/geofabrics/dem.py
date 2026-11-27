@@ -3843,7 +3843,7 @@ def point_elevation(
     near_points: numpy.ndarray,
     point: numpy.ndarray,
     options: dict,
-) -> float | numpy.ndarray:
+) -> float:
     """Estimate one value from a query point's neighbouring samples.
 
     ``options["method"]`` selects mean, median, IDW, linear, cubic, nearest,
@@ -3864,9 +3864,8 @@ def point_elevation(
 
     Returns
     -------
-    float or numpy.ndarray
-        Estimated value, or NaN when there are no neighbours. The RBF path
-        returns a one-element array.
+    float
+        Scalar estimated value, or NaN when there are no neighbours.
 
     Notes
     -----
@@ -4077,9 +4076,8 @@ def calculate_rbf(
 
     Returns
     -------
-    float or numpy.ndarray
-        Estimated value in the units of ``near_z``. SciPy may return a
-        one-element array for an RBF query.
+    float
+        Scalar estimated value in the units of ``near_z``.
 
     Notes
     -----
@@ -4102,7 +4100,7 @@ def calculate_rbf(
                 smoothing=0,
                 neighbors=RBF_CACHE_SIZE,
             )
-            value = rbf_function([point])
+            value = rbf_function([point]).item()
         except (ValueError, Exception) as caught_exception:
             logger.warning(
                 f"Exception {caught_exception} during "
