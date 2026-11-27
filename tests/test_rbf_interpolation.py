@@ -1,3 +1,5 @@
+import logging
+
 import numpy
 import pytest
 from scipy.interpolate import RBFInterpolator
@@ -43,6 +45,38 @@ def test_radius_rbf_elevations_can_be_assigned_to_raster(point_cloud):
     result = dem.elevation_from_points(point_cloud, queries, options)
 
     numpy.testing.assert_allclose(result, [7.5, 9.5])
+
+
+@pytest.mark.parametrize(
+    "method, expected",
+    [
+        ("mean", [10, 10, numpy.nan]),
+        ("linear", [7.5, 9.5, numpy.nan]),
+        ("rbf", [7.5, 9.5, numpy.nan]),
+    ],
+)
+def test_interpolation_does_not_reconfigure_logging(
+    point_cloud, monkeypatch, caplog, method, expected
+):
+    queries = numpy.array([[0.5, 0.5], [1.5, 0.5], [50, 50]])
+    options = {
+        "method": method,
+        "strict": True,
+        "kernel": "thin_plate_spline",
+        "radius": 10,
+        "raster_type": numpy.float32,
+    }
+
+    def unexpected_logging_configuration(*args, **kwargs):
+        pytest.fail("Interpolation must not look up loggers or change their levels")
+
+    with caplog.at_level(logging.WARNING, logger=dem.__name__):
+        with monkeypatch.context() as patch:
+            patch.setattr(logging, "getLogger", unexpected_logging_configuration)
+            patch.setattr(logging.Logger, "setLevel", unexpected_logging_configuration)
+            result = dem.elevation_from_points(point_cloud, queries, options)
+
+    numpy.testing.assert_array_equal(result, numpy.array(expected, dtype=numpy.float32))
 
 
 @pytest.mark.parametrize("use_edge", [False, True])

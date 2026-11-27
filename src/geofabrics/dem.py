@@ -2,6 +2,9 @@
 """
 This module contains classes associated with loading, generating, and combining
 DEMs.
+
+Function-level logging uses a shared logger configured once per process at
+module import, rather than during per-cell calculations.
 """
 
 # IMPORTANT: Import pdal FIRST on Windows to avoid DLL loading conflicts
@@ -31,6 +34,9 @@ import scipy.spatial
 from . import geometry
 
 RBF_CACHE_SIZE = 1000
+
+logger = logging.getLogger(__name__)
+logger.setLevel(logging.DEBUG)
 
 
 def chunk_mask(mask, chunk_size):
@@ -3781,9 +3787,6 @@ def elevation_from_nearest_points(
     when edge points are available. Non-finite point values are not filtered.
     """
 
-    logger = logging.getLogger(__name__)
-    logger.setLevel(logging.DEBUG)
-
     if len(point_cloud) == 0 and (options["use_edge"] and len(edge_point_cloud) == 0):
         logger.warning("No points provided. Returning NaN array.")
         z_out = numpy.ones(len(xy_out), dtype=options["raster_type"]) * numpy.nan
@@ -3875,9 +3878,6 @@ def point_elevation(
     ROSE TO DEFINE: Confirm handling of non-finite Z values, and whether
     ``count`` is a supported method.
     """
-
-    logger = logging.getLogger(__name__)
-    logger.setLevel(logging.DEBUG)
 
     if len(near_z) == 0:  # Set NaN if no values in search region
         z_out = numpy.nan
@@ -4015,8 +4015,6 @@ def calculate_interpolate_griddata(
     TO DEFINE: Confirm behavior for non-finite coordinates/values and
     whether the two-point fallback should handle a query exactly on a sample.
     """
-    logger = logging.getLogger(__name__)
-    logger.setLevel(logging.DEBUG)
     if len(near_z) >= 3:  # There are enough points for a linear interpolation
         try:
             value = scipy.interpolate.griddata(
@@ -4084,8 +4082,6 @@ def calculate_rbf(
     Coordinates must use consistent planar units. Non-finite input values are
     not filtered.
     """
-    logger = logging.getLogger(__name__)
-    logger.setLevel(logging.DEBUG)
     if len(near_z) >= 3:
         if len(near_z) < RBF_CACHE_SIZE:
             logging.warning(
@@ -4203,8 +4199,6 @@ def load_tiles_in_chunk(
         read.
     """
 
-    logger = logging.getLogger(__name__)
-    logger.setLevel(logging.DEBUG)
     logger.debug(f"Reading all {len(lidar_files)} files in chunk.")
 
     # Initialise LiDAR points
@@ -4278,8 +4272,6 @@ def roughness_over_chunk(
 
     # If no points return an array of NaN
     if len(tile_points) == 0:
-        logger = logging.getLogger(__name__)
-        logger.setLevel(logging.DEBUG)
         logger.debug("The latest chunk has no data and is being ignored.")
         return grid_z
     # keep only the specified classifications (should be ground cover)
@@ -4350,8 +4342,6 @@ def elevation_over_chunk(
 
     # If no points return an array of NaN
     if len(tile_points) == 0:
-        logger = logging.getLogger(__name__)
-        logger.setLevel(logging.DEBUG)
         logger.debug(" The latest chunk has no data and is being ignored.")
         return grid_z
     # keep only the specified classifications (should be ground / water)
@@ -4428,8 +4418,6 @@ def elevation_over_chunk_from_nearest(
 
     # If no points return an array of NaN
     if len(points) == 0 and len(edge_points) == 0:
-        logger = logging.getLogger(__name__)
-        logger.setLevel(logging.DEBUG)
         logger.debug(" The latest chunk has no data and is being ignored.")
         return grid_z
 
